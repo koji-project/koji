@@ -521,6 +521,7 @@ class Session(object):
         c.execute(q, {})
         (session_id,) = c.fetchone()
 
+
         #add session id to database
         q = """
         INSERT INTO sessions (id, user_id, key, hostip, authtype, master)
@@ -737,7 +738,7 @@ class Session(object):
         allowed_realms = context.opts.get('AllowedKrbRealms', '*')
         if allowed_realms == '*':
             return
-        allowed_realms = re.split('\s*,\s*', allowed_realms)
+        allowed_realms = re.split(r'\s*,\s*', allowed_realms)
         atidx = krb_principal.find('@')
         if atidx == -1 or atidx == len(krb_principal) - 1:
             raise koji.AuthError(
@@ -745,7 +746,7 @@ class Session(object):
         realm = krb_principal[atidx + 1:]
         if realm not in allowed_realms:
             raise koji.AuthError(
-                "Kerberos principal's realm : %s is not allowed" % realm)
+                "Kerberos principal's realm: %s is not allowed" % realm)
 
 
 def get_user_groups(user_id):
