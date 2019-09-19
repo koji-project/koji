@@ -77,6 +77,7 @@ import tempfile
 import time
 import traceback
 import warnings
+import weakref
 import xml.sax
 import xml.sax.handler
 import six.moves.urllib
@@ -2141,7 +2142,10 @@ class ClientSession(object):
         self.opts = opts
         self.authtype = None
         self.setSession(sinfo)
-        self._multicall = MultiCallHack(self)
+        # Use a weak reference here so the garbage collector can still clean up
+        # ClientSession objects even with a circular reference, and the optional
+        # cycle detector being disabled due to the __del__ method being used.
+        self._multicall = MultiCallHack(weakref.ref(self))
         self._calls = []
         self.logger = logging.getLogger('koji')
         self.rsession = None
@@ -2889,6 +2893,9 @@ class MultiCallHack(object):
 
     def __init__(self, session):
         self.value = False
+        # session must be a weak reference
+        if not isinstance(session, weakref.ReferenceType):
+            raise TypeError('The session parameter must be a weak reference')
         self.session = session
 
     def __nonzero__(self):
@@ -2898,7 +2905,9 @@ class MultiCallHack(object):
         return self.value
 
     def __call__(self, **kw):
-        return MultiCallSession(self.session, **kw)
+        # self.session is a weak reference, which is why it is being called
+        # first
+        return MultiCallSession(self.session(), **kw)
 
 
 class MultiCallNotReady(Exception):
