@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 import mock
 import six
+import weakref
 try:
     import unittest2 as unittest
 except ImportError:
@@ -227,3 +228,11 @@ class TestMultiCall(unittest.TestCase):
         self.assertEqual(2, self.ksession._sendCall.call_count)
         self.assertEqual([['a', 'b', 'c'],
                           {'faultCode': 1000, 'faultString': 'msg'}], ret)
+
+    def test_MultiCallHack_weakref_validation(self):
+        expected_exc = 'The session parameter must be a weak reference'
+        with self.assertRaisesRegexp(TypeError, expected_exc):
+            koji.MultiCallHack(self.ksession)
+
+        # This should not raise an exception
+        koji.MultiCallHack(weakref.ref(self.ksession))
