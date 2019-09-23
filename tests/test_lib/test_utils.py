@@ -158,6 +158,28 @@ class MiscFunctionTestCase(unittest.TestCase):
         for m in mocks:
             m.assert_not_called()
 
+    def test_joinpath_bad(self):
+        bad_joins = [
+            ['/foo', '../bar'],
+            ['/foo', 'a/b/../../../bar'],
+            ['/foo', '/bar'],
+            ['/foo//', '/bar'],
+            ['/foo', 'bar', 'baz', '/zoo'],
+            ]
+        for args in bad_joins:
+            with self.assertRaises(ValueError):
+                koji.util.joinpath(*args)
+
+    def test_joinpath_good(self):
+        p = koji.util.joinpath('/foo', 'bar')
+        self.assertEquals(p, '/foo/bar')
+
+        p = koji.util.joinpath('/foo', 'bar/../baz')
+        self.assertEquals(p, '/foo/baz')
+
+        p = koji.util.joinpath('/foo', 'a/b/c/../../../z')
+        self.assertEquals(p, '/foo/z')
+
 
 class ConfigFileTestCase(unittest.TestCase):
     """Test config file reading functions"""
