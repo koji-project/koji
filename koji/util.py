@@ -504,6 +504,22 @@ def move_and_symlink(src, dst, relative=True, create_dir=False):
     os.symlink(dst, src)
 
 
+
+def joinpath(path, *paths):
+    """A wrapper around os.path.join that limits directory traversal"""
+
+    # note that the first path is left alone
+
+    newpaths = []
+    for _p in paths:
+        p = os.path.normpath(_p)
+        if p == '..' or p.startswith('../') or p.startswith('/'):
+            raise ValueError('Invalid path segment: %s' % _p)
+        newpaths.append(p)
+
+    return os.path.join(path, *newpaths)
+
+
 def eventFromOpts(session, opts):
     """Determine event id from standard cli options
 
