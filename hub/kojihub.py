@@ -2555,9 +2555,9 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None, with_separa
                          'volume_name': archive['volume_name'],
                         }
             srcdir = joinpath(koji.pathinfo.mavenbuild(buildinfo),
-                                  koji.pathinfo.mavenrepo(archive))
+                              koji.pathinfo.mavenrepo(archive))
             destlink = joinpath(repodir, 'maven',
-                                    koji.pathinfo.mavenrepo(archive))
+                                koji.pathinfo.mavenrepo(archive))
             dir_links.add((srcdir, destlink))
             dest_parent = os.path.dirname(destlink)
             artifact_dirs.setdefault(dest_parent, set()).add((archive['group_id'],
@@ -4577,21 +4577,21 @@ def list_archive_files(archive_id, queryOpts=None, strict=False):
         maven_archive = get_maven_archive(archive_info['id'], strict=True)
         archive_info.update(maven_archive)
         file_path = joinpath(koji.pathinfo.mavenbuild(build_info),
-                                 koji.pathinfo.mavenfile(archive_info))
+                             koji.pathinfo.mavenfile(archive_info))
     elif btype == 'win':
         win_archive = get_win_archive(archive_info['id'], strict=True)
         archive_info.update(win_archive)
         file_path = joinpath(koji.pathinfo.winbuild(build_info),
-                                 koji.pathinfo.winfile(archive_info))
+                             koji.pathinfo.winfile(archive_info))
     elif btype == 'image':
         image_archive = get_image_archive(archive_info['id'], strict=True)
         archive_info.update(image_archive)
         file_path = joinpath(koji.pathinfo.imagebuild(build_info),
-                                 archive_info['filename'])
+                             archive_info['filename'])
     elif btype:
         # for non-legacy types, btype info is in the 'extra' field
         file_path = joinpath(koji.pathinfo.typedir(build_info, btype),
-                                 archive_info['filename'])
+                             archive_info['filename'])
     else:
         # should not happen
         raise koji.GenericError("Missing build type info for archive %s" % archive_id)
@@ -6731,7 +6731,7 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
         if not metadata_only:
             # move the file to it's final destination
             mavendir = joinpath(koji.pathinfo.mavenbuild(buildinfo),
-                                    koji.pathinfo.mavenrepo(typeInfo))
+                                koji.pathinfo.mavenrepo(typeInfo))
             _import_archive_file(filepath, mavendir)
             _generate_maven_metadata(mavendir)
     elif type == 'win':
@@ -9110,10 +9110,10 @@ def importImageInternal(task_id, build_id, imgdata):
             # multiarch livemedia spins can have log name conflicts, so we
             # add the arch to the path
             logdir = joinpath(koji.pathinfo.build(build_info),
-                                  'data/logs/image', imgdata['arch'])
+                              'data/logs/image', imgdata['arch'])
         else:
             logdir = joinpath(koji.pathinfo.build(build_info),
-                                  'data/logs/image')
+                              'data/logs/image')
         koji.ensuredir(logdir)
         final_path = joinpath(logdir, os.path.basename(logfile))
         if os.path.exists(final_path):
@@ -10094,8 +10094,8 @@ class RootExports(object):
             if filepath.startswith('/') or '../' in filepath:
                 raise koji.GenericError('invalid filepath: %s' % filepath)
             srpm_path = joinpath(koji.pathinfo.work(),
-                                     koji.pathinfo.taskrelpath(taskID),
-                                     filepath)
+                                 koji.pathinfo.taskrelpath(taskID),
+                                 filepath)
         else:
             raise koji.GenericError('either buildID or taskID and filepath must be specified')
 
@@ -10562,7 +10562,7 @@ class RootExports(object):
             return _applyQueryOpts([], queryOpts)
         build_info = get_build(rpm_info['build_id'])
         rpm_path = joinpath(koji.pathinfo.build(build_info),
-                                koji.pathinfo.rpm(rpm_info))
+                            koji.pathinfo.rpm(rpm_info))
         if not os.path.exists(rpm_path):
             if strict:
                 raise koji.GenericError("RPM file of %s doesn't exist" % rpmID)
@@ -10694,8 +10694,8 @@ class RootExports(object):
             if filepath.startswith('/') or '../' in filepath:
                 raise koji.GenericError('invalid filepath: %s' % filepath)
             rpm_path = joinpath(koji.pathinfo.work(),
-                                    koji.pathinfo.taskrelpath(taskID),
-                                    filepath)
+                                koji.pathinfo.taskrelpath(taskID),
+                                filepath)
         else:
             raise koji.GenericError('either rpmID or taskID and filepath must be specified')
 
@@ -12544,7 +12544,7 @@ class HostExports(object):
             for relpath in [rpm_results['srpm']] + rpm_results['rpms'] + \
                     rpm_results['logs']:
                 src = joinpath(koji.pathinfo.task(rpm_results['task_id']),
-                                   relpath)
+                               relpath)
                 dest = joinpath(destdir, 'rpms', relpath)
                 move_and_symlink(src, dest, create_dir=True)
 
@@ -12567,7 +12567,7 @@ class HostExports(object):
             for relpath in [rpm_results['srpm']] + rpm_results['rpms'] + \
                     rpm_results['logs']:
                 filename = joinpath(koji.pathinfo.task(rpm_results['task_id']),
-                                        relpath)
+                                    relpath)
                 dest = joinpath(destdir, 'rpms', relpath)
                 move_and_symlink(filename, dest, create_dir=True)
 
@@ -12768,7 +12768,7 @@ class HostExports(object):
                     # in the database because we regenerate it when creating tag repos.
                     # So we special-case it here.
                     destdir = joinpath(koji.pathinfo.mavenbuild(build_info),
-                                           relpath)
+                                       relpath)
                     _import_archive_file(filepath, destdir)
                     _generate_maven_metadata(destdir)
                     continue
