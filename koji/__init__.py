@@ -2545,8 +2545,12 @@ class ClientSession(object):
             self.logger.debug("url: %s" % handler)
             for _key in callopts:
                 _val = callopts[_key]
-                if _key == 'data' and len(_val) > 1024:
-                    _val = _val[:1024] + '...'
+                if _key == 'data':
+                    if six.PY3 and isinstance(_val, bytes):
+                        # convert to hex-string
+                        _val = '0x' + _val.hex()
+                    if len(_val) > 1024:
+                        _val = _val[:1024] + '...'
                 self.logger.debug("%s: %r" % (_key, _val))
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
