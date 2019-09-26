@@ -11,6 +11,8 @@ import koji
 import kojihub
 from koji import GenericError
 
+IP = kojihub.InsertProcessor
+UP = kojihub.UpdateProcessor
 
 class TestCGImporter(unittest.TestCase):
     TMP_PATH = os.path.join(os.path.dirname(__file__), 'tmptest')
@@ -224,3 +226,134 @@ class TestMatchKojiFile(unittest.TestCase):
         self.get_build.return_value = self.build1
         with self.assertRaises(koji.GenericError):
             self.importer.match_kojifile(comp)
+
+
+class TestCGReservation(unittest.TestCase):
+    def getInsert(self, *args, **kwargs):
+        insert = IP(*args, **kwargs)
+        insert.execute = mock.MagicMock()
+        self.inserts.append(insert)
+        return insert
+
+    def getUpdate(self, *args, **kwargs):
+        update = UP(*args, **kwargs)
+        update.execute = mock.MagicMock()
+        self.updates.append(update)
+        return update
+
+
+    def setUp(self):
+        self.InsertProcessor = mock.patch('kojihub.InsertProcessor',
+                                          side_effect=self.getInsert).start()
+        self.UpdateProcessor = mock.patch('kojihub.UpdateProcessor',
+                                          side_effect=self.getUpdate).start()
+        self.inserts = []
+        self.updates = []
+
+        self.context = mock.patch('kojihub.context').start()
+        self.context.session.user_id = 123456
+        self.mock_cursor = mock.MagicMock()
+        self.context.cnx.cursor.return_value = self.mock_cursor
+
+    def tearDown(self):
+        mock.patch.stopall()
+
+    @mock.patch("kojihub.new_build")
+    @mock.patch("kojihub.get_user")
+    @mock.patch("kojihub.lookup_name")
+    @mock.patch("kojihub.assert_cg")
+    def test_init_build_ok(self, assert_cg, lookup_name, get_user, new_build):
+        assert_cg.return_value = True
+        lookup_name.return_value = {'id': 21, 'name': 'cg_name'}
+        get_user.return_value = {'id': 123456, 'name': 'username'}
+        new_build.return_value = 654
+        cg = 'content_generator_name'
+        self.mock_cursor.fetchone.side_effect = [
+            [333], # get pkg_id
+            [1234], # get nextval pkg_id
+        ]
+        self.mock_cursor.fetchall.side_effect = [
+            [[]],
+        ]
+
+        data = {
+            'name': 'pkg_name',
+            'version': 'pkg_version',
+            'release': 'pkg_release',
+            'extra': {},
+        }
+
+        kojihub.cg_init_build(cg, data)
+
+        lookup_name.assert_called_once_with('content_generator', cg, strict=True)
+        assert_cg.assert_called_once_with(cg)
+        self.assertEqual(1, len(self.inserts))
+        insert = self.inserts[0]
+        self.assertEqual(insert.table, 'build_reservations')
+        self.assertEqual(insert.data['build_id'], 654)
+        self.assertTrue('token' in insert.data)
+        self.assertEqual(insert.rawdata, {'created': 'NOW()'})
+
+    @mock.patch("koji.plugin.run_callbacks")
+    @mock.patch("kojihub.get_reservation_token")
+    @mock.patch("kojihub.lookup_name")
+    @mock.patch("kojihub.get_build")
+    @mock.patch("kojihub.assert_cg")
+    def test_uninit_build_ok(self, assert_cg, get_build, lookup_name, get_reservation_token,
+                             run_callbacks):
+        assert_cg.return_value = True
+        build_id = 1122
+        cg_id = 888
+        cg = 'content_generator_name'
+        get_build.side_effect = [
+            {
+                'id': build_id,
+                'state': koji.BUILD_STATES['BUILDING'],
+                'cg_id': cg_id,
+            },
+            {
+                'id': build_id,
+                'state': koji.BUILD_STATES['FAILED'],
+                'cg_id': cg_id,
+            },
+        ]
+
+        token = 'random_token'
+        get_reservation_token.return_value = {'build_id': build_id, 'token': token}
+        lookup_name.return_value = {'name': cg, 'id': cg_id}
+
+        kojihub.cg_refund_build(cg, build_id, token)
+
+        assert_cg.assert_called_once_with(cg)
+        get_build.assert_has_calls([
+            mock.call(build_id, strict=True),
+            mock.call(build_id, strict=True),
+        ])
+        get_reservation_token.assert_called_once_with(build_id)
+        lookup_name.assert_called_once_with('content_generator', cg, strict=True)
+
+        self.assertEqual(len(self.updates), 1)
+        update = self.updates[0]
+        self.assertEqual(update.table, 'build')
+        self.assertEqual(update.values['id'], build_id)
+        self.assertEqual(update.data['state'], koji.BUILD_STATES['FAILED'])
+        self.assertEqual(update.rawdata, {'completion_time': 'NOW()'})
+
+        run_callbacks.assert_has_calls([
+            mock.call('preBuildStateChange', attribute='state',
+                      old=koji.BUILD_STATES['BUILDING'],
+                      new=koji.BUILD_STATES['FAILED'],
+                      info={
+                          'state': koji.BUILD_STATES['BUILDING'],
+                          'cg_id': cg_id,
+                          'id': build_id}
+                      ),
+            mock.call('postBuildStateChange', attribute='state',
+                      old=koji.BUILD_STATES['BUILDING'],
+                      new=koji.BUILD_STATES['FAILED'],
+                      info={
+                          'state': koji.BUILD_STATES['FAILED'],
+                          'cg_id': cg_id,
+                          'id': build_id}
+                      ),
+        ])

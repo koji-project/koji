@@ -5816,6 +5816,43 @@ def cg_init_build(cg, data):
     return {'build_id': build_id, 'token': token}
 
 
+def cg_refund_build(cg, build_id, token, state=koji.BUILD_STATES['FAILED']):
+    """If build is reserved and not finished yet, there is an option
+    to release reservation and mark build either FAILED or CANCELED.
+    For this calling CG needs to know build_id and reservation token.
+
+    On success it doesn't return nothing. On error it raises an exception.
+    """
+
+    if state not in (koji.BUILD_STATES['FAILED'], koji.BUILD_STATES['CANCELED']):
+        raise koji.GenericError("Only FAILED/CANCELLED build states are allowed")
+
+    assert_cg(cg)
+    binfo = get_build(build_id, strict=True)
+    if binfo['state'] != koji.BUILD_STATES['BUILDING']:
+        raise koji.GenericError('Build ID %s is not in BUILDING state' % build_id)
+
+    build_token = get_reservation_token(build_id)
+    if not build_token or build_token['token'] != token:
+        raise koji.GenericError("Token doesn't match build ID %s" % build_id)
+
+    cg_id = lookup_name('content_generator', cg, strict=True)['id']
+    if binfo['cg_id'] != cg_id:
+        raise koji.GenericError('Build ID %s is not reserved by this CG' % build_id)
+
+    koji.plugin.run_callbacks('preBuildStateChange', attribute='state',
+                              old=koji.BUILD_STATES['BUILDING'], new=state, info=binfo)
+
+    update = UpdateProcessor('build', values={'id': build_id}, clauses=["id = %(id)s"])
+    update.set(state=state)
+    update.rawset(completion_time='NOW()')
+    update.execute()
+
+    binfo = get_build(build_id, strict=True)
+    koji.plugin.run_callbacks('postBuildStateChange', attribute='state',
+                              old=koji.BUILD_STATES['BUILDING'], new=state, info=binfo)
+
+
 def cg_import(metadata, directory, token=None):
     """Import build from a content generator
 
@@ -9939,6 +9976,7 @@ class RootExports(object):
         import_archive(fullpath, buildinfo, type, typeInfo)
 
     CGInitBuild = staticmethod(cg_init_build)
+    CGRefundBuild = staticmethod(cg_refund_build)
     CGImport = staticmethod(cg_import)
 
     untaggedBuilds = staticmethod(untagged_builds)
