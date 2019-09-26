@@ -851,6 +851,15 @@ insert into archivetypes (name, description, extensions) values ('yaml', 'YAML A
 insert into archivetypes (name, description, extensions) values ('xjb', 'JAXB(Java Architecture for XML Binding) Binding Customization File', 'xjb');
 insert into archivetypes (name, description, extensions) values ('raw-gz', 'GZIP compressed raw disk image', 'raw.gz');
 insert into archivetypes (name, description, extensions) values ('qcow2-compressed', 'Compressed QCOW2 image', 'qcow2.gz qcow2.xz');
+-- add compressed iso-compressed, vhd-compressed, vhdx-compressed, and vmdk-compressed: From schema-upgrade-1.18-1.19
+insert into archivetypes (name, description, extensions) values ('iso-compressed', 'Compressed iso image', 'iso.gz iso.xz');
+insert into archivetypes (name, description, extensions) values ('vhd-compressed', 'Compressed VHD image', 'vhd.gz vhd.xz');
+insert into archivetypes (name, description, extensions) values ('vhdx-compressed', 'Compressed VHDx image', 'vhd.gz vhd.xz');
+insert into archivetypes (name, description, extensions) values ('vmdk-compressed', 'Compressed VMDK image', 'vmdk.gz vmdk.xz');
+-- add kernel-image and imitramfs: From schema-upgrade-1.18-1.19
+insert into archivetypes (name, description, extensions) values ('kernel-image', 'Kernel BZ2 Image', 'vmlinuz vmlinuz.gz vmlinuz.xz');
+insert into archivetypes (name, description, extensions) values ('initramfs', 'Compressed Initramfs Image', 'img');
+
 
 -- Do we want to enforce a constraint that a build can only generate one
 -- archive with a given name?
