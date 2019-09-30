@@ -702,7 +702,7 @@ class VMExecTask(BaseTaskHandler):
                     raise koji.BuildError("Downloaded rpm %s doesn't match sigmd5" % \
                         os.path.basename(fileinfo['localpath']))
             else:
-                self.verifyChecksum(localpath, fileinfo['checksum'], koji.CHECKSUM_TYPES[fileinfo['checksum_type']], localpath)
+                self.verifyChecksum(localpath, fileinfo['checksum'], koji.CHECKSUM_TYPES[fileinfo['checksum_type']])
 
         return open(localpath, 'r')
 
