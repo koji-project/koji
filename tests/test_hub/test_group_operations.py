@@ -18,6 +18,13 @@ class TestGrouplist(unittest.TestCase):
         self.queries.append(query)
         return query
 
+    def getEmptyQuery(self, *args, **kwargs):
+        query = QP(*args, **kwargs)
+        query.execute = mock.MagicMock()
+        query.execute.return_value = None
+        self.queries.append(query)
+        return query
+
     def getInsert(self, *args, **kwargs):
         insert = IP(*args, **kwargs)
         insert.execute = mock.MagicMock()
@@ -29,6 +36,11 @@ class TestGrouplist(unittest.TestCase):
         update.execute = mock.MagicMock()
         self.updates.append(update)
         return update
+
+    def reset_db_processors(self):
+        self.queries = []
+        self.updates = []
+        self.inserts = []
 
     def setUp(self):
         self.context = mock.patch('kojihub.context').start()
@@ -171,12 +183,41 @@ class TestGrouplist(unittest.TestCase):
         self.lookup_group.assert_called_once_with(group, strict=True)
 
         # db
+        self.assertEqual(len(self.queries), 1)
         self.assertEqual(len(self.inserts), 0)
         self.assertEqual(len(self.updates), 1)
+        query = self.queries[0]
+        self.assertEqual(' '.join(str(query).split()),
+                         'SELECT active, group_id, tag_id FROM group_config'
+                         ' WHERE ((active = TRUE))'
+                         ' AND (group_id=%(grp_id)s)'
+                         ' AND (tag_id=%(tag_id)s)')
         update = self.updates[0]
         self.assertEqual(update.table, 'group_config')
         self.assertEqual(update.data, {'revoke_event': 42, 'revoker_id': 24})
         self.assertEqual(update.rawdata, {'active': 'NULL'})
+
+        # no group for tag found
+        self.reset_db_processors()
+        with mock.patch('kojihub.QueryProcessor', side_effect=self.getEmptyQuery):
+            with self.assertRaises(koji.GenericError) as cm:
+                kojihub.grplist_remove(tag, group)
+
+        self.assertEqual(len(self.queries), 1)
+        self.assertEqual(len(self.inserts), 0)
+        self.assertEqual(len(self.updates), 0)
+        self.assertEqual(cm.exception.args[0],
+                         'No group: tag found for tag: group')
+
+        # force = True
+        self.reset_db_processors()
+        with mock.patch('kojihub.QueryProcessor',
+                        side_effect=self.getEmptyQuery):
+            kojihub.grplist_remove(tag, group, force=True)
+
+        self.assertEqual(len(self.queries), 0)
+        self.assertEqual(len(self.inserts), 0)
+        self.assertEqual(len(self.updates), 1)
 
     def test_grplist_unblock(self):
         # identical with test_grplist_add except blocked=True

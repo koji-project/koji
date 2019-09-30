@@ -1724,6 +1724,16 @@ def _grplist_add(taginfo, grpinfo, block, force, **opts):
 
 def grplist_remove(taginfo, grpinfo, force=False):
     """Remove group from the list for tag
+    Permission required: admin
+
+    :param taginfo: tag id or name which group is removed from
+    :type taginfo: int or str
+    :param grpinfo: group id or name which is removed
+    :type grpinfo: int or str
+    :param bool force: If False(default), GenericException will be raised when
+                       no group found in the list for tag. If True, revoking
+                       will be force to execute, no matter if the relationship
+                       exists.
 
     Really this shouldn't be used except in special cases
     Most of the time you really want to use the block or unblock functions
@@ -1733,13 +1743,22 @@ def grplist_remove(taginfo, grpinfo, force=False):
     _grplist_remove(taginfo, grpinfo, force)
 
 
-def _grplist_remove(taginfo, grpinfo, force):
+def _grplist_remove(taginfo, grpinfo, force=False):
     """grplist_remove without permission check"""
     tag = get_tag(taginfo, strict=True)
     group = lookup_group(grpinfo, strict=True)
     tag_id = tag['id']
     grp_id = group['id']
     clauses = ['group_id=%(grp_id)s', 'tag_id=%(tag_id)s']
+    if not force:
+        query = QueryProcessor(columns=['group_id', 'tag_id', 'active'],
+                               tables=['group_config'],
+                               values=locals(),
+                               clauses=clauses + [eventCondition(None)])
+        old_grp_conf = query.executeOne()
+        if not old_grp_conf:
+            raise koji.GenericError("No group: %s found for tag: %s"
+                                    % (tag['name'], group['name']))
     update = UpdateProcessor('group_config', values=locals(), clauses=clauses)
     update.make_revoke()
     update.execute()
