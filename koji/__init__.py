@@ -484,8 +484,18 @@ def safe_xmlrpc_loads(s):
 
 ## BEGIN kojikamid dup
 
+
 def ensuredir(directory):
-    """Create directory, if necessary."""
+    """Create directory, if necessary.
+
+    :param str directory: path of the directory
+
+    :returns: str: normalized directory path
+
+    :raises OSError: If argument already exists and is not a directory, or
+                     error occurs from underlying `os.mkdir`.
+    """
+    directory = os.path.normpath(directory)
     if os.path.exists(directory):
         if not os.path.isdir(directory):
             raise OSError("Not a directory: %s" % directory)
@@ -500,10 +510,10 @@ def ensuredir(directory):
         # note: if head is blank, then we've reached the top of a relative path
         try:
             os.mkdir(directory)
-        except OSError:
-            #thrown when dir already exists (could happen in a race)
+        except OSError as e:
+            # do not thrown when dir already exists (could happen in a race)
             if not os.path.isdir(directory):
-                #something else must have gone wrong
+                # something else must have gone wrong
                 raise
     return directory
 
