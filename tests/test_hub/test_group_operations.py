@@ -188,10 +188,10 @@ class TestGrouplist(unittest.TestCase):
         self.assertEqual(len(self.updates), 1)
         query = self.queries[0]
         self.assertEqual(' '.join(str(query).split()),
-                         'SELECT group_id, tag_id, active FROM group_config'
-                         ' WHERE (group_id=%(grp_id)s)'
-                         ' AND (tag_id=%(tag_id)s)'
-                         ' AND ((active = TRUE))')
+                         'SELECT active, group_id, tag_id FROM group_config'
+                         ' WHERE ((active = TRUE))'
+                         ' AND (group_id=%(grp_id)s)'
+                         ' AND (tag_id=%(tag_id)s)')
         update = self.updates[0]
         self.assertEqual(update.table, 'group_config')
         self.assertEqual(update.data, {'revoke_event': 42, 'revoker_id': 24})
