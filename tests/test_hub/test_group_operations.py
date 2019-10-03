@@ -207,7 +207,7 @@ class TestGrouplist(unittest.TestCase):
         self.assertEqual(len(self.inserts), 0)
         self.assertEqual(len(self.updates), 0)
         self.assertEqual(cm.exception.args[0],
-                         'No group: tag found for tag: group')
+                         'No group: group found for tag: tag')
 
         # force = True
         self.reset_db_processors()

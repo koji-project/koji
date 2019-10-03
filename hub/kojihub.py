@@ -1758,7 +1758,7 @@ def _grplist_remove(taginfo, grpinfo, force=False):
         old_grp_conf = query.executeOne()
         if not old_grp_conf:
             raise koji.GenericError("No group: %s found for tag: %s"
-                                    % (tag['name'], group['name']))
+                                    % (group['name'], tag['name']))
     update = UpdateProcessor('group_config', values=locals(), clauses=clauses)
     update.make_revoke()
     update.execute()
