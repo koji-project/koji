@@ -54,6 +54,13 @@
           </tr>
           #end for
         </table>
+        #if $buildStart > 0
+        <a href="packageinfo?buildStart=#echo $buildStart - $buildRange#$util.passthrough($self, 'packageID', 'buildOrder', 'tagOrder', 'tagStart')#buildlist">&lt;&lt;&lt;</a>
+        #end if
+        <strong>Builds #echo $buildStart + 1 # through #echo $buildStart + $buildCount # of $totalBuilds</strong>
+        #if $buildStart + $buildCount < $totalBuilds
+        <a href="packageinfo?buildStart=#echo $buildStart + $buildRange#$util.passthrough($self, 'packageID', 'buildOrder', 'tagOrder', 'tagStart')#buildlist">&gt;&gt;&gt;</a>
+        #end if
         #else
         No builds
         #end if
@@ -102,6 +109,13 @@
           </tr>
           #end for
         </table>
+        #if $tagStart > 0
+        <a href="packageinfo?tagStart=#echo $tagStart - $tagRange#$util.passthrough($self, 'packageID', 'tagOrder', 'buildOrder', 'buildStart')#taglist">&lt;&lt;&lt;</a>
+        #end if
+        <strong>Tags #echo $tagStart + 1 # through #echo $tagStart + $tagCount # of $totalTags</strong>
+        #if $tagStart + $tagCount < $totalTags
+        <a href="packageinfo?tagStart=#echo $tagStart + $tagRange#$util.passthrough($self, 'packageID', 'tagOrder', 'buildOrder', 'buildStart')#taglist">&gt;&gt;&gt;</a>
+        #end if
         #else
         No tags
         #end if
