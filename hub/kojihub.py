@@ -9991,13 +9991,20 @@ class RootExports(object):
         """Tag a build without running post checks
 
         This is a short circuit function for imports.
-        Admin permission required.
+        Admin or tag permission required.
 
         Tagging with a locked tag is not allowed unless force is true.
         Retagging is not allowed unless force is true. (retagging changes the order
         of entries will affect which build is the latest)
         """
-        context.session.assertPerm('admin')
+        if force:
+            context.session.assertPerm('admin')
+        else:
+            context.session.assertPerm('tag')
+            tag_id = get_tag(tag, strict=True)['id']
+            build_id = get_build(build, strict=True)['id']
+            policy_data = {'tag' : tag_id, 'build' : build_id, 'fromtag' : None, 'operation' : 'tag'}
+            assert_policy('tag', policy_data)
         _tag_build(tag, build, force=force)
         if notify:
             tag_notification(True, tag, None, build, context.session.user_id)
@@ -10090,11 +10097,18 @@ class RootExports(object):
     def untagBuildBypass(self, tag, build, strict=True, force=False, notify=True):
         """Untag a build without any checks
 
-        Admins only. Intended for syncs/imports.
+        Admin and tag permission only. Intended for syncs/imports.
 
         Unlike tagBuild, this does not create a task
         No return value"""
-        context.session.assertPerm('admin')
+        if force:
+            context.session.assertPerm('admin')
+        else:
+            context.session.assertPerm('tag')
+            tag_id = get_tag(tag, strict=True)['id']
+            build_id = get_build(build, strict=True)['id']
+            policy_data = {'tag' : None, 'build' : build_id, 'fromtag' : tag_id, 'operation' : 'untag'}
+            assert_policy('tag', policy_data)
         _untag_build(tag, build, strict=strict, force=force)
         if notify:
             tag_notification(True, None, tag, build, context.session.user_id)
