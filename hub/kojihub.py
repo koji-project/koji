@@ -13258,49 +13258,6 @@ class HostExports(object):
         host.verify()
         return repo_init(tag, with_src=with_src, with_debuginfo=with_debuginfo, event=event, with_separate_src=with_separate_src)
 
-    def repoAddRPM(self, repo_id, path):
-        """Add an uploaded rpm to a repo"""
-        host = Host()
-        host.verify()
-        rinfo = repo_info(repo_id, strict=True)
-        repodir = koji.pathinfo.repo(repo_id, rinfo['tag_name'])
-        if rinfo['state'] != koji.REPO_INIT:
-            raise koji.GenericError("Repo %(id)s not in INIT state (got %(state)s)" % rinfo)
-        #verify file exists
-        uploadpath = koji.pathinfo.work()
-        filepath = "%s/%s" % (uploadpath, path)
-        if not os.path.exists(filepath):
-            raise koji.GenericError("no such file: %s" % filepath)
-        rpminfo = koji.get_header_fields(filepath, ('arch', 'sourcepackage'))
-        dirs = []
-        if not rpminfo['sourcepackage'] and rpminfo['arch'] != 'noarch':
-            arch = koji.canonArch(rpminfo['arch'])
-            dir = "%s/%s/RPMS" % (repodir, arch)
-            if os.path.isdir(dir):
-                dirs.append(dir)
-        else:
-            #noarch and srpms linked for all arches
-            for fn in os.listdir(repodir):
-                if fn == 'groups':
-                    continue
-                if rpminfo['sourcepackage']:
-                    dir = "%s/%s/SRPMS" % (repodir, fn)
-                else:
-                    dir = "%s/%s/RPMS" % (repodir, fn)
-                if os.path.isdir(dir):
-                    dirs.append(dir)
-        for dir in dirs:
-            fn = os.path.basename(filepath)
-            dst = "%s/%s" % (dir, fn)
-            if os.path.exists(dst):
-                s_st = os.stat(filepath)
-                d_st = os.stat(dst)
-                if s_st.st_ino != d_st.st_ino:
-                    raise koji.GenericError("File already in repo: %s" % dst)
-                #otherwise the desired hardlink already exists
-            else:
-                safer_move(filepath, dst)
-
     def repoDone(self, repo_id, data, expire=False):
         """Finalize a repo
 
