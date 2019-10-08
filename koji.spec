@@ -113,7 +113,11 @@ contains shared libraries and the command-line interface.
 %package -n python2-%{name}
 Summary: Build system tools python library
 %{?python_provide:%python_provide python2-%{name}}
+%if 0%{?fedora} >= 30
+BuildRequires: python2-devel
+%else
 BuildRequires: python-devel
+%endif
 %if 0%{?fedora} >= 25 || 0%{?rhel} >= 8
 Requires: python2-rpm
 %else
