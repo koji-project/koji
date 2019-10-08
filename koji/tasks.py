@@ -495,10 +495,12 @@ class BaseTaskHandler(object):
     def subtask2(self, __taskopts, __method, *args, **kwargs):
         return self.session.host.subtask2(self.id, __taskopts, __method, *args, **kwargs)
 
-    def find_arch(self, arch, host, tag):
+    def find_arch(self, arch, host, tag, preferred_arch=None):
         """
         For noarch tasks, find a canonical arch that is supported by both the host and tag.
         If the arch is anything other than noarch, return it unmodified.
+
+        If preferred_arch is set, try to get it, but not fail on that
         """
         if arch != "noarch":
             return arch
@@ -521,6 +523,10 @@ class BaseTaskHandler(object):
         # find the intersection of host and tag arches
         common_arches = list(host_arches & tag_arches)
         if common_arches:
+            if preferred_arch and preferred_arch in common_arches:
+                self.logger.info('Valid arches: %s, using preferred: %s' %
+                                 (' '.join(sorted(common_arches)), preferred_arch))
+                return preferred_arch
             # pick one of the common arches randomly
             # need to re-seed the prng or we'll get the same arch every time,
             # because we just forked from a common parent
