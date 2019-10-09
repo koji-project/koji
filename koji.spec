@@ -81,7 +81,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.18.0
+Version: 1.18.1
 Release: %{release}%{?dist}
 License: LGPLv2 and GPLv2+
 # the included arch lib from yum's rpmUtils is GPLv2+
