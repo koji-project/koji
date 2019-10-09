@@ -3754,8 +3754,13 @@ def get_build(buildInfo, strict=False):
       start_ts: time the build was started (epoch, may be null)
       completion_time: time the build was completed (may be null)
       completion_ts: time the build was completed (epoch, may be null)
-      source: the SCM URL of the sources used in the build
+      source: the SCM URL of the sources used in the build -
+              dereferenced git hash is stored here
       extra: dictionary with extra data about the build
+          - source:
+              - original_url: while build.source contains concrete
+                SCM hash, this field can contain SCM url which was
+                used when launching build (e.g. git_url#master)
       cg_id: ID of CG which reserved or imported this build
       cg_name: name of CG which reserved or imported this build
 
