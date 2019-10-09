@@ -7389,10 +7389,13 @@ def build_references(build_id, limit=None, lazy=False):
     fields = ('id', 'name', 'version', 'release', 'arch', 'build_id')
     idx = {}
     q = """SELECT rpminfo.id, rpminfo.name, rpminfo.version, rpminfo.release, rpminfo.arch, rpminfo.build_id
-    FROM buildroot_listing
-        JOIN rpminfo ON rpminfo.buildroot_id = buildroot_listing.buildroot_id
-        JOIN build on rpminfo.build_id = build.id
-    WHERE buildroot_listing.rpm_id = %(rpm_id)s
+    FROM rpminfo, build
+    WHERE
+        rpminfo.buildroot_id IN (
+            SELECT DISTINCT buildroot_id
+                FROM buildroot_listing
+                WHERE rpm_id = %(rpm_id)s)
+        AND rpminfo.build_id = build.id
         AND build.state = %(st_complete)i"""
     if limit is not None:
         q += "\nLIMIT %(limit)i"
