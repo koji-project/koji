@@ -131,7 +131,7 @@ class Dispatcher(object):
         """
         cf = environ.get('koji.web.ConfigFile', '/etc/kojiweb/web.conf')
         cfdir = environ.get('koji.web.ConfigDir', '/etc/kojiweb/web.conf.d')
-        config = koji.read_config_files([cfdir, cf], strict=True)
+        config = koji.read_config_files([cfdir, (cf, True)])
 
         opts = {}
         for name, dtype, default in self.cfgmap:

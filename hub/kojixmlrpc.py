@@ -398,7 +398,7 @@ def load_config(environ):
     #get our config file(s)
     cf = environ.get('koji.hub.ConfigFile', '/etc/koji-hub/hub.conf')
     cfdir = environ.get('koji.hub.ConfigDir', '/etc/koji-hub/hub.conf.d')
-    config = koji.read_config_files([cfdir, cf], raw=True, strict=True)
+    config = koji.read_config_files([cfdir, (cf, True)], raw=True)
 
     cfgmap = [
         #option, type, default

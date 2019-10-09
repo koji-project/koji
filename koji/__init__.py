@@ -1673,7 +1673,7 @@ def openRemoteFile(relpath, topurl=None, topdir=None, tempdir=None):
     return fo
 
 
-def config_directory_contents(dir_name):
+def config_directory_contents(dir_name, strict=False):
     configs = []
     try:
         conf_dir_contents = os.listdir(dir_name)
@@ -1685,8 +1685,12 @@ def config_directory_contents(dir_name):
             if not name.endswith('.conf'):
                 continue
             config_full_name = os.path.join(dir_name, name)
-            if os.path.isfile(config_full_name):
+            if os.path.isfile(config_full_name) \
+               and os.access(config_full_name, os.F_OK):
                 configs.append(config_full_name)
+            elif strict:
+                raise ConfigurationError("Config file %s can't be opened."
+                                         % config_full_name)
     return configs
 
 
@@ -1728,7 +1732,6 @@ def read_config(profile_name, user_config=None):
 
     #note: later config files override earlier ones
 
-    strict = False
     # /etc/koji.conf.d
     configs = ['/etc/koji.conf.d']
 
@@ -1739,15 +1742,14 @@ def read_config(profile_name, user_config=None):
     if user_config:
         # Config file specified on command line
         # The existence will be checked
-        configs.append(os.path.expanduser(user_config))
-        strict = True
+        configs.append((os.path.expanduser(user_config), True))
     else:
         # User config dir
         configs.append(os.path.expanduser("~/.koji/config.d"))
         # User config file
         configs.append(os.path.expanduser("~/.koji/config"))
 
-    config = read_config_files(configs, strict=strict)
+    config = read_config_files(configs)
 
     # Load the configs in a particular order
     got_conf = False
@@ -1844,20 +1846,44 @@ def get_profile_module(profile_name, config=None):
     return mod
 
 
-def read_config_files(config_files, default=None, raw=False, strict=False):
+def read_config_files(config_files, raw=False):
     """Use parser to read config file(s)
 
     :param config_files: config file(s) to read (required). Config file could
-                         be file or directory, and order is preserved
-    :type config_files: str or list
-    :param str default: default config file which is loaded before
-                        config_files. If specified, it must be readable.
+                         be file or directory, and order is preserved.
+                         If it's a list/tuple of list/tuple, in each inner
+                         item, the 1st item is file/dir name, and the 2nd item
+                         is strict(False if not present), which indicate
+                         if checking that:
+                             1. is dir an empty directory
+                             2. dose file exist
+                             3. is file accessible
+                         raising ConfigurationError if any above is True.
+    :type config_files: str or list or tuple
     :param bool raw: enable 'raw' parsing (no interpolation). Default: False
-    :param bool strict: enable reading check for each item in config_files.
-                        Default: False
 
     :return: object of parser which contains parsed content
+
+    :raises: GenericError: config_files is not valid
+             ConfigurationError: See config_files if strict is true
+             OSError: Directory in config_files is not accessible
     """
+    if isinstance(config_files, six.string_types):
+        config_files = [(config_files, False)]
+    elif isinstance(config_files, (list, tuple)):
+        fcfgs = []
+        for i in config_files:
+            if isinstance(i, six.string_types):
+                fcfgs.append((i, False))
+            elif isinstance(i, (list, tuple)) and 0 < len(i) <= 2:
+                fcfgs.append((i[0], i[1] if len(i) == 2 else False))
+            else:
+                raise GenericError('invalid value: %s or type: %s'
+                                   % (i, type(i)))
+        config_files = fcfgs
+    else:
+        raise GenericError('invalid type: %s' % type(config_files))
+
     if raw:
         parser = six.moves.configparser.RawConfigParser
     elif six.PY2:
@@ -1867,32 +1893,21 @@ def read_config_files(config_files, default=None, raw=False, strict=False):
         # deprecated alias
         parser = six.moves.configparser.ConfigParser
     config = parser()
-    if default:
-        with open(default, 'r') as f:
-            if six.PY2:
-                config.readfp(f)
-            else:
-                config.read_file(f)
-    if not isinstance(config_files, (list, tuple)):
-        config_files = [config_files]
     cfgs = []
     # append dir contents
-    for config_file in config_files:
+    for config_file, strict in config_files:
         if os.path.isdir(config_file):
-            fns = config_directory_contents(config_file)
+            fns = config_directory_contents(config_file, strict=strict)
             if fns:
                 cfgs.extend(fns)
-            else:
-                logging.debug("No config files found in directory: %s"
-                              % config_file)
-        else:
+            elif strict:
+                raise ConfigurationError("No config files found in directory:"
+                                         " %s" % config_file)
+        elif os.path.isfile(config_file) and os.access(config_file, os.F_OK):
             cfgs.append(config_file)
-    # checking access if strict is True
-    if strict:
-        for cf in cfgs:
-            if not os.path.isfile(cf) or not os.access(cf, os.F_OK):
-                raise ConfigurationError("Config file %s can't be opened."
-                                         % cf)
+        elif strict:
+            raise ConfigurationError("Config file %s can't be opened."
+                                     % config_file)
     config.read(cfgs)
     return config
 

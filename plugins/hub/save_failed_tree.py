@@ -28,7 +28,7 @@ def saveFailedTree(buildrootID, full=False, **opts):
 
     # read configuration only once
     if config is None:
-        config = koji.read_config_files(CONFIG_FILE, strict=True)
+        config = koji.read_config_files([(CONFIG_FILE, True)])
         allowed_methods = config.get('permissions', 'allowed_methods').split()
         if len(allowed_methods) == 1 and allowed_methods[0] == '*':
             allowed_methods = '*'

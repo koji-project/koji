@@ -269,7 +269,7 @@ def send_queued_msgs(cbtype, *args, **kws):
     log = logging.getLogger('koji.plugin.protonmsg')
     global CONFIG
     if not CONFIG:
-        CONFIG = koji.read_config_files(CONFIG_FILE, strict=True)
+        CONFIG = koji.read_config_files([(CONFIG_FILE, True)])
     urls = CONFIG.get('broker', 'urls').split()
     test_mode = False
     if CONFIG.has_option('broker', 'test_mode'):

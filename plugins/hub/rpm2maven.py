@@ -32,7 +32,7 @@ def maven_import(cbtype, *args, **kws):
     filepath = kws['filepath']
 
     if not config:
-        config = koji.read_config_files(CONFIG_FILE, strict=True)
+        config = koji.read_config_files([(CONFIG_FILE, True)])
     name_patterns = config.get('patterns', 'rpm_names').split()
     for pattern in name_patterns:
         if fnmatch.fnmatch(rpminfo['name'], pattern):
