@@ -68,6 +68,7 @@ from koji.context import context
 from koji.util import base64encode
 from koji.util import decode_bytes
 from koji.util import dslice
+from koji.util import joinpath
 from koji.util import move_and_symlink
 from koji.util import multi_fnmatch
 from koji.util import safer_move
@@ -2502,13 +2503,13 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None, with_separa
     #generate pkglist files
     pkglist = {}
     for repoarch in repo_arches:
-        archdir = os.path.join(repodir, repoarch)
+        archdir = joinpath(repodir, repoarch)
         koji.ensuredir(archdir)
         # Make a symlink to our topdir
         top_relpath = os.path.relpath(koji.pathinfo.topdir, archdir)
-        top_link = os.path.join(archdir, 'toplink')
+        top_link = joinpath(archdir, 'toplink')
         os.symlink(top_relpath, top_link)
-        pkglist[repoarch] = open(os.path.join(archdir, 'pkglist'), 'w')
+        pkglist[repoarch] = open(joinpath(archdir, 'pkglist'), 'w')
     #NOTE - rpms is now an iterator
     for rpminfo in rpms:
         if not with_debuginfo and koji.is_debuginfo(rpminfo['name']):
@@ -2537,7 +2538,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None, with_separa
 
     #write blocked package lists
     for repoarch in repo_arches:
-        blocklist = open(os.path.join(repodir, repoarch, 'blocklist'), 'w')
+        blocklist = open(joinpath(repodir, repoarch, 'blocklist'), 'w')
         for pkg in blocks:
             blocklist.write(pkg['package_name'])
             blocklist.write('\n')
@@ -2553,10 +2554,10 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None, with_separa
                          'epoch': archive['build_epoch'],
                          'volume_name': archive['volume_name'],
                         }
-            srcdir = os.path.join(koji.pathinfo.mavenbuild(buildinfo),
-                                  koji.pathinfo.mavenrepo(archive))
-            destlink = os.path.join(repodir, 'maven',
-                                    koji.pathinfo.mavenrepo(archive))
+            srcdir = joinpath(koji.pathinfo.mavenbuild(buildinfo),
+                              koji.pathinfo.mavenrepo(archive))
+            destlink = joinpath(repodir, 'maven',
+                                koji.pathinfo.mavenrepo(archive))
             dir_links.add((srcdir, destlink))
             dest_parent = os.path.dirname(destlink)
             artifact_dirs.setdefault(dest_parent, set()).add((archive['group_id'],
@@ -2608,7 +2609,7 @@ def _write_maven_repo_metadata(destdir, artifacts):
   </versioning>
 </metadata>
 """ % datetime.datetime.now().strftime('%Y%m%d%H%M%S')
-    with open(os.path.join(destdir, 'maven-metadata.xml'), 'w') as mdfile:
+    with open(joinpath(destdir, 'maven-metadata.xml'), 'w') as mdfile:
         mdfile.write(contents)
     _generate_maven_metadata(destdir)
 
@@ -2636,7 +2637,7 @@ def dist_repo_init(tag, keys, task_opts):
     insert.execute()
     repodir = koji.pathinfo.distrepo(repo_id, tinfo['name'], volume=volume)
     for arch in arches:
-        koji.ensuredir(os.path.join(repodir, arch))
+        koji.ensuredir(joinpath(repodir, arch))
     if volume and volume != 'DEFAULT':
         # symlink from main volume to this one
         basedir = koji.pathinfo.distrepo(repo_id, tinfo['name'])
@@ -2645,9 +2646,9 @@ def dist_repo_init(tag, keys, task_opts):
         os.symlink(relpath, basedir)
     # handle comps
     if task_opts.get('comps'):
-        groupsdir = os.path.join(repodir, 'groups')
+        groupsdir = joinpath(repodir, 'groups')
         koji.ensuredir(groupsdir)
-        shutil.copyfile(os.path.join(koji.pathinfo.work(),
+        shutil.copyfile(joinpath(koji.pathinfo.work(),
             task_opts['comps']), groupsdir + '/comps.xml')
     # write repo info to disk
     repo_info = {
@@ -3826,7 +3827,7 @@ def get_build_logs(build):
     for dirpath, dirs, files in os.walk(logdir):
         subdir = os.path.relpath(dirpath, logdir)
         for fn in files:
-            filepath = os.path.join(dirpath, fn)
+            filepath = joinpath(dirpath, fn)
             if os.path.islink(filepath):
                 logger.warning("Symlink under logdir: %s", filepath)
                 continue
@@ -4575,22 +4576,22 @@ def list_archive_files(archive_id, queryOpts=None, strict=False):
     if btype == 'maven':
         maven_archive = get_maven_archive(archive_info['id'], strict=True)
         archive_info.update(maven_archive)
-        file_path = os.path.join(koji.pathinfo.mavenbuild(build_info),
-                                 koji.pathinfo.mavenfile(archive_info))
+        file_path = joinpath(koji.pathinfo.mavenbuild(build_info),
+                             koji.pathinfo.mavenfile(archive_info))
     elif btype == 'win':
         win_archive = get_win_archive(archive_info['id'], strict=True)
         archive_info.update(win_archive)
-        file_path = os.path.join(koji.pathinfo.winbuild(build_info),
-                                 koji.pathinfo.winfile(archive_info))
+        file_path = joinpath(koji.pathinfo.winbuild(build_info),
+                             koji.pathinfo.winfile(archive_info))
     elif btype == 'image':
         image_archive = get_image_archive(archive_info['id'], strict=True)
         archive_info.update(image_archive)
-        file_path = os.path.join(koji.pathinfo.imagebuild(build_info),
-                                 archive_info['filename'])
+        file_path = joinpath(koji.pathinfo.imagebuild(build_info),
+                             archive_info['filename'])
     elif btype:
         # for non-legacy types, btype info is in the 'extra' field
-        file_path = os.path.join(koji.pathinfo.typedir(build_info, btype),
-                                 archive_info['filename'])
+        file_path = joinpath(koji.pathinfo.typedir(build_info, btype),
+                             archive_info['filename'])
     else:
         # should not happen
         raise koji.GenericError("Missing build type info for archive %s" % archive_id)
@@ -4690,9 +4691,9 @@ def list_task_output(taskID, stat=False, all_volumes=False, strict=False):
         for path, dirs, files in os.walk(taskDir):
             for filename in files:
                 relpath = path[len(taskDir) + 1:]
-                relfilename = os.path.join(relpath, filename)
+                relfilename = joinpath(relpath, filename)
                 if stat:
-                    stat_info = os.stat(os.path.join(path, filename))
+                    stat_info = os.stat(joinpath(path, filename))
                     stat_map = {}
                     for attr in dir(stat_info):
                         if attr == 'st_size':
@@ -5406,7 +5407,7 @@ def check_noarch_rpms(basepath, rpms, logs=None):
     for arch in logs:
         for log in logs[arch]:
             if os.path.basename(log) == 'noarch_rpmdiff.json':
-                task_hash = json.load(open(os.path.join(basepath, log), 'rt'))
+                task_hash = json.load(open(joinpath(basepath, log), 'rt'))
                 for task_id in task_hash:
                     hashes[task_id] = task_hash[task_id]
 
@@ -5735,7 +5736,7 @@ class CG_Importer(object):
         if metadata.endswith('.json'):
             # handle uploaded metadata
             workdir = koji.pathinfo.work()
-            path = os.path.join(workdir, directory, metadata)
+            path = joinpath(workdir, directory, metadata)
             if not os.path.exists(path):
                 raise koji.GenericError("No such file: %s" % metadata)
             with open(path, 'rt') as fo:
@@ -5944,7 +5945,7 @@ class CG_Importer(object):
         #       - doesn't fit with current major archive categories
         builddir = koji.pathinfo.build(self.buildinfo)
         koji.ensuredir(builddir)
-        path = os.path.join(builddir, 'metadata.json')
+        path = joinpath(builddir, 'metadata.json')
         with open(path, 'w') as fo:
             fo.write(self.raw_metadata)
 
@@ -6108,7 +6109,7 @@ class CG_Importer(object):
             if fileinfo.get('metadata_only', False):
                 self.metadata_only = True
             workdir = koji.pathinfo.work()
-            path = os.path.join(workdir, self.directory, fileinfo.get('relpath', ''), fileinfo['filename'])
+            path = joinpath(workdir, self.directory, fileinfo.get('relpath', ''), fileinfo['filename'])
             fileinfo['hub.path'] = path
 
             filesize = os.path.getsize(path)
@@ -6354,14 +6355,14 @@ def _import_wrapper(task_id, build_info, rpm_results):
     rpm_task_dir = koji.pathinfo.task(task_id)
 
     for rpm_path in [rpm_results['srpm']] + rpm_results['rpms']:
-        rpm_path = os.path.join(rpm_task_dir, rpm_path)
+        rpm_path = joinpath(rpm_task_dir, rpm_path)
         rpm_info = import_rpm(rpm_path, build_info, rpm_buildroot_id, wrapper=True)
         import_rpm_file(rpm_path, build_info, rpm_info)
         add_rpm_sig(rpm_info['id'], koji.rip_rpm_sighdr(rpm_path))
 
     for log in rpm_results['logs']:
         # assume we're only importing noarch packages
-        import_build_log(os.path.join(rpm_task_dir, log),
+        import_build_log(joinpath(rpm_task_dir, log),
                          build_info, subdir='noarch')
 
 def merge_scratch(task_id):
@@ -6463,12 +6464,12 @@ def merge_scratch(task_id):
     for task_id, info in tasks.items():
         taskpath = koji.pathinfo.task(task_id)
         for filename in info['rpms']:
-            filepath = os.path.realpath(os.path.join(taskpath, filename))
+            filepath = os.path.realpath(joinpath(taskpath, filename))
             rpminfo = import_rpm(filepath, build, info['buildroot_id'])
             import_rpm_file(filepath, build, rpminfo)
             add_rpm_sig(rpminfo['id'], koji.rip_rpm_sighdr(filepath))
         for logname in info['logs']:
-            logpath = os.path.realpath(os.path.join(taskpath, logname))
+            logpath = os.path.realpath(joinpath(taskpath, logname))
             import_build_log(logpath, build, subdir=info['arch'])
 
     # flag tags whose content has changed, so relevant repos can be regen'ed
@@ -6729,8 +6730,8 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
 
         if not metadata_only:
             # move the file to it's final destination
-            mavendir = os.path.join(koji.pathinfo.mavenbuild(buildinfo),
-                                    koji.pathinfo.mavenrepo(typeInfo))
+            mavendir = joinpath(koji.pathinfo.mavenbuild(buildinfo),
+                                koji.pathinfo.mavenrepo(typeInfo))
             _import_archive_file(filepath, mavendir)
             _generate_maven_metadata(mavendir)
     elif type == 'win':
@@ -6750,7 +6751,7 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
         if not metadata_only:
             destdir = koji.pathinfo.winbuild(buildinfo)
             if relpath:
-                destdir = os.path.join(destdir, relpath)
+                destdir = joinpath(destdir, relpath)
             _import_archive_file(filepath, destdir)
     elif type == 'image':
         insert = InsertProcessor('image_archives')
@@ -6758,7 +6759,7 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
         insert.set(arch=typeInfo['arch'])
         insert.execute()
         if not metadata_only:
-            imgdir = os.path.join(koji.pathinfo.imagebuild(buildinfo))
+            imgdir = joinpath(koji.pathinfo.imagebuild(buildinfo))
             _import_archive_file(filepath, imgdir)
         # import log files?
     else:
@@ -9058,8 +9059,8 @@ def rpmdiff(basepath, rpmlist, hashes):
         # ignore differences in file size, md5sum, and mtime
         # (files may have been generated at build time and contain
         #  embedded dates or other insignificant differences)
-        d = koji.rpmdiff.Rpmdiff(os.path.join(basepath, first_rpm),
-            os.path.join(basepath, other_rpm), ignore='S5TN')
+        d = koji.rpmdiff.Rpmdiff(joinpath(basepath, first_rpm),
+            joinpath(basepath, other_rpm), ignore='S5TN')
         if d.differs():
             raise koji.BuildError(
                 'The following noarch package built differently on different architectures: %s\n'
@@ -9094,7 +9095,7 @@ def importImageInternal(task_id, build_id, imgdata):
     imgdata['relpath'] = koji.pathinfo.taskrelpath(imgdata['task_id'])
     archives = []
     for imgfile in imgdata['files']:
-        fullpath = os.path.join(workpath, imgfile)
+        fullpath = joinpath(workpath, imgfile)
         archivetype = get_archive_type(imgfile)
         logger.debug('image type we are importing is: %s' % archivetype)
         if not archivetype:
@@ -9104,17 +9105,17 @@ def importImageInternal(task_id, build_id, imgdata):
     # upload logs
     logs = [f for f in os.listdir(workpath) if f.endswith('.log')]
     for logfile in logs:
-        logsrc = os.path.join(workpath, logfile)
+        logsrc = joinpath(workpath, logfile)
         if tinfo['method'] == 'livemedia':
             # multiarch livemedia spins can have log name conflicts, so we
             # add the arch to the path
-            logdir = os.path.join(koji.pathinfo.build(build_info),
-                                  'data/logs/image', imgdata['arch'])
+            logdir = joinpath(koji.pathinfo.build(build_info),
+                              'data/logs/image', imgdata['arch'])
         else:
-            logdir = os.path.join(koji.pathinfo.build(build_info),
-                                  'data/logs/image')
+            logdir = joinpath(koji.pathinfo.build(build_info),
+                              'data/logs/image')
         koji.ensuredir(logdir)
-        final_path = os.path.join(logdir, os.path.basename(logfile))
+        final_path = joinpath(logdir, os.path.basename(logfile))
         if os.path.exists(final_path):
             raise koji.GenericError("Error importing build log. %s already exists." % final_path)
         if os.path.islink(logsrc) or not os.path.isfile(logsrc):
@@ -10086,15 +10087,15 @@ class RootExports(object):
             if not srpms:
                 return _applyQueryOpts([], queryOpts)
             srpm_info = srpms[0]
-            srpm_path = os.path.join(koji.pathinfo.build(build_info), koji.pathinfo.rpm(srpm_info))
+            srpm_path = joinpath(koji.pathinfo.build(build_info), koji.pathinfo.rpm(srpm_info))
         elif taskID:
             if not filepath:
                 raise koji.GenericError('filepath must be spcified with taskID')
             if filepath.startswith('/') or '../' in filepath:
                 raise koji.GenericError('invalid filepath: %s' % filepath)
-            srpm_path = os.path.join(koji.pathinfo.work(),
-                                     koji.pathinfo.taskrelpath(taskID),
-                                     filepath)
+            srpm_path = joinpath(koji.pathinfo.work(),
+                                 koji.pathinfo.taskrelpath(taskID),
+                                 filepath)
         else:
             raise koji.GenericError('either buildID or taskID and filepath must be specified')
 
@@ -10560,8 +10561,8 @@ class RootExports(object):
                                         " because RPM: %s is not internal" % rpmID)
             return _applyQueryOpts([], queryOpts)
         build_info = get_build(rpm_info['build_id'])
-        rpm_path = os.path.join(koji.pathinfo.build(build_info),
-                                koji.pathinfo.rpm(rpm_info))
+        rpm_path = joinpath(koji.pathinfo.build(build_info),
+                            koji.pathinfo.rpm(rpm_info))
         if not os.path.exists(rpm_path):
             if strict:
                 raise koji.GenericError("RPM file of %s doesn't exist" % rpmID)
@@ -10603,7 +10604,7 @@ class RootExports(object):
         if not rpm_info or not rpm_info['build_id']:
             return _applyQueryOpts([], queryOpts)
         build_info = get_build(rpm_info['build_id'])
-        rpm_path = os.path.join(koji.pathinfo.build(build_info), koji.pathinfo.rpm(rpm_info))
+        rpm_path = joinpath(koji.pathinfo.build(build_info), koji.pathinfo.rpm(rpm_info))
         if not os.path.exists(rpm_path):
             return _applyQueryOpts([], queryOpts)
 
@@ -10648,7 +10649,7 @@ class RootExports(object):
         if not rpm_info or not rpm_info['build_id']:
             return {}
         build_info = get_build(rpm_info['build_id'])
-        rpm_path = os.path.join(koji.pathinfo.build(build_info), koji.pathinfo.rpm(rpm_info))
+        rpm_path = joinpath(koji.pathinfo.build(build_info), koji.pathinfo.rpm(rpm_info))
         if not os.path.exists(rpm_path):
             return {}
 
@@ -10684,7 +10685,7 @@ class RootExports(object):
             if not rpm_info or not rpm_info['build_id']:
                 return {}
             build_info = get_build(rpm_info['build_id'])
-            rpm_path = os.path.join(koji.pathinfo.build(build_info), koji.pathinfo.rpm(rpm_info))
+            rpm_path = joinpath(koji.pathinfo.build(build_info), koji.pathinfo.rpm(rpm_info))
             if not os.path.exists(rpm_path):
                 return {}
         elif taskID:
@@ -10692,9 +10693,9 @@ class RootExports(object):
                 raise koji.GenericError('filepath must be specified with taskID')
             if filepath.startswith('/') or '../' in filepath:
                 raise koji.GenericError('invalid filepath: %s' % filepath)
-            rpm_path = os.path.join(koji.pathinfo.work(),
-                                    koji.pathinfo.taskrelpath(taskID),
-                                    filepath)
+            rpm_path = joinpath(koji.pathinfo.work(),
+                                koji.pathinfo.taskrelpath(taskID),
+                                filepath)
         else:
             raise koji.GenericError('either rpmID or taskID and filepath must be specified')
 
@@ -12529,22 +12530,22 @@ class HostExports(object):
         task.assertHost(host.id)
         scratchdir = koji.pathinfo.scratch()
         username = get_user(task.getOwner())['name']
-        destdir = os.path.join(scratchdir, username, 'task_%s' % task_id)
+        destdir = joinpath(scratchdir, username, 'task_%s' % task_id)
         for reldir, files in to_list(results['files'].items()) + [('', results['logs'])]:
             for filename in files:
                 if reldir:
-                    relpath = os.path.join(reldir, filename)
+                    relpath = joinpath(reldir, filename)
                 else:
                     relpath = filename
-                src = os.path.join(koji.pathinfo.task(results['task_id']), relpath)
-                dest = os.path.join(destdir, relpath)
+                src = joinpath(koji.pathinfo.task(results['task_id']), relpath)
+                dest = joinpath(destdir, relpath)
                 move_and_symlink(src, dest, create_dir=True)
         if rpm_results:
             for relpath in [rpm_results['srpm']] + rpm_results['rpms'] + \
                     rpm_results['logs']:
-                src = os.path.join(koji.pathinfo.task(rpm_results['task_id']),
-                                   relpath)
-                dest = os.path.join(destdir, 'rpms', relpath)
+                src = joinpath(koji.pathinfo.task(rpm_results['task_id']),
+                               relpath)
+                dest = joinpath(destdir, 'rpms', relpath)
                 move_and_symlink(src, dest, create_dir=True)
 
     def moveWinBuildToScratch(self, task_id, results, rpm_results):
@@ -12557,17 +12558,17 @@ class HostExports(object):
         task.assertHost(host.id)
         scratchdir = koji.pathinfo.scratch()
         username = get_user(task.getOwner())['name']
-        destdir = os.path.join(scratchdir, username, 'task_%s' % task_id)
+        destdir = joinpath(scratchdir, username, 'task_%s' % task_id)
         for relpath in to_list(results['output'].keys()) + results['logs']:
-            filename = os.path.join(koji.pathinfo.task(results['task_id']), relpath)
-            dest = os.path.join(destdir, relpath)
+            filename = joinpath(koji.pathinfo.task(results['task_id']), relpath)
+            dest = joinpath(destdir, relpath)
             move_and_symlink(filename, dest, create_dir=True)
         if rpm_results:
             for relpath in [rpm_results['srpm']] + rpm_results['rpms'] + \
                     rpm_results['logs']:
-                filename = os.path.join(koji.pathinfo.task(rpm_results['task_id']),
-                                        relpath)
-                dest = os.path.join(destdir, 'rpms', relpath)
+                filename = joinpath(koji.pathinfo.task(rpm_results['task_id']),
+                                    relpath)
+                dest = joinpath(destdir, 'rpms', relpath)
                 move_and_symlink(filename, dest, create_dir=True)
 
     def moveImageBuildToScratch(self, task_id, results):
@@ -12584,20 +12585,20 @@ class HostExports(object):
             workdir = koji.pathinfo.task(sub_results['task_id'])
             scratchdir = koji.pathinfo.scratch()
             username = get_user(task.getOwner())['name']
-            destdir = os.path.join(scratchdir, username,
+            destdir = joinpath(scratchdir, username,
                 'task_%s' % sub_results['task_id'])
             for img in sub_results['files'] + sub_results['logs']:
-                src = os.path.join(workdir, img)
-                dest = os.path.join(destdir, img)
+                src = joinpath(workdir, img)
+                dest = joinpath(destdir, img)
                 logger.debug('renaming %s to %s' % (src, dest))
                 move_and_symlink(src, dest, create_dir=True)
             if 'rpmresults' in sub_results:
                 rpm_results = sub_results['rpmresults']
                 for relpath in [rpm_results['srpm']] + rpm_results['rpms'] + \
                         rpm_results['logs']:
-                    src = os.path.join(koji.pathinfo.task(
+                    src = joinpath(koji.pathinfo.task(
                         rpm_results['task_id']), relpath)
-                    dest = os.path.join(destdir, 'rpms', relpath)
+                    dest = joinpath(destdir, 'rpms', relpath)
                     move_and_symlink(src, dest, create_dir=True)
 
     def initBuild(self, data):
@@ -12750,7 +12751,7 @@ class HostExports(object):
                 # This directory has a .pom file, so get the Maven group_id,
                 # artifact_id, and version from it and associate those with
                 # the artifacts in this directory
-                pom_path = os.path.join(maven_task_dir, relpath, poms[0])
+                pom_path = joinpath(maven_task_dir, relpath, poms[0])
                 pom_info = koji.parse_pom(pom_path)
                 dir_maven_info = koji.pom_to_maven_info(pom_info)
             else:
@@ -12760,14 +12761,14 @@ class HostExports(object):
                 if os.path.splitext(filename)[1] in ('.md5', '.sha1'):
                     # metadata, we'll recreate that ourselves
                     continue
-                filepath = os.path.join(maven_task_dir, relpath, filename)
+                filepath = joinpath(maven_task_dir, relpath, filename)
                 if filename == 'maven-metadata.xml':
                     # We want the maven-metadata.xml to be present in the build dir
                     # so that it's a valid Maven repo, but we don't want to track it
                     # in the database because we regenerate it when creating tag repos.
                     # So we special-case it here.
-                    destdir = os.path.join(koji.pathinfo.mavenbuild(build_info),
-                                           relpath)
+                    destdir = joinpath(koji.pathinfo.mavenbuild(build_info),
+                                       relpath)
                     _import_archive_file(filepath, destdir)
                     _generate_maven_metadata(destdir)
                     continue
@@ -12779,7 +12780,7 @@ class HostExports(object):
 
         # move the logs to their final destination
         for log_path in maven_results['logs']:
-            import_build_log(os.path.join(maven_task_dir, log_path),
+            import_build_log(joinpath(maven_task_dir, log_path),
                              build_info, subdir='maven')
 
         if rpm_results:
@@ -12914,7 +12915,7 @@ class HostExports(object):
             if not archivetype:
                 # Unknown archive type, fail the build
                 raise koji.BuildError('unsupported file type: %s' % relpath)
-            filepath = os.path.join(task_dir, relpath)
+            filepath = joinpath(task_dir, relpath)
             metadata['relpath'] = os.path.dirname(relpath)
             import_archive(filepath, build_info, 'win', metadata, buildroot_id=results['buildroot_id'])
 
@@ -12923,8 +12924,8 @@ class HostExports(object):
             subdir = 'win'
             reldir = os.path.dirname(relpath)
             if reldir:
-                subdir = os.path.join(subdir, reldir)
-            import_build_log(os.path.join(task_dir, relpath),
+                subdir = joinpath(subdir, reldir)
+            import_build_log(joinpath(task_dir, relpath),
                              build_info, subdir=subdir)
 
         if rpm_results:
@@ -13405,7 +13406,7 @@ class HostExports(object):
                 binfo = get_build(rpminfo['build_id'])
                 builddir = koji.pathinfo.build(binfo)
                 build_dirs[rpminfo['build_id']] = builddir
-            rpminfo['_fullpath'] = os.path.join(builddir, relpath)
+            rpminfo['_fullpath'] = joinpath(builddir, relpath)
             rpmdata[bnp] = rpminfo
 
         # move the uploaded files
@@ -13422,9 +13423,9 @@ class HostExports(object):
             rpmpath = rpminfo['_fullpath']
             bnp = fn
             bnplet = bnp[0].lower()
-            ddir = os.path.join(archdir, 'Packages', bnplet)
+            ddir = joinpath(archdir, 'Packages', bnplet)
             koji.ensuredir(ddir)
-            l_dst = os.path.join(ddir, bnp)
+            l_dst = joinpath(ddir, bnp)
             if os.path.exists(l_dst):
                 raise koji.GenericError("File already in repo: %s", l_dst)
             logger.debug("os.link(%r, %r)", rpmpath, l_dst)
@@ -13470,12 +13471,12 @@ def get_upload_path(reldir, name, create=False, volume=None):
         host.verify()
         Task(task_id).assertHost(host.id)
         check_user = False
-    udir = os.path.join(koji.pathinfo.work(volume=volume), reldir)
+    udir = joinpath(koji.pathinfo.work(volume=volume), reldir)
     if create:
         koji.ensuredir(udir)
         if check_user:
             # assuming login was asserted earlier
-            u_fn = os.path.join(udir, '.user')
+            u_fn = joinpath(udir, '.user')
             if os.path.exists(u_fn):
                 user_id = int(open(u_fn, 'r').read())
                 if context.session.user_id != user_id:
@@ -13483,7 +13484,7 @@ def get_upload_path(reldir, name, create=False, volume=None):
             else:
                 with open(u_fn, 'w') as fo:
                     fo.write(str(context.session.user_id))
-    return os.path.join(udir, name)
+    return joinpath(udir, name)
 
 def get_verify_class(verify):
     if verify == 'md5':
