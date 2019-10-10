@@ -74,6 +74,7 @@ from koji.util import multi_fnmatch
 from koji.util import safer_move
 from koji.util import to_list
 from six.moves import range
+
 logger = logging.getLogger('koji.hub')
 
 
@@ -10627,7 +10628,7 @@ class RootExports(object):
 
         return _applyQueryOpts(results, queryOpts)
 
-    def getRPMFile(self, rpmID, filename):
+    def getRPMFile(self, rpmID, filename, strict=False):
         """
         Get info about the file in the given RPM with the given filename.
         A map will be returned with the following keys:
@@ -10643,14 +10644,26 @@ class RootExports(object):
         - mtime
         - mode
 
-        If no such file exists, an empty map will be returned.
+        If there is no *internal* RPM with the given ID, or no RPM file found,
+        an empty map will be returned, unless strict is True in which case a
+        GenericError is raised.
+        If no such file exists, an empty map will be returned, unless strict is
+        True in which case a GenericError is raised.
         """
-        rpm_info = get_rpm(rpmID)
-        if not rpm_info or not rpm_info['build_id']:
+        rpm_info = get_rpm(rpmID, strict=strict)
+        if not rpm_info:
+            return {}
+        if rpm_info and not rpm_info['build_id']:
+            if strict:
+                raise koji.GenericError("Can not get RPM file,"
+                                        " because RPM: %s is not internal" % rpmID)
             return {}
         build_info = get_build(rpm_info['build_id'])
         rpm_path = joinpath(koji.pathinfo.build(build_info), koji.pathinfo.rpm(rpm_info))
         if not os.path.exists(rpm_path):
+            if strict:
+                raise koji.GenericError(
+                    "RPM package file of %s doesn't exist" % rpmID)
             return {}
 
         hdr = koji.get_rpm_header(rpm_path)
@@ -10668,6 +10681,9 @@ class RootExports(object):
                         'user': fields['fileusername'][i], 'group': fields['filegroupname'][i],
                         'mtime': fields['filemtimes'][i], 'mode': fields['filemodes'][i]}
             i += 1
+        if strict:
+            raise koji.GenericError(
+                "No file: %s found in RPM: %s" % (filename, rpmID))
         return {}
 
     def getRPMHeaders(self, rpmID=None, taskID=None, filepath=None, headers=None):
