@@ -7332,7 +7332,7 @@ def handle_moshimoshi(options, session, args):
     elif authtype == koji.AUTHTYPE_GSSAPI:
         print("Authenticated via GSSAPI")
     elif authtype == koji.AUTHTYPE_KERB:
-        print("Authenticated via Kerberos principal %s" % u["krb_principal"])
+        print("Authenticated via Kerberos principal %s" % session.krb_principal)
     elif authtype == koji.AUTHTYPE_SSL:
         print("Authenticated via client certificate %s" % options.cert)
 

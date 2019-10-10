@@ -26,8 +26,10 @@ class TestQueryProcessor(unittest.TestCase):
                 'order': 'other',
                 'offset': 10,
                 'limit': 3,
+                'group': 'awesome.aha'
                 #'rowlock': True,
             },
+            enable_group=True
         )
         self.original_chunksize = kojihub.QueryProcessor.iterchunksize
         kojihub.QueryProcessor.iterchunksize = 2
@@ -62,7 +64,15 @@ class TestQueryProcessor(unittest.TestCase):
     def test_complex_as_string(self):
         proc = kojihub.QueryProcessor(**self.complex_arguments)
         actual = " ".join([token for token in str(proc).split() if token])
-        expected = "SELECT something FROM awesome JOIN morestuff ORDER BY something OFFSET 10 LIMIT 3"
+        expected = "SELECT something FROM awesome JOIN morestuff" \
+                   " GROUP BY awesome.aha ORDER BY something OFFSET 10 LIMIT 3"
+        self.assertEqual(actual, expected)
+        args2 = self.complex_arguments.copy()
+        args2['enable_group'] = False
+        proc = kojihub.QueryProcessor(**args2)
+        actual = " ".join([token for token in str(proc).split() if token])
+        expected = "SELECT something FROM awesome JOIN morestuff" \
+                   " ORDER BY something OFFSET 10 LIMIT 3"
         self.assertEqual(actual, expected)
 
     @mock.patch('kojihub.context')
@@ -71,7 +81,7 @@ class TestQueryProcessor(unittest.TestCase):
         context.cnx.cursor.return_value = cursor
         proc = kojihub.QueryProcessor(**self.simple_arguments)
         proc.execute()
-        cursor.execute.assert_called_once_with('\nSELECT something\n  FROM awesome\n\n\n \n\n \n', {})
+        cursor.execute.assert_called_once_with('\nSELECT something\n  FROM awesome\n\n\n \n \n\n \n', {})
 
     @mock.patch('kojihub.context')
     def test_simple_count_with_execution(self, context):
@@ -82,7 +92,7 @@ class TestQueryProcessor(unittest.TestCase):
         args['opts'] = {'countOnly': True}
         proc = kojihub.QueryProcessor(**args)
         results = proc.execute()
-        cursor.execute.assert_called_once_with('\nSELECT count(*)\n  FROM awesome\n\n\n \n\n \n', {})
+        cursor.execute.assert_called_once_with('\nSELECT count(*)\n  FROM awesome\n\n\n \n \n\n \n', {})
         self.assertEqual(results, 'some count')
 
     @mock.patch('kojihub.context')

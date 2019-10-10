@@ -48,6 +48,8 @@ def get_options():
                       help=_("get reverse dns FQDN for krb target"))
     parser.add_option("--krb-canon-host", action="store_true", default=False,
                       help=_("get canonical hostname for krb target"))
+    parser.add_option("--krb-server-realm",
+                      help=_("the realm of server Kerberos principal"))
     parser.add_option("--runas", metavar="USER",
                       help=_("run as the specified user (requires special privileges)"))
     parser.add_option("--user", help=_("specify user"))
@@ -131,6 +133,7 @@ def get_options():
             ['krbservice', None, 'string'],
             ['krb_rdns', None, 'boolean'],
             ['krb_canon_host', None, 'boolean'],
+            ['krb_server_realm', None, 'string'],
             ['runas', None, 'string'],
             ['user', None, 'string'],
             ['password', None, 'string'],

@@ -38,8 +38,13 @@ CREATE TABLE users (
 	name VARCHAR(255) UNIQUE NOT NULL,
 	password VARCHAR(255),
 	status INTEGER NOT NULL,
-	usertype INTEGER NOT NULL,
-	krb_principal VARCHAR(255) UNIQUE
+	usertype INTEGER NOT NULL
+) WITHOUT OIDS;
+
+CREATE TABLE user_krb_principals (
+	user_id INTEGER NOT NULL REFERENCES users(id),
+	krb_principal VARCHAR(255) NOT NULL UNIQUE,
+	PRIMARY KEY (user_id, krb_principal)
 ) WITHOUT OIDS;
 
 CREATE TABLE permissions (

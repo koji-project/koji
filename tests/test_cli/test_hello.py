@@ -52,10 +52,10 @@ class TestHello(utils.CliTestCase):
                 'krb_principal': '%s@localhost' % self.progname}
         cert = '/etc/pki/user.cert'
         options = mock.MagicMock()
-
         # Mock out the xmlrpc server
         session = mock.MagicMock(baseurl=self.huburl, authtype=None)
         session.getLoggedInUser.return_value = None
+        session.krb_principal = user['krb_principal']
         print_unicode_mock.return_value = "Hello"
 
         expect = """Usage: %s moshimoshi [options]
