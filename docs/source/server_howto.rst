@@ -549,8 +549,14 @@ insert above with this:
 ::
 
     root@localhost$ su - koji
-    koji@localhost$ psql
-    koji=> insert into users (name, krb_principal, status, usertype) values ('admin-user-name', 'admin@EXAMPLE.COM', 0, 0);
+    koji@localhost$ psql <<EOF
+    with user_id as (
+    insert into users (name, status, usertype) values ('admin-user-name', 0, 0) returning id
+    )
+    insert into user_krb_principals (user_id, krb_principal) values (
+    (select id from user_id),
+    'admin@EXAMPLE');
+    EOF
 
 SSL Certificate authentication
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
