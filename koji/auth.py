@@ -676,7 +676,7 @@ class Session(object):
         user_id = cursor.fetchone()[0]
 
         insert = """INSERT INTO users (id, name, usertype, status)
-                    VALUES (%(user_id)i, %(name)s, %(usertype)i, %(status)i"""
+                    VALUES (%(user_id)i, %(name)s, %(usertype)i, %(status)i)"""
         cursor.execute(insert, locals())
         if krb_principal:
             insert = """INSERT INTO user_krb_principals (user_id, krb_principal)
