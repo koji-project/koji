@@ -20,8 +20,8 @@ Communicate
 
 * Comments, questions, bugs, feedback, ideas, help requests? We'd love to hear from you.
 * Mailing lists:
-  * Development: [koji-devel AT lists.fedorahosted.org](https://lists.fedorahosted.org/archives/list/koji-devel@lists.fedorahosted.org/)
-  * User discussion and Fedora-specific topics: [buildsys AT lists.fedoraproject.org](https://lists.fedoraproject.org/archives/list/buildsys@lists.fedoraproject.org/)
+    * Development: [koji-devel AT lists.fedorahosted.org](https://lists.fedorahosted.org/archives/list/koji-devel@lists.fedorahosted.org/)
+    * User discussion and Fedora-specific topics: [buildsys AT lists.fedoraproject.org](https://lists.fedoraproject.org/archives/list/buildsys@lists.fedoraproject.org/)
 * IRC chat: #koji on irc.freenode.net
 
 Bugs/RFEs
