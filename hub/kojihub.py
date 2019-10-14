@@ -3666,7 +3666,11 @@ def get_external_repo_list(tag_info, event=None):
 def get_user(userInfo=None, strict=False, krb_princs=False):
     """Return information about a user.
 
-    :param userInfo: either a str (Kerberos principal or name) or an int (user id)
+    :param userInfo: a str (Kerberos principal or name) or an int (user id)
+                     or a dict:
+                         - id: User's ID
+                         - name: User's name
+                         - krb_principal: Kerberos principal
     :param strict: whether raising Error when no user found
     :param krb_princs: whether show krb_principals in result
     :return: a dict as user's information:
@@ -3682,14 +3686,41 @@ def get_user(userInfo=None, strict=False, krb_princs=False):
             # not logged in
             raise koji.GenericError("No user provided")
     fields = ['id', 'name', 'status', 'usertype']
-    data = {'info': userInfo}
-    if isinstance(userInfo, six.integer_types):
-        clauses = ['id = %(info)i']
-    elif isinstance(userInfo, str):
+    if isinstance(userInfo, dict):
+        data = userInfo
+    elif isinstance(userInfo, six.integer_types):
+        data = {'id': userInfo}
+    elif isinstance(userInfo, six.string_types):
+        data = {'info': userInfo}
         clauses = ['krb_principal = %(info)s OR name = %(info)s']
     else:
         raise koji.GenericError('invalid type for userInfo: %s'
                                 % type(userInfo))
+    if isinstance(data, dict) and not data.get('info'):
+        clauses = []
+        uid = data.get('id')
+        if uid is not None:
+            if isinstance(uid, six.integer_types):
+                clauses.append('users.id = %(id)i')
+            else:
+                raise koji.GenericError('invalid type for userid: %s'
+                                        % type(uid))
+        username = data.get('name')
+        if username:
+            if isinstance(username, six.string_types):
+                clauses.append('users.name = %(name)s')
+            else:
+                raise koji.GenericError('invalid type for username: %s'
+                                        % type(username))
+        krb_principal = data.get('krb_principal')
+        if krb_principal:
+            if isinstance(krb_principal, six.string_types):
+                clauses.append('user_krb_principals.krb_principal'
+                               ' = %(krb_principal)s')
+            else:
+                raise koji.GenericError('invalid type for krb_principal: %s'
+                                        % type(krb_principal))
+
     query = QueryProcessor(tables=['users'], columns=fields,
                            joins=['LEFT JOIN user_krb_principals'
                                   ' ON users.id = user_krb_principals.user_id'],
@@ -3785,16 +3816,8 @@ def get_user_by_krb_principal(krb_principal, strict=False, krb_princs=False):
     if not isinstance(krb_principal, str):
         raise koji.GenericError("invalid type for krb_principal: %s"
                                 % type(krb_principal))
-    fields = ['user_id']
-    data = {'krb_principal': krb_principal}
-    clauses = ['krb_principal = %(krb_principal)s']
-    query = QueryProcessor(tables=['users_krb_principals'], columns=fields,
-                           clauses=clauses, values=data)
-    princ_item = query.executeOne()
-    if not princ_item and strict:
-        raise koji.GenericError("Cannot find user with kerberos principal: %s"
-                                % krb_principal)
-    return get_user(data, strict=strict, krb_princ=krb_princs)
+    return get_user({'krb_principal': krb_principal}, strict=strict,
+                    krb_princs=krb_princs)
 
 
 def find_build_id(X, strict=False):
