@@ -8059,14 +8059,23 @@ def get_group_members(group):
     if not ginfo or ginfo['usertype'] != koji.USERTYPES['GROUP']:
         raise koji.GenericError("Not a group: %s" % group)
     group_id = ginfo['id']
-    fields = ('id', 'name', 'usertype', 'array_remove(array_agg(krb_principal)'
-                                        ', NULL) AS krb_principals')
-    q = """SELECT %s FROM user_groups
-    JOIN users ON user_groups.user_id = users.id
-    LEFT JOIN user_krb_principals ON users.id = user_krb_principals.user_id
-    WHERE active = TRUE AND group_id = %%(group_id)i
-    GROUP BY users.id""" % ','.join(fields)
-    return _multiRow(q, locals(), fields)
+    columns = ('id', 'name', 'usertype', 'array_remove(array_agg(krb_principal)'
+                                         ', NULL)')
+    aliases = ('id', 'name', 'usertype', 'krb_principals')
+    joins = ['JOIN users ON user_groups.user_id = users.id',
+             'LEFT JOIN user_krb_principals'
+             ' ON users.id = user_krb_principals.user_id']
+    clauses = [eventCondition(None), 'group_id = %(group_id)i']
+
+    query = QueryProcessor(tables=['user_groups'],
+                           columns=columns,
+                           aliases=aliases,
+                           joins=joins,
+                           clauses=clauses,
+                           values=locals(),
+                           opts={'group': 'users.id'},
+                           enable_group=True)
+    return query.iterate()
 
 def set_user_status(user, status):
     context.session.assertPerm('admin')

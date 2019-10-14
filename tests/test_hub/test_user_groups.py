@@ -287,7 +287,7 @@ class TestGrouplist(unittest.TestCase):
         self.context.session.assertPerm.side_effect = None
         self.get_user.side_effect = get_user2
         kojihub.get_group_members(group)
-        self.assertEqual(len(self.queries), 0)
+        self.assertEqual(len(self.queries), 1)
         self.assertEqual(len(self.inserts), 0)
         self.assertEqual(len(self.updates), 0)
-        _multiRow.assert_called_once()
+        _multiRow.assert_not_called()
