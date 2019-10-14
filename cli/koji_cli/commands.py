@@ -2058,6 +2058,23 @@ def handle_disable_user(goptions, session, args):
     session.disableUser(username)
 
 
+def handle_edit_user(goptions, session, args):
+    "[admin] Alter user information"
+    usage = _("usage: %prog edit-user name [options]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = OptionParser(usage=usage)
+    parser.add_option("--rename", help=_("Rename the user"))
+    parser.add_option("--krb", help=_("Change kerberos principal of the user"))
+    (options, args) = parser.parse_args(args)
+    if len(args) < 1:
+        parser.error(_("You must specify the username of the user to edit"))
+    elif len(args) > 1:
+        parser.error(_("This command only accepts one argument (username)"))
+    activate_session(session, goptions)
+    user = args[0]
+    session.editUser(user, options.rename, options.krb)
+
+
 def handle_list_signed(goptions, session, args):
     "[admin] List signed copies of rpms"
     usage = _("usage: %prog list-signed [options]")
