@@ -51,7 +51,8 @@ The following permissions govern access to key administrative actions.
   Restricted permission for handling host-related management tasks.
 
 ``tag``
-  Permission for adding/deleting/editing tags
+  Permission for adding/deleting/editing tags.
+  Allows use of the tagBuildBypass and untagBuildBypass API calls.
 
 ``target``
   Permission for adding/deleting/editing targets
