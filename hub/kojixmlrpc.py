@@ -383,7 +383,10 @@ def load_config(environ):
     """Load configuration options
 
     Options are read from a config file. The config file location is
-    controlled by the PythonOption ConfigFile in the httpd config.
+    controlled by the koji.hub.ConfigFile environment variable
+    in the httpd config. To override this (for example):
+
+      SetEnv koji.hub.ConfigFile /home/developer/koji/hub/hub.conf
 
     Backwards compatibility:
         - if ConfigFile is not set, opts are loaded from http config

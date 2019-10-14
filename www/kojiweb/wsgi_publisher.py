@@ -117,7 +117,11 @@ class Dispatcher(object):
     def load_config(self, environ):
         """Load configuration options
 
-        Options are read from a config file.
+        Options are read from a kojiweb config file. To override the
+        configuration file location, use the SetEnv Apache directive. For
+        example:
+
+          SetEnv koji.web.ConfigFile /home/developer/koji/www/conf/web.conf
 
         Backwards compatibility:
             - if ConfigFile is not set, opts are loaded from http config
