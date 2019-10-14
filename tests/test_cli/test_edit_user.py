@@ -20,10 +20,11 @@ class TestEditUser(unittest.TestCase):
     def test_handle_edit_user(self, activate_session_mock, stdout):
         user = 'user'
         rename = 'user2'
-        krb_principal = 'krb'
         args = [user]
         args.append('--rename=' + rename)
-        args.append('--krb=' + krb_principal)
+        args.append('--add-krb=addedkrb')
+        args.append('--remove-krb=removedkrb')
+        args.append('--edit-krb=oldkrb=newkrb')
         options = mock.MagicMock()
 
         # Mock out the xmlrpc server
@@ -38,7 +39,10 @@ class TestEditUser(unittest.TestCase):
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
         activate_session_mock.assert_called_once_with(session, options)
-        session.editUser.assert_called_once_with(user, rename, krb_principal)
+        session.editUser.assert_called_once_with(user, rename,
+                                                 [{'new': 'oldkrb', 'old': 'oldkrb'},
+                                                  {'new': 'addedkrb', 'old': None},
+                                                  {'new': None, 'old': 'removedkrb'}])
         self.assertEqual(rv, None)
 
         stdout.seek(0)
@@ -67,9 +71,11 @@ class TestEditUser(unittest.TestCase):
 (Specify the --help global option for a list of other help options)
 
 Options:
-  -h, --help       show this help message and exit
-  --rename=RENAME  Rename the user
-  --krb=KRB        Change kerberos principal of the user
+  -h, --help          show this help message and exit
+  --rename=RENAME     Rename the user
+  --edit-krb=OLD=NEW  Change kerberos principal of the user
+  --add-krb=KRB       Add kerberos principal of the user
+  --remove-krb=KRB    Remove kerberos principal of the user
 """ % progname
         expected_stderr = ''
         self.assertMultiLineEqual(actual_stdout, expected_stdout)
