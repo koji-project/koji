@@ -30,11 +30,11 @@ class TestEditUser(unittest.TestCase):
 
     def test_edit(self):
         self.get_user.return_value = {'id': 333,
-                                     'name': 'user',
-                                     'krb_principal': 'krb'}
+                                      'name': 'user',
+                                      'krb_principals': ['krb']}
         self._singleValue.return_value = None
 
-        kojihub._edit_user('user', name='newuser', krb_principal='krb')
+        kojihub._edit_user('user', name='newuser')
         # check the update
         self.assertEqual(len(self.updates), 1)
         update = self.updates[0]
@@ -43,18 +43,53 @@ class TestEditUser(unittest.TestCase):
         self.assertEqual(update.values, {'userID': 333})
         self.assertEqual(update.clauses, ['id = %(userID)i'])
 
-        kojihub._edit_user('user', name='user', krb_principal='newkrb')
-        # check the insert/update
-        self.assertEqual(len(self.updates), 2)
-        update = self.updates[1]
-        self.assertEqual(update.table, 'users')
-        self.assertEqual(update.data, {'krb_principal': 'newkrb'})
-        self.assertEqual(update.values, {'userID': 333})
-        self.assertEqual(update.clauses, ['id = %(userID)i'])
+        kojihub._edit_user('user', krb_principal_mappings=[{'old': 'krb',
+                                                   'new': 'newkrb'}])
+        self.context.session.removeKrbPrincipal. \
+            assert_called_once_with(333, krb_principal='krb')
+        self.context.session.setKrbPrincipal. \
+            assert_called_once_with(333, krb_principal='newkrb')
+
+        self.context.reset_mock()
+        with self.assertRaises(koji.GenericError) as cm:
+            kojihub._edit_user('user',
+                               krb_principal_mappings=[{'old': 'krb',
+                                                        'new': 'newkrb'},
+                                                       {'old': 'newkrb',
+                                                        'new': 'newnewkrb'}
+                                                       ])
+        self.assertEqual(cm.exception.args[0],
+                         'There are some conflicts between added and removed'
+                         ' Kerberos principals: newkrb')
+        self.context.session.removeKrbPrincipal.assert_not_called()
+        self.context.session.setKrbPrincipal.assert_not_called()
+
+        self.context.reset_mock()
+        with self.assertRaises(koji.GenericError) as cm:
+            kojihub._edit_user('user',
+                               krb_principal_mappings=[{'old': 'otherkrb',
+                                                        'new': 'newkrb'}])
+        self.assertEqual(cm.exception.args[0],
+                         'Cannot remove non-existent Kerberos principals:'
+                         ' otherkrb')
+        self.context.session.removeKrbPrincipal.assert_not_called()
+        self.context.session.setKrbPrincipal.assert_not_called()
+
+        self.context.reset_mock()
+        with self.assertRaises(koji.GenericError) as cm:
+            kojihub._edit_user('user',
+                               krb_principal_mappings=[{'old': None,
+                                                        'new': 'krb'}])
+        self.assertEqual(cm.exception.args[0],
+                         'Cannot add existing Kerberos principals: krb')
+        self.context.session.removeKrbPrincipal.assert_not_called()
+        self.context.session.setKrbPrincipal.assert_not_called()
+
 
         self._singleValue.reset_mock()
         self._singleValue.return_value = 2
         with self.assertRaises(koji.GenericError) as cm:
             kojihub._edit_user('user', name='newuser')
         self._singleValue.assert_called_once()
-        self.assertEqual(cm.exception.args[0], 'Name newuser already taken by user 2')
+        self.assertEqual(cm.exception.args[0],
+                         'Name newuser already taken by user 2')

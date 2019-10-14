@@ -3732,22 +3732,28 @@ def get_user(userInfo=None, strict=False, krb_princs=False):
         user['krb_principals'] = list_user_krb_principals(user['id'])
     return user
 
-def edit_user(userInfo, name=None, krb_principal=None):
+def edit_user(userInfo, name=None, krb_principal_mappings=None):
     """Edit information for an existing user.
 
     userInfo specifies the user to edit
     fields changes are provided as keyword arguments:
         name: rename the user
-        krb_principal: change user's kerberos principal
+        krb_principal_mappings: change user's kerberos principal, it is a list
+                                contains krb_principal pair(s)
+                                - old: krb_principal to modify, None and ''
+                                       indicates adding a new krb_principal
+                                - new: new value of krb_principal, None and ''
+                                       indicates removing the old krb_principal
     """
 
     context.session.assertPerm('admin')
-    _edit_user(userInfo, name=name, krb_principal=krb_principal)
+    _edit_user(userInfo, name=name,
+               krb_principal_mappings=krb_principal_mappings)
 
 
-def _edit_user(userInfo, name=None, krb_principal=None):
+def _edit_user(userInfo, name=None, krb_principal_mappings=None):
     """Edit information for an existing user."""
-    user = get_user(userInfo, strict=True)
+    user = get_user(userInfo, strict=True, krb_princs=True)
     if name and user['name'] != name:
         # attempt to update user name
         values = {
@@ -3759,14 +3765,42 @@ def _edit_user(userInfo, name=None, krb_principal=None):
         if id is not None:
             # new name is taken
             raise koji.GenericError("Name %s already taken by user %s" % (name, id))
-        update = UpdateProcessor('users', values={'userID': user['id']}, clauses=['id = %(userID)i'])
+        update = UpdateProcessor('users',
+                                 values={'userID': user['id']},
+                                 clauses=['id = %(userID)i'])
         update.set(name=name)
         update.execute()
-    if krb_principal and user['krb_principal'] != krb_principal:
+    if krb_principal_mappings:
+        added = set()
+        removed = set()
+        for pairs in krb_principal_mappings:
+            old = pairs.get('old')
+            new = pairs.get('new')
+            if old:
+                removed.add(old)
+            if new:
+                added.add(new)
+        dups = added & removed
+        if dups:
+            raise koji.GenericError("There are some conflicts between added"
+                                    " and removed Kerberos principals: %s"
+                                    % ', '.join(dups))
+        currents = set(user.get('krb_principals'))
+        dups = added & currents
+        if dups:
+            raise koji.GenericError("Cannot add existing Kerberos"
+                                    " principals: %s" % ', '.join(dups))
+        unable_removed = removed - currents
+        if unable_removed:
+            raise koji.GenericError("Cannot remove non-existent Kerberos"
+                                    " principals: %s"
+                                    % ', '.join(unable_removed))
+
         # attempt to update kerberos principal
-        update = UpdateProcessor('users', values={'userID': user['id']}, clauses=['id = %(userID)i'])
-        update.set(krb_principal=krb_principal)
-        update.execute()
+        for r in removed:
+            context.session.removeKrbPrincipal(user['id'], krb_principal=r)
+        for a in added:
+            context.session.setKrbPrincipal(user['id'], krb_principal=a)
 
 
 def list_user_krb_principals(user_info=None):
