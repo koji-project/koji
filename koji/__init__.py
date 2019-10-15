@@ -1673,7 +1673,7 @@ def openRemoteFile(relpath, topurl=None, topdir=None, tempdir=None):
     return fo
 
 
-def config_directory_contents(dir_name):
+def config_directory_contents(dir_name, strict=False):
     configs = []
     try:
         conf_dir_contents = os.listdir(dir_name)
@@ -1685,7 +1685,12 @@ def config_directory_contents(dir_name):
             if not name.endswith('.conf'):
                 continue
             config_full_name = os.path.join(dir_name, name)
-            configs.append(config_full_name)
+            if os.path.isfile(config_full_name) \
+               and os.access(config_full_name, os.F_OK):
+                configs.append(config_full_name)
+            elif strict:
+                raise ConfigurationError("Config file %s can't be opened."
+                                         % config_full_name)
     return configs
 
 
@@ -1728,59 +1733,47 @@ def read_config(profile_name, user_config=None):
     #note: later config files override earlier ones
 
     # /etc/koji.conf.d
-    configs = config_directory_contents('/etc/koji.conf.d')
+    configs = ['/etc/koji.conf.d']
 
     # /etc/koji.conf
-    if os.access('/etc/koji.conf', os.F_OK):
-        configs.append('/etc/koji.conf')
+    configs.append('/etc/koji.conf')
 
     # User specific configuration
     if user_config:
         # Config file specified on command line
-        fn = os.path.expanduser(user_config)
-        if os.path.isdir(fn):
-            # Specified config is a directory
-            contents = config_directory_contents(fn)
-            if not contents:
-                raise ConfigurationError("No config files found in directory: %s" % fn)
-            configs.extend(contents)
-        else:
-            # Specified config is a file
-            if not os.access(fn, os.F_OK):
-                raise ConfigurationError("No such file: %s" % fn)
-            configs.append(fn)
+        # The existence will be checked
+        configs.append((os.path.expanduser(user_config), True))
     else:
-        # User config
-        user_config_dir = os.path.expanduser("~/.koji/config.d")
-        configs.extend(config_directory_contents(user_config_dir))
-        fn = os.path.expanduser("~/.koji/config")
-        if os.access(fn, os.F_OK):
-            configs.append(fn)
+        # User config dir
+        configs.append(os.path.expanduser("~/.koji/config.d"))
+        # User config file
+        configs.append(os.path.expanduser("~/.koji/config"))
+
+    config = read_config_files(configs)
 
     # Load the configs in a particular order
     got_conf = False
-    for configFile in configs:
-        config = read_config_files(configFile)
-        if config.has_section(profile_name):
-            got_conf = True
-            for name, value in config.items(profile_name):
-                #note the config_defaults dictionary also serves to indicate which
-                #options *can* be set via the config file. Such options should
-                #not have a default value set in the option parser.
-                if name in result:
-                    if name in ('anon_retry', 'offline_retry', 'use_fast_upload',
-                                'krb_rdns', 'debug', 'debug', 'debug_xmlrpc', 'krb_canon_host'):
-                        result[name] = config.getboolean(profile_name, name)
-                    elif name in ('max_retries', 'retry_interval',
-                                  'offline_retry_interval', 'poll_interval',
-                                  'timeout', 'auth_timeout',
-                                  'upload_blocksize', 'pyver'):
-                        try:
-                            result[name] = int(value)
-                        except ValueError:
-                            raise ConfigurationError("value for %s config option must be a valid integer" % name)
-                    else:
-                        result[name] = value
+    if config.has_section(profile_name):
+        got_conf = True
+        for name, value in config.items(profile_name):
+            #note the config_defaults dictionary also serves to indicate which
+            #options *can* be set via the config file. Such options should
+            #not have a default value set in the option parser.
+            if name in result:
+                if name in ('anon_retry', 'offline_retry',
+                            'use_fast_upload', 'krb_rdns', 'debug',
+                            'debug_xmlrpc', 'krb_canon_host'):
+                    result[name] = config.getboolean(profile_name, name)
+                elif name in ('max_retries', 'retry_interval',
+                              'offline_retry_interval', 'poll_interval',
+                              'timeout', 'auth_timeout',
+                              'upload_blocksize', 'pyver'):
+                    try:
+                        result[name] = int(value)
+                    except ValueError:
+                        raise ConfigurationError("value for %s config option must be a valid integer" % name)
+                else:
+                    result[name] = value
 
     # Check if the specified profile had a config specified
     if configs and not got_conf:
@@ -1856,14 +1849,41 @@ def get_profile_module(profile_name, config=None):
 def read_config_files(config_files, raw=False):
     """Use parser to read config file(s)
 
-    :param config_files: config file(s) to read (required).
-    :type config_files: str or list
+    :param config_files: config file(s) to read (required). Config file could
+                         be file or directory, and order is preserved.
+                         If it's a list/tuple of list/tuple, in each inner
+                         item, the 1st item is file/dir name, and the 2nd item
+                         is strict(False if not present), which indicate
+                         if checking that:
+                             1. is dir an empty directory
+                             2. dose file exist
+                             3. is file accessible
+                         raising ConfigurationError if any above is True.
+    :type config_files: str or list or tuple
     :param bool raw: enable 'raw' parsing (no interpolation). Default: False
 
     :return: object of parser which contains parsed content
+
+    :raises: GenericError: config_files is not valid
+             ConfigurationError: See config_files if strict is true
+             OSError: Directory in config_files is not accessible
     """
-    if not isinstance(config_files, (list, tuple)):
-        config_files = [config_files]
+    if isinstance(config_files, six.string_types):
+        config_files = [(config_files, False)]
+    elif isinstance(config_files, (list, tuple)):
+        fcfgs = []
+        for i in config_files:
+            if isinstance(i, six.string_types):
+                fcfgs.append((i, False))
+            elif isinstance(i, (list, tuple)) and 0 < len(i) <= 2:
+                fcfgs.append((i[0], i[1] if len(i) == 2 else False))
+            else:
+                raise GenericError('invalid value: %s or type: %s'
+                                   % (i, type(i)))
+        config_files = fcfgs
+    else:
+        raise GenericError('invalid type: %s' % type(config_files))
+
     if raw:
         parser = six.moves.configparser.RawConfigParser
     elif six.PY2:
@@ -1873,12 +1893,22 @@ def read_config_files(config_files, raw=False):
         # deprecated alias
         parser = six.moves.configparser.ConfigParser
     config = parser()
-    for config_file in config_files:
-        with open(config_file, 'r') as f:
-            if six.PY2:
-                config.readfp(f)
-            else:
-                config.read_file(f)
+    cfgs = []
+    # append dir contents
+    for config_file, strict in config_files:
+        if os.path.isdir(config_file):
+            fns = config_directory_contents(config_file, strict=strict)
+            if fns:
+                cfgs.extend(fns)
+            elif strict:
+                raise ConfigurationError("No config files found in directory:"
+                                         " %s" % config_file)
+        elif os.path.isfile(config_file) and os.access(config_file, os.F_OK):
+            cfgs.append(config_file)
+        elif strict:
+            raise ConfigurationError("Config file %s can't be opened."
+                                     % config_file)
+    config.read(cfgs)
     return config
 
 

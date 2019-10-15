@@ -110,63 +110,51 @@ def get_options():
 
     defaults = parser.get_default_values()
 
-    config = six.moves.configparser.ConfigParser()
-    cf = getattr(options, 'config_file', None)
-    if cf:
-        if not os.access(cf, os.F_OK):
-            parser.error(_("No such file: %s") % cf)
-            assert False  # pragma: no cover
-    else:
-        cf = '/etc/koji-gc/koji-gc.conf'
-        if not os.access(cf, os.F_OK):
-            cf = None
-    if not cf:
-        print("no config file")
-        config = None
-    else:
-        config.read(cf)
-        # List of values read from config file to update default parser values
-        cfgmap = [
-            # name, alias, type
-            ['keytab', None, 'string'],
-            ['principal', None, 'string'],
-            ['krbservice', None, 'string'],
-            ['krb_rdns', None, 'boolean'],
-            ['krb_canon_host', None, 'boolean'],
+    cf = getattr(options, 'config_file', '/etc/koji-gc/koji-gc.conf')
+    config = koji.read_config_files(cf)
+
+    # List of values read from config file to update default parser values
+    cfgmap = [
+        # name, alias, type
+        ['keytab', None, 'string'],
+        ['principal', None, 'string'],
+        ['krbservice', None, 'string'],
+        ['krb_rdns', None, 'boolean'],
+        ['krb_canon_host', None, 'boolean'],
             ['krb_server_realm', None, 'string'],
-            ['runas', None, 'string'],
-            ['user', None, 'string'],
-            ['password', None, 'string'],
-            ['noauth', None, 'boolean'],
-            ['cert', None, 'string'],
-            ['ca', None, 'string'],  # FIXME: remove in next major release
-            ['serverca', None, 'string'],
-            ['server', None, 'string'],
-            ['weburl', None, 'string'],
-            ['smtp_host', None, 'string'],
-            ['from_addr', None, 'string'],
-            ['email_template', None, 'string'],
-            ['email_domain', None, 'string'],
-            ['mail', None, 'boolean'],
-            ['delay', None, 'string'],
-            ['unprotected_keys', None, 'string'],
-            ['grace_period', None, 'string'],
-            ['trashcan_tag', None, 'string'],
-            ['no_ssl_verify', None, 'boolean'],
-            ['timeout', None, 'integer'],
-            ]
-        for name, alias, type in cfgmap:
-            if alias is None:
-                alias = ('main', name)
-            if config.has_option(*alias):
-                if options.debug:
-                    print("Using option %s from config file" % (alias,))
-                if type == 'integer':
-                    setattr(defaults, name, config.getint(*alias))
-                elif type == 'boolean':
-                    setattr(defaults, name, config.getboolean(*alias))
-                else:
-                    setattr(defaults, name, config.get(*alias))
+        ['runas', None, 'string'],
+        ['user', None, 'string'],
+        ['password', None, 'string'],
+        ['noauth', None, 'boolean'],
+        ['cert', None, 'string'],
+        ['ca', None, 'string'],  # FIXME: remove in next major release
+        ['serverca', None, 'string'],
+        ['server', None, 'string'],
+        ['weburl', None, 'string'],
+        ['smtp_host', None, 'string'],
+        ['from_addr', None, 'string'],
+        ['email_template', None, 'string'],
+        ['email_domain', None, 'string'],
+        ['mail', None, 'boolean'],
+        ['delay', None, 'string'],
+        ['unprotected_keys', None, 'string'],
+        ['grace_period', None, 'string'],
+        ['trashcan_tag', None, 'string'],
+        ['no_ssl_verify', None, 'boolean'],
+        ['timeout', None, 'integer'],
+        ]
+    for name, alias, type in cfgmap:
+        if alias is None:
+            alias = ('main', name)
+        if config.has_option(*alias):
+            if options.debug:
+                print("Using option %s from config file" % (alias,))
+            if type == 'integer':
+                setattr(defaults, name, config.getint(*alias))
+            elif type == 'boolean':
+                setattr(defaults, name, config.getboolean(*alias))
+            else:
+                setattr(defaults, name, config.get(*alias))
     #parse again with defaults
     (options, args) = parser.parse_args(values=defaults)
     options.config = config
@@ -190,8 +178,8 @@ def get_options():
     #parse key aliases
     options.key_aliases = {}
     try:
-        if config and config.has_option('main', 'key_aliases'):
-            for line in config.get('main','key_aliases').splitlines():
+        if config.has_option('main', 'key_aliases'):
+            for line in config.get('main', 'key_aliases').splitlines():
                 parts = line.split()
                 if len(parts) < 2:
                     continue

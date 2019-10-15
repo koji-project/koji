@@ -49,8 +49,7 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
         return res
 
     def _read_config(self):
-        cp = six.moves.configparser.SafeConfigParser()
-        cp.read(CONFIG_FILE)
+        cp = koji.read_config_files(CONFIG_FILE)
         self.config = {
            'default_mounts': [],
            'safe_roots': [],

@@ -11,15 +11,14 @@ from koji.context import context
 from koji.plugin import callback
 from koji.util import joinpath
 from koji.util import rmtree
-import six.moves.configparser
 import fnmatch
 import os
-import shutil
 import subprocess
 
 CONFIG_FILE = '/etc/koji-hub/plugins/rpm2maven.conf'
 
 config = None
+
 
 @callback('postImport')
 def maven_import(cbtype, *args, **kws):
@@ -33,8 +32,7 @@ def maven_import(cbtype, *args, **kws):
     filepath = kws['filepath']
 
     if not config:
-        config = six.moves.configparser.SafeConfigParser()
-        config.read(CONFIG_FILE)
+        config = koji.read_config_files([(CONFIG_FILE, True)])
     name_patterns = config.get('patterns', 'rpm_names').split()
     for pattern in name_patterns:
         if fnmatch.fnmatch(rpminfo['name'], pattern):
@@ -53,6 +51,7 @@ def maven_import(cbtype, *args, **kws):
         if os.path.exists(tmpdir):
             rmtree(tmpdir)
 
+
 def expand_rpm(filepath, tmpdir):
     devnull = open('/dev/null', 'r+')
     rpm2cpio = subprocess.Popen(['/usr/bin/rpm2cpio', filepath],
@@ -69,6 +68,7 @@ def expand_rpm(filepath, tmpdir):
               'rpm2cpio returned %s, cpio returned %s' % \
               (filepath, rpm2cpio.wait(), cpio.wait()))
     devnull.close()
+
 
 def scan_and_import(buildinfo, rpminfo, tmpdir):
     global config

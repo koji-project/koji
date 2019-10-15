@@ -12,7 +12,10 @@ import koji
 from koji_cli.commands import handle_image_build, _build_image_oz
 from . import utils
 
-ConfigParser = six.moves.configparser.ConfigParser
+if six.PY2:
+    ConfigParser = six.moves.configparser.SafeConfigParser
+else:
+    ConfigParser = six.moves.configparser.ConfigParser
 
 TASK_OPTIONS = {
     "background": None,
@@ -240,28 +243,32 @@ class TestImageBuild(utils.CliTestCase):
         """Test handle_image_build argument with --config cases"""
 
         # Case 1, config file not exist case
-        self.assert_system_exit(
-                handle_image_build,
-                self.options,
-                self.session,
-                ['--config', '/nonexistent-file-755684354'],
-                stderr=self.format_error_message('/nonexistent-file-755684354 not found!'),
-                activate_session=None)
+        with self.assertRaises(koji.ConfigurationError) as cm:
+            handle_image_build(self.options,
+                               self.session,
+                               ['--config', '/nonexistent-file-755684354'])
+        self.assertEqual(cm.exception.args[0],
+                         "Config file /nonexistent-file-755684354 can't be opened.")
+
 
         # Case 2, no image-build section in config file
-
         expected = "single section called [%s] is required" % "image-build"
 
         self.configparser.return_value = ConfigParser()
+
         self.assert_system_exit(
             handle_image_build,
             self.options,
             self.session,
-            ['--config', '/dev/null'],
+            ['--config',
+             os.path.join(os.path.dirname(__file__),
+                          'data/image-build-config-empty.conf')],
             stderr=self.format_error_message(expected),
             activate_session=None)
 
-        config_file = os.path.join(os.path.dirname(__file__), 'data/image-build-config.conf')
+        config_file = os.path.join(os.path.dirname(__file__),
+                                   'data/image-build-config.conf')
+        # Case 3, normal
         handle_image_build(
             self.options,
             self.session,

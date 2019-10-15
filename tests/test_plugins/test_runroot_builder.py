@@ -24,6 +24,12 @@ def mock_open():
         return mock.patch('builtins.open')
 
 
+if six.PY2:
+    CONFIG_PARSER = 'six.moves.configparser.SafeConfigParser'
+else:
+    CONFIG_PARSER = 'six.moves.configparser.ConfigParser'
+
+
 CONFIG1 = {
         'paths': {
             'default_mounts': '/mnt/archive,/mnt/workdir',
@@ -96,11 +102,11 @@ class FakeConfigParser(object):
 
 
 class TestRunrootConfig(unittest.TestCase):
-    @mock.patch('six.moves.configparser.SafeConfigParser')
-    def test_bad_config_paths0(self, safe_config_parser):
+    @mock.patch(CONFIG_PARSER)
+    def test_bad_config_paths0(self, config_parser):
         cp = FakeConfigParser()
         del cp.CONFIG['path0']['mountpoint']
-        safe_config_parser.return_value = cp
+        config_parser.return_value = cp
         session = mock.MagicMock()
         options = mock.MagicMock()
         options.workdir = '/tmp/nonexistentdirectory'
@@ -109,11 +115,11 @@ class TestRunrootConfig(unittest.TestCase):
         self.assertEqual(cm.exception.args[0],
             "bad config: missing options in path0 section")
 
-    @mock.patch('six.moves.configparser.SafeConfigParser')
-    def test_bad_config_absolute_path(self, safe_config_parser):
+    @mock.patch(CONFIG_PARSER)
+    def test_bad_config_absolute_path(self, config_parser):
         cp = FakeConfigParser()
         cp.CONFIG['paths']['default_mounts'] = ''
-        safe_config_parser.return_value = cp
+        config_parser.return_value = cp
         session = mock.MagicMock()
         options = mock.MagicMock()
         options.workdir = '/tmp/nonexistentdirectory'
@@ -122,29 +128,29 @@ class TestRunrootConfig(unittest.TestCase):
         self.assertEqual(cm.exception.args[0],
             "bad config: all paths (default_mounts, safe_roots, path_subs) needs to be absolute: ")
 
-    @mock.patch('six.moves.configparser.SafeConfigParser')
-    def test_valid_config(self, safe_config_parser):
-        safe_config_parser.return_value = FakeConfigParser()
+    @mock.patch(CONFIG_PARSER)
+    def test_valid_config(self, config_parser):
+        config_parser.return_value = FakeConfigParser()
         session = mock.MagicMock()
         options = mock.MagicMock()
         options.workdir = '/tmp/nonexistentdirectory'
         runroot.RunRootTask(123, 'runroot', {}, session, options)
 
-    @mock.patch('six.moves.configparser.SafeConfigParser')
-    def test_valid_config_alt(self, safe_config_parser):
-        safe_config_parser.return_value = FakeConfigParser(CONFIG2)
+    @mock.patch(CONFIG_PARSER)
+    def test_valid_config_alt(self, config_parser):
+        config_parser.return_value = FakeConfigParser(CONFIG2)
         session = mock.MagicMock()
         options = mock.MagicMock()
         options.workdir = '/tmp/nonexistentdirectory'
         runroot.RunRootTask(123, 'runroot', {}, session, options)
 
-    @mock.patch('six.moves.configparser.SafeConfigParser')
-    def test_pathnum_gaps(self, safe_config_parser):
+    @mock.patch(CONFIG_PARSER)
+    def test_pathnum_gaps(self, config_parser):
         session = mock.MagicMock()
         options = mock.MagicMock()
         options.workdir = '/tmp/nonexistentdirectory'
         config = CONFIG2.copy()
-        safe_config_parser.return_value = FakeConfigParser(config)
+        config_parser.return_value = FakeConfigParser(config)
         task1 = runroot.RunRootTask(123, 'runroot', {}, session, options)
         # adjust the path numbers (but preserving order) and do it again
         config = CONFIG2.copy()
@@ -152,29 +158,29 @@ class TestRunrootConfig(unittest.TestCase):
         config['path999'] = config['path2']
         del config['path1']
         del config['path2']
-        safe_config_parser.return_value = FakeConfigParser(config)
+        config_parser.return_value = FakeConfigParser(config)
         task2 = runroot.RunRootTask(123, 'runroot', {}, session, options)
         # resulting processed config should be the same
         self.assertEqual(task1.config, task2.config)
         paths = list([CONFIG2[k] for k in ('path0', 'path1', 'path2')])
         self.assertEqual(task2.config['paths'], paths)
 
-    @mock.patch('six.moves.configparser.SafeConfigParser')
-    def test_bad_path_sub(self, safe_config_parser):
+    @mock.patch(CONFIG_PARSER)
+    def test_bad_path_sub(self, config_parser):
         session = mock.MagicMock()
         options = mock.MagicMock()
         options.workdir = '/tmp/nonexistentdirectory'
         config = copy.deepcopy(CONFIG2)
         config['paths']['path_subs'] += 'incorrect:format'
-        safe_config_parser.return_value = FakeConfigParser(config)
+        config_parser.return_value = FakeConfigParser(config)
         with self.assertRaises(koji.GenericError):
             runroot.RunRootTask(123, 'runroot', {}, session, options)
 
 
 class TestMounts(unittest.TestCase):
-    @mock.patch('six.moves.configparser.SafeConfigParser')
-    def setUp(self, safe_config_parser):
-        safe_config_parser.return_value = FakeConfigParser()
+    @mock.patch(CONFIG_PARSER)
+    def setUp(self, config_parser):
+        config_parser.return_value = FakeConfigParser()
         self.session = mock.MagicMock()
         options = mock.MagicMock()
         options.workdir = '/tmp/nonexistentdirectory'
@@ -324,8 +330,8 @@ class TestMounts(unittest.TestCase):
         os_unlink.assert_not_called()
 
 class TestHandler(unittest.TestCase):
-    @mock.patch('six.moves.configparser.SafeConfigParser')
-    def setUp(self, safe_config_parser):
+    @mock.patch(CONFIG_PARSER)
+    def setUp(self, config_parser):
         self.session = mock.MagicMock()
         self.br = mock.MagicMock()
         self.br.mock.return_value = 0

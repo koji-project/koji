@@ -30,7 +30,6 @@ import pprint
 import sys
 import traceback
 
-from six.moves.configparser import RawConfigParser
 from koji.server import ServerError, ServerRedirect
 from koji.util import dslice, to_list
 import six
@@ -132,22 +131,12 @@ class Dispatcher(object):
         """
         cf = environ.get('koji.web.ConfigFile', '/etc/kojiweb/web.conf')
         cfdir = environ.get('koji.web.ConfigDir', '/etc/kojiweb/web.conf.d')
-        if cfdir:
-            configs = koji.config_directory_contents(cfdir)
-        else:
-            configs = []
-        if cf and os.path.isfile(cf):
-            configs.append(cf)
-        if configs:
-            config = RawConfigParser()
-            config.read(configs)
-        else:
-            raise koji.GenericError("Configuration missing")
+        config = koji.read_config_files([cfdir, (cf, True)])
 
         opts = {}
         for name, dtype, default in self.cfgmap:
             key = ('web', name)
-            if config and config.has_option(*key):
+            if config.has_option(*key):
                 if dtype == 'integer':
                     opts[name] = config.getint(*key)
                 elif dtype == 'boolean':
