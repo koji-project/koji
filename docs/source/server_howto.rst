@@ -497,6 +497,40 @@ there is no password manipulation support exposed through the koji tools.
 
 The sql commands you need to use vary by authentication mechanism.
 
+Maintaining database
+--------------------
+
+For now, there is one table which needs periodical cleanup. As postgres doesn't
+have any mechanism for this, we need to do it via some other mechanism. Default
+handling is done by cron, but can be substituted by anything else (Ansible
+tower, etc.)
+
+Script is by default installed on hub as `/usr/sbin/koji-sweepd-db`. On systemd
+systems it also has corresponding `koji-sweep-db` service and timer. Note, that
+timer is not enabled by default, so you need to run usual `systemctl` commands:
+
+::
+
+   systemctl enable --now koji-sweep-db.timer
+
+If you don't want to use this script, be sure to run following SQL with
+appropriate age setting. Default value of one day should be ok for most
+deployments. As there will be tons of freed records, additional VACUUM can be
+handy.
+
+.. code-block:: sql
+
+   DELETE FROM sessions WHERE update_time < NOW() - '1 day'::interval;
+   VACUUM ANALYZE sessions;
+
+Optionally (if you're using :ref:`reservation API <cg_api>` for
+content generators), you could want to run also reservation cleanup:
+
+.. code-block:: sql
+
+   DELETE FROM build_reservations WHERE update_time < NOW() - '1 day'::interval;
+   VACUUM ANALYZE build_reservations;
+
 Set User/Password Authentication
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

@@ -115,6 +115,8 @@ Metadata will be provided by the Content Generator as a JSON file. There
 is a proposal of the :doc:`Content Generator
 Metadata <content_generator_metadata>` format available for review.
 
+.. _cg_api:
+
 API
 ===
 

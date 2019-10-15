@@ -1,4 +1,4 @@
-BINFILES = kojira koji-gc koji-shadow
+BINFILES = kojira koji-gc koji-shadow koji-sweep-db
 SYSTEMDSYSTEMUNITDIR = $(shell pkg-config systemd --variable=systemdsystemunitdir)
 TYPE = systemd
 
@@ -30,6 +30,8 @@ _install:
 install-systemd: _install
 	mkdir -p $(DESTDIR)$(SYSTEMDSYSTEMUNITDIR)
 	install -p -m 644 kojira.service $(DESTDIR)$(SYSTEMDSYSTEMUNITDIR)
+	install -p -m 644 koji-sweep-db.service $(DESTDIR)$(SYSTEMDSYSTEMUNITDIR)
+	install -p -m 644 koji-sweep-db.timer $(DESTDIR)$(SYSTEMDSYSTEMUNITDIR)
 
 install-sysv: _install
 	mkdir -p $(DESTDIR)/etc/rc.d/init.d
