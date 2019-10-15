@@ -116,7 +116,11 @@ Options:
         # Finally, assert that things were called as we expected.
         activate_session_mock.assert_not_called()
         session.editUser.assert_not_called()
-        self.assertEqual(cm.exception.code, 2)
+        if isinstance(cm.exception, int):
+            # RHEL6
+            self.assertEqual(cm.exception, 2)
+        else:
+            self.assertEqual(cm.exception.code, 2)
 
 
 if __name__ == '__main__':
