@@ -3666,7 +3666,11 @@ def get_external_repo_list(tag_info, event=None):
 def get_user(userInfo=None, strict=False, krb_princs=False):
     """Return information about a user.
 
-    :param userInfo: either a str (Kerberos principal or name) or an int (user id)
+    :param userInfo: a str (Kerberos principal or name) or an int (user id)
+                     or a dict:
+                         - id: User's ID
+                         - name: User's name
+                         - krb_principal: Kerberos principal
     :param strict: whether raising Error when no user found
     :param krb_princs: whether show krb_principals in result
     :return: a dict as user's information:
@@ -3682,14 +3686,41 @@ def get_user(userInfo=None, strict=False, krb_princs=False):
             # not logged in
             raise koji.GenericError("No user provided")
     fields = ['id', 'name', 'status', 'usertype']
-    data = {'info': userInfo}
-    if isinstance(userInfo, six.integer_types):
-        clauses = ['id = %(info)i']
-    elif isinstance(userInfo, str):
+    if isinstance(userInfo, dict):
+        data = userInfo
+    elif isinstance(userInfo, six.integer_types):
+        data = {'id': userInfo}
+    elif isinstance(userInfo, six.string_types):
+        data = {'info': userInfo}
         clauses = ['krb_principal = %(info)s OR name = %(info)s']
     else:
         raise koji.GenericError('invalid type for userInfo: %s'
                                 % type(userInfo))
+    if isinstance(data, dict) and not data.get('info'):
+        clauses = []
+        uid = data.get('id')
+        if uid is not None:
+            if isinstance(uid, six.integer_types):
+                clauses.append('users.id = %(id)i')
+            else:
+                raise koji.GenericError('invalid type for userid: %s'
+                                        % type(uid))
+        username = data.get('name')
+        if username:
+            if isinstance(username, six.string_types):
+                clauses.append('users.name = %(name)s')
+            else:
+                raise koji.GenericError('invalid type for username: %s'
+                                        % type(username))
+        krb_principal = data.get('krb_principal')
+        if krb_principal:
+            if isinstance(krb_principal, six.string_types):
+                clauses.append('user_krb_principals.krb_principal'
+                               ' = %(krb_principal)s')
+            else:
+                raise koji.GenericError('invalid type for krb_principal: %s'
+                                        % type(krb_principal))
+
     query = QueryProcessor(tables=['users'], columns=fields,
                            joins=['LEFT JOIN user_krb_principals'
                                   ' ON users.id = user_krb_principals.user_id'],
@@ -3701,22 +3732,28 @@ def get_user(userInfo=None, strict=False, krb_princs=False):
         user['krb_principals'] = list_user_krb_principals(user['id'])
     return user
 
-def edit_user(userInfo, name=None, krb_principal=None):
+def edit_user(userInfo, name=None, krb_principal_mappings=None):
     """Edit information for an existing user.
 
     userInfo specifies the user to edit
     fields changes are provided as keyword arguments:
         name: rename the user
-        krb_principal: change user's kerberos principal
+        krb_principal_mappings: change user's kerberos principal, it is a list
+                                contains krb_principal pair(s)
+                                - old: krb_principal to modify, None and ''
+                                       indicates adding a new krb_principal
+                                - new: new value of krb_principal, None and ''
+                                       indicates removing the old krb_principal
     """
 
     context.session.assertPerm('admin')
-    _edit_user(userInfo, name=name, krb_principal=krb_principal)
+    _edit_user(userInfo, name=name,
+               krb_principal_mappings=krb_principal_mappings)
 
 
-def _edit_user(userInfo, name=None, krb_principal=None):
+def _edit_user(userInfo, name=None, krb_principal_mappings=None):
     """Edit information for an existing user."""
-    user = get_user(userInfo, strict=True)
+    user = get_user(userInfo, strict=True, krb_princs=True)
     if name and user['name'] != name:
         # attempt to update user name
         values = {
@@ -3728,14 +3765,42 @@ def _edit_user(userInfo, name=None, krb_principal=None):
         if id is not None:
             # new name is taken
             raise koji.GenericError("Name %s already taken by user %s" % (name, id))
-        update = UpdateProcessor('users', values={'userID': user['id']}, clauses=['id = %(userID)i'])
+        update = UpdateProcessor('users',
+                                 values={'userID': user['id']},
+                                 clauses=['id = %(userID)i'])
         update.set(name=name)
         update.execute()
-    if krb_principal and user['krb_principal'] != krb_principal:
+    if krb_principal_mappings:
+        added = set()
+        removed = set()
+        for pairs in krb_principal_mappings:
+            old = pairs.get('old')
+            new = pairs.get('new')
+            if old:
+                removed.add(old)
+            if new:
+                added.add(new)
+        dups = added & removed
+        if dups:
+            raise koji.GenericError("There are some conflicts between added"
+                                    " and removed Kerberos principals: %s"
+                                    % ', '.join(dups))
+        currents = set(user.get('krb_principals'))
+        dups = added & currents
+        if dups:
+            raise koji.GenericError("Cannot add existing Kerberos"
+                                    " principals: %s" % ', '.join(dups))
+        unable_removed = removed - currents
+        if unable_removed:
+            raise koji.GenericError("Cannot remove non-existent Kerberos"
+                                    " principals: %s"
+                                    % ', '.join(unable_removed))
+
         # attempt to update kerberos principal
-        update = UpdateProcessor('users', values={'userID': user['id']}, clauses=['id = %(userID)i'])
-        update.set(krb_principal=krb_principal)
-        update.execute()
+        for r in removed:
+            context.session.removeKrbPrincipal(user['id'], krb_principal=r)
+        for a in added:
+            context.session.setKrbPrincipal(user['id'], krb_principal=a)
 
 
 def list_user_krb_principals(user_info=None):
@@ -3785,16 +3850,8 @@ def get_user_by_krb_principal(krb_principal, strict=False, krb_princs=False):
     if not isinstance(krb_principal, str):
         raise koji.GenericError("invalid type for krb_principal: %s"
                                 % type(krb_principal))
-    fields = ['user_id']
-    data = {'krb_principal': krb_principal}
-    clauses = ['krb_principal = %(krb_principal)s']
-    query = QueryProcessor(tables=['users_krb_principals'], columns=fields,
-                           clauses=clauses, values=data)
-    princ_item = query.executeOne()
-    if not princ_item and strict:
-        raise koji.GenericError("Cannot find user with kerberos principal: %s"
-                                % krb_principal)
-    return get_user(data, strict=strict, krb_princ=krb_princs)
+    return get_user({'krb_principal': krb_principal}, strict=strict,
+                    krb_princs=krb_princs)
 
 
 def find_build_id(X, strict=False):
@@ -8036,14 +8093,23 @@ def get_group_members(group):
     if not ginfo or ginfo['usertype'] != koji.USERTYPES['GROUP']:
         raise koji.GenericError("Not a group: %s" % group)
     group_id = ginfo['id']
-    fields = ('id', 'name', 'usertype', 'array_remove(array_agg(krb_principal)'
-                                        ', NULL) AS krb_principals')
-    q = """SELECT %s FROM user_groups
-    JOIN users ON user_groups.user_id = users.id
-    LEFT JOIN user_krb_principals ON users.id = user_krb_principals.user_id
-    WHERE active = TRUE AND group_id = %%(group_id)i
-    GROUP BY users.id""" % ','.join(fields)
-    return _multiRow(q, locals(), fields)
+    columns = ('id', 'name', 'usertype', 'array_remove(array_agg(krb_principal)'
+                                         ', NULL)')
+    aliases = ('id', 'name', 'usertype', 'krb_principals')
+    joins = ['JOIN users ON user_groups.user_id = users.id',
+             'LEFT JOIN user_krb_principals'
+             ' ON users.id = user_krb_principals.user_id']
+    clauses = [eventCondition(None), 'group_id = %(group_id)i']
+
+    query = QueryProcessor(tables=['user_groups'],
+                           columns=columns,
+                           aliases=aliases,
+                           joins=joins,
+                           clauses=clauses,
+                           values=locals(),
+                           opts={'group': 'users.id'},
+                           enable_group=True)
+    return query.iterate()
 
 def set_user_status(user, status):
     context.session.assertPerm('admin')

@@ -2065,7 +2065,14 @@ def handle_edit_user(goptions, session, args):
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--rename", help=_("Rename the user"))
-    parser.add_option("--krb", help=_("Change kerberos principal of the user"))
+    parser.add_option("--edit-krb", action="append", default=[],
+                      metavar="OLD=NEW",
+                      help=_("Change kerberos principal of the user"))
+    parser.add_option("--add-krb", action="append", default=[], metavar="KRB",
+                      help=_("Add kerberos principal of the user"))
+    parser.add_option("--remove-krb", action="append", default=[],
+                      metavar="KRB",
+                      help=_("Remove kerberos principal of the user"))
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
         parser.error(_("You must specify the username of the user to edit"))
@@ -2073,7 +2080,15 @@ def handle_edit_user(goptions, session, args):
         parser.error(_("This command only accepts one argument (username)"))
     activate_session(session, goptions)
     user = args[0]
-    session.editUser(user, options.rename, options.krb)
+    princ_mappings = []
+    for p in options.edit_krb:
+        old, new = p.split('=', 1)
+        princ_mappings.append({'old': arg_filter(old), 'new': arg_filter(old)})
+    for a in options.add_krb:
+        princ_mappings.append({'old': None, 'new': arg_filter(a)})
+    for r in options.remove_krb:
+        princ_mappings.append({'old': arg_filter(r), 'new': None})
+    session.editUser(user, options.rename, princ_mappings)
 
 
 def handle_list_signed(goptions, session, args):

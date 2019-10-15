@@ -689,7 +689,12 @@ class Session(object):
     def setKrbPrincipal(self, name, krb_principal, krb_princ_check=True):
         if krb_princ_check:
             self.checkKrbPrincipal(krb_principal)
-        select = """SELECT id FROM users WHERE name = %(name)s"""
+        select = """SELECT id FROM users WHERE %s"""
+        if isinstance(name, six.integer_types):
+            user_condition = 'id = %(name)i'
+        else:
+            user_condition = 'name = %(name)s'
+        select = select % user_condition
         cursor = context.cnx.cursor()
         cursor.execute(select, locals())
         r = cursor.fetchone()
@@ -707,20 +712,26 @@ class Session(object):
     def removeKrbPrincipal(self, name, krb_principal):
         select = """SELECT id FROM users
                     JOIN user_krb_principals
-                    WHERE name = %(name)s
-                    AND krb_principal = %(krb_principal)s"""
+                    ON users.id = user_krb_principals.user_id
+                    WHERE %s
+                    AND krb_principal = %%(krb_principal)s"""
+        if isinstance(name, six.integer_types):
+            user_condition = 'id = %(name)i'
+        else:
+            user_condition = 'name = %(name)s'
+        select = select % user_condition
         cursor = context.cnx.cursor()
         cursor.execute(select, locals())
         r = cursor.fetchone()
         if not r:
             context.cnx.rollback()
             raise koji.AuthError(
-                'could not automatically remove Kerberos Principal:'
+                'cannot remove Kerberos Principal:'
                 ' %(krb_principal)s with user %(name)s' % locals())
         else:
             user_id = r[0]
         delete = """DELETE FROM user_krb_principals
-                    WHERE user_id = (%(user_id)i
+                    WHERE user_id = %(user_id)i
                     AND krb_principal = %(krb_principal)s"""
         cursor.execute(delete, locals())
         context.cnx.commit()
