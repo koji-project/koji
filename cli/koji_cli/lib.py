@@ -636,3 +636,18 @@ def _list_tasks(options, session):
                 t['sub'] = True
 
     return tasklist
+
+
+def format_inheritance_flags(parent):
+    """Return a human readable string of inheritance flags"""
+    flags = ''
+    for code,expr in (
+            ('M', parent['maxdepth'] is not None),
+            ('F', parent['pkg_filter']),
+            ('I', parent['intransitive']),
+            ('N', parent['noconfig']),):
+        if expr:
+            flags += code
+        else:
+            flags += '.'
+    return flags
