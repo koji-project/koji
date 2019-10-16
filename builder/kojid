@@ -543,7 +543,7 @@ class BuildRoot(object):
     def _mockResult(self, rv, logfile=None):
         if logfile:
             pass
-        elif os.WIFEXITED(rv) and os.WEXITSTATUS(rv) == 1:
+        elif os.WIFEXITED(rv) and os.WEXITSTATUS(rv) == 10:
             logfile = 'build.log'
         else:
             logfile = 'root.log'
