@@ -81,4 +81,13 @@ ALTER TABLE users DROP COLUMN krb_principal;
 ALTER TABLE content_generator ADD UNIQUE (name);
 ALTER TABLE content_generator ALTER COLUMN name SET NOT NULL;
 
+
+-- add all basic permissions
+INSERT INTO permissions (name) VALUES ('dist-repo') ON CONFLICT DO NOTHING;
+INSERT INTO permissions (name) VALUES ('host') ON CONFLICT DO NOTHING;
+INSERT INTO permissions (name) VALUES ('image-import') ON CONFLICT DO NOTHING;
+INSERT INTO permissions (name) VALUES ('sign') ON CONFLICT DO NOTHING;
+INSERT INTO permissions (name) VALUES ('tag') ON CONFLICT DO NOTHING;
+INSERT INTO permissions (name) VALUES ('target') ON CONFLICT DO NOTHING;
+
 COMMIT;

@@ -54,14 +54,20 @@ CREATE TABLE permissions (
 
 -- Some basic perms
 INSERT INTO permissions (name) VALUES ('admin');
+INSERT INTO permissions (name) VALUES ('appliance');
 INSERT INTO permissions (name) VALUES ('build');
-INSERT INTO permissions (name) VALUES ('repo');
+INSERT INTO permissions (name) VALUES ('dist-repo');
+INSERT INTO permissions (name) VALUES ('host');
 INSERT INTO permissions (name) VALUES ('image');
+INSERT INTO permissions (name) VALUES ('image-import');
 INSERT INTO permissions (name) VALUES ('livecd');
 INSERT INTO permissions (name) VALUES ('maven-import');
-INSERT INTO permissions (name) VALUES ('win-import');
+INSERT INTO permissions (name) VALUES ('repo');
+INSERT INTO permissions (name) VALUES ('sign');
+INSERT INTO permissions (name) VALUES ('tag');
+INSERT INTO permissions (name) VALUES ('target');
 INSERT INTO permissions (name) VALUES ('win-admin');
-INSERT INTO permissions (name) VALUES ('appliance');
+INSERT INTO permissions (name) VALUES ('win-import');
 
 CREATE TABLE user_perms (
 	user_id INTEGER NOT NULL REFERENCES users(id),
