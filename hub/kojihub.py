@@ -13293,7 +13293,8 @@ class HostExports(object):
         host.verify()
         task = Task(task_id)
         task.assertHost(host.id)
-        pkg_id = get_build(build, strict=True)['package_id']
+        build = get_build(build, strict=True)
+        pkg_id = build['package_id']
         tag_id = get_tag(tag, strict=True)['id']
         user_id = task.getOwner()
         policy_data = {'tag' : tag, 'build' : build, 'fromtag' : fromtag}
@@ -13310,9 +13311,9 @@ class HostExports(object):
         pkgs = readPackageList(tagID=tag_id, pkgID=pkg_id, inherit=True)
         pkg_error = None
         if pkg_id not in pkgs:
-            pkg_error = "Package %s not in list for %s" % (build, tag)
+            pkg_error = "Package %s not in list for %s" % (build['name'], tag)
         elif pkgs[pkg_id]['blocked']:
-            pkg_error = "Package %s blocked in %s" % (build, tag)
+            pkg_error = "Package %s blocked in %s" % (build['name'], tag)
         if pkg_error:
             if force and context.session.hasPerm('admin'):
                 pkglist_add(tag_id, pkg_id, force=True, block=False)
