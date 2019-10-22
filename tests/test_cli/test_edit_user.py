@@ -43,7 +43,7 @@ class TestEditUser(unittest.TestCase):
         # Finally, assert that things were called as we expected.
         activate_session_mock.assert_called_once_with(session, options)
         session.editUser.assert_called_once_with(user, rename,
-                                                 [{'new': 'oldkrb', 'old': 'oldkrb'},
+                                                 [{'new': 'newkrb', 'old': 'oldkrb'},
                                                   {'new': 'addedkrb', 'old': None},
                                                   {'new': None, 'old': 'removedkrb'}])
         self.assertEqual(rv, None)

@@ -2083,7 +2083,7 @@ def handle_edit_user(goptions, session, args):
     princ_mappings = []
     for p in options.edit_krb:
         old, new = p.split('=', 1)
-        princ_mappings.append({'old': arg_filter(old), 'new': arg_filter(old)})
+        princ_mappings.append({'old': arg_filter(old), 'new': arg_filter(new)})
     for a in options.add_krb:
         princ_mappings.append({'old': None, 'new': arg_filter(a)})
     for r in options.remove_krb:
