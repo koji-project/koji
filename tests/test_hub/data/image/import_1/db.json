@@ -121,76 +121,25 @@
             {}
         ],
         [
-            "INSERT INTO archive_rpm_components (archive_id, rpm_id) VALUES (%(archive_id)s, %(rpm_id)s)",
-            {
-                "archive_id": 1002,
-                "rpm_id": 1000
-            },
-            {}
-        ],
-        [
-            "INSERT INTO archive_rpm_components (archive_id, rpm_id) VALUES (%(archive_id)s, %(rpm_id)s)",
-            {
-                "archive_id": 1002,
-                "rpm_id": 1001
-            },
-            {}
-        ],
-        [
-            "INSERT INTO archive_rpm_components (archive_id, rpm_id) VALUES (%(archive_id)s, %(rpm_id)s)",
-            {
-                "archive_id": 1002,
-                "rpm_id": 1002
-            },
-            {}
-        ],
-        [
-            "INSERT INTO archive_rpm_components (archive_id, rpm_id) VALUES (%(archive_id)s, %(rpm_id)s)",
-            {
-                "archive_id": 1003,
-                "rpm_id": 1000
-            },
-            {}
-        ],
-        [
-            "INSERT INTO archive_rpm_components (archive_id, rpm_id) VALUES (%(archive_id)s, %(rpm_id)s)",
-            {
-                "archive_id": 1003,
-                "rpm_id": 1001
-            },
-            {}
-        ],
-        [
-            "INSERT INTO archive_rpm_components (archive_id, rpm_id) VALUES (%(archive_id)s, %(rpm_id)s)",
-            {
-                "archive_id": 1003,
-                "rpm_id": 1002
-            },
-            {}
-        ],
-        [
-            "INSERT INTO archive_rpm_components (archive_id, rpm_id) VALUES (%(archive_id)s, %(rpm_id)s)",
-            {
-                "archive_id": 1005,
-                "rpm_id": 1000
-            },
-            {}
-        ],
-        [
-            "INSERT INTO archive_rpm_components (archive_id, rpm_id) VALUES (%(archive_id)s, %(rpm_id)s)",
-            {
-                "archive_id": 1005,
-                "rpm_id": 1001
-            },
-            {}
-        ],
-        [
-            "INSERT INTO archive_rpm_components (archive_id, rpm_id) VALUES (%(archive_id)s, %(rpm_id)s)",
-            {
-                "archive_id": 1005,
-                "rpm_id": 1002
-            },
-            {}
+            "INSERT INTO archive_rpm_components (archive_id, rpm_id) VALUES (%(archive_id0)s, %(rpm_id0)s), (%(archive_id1)s, %(rpm_id1)s), (%(archive_id2)s, %(rpm_id2)s), (%(archive_id3)s, %(rpm_id3)s), (%(archive_id4)s, %(rpm_id4)s), (%(archive_id5)s, %(rpm_id5)s), (%(archive_id6)s, %(rpm_id6)s), (%(archive_id7)s, %(rpm_id7)s), (%(archive_id8)s, %(rpm_id8)s)",
+              {"archive_id0": 1002,
+               "archive_id1": 1002,
+               "archive_id2": 1002,
+               "archive_id3": 1003,
+               "archive_id4": 1003,
+               "archive_id5": 1003,
+               "archive_id6": 1005,
+               "archive_id7": 1005,
+               "archive_id8": 1005,
+               "rpm_id0": 1000,
+               "rpm_id1": 1001,
+               "rpm_id2": 1002,
+               "rpm_id3": 1000,
+               "rpm_id4": 1001,
+               "rpm_id5": 1002,
+               "rpm_id6": 1000,
+               "rpm_id7": 1001,
+               "rpm_id8": 1002}
         ]
     ],
     "updates": [

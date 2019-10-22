@@ -6446,16 +6446,16 @@ class CG_Importer(object):
         rpmlist = fileinfo['hub.rpmlist']
         archives = fileinfo['hub.archives']
 
-        insert = InsertProcessor('archive_rpm_components')
-        insert.set(archive_id=archive_id)
-        for rpminfo in rpmlist:
-            insert.set(rpm_id=rpminfo['id'])
+        if rpmlist:
+            insert = BulkInsertProcessor('archive_rpm_components')
+            for rpminfo in rpmlist:
+                insert.set(archive_id=archive_id, rpm_id=rpminfo['id'])
             insert.execute()
 
-        insert = InsertProcessor('archive_components')
-        insert.set(archive_id=archive_id)
-        for archiveinfo in archives:
-            insert.set(component_id=archiveinfo['id'])
+        if archives:
+            insert = BulkInsertProcessor('archive_components')
+            for archiveinfo in archives:
+                insert.set(archive_id=archive_id, component_id=archiveinfo['id'])
             insert.execute()
 
 
@@ -8348,6 +8348,74 @@ def _fix_extra_field(row):
     return row
 
 
+class BulkInsertProcessor(object):
+    def __init__(self, table, data=None, columns=None, strict=True):
+        """Do bulk inserts - it has some limitations compared to
+        InsertProcessor (no rawset, dup_check).
+
+        set() is replaced with set_record() to avoid confusion
+
+        table   - name of the table
+        data    - list of dict per record
+        columns - list/set of names of used columns - makes sense
+                  mainly with strict=True
+        strict  - all records must contain values for all columns, if
+        it is False, missing values will be inserted as NULLs
+        """
+
+        self.table = table
+        self.data = []
+        self.prepared_data = {}
+        if columns is None:
+            self.columns = set()
+        else:
+            self.columns = set(columns)
+        if data is not None:
+            self.data = data
+            for row in data:
+                self.columns |= set(row.keys())
+        self.strict = strict
+
+    def __str__(self):
+        if not self.data:
+            return "-- incomplete update: no assigns"
+        parts = ['INSERT INTO %s ' % self.table]
+        columns = sorted(self.columns)
+        parts.append("(%s) " % ', '.join(columns))
+
+        self.prepared_data = {}
+        values = []
+        i = 0
+        for row in self.data:
+            row_values = []
+            for key in columns:
+                if key in row:
+                    row_key = '%s%d' % (key, i)
+                    row_values.append("%%(%s)s" % row_key)
+                    self.prepared_data[row_key] = row[key]
+                elif self.strict:
+                    raise koji.GenericError("Missing value %s in BulkInsert" % key)
+                else:
+                    row_values.append("NULL")
+            values.append("(%s)" % ', '.join(row_values))
+            i += 1
+        parts.append("VALUES %s" % ', '.join(values))
+        return ''.join(parts)
+
+    def __repr__(self):
+        return "<BulkInsertProcessor: %r>" % vars(self)
+
+    def set_record(self, **kwargs):
+        """Set whole record via keyword args"""
+        if not kwargs:
+            raise koji.GenericError("Missing values in BulkInsert.set_record")
+        self.data.append(kwargs)
+        self.columns |= set(kwargs.keys())
+
+    def execute(self):
+        return _dml(str(self), self.prepared_data)
+
+
 class InsertProcessor(object):
     """Build an insert statement
 
@@ -9438,16 +9506,16 @@ def importImageInternal(task_id, build_id, imgdata):
         rpm_ids.append(data['id'])
 
     # associate those RPMs with the image
-    insert = InsertProcessor('archive_rpm_components')
+    insert = BulkInsertProcessor('archive_rpm_components')
     for archive in archives:
         logger.info('working on archive %s', archive)
         if archive['filename'].endswith('xml'):
             continue
-        insert.set(archive_id = archive['id'])
         logger.info('associating installed rpms with %s', archive['id'])
         for rpm_id in rpm_ids:
-            insert.set(rpm_id = rpm_id)
-            insert.execute()
+            insert.set_record(archive_id=archive['id'], rpm_id=rpm_id)
+    if insert.data:
+        insert.execute()
 
     koji.plugin.run_callbacks('postImport', type='image', image=imgdata,
                               build=build_info, fullpath=fullpath)
@@ -12421,6 +12489,7 @@ class BuildRoot(object):
     def _setList(self, rpmlist, update=False):
         """Set or update the list of rpms in a buildroot"""
 
+        update = bool(update)
         if self.id is None:
             raise koji.GenericError("buildroot not specified")
         if update:
@@ -12441,11 +12510,11 @@ class BuildRoot(object):
         #we sort to try to avoid deadlock issues
         rpm_ids.sort()
 
-        # actually do the inserts
-        insert = InsertProcessor('buildroot_listing')
-        insert.set(buildroot_id=self.id, is_update=bool(update))
-        for rpm_id in rpm_ids:
-            insert.set(rpm_id=rpm_id)
+        # actually do the inserts (in bulk)
+        if rpm_ids:
+            insert = BulkInsertProcessor(table='buildroot_listing')
+            for rpm_id in rpm_ids:
+                insert.set_record(buildroot_id=self.id, rpm_id=rpm_id, is_update=update)
             insert.execute()
 
     def setList(self, rpmlist):
@@ -12490,6 +12559,7 @@ class BuildRoot(object):
         If False, they dependencies required to setup the build environment.
         """
 
+        project = bool(project)
         if self.is_standard:
             if not (context.opts.get('EnableMaven') or context.opts.get('EnableWin')):
                 raise koji.GenericError("non-rpm support is not enabled")
@@ -12498,21 +12568,25 @@ class BuildRoot(object):
         archives = set([r['id'] for r in archives])
         current = set([r['id'] for r in self.getArchiveList()])
         new_archives = archives.difference(current)
-        insert = InsertProcessor('buildroot_archives')
-        insert.set(buildroot_id=self.id, project_dep=bool(project))
-        for archive_id in sorted(new_archives):
-            insert.set(archive_id=archive_id)
+
+        if new_archives:
+            insert = BulkInsertProcessor('buildroot_archives')
+            for archive_id in sorted(new_archives):
+                insert.set_record(buildroot_id=self.id,
+                                  project_dep=project,
+                                  archive_id=archive_id)
             insert.execute()
 
     def setTools(self, tools):
         """Set tools info for buildroot"""
 
-        insert = InsertProcessor('buildroot_tools_info')
-        insert.set(buildroot_id=self.id)
+        if not tools:
+            return
+
+        insert = BulkInsertProcessor('buildroot_tools_info')
         for tool in tools:
-            insert.set(tool=tool['name'])
-            insert.set(version=tool['version'])
-            insert.execute()
+            insert.set_record(buildroot_id=self.id, tool=tool['name'], version=tool['version'])
+        insert.execute()
 
 
 class Host(object):

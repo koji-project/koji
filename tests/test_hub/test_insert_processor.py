@@ -5,6 +5,7 @@ try:
 except ImportError:
     import unittest
 
+import koji
 import kojihub
 
 
@@ -91,3 +92,80 @@ class TestInsertProcessor(unittest.TestCase):
         actual = str(proc)
         expected = "INSERT INTO sometable (foo) VALUES (('bar'))"  # raw data
         self.assertEquals(actual, expected)
+
+
+class TestBulkInsertProcessor(unittest.TestCase):
+    def test_basic_instantiation(self):
+        proc = kojihub.BulkInsertProcessor('sometable')
+        actual = str(proc)
+        expected = '-- incomplete update: no assigns'
+        self.assertEquals(actual, expected)
+
+    def test_to_string_with_single_row(self):
+        proc = kojihub.BulkInsertProcessor('sometable', data=[{'foo': 'bar'}])
+        actual = str(proc)
+        expected = 'INSERT INTO sometable (foo) VALUES (%(foo0)s)'
+        self.assertEquals(actual, expected)
+
+        proc = kojihub.BulkInsertProcessor('sometable')
+        proc.set_record(foo='bar')
+        actual = str(proc)
+        self.assertEquals(actual, expected)
+
+    @mock.patch('kojihub.context')
+    def test_simple_execution(self, context):
+        cursor = mock.MagicMock()
+        context.cnx.cursor.return_value = cursor
+        proc = kojihub.BulkInsertProcessor('sometable', data=[{'foo': 'bar'}])
+        proc.execute()
+        cursor.execute.assert_called_once_with(
+            'INSERT INTO sometable (foo) VALUES (%(foo0)s)',
+            {'foo0': 'bar'},
+        )
+
+        cursor.reset_mock()
+        proc = kojihub.BulkInsertProcessor('sometable')
+        proc.set_record(foo='bar')
+        proc.execute()
+        cursor.execute.assert_called_once_with(
+            'INSERT INTO sometable (foo) VALUES (%(foo0)s)',
+            {'foo0': 'bar'},
+        )
+
+    @mock.patch('kojihub.context')
+    def test_bulk_execution(self, context):
+        cursor = mock.MagicMock()
+        context.cnx.cursor.return_value = cursor
+
+        proc = kojihub.BulkInsertProcessor('sometable', data=[{'foo': 'bar1'}])
+        proc.set_record(foo='bar2')
+        proc.set_record(foo='bar3')
+        proc.execute()
+        cursor.execute.assert_called_once_with(
+            'INSERT INTO sometable (foo) VALUES (%(foo0)s), (%(foo1)s), (%(foo2)s)',
+            {'foo0': 'bar1', 'foo1': 'bar2', 'foo2': 'bar3'},
+        )
+
+    def test_missing_values(self):
+        proc = kojihub.BulkInsertProcessor('sometable')
+        proc.set_record(foo='bar')
+        proc.set_record(foo2='bar2')
+        with self.assertRaises(koji.GenericError) as cm:
+            str(proc)
+        self.assertEquals(cm.exception.args[0], 'Missing value foo2 in BulkInsert')
+
+    def test_missing_values_nostrict(self):
+        proc = kojihub.BulkInsertProcessor('sometable', strict=False)
+        proc.set_record(foo='bar')
+        proc.set_record(foo2='bar2')
+        actual = str(proc)
+        expected = 'INSERT INTO sometable (foo, foo2) VALUES (%(foo0)s, NULL), (NULL, %(foo21)s)'
+        self.assertEquals(actual, expected)
+
+    def test_missing_values_explicit_columns(self):
+        proc = kojihub.BulkInsertProcessor('sometable', strict=True, columns=['foo', 'foo2'])
+        proc.set_record(foo='bar')
+        with self.assertRaises(koji.GenericError) as cm:
+            str(proc)
+        self.assertEquals(cm.exception.args[0], 'Missing value foo2 in BulkInsert')
+
