@@ -5,7 +5,7 @@ Koji 1.16.0 Release notes
 Migrating from Koji 1.15
 ------------------------
 
-For details on migrating see :doc:`migrating_to_1.16`
+For details on migrating see :doc:`../migrations/migrating_to_1.16`
 
 
 
@@ -14,7 +14,7 @@ Security Fixes
 
 **CVE-2018-1002150 - distRepoMove missing access check**
 
-This release includes the fix for :doc:`CVE-2018-1002150`.
+This release includes the fix for :doc:`../CVEs/CVE-2018-1002150`.
 
 
 Client Changes
@@ -72,7 +72,7 @@ honored in all cases.
 The old ``koji.ssl`` module has been removed, and the ``use_old_ssl`` option
 has been removed from client code.
 
-Because these files (which were originally from 
+Because these files (which were originally from
 `Plague <https://fedoraproject.org/wiki/Plague>`_) were the only parts
 of Koji that were licensed as GPLv2+, Koji is now simply licensed as
 LGPLv2.

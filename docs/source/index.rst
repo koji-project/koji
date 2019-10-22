@@ -27,9 +27,9 @@ Contents
     external_repo_server_bootstrap
     image_build
     misc
-    release_notes
-    migrations
-    CVEs
+    release_notes/release_notes
+    migrations/migrations
+    CVEs/CVEs
     runs_here
     server_bootstrap
     server_howto

@@ -4,7 +4,7 @@ Koji 1.14 Release Notes
 Migrating from Koji 1.13
 ------------------------
 
-For details on migrating see :doc:`migrating_to_1.14`
+For details on migrating see :doc:`../migrations/migrating_to_1.14`
 
 
 Client Changes
@@ -241,7 +241,7 @@ Dropped mod_python support
 Koji no longer supports mod_python. This option has been deprecated since
 mod_wsgi support was added in version 1.7.0.
 
-See also: :doc:`migrating_to_1.7`
+See also: :doc:`../migrations/migrating_to_1.7`
 
 
 Large integer support

@@ -82,4 +82,3 @@ each package. Now, if the value is a positive integer N, it will return the N
 latest builds for each package. The behavior is unchanged for other values.
 
 New rpc calls: ``chainMaven``, ``buildImageIndirection``, and ``mergeScratch``
-

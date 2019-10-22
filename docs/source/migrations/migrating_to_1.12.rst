@@ -48,7 +48,7 @@ Configuration
 -------------
 
 The only configuration changes are for the ``save-failed-tree`` plugins (hub
-and builder). Each has its own configuration file. See :doc:`plugins`
+and builder). Each has its own configuration file. See :doc:`../plugins`
 
 The hub accepts a new ``CheckClientIP`` option (default True) to indicate
 whether authentication credentials should be tied to the client's IP address.

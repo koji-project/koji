@@ -2,7 +2,7 @@ Koji 1.16.2 Release Notes
 =========================
 
 Koji 1.16.2 is a bugfix release for Koji 1.16.
-The purpose of this release is address  :doc:`CVE-2018-1002161`.
+The purpose of this release is address  :doc:`../CVEs/CVE-2018-1002161`.
 
 See also:
 

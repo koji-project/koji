@@ -19,4 +19,4 @@ Release Notes
 
 For releases before 1.13, see the migration guides:
 
-:doc:`migrations`
+:doc:`../migrations/migrations`
