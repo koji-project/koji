@@ -83,11 +83,11 @@ ALTER TABLE content_generator ALTER COLUMN name SET NOT NULL;
 
 
 -- add all basic permissions
-INSERT INTO permissions (name) VALUES ('dist-repo') ON CONFLICT DO NOTHING;
-INSERT INTO permissions (name) VALUES ('host') ON CONFLICT DO NOTHING;
-INSERT INTO permissions (name) VALUES ('image-import') ON CONFLICT DO NOTHING;
-INSERT INTO permissions (name) VALUES ('sign') ON CONFLICT DO NOTHING;
-INSERT INTO permissions (name) VALUES ('tag') ON CONFLICT DO NOTHING;
-INSERT INTO permissions (name) VALUES ('target') ON CONFLICT DO NOTHING;
+INSERT INTO permissions (name) SELECT 'dist-repo' WHERE NOT EXISTS (SELECT 1 FROM permissions WHERE name = 'dist-repo');
+INSERT INTO permissions (name) SELECT 'host' WHERE NOT EXISTS (SELECT 1 FROM permissions WHERE name = 'host');
+INSERT INTO permissions (name) SELECT 'image-import' WHERE NOT EXISTS (SELECT 1 FROM permissions WHERE name = 'image-import');
+INSERT INTO permissions (name) SELECT 'sign' WHERE NOT EXISTS (SELECT 1 FROM permissions WHERE name = 'sign');
+INSERT INTO permissions (name) SELECT 'tag' WHERE NOT EXISTS (SELECT 1 FROM permissions WHERE name = 'tag');
+INSERT INTO permissions (name) SELECT 'target' WHERE NOT EXISTS (SELECT 1 FROM permissions WHERE name = 'target');
 
 COMMIT;
