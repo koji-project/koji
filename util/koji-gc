@@ -224,7 +224,7 @@ def check_tag(name):
     """
     if options.ignore_tags:
         for pattern in options.ignore_tags:
-            if fnmatch.fnmatch(name, options.tag_filter):
+            if fnmatch.fnmatch(name, pattern):
                 return False
     if options.tag_filter:
         for pattern in options.tag_filter:
