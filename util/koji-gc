@@ -446,21 +446,21 @@ def handle_trash():
             continue
         #XXX - this is more data than we need
         #      also, this call takes waaaay longer than it should
-        if refs['tags']:
+        if refs.get('tags'):
             # must have been tagged just now
             print("[%i/%i] Build is tagged [?]: %s" % (i, N, nvr))
             continue
-        if refs['rpms']:
+        if refs.get('rpms'):
             if options.debug:
                 print("[%i/%i] Build has %i rpm references: %s" % (i, N, len(refs['rpms']), nvr))
                 #pprint.pprint(refs['rpms'])
             continue
-        if refs['archives']:
+        if refs.get('archives'):
             if options.debug:
                 print("[%i/%i] Build has %i archive references: %s" % (i, N, len(refs['archives']), nvr))
                 #pprint.pprint(refs['archives'])
             continue
-        if refs['component_of']:
+        if refs.get('component_of'):
             if options.debug:
                 print("[%i/%i] Build is a component of archives: %s" % (i, N, nvr))
             continue
