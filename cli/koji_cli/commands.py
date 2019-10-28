@@ -64,8 +64,8 @@ def handle_add_group(goptions, session, args):
     group = args[1]
 
     activate_session(session, goptions)
-    if not session.hasPerm('admin'):
-        print("This action requires admin privileges")
+    if not (session.hasPerm('admin') or session.hasPerm('tag')):
+        print("This action requires tag or admin privileges")
         return 1
 
     dsttag = session.getTag(tag)
@@ -95,8 +95,8 @@ def handle_block_group(goptions, session, args):
     group = args[1]
 
     activate_session(session, goptions)
-    if not session.hasPerm('admin'):
-        print("This action requires admin privileges")
+    if not (session.hasPerm('admin') or session.hasPerm('tag')):
+        print("This action requires tag or admin privileges")
         return 1
 
     dsttag = session.getTag(tag)
@@ -3397,8 +3397,8 @@ def handle_clone_tag(goptions, session, args):
         assert False  # pragma: no cover
     activate_session(session, goptions)
 
-    if not session.hasPerm('admin') and not options.test:
-        parser.error(_("This action requires admin privileges"))
+    if not options.test and not (session.hasPerm('admin') or session.hasPerm('tag')):
+        parser.error(_("This action requires tag or admin privileges"))
 
     if args[0] == args[1]:
         parser.error(_('Source and destination tags must be different.'))
@@ -3850,8 +3850,8 @@ def handle_add_target(goptions, session, args):
         #most targets have the same name as their destination
         dest_tag = name
     activate_session(session, goptions)
-    if not session.hasPerm('admin'):
-        print("This action requires admin privileges")
+    if not (session.hasPerm('admin') or session.hasPerm('target')):
+        print("This action requires target or admin privileges")
         return 1
 
     chkbuildtag = session.getTag(build_tag)
@@ -3885,8 +3885,8 @@ def handle_edit_target(goptions, session, args):
         assert False  # pragma: no cover
     activate_session(session, goptions)
 
-    if not session.hasPerm('admin'):
-        print("This action requires admin privileges")
+    if not (session.hasPerm('admin') or session.hasPerm('target')):
+        print("This action requires target or admin privileges")
         return
 
     targetInfo = session.getBuildTarget(args[0])
@@ -3928,8 +3928,8 @@ def handle_remove_target(goptions, session, args):
         assert False  # pragma: no cover
     activate_session(session, goptions)
 
-    if not session.hasPerm('admin'):
-        print("This action requires admin privileges")
+    if not (session.hasPerm('admin') or session.hasPerm('target')):
+        print("This action requires target or admin privileges")
         return
 
     target = args[0]
@@ -3953,8 +3953,8 @@ def handle_remove_tag(goptions, session, args):
         assert False  # pragma: no cover
     activate_session(session, goptions)
 
-    if not session.hasPerm('admin'):
-        print("This action requires admin privileges")
+    if not (session.hasPerm('admin') or session.hasPerm('tag')):
+        print("This action requires tag or admin privileges")
         return
 
     tag = args[0]
@@ -4953,8 +4953,8 @@ def handle_add_tag(goptions, session, args):
         parser.error(_("Please specify a name for the tag"))
         assert False  # pragma: no cover
     activate_session(session, goptions)
-    if not session.hasPerm('admin'):
-        print("This action requires admin privileges")
+    if not (session.hasPerm('admin') or session.hasPerm('tag')):
+        print("This action requires tag or admin privileges")
         return
     opts = {}
     if options.parent:
