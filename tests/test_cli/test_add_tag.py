@@ -44,7 +44,7 @@ class TestAddTag(utils.CliTestCase):
             activate_session=None)
 
         # Case 2. not admin account
-        expected = "This action requires admin privileges\n"
+        expected = "This action requires tag or admin privileges\n"
         session.hasPerm.return_value = None
         handle_add_tag(options, session, ['test-tag'])
         self.assert_console_message(stdout, expected)
