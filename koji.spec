@@ -81,7 +81,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.18.1
+Version: 1.19.0
 Release: %{release}%{?dist}
 License: LGPLv2 and GPLv2+
 # the included arch lib from yum's rpmUtils is GPLv2+
@@ -727,6 +727,70 @@ fi
 %endif
 
 %changelog
+* Wed Oct  30 2019 Brendan Reilly <breilly at redhat.com> - 1.19.0-1
+- PR#1713: cli: fix typo in edit-user cmd
+- PR#1662: CGUninitBuild for cancelling CG reservations
+- PR#1681: add all used permissions to db
+- PR#1702: fix log message to show package name
+- PR#1682: mostly only mock exit code 10 ends in build.log
+- PR#1694: doc: change user creating sql for kerberos auth
+- PR#1706: fix test for RHEL6
+- PR#1701: fix user operations typos
+- PR#1296: extract read_config_files util for config parsing
+- PR#1670: verifyChecksum fails for non-output files
+- PR#1492: bundle db maintenance script to hub
+- PR#1160: hub: new listCGs RPC
+- PR#1120: Show inheritance flags in list-tag-inheritance output
+- PR#1683: in f30+ python-devel defaults to python3
+- PR#1685: Tag permission can be used for un/tagBuildBypass
+- PR#902: Added editUser api call
+- PR#1684: use preferred arch if there is more options
+- PR#1700: README: fix bullet indentation
+- PR#1159: enforce unique content generator names in database
+- PR#1699: remove references to PythonOption
+- PR#923: Remove Groups CLI Call
+- PR#1696: fix typo in createUser
+- PR#1419: checking kerberos prinicipal instead of username in GSSAPI authentication
+- PR#1648: support multiple realms by kerberos auth
+- PR#1657: Use bytes for debug string
+- PR#1068: hub: [getRPMFile] add strict behavior
+- PR#1631: check options for list-signed
+- PR#1688: clarify fixed/affected versions in cve announcement
+- PR#1687: Docs updates for CVE-2019-17109
+- PR#1686: Fix for CVE-2019-17109
+- PR#1680: drop unused host.repoAddRPM call
+- PR#1666: Fix typo preventing vm builds
+- PR#1677: docs for build.extra.source
+- PR#1675: Subselect gives better performance
+- PR#1642: Handle sys.exc_clear in Python 3
+- PR#1157: cli: [make-task] raise readable error when no args
+- PR#1678: swapped values in message
+- PR#1676: Made difference between Builds and Tags sections more clear
+- PR#1173: hub: [groupListRemove] raise Error when no group for tag
+- PR#1197: [lib] ensuredir: normalize directory and don't throw error when dir exists
+- PR#1244: hub: add missing package list check
+- PR#1523: builder: log insufficent disk space location
+- PR#1616: docs/schema-upgrade-1.18-1.19.sql/schema.sql: additional CoreOS artifact types.
+- PR#1643: fix schema.sql introduced by moving owner from tag_packages to another table
+- PR#1589: query builds per chunks in prune-signed-builds
+- PR#1653: Allow ClientSession objects to get cleaned up by the garbage collector
+- PR#1473: move tag/package owners to separate table
+- PR#1430: koji-gc: Added basic email template
+- PR#1633: Fix lookup_name usage + tests
+- PR#1627: Don't allow archive imports that don't match build type
+- PR#1618: write binary data to ks file
+- PR#1623: Extend help message to clarify clone-tag usage
+- PR#1621: rework update of reserved builds
+- PR#1508: fix btype lookup in list_archive_files()
+- PR#1223: Unit test download_file
+- PR#1613: Allow builder to attempt krb if gssapi is available
+- PR#1612: use right top limit
+- PR#1595: enable dnf_warning in mock config
+- PR#1458: remove deprecated koji.util.relpath
+- PR#1511: remove deprecated BuildRoot.uploadDir()
+- PR#1512: remove deprecated koji_cli.lib_unique_path
+- PR#1490: deprecate sha1/md5_constructor from koji.util
+
 * Fri Aug  9 2019 Mike McLean <mikem at redhat.com> - 1.18.0-1
 - PR#1606: pull owner from correct place
 - PR#1602: copy updated policy for reserved cg builds
