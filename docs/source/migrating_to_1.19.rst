@@ -25,9 +25,6 @@ database.
     # psql koji koji  </usr/share/doc/koji/docs/schema-upgrade-1.18-1.19.sql
 
 
-Note: postgresql > 9.4 is required to run this script.
-
-
 Other changes
 -------------
 
