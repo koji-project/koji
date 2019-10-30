@@ -2863,6 +2863,7 @@ def anon_handle_list_hosts(goptions, session, args):
     parser.add_option("--not-ready", action="store_false", dest="ready", help=_("Limit to not ready hosts"))
     parser.add_option("--enabled", action="store_true", help=_("Limit to enabled hosts"))
     parser.add_option("--not-enabled", action="store_false", dest="enabled", help=_("Limit to not enabled hosts"))
+    parser.add_option("--disabled", action="store_false", dest="enabled", help=_("Alias for --not-enabled"))
     parser.add_option("--quiet", action="store_true", default=goptions.quiet,
                 help=_("Do not print header information"))
     parser.add_option("--show-channels", action="store_true", help=_("Show host's channels"))
