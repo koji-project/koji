@@ -728,6 +728,7 @@ fi
 
 %changelog
 * Wed Oct  30 2019 Brendan Reilly <breilly at redhat.com> - 1.19.0-1
+= PR#1720: backward-compatible db conversion
 - PR#1713: cli: fix typo in edit-user cmd
 - PR#1662: CGUninitBuild for cancelling CG reservations
 - PR#1681: add all used permissions to db
