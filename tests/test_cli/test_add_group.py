@@ -129,12 +129,13 @@ class TestAddGroup(unittest.TestCase):
         # Run it and check immediate output
         rv = handle_add_group(options, session, arguments)
         actual = stdout.getvalue()
-        expected = 'This action requires admin privileges\n'
+        expected = 'This action requires tag or admin privileges\n'
         self.assertMultiLineEqual(actual, expected)
 
         # Finally, assert that things were called as we expected.
         activate_session_mock.assert_called_once_with(session, options)
-        session.hasPerm.assert_called_once_with('admin')
+        session.hasPerm.assert_has_calls([mock.call('admin'),
+                                          mock.call('tag')])
         session.getTag.assert_not_called()
         session.getTagGroups.assert_not_called()
         session.groupListAdd.assert_not_called()

@@ -123,6 +123,6 @@ class TestBlockGroup(utils.CliTestCase):
         session.hasPerm.return_value = False
         rv = handle_block_group(options, session, ['tag', 'grp'])
         self.assert_console_message(
-            stdout, 'This action requires admin privileges\n')
+            stdout, 'This action requires tag or admin privileges\n')
         self.assertEqual(rv, 1)
         activate_session_mock.assert_called_with(session, options)
