@@ -6991,6 +6991,10 @@ def handle_dist_repo(options, session, args):
         help=_('Do not wait for the task to complete'))
     parser.add_option('--skip-missing-signatures', action='store_true', default=False,
         help=_('Skip RPMs not signed with the desired key(s)'))
+    parser.add_option('--zck', action='store_true', default=False,
+        help=_('Generate zchunk files as well as the standard repodata'))
+    parser.add_option('--zck-dict-dir', action='store', default=None,
+        help=_('Directory containing compression dictionaries for use by zchunk (on builder)'))
     task_opts, args = parser.parse_args(args)
     if len(args) < 1:
         parser.error(_('You must provide a tag to generate the repo from'))
@@ -7070,7 +7074,9 @@ def handle_dist_repo(options, session, args):
         'multilib': task_opts.multilib,
         'split_debuginfo': task_opts.split_debuginfo,
         'skip_missing_signatures': task_opts.skip_missing_signatures,
-        'allow_missing_signatures': task_opts.allow_missing_signatures
+        'allow_missing_signatures': task_opts.allow_missing_signatures,
+        'zck': task_opts.zck,
+        'zck_dict_dir': task_opts.zck_dict_dir,
     }
     task_id = session.distRepo(tag, keys, **opts)
     print("Creating dist repo for tag " + tag)
