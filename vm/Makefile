@@ -7,7 +7,7 @@ _default:
 	@echo "nothing to make.  try make install"
 
 clean:
-	rm -f *.o *.so *.pyc *~ kojikamid
+	rm -f *.o *.so *.pyc *~ kojikamid kojikamidc kojivmdc
 
 kojikamid: kojikamid.py
 	bash fix_kojikamid.sh >kojikamid

@@ -12,7 +12,7 @@ _default:
 	@echo "nothing to make.  try make install"
 
 clean:
-	rm -f *.o *.so *.pyc *~
+	rm -f *.o *.so *.pyc *~ kojic
 
 install:
 	@if [ "$(DESTDIR)" = "" ]; then \

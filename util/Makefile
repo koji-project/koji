@@ -7,6 +7,7 @@ _default:
 
 clean:
 	rm -f *.o *.so *.pyc *~
+	for b in $(BINFILES); do rm -f $${b}c; done
 
 _install:
 	@if [ "$(DESTDIR)" = "" ]; then \
