@@ -39,6 +39,7 @@ def get_options():
     usage = _("%prog [options]")
     parser = optparse.OptionParser(usage=usage)
     parser.add_option("-c", "--config-file", metavar="FILE",
+                      default='/etc/koji-gc/koji-gc.conf',
                       help=_("use alternate configuration file"))
     parser.add_option("--keytab", help=_("specify a Kerberos keytab to use"))
     parser.add_option("--principal", help=_("specify a Kerberos principal to use"))
@@ -110,7 +111,7 @@ def get_options():
 
     defaults = parser.get_default_values()
 
-    cf = getattr(options, 'config_file', '/etc/koji-gc/koji-gc.conf')
+    cf = getattr(options, 'config_file')
     config = koji.read_config_files(cf)
 
     # List of values read from config file to update default parser values
