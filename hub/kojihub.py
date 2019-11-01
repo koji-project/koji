@@ -84,6 +84,10 @@ def log_error(msg):
     logger.error(msg)
 
 
+def xform_user_krb(entry):
+    entry['krb_principals'] = [x for x in entry['krb_principals'] if x is not None]
+    return entry
+
 class Task(object):
     """A task for the build hosts"""
 
@@ -8130,8 +8134,7 @@ def get_group_members(group):
     if not ginfo or ginfo['usertype'] != koji.USERTYPES['GROUP']:
         raise koji.GenericError("Not a group: %s" % group)
     group_id = ginfo['id']
-    columns = ('id', 'name', 'usertype', 'array_remove(array_agg(krb_principal)'
-                                         ', NULL)')
+    columns = ('id', 'name', 'usertype', 'array_agg(krb_principal)')
     aliases = ('id', 'name', 'usertype', 'krb_principals')
     joins = ['JOIN users ON user_groups.user_id = users.id',
              'LEFT JOIN user_krb_principals'
@@ -8145,7 +8148,8 @@ def get_group_members(group):
                            clauses=clauses,
                            values=locals(),
                            opts={'group': 'users.id'},
-                           enable_group=True)
+                           enable_group=True,
+                           transform=xform_user_krb)
     return query.iterate()
 
 def set_user_status(user, status):
@@ -11225,7 +11229,7 @@ class RootExports(object):
         If no users of the specified
         type exist, return an empty list."""
         fields = ('id', 'name', 'status', 'usertype',
-                  'array_remove(array_agg(krb_principal), NULL)')
+                  'array_agg(krb_principal)')
         aliases = ('id', 'name', 'status', 'usertype', 'krb_principals')
         joins = ('LEFT JOIN user_krb_principals'
                  ' ON users.id = user_krb_principals.user_id',)
@@ -11241,7 +11245,7 @@ class RootExports(object):
         query = QueryProcessor(columns=fields, aliases=aliases,
                                tables=('users',), joins=joins, clauses=clauses,
                                values=locals(), opts=queryOpts,
-                               enable_group=True)
+                               enable_group=True, transform=xform_user_krb)
         return query.execute()
 
     def getBuildConfig(self, tag, event=None):
