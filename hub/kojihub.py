@@ -1114,7 +1114,7 @@ def readPackageList(tagID=None, userID=None, pkgID=None, event=None, inherit=Fal
     JOIN package ON package.id = tag_packages.package_id
     JOIN tag_package_owners ON
         tag_packages.tag_id = tag_package_owners.tag_id AND
-        tag_packages.package_id = tag_packages.package_id
+        tag_packages.package_id = tag_package_owners.package_id
     JOIN users ON users.id = tag_package_owners.owner
     WHERE %(cond1)s AND %(cond2)s"""
     if tagID != None:
