@@ -66,7 +66,7 @@
 # If the definition isn't available for python3_pkgversion, define it
 %{?!python3_pkgversion:%global python3_pkgversion 3}
 
-%if 0%{?fedora} >= 21 || 0%{?rhel} >= 7
+%if 0%{?fedora} || 0%{?rhel} >= 7
 %global use_systemd 1
 %else
 %global use_systemd 0
@@ -118,14 +118,14 @@ BuildRequires: python2-devel
 %else
 BuildRequires: python-devel
 %endif
-%if 0%{?fedora} >= 25 || 0%{?rhel} >= 8
+%if 0%{?fedora} || 0%{?rhel} >= 8
 Requires: python2-rpm
 %else
 Requires: rpm-python
 %endif
 Requires: pyOpenSSL
 Requires: python-requests
-%if 0%{?fedora} >= 23 || 0%{?rhel} >= 7
+%if 0%{?fedora} || 0%{?rhel} >= 7
 Requires: python-requests-kerberos
 %else
 Requires: python-krbV >= 1.0.13
@@ -142,7 +142,7 @@ desc
 Summary: Build system tools python library
 %{?python_provide:%python_provide python%{python3_pkgversion}-%{name}}
 BuildRequires: python%{python3_pkgversion}-devel
-%if 0%{?fedora} >= 25 || 0%{?rhel} >= 8
+%if 0%{?fedora} || 0%{?rhel} >= 8
 Requires: python%{python3_pkgversion}-rpm
 %else
 Requires: rpm-python%{python3_pkgversion}
@@ -205,7 +205,7 @@ License: LGPLv2 and GPLv2
 # rpmdiff lib (from rpmlint) is GPLv2 (only)
 Requires: httpd
 Requires: mod_wsgi
-%if 0%{?fedora} >= 21 || 0%{?rhel} >= 7
+%if 0%{?fedora} || 0%{?rhel} >= 7
 Requires: mod_auth_gssapi
 %endif
 Requires: python-psycopg2
@@ -225,7 +225,7 @@ License: LGPLv2 and GPLv2
 # rpmdiff lib (from rpmlint) is GPLv2 (only)
 Requires: httpd
 Requires: python%{python3_pkgversion}-mod_wsgi
-%if 0%{?fedora} >= 21 || 0%{?rhel} >= 7
+%if 0%{?fedora} || 0%{?rhel} >= 7
 Requires: mod_auth_gssapi
 %endif
 Requires: python%{python3_pkgversion}-psycopg2
@@ -405,7 +405,7 @@ License: LGPLv2
 %{?python_provide:%python_provide python2-%{name}-web}
 Requires: httpd
 Requires: mod_wsgi
-%if 0%{?fedora} >= 21 || 0%{?rhel} >= 7
+%if 0%{?fedora} || 0%{?rhel} >= 7
 Requires: mod_auth_gssapi
 %else
 Requires: mod_auth_kerb
@@ -487,7 +487,7 @@ sed -i 's|#!/usr/bin/python2|#!/usr/bin/python3|' $RPM_BUILD_ROOT/usr/bin/koji
 %endif
 %endif
 
-%if 0%{?fedora} >= 28
+%if 0%{?fedora}
 # handle extra byte compilation
 extra_dirs='
     %{_prefix}/lib/koji-builder-plugins
