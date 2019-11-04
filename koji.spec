@@ -499,7 +499,6 @@ done
 rm -rf $RPM_BUILD_ROOT
 
 %files
-%defattr(-,root,root)
 %{_bindir}/*
 %config(noreplace) /etc/koji.conf
 %dir /etc/koji.conf.d
@@ -507,7 +506,6 @@ rm -rf $RPM_BUILD_ROOT
 
 %if 0%{py2_support}
 %files -n python2-%{name}
-%defattr(-,root,root)
 %{python2_sitelib}/%{name}
 %{python2_sitelib}/koji_cli
 %endif
@@ -520,7 +518,6 @@ rm -rf $RPM_BUILD_ROOT
 
 %if 0%{py2_support}
 %files -n python2-%{name}-cli-plugins
-%defattr(-,root,root)
 %{python2_sitelib}/koji_cli_plugins
 # we don't have config files for default plugins yet
 #%%dir %%{_sysconfdir}/koji/plugins
@@ -529,7 +526,6 @@ rm -rf $RPM_BUILD_ROOT
 
 %if 0%{py3_support}
 %files -n python%{python3_pkgversion}-%{name}-cli-plugins
-%defattr(-,root,root)
 %{python3_sitelib}/koji_cli_plugins
 # we don't have config files for default plugins yet
 #%%dir %%{_sysconfdir}/koji/plugins
@@ -537,7 +533,6 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %files hub
-%defattr(-,root,root)
 %config(noreplace) /etc/httpd/conf.d/kojihub.conf
 %dir /etc/koji-hub
 %config(noreplace) /etc/koji-hub/hub.conf
@@ -550,13 +545,11 @@ rm -rf $RPM_BUILD_ROOT
 
 %if 0%{py2_support} > 1
 %files -n python2-%{name}-hub
-%defattr(-,root,root)
 %{_datadir}/koji-hub/*.py*
 %endif
 
 %if 0%{py3_support} > 1
 %files -n python%{python3_pkgversion}-%{name}-hub
-%defattr(-,root,root)
 %{_datadir}/koji-hub/*.py
 %{_datadir}/koji-hub/__pycache__
 %endif
@@ -567,19 +560,16 @@ rm -rf $RPM_BUILD_ROOT
 
 %if 0%{py2_support} > 1
 %files -n python2-%{name}-hub-plugins
-%defattr(-,root,root)
 %{_prefix}/lib/koji-hub-plugins/*.py*
 %endif
 
 %if 0%{py3_support} > 1
 %files -n python%{python3_pkgversion}-%{name}-hub-plugins
-%defattr(-,root,root)
 %{_prefix}/lib/koji-hub-plugins/*.py
 %{_prefix}/lib/koji-hub-plugins/__pycache__
 %endif
 
 %files builder-plugins
-%defattr(-,root,root)
 %dir /etc/kojid/plugins
 %config(noreplace) /etc/kojid/plugins/*.conf
 %dir %{_prefix}/lib/koji-builder-plugins
@@ -589,7 +579,6 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %files utils
-%defattr(-,root,root)
 %{_sbindir}/kojira
 %if %{use_systemd}
 %{_unitdir}/kojira.service
@@ -608,7 +597,6 @@ rm -rf $RPM_BUILD_ROOT
 %config(noreplace) /etc/koji-shadow/koji-shadow.conf
 
 %files web
-%defattr(-,root,root)
 %dir /etc/kojiweb
 %config(noreplace) /etc/kojiweb/web.conf
 %config(noreplace) /etc/httpd/conf.d/kojiweb.conf
@@ -616,18 +604,15 @@ rm -rf $RPM_BUILD_ROOT
 
 %if 0%{py2_support} > 1
 %files -n python2-%{name}-web
-%defattr(-,root,root)
 %{_datadir}/koji-web
 %endif
 
 %if 0%{py3_support} > 1
 %files -n python%{python3_pkgversion}-%{name}-web
-%defattr(-,root,root)
 %{_datadir}/koji-web
 %endif
 
 %files builder
-%defattr(-,root,root)
 %{_sbindir}/kojid
 %dir %{_libexecdir}/kojid
 %{_libexecdir}/kojid/mergerepos
@@ -668,7 +653,6 @@ fi
 %endif
 
 %files vm
-%defattr(-,root,root)
 %{_sbindir}/kojivmd
 #dir %%{_datadir}/kojivmd
 %{_datadir}/kojivmd/kojikamid
