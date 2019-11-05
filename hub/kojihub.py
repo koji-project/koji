@@ -7582,23 +7582,6 @@ def untagged_builds(name=None, queryOpts=None):
                            opts=queryOpts)
     return query.iterate()
 
-def build_map():
-    """Map which builds were used in the buildroots of other builds
-
-    To be used for garbage collection
-    """
-    # find rpms whose buildroots we were in
-    st_complete = koji.BUILD_STATES['COMPLETE']
-    fields = ('used', 'built')
-    q = """SELECT DISTINCT used.id, built.id
-    FROM buildroot_listing
-        JOIN rpminfo AS r_used ON r_used.id = buildroot_listing.rpm_id
-        JOIN rpminfo AS r_built ON r_built.buildroot_id = buildroot_listing.buildroot_id
-        JOIN build AS used ON used.id = r_used.build_id
-        JOIN build AS built ON built.id = r_built.build_id
-    WHERE built.state = %(st_complete)i AND used.state =%(st_complete)i"""
-    return _multiRow(q, locals(), fields)
-
 
 def build_references(build_id, limit=None, lazy=False):
     """Returns references to a build
@@ -10123,7 +10106,6 @@ class RootExports(object):
     tagHistory = staticmethod(tag_history)
     queryHistory = staticmethod(query_history)
 
-    buildMap = staticmethod(build_map)
     deleteBuild = staticmethod(delete_build)
     def buildReferences(self, build, limit=None, lazy=False):
         return build_references(get_build(build, strict=True)['id'], limit, lazy)
