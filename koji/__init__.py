@@ -1776,7 +1776,7 @@ def read_config(profile_name, user_config=None):
                     result[name] = value
 
     # Check if the specified profile had a config specified
-    if configs and not got_conf:
+    if config.sections() and not got_conf:
         raise ConfigurationError("no configuration for profile name: %s" % profile_name)
 
     # special handling for cert defaults
