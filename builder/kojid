@@ -1605,7 +1605,8 @@ class BuildMavenTask(BaseBuildTask):
                 buildroot.expire()
                 raise koji.BuildrootError('error installing packages, %s' % buildroot._mockResult(rv, logfile='mock_output.log'))
 
-        if not os.path.exists('%s/usr/bin/mvn' % buildroot.rootdir()):
+        # existence of symlink should be sufficient
+        if not os.path.lexists('%s/usr/bin/mvn' % buildroot.rootdir()):
             raise koji.BuildError('/usr/bin/mvn was not found in the buildroot')
 
         scmdir = '%s/maven/build' % buildroot.rootdir()
