@@ -4,7 +4,6 @@ Documentation=https://pagure.io/docs/koji/
 
 [Timer]
 OnCalendar=daily
-Accuracy=1h
 Persistent=true
 
 [Install]
