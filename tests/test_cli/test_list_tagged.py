@@ -248,6 +248,6 @@ Options:
   --type=TYPE     Show builds of the given type only.  Currently supported
                   types: maven, win, image
   --event=EVENT#  query at event
-  --ts=TIMESTAMP  query at timestamp
+  --ts=TIMESTAMP  query at last event before timestamp
   --repo=REPO#    query at event for a repo
 """ % self.progname)

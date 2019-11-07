@@ -629,7 +629,7 @@ Options:
   --latest-only     Tag only the latest build of each package
   --inherit-builds  Include all builds inherited into the source tag into the
                     dest tag
-  --ts=TS           Clone tag at a specific timestamp
+  --ts=TIMESTAMP    Clone tag at last event before specific timestamp
   --event=EVENT     Clone tag at a specific event
   --repo=REPO       Clone tag at a specific repo event
   -v, --verbose     show changes

@@ -2483,7 +2483,7 @@ def anon_handle_list_tagged(goptions, session, args):
     parser.add_option("--sigs", action="store_true", help=_("Show signatures"))
     parser.add_option("--type", help=_("Show builds of the given type only.  Currently supported types: maven, win, image"))
     parser.add_option("--event", type='int', metavar="EVENT#", help=_("query at event"))
-    parser.add_option("--ts", type='int', metavar="TIMESTAMP", help=_("query at timestamp"))
+    parser.add_option("--ts", type='int', metavar="TIMESTAMP", help=_("query at last event before timestamp"))
     parser.add_option("--repo", type='int', metavar="REPO#", help=_("query at event for a repo"))
     (options, args) = parser.parse_args(args)
     if len(args) == 0:
@@ -2677,7 +2677,7 @@ def anon_handle_list_groups(goptions, session, args):
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--event", type='int', metavar="EVENT#", help=_("query at event"))
-    parser.add_option("--ts", type='int', metavar="TIMESTAMP", help=_("query at timestamp"))
+    parser.add_option("--ts", type='int', metavar="TIMESTAMP", help=_("query at last event before timestamp"))
     parser.add_option("--repo", type='int', metavar="REPO#", help=_("query at event for a repo"))
     parser.add_option("--show-blocked", action="store_true", dest="incl_blocked", help=_("Show blocked packages"))
     (options, args) = parser.parse_args(args)
@@ -2940,7 +2940,7 @@ def anon_handle_list_pkgs(goptions, session, args):
     parser.add_option("--show-blocked", action="store_true", help=_("Show blocked packages"))
     parser.add_option("--show-dups", action="store_true", help=_("Show superseded owners"))
     parser.add_option("--event", type='int', metavar="EVENT#", help=_("query at event"))
-    parser.add_option("--ts", type='int', metavar="TIMESTAMP", help=_("query at timestamp"))
+    parser.add_option("--ts", type='int', metavar="TIMESTAMP", help=_("query at last event before timestamp"))
     parser.add_option("--repo", type='int', metavar="REPO#", help=_("query at event for a repo"))
     (options, args) = parser.parse_args(args)
     if len(args) != 0:
@@ -3375,8 +3375,8 @@ def handle_clone_tag(goptions, session, args):
     parser.add_option('--inherit-builds', action='store_true',
             help=_("Include all builds inherited into the source tag into "
                    "the dest tag"))
-    parser.add_option('--ts', type='int',
-            help=_('Clone tag at a specific timestamp'))
+    parser.add_option('--ts', type='int', metavar="TIMESTAMP",
+            help=_('Clone tag at last event before specific timestamp'))
     parser.add_option('--event', type='int',
             help=_('Clone tag at a specific event'))
     parser.add_option('--repo', type='int',
@@ -4041,7 +4041,7 @@ def anon_handle_list_tag_inheritance(goptions, session, args):
     parser.add_option("--stop", help=_("Stop processing inheritance at this tag"))
     parser.add_option("--jump", help=_("Jump from one tag to another when processing inheritance"))
     parser.add_option("--event", type='int', metavar="EVENT#", help=_("query at event"))
-    parser.add_option("--ts", type='int', metavar="TIMESTAMP", help=_("query at timestamp"))
+    parser.add_option("--ts", type='int', metavar="TIMESTAMP", help=_("query at last event before timestamp"))
     parser.add_option("--repo", type='int', metavar="REPO#", help=_("query at event for a repo"))
     (options, args) = parser.parse_args(args)
     if len(args) != 1:
@@ -4847,7 +4847,7 @@ def anon_handle_taginfo(goptions, session, args):
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("--event", type='int', metavar="EVENT#", help=_("query at event"))
-    parser.add_option("--ts", type='int', metavar="TIMESTAMP", help=_("query at timestamp"))
+    parser.add_option("--ts", type='int', metavar="TIMESTAMP", help=_("query at last event before timestamp"))
     parser.add_option("--repo", type='int', metavar="REPO#", help=_("query at event for a repo"))
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
@@ -5379,7 +5379,7 @@ def anon_handle_list_external_repos(goptions, session, args):
     parser.add_option("--used", action='store_true', help=_("List which tags use the repo(s)"))
     parser.add_option("--inherit", action='store_true', help=_("Follow tag inheritance when selecting by tag"))
     parser.add_option("--event", type='int', metavar="EVENT#", help=_("Query at event"))
-    parser.add_option("--ts", type='int', metavar="TIMESTAMP", help=_("Query at timestamp"))
+    parser.add_option("--ts", type='int', metavar="TIMESTAMP", help=_("Query at last event before timestamp"))
     parser.add_option("--repo", type='int', metavar="REPO#",
                             help=_("Query at event corresponding to (nonexternal) repo"))
     parser.add_option("--quiet", action="store_true", default=goptions.quiet,
