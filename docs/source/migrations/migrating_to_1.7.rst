@@ -146,4 +146,3 @@ Web Themes
 Using the old method (httpd aliases for koji static content) should continue
 to work. For (brief) instructions on the new method, see the README file under
 koji-web/static/themes.
-

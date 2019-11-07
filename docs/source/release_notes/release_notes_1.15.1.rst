@@ -2,7 +2,7 @@ Koji 1.15.1 Release Notes
 =========================
 
 Koji 1.15.1 is a bugfix release for Koji 1.15. The most important change
-is the fix for :doc:`CVE-2018-1002150`.
+is the fix for :doc:`../CVEs/CVE-2018-1002150`.
 
 Please see: :doc:`release_notes_1.15`
 

@@ -5,7 +5,7 @@ Koji 1.17.0 Release notes
 Migrating from Koji 1.16
 ------------------------
 
-For details on migrating see :doc:`migrating_to_1.17`
+For details on migrating see :doc:`../migrations/migrating_to_1.17`
 
 
 
@@ -16,7 +16,7 @@ Security Fixes
 
 | PR: https://pagure.io/koji/pull-request/1274
 
-This release includes the fix for :doc:`CVE-2018-1002161`
+This release includes the fix for :doc:`../CVEs/CVE-2018-1002161`
 
 
 Client Changes

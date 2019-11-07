@@ -5,7 +5,7 @@ Koji 1.19.0 Release notes
 Migrating from Koji 1.18
 ------------------------
 
-For details on migrating see :doc:`migrating_to_1.19`
+For details on migrating see :doc:`../migrations/migrating_to_1.19`
 
 
 

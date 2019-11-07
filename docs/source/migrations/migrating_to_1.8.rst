@@ -123,4 +123,3 @@ Also the following kojira option has been removed:
 ::
 
     prune_batch_size
-

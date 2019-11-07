@@ -46,4 +46,4 @@ Other changes
 
 There are numerous other changes in 1.13 that should not have a direct impact
 on migration. For details see:
-:doc:`release_notes_1.13`
+:doc:`../release_notes/release_notes_1.13`

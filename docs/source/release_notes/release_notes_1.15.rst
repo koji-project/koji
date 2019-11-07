@@ -9,7 +9,7 @@ Updates
 Migrating from the previous release
 -----------------------------------
 
-For details on migrating see :doc:`migrating_to_1.15`
+For details on migrating see :doc:`../migrations/migrating_to_1.15`
 
 
 Client Changes
@@ -205,7 +205,7 @@ determine where a build should live. This allows admins to make rules like:
 
 The default policy places all builds on the default volume.
 
-See also: :doc:`volumes`
+See also: :doc:`../volumes`
 
 Messagebus plugin changes
 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -275,5 +275,3 @@ The deprecated ``importBuildInPlace`` call has been dropped.
 
 This call was an artifact of a particular bootstrap event that happened a long
 time ago. It was never really documented or recommended for use.
-
-

@@ -17,4 +17,4 @@ Other changes
 
 There are numerous other changes in 1.15 that should not have a direct impact
 on migration. For details see:
-:doc:`release_notes_1.15`
+:doc:`../release_notes/release_notes_1.15`

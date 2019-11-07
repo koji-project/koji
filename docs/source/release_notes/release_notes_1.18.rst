@@ -5,7 +5,7 @@ Koji 1.18.0 Release notes
 Migrating from Koji 1.17
 ------------------------
 
-For details on migrating see :doc:`migrating_to_1.18`
+For details on migrating see :doc:`../migrations/migrating_to_1.18`
 
 
 
@@ -95,7 +95,7 @@ With this new implementation:
 * method calls return a `VirtualCall` instance that can later be used to access the result
 * `MultiCallSession` can be used as a context manager, ensuring that the calls are executed
 
-Usage examples can be found in the :doc:`Writing Koji Code <writing_koji_code>`
+Usage examples can be found in the :doc:`Writing Koji Code <../writing_koji_code>`
 document.
 
 

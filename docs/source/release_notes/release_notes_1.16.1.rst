@@ -56,4 +56,3 @@ Issues fixed in 1.16.1
 
 - `Issue 945 <https://pagure.io/koji/issue/945>`_ --
   Koji build fail due to ambiguous python shebang
-
