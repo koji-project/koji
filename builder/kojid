@@ -6159,7 +6159,8 @@ def get_options():
                 'support_rpm_source_layout': True,
                 'yum_proxy': None,
                 'maven_repo_ignore': '*.md5 *.sha1 maven-metadata*.xml _maven.repositories '
-                                     'resolver-status.properties *.lastUpdated',
+                                     '_remote.repositories resolver-status.properties '
+                                     '*.lastUpdated',
                 'failed_buildroot_lifetime': 3600 * 4,
                 'rpmbuild_timeout': 3600 * 24,
                 'oz_install_timeout': 0,
