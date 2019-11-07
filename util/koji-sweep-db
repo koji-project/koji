@@ -81,6 +81,7 @@ if __name__ == "__main__":
                           port=opts.get("DBPort", None))
 
     conn = koji.db.connect()
+    conn.set_session(autocommit=True)
     cursor = conn.cursor()
 
     clean_sessions(cursor, options.vacuum)
