@@ -108,7 +108,7 @@ class TestBulkInsertProcessor(unittest.TestCase):
         self.assertEquals(actual, expected)
 
         proc = kojihub.BulkInsertProcessor('sometable')
-        proc.set_record(foo='bar')
+        proc.add_record(foo='bar')
         actual = str(proc)
         self.assertEquals(actual, expected)
 
@@ -125,7 +125,7 @@ class TestBulkInsertProcessor(unittest.TestCase):
 
         cursor.reset_mock()
         proc = kojihub.BulkInsertProcessor('sometable')
-        proc.set_record(foo='bar')
+        proc.add_record(foo='bar')
         proc.execute()
         cursor.execute.assert_called_once_with(
             'INSERT INTO sometable (foo) VALUES (%(foo0)s)',
@@ -138,8 +138,8 @@ class TestBulkInsertProcessor(unittest.TestCase):
         context.cnx.cursor.return_value = cursor
 
         proc = kojihub.BulkInsertProcessor('sometable', data=[{'foo': 'bar1'}])
-        proc.set_record(foo='bar2')
-        proc.set_record(foo='bar3')
+        proc.add_record(foo='bar2')
+        proc.add_record(foo='bar3')
         proc.execute()
         cursor.execute.assert_called_once_with(
             'INSERT INTO sometable (foo) VALUES (%(foo0)s), (%(foo1)s), (%(foo2)s)',
@@ -148,23 +148,23 @@ class TestBulkInsertProcessor(unittest.TestCase):
 
     def test_missing_values(self):
         proc = kojihub.BulkInsertProcessor('sometable')
-        proc.set_record(foo='bar')
-        proc.set_record(foo2='bar2')
+        proc.add_record(foo='bar')
+        proc.add_record(foo2='bar2')
         with self.assertRaises(koji.GenericError) as cm:
             str(proc)
         self.assertEquals(cm.exception.args[0], 'Missing value foo2 in BulkInsert')
 
     def test_missing_values_nostrict(self):
         proc = kojihub.BulkInsertProcessor('sometable', strict=False)
-        proc.set_record(foo='bar')
-        proc.set_record(foo2='bar2')
+        proc.add_record(foo='bar')
+        proc.add_record(foo2='bar2')
         actual = str(proc)
         expected = 'INSERT INTO sometable (foo, foo2) VALUES (%(foo0)s, NULL), (NULL, %(foo21)s)'
         self.assertEquals(actual, expected)
 
     def test_missing_values_explicit_columns(self):
         proc = kojihub.BulkInsertProcessor('sometable', strict=True, columns=['foo', 'foo2'])
-        proc.set_record(foo='bar')
+        proc.add_record(foo='bar')
         with self.assertRaises(koji.GenericError) as cm:
             str(proc)
         self.assertEquals(cm.exception.args[0], 'Missing value foo2 in BulkInsert')
