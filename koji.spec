@@ -81,7 +81,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.19.0
+Version: 1.19.1
 Release: %{release}%{?dist}
 License: LGPLv2 and GPLv2+
 # the included arch lib from yum's rpmUtils is GPLv2+
@@ -727,8 +727,13 @@ fi
 %endif
 
 %changelog
+* Fri Nov  8 2019 Brendan Reilly <breilly at redhat.com> - 1.19.1-1
+- PR#1751: hub: Fix issue with listing users and old versions of Postgres
+- PR#1753: Fix hub reporting of bogus ownership data
+- PR#1733: allow tag or target permissions as appropriate (on master)
+
 * Wed Oct  30 2019 Brendan Reilly <breilly at redhat.com> - 1.19.0-1
-= PR#1720: backward-compatible db conversion
+- PR#1720: backward-compatible db conversion
 - PR#1713: cli: fix typo in edit-user cmd
 - PR#1662: CGUninitBuild for cancelling CG reservations
 - PR#1681: add all used permissions to db
