@@ -98,7 +98,7 @@ class TestBulkInsertProcessor(unittest.TestCase):
     def test_basic_instantiation(self):
         proc = kojihub.BulkInsertProcessor('sometable')
         actual = str(proc)
-        expected = '-- incomplete update: no assigns'
+        expected = '-- incomplete insert: no data'
         self.assertEquals(actual, expected)
 
     def test_to_string_with_single_row(self):
@@ -169,3 +169,23 @@ class TestBulkInsertProcessor(unittest.TestCase):
             str(proc)
         self.assertEquals(cm.exception.args[0], 'Missing value foo2 in BulkInsert')
 
+    @mock.patch('kojihub.context')
+    def test_batch_execution(self, context):
+        cursor = mock.MagicMock()
+        context.cnx.cursor.return_value = cursor
+
+        proc = kojihub.BulkInsertProcessor('sometable', data=[{'foo': 'bar1'}], batch=2)
+        proc.add_record(foo='bar2')
+        proc.add_record(foo='bar3')
+        proc.execute()
+        calls = cursor.execute.mock_calls
+        # list of (name, positional args, keyword args)
+        self.assertEquals(len(calls), 2)
+        self.assertEquals(
+                calls[0][1],
+                ('INSERT INTO sometable (foo) VALUES (%(foo0)s), (%(foo1)s)',
+                    {'foo0': 'bar1', 'foo1': 'bar2'}))
+        self.assertEquals(
+                calls[1][1],
+                ('INSERT INTO sometable (foo) VALUES (%(foo0)s)',
+                    {'foo0': 'bar3'}))

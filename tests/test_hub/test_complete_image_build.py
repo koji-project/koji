@@ -30,10 +30,11 @@ def make_insert_grabber(test):
 
 def make_bulk_insert_grabber(test):
     # test is the test class instance
-    def grab_insert(insert):
-        # insert is self for the InsertProcessor instance
-        # we are replacing execute()
-        info = [str(insert), copy.copy(insert.prepared_data)]
+    def grab_insert(insert, data):
+        # insert is self for the BulkInsertProcessor instance
+        # we are replacing _one_insert()
+        query, params = insert._get_insert(data)
+        info = [query, copy.copy(params)]
         test.inserts.append(info)
     return grab_insert
 
@@ -78,7 +79,7 @@ class TestCompleteImageBuild(unittest.TestCase):
         self.updates = []
         mock.patch.object(kojihub.InsertProcessor, 'execute',
                     new=make_insert_grabber(self)).start()
-        mock.patch.object(kojihub.BulkInsertProcessor, 'execute',
+        mock.patch.object(kojihub.BulkInsertProcessor, '_one_insert',
                     new=make_bulk_insert_grabber(self)).start()
         mock.patch.object(kojihub.UpdateProcessor, 'execute',
                     new=make_update_grabber(self)).start()

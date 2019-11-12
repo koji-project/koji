@@ -8349,7 +8349,7 @@ def _fix_extra_field(row):
 
 
 class BulkInsertProcessor(object):
-    def __init__(self, table, data=None, columns=None, strict=True):
+    def __init__(self, table, data=None, columns=None, strict=True, batch=1000):
         """Do bulk inserts - it has some limitations compared to
         InsertProcessor (no rawset, dup_check).
 
@@ -8359,13 +8359,13 @@ class BulkInsertProcessor(object):
         data    - list of dict per record
         columns - list/set of names of used columns - makes sense
                   mainly with strict=True
-        strict  - all records must contain values for all columns, if
-        it is False, missing values will be inserted as NULLs
+        strict  - if True, all records must contain values for all columns.
+                  if False, missing values will be inserted as NULLs
+        batch   - batch size for inserts (one statement per batch)
         """
 
         self.table = table
         self.data = []
-        self.prepared_data = {}
         if columns is None:
             self.columns = set()
         else:
@@ -8375,24 +8375,39 @@ class BulkInsertProcessor(object):
             for row in data:
                 self.columns |= set(row.keys())
         self.strict = strict
+        self.batch = batch
 
     def __str__(self):
         if not self.data:
-            return "-- incomplete update: no assigns"
+            return "-- incomplete insert: no data"
+        query, params = self._get_insert(self.data)
+        return query
+
+    def _get_insert(self, data):
+        """
+        Generate one insert statement for the given data
+
+        :param list data: list of rows (dict format) to insert
+        :returns: (query, params)
+        """
+
+        if not data:
+            # should not happen
+            raise ValueError('no data for insert')
         parts = ['INSERT INTO %s ' % self.table]
         columns = sorted(self.columns)
         parts.append("(%s) " % ', '.join(columns))
 
-        self.prepared_data = {}
+        prepared_data = {}
         values = []
         i = 0
-        for row in self.data:
+        for row in data:
             row_values = []
             for key in columns:
                 if key in row:
                     row_key = '%s%d' % (key, i)
                     row_values.append("%%(%s)s" % row_key)
-                    self.prepared_data[row_key] = row[key]
+                    prepared_data[row_key] = row[key]
                 elif self.strict:
                     raise koji.GenericError("Missing value %s in BulkInsert" % key)
                 else:
@@ -8400,7 +8415,7 @@ class BulkInsertProcessor(object):
             values.append("(%s)" % ', '.join(row_values))
             i += 1
         parts.append("VALUES %s" % ', '.join(values))
-        return ''.join(parts)
+        return ''.join(parts), prepared_data
 
     def __repr__(self):
         return "<BulkInsertProcessor: %r>" % vars(self)
@@ -8413,7 +8428,16 @@ class BulkInsertProcessor(object):
         self.columns |= set(kwargs.keys())
 
     def execute(self):
-        return _dml(str(self), self.prepared_data)
+        if not self.batch:
+            self.__one_insert(self.data)
+        else:
+            for i in range(0, len(self.data), self.batch):
+                data = self.data[i:i+self.batch]
+                self._one_insert(data)
+
+    def _one_insert(self, data):
+        query, params = self._get_insert(data)
+        _dml(query, params)
 
 
 class InsertProcessor(object):
