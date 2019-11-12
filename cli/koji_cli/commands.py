@@ -2632,19 +2632,21 @@ def anon_handle_list_untagged(goptions, session, args):
     data = session.untaggedBuilds(**opts)
     if options.show_references:
         print("(Showing build references)")
-        refs = {}
-        refs2 = {} #reverse map
-        for x in session.buildMap():
-            refs.setdefault(x['used'], {}).setdefault(x['built'], 1)
-            refs2.setdefault(x['built'], {}).setdefault(x['used'], 1)
-        #XXX - need to ignore refs to unreferenced builds
-        for x in data:
-            builds = refs.get(x['id'])
-            if builds:
-                x['refs'] = "%s" % builds
-            else:
-                x['refs'] = ''
-        #data = [x for x in data if x['id'] not in refs)]
+        references = {}
+        with session.multicall(strict=True, batch=10000) as m:
+            for build in data:
+                references[build['id']] = m.buildReferences(build['id'])
+
+        for build in data:
+            refs = references[build['id']].result
+            r = []
+            if refs.get('rpms'):
+                r.append("rpms: %s" % refs['rpms'])
+            if refs.get('component_of'):
+                r.append("images/archives: %" % refs['component_of'])
+            if refs.get('archives'):
+                r.append("archives buildroots: %s" % refs['archives'])
+            build['refs'] = ', '.join(r)
     if options.paths:
         for x in data:
             x['path'] = pathinfo.build(x)
