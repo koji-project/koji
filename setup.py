@@ -14,7 +14,7 @@ def get_install_requires():
         'requests-kerberos',
         'six',
         #'libcomps',
-        'rpm-py-installer',
+        #'rpm-py-installer', # it is optional feature
         #'rpm',
     ]
     if sys.version_info[0] < 3:
