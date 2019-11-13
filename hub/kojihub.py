@@ -8429,7 +8429,7 @@ class BulkInsertProcessor(object):
 
     def execute(self):
         if not self.batch:
-            self.__one_insert(self.data)
+            self._one_insert(self.data)
         else:
             for i in range(0, len(self.data), self.batch):
                 data = self.data[i:i+self.batch]

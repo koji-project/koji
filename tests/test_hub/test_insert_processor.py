@@ -189,3 +189,20 @@ class TestBulkInsertProcessor(unittest.TestCase):
                 calls[1][1],
                 ('INSERT INTO sometable (foo) VALUES (%(foo0)s)',
                     {'foo0': 'bar3'}))
+
+    @mock.patch('kojihub.context')
+    def test_no_batch_execution(self, context):
+        cursor = mock.MagicMock()
+        context.cnx.cursor.return_value = cursor
+
+        proc = kojihub.BulkInsertProcessor('sometable', data=[{'foo': 'bar1'}], batch=None)
+        proc.add_record(foo='bar2')
+        proc.add_record(foo='bar3')
+        proc.execute()
+        calls = cursor.execute.mock_calls
+        # list of (name, positional args, keyword args)
+        self.assertEquals(len(calls), 1)
+        self.assertEquals(
+                calls[0][1],
+                ('INSERT INTO sometable (foo) VALUES (%(foo0)s), (%(foo1)s), (%(foo2)s)',
+                    {'foo0': 'bar1', 'foo1': 'bar2', 'foo2': 'bar3'}))
