@@ -153,11 +153,11 @@ def handle_assign_task(goptions, session, args):
 
     taskinfo = session.getTaskInfo(task_id, request=False)
     if taskinfo is None:
-        raise koji.GenericError("No such task: %s" % task_id)
+        raise koji.GenericError(_("No such task: %s") % task_id)
 
     hostinfo = session.getHost(hostname)
     if hostinfo is None:
-        raise koji.GenericError("No such host: %s" % hostname)
+        raise koji.GenericError(_("No such host: %s") % hostname)
 
     force = False
     if options.force:
@@ -1898,7 +1898,7 @@ def handle_set_build_volume(goptions, session, args):
     parser.add_option("-v", "--verbose", action="store_true", help=_("Be verbose"))
     (options, args) = parser.parse_args(args)
     if len(args) < 2:
-        parser.error("You must provide a volume and at least one build")
+        parser.error(_("You must provide a volume and at least one build"))
     volinfo = session.getVolume(args[0])
     if not volinfo:
         print("No such volume: %s" % args[0])
@@ -1929,7 +1929,7 @@ def handle_add_volume(goptions, session, args):
     parser = OptionParser(usage=usage)
     (options, args) = parser.parse_args(args)
     if len(args) != 1:
-        parser.error("Command requires exactly one volume-name.")
+        parser.error(_("Command requires exactly one volume-name."))
     name = args[0]
     volinfo = session.getVolume(name)
     if volinfo:
@@ -6959,13 +6959,13 @@ def anon_handle_wait_repo(options, session, args):
     if suboptions.target:
         target_info = session.getBuildTarget(tag)
         if not target_info:
-            parser.error("Invalid build target: %s" % tag)
+            parser.error(_("Invalid build target: %s") % tag)
         tag = target_info['build_tag_name']
         tag_id = target_info['build_tag']
     else:
         tag_info = session.getTag(tag)
         if not tag_info:
-            parser.error("Invalid tag: %s" % tag)
+            parser.error(_("Invalid tag: %s") % tag)
         targets = session.getBuildTargets(buildTagID=tag_info['id'])
         if not targets:
             print("%(name)s is not a build tag for any target" % tag_info)
@@ -7344,7 +7344,7 @@ def handle_add_notification(goptions, session, args):
     activate_session(session, goptions)
 
     if options.user and not session.hasPerm('admin'):
-        parser.error("--user requires admin permission")
+        parser.error(_("--user requires admin permission"))
 
     if options.user:
         user_id = session.getUser(options.user)['id']
@@ -7354,7 +7354,7 @@ def handle_add_notification(goptions, session, args):
     if options.package:
         package_id = session.getPackageID(options.package)
         if package_id is None:
-            parser.error("Unknown package: %s" % options.package)
+            parser.error(_("Unknown package: %s") % options.package)
     else:
         package_id = None
 
@@ -7362,7 +7362,7 @@ def handle_add_notification(goptions, session, args):
         try:
             tag_id = session.getTagID(options.tag, strict=True)
         except koji.GenericError:
-            parser.error("Unknown tag: %s" % options.tag)
+            parser.error(_("Unknown tag: %s") % options.tag)
     else:
         tag_id = None
 
@@ -7427,7 +7427,7 @@ def handle_edit_notification(goptions, session, args):
     elif options.package:
         package_id = session.getPackageID(options.package)
         if package_id is None:
-            parser.error("Unknown package: %s" % options.package)
+            parser.error(_("Unknown package: %s") % options.package)
     else:
         package_id = old['package_id']
 
@@ -7437,7 +7437,7 @@ def handle_edit_notification(goptions, session, args):
         try:
             tag_id = session.getTagID(options.tag, strict=True)
         except koji.GenericError:
-            parser.error("Unknown tag: %s" % options.tag)
+            parser.error(_("Unknown tag: %s") % options.tag)
     else:
         tag_id = old['tag_id']
 
@@ -7469,7 +7469,7 @@ def handle_block_notification(goptions, session, args):
     activate_session(session, goptions)
 
     if options.user and not session.hasPerm('admin'):
-        parser.error("--user requires admin permission")
+        parser.error(_("--user requires admin permission"))
 
     if options.user:
         user_id = session.getUser(options.user, strict=True)['id']
@@ -7478,12 +7478,12 @@ def handle_block_notification(goptions, session, args):
         if logged_in_user:
             user_id = logged_in_user['id']
         else:
-            parser.error("Please login with authentication or specify --user")
+            parser.error(_("Please login with authentication or specify --user"))
 
     if options.package:
         package_id = session.getPackageID(options.package)
         if package_id is None:
-            parser.error("Unknown package: %s" % options.package)
+            parser.error(_("Unknown package: %s") % options.package)
     else:
         package_id = None
 
@@ -7491,7 +7491,7 @@ def handle_block_notification(goptions, session, args):
         try:
             tag_id = session.getTagID(options.tag, strict=True)
         except koji.GenericError:
-            parser.error("Unknown tag: %s" % options.tag)
+            parser.error(_("Unknown tag: %s") % options.tag)
     else:
         tag_id = None
 
