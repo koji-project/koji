@@ -41,7 +41,7 @@ from koji_cli.lib import _, activate_session, parse_arches, \
         arg_filter, linked_upload, list_task_output_all_volumes, \
         print_task_headers, print_task_recurse, download_file, watch_logs, \
         error, warn, greetings, _list_tasks, unique_path, \
-        format_inheritance_flags
+        format_inheritance_flags, get_usage_str
 
 
 def _printable_unicode(s):
@@ -54,8 +54,7 @@ def _printable_unicode(s):
 def handle_add_group(goptions, session, args):
     "[admin] Add a group to a tag"
     usage = _("usage: %prog add-group <tag> <group>")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     (options, args) = parser.parse_args(args)
     if len(args) != 2:
         parser.error(_("Please specify a tag name and a group name"))
@@ -83,8 +82,7 @@ def handle_add_group(goptions, session, args):
 def handle_block_group(goptions, session, args):
     "[admin] Block group in tag"
     usage = _("usage: %prog block-group <tag> <group>")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     (options, args) = parser.parse_args(args)
     if len(args) != 2:
         parser.error(_("Please specify a tag name and a group name"))
@@ -112,8 +110,7 @@ def handle_block_group(goptions, session, args):
 def handle_remove_group(goptions, session, args):
     "[admin] Remove group from tag"
     usage = _("usage: %prog remove-group <tag> <group>")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     (options, args) = parser.parse_args(args)
     if len(args) != 2:
         parser.error(_("Please specify a tag name and a group name"))
@@ -139,8 +136,7 @@ def handle_remove_group(goptions, session, args):
 def handle_assign_task(goptions, session, args):
     "[admin] Assign a task to a host"
     usage = _('usage: %prog assign-task <task_id> <hostname>')
-    usage += _('\n(Specify the --help global option for a list of other help options)')
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option('-f', '--force', action='store_true', default=False,
                           help=_('force to assign a non-free task'))
     (options, args) = parser.parse_args(args)
@@ -177,8 +173,7 @@ def handle_assign_task(goptions, session, args):
 def handle_add_host(goptions, session, args):
     "[admin] Add a host"
     usage = _("usage: %prog add-host [options] <hostname> <arch> [<arch> ...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--krb-principal", help=_("set a non-default kerberos principal for the host"))
     (options, args) = parser.parse_args(args)
     if len(args) < 2:
@@ -201,8 +196,7 @@ def handle_add_host(goptions, session, args):
 def handle_edit_host(options, session, args):
     "[admin] Edit a host"
     usage = _("usage: %prog edit-host <hostname> ... [options]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--arches", help=_("Space or comma-separated list of supported architectures"))
     parser.add_option("--capacity", type="float", help=_("Capacity of this host"))
     parser.add_option("--description", metavar="DESC", help=_("Description of this host"))
@@ -246,8 +240,7 @@ def handle_edit_host(options, session, args):
 def handle_add_host_to_channel(goptions, session, args):
     "[admin] Add a host to a channel"
     usage = _("usage: %prog add-host-to-channel [options] <hostname> <channel>")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--list", action="store_true", help=SUPPRESS_HELP)
     parser.add_option("--new", action="store_true", help=_("Create channel if needed"))
     (options, args) = parser.parse_args(args)
@@ -278,8 +271,7 @@ def handle_add_host_to_channel(goptions, session, args):
 def handle_remove_host_from_channel(goptions, session, args):
     "[admin] Remove a host from a channel"
     usage = _("usage: %prog remove-host-from-channel [options] <hostname> <channel>")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     (options, args) = parser.parse_args(args)
     if len(args) != 2:
         parser.error(_("Please specify a hostname and a channel"))
@@ -302,8 +294,7 @@ def handle_remove_host_from_channel(goptions, session, args):
 def handle_remove_channel(goptions, session, args):
     "[admin] Remove a channel entirely"
     usage = _("usage: %prog remove-channel [options] <channel>")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--force", action="store_true", help=_("force removal, if possible"))
     (options, args) = parser.parse_args(args)
     if len(args) != 1:
@@ -319,8 +310,7 @@ def handle_remove_channel(goptions, session, args):
 def handle_rename_channel(goptions, session, args):
     "[admin] Rename a channel"
     usage = _("usage: %prog rename-channel [options] <old-name> <new-name>")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     (options, args) = parser.parse_args(args)
     if len(args) != 2:
         parser.error(_("Incorrect number of arguments"))
@@ -335,8 +325,7 @@ def handle_rename_channel(goptions, session, args):
 def handle_add_pkg(goptions, session, args):
     "[admin] Add a package to the listing for tag"
     usage = _("usage: %prog add-pkg [options] <tag> <package> [<package> ...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--force", action='store_true', help=_("Override blocks if necessary"))
     parser.add_option("--owner", help=_("Specify owner"))
     parser.add_option("--extra-arches", help=_("Specify extra arches"))
@@ -380,8 +369,7 @@ def handle_add_pkg(goptions, session, args):
 def handle_block_pkg(goptions, session, args):
     "[admin] Block a package in the listing for tag"
     usage = _("usage: %prog block-pkg [options] <tag> <package> [<package> ...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--force", action='store_true', default=False, help=_("Override blocks and owner if necessary"))
     (options, args) = parser.parse_args(args)
     if len(args) < 2:
@@ -416,8 +404,7 @@ def handle_block_pkg(goptions, session, args):
 def handle_remove_pkg(goptions, session, args):
     "[admin] Remove a package from the listing for tag"
     usage = _("usage: %prog remove-pkg [options] <tag> <package> [<package> ...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--force", action='store_true', help=_("Override blocks if necessary"))
     (options, args) = parser.parse_args(args)
     if len(args) < 2:
@@ -449,8 +436,7 @@ def handle_remove_pkg(goptions, session, args):
 def handle_build(options, session, args):
     "[build] Build a package from source"
     usage = _("usage: %prog build [options] <target> <srpm path or scm url>")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--skip-tag", action="store_true",
                       help=_("Do not attempt to tag package"))
     parser.add_option("--scratch", action="store_true",
@@ -529,8 +515,7 @@ def handle_chain_build(options, session, args):
     # XXX - replace handle_build with this, once chain-building has gotten testing
     "[build] Build one or more packages from source"
     usage = _("usage: %prog chain-build [options] target URL [URL2 [:] URL3 [:] URL4 ...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--nowait", action="store_true",
                       help=_("Don't wait on build"))
     parser.add_option("--quiet", action="store_true",
@@ -605,8 +590,7 @@ def handle_maven_build(options, session, args):
     "[build] Build a Maven package from source"
     usage = _("usage: %prog maven-build [options] <target> <URL>")
     usage += _("\n       %prog maven-build --ini=CONFIG... [options] target")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--patches", action="store", metavar="URL",
                       help=_("SCM URL of a directory containing patches to apply to the sources before building"))
     parser.add_option("-G", "--goal", action="append",
@@ -704,8 +688,7 @@ def handle_maven_build(options, session, args):
 def handle_wrapper_rpm(options, session, args):
     """[build] Build wrapper rpms for any archives associated with a build."""
     usage = _("usage: %prog wrapper-rpm [options] <target> <build-id|n-v-r> <URL>")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--create-build", action="store_true", help=_("Create a new build to contain wrapper rpms"))
     parser.add_option("--ini", action="append",
                       dest="inis", metavar="CONFIG", default=[],
@@ -772,8 +755,7 @@ def handle_wrapper_rpm(options, session, args):
 def handle_maven_chain(options, session, args):
     "[build] Run a set of Maven builds in dependency order"
     usage = _("usage: %prog maven-chain [options] <target> <config> [<config> ...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--skip-tag", action="store_true",
                       help=_("Do not attempt to tag builds"))
     parser.add_option("--scratch", action="store_true",
@@ -825,8 +807,7 @@ def handle_maven_chain(options, session, args):
 def handle_resubmit(goptions, session, args):
     """[build] Retry a canceled or failed task, using the same parameter as the original task."""
     usage = _("usage: %prog resubmit [options] <task_id>")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--nowait", action="store_true", help=_("Don't wait on task"))
     parser.add_option("--nowatch", action="store_true", dest="nowait",
             help=_("An alias for --nowait"))
@@ -854,8 +835,7 @@ def handle_resubmit(goptions, session, args):
 def handle_call(goptions, session, args):
     "Execute an arbitrary XML-RPC call"
     usage = _("usage: %prog call [options] <name> [<arg> ...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--python", action="store_true", help=_("Use python syntax for values"))
     parser.add_option("--kwargs", help=_("Specify keyword arguments as a dictionary (implies --python)"))
     parser.add_option("--json-output", action="store_true", help=_("Use JSON syntax for output"))
@@ -893,8 +873,7 @@ def handle_call(goptions, session, args):
 def anon_handle_mock_config(goptions, session, args):
     "[info] Create a mock config"
     usage = _("usage: %prog mock-config [options]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("-a", "--arch", help=_("Specify the arch"))
     parser.add_option("-n", "--name", help=_("Specify the name for the buildroot"))
     parser.add_option("--tag", help=_("Create a mock config for a tag"))
@@ -1022,8 +1001,7 @@ def anon_handle_mock_config(goptions, session, args):
 def handle_disable_host(goptions, session, args):
     "[admin] Mark one or more hosts as disabled"
     usage = _("usage: %prog disable-host [options] <hostname> [<hostname> ...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--comment", help=_("Comment indicating why the host(s) are being disabled"))
     (options, args) = parser.parse_args(args)
 
@@ -1053,8 +1031,7 @@ def handle_disable_host(goptions, session, args):
 def handle_enable_host(goptions, session, args):
     "[admin] Mark one or more hosts as enabled"
     usage = _("usage: %prog enable-host [options] <hostname> [<hostname> ...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--comment", help=_("Comment indicating why the host(s) are being enabled"))
     (options, args) = parser.parse_args(args)
 
@@ -1084,8 +1061,7 @@ def handle_enable_host(goptions, session, args):
 def handle_restart_hosts(options, session, args):
     "[admin] Restart enabled hosts"
     usage = _("usage: %prog restart-hosts [options]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--wait", action="store_true",
                       help=_("Wait on the task, even if running in the background"))
     parser.add_option("--nowait", action="store_false", dest="wait",
@@ -1144,8 +1120,7 @@ def handle_restart_hosts(options, session, args):
 def handle_import(goptions, session, args):
     "[admin] Import externally built RPMs into the database"
     usage = _("usage: %prog import [options] <package> [<package> ...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--link", action="store_true", help=_("Attempt to hardlink instead of uploading"))
     parser.add_option("--test", action="store_true", help=_("Don't actually import"))
     parser.add_option("--create-build", action="store_true", help=_("Auto-create builds as needed"))
@@ -1292,8 +1267,7 @@ def handle_import(goptions, session, args):
 def handle_import_cg(goptions, session, args):
     "[admin] Import external builds with rich metadata"
     usage = _("usage: %prog import-cg [options] <metadata_file> <files_dir>")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--noprogress", action="store_true",
                       help=_("Do not display progress of the upload"))
     parser.add_option("--link", action="store_true", help=_("Attempt to hardlink instead of uploading"))
@@ -1347,8 +1321,7 @@ def handle_import_cg(goptions, session, args):
 def handle_import_comps(goptions, session, args):
     "Import group/package information from a comps file"
     usage = _("usage: %prog import-comps [options] <file> <tag>")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--force", action="store_true", help=_("force import"))
     (local_options, args) = parser.parse_args(args)
     if len(args) != 2:
@@ -1441,8 +1414,7 @@ def _import_comps_alt(session, filename, tag, options): # no cover 3.x
 def handle_import_sig(goptions, session, args):
     "[admin] Import signatures into the database"
     usage = _("usage: %prog import-sig [options] <package> [<package> ...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--with-unsigned", action="store_true",
                       help=_("Also import unsigned sig headers"))
     parser.add_option("--write", action="store_true",
@@ -1503,8 +1475,7 @@ def handle_import_sig(goptions, session, args):
 def handle_write_signed_rpm(goptions, session, args):
     "[admin] Write signed RPMs to disk"
     usage = _("usage: %prog write-signed-rpm [options] <signature-key> <n-v-r> [<n-v-r> ...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--all", action="store_true", help=_("Write out all RPMs signed with this key"))
     parser.add_option("--buildid", help=_("Specify a build id rather than an n-v-r"))
     (options, args) = parser.parse_args(args)
@@ -1545,8 +1516,7 @@ def handle_write_signed_rpm(goptions, session, args):
 def handle_prune_signed_copies(options, session, args):
     "[admin] Prune signed copies"
     usage = _("usage: %prog prune-sigs [options]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("-n", "--test", action="store_true", help=_("Test mode"))
     parser.add_option("-v", "--verbose", action="store_true", help=_("Be more verbose"))
     parser.add_option("--days", type="int", default=5, help=_("Timeout before clearing"))
@@ -1893,8 +1863,7 @@ def handle_prune_signed_copies(options, session, args):
 def handle_set_build_volume(goptions, session, args):
     "[admin] Move a build to a different volume"
     usage = _("usage: %prog set-build-volume <volume> <n-v-r> [<n-v-r> ...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("-v", "--verbose", action="store_true", help=_("Be verbose"))
     (options, args) = parser.parse_args(args)
     if len(args) < 2:
@@ -1925,8 +1894,7 @@ def handle_set_build_volume(goptions, session, args):
 def handle_add_volume(goptions, session, args):
     "[admin] Add a new storage volume"
     usage = _("usage: %prog add-volume <volume-name>")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     (options, args) = parser.parse_args(args)
     if len(args) != 1:
         parser.error(_("Command requires exactly one volume-name."))
@@ -1943,8 +1911,7 @@ def handle_add_volume(goptions, session, args):
 def handle_list_volumes(options, session, args):
     "[info] List storage volumes"
     usage = _("usage: %prog list-volumes")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     (options, args) = parser.parse_args(args)
     for volinfo in session.listVolumes():
         print(volinfo['name'])
@@ -1953,8 +1920,7 @@ def handle_list_volumes(options, session, args):
 def handle_list_permissions(goptions, session, args):
     "[info] List user permissions"
     usage = _("usage: %prog list-permissions [options]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--user", help=_("List permissions for the given user"))
     parser.add_option("--mine", action="store_true", help=_("List your permissions"))
     (options, args) = parser.parse_args(args)
@@ -1978,8 +1944,7 @@ def handle_list_permissions(goptions, session, args):
 def handle_add_user(goptions, session, args):
     "[admin] Add a user"
     usage = _("usage: %prog add-user <username> [options]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--principal", help=_("The Kerberos principal for this user"))
     parser.add_option("--disable", help=_("Prohibit logins by this user"), action="store_true")
     (options, args) = parser.parse_args(args)
@@ -2000,8 +1965,7 @@ def handle_add_user(goptions, session, args):
 def handle_enable_user(goptions, session, args):
     "[admin] Enable logins by a user"
     usage = _("usage: %prog enable-user <username>")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
         parser.error(_("You must specify the username of the user to enable"))
@@ -2015,8 +1979,7 @@ def handle_enable_user(goptions, session, args):
 def handle_disable_user(goptions, session, args):
     "[admin] Disable logins by a user"
     usage = _("usage: %prog disable-user <username>")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
         parser.error(_("You must specify the username of the user to disable"))
@@ -2030,8 +1993,7 @@ def handle_disable_user(goptions, session, args):
 def handle_edit_user(goptions, session, args):
     "[admin] Alter user information"
     usage = _("usage: %prog edit-user <username> [options]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--rename", help=_("Rename the user"))
     parser.add_option("--edit-krb", action="append", default=[],
                       metavar="OLD=NEW",
@@ -2062,8 +2024,7 @@ def handle_edit_user(goptions, session, args):
 def handle_list_signed(goptions, session, args):
     "[admin] List signed copies of rpms"
     usage = _("usage: %prog list-signed [options]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--debug", action="store_true")
     parser.add_option("--key", help=_("Only list RPMs signed with this key"))
     parser.add_option("--build", help=_("Only list RPMs from this build"))
@@ -2134,8 +2095,7 @@ def handle_list_signed(goptions, session, args):
 def handle_import_archive(options, session, args):
     "[admin] Import an archive file and associate it with a build"
     usage = _("usage: %prog import-archive <build-id|n-v-r> <archive_path> [<archive_path2 ...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--noprogress", action="store_true",
                       help=_("Do not display progress of the upload"))
     parser.add_option("--create-build", action="store_true", help=_("Auto-create builds as needed"))
@@ -2230,8 +2190,7 @@ def handle_import_archive(options, session, args):
 def handle_grant_permission(goptions, session, args):
     "[admin] Grant a permission to a user"
     usage = _("usage: %prog grant-permission <permission> <user> [<user> ...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--new", action="store_true", help=_("Create a new permission"))
     (options, args) = parser.parse_args(args)
     if len(args) < 2:
@@ -2255,8 +2214,7 @@ def handle_grant_permission(goptions, session, args):
 def handle_revoke_permission(goptions, session, args):
     "[admin] Revoke a permission from a user"
     usage = _("usage: %prog revoke-permission <permission> <user> [<user> ...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     (options, args) = parser.parse_args(args)
     if len(args) < 2:
         parser.error(_("Please specify a permission and at least one user"))
@@ -2276,8 +2234,7 @@ def handle_revoke_permission(goptions, session, args):
 def handle_grant_cg_access(goptions, session, args):
     "[admin] Add a user to a content generator"
     usage = _("usage: %prog grant-cg-access <user> <content generator>")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--new", action="store_true", help=_("Create a new content generator"))
     (options, args) = parser.parse_args(args)
     if len(args) != 2:
@@ -2297,8 +2254,7 @@ def handle_grant_cg_access(goptions, session, args):
 def handle_revoke_cg_access(goptions, session, args):
     "[admin] Remove a user from a content generator"
     usage = _("usage: %prog revoke-cg-access <user> <content generator>")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     (options, args) = parser.parse_args(args)
     if len(args) != 2:
         parser.error(_("Please specify a user and content generator"))
@@ -2314,8 +2270,7 @@ def handle_revoke_cg_access(goptions, session, args):
 def anon_handle_latest_build(goptions, session, args):
     "[info] Print the latest builds for a tag"
     usage = _("usage: %prog latest-build [options] <tag> <package> [<package> ...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--arch", help=_("List all of the latest packages for this arch"))
     parser.add_option("--all", action="store_true", help=_("List all of the latest packages for this tag"))
     parser.add_option("--quiet", action="store_true", default=goptions.quiet,
@@ -2386,8 +2341,7 @@ def anon_handle_latest_build(goptions, session, args):
 def anon_handle_list_api(goptions, session, args):
     "[info] Print the list of XML-RPC APIs"
     usage = _("usage: %prog list-api [options]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     (options, args) = parser.parse_args(args)
     if len(args) != 0:
         parser.error(_("This command takes no arguments"))
@@ -2417,8 +2371,7 @@ def anon_handle_list_api(goptions, session, args):
 def anon_handle_list_tagged(goptions, session, args):
     "[info] List the builds or rpms in a tag"
     usage = _("usage: %prog list-tagged [options] <tag> [<package>]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--arch", action="append", default=[], help=_("List rpms for this arch"))
     parser.add_option("--rpms", action="store_true", help=_("Show rpms instead of builds"))
     parser.add_option("--inherit", action="store_true", help=_("Follow inheritance"))
@@ -2526,8 +2479,7 @@ def anon_handle_list_tagged(goptions, session, args):
 def anon_handle_list_buildroot(goptions, session, args):
     "[info] List the rpms used in or built in a buildroot"
     usage = _("usage: %prog list-buildroot [options] <buildroot-id>")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--paths", action="store_true", help=_("Show the file paths"))
     parser.add_option("--built", action="store_true", help=_("Show the built rpms"))
     parser.add_option("--verbose", "-v", action="store_true", help=_("Show more information"))
@@ -2556,8 +2508,7 @@ def anon_handle_list_buildroot(goptions, session, args):
 def anon_handle_list_untagged(goptions, session, args):
     "[info] List untagged builds"
     usage = _("usage: %prog list-untagged [options] [<package>]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--paths", action="store_true", help=_("Show the file paths"))
     parser.add_option("--show-references", action="store_true", help=_("Show build references"))
     (options, args) = parser.parse_args(args)
@@ -2619,8 +2570,7 @@ def print_group_list_req_package(pkg):
 def anon_handle_list_groups(goptions, session, args):
     "[info] Print the group listings"
     usage = _("usage: %prog list-groups [options] <tag> [<group>]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--event", type='int', metavar="EVENT#", help=_("query at event"))
     parser.add_option("--ts", type='int', metavar="TIMESTAMP", help=_("query at last event before timestamp"))
     parser.add_option("--repo", type='int', metavar="REPO#", help=_("query at event for a repo"))
@@ -2660,8 +2610,7 @@ def anon_handle_list_groups(goptions, session, args):
 def handle_add_group_pkg(goptions, session, args):
     "[admin] Add a package to a group's package listing"
     usage = _("usage: %prog add-group-pkg [options] <tag> <group> <pkg> [<pkg> ...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     (options, args) = parser.parse_args(args)
     if len(args) < 3:
         parser.error(_("You must specify a tag name, group name, and one or more package names"))
@@ -2677,8 +2626,7 @@ def handle_block_group_pkg(goptions, session, args):
     usage = _("usage: %prog block-group-pkg [options] <tag> <group> <pkg> [<pkg> ...]")
     usage += '\n' + _("Note that blocking is propagated through the inheritance chain, so "
                       "it is not exactly the same as package removal.")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     (options, args) = parser.parse_args(args)
     if len(args) < 3:
         parser.error(_("You must specify a tag name, group name, and one or more package names"))
@@ -2692,8 +2640,7 @@ def handle_block_group_pkg(goptions, session, args):
 def handle_unblock_group_pkg(goptions, session, args):
     "[admin] Unblock a package from a group's package listing"
     usage = _("usage: %prog unblock-group-pkg [options] <tag> <group> <pkg> [<pkg> ...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     (options, args) = parser.parse_args(args)
     if len(args) < 3:
         parser.error(_("You must specify a tag name, group name, and one or more package names"))
@@ -2707,8 +2654,7 @@ def handle_unblock_group_pkg(goptions, session, args):
 def handle_add_group_req(goptions, session, args):
     "[admin] Add a group to a group's required list"
     usage = _("usage: %prog add-group-req [options] <tag> <target group> <required group>")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     (options, args) = parser.parse_args(args)
     if len(args) != 3:
         parser.error(_("You must specify a tag name and two group names"))
@@ -2722,8 +2668,7 @@ def handle_add_group_req(goptions, session, args):
 def handle_block_group_req(goptions, session, args):
     "[admin] Block a group's requirement listing"
     usage = _("usage: %prog block-group-req [options] <tag> <group> <blocked req>")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     (options, args) = parser.parse_args(args)
     if len(args) != 3:
         parser.error(_("You must specify a tag name and two group names"))
@@ -2737,8 +2682,7 @@ def handle_block_group_req(goptions, session, args):
 def handle_unblock_group_req(goptions, session, args):
     "[admin] Unblock a group's requirement listing"
     usage = _("usage: %prog unblock-group-req [options] <tag> <group> <requirement>")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     (options, args) = parser.parse_args(args)
     if len(args) != 3:
         parser.error(_("You must specify a tag name and two group names"))
@@ -2752,8 +2696,7 @@ def handle_unblock_group_req(goptions, session, args):
 def anon_handle_list_channels(goptions, session, args):
     "[info] Print channels listing"
     usage = _("usage: %prog list-channels")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--simple", action="store_true", default=False,
                 help=_("Print just list of channels without additional info"))
     parser.add_option("--quiet", action="store_true", default=goptions.quiet,
@@ -2790,8 +2733,7 @@ def anon_handle_list_channels(goptions, session, args):
 def anon_handle_list_hosts(goptions, session, args):
     "[info] Print the host listing"
     usage = _("usage: %prog list-hosts [options]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--arch", action="append", default=[], help=_("Specify an architecture"))
     parser.add_option("--channel", help=_("Specify a channel"))
     parser.add_option("--ready", action="store_true", help=_("Limit to ready hosts"))
@@ -2866,8 +2808,7 @@ def anon_handle_list_hosts(goptions, session, args):
 def anon_handle_list_pkgs(goptions, session, args):
     "[info] Print the package listing for tag or for owner"
     usage = _("usage: %prog list-pkgs [options]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--owner", help=_("Specify owner"))
     parser.add_option("--tag", help=_("Specify tag"))
     parser.add_option("--package", help=_("Specify package"))
@@ -2952,8 +2893,7 @@ def anon_handle_list_pkgs(goptions, session, args):
 def anon_handle_list_builds(goptions, session, args):
     "[info] Print the build listing"
     usage = _("usage: %prog list-builds [options]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--package", help=_("List builds for this package"))
     parser.add_option("--buildid", help=_("List specific build from ID or nvr"))
     parser.add_option("--before",
@@ -3072,8 +3012,7 @@ def anon_handle_list_builds(goptions, session, args):
 def anon_handle_rpminfo(goptions, session, args):
     "[info] Print basic information about an RPM"
     usage = _("usage: %prog rpminfo [options] <n-v-r.a> [<n-v-r.a> ...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--buildroots", action="store_true", help=_("show buildroots the rpm was used in"))
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
@@ -3140,8 +3079,7 @@ def anon_handle_rpminfo(goptions, session, args):
 def anon_handle_buildinfo(goptions, session, args):
     "[info] Print basic information about a build"
     usage = _("usage: %prog buildinfo [options] <n-v-r> [<n-v-r> ...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--changelog", action="store_true", help=_("Show the changelog for the build"))
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
@@ -3232,8 +3170,7 @@ def anon_handle_buildinfo(goptions, session, args):
 def anon_handle_hostinfo(goptions, session, args):
     "[info] Print basic information about a host"
     usage = _("usage: %prog hostinfo [options] <hostname> [<hostname> ...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
         parser.error(_("Please specify a host"))
@@ -3291,8 +3228,7 @@ def handle_clone_tag(goptions, session, args):
     "[admin] Duplicate the contents of one tag onto another tag"
     usage = _("usage: %prog clone-tag [options] <src-tag> <dst-tag>")
     usage += _("\nclone-tag will create the destination tag if it does not already exist")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option('--config', action='store_true',
             help=_("Copy config from the source to the dest tag"))
     parser.add_option('--groups', action='store_true',
@@ -3763,8 +3699,7 @@ def handle_clone_tag(goptions, session, args):
 def handle_add_target(goptions, session, args):
     "[admin] Create a new build target"
     usage = _("usage: %prog add-target <name> <build tag> <dest tag>")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     (options, args) = parser.parse_args(args)
     if len(args) < 2:
         parser.error(_("Please specify a target name, a build tag, and destination tag"))
@@ -3799,8 +3734,7 @@ def handle_add_target(goptions, session, args):
 def handle_edit_target(goptions, session, args):
     "[admin] Set the name, build_tag, and/or dest_tag of an existing build target to new values"
     usage = _("usage: %prog edit-target [options] <name>")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--rename", help=_("Specify new name for target"))
     parser.add_option("--build-tag", help=_("Specify a different build tag"))
     parser.add_option("--dest-tag", help=_("Specify a different destination tag"))
@@ -3844,8 +3778,7 @@ def handle_edit_target(goptions, session, args):
 def handle_remove_target(goptions, session, args):
     "[admin] Remove a build target"
     usage = _("usage: %prog remove-target [options] <name>")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     (options, args) = parser.parse_args(args)
 
     if len(args) != 1:
@@ -3867,8 +3800,7 @@ def handle_remove_target(goptions, session, args):
 def handle_remove_tag(goptions, session, args):
     "[admin] Remove a tag"
     usage = _("usage: %prog remove-tag [options] <name>")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     (options, args) = parser.parse_args(args)
 
     if len(args) != 1:
@@ -3890,8 +3822,7 @@ def handle_remove_tag(goptions, session, args):
 def anon_handle_list_targets(goptions, session, args):
     "[info] List the build targets"
     usage = _("usage: %prog list-targets [options]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--name", help=_("Specify the build target name"))
     parser.add_option("--quiet", action="store_true", default=goptions.quiet,
                 help=_("Do not print the header information"))
@@ -3957,8 +3888,7 @@ def _printInheritance(tags, sibdepths=None, reverse=False):
 def anon_handle_list_tag_inheritance(goptions, session, args):
     "[info] Print the inheritance information for a tag"
     usage = _("usage: %prog list-tag-inheritance [options] <tag>")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--reverse", action="store_true", help=_("Process tag's children instead of its parents"))
     parser.add_option("--stop", help=_("Stop processing inheritance at this tag"))
     parser.add_option("--jump", help=_("Jump from one tag to another when processing inheritance"))
@@ -4012,8 +3942,7 @@ def anon_handle_list_tag_inheritance(goptions, session, args):
 def anon_handle_list_tags(goptions, session, args):
     "[info] Print the list of tags"
     usage = _("usage: %prog list-tags [options] [pattern]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--show-id", action="store_true", help=_("Show tag ids"))
     parser.add_option("--verbose", action="store_true", help=_("Show more information"))
     parser.add_option("--unlocked", action="store_true", help=_("Only show unlocked tags"))
@@ -4067,8 +3996,7 @@ def anon_handle_list_tags(goptions, session, args):
 def anon_handle_list_tag_history(goptions, session, args):
     "[info] Print a history of tag operations"
     usage = _("usage: %prog list-tag-history [options]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--debug", action="store_true")
     parser.add_option("--build", help=_("Only show data for a specific build"))
     parser.add_option("--package", help=_("Only show data for a specific package"))
@@ -4363,8 +4291,7 @@ _table_keys = {
 def anon_handle_list_history(goptions, session, args):
     "[info] Display historical data"
     usage = _("usage: %prog list-history [options]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--debug", action="store_true")
     parser.add_option("--build", help=_("Only show data for a specific build"))
     parser.add_option("--package", help=_("Only show data for a specific package"))
@@ -4742,8 +4669,7 @@ def _printTaskInfo(session, task_id, topdir, level=0, recurse=True, verbose=True
 def anon_handle_taskinfo(goptions, session, args):
     """[info] Show information about a task"""
     usage = _("usage: %prog taskinfo [options] <task_id> [<task_id> ...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("-r", "--recurse", action="store_true", help=_("Show children of this task as well"))
     parser.add_option("-v", "--verbose", action="store_true", help=_("Be verbose"))
     (options, args) = parser.parse_args(args)
@@ -4760,8 +4686,7 @@ def anon_handle_taskinfo(goptions, session, args):
 def anon_handle_taginfo(goptions, session, args):
     "[info] Print basic information about a tag"
     usage = _("usage: %prog taginfo [options] <tag> [<tag> ...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--event", type='int', metavar="EVENT#", help=_("query at event"))
     parser.add_option("--ts", type='int', metavar="TIMESTAMP", help=_("query at last event before timestamp"))
     parser.add_option("--repo", type='int', metavar="REPO#", help=_("query at event for a repo"))
@@ -4853,8 +4778,7 @@ def anon_handle_taginfo(goptions, session, args):
 def handle_add_tag(goptions, session, args):
     "[admin] Add a new tag to the database"
     usage = _("usage: %prog add-tag [options] <name>")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--parent", help=_("Specify parent"))
     parser.add_option("--arches", help=_("Specify arches"))
     parser.add_option("--maven-support", action="store_true", help=_("Enable creation of Maven repos for this tag"))
@@ -4889,8 +4813,7 @@ def handle_add_tag(goptions, session, args):
 def handle_edit_tag(goptions, session, args):
     "[admin] Alter tag information"
     usage = _("usage: %prog edit-tag [options] <name>")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--arches", help=_("Specify arches"))
     parser.add_option("--perm", help=_("Specify permission requirement"))
     parser.add_option("--no-perm", action="store_true", help=_("Remove permission requirement"))
@@ -4947,8 +4870,7 @@ def handle_edit_tag(goptions, session, args):
 def handle_lock_tag(goptions, session, args):
     "[admin] Lock a tag"
     usage = _("usage: %prog lock-tag [options] <tag> [<tag> ...] ")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--perm", help=_("Specify permission requirement"))
     parser.add_option("--glob", action="store_true", help=_("Treat args as glob patterns"))
     parser.add_option("--master", action="store_true", help=_("Lock the master lock"))
@@ -4997,8 +4919,7 @@ def handle_lock_tag(goptions, session, args):
 def handle_unlock_tag(goptions, session, args):
     "[admin] Unlock a tag"
     usage = _("usage: %prog unlock-tag [options] <tag> [<tag> ...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--glob", action="store_true", help=_("Treat args as glob patterns"))
     parser.add_option("-n", "--test", action="store_true", help=_("Test mode"))
     (options, args) = parser.parse_args(args)
@@ -5040,8 +4961,7 @@ def handle_unlock_tag(goptions, session, args):
 def handle_add_tag_inheritance(goptions, session, args):
     """[admin] Add to a tag's inheritance"""
     usage = _("usage: %prog add-tag-inheritance [options] <tag> <parent-tag>")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--priority", help=_("Specify priority"))
     parser.add_option("--maxdepth", help=_("Specify max depth"))
     parser.add_option("--intransitive", action="store_true", help=_("Set intransitive"))
@@ -5096,8 +5016,7 @@ def handle_add_tag_inheritance(goptions, session, args):
 def handle_edit_tag_inheritance(goptions, session, args):
     """[admin] Edit tag inheritance"""
     usage = _("usage: %prog edit-tag-inheritance [options] <tag> <parent> <priority>")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--priority", help=_("Specify a new priority"))
     parser.add_option("--maxdepth", help=_("Specify max depth"))
     parser.add_option("--intransitive", action="store_true", help=_("Set intransitive"))
@@ -5182,8 +5101,7 @@ def handle_edit_tag_inheritance(goptions, session, args):
 def handle_remove_tag_inheritance(goptions, session, args):
     """[admin] Remove a tag inheritance link"""
     usage = _("usage: %prog remove-tag-inheritance <tag> <parent> <priority>")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     (options, args) = parser.parse_args(args)
 
     if len(args) < 1:
@@ -5244,8 +5162,7 @@ def handle_remove_tag_inheritance(goptions, session, args):
 def anon_handle_show_groups(goptions, session, args):
     "[info] Show groups data for a tag"
     usage = _("usage: %prog show-groups [options] <tag>")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--comps", action="store_true", help=_("Print in comps format"))
     parser.add_option("-x", "--expand", action="store_true", default=False,
                       help=_("Expand groups in comps format"))
@@ -5273,8 +5190,7 @@ def anon_handle_show_groups(goptions, session, args):
 def anon_handle_list_external_repos(goptions, session, args):
     "[info] List external repos"
     usage = _("usage: %prog list-external-repos [options]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--url",  help=_("Select by url"))
     parser.add_option("--name",  help=_("Select by name"))
     parser.add_option("--id", type="int", help=_("Select by id"))
@@ -5375,8 +5291,7 @@ def _parse_tagpri(tagpri):
 def handle_add_external_repo(goptions, session, args):
     "[admin] Create an external repo and/or add one to a tag"
     usage = _("usage: %prog add-external-repo [options] <name> [<url>]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("-t", "--tag", action="append", metavar="TAG",
                       help=_("Also add repo to tag. Use tag::N to set priority"))
     parser.add_option("-p", "--priority", type='int',
@@ -5419,8 +5334,7 @@ def handle_add_external_repo(goptions, session, args):
 def handle_edit_external_repo(goptions, session, args):
     "[admin] Edit data for an external repo"
     usage = _("usage: %prog edit-external-repo <name>")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--url",  help=_("Change the url"))
     parser.add_option("--name",  help=_("Change the name"))
     (options, args) = parser.parse_args(args)
@@ -5440,8 +5354,7 @@ def handle_edit_external_repo(goptions, session, args):
 def handle_remove_external_repo(goptions, session, args):
     "[admin] Remove an external repo from a tag or tags, or remove entirely"
     usage = _("usage: %prog remove-external-repo <repo> [<tag> ...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--alltags", action="store_true", help=_("Remove from all tags"))
     parser.add_option("--force", action='store_true', help=_("Force action"))
     (options, args) = parser.parse_args(args)
@@ -5485,8 +5398,7 @@ def handle_spin_livecd(options, session, args):
     usage = _("usage: %prog spin-livecd [options] <name> <version> <target>" +
               " <arch> <kickstart-file>")
     usage += _("\n(Specify the --help global option for a list of other " +
-               "help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--wait", action="store_true",
         help=_("Wait on the livecd creation, even if running in the background"))
     parser.add_option("--nowait", action="store_false", dest="wait",
@@ -5532,8 +5444,7 @@ def handle_spin_livemedia(options, session, args):
     usage = _("usage: %prog spin-livemedia [options] <name> <version> <target>" +
               " <arch> <kickstart-file>")
     usage += _("\n(Specify the --help global option for a list of other " +
-               "help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--wait", action="store_true",
         help=_("Wait on the livemedia creation, even if running in the background"))
     parser.add_option("--nowait", action="store_false", dest="wait",
@@ -5594,8 +5505,7 @@ def handle_spin_appliance(options, session, args):
     usage = _("usage: %prog spin-appliance [options] <name> <version> " +
               "<target> <arch> <kickstart-file>")
     usage += _("\n(Specify the --help global option for a list of other " +
-               "help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--wait", action="store_true",
         help=_("Wait on the appliance creation, even if running in the background"))
     parser.add_option("--nowait", action="store_false", dest="wait",
@@ -5646,8 +5556,7 @@ def handle_image_build_indirection(options, session, args):
               "[utility_image] [indirection_build_template]")
     usage += _("\n       %prog image-build --config FILE")
     usage += _("\n\n(Specify the --help global option for a list of other " +
-               "help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--config",
         help=_("Use a configuration file to define image-build options " +
                "instead of command line options (they will be ignored)."))
@@ -5791,8 +5700,7 @@ def handle_image_build(options, session, args):
               "<target> <install-tree-url> <arch> [<arch> ...]")
     usage += _("\n       %prog image-build --config FILE")
     usage += _("\n\n(Specify the --help global option for a list of other " +
-               "help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--background", action="store_true",
         help=_("Run the image creation task at a lower priority"))
     parser.add_option("--config",
@@ -6056,8 +5964,7 @@ def handle_win_build(options, session, args):
     # Usage & option parsing
     usage = _("usage: %prog win-build [options] <target> <URL> <VM>")
     usage += _("\n(Specify the --help global option for a list of other " +
-               "help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--winspec", metavar="URL",
                       help=_("SCM URL to retrieve the build descriptor from. " + \
                              "If not specified, the winspec must be in the root directory " + \
@@ -6132,8 +6039,7 @@ def handle_win_build(options, session, args):
 def handle_free_task(goptions, session, args):
     "[admin] Free a task"
     usage = _("usage: %prog free-task [options] <task-id> [<task-id> ...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     (options, args) = parser.parse_args(args)
     activate_session(session, goptions)
     tlist = []
@@ -6151,8 +6057,7 @@ def handle_free_task(goptions, session, args):
 def handle_cancel(goptions, session, args):
     "[build] Cancel tasks and/or builds"
     usage = _("usage: %prog cancel [options] <task-id|build> [<task-id|build> ...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--justone", action="store_true", help=_("Do not cancel subtasks"))
     parser.add_option("--full", action="store_true", help=_("Full cancellation (admin only)"))
     parser.add_option("--force", action="store_true", help=_("Allow subtasks with --full"))
@@ -6189,8 +6094,7 @@ def handle_cancel(goptions, session, args):
 def handle_set_task_priority(goptions, session, args):
     "[admin] Set task priority"
     usage = _("usage: %prog set-task-priority [options] --priority=<priority> <task-id> [<task-id> ...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--priority", type="int", help=_("New priority"))
     parser.add_option("--recurse", action="store_true", default=False, help=_("Change priority of child tasks as well"))
     (options, args) = parser.parse_args(args)
@@ -6213,8 +6117,7 @@ def handle_set_task_priority(goptions, session, args):
 def handle_list_tasks(goptions, session, args):
     "[info] Print the list of tasks"
     usage = _("usage: %prog list-tasks [options]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--mine", action="store_true", help=_("Just print your tasks"))
     parser.add_option("--user", help=_("Only tasks for this user"))
     parser.add_option("--arch", help=_("Only tasks for this architecture"))
@@ -6244,8 +6147,7 @@ def handle_list_tasks(goptions, session, args):
 def handle_set_pkg_arches(goptions, session, args):
     "[admin] Set the list of extra arches for a package"
     usage = _("usage: %prog set-pkg-arches [options] <arches> <tag> <package> [<package> ...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--force", action='store_true', help=_("Force operation"))
     (options, args) = parser.parse_args(args)
     if len(args) < 3:
@@ -6261,8 +6163,7 @@ def handle_set_pkg_arches(goptions, session, args):
 def handle_set_pkg_owner(goptions, session, args):
     "[admin] Set the owner for a package"
     usage = _("usage: %prog set-pkg-owner [options] <owner> <tag> <package> [<package> ...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--force", action='store_true', help=_("Force operation"))
     (options, args) = parser.parse_args(args)
     if len(args) < 3:
@@ -6278,8 +6179,7 @@ def handle_set_pkg_owner(goptions, session, args):
 def handle_set_pkg_owner_global(goptions, session, args):
     "[admin] Set the owner for a package globally"
     usage = _("usage: %prog set-pkg-owner-global [options] <owner> <package> [<package> ...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--verbose", action='store_true', help=_("List changes"))
     parser.add_option("--test", action='store_true', help=_("Test mode"))
     parser.add_option("--old-user", "--from", action="store", help=_("Only change ownership for packages belonging to this user"))
@@ -6336,8 +6236,7 @@ def handle_set_pkg_owner_global(goptions, session, args):
 def anon_handle_watch_task(goptions, session, args):
     "[monitor] Track progress of particular tasks"
     usage = _("usage: %prog watch-task [options] <task id> [<task id> ...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--quiet", action="store_true", default=goptions.quiet,
                       help=_("Do not print the task information"))
     parser.add_option("--mine", action="store_true", help=_("Just watch your tasks"))
@@ -6379,8 +6278,7 @@ def anon_handle_watch_task(goptions, session, args):
 def anon_handle_watch_logs(goptions, session, args):
     "[monitor] Watch logs in realtime"
     usage = _("usage: %prog watch-logs [options] <task id> [<task id> ...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--log", help=_("Watch only a specific log"))
     parser.add_option("--mine", action="store_true", help=_("Watch logs for "
         "all your tasks, task_id arguments are forbidden in this case."))
@@ -6412,8 +6310,7 @@ def anon_handle_watch_logs(goptions, session, args):
 def handle_make_task(goptions, session, args):
     "[admin] Create an arbitrary task"
     usage = _("usage: %prog make-task [options] <method> [<arg> ...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--channel", help=_("set channel"))
     parser.add_option("--priority", help=_("set priority"))
     parser.add_option("--watch", action="store_true", help=_("watch the task"))
@@ -6443,8 +6340,7 @@ def handle_make_task(goptions, session, args):
 def handle_tag_build(opts, session, args):
     "[bind] Apply a tag to one or more builds"
     usage = _("usage: %prog tag-build [options] <tag> <pkg> [<pkg> ...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--force", action="store_true", help=_("force operation"))
     parser.add_option("--nowait", action="store_true", help=_("Do not wait on task"))
     (options, args) = parser.parse_args(args)
@@ -6467,9 +6363,7 @@ def handle_tag_build(opts, session, args):
 
 def handle_move_build(opts, session, args):
     "[bind] 'Move' one or more builds between tags"
-    usage = _("usage: %prog move-build [options] <tag1> <tag2> <pkg> [<pkg> ...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(uget_usage_str(usage))
     parser.add_option("--force", action="store_true", help=_("force operation"))
     parser.add_option("--nowait", action="store_true", help=_("do not wait on tasks"))
     parser.add_option("--all", action="store_true", help=_("move all instances of a package, <pkg>'s are package names"))
@@ -6515,8 +6409,7 @@ def handle_move_build(opts, session, args):
 def handle_untag_build(goptions, session, args):
     "[bind] Remove a tag from one or more builds"
     usage = _("usage: %prog untag-build [options] <tag> <pkg> [<pkg> ...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--all", action="store_true", help=_("untag all versions of the package in this tag"))
     parser.add_option("--non-latest", action="store_true", help=_("untag all versions of the package in this tag except the latest"))
     parser.add_option("-n", "--test", action="store_true", help=_("test mode"))
@@ -6584,8 +6477,7 @@ def handle_untag_build(goptions, session, args):
 def handle_unblock_pkg(goptions, session, args):
     "[admin] Unblock a package in the listing for tag"
     usage = _("usage: %prog unblock-pkg [options] <tag> <package> [<package> ...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     (options, args) = parser.parse_args(args)
     if len(args) < 2:
         parser.error(_("Please specify a tag and at least one package"))
@@ -6599,8 +6491,7 @@ def handle_unblock_pkg(goptions, session, args):
 def anon_handle_download_build(options, session, args):
     "[download] Download a built package"
     usage = _("usage: %prog download-build [options] <n-v-r | build_id | package>")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--arch", "-a", dest="arches", metavar="ARCH", action="append", default=[],
                       help=_("Only download packages for this arch (may be used multiple times)"))
     parser.add_option("--type", help=_("Download archives of the given type, rather than rpms (maven, win, or image)"))
@@ -6732,8 +6623,7 @@ def anon_handle_download_logs(options, session, args):
     usage = _("usage: %prog download-logs [options] <task-id> [<task-id> ...]")
     usage += _("\n       %prog download-logs [options] --nvr <n-v-r> [<n-v-r> ...]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
-    usage += _("\nCreates special log with name %s if task failed." % FAIL_LOG)
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("-r", "--recurse", action="store_true",
                       help=_("Process children of this task as well"))
     parser.add_option("--nvr", action="store_true",
@@ -6849,8 +6739,7 @@ def anon_handle_download_logs(options, session, args):
 def anon_handle_download_task(options, session, args):
     "[download] Download the output of a build task"
     usage = _("usage: %prog download-task <task_id>")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--arch", dest="arches", metavar="ARCH", action="append", default=[],
                       help=_("Only download packages for this arch (may be used multiple times)"))
     parser.add_option("--logs", dest="logs", action="store_true", default=False, help=_("Also download build logs"))
@@ -6937,8 +6826,7 @@ def anon_handle_download_task(options, session, args):
 def anon_handle_wait_repo(options, session, args):
     "[monitor] Wait for a repo to be regenerated"
     usage = _("usage: %prog wait-repo [options] <tag>")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--build", metavar="NVR", dest="builds", action="append", default=[],
                       help=_("Check that the given build is in the newly-generated repo (may be used multiple times)"))
     parser.add_option("--target", action="store_true", help=_("Interpret the argument as a build target name"))
@@ -7019,8 +6907,7 @@ def anon_handle_wait_repo(options, session, args):
 def handle_regen_repo(options, session, args):
     "[admin] Force a repo to be regenerated"
     usage = _("usage: %prog regen-repo [options] <tag>")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--target", action="store_true", help=_("Interpret the argument as a build target name"))
     parser.add_option("--nowait", action="store_true", help=_("Don't wait on for regen to finish"))
     parser.add_option("--debuginfo", action="store_true", help=_("Include debuginfo rpms in repo"))
@@ -7074,8 +6961,7 @@ def handle_regen_repo(options, session, args):
 def handle_dist_repo(options, session, args):
     """Create a yum repo with distribution options"""
     usage = _("usage: %prog dist-repo [options] <tag> <keyID> [<keyID> ...]")
-    usage += _("\n(Specify the --help option for a list of other options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option('--allow-missing-signatures', action='store_true',
         default=False,
         help=_('For RPMs not signed with a desired key, fall back to the '
@@ -7205,8 +7091,7 @@ def anon_handle_search(options, session, args):
     "[search] Search the system"
     usage = _("usage: %prog search [options] <search_type> <pattern>")
     usage += _('\nAvailable search types: %s') % ', '.join(_search_types)
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("-r", "--regex", action="store_true", help=_("treat pattern as regex"))
     parser.add_option("--exact", action="store_true", help=_("exact matches only"))
     (options, args) = parser.parse_args(args)
@@ -7230,8 +7115,7 @@ def anon_handle_search(options, session, args):
 
 def handle_moshimoshi(options, session, args):
     "[misc] Introduce yourself"
-    usage = _("usage: %prog moshimoshi [options]")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     (opts, args) = parser.parse_args(args)
     if len(args) != 0:
         parser.error(_("This command takes no arguments"))
@@ -7257,8 +7141,7 @@ def handle_moshimoshi(options, session, args):
 def anon_handle_list_notifications(goptions, session, args):
     "[monitor] List user's notifications and blocks"
     usage = _("usage: %prog list-notifications [options]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--mine", action="store_true", help=_("Just print your notifications"))
     parser.add_option("--user", help=_("Only notifications for this user"))
     (options, args) = parser.parse_args(args)
@@ -7327,8 +7210,7 @@ def anon_handle_list_notifications(goptions, session, args):
 def handle_add_notification(goptions, session, args):
     "[monitor] Add user's notification"
     usage = _("usage: %prog add-notification [options]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--user", help=_("Add notifications for this user (admin-only)"))
     parser.add_option("--package", help=_("Add notifications for this package"))
     parser.add_option("--tag", help=_("Add notifications for this tag"))
@@ -7372,8 +7254,7 @@ def handle_add_notification(goptions, session, args):
 def handle_remove_notification(goptions, session, args):
     "[monitor] Remove user's notifications"
     usage = _("usage: %prog remove-notification [options] <ID> [<ID> ...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     (options, args) = parser.parse_args(args)
 
     activate_session(session, goptions)
@@ -7395,8 +7276,7 @@ def handle_remove_notification(goptions, session, args):
 def handle_edit_notification(goptions, session, args):
     "[monitor] Edit user's notification"
     usage = _("usage: %prog edit-notification [options] <ID>")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--package",
             help=_("Notifications for this package, '*' for all"))
     parser.add_option("--tag",
@@ -7452,8 +7332,7 @@ def handle_edit_notification(goptions, session, args):
 def handle_block_notification(goptions, session, args):
     "[monitor] Block user's notifications"
     usage = _("usage: %prog block-notification [options]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--user", help=_("Block notifications for this user (admin-only)"))
     parser.add_option("--package", help=_("Block notifications for this package"))
     parser.add_option("--tag", help=_("Block notifications for this tag"))
@@ -7505,8 +7384,7 @@ def handle_block_notification(goptions, session, args):
 def handle_unblock_notification(goptions, session, args):
     "[monitor] Unblock user's notification"
     usage = _("usage: %prog unblock-notification [options] <ID> [<ID> ...]")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=get_usage_str(usage))
     (options, args) = parser.parse_args(args)
 
     activate_session(session, goptions)

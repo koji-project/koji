@@ -100,6 +100,9 @@ Available categories are: %(categories)s
     return _(epilog_str)
 
 
+def get_usage_str(usage):
+    return usage + _("\n(Specify the --help global option for a list of other help options)")
+
 def ensure_connection(session):
     try:
         ret = session.getAPIVersion()
