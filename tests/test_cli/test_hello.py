@@ -59,6 +59,7 @@ class TestHello(utils.CliTestCase):
         print_unicode_mock.return_value = "Hello"
 
         expect = """Usage: %s moshimoshi [options]
+(Specify the --help global option for a list of other help options)
 
 %s: error: This command takes no arguments
 """ % (self.progname, self.progname)
@@ -102,6 +103,7 @@ class TestHello(utils.CliTestCase):
         self.assert_help(
             handle_moshimoshi,
             """Usage: %s moshimoshi [options]
+(Specify the --help global option for a list of other help options)
 
 Options:
   -h, --help  show this help message and exit

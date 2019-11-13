@@ -16,7 +16,7 @@ class TestAddUser(utils.CliTestCase):
     maxDiff = None
 
     def setUp(self):
-        self.error_format = """Usage: %s add-user username [options]
+        self.error_format = """Usage: %s add-user <username> [options]
 (Specify the --help global option for a list of other help options)
 
 %s: error: {message}
@@ -82,7 +82,7 @@ class TestAddUser(utils.CliTestCase):
     def test_handle_add_user_help(self):
         self.assert_help(
             handle_add_user,
-            """Usage: %s add-user username [options]
+            """Usage: %s add-user <username> [options]
 (Specify the --help global option for a list of other help options)
 
 Options:

@@ -111,7 +111,7 @@ class TestRemoveChannel(unittest.TestCase):
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = ''
-        expected_stderr = """Usage: %s remove-channel [options] channel
+        expected_stderr = """Usage: %s remove-channel [options] <channel>
 (Specify the --help global option for a list of other help options)
 
 %s: error: Incorrect number of arguments

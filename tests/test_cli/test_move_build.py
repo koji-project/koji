@@ -19,7 +19,7 @@ class TestMoveBuild(utils.CliTestCase):
         self.session = mock.MagicMock()
         self.options = mock.MagicMock()
 
-        self.error_format = """Usage: %s move-build [options] <tag1> <tag2> <pkg> [<pkg>...]
+        self.error_format = """Usage: %s move-build [options] <tag1> <tag2> <pkg> [<pkg> ...]
 (Specify the --help global option for a list of other help options)
 
 %s: error: {message}
@@ -147,7 +147,7 @@ class TestMoveBuild(utils.CliTestCase):
         """Test handle_move_build help message"""
         self.assert_help(
             handle_move_build,
-            """Usage: %s move-build [options] <tag1> <tag2> <pkg> [<pkg>...]
+            """Usage: %s move-build [options] <tag1> <tag2> <pkg> [<pkg> ...]
 (Specify the --help global option for a list of other help options)
 
 Options:

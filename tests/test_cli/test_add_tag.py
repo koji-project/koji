@@ -16,7 +16,7 @@ class TestAddTag(utils.CliTestCase):
     maxDiff = None
 
     def setUp(self):
-        self.error_format = """Usage: %s add-tag [options] name
+        self.error_format = """Usage: %s add-tag [options] <name>
 (Specify the --help global option for a list of other help options)
 
 %s: error: {message}
@@ -80,7 +80,7 @@ class TestAddTag(utils.CliTestCase):
     def test_handle_add_tag_help(self):
         self.assert_help(
             handle_add_tag,
-            """Usage: %s add-tag [options] name
+            """Usage: %s add-tag [options] <name>
 (Specify the --help global option for a list of other help options)
 
 Options:

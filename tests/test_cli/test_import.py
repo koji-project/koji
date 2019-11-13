@@ -82,7 +82,7 @@ class TestImport(utils.CliTestCase):
             'CANCELED': 4,
         }
 
-        self.error_format = """Usage: %s import [options] package [package...]
+        self.error_format = """Usage: %s import [options] <package> [<package> ...]
 (Specify the --help global option for a list of other help options)
 
 %s: error: {message}
@@ -681,7 +681,7 @@ class TestImport(utils.CliTestCase):
         """Test handle_import function help message"""
         self.assert_help(
             handle_import,
-            """Usage: %s import [options] package [package...]
+            """Usage: %s import [options] <package> [<package> ...]
 (Specify the --help global option for a list of other help options)
 
 Options:

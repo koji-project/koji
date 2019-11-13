@@ -195,7 +195,7 @@ def handle_add_host(goptions, session, args):
 
 def handle_edit_host(options, session, args):
     "[admin] Edit a host"
-    usage = _("usage: %prog edit-host <hostname> ... [options]")
+    usage = _("usage: %prog edit-host <hostname> [<hostname> ...] [options]")
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--arches", help=_("Space or comma-separated list of supported architectures"))
     parser.add_option("--capacity", type="float", help=_("Capacity of this host"))
@@ -514,7 +514,7 @@ def handle_build(options, session, args):
 def handle_chain_build(options, session, args):
     # XXX - replace handle_build with this, once chain-building has gotten testing
     "[build] Build one or more packages from source"
-    usage = _("usage: %prog chain-build [options] target URL [URL2 [:] URL3 [:] URL4 ...]")
+    usage = _("usage: %prog chain-build [options] <target> <URL> [<URL> [:] <URL> [:] <URL> ...]")
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--nowait", action="store_true",
                       help=_("Don't wait on build"))
@@ -589,7 +589,7 @@ def handle_chain_build(options, session, args):
 def handle_maven_build(options, session, args):
     "[build] Build a Maven package from source"
     usage = _("usage: %prog maven-build [options] <target> <URL>")
-    usage += _("\n       %prog maven-build --ini=CONFIG... [options] target")
+    usage += _("\n       %prog maven-build --ini=CONFIG... [options] <target>")
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--patches", action="store", metavar="URL",
                       help=_("SCM URL of a directory containing patches to apply to the sources before building"))
@@ -5397,7 +5397,6 @@ def handle_spin_livecd(options, session, args):
     # Usage & option parsing.
     usage = _("usage: %prog spin-livecd [options] <name> <version> <target>" +
               " <arch> <kickstart-file>")
-    usage += _("\n(Specify the --help global option for a list of other " +
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--wait", action="store_true",
         help=_("Wait on the livecd creation, even if running in the background"))
@@ -5443,7 +5442,6 @@ def handle_spin_livemedia(options, session, args):
     # Usage & option parsing.
     usage = _("usage: %prog spin-livemedia [options] <name> <version> <target>" +
               " <arch> <kickstart-file>")
-    usage += _("\n(Specify the --help global option for a list of other " +
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--wait", action="store_true",
         help=_("Wait on the livemedia creation, even if running in the background"))
@@ -5504,7 +5502,6 @@ def handle_spin_appliance(options, session, args):
     # Usage & option parsing
     usage = _("usage: %prog spin-appliance [options] <name> <version> " +
               "<target> <arch> <kickstart-file>")
-    usage += _("\n(Specify the --help global option for a list of other " +
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--wait", action="store_true",
         help=_("Wait on the appliance creation, even if running in the background"))
@@ -5554,8 +5551,7 @@ def handle_image_build_indirection(options, session, args):
     """[build] Create a disk image using other disk images via the Indirection plugin"""
     usage = _("usage: %prog image-build-indirection [base_image] " +
               "[utility_image] [indirection_build_template]")
-    usage += _("\n       %prog image-build --config FILE")
-    usage += _("\n\n(Specify the --help global option for a list of other " +
+    usage += _("\n       %prog image-build --config <FILE>\n")
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--config",
         help=_("Use a configuration file to define image-build options " +
@@ -5698,8 +5694,7 @@ def handle_image_build(options, session, args):
                'liveimg-squashfs', 'tar-gz')
     usage = _("usage: %prog image-build [options] <name> <version> " +
               "<target> <install-tree-url> <arch> [<arch> ...]")
-    usage += _("\n       %prog image-build --config FILE")
-    usage += _("\n\n(Specify the --help global option for a list of other " +
+    usage += _("\n       %prog image-build --config <FILE>\n")
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--background", action="store_true",
         help=_("Run the image creation task at a lower priority"))
@@ -5963,7 +5958,6 @@ def handle_win_build(options, session, args):
     """[build] Build a Windows package from source"""
     # Usage & option parsing
     usage = _("usage: %prog win-build [options] <target> <URL> <VM>")
-    usage += _("\n(Specify the --help global option for a list of other " +
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--winspec", metavar="URL",
                       help=_("SCM URL to retrieve the build descriptor from. " + \
@@ -6038,7 +6032,7 @@ def handle_win_build(options, session, args):
 
 def handle_free_task(goptions, session, args):
     "[admin] Free a task"
-    usage = _("usage: %prog free-task [options] <task-id> [<task-id> ...]")
+    usage = _("usage: %prog free-task [options] <task_id> [<task_id> ...]")
     parser = OptionParser(usage=get_usage_str(usage))
     (options, args) = parser.parse_args(args)
     activate_session(session, goptions)
@@ -6047,16 +6041,16 @@ def handle_free_task(goptions, session, args):
         try:
             tlist.append(int(task_id))
         except ValueError:
-            parser.error(_("task-id must be an integer"))
+            parser.error(_("task_id must be an integer"))
     if not tlist:
-        parser.error(_("please specify at least one task-id"))
+        parser.error(_("please specify at least one task_id"))
     for task_id in tlist:
         session.freeTask(task_id)
 
 
 def handle_cancel(goptions, session, args):
     "[build] Cancel tasks and/or builds"
-    usage = _("usage: %prog cancel [options] <task-id|build> [<task-id|build> ...]")
+    usage = _("usage: %prog cancel [options] <task_id|build> [<task_id|build> ...]")
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--justone", action="store_true", help=_("Do not cancel subtasks"))
     parser.add_option("--full", action="store_true", help=_("Full cancellation (admin only)"))
@@ -6093,7 +6087,7 @@ def handle_cancel(goptions, session, args):
 
 def handle_set_task_priority(goptions, session, args):
     "[admin] Set task priority"
-    usage = _("usage: %prog set-task-priority [options] --priority=<priority> <task-id> [<task-id> ...]")
+    usage = _("usage: %prog set-task-priority [options] --priority=<priority> <task_id> [<task_id> ...]")
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--priority", type="int", help=_("New priority"))
     parser.add_option("--recurse", action="store_true", default=False, help=_("Change priority of child tasks as well"))
@@ -6363,7 +6357,8 @@ def handle_tag_build(opts, session, args):
 
 def handle_move_build(opts, session, args):
     "[bind] 'Move' one or more builds between tags"
-    parser = OptionParser(usage=get_usage_str(uget_usage_str(usage))
+    usage = _("usage: %prog move-build [options] <tag1> <tag2> <pkg> [<pkg> ...]")
+    parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--force", action="store_true", help=_("force operation"))
     parser.add_option("--nowait", action="store_true", help=_("do not wait on tasks"))
     parser.add_option("--all", action="store_true", help=_("move all instances of a package, <pkg>'s are package names"))
@@ -6620,7 +6615,7 @@ def anon_handle_download_logs(options, session, args):
     "[download] Download a logs for package"
 
     FAIL_LOG = "task_failed.log"
-    usage = _("usage: %prog download-logs [options] <task-id> [<task-id> ...]")
+    usage = _("usage: %prog download-logs [options] <task_id> [<task_id> ...]")
     usage += _("\n       %prog download-logs [options] --nvr <n-v-r> [<n-v-r> ...]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=get_usage_str(usage))
@@ -6960,7 +6955,7 @@ def handle_regen_repo(options, session, args):
 
 def handle_dist_repo(options, session, args):
     """Create a yum repo with distribution options"""
-    usage = _("usage: %prog dist-repo [options] <tag> <keyID> [<keyID> ...]")
+    usage = _("usage: %prog dist-repo [options] <tag> <key_id> [<key_id> ...]")
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option('--allow-missing-signatures', action='store_true',
         default=False,
@@ -7115,6 +7110,7 @@ def anon_handle_search(options, session, args):
 
 def handle_moshimoshi(options, session, args):
     "[misc] Introduce yourself"
+    usage = _("usage: %prog moshimoshi [options]")
     parser = OptionParser(usage=get_usage_str(usage))
     (opts, args) = parser.parse_args(args)
     if len(args) != 0:
@@ -7253,7 +7249,7 @@ def handle_add_notification(goptions, session, args):
 
 def handle_remove_notification(goptions, session, args):
     "[monitor] Remove user's notifications"
-    usage = _("usage: %prog remove-notification [options] <ID> [<ID> ...]")
+    usage = _("usage: %prog remove-notification [options] <notification_id> [<notification_id> ...]")
     parser = OptionParser(usage=get_usage_str(usage))
     (options, args) = parser.parse_args(args)
 
@@ -7275,7 +7271,7 @@ def handle_remove_notification(goptions, session, args):
 
 def handle_edit_notification(goptions, session, args):
     "[monitor] Edit user's notification"
-    usage = _("usage: %prog edit-notification [options] <ID>")
+    usage = _("usage: %prog edit-notification [options] <notification_id>")
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--package",
             help=_("Notifications for this package, '*' for all"))
@@ -7383,7 +7379,7 @@ def handle_block_notification(goptions, session, args):
 
 def handle_unblock_notification(goptions, session, args):
     "[monitor] Unblock user's notification"
-    usage = _("usage: %prog unblock-notification [options] <ID> [<ID> ...]")
+    usage = _("usage: %prog unblock-notification [options] <notification_id> [<notification_id> ...]")
     parser = OptionParser(usage=get_usage_str(usage))
     (options, args) = parser.parse_args(args)
 

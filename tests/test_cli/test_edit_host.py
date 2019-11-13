@@ -162,7 +162,7 @@ class TestEditHost(unittest.TestCase):
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = ''
-        expected_stderr = """Usage: %s edit-host hostname ... [options]
+        expected_stderr = """Usage: %s edit-host <hostname> [<hostname> ...] [options]
 (Specify the --help global option for a list of other help options)
 
 %s: error: Please specify a hostname

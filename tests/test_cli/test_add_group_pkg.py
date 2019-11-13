@@ -19,7 +19,7 @@ class TestAddGroupPkg(utils.CliTestCase):
         self.options = mock.MagicMock()
         self.activate_session = mock.patch('koji_cli.commands.activate_session').start()
 
-        self.error_format = """Usage: %s add-group-pkg [options] <tag> <group> <pkg> [<pkg>...]
+        self.error_format = """Usage: %s add-group-pkg [options] <tag> <group> <pkg> [<pkg> ...]
 (Specify the --help global option for a list of other help options)
 
 %s: error: {message}
@@ -54,7 +54,7 @@ class TestAddGroupPkg(utils.CliTestCase):
     def test_handle_add_group_pkg_help(self):
         self.assert_help(
             handle_add_group_pkg,
-            """Usage: %s add-group-pkg [options] <tag> <group> <pkg> [<pkg>...]
+            """Usage: %s add-group-pkg [options] <tag> <group> <pkg> [<pkg> ...]
 (Specify the --help global option for a list of other help options)
 
 Options:

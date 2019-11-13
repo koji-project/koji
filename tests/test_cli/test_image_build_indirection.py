@@ -200,7 +200,7 @@ class TestImageBuildIndirection(utils.CliTestCase):
         self.session = mock.MagicMock()
 
         self.error_format = """Usage: %s image-build-indirection [base_image] [utility_image] [indirection_build_template]
-       %s image-build --config FILE
+       %s image-build --config <FILE>
 
 (Specify the --help global option for a list of other help options)
 
@@ -220,7 +220,7 @@ class TestImageBuildIndirection(utils.CliTestCase):
         self.assert_help(
             handle_image_build_indirection,
             """Usage: %s image-build-indirection [base_image] [utility_image] [indirection_build_template]
-       %s image-build --config FILE
+       %s image-build --config <FILE>
 
 (Specify the --help global option for a list of other help options)
 

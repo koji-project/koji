@@ -16,7 +16,7 @@ class TestSetPkgOwner(utils.CliTestCase):
     maxDiff = None
 
     def setUp(self):
-        self.error_format = """Usage: %s set-pkg-owner [options] owner tag package [package2 ...]
+        self.error_format = """Usage: %s set-pkg-owner [options] <owner> <tag> <package> [<package> ...]
 (Specify the --help global option for a list of other help options)
 
 %s: error: {message}
@@ -59,7 +59,7 @@ class TestSetPkgOwner(utils.CliTestCase):
     def test_handle_set_pkg_owner_help(self):
         self.assert_help(
             handle_set_pkg_owner,
-            """Usage: %s set-pkg-owner [options] owner tag package [package2 ...]
+            """Usage: %s set-pkg-owner [options] <owner> <tag> <package> [<package> ...]
 (Specify the --help global option for a list of other help options)
 
 Options:

@@ -107,7 +107,7 @@ class TestWriteSignedRPM(utils.CliTestCase):
     def setUp(self):
         self.custom_os_path_exists = {}
         self.os_path_exists = os.path.exists
-        self.error_format = """Usage: %s write-signed-rpm [options] <signature-key> n-v-r [n-v-r...]
+        self.error_format = """Usage: %s write-signed-rpm [options] <signature-key> <n-v-r> [<n-v-r> ...]
 (Specify the --help global option for a list of other help options)
 
 %s: error: {message}
@@ -238,7 +238,7 @@ class TestWriteSignedRPM(utils.CliTestCase):
         """Test handle_write_signed_rpm help message"""
         self.assert_help(
             handle_write_signed_rpm,
-            """Usage: %s write-signed-rpm [options] <signature-key> n-v-r [n-v-r...]
+            """Usage: %s write-signed-rpm [options] <signature-key> <n-v-r> [<n-v-r> ...]
 (Specify the --help global option for a list of other help options)
 
 Options:

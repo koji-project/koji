@@ -87,7 +87,7 @@ class TestRenameChannel(unittest.TestCase):
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = ''
-        expected_stderr = """Usage: %s rename-channel [options] old-name new-name
+        expected_stderr = """Usage: %s rename-channel [options] <old-name> <new-name>
 (Specify the --help global option for a list of other help options)
 
 %s: error: Incorrect number of arguments

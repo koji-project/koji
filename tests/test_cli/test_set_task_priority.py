@@ -16,7 +16,7 @@ class TestSetTaskPriority(utils.CliTestCase):
     maxDiff = None
 
     def setUp(self):
-        self.error_format = """Usage: %s set-task-priority [options] --priority=<priority> <task-id> [task-id]...
+        self.error_format = """Usage: %s set-task-priority [options] --priority=<priority> <task_id> [<task_id> ...]
 (Specify the --help global option for a list of other help options)
 
 %s: error: {message}
@@ -82,7 +82,7 @@ class TestSetTaskPriority(utils.CliTestCase):
     def test_handle_set_task_priority_help(self):
         self.assert_help(
             handle_set_task_priority,
-            """Usage: %s set-task-priority [options] --priority=<priority> <task-id> [task-id]...
+            """Usage: %s set-task-priority [options] --priority=<priority> <task_id> [<task_id> ...]
 (Specify the --help global option for a list of other help options)
 
 Options:

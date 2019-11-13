@@ -147,7 +147,7 @@ Task info: weburl/taskinfo?taskID=1
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = ''
-        expected_stderr = """Usage: %s build [options] target <srpm path or scm url>
+        expected_stderr = """Usage: %s build [options] <target> <srpm path or scm url>
 (Specify the --help global option for a list of other help options)
 
 %s: error: Exactly two arguments (a build target and a SCM URL or srpm file) are required
@@ -192,7 +192,7 @@ Task info: weburl/taskinfo?taskID=1
             handle_build(self.options, self.session, args)
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
-        expected_stdout = """Usage: %s build [options] target <srpm path or scm url>
+        expected_stdout = """Usage: %s build [options] <target> <srpm path or scm url>
 (Specify the --help global option for a list of other help options)
 
 Options:
@@ -255,7 +255,7 @@ Options:
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = ''
-        expected_stderr = """Usage: %s build [options] target <srpm path or scm url>
+        expected_stderr = """Usage: %s build [options] <target> <srpm path or scm url>
 (Specify the --help global option for a list of other help options)
 
 %s: error: --arch_override is only allowed for --scratch builds
@@ -350,7 +350,7 @@ Task info: weburl/taskinfo?taskID=1
         with self.assertRaises(SystemExit) as cm:
             handle_build(self.options, self.session, args)
         actual = stderr.getvalue()
-        expected = """Usage: %s build [options] target <srpm path or scm url>
+        expected = """Usage: %s build [options] <target> <srpm path or scm url>
 (Specify the --help global option for a list of other help options)
 
 %s: error: Unknown build target: target
@@ -401,7 +401,7 @@ Task info: weburl/taskinfo?taskID=1
         with self.assertRaises(SystemExit) as cm:
             handle_build(self.options, self.session, args)
         actual = stderr.getvalue()
-        expected = """Usage: %s build [options] target <srpm path or scm url>
+        expected = """Usage: %s build [options] <target> <srpm path or scm url>
 (Specify the --help global option for a list of other help options)
 
 %s: error: Unknown destination tag: dest_tag_name
@@ -452,7 +452,7 @@ Task info: weburl/taskinfo?taskID=1
         with self.assertRaises(SystemExit) as cm:
             handle_build(self.options, self.session, args)
         actual = stderr.getvalue()
-        expected = """Usage: %s build [options] target <srpm path or scm url>
+        expected = """Usage: %s build [options] <target> <srpm path or scm url>
 (Specify the --help global option for a list of other help options)
 
 %s: error: Destination tag dest_tag_name is locked

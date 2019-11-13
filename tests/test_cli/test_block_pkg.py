@@ -168,7 +168,7 @@ class TestBlockPkg(unittest.TestCase):
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = ''
-        expected_stderr = """Usage: %s block-pkg [options] tag package [package2 ...]
+        expected_stderr = """Usage: %s block-pkg [options] <tag> <package> [<package> ...]
 (Specify the --help global option for a list of other help options)
 
 %s: error: Please specify a tag and at least one package

@@ -111,7 +111,7 @@ class TestEditTag(unittest.TestCase):
             handle_edit_tag(options, session, args)
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
-        expected_stdout = """Usage: %s edit-tag [options] name
+        expected_stdout = """Usage: %s edit-tag [options] <name>
 (Specify the --help global option for a list of other help options)
 
 Options:
@@ -162,7 +162,7 @@ Options:
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = ''
-        expected_stderr = """Usage: %(progname)s edit-tag [options] name
+        expected_stderr = """Usage: %(progname)s edit-tag [options] <name>
 (Specify the --help global option for a list of other help options)
 
 %(progname)s: error: Please specify a name for the tag

@@ -23,7 +23,7 @@ class TestListGroups(utils.CliTestCase):
         self.activate_session = mock.patch('koji_cli.commands.activate_session').start()
         self.event_from_opts = mock.patch('koji.util.eventFromOpts').start()
 
-        self.error_format = """Usage: %s list-groups [options] <tag> [group]
+        self.error_format = """Usage: %s list-groups [options] <tag> [<group>]
 (Specify the --help global option for a list of other help options)
 
 %s: error: {message}
@@ -184,7 +184,7 @@ class TestListGroups(utils.CliTestCase):
     def test_anon_handle_list_groups_help(self):
         self.assert_help(
             anon_handle_list_groups,
-            """Usage: %s list-groups [options] <tag> [group]
+            """Usage: %s list-groups [options] <tag> [<group>]
 (Specify the --help global option for a list of other help options)
 
 Options:

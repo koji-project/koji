@@ -17,7 +17,7 @@ class TestCall(utils.CliTestCase):
     maxDiff = None
 
     def setUp(self):
-        self.error_format = """Usage: %s call [options] name [arg...]
+        self.error_format = """Usage: %s call [options] <name> [<arg> ...]
 (Specify the --help global option for a list of other help options)
 
 %s: error: {message}
@@ -136,7 +136,7 @@ class TestCall(utils.CliTestCase):
         """Test handle_call help message"""
         self.assert_help(
             handle_call,
-            """Usage: %s call [options] name [arg...]
+            """Usage: %s call [options] <name> [<arg> ...]
 (Specify the --help global option for a list of other help options)
 
 Options:

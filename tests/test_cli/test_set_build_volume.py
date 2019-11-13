@@ -16,7 +16,7 @@ class TestSetBuildVolume(utils.CliTestCase):
     maxDiff = None
 
     def setUp(self):
-        self.error_format = """Usage: %s set-build-volume volume n-v-r [n-v-r ...]
+        self.error_format = """Usage: %s set-build-volume <volume> <n-v-r> [<n-v-r> ...]
 (Specify the --help global option for a list of other help options)
 
 %s: error: {message}
@@ -104,7 +104,7 @@ class TestSetBuildVolume(utils.CliTestCase):
     def test_handle_set_build_volume_help(self):
         self.assert_help(
             handle_set_build_volume,
-            """Usage: %s set-build-volume volume n-v-r [n-v-r ...]
+            """Usage: %s set-build-volume <volume> <n-v-r> [<n-v-r> ...]
 (Specify the --help global option for a list of other help options)
 
 Options:

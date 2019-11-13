@@ -17,7 +17,7 @@ class TestEnableHost(utils.CliTestCase):
     maxDiff = None
 
     def setUp(self):
-        self.error_format = """Usage: %s enable-host [options] hostname ...
+        self.error_format = """Usage: %s enable-host [options] <hostname> [<hostname> ...]
 (Specify the --help global option for a list of other help options)
 
 %s: error: {message}
@@ -122,7 +122,7 @@ class TestEnableHost(utils.CliTestCase):
         """Test %s help message""" % handle_enable_host.__name__
         self.assert_help(
             handle_enable_host,
-            """Usage: %s enable-host [options] hostname ...
+            """Usage: %s enable-host [options] <hostname> [<hostname> ...]
 (Specify the --help global option for a list of other help options)
 
 Options:

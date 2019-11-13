@@ -44,8 +44,8 @@ class TestDistRepo(utils.CliTestCase):
         self.session.getTag.return_value = copy.deepcopy(self.TAG)
         self.session.distRepo.return_value = self.task_id
 
-        self.error_format = """Usage: %s dist-repo [options] tag keyID [keyID...]
-(Specify the --help option for a list of other options)
+        self.error_format = """Usage: %s dist-repo [options] <tag> <key_id> [<key_id> ...]
+(Specify the --help global option for a list of other help options)
 
 %s: error: {message}
 """ % (self.progname, self.progname)
@@ -248,8 +248,8 @@ class TestDistRepo(utils.CliTestCase):
         """Test handle_dist_repo help message"""
         self.assert_help(
             handle_dist_repo,
-            """Usage: %s dist-repo [options] tag keyID [keyID...]
-(Specify the --help option for a list of other options)
+            """Usage: %s dist-repo [options] <tag> <key_id> [<key_id> ...]
+(Specify the --help global option for a list of other help options)
 
 Options:
   -h, --help            show this help message and exit

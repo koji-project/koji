@@ -1,5 +1,4 @@
 from __future__ import absolute_import
-import base64
 import copy
 import hashlib
 import mock
@@ -68,7 +67,7 @@ class TestImportSIG(utils.CliTestCase):
             }
         ]
 
-        self.error_format = """Usage: %s import-sig [options] package [package...]
+        self.error_format = """Usage: %s import-sig [options] <package> [<package> ...]
 (Specify the --help global option for a list of other help options)
 
 %s: error: {message}
@@ -274,7 +273,7 @@ class TestImportSIG(utils.CliTestCase):
         """Test handle_import_sig help message"""
         self.assert_help(
             handle_import_sig,
-            """Usage: %s import-sig [options] package [package...]
+            """Usage: %s import-sig [options] <package> [<package> ...]
 (Specify the --help global option for a list of other help options)
 
 Options:
