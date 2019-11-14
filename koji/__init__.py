@@ -1762,6 +1762,7 @@ def read_config(profile_name, user_config=None):
     got_conf = False
     if config.has_section(profile_name):
         got_conf = True
+        result['profile'] = profile_name
         for name, value in config.items(profile_name):
             #note the config_defaults dictionary also serves to indicate which
             #options *can* be set via the config file. Such options should
