@@ -12,6 +12,7 @@
     <li><a href="tasksbyhost">Tasks completed by each host</a></li>
     <li><a href="buildsbystatus">Succeeded/failed/canceled builds</a></li>
     <li><a href="buildsbytarget">Number of builds in each target</a></li>
+    <li><a href="clusterhealth">Cluster health</a></li>
   </ul>
 
 #include "includes/footer.chtml"

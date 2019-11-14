@@ -2135,6 +2135,62 @@ def buildsbytarget(environ, days='7', start=None, order='-builds'):
 
     return _genHTML(environ, 'buildsbytarget.chtml')
 
+def _filter_hosts_by_arch(hosts, arch):
+    if arch == '__all__':
+        return hosts
+    else:
+        return [h for h in hosts if arch in h['arches'].split()]
+
+def clusterhealth(environ, arch='__all__'):
+    values = _initValues(environ, 'Cluster health', 'reports')
+    server = _getServer(environ)
+    channels = server.listChannels()
+    server.multicall = True
+    for channel in channels:
+        server.listHosts(channelID=channel['id'])
+    max_enabled = 0
+    max_capacity = 0
+    arches = set()
+    for channel, [hosts] in zip(channels, server.multiCall()):
+        for host in hosts:
+            arches |= set(host['arches'].split())
+        hosts = _filter_hosts_by_arch(hosts, arch)
+        channel['enabled'] = len([x for x in hosts if x['enabled']])
+        channel['disabled'] = len(hosts) - channel['enabled']
+        channel['ready'] = len([x for x in hosts if x['ready']])
+        channel['capacity'] = sum([x['capacity'] for x in hosts])
+        channel['load'] = sum([x['task_load'] for x in hosts])
+        if max_enabled < channel['enabled']:
+            max_enabled = channel['enabled']
+        if max_capacity < channel['capacity']:
+            max_capacity = channel['capacity']
+
+    graphWidth = 400.0
+    # compute values for channels
+    for channel in channels:
+        try:
+            channel['capacityPerc'] = channel['capacity'] / max_capacity * 100
+        except ZeroDivisionError:
+            channel['capacityPerc'] = 0
+        try:
+            channel['enabledPerc'] = channel['enabled'] / max_enabled * 100
+        except ZeroDivisionError:
+            channel['enabledPerc'] = 0
+        if channel['capacity']:
+            channel['perc_load'] = min(100, channel['load'] / channel['capacity'] * 100)
+        else:
+            channel['perc_load'] = 0.0
+        if channel['enabled']:
+            channel['perc_ready'] = min(100, channel['ready'] / channel['enabled'] * 100)
+        else:
+            channel['perc_ready'] = 0.0
+
+    values['arch'] = arch
+    values['arches'] = sorted(arches)
+    values['graphWidth'] = graphWidth
+    values['channels'] = sorted(channels, key=lambda x: x['name'])
+    return _genHTML(environ, 'clusterhealth.chtml')
+
 def recentbuilds(environ, user=None, tag=None, package=None):
     values = _initValues(environ, 'Recent Build RSS')
     server = _getServer(environ)
