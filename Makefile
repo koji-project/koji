@@ -91,8 +91,8 @@ test3:
 	PYTHONPATH=hub/.:plugins/hub/.:plugins/builder/.:plugins/cli/.:cli/.:www/lib coverage3 run \
 	    --rcfile .coveragerc3 --source . \
 	    /usr/bin/nosetests-3
-	coverage report --rcfile .coveragerc3
-	coverage html --rcfile .coveragerc3
+	coverage3 report --rcfile .coveragerc3
+	coverage3 html --rcfile .coveragerc3
 	@echo Full coverage report at file://${CURDIR}/htmlcov/py3/index.html
 
 test-tarball:
