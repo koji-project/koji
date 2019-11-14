@@ -40,7 +40,6 @@ Contents
     profiles
     plugins
     volumes
-    writing_a_plugin
     writing_koji_code
     content_generators
     content_generator_metadata

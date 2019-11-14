@@ -1,8 +1,3 @@
-=========================
-How to write Koji plugins
-=========================
-
-
 Writing Koji plugins
 ====================
 
@@ -215,35 +210,35 @@ Most simple command would look like this:
         (opts, args) = parser.parse_args(args)
         print(args[0])
 
-`@export_cli` is a decorator which registers a new command. The command
+``@export_cli`` is a decorator which registers a new command. The command
 name is derived from name of the function. The function name must start with
-either `anon_handle_` or `handle_`. The rest of the name becomes the name of
+either ``anon_handle_`` or ``handle_``. The rest of the name becomes the name of
 the command.
 
 In the first case, the command will not automatically
 authenticate with the hub (though the user can still override
-this behavior with `--force-auth` option). In the second case, the command
+this behavior with ``--force-auth`` option). In the second case, the command
 will perform authentication by default (this too can be overridden by the
-user with the `--noauth` option).
+user with the ``--noauth`` option).
 
 The example above is very simplistic. We recommend that developers also
 examine the actual calls included in Koji. The built in commands live in
-`koji_cli.commands` and our standard cli plugins live in `plugins/cli`.
+``koji_cli.commands`` and our standard cli plugins live in ``plugins/cli``.
 
 Koji provides some important functions via in the client cli library
-(`koji_cli.lib`) for use by cli commands. Some notable examples are:
+(``koji_cli.lib``) for use by cli commands. Some notable examples are:
 
- * `activate_session(session, options)` - It is needed to authenticate
+ * ``activate_session(session, options)`` - It is needed to authenticate
    against hub. Both parameters are same as those passed to handler.
- * `watch_tasks(session, tasklist, quiet=False, poll_interval=60)` - It is
-   the same function used e.g. in `build` command for waiting for spawned
+ * ``watch_tasks(session, tasklist, quiet=False, poll_interval=60)`` - It is
+   the same function used e.g. in ``build`` command for waiting for spawned
    tasks.
- * `list_task_output_all_volumes(session, task_id)` - wrapper function for
-   `listTaskOutput` with different versions of hub.
+ * ``list_task_output_all_volumes(session, task_id)`` - wrapper function for
+   ``listTaskOutput`` with different versions of hub.
 
 Final command has to be saved in python system-wide library path - e.g. in
-`/usr/lib/python3.4/site-packages/koji_cli_plugins`. Filename doesn't matter
-as all files in this directory are searched for `@export_cli` macros. Note,
+``/usr/lib/python3.4/site-packages/koji_cli_plugins``. Filename doesn't matter
+as all files in this directory are searched for ``@export_cli`` macros. Note,
 that python 3 variant of CLI is looking to different directory than python 2
 one.
 
@@ -251,7 +246,7 @@ CLI plugins structure will be extended (made configurable and allowing more
 than just adding commands - e.g. own authentication methods, etc.) in future.
 
 Pull requests
-=============
+-------------
 
 These plugins have to be written in python 2.6+/3.x compatible way. We are
 using `six` library to support this, so we will also prefer pull requests
@@ -259,4 +254,4 @@ written this way. CLI (and client library) is meant to be fully compatible
 with python 3 from koji 1.13.
 
 Tests are also recommended for PR. For example one see
-`tests/test_plugins/test_runroot_cli.py`.
+``tests/test_plugins/test_runroot_cli.py``.
