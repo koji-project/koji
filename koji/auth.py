@@ -841,23 +841,3 @@ def exclusiveSession(*args, **opts):
 def sharedSession():
     """Drop out of exclusive mode"""
     return context.session.makeShared()
-
-
-if __name__ == '__main__': # pragma: no cover
-    # XXX - testing defaults
-    import db
-    db.setDBopts(database="test", user="test")
-    print("Connecting to db")
-    context.cnx = db.connect()
-    print("starting session 1")
-    sess = Session(None, hostip='127.0.0.1')
-    print("Session 1: %s" % sess)
-    print("logging in with session 1")
-    session_info = sess.login('host/1', 'foobar', {'hostip':'127.0.0.1'})
-    #wrap values in lists
-    session_info = dict([[k, [v]] for k, v in six.iteritems(session_info)])
-    print("Session 1: %s" % sess)
-    print("Session 1 info: %r" % session_info)
-    print("Creating session 2")
-    s2 = Session(session_info, '127.0.0.1')
-    print("Session 2: %s " % s2)
