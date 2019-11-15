@@ -296,3 +296,66 @@ class TestBuildTypeTest(unittest.TestCase):
         data = {'build': 123, 'btypes': set(['rpm'])}
         self.assertTrue(obj.run(data))
         self.get_build_type.assert_not_called()
+
+
+class TestImportedTest(unittest.TestCase):
+    def setUp(self):
+        self.list_rpms = mock.patch('kojihub.list_rpms').start()
+        self.list_archives = mock.patch('kojihub.list_archives').start()
+        self.get_build = mock.patch('kojihub.get_build').start()
+
+    def tearDown(self):
+        mock.patch.stopall()
+
+    def test_no_build(self):
+        self.get_build.side_effect = koji.GenericError
+        obj = kojihub.ImportedTest('imported - no build')
+        data = {}
+        with self.assertRaises(koji.GenericError) as cm:
+            obj.run(data)
+        self.assertEqual(cm.exception.args[0],
+                         'policy data must contain a build')
+        self.get_build.assert_not_called()
+
+    def test_invalid_build(self):
+        self.get_build.side_effect = koji.GenericError
+        obj = kojihub.ImportedTest('imported - invalid build')
+        data = {'build': 'nvr-1-1'}
+        with self.assertRaises(koji.GenericError):
+            obj.run(data)
+        self.get_build.assert_called_once_with('nvr-1-1', strict=True)
+
+    def test_imported_rpm(self):
+        binfo = {'id': 1, 'name': 'nvr-1-1'}
+        self.get_build.return_value = binfo
+        self.list_rpms.return_value = [{'id': 1, 'buildroot_id': None}]
+        obj = kojihub.ImportedTest('imported - imported rpm')
+        data = {'build': 'nvr-1-1'}
+        self.assertTrue(obj.run(data))
+        self.get_build.assert_called_once_with('nvr-1-1', strict=True)
+        self.list_rpms.assert_called_once_with(buildID=1)
+        self.list_archives.assert_not_called()
+
+    def test_imported_archive(self):
+        binfo = {'id': 1, 'name': 'nvr-1-1'}
+        self.get_build.return_value = binfo
+        self.list_rpms.return_value = [{'id': 1, 'buildroot_id': 1}]
+        self.list_archives.return_value = [{'id': 1, 'buildroot_id': None}]
+        obj = kojihub.ImportedTest('imported - imported archive')
+        data = {'build': 'nvr-1-1'}
+        self.assertTrue(obj.run(data))
+        self.get_build.assert_called_once_with('nvr-1-1', strict=True)
+        self.list_rpms.assert_called_once_with(buildID=1)
+        self.list_archives.assert_called_once_with(buildID=1)
+
+    def test_false(self):
+        binfo = {'id': 1, 'name': 'nvr-1-1'}
+        self.get_build.return_value = binfo
+        self.list_rpms.return_value = [{'id': 1, 'buildroot_id': 1}]
+        self.list_archives.return_value = [{'id': 1, 'buildroot_id': 2}]
+        obj = kojihub.ImportedTest('imported - false test')
+        data = {'build': 'nvr-1-1'}
+        self.assertFalse(obj.run(data))
+        self.get_build.assert_called_once_with('nvr-1-1', strict=True)
+        self.list_rpms.assert_called_once_with(buildID=1)
+        self.list_archives.assert_called_once_with(buildID=1)
