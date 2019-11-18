@@ -601,9 +601,13 @@ need to be available on that address.  To configure this please perform the
 following:
 
 #.  Edit ``/var/lib/pgsql/data/postgresql.conf``
-#.  Set ``listen_address`` so postgres will listen on all interfaces::
+#.  Set ``listen_address`` so postgres will listen on all interfaces:
+    ::
+
         listen_addresses = '*'
-#.  Reload the postgresql service::
+#.  Reload the postgresql service:
+    ::
+
         systemctl restart postgresql
 
 Koji Hub
