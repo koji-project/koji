@@ -476,12 +476,13 @@ Authorize Koji-web and Koji-hub resources
         host    koji        koji     ::1/128          md5
         host    koji        koji    $IP_ADDRESS/32    md5
 
-    Make auth changes live:
-    You must reload the PostgreSQL configuration for these changes to become active.
+Make auth changes live:
+You must reload the PostgreSQL configuration for these changes to become
+active.
 
-    ::
+::
 
-        root@localhost$ systemctl reload postgresql
+    root@localhost$ systemctl reload postgresql
 
 Bootstrapping the initial koji admin user into the PostgreSQL database
 ----------------------------------------------------------------------
