@@ -609,7 +609,7 @@ class RawHeader(object):
 
     def __init__(self, data):
         if rpm is None:
-            raise koji.GenericError("rpm's python bindings are not installed")
+            raise GenericError("rpm's python bindings are not installed")
         if data[0:3] != RPM_HEADER_MAGIC:
             raise GenericError("Invalid rpm header: bad magic: %r" % (data[0:3],))
         self.header = data
@@ -895,7 +895,7 @@ def splice_rpm_sighdr(sighdr, src, dst=None, bufsize=8192):
 def get_rpm_header(f, ts=None):
     """Return the rpm header."""
     if rpm is None:
-        raise koji.GenericError("rpm's python bindings are not installed")
+        raise GenericError("rpm's python bindings are not installed")
     if ts is None:
         ts = rpm.TransactionSet()
         ts.setVSFlags(rpm._RPMVSF_NOSIGNATURES|rpm._RPMVSF_NODIGESTS)
