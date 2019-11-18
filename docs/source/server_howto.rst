@@ -486,10 +486,10 @@ Authorize Koji-web and Koji-hub resources
 Bootstrapping the initial koji admin user into the PostgreSQL database
 ----------------------------------------------------------------------
 
-The initial admin user must be manually added to the user database using sql
-commands.  Once added and given admin privilege, you may add additional users
-and change privileges of those users via the koji command line tool's
-administrative commands.
+You must add the initial admin user manually to the user database using sql
+commands.  Once you have bootstrapped this initial admin user, you may add
+additional users and change privileges of those users via the koji command
+line tool.
 
 However, if you decided to use the simple user/pass method of authentication,
 then any password setting/changing must be done manually via sql commands as
