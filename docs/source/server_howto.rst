@@ -354,8 +354,11 @@ currently hard coded into the koji client.
 ``koji/kojira@EXAMPLE.COM``
     Used by the kojira server during communications with the koji-hub
 
-``compile/builder1@EXAMPLE.COM``
-    Used on builder1 to communicate with the koji-hub
+``compile/builder1.example.com@EXAMPLE.COM``
+    Used on builder1 to communicate with the koji-hub. This
+    is a user principal that will authenticate koji-builder to Kerberos as
+    "compile/builder1.example.com@EXAMPLE.COM". Each builder host will have
+    its own unique Kerberos user principal to authenticate to the hub.
 
 PostgreSQL Server
 =================
