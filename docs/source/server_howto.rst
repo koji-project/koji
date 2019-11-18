@@ -649,20 +649,20 @@ The apache web server has two places that it sets maximum requests a server
 will handle before the server restarts. The xmlrpc interface in kojihub is a
 python application, and processes can sometimes grow outrageously large when it
 doesn't reap memory often enough. As a result, it is strongly recommended that
-you set both instances of MaxRequestsPerChild in httpd.conf to something
-reasonable in order to prevent the server from becoming overloaded and crashing
-(at 100 the httpd processes will grow to about 75MB resident set size before
-respawning).
+you set both instances of ``MaxConnectionsPerChild`` in ``httpd.conf`` to
+something reasonable in order to prevent the server from becoming overloaded
+and crashing (at 100 the httpd processes will grow to about 75MB resident set
+size before respawning).
 
 ::
 
     <IfModule prefork.c>
     ...
-    MaxRequestsPerChild  100
+    MaxConnectionsPerChild  100
     </IfModule>
     <IfModule worker.c>
     ...
-    MaxRequestsPerChild  100
+    MaxConnectionsPerChild  100
     </IfModule>
     <IfModule event.c>
     ...
