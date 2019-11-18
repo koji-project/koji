@@ -129,7 +129,7 @@ koji components.
     emailAddress            = optional
 
     [req] 
-    default_bits            = 1024
+    default_bits            = 2048
     default_keyfile         = privkey.pem
     default_md              = sha256
     distinguished_name      = req_distinguished_name
