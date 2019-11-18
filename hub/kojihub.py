@@ -5864,6 +5864,14 @@ def cg_import(metadata, directory, token=None):
     - json encoded string representing the metadata
     - a dictionary (parsed metadata)
     - a filename containing the metadata
+
+    :param metadata: describes the content for this build.
+    :param str directory: directory on the hub where files are located
+    :param str token: (optional) a reservation token for this build.
+                      You obtain a token from the CGInitBuild method.
+                      If you specify a token, you must also specify a build_id
+                      in the metadata.
+    :returns: buildinfo dict
     """
 
     importer = CG_Importer()
