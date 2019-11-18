@@ -188,7 +188,3 @@ def connect():
     _DBconn.conn = conn
 
     return DBWrapper(conn)
-
-if __name__ == "__main__":
-    setDBopts(database="test", user="test")
-    print("This is a Python library")
