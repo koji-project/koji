@@ -110,6 +110,6 @@ class TestImportImageInternal(unittest.TestCase):
         expression, kwargs = cursor.execute.mock_calls[0][1]
         expression = " ".join(expression.split())
         expected = 'INSERT INTO archive_rpm_components (archive_id, rpm_id) ' + \
-            'VALUES (%(archive_id)s, %(rpm_id)s)'
+            'VALUES (%(archive_id0)s, %(rpm_id0)s)'
         self.assertEquals(expression, expected)
-        self.assertEquals(kwargs, {'archive_id': 9, 'rpm_id': 6})
+        self.assertEquals(kwargs, {'archive_id0': 9, 'rpm_id0': 6})
