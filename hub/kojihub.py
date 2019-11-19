@@ -9119,15 +9119,18 @@ class ImportedTest(koji.policy.BaseSimpleTest):
     True if any of them lack a buildroot (strict)"""
     name = 'imported'
     def run(self, data):
-        rpms = context.handlers.call('listRPMs', buildID=data['build'])
-        #no test args
-        for rpminfo in rpms:
+        build_info = data.get('build')
+        if not build_info:
+            raise koji.GenericError('policy data must contain a build')
+        build_id = get_build(build_info, strict=True)['id']
+        # no test args
+        for rpminfo in list_rpms(buildID=build_id):
             if rpminfo['buildroot_id'] is None:
                 return True
-        for archive in list_archives(buildID=data['build']):
+        for archive in list_archives(buildID=build_id):
             if archive['buildroot_id'] is None:
                 return True
-        #otherwise...
+        # otherwise...
         return False
 
 class ChildTaskTest(koji.policy.BoolTest):
