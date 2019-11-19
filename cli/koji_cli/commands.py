@@ -2346,10 +2346,7 @@ def anon_handle_list_api(goptions, session, args):
     if len(args) != 0:
         parser.error(_("This command takes no arguments"))
     activate_session(session, goptions)
-    tmplist = [(x['name'], x) for x in session._listapi()]
-    tmplist.sort()
-    funcs = [x[1] for x in tmplist]
-    for x in funcs:
+    for x in sorted(session._listapi(), key=lambda x: x['name']):
         if 'argdesc' in x:
             args = x['argdesc']
         elif x['args']:

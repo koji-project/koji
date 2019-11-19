@@ -146,7 +146,8 @@ body#users #mainNav li#usersTab a,
 body#hosts #mainNav li#hostsTab a,
 body#buildtargets #mainNav li#buildtargetsTab a,
 body#reports #mainNav li#reportsTab a,
-body#search #mainNav li#searchTab a {
+body#search #mainNav li#searchTab a,
+body#api #mainNav li#apiTab a {
     background-color: #eee;
     color: #000;
 }

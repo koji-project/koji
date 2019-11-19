@@ -2344,6 +2344,16 @@ def search(environ, start=None, order=None):
     else:
         return _genHTML(environ, 'search.chtml')
 
+
+def api(environ):
+    values = _initValues(environ, 'API', 'api')
+    server = _getServer(environ)
+
+    values['methods'] = sorted(server._listapi(), key=lambda x: x['name'])
+
+    return _genHTML(environ, 'api.chtml')
+
+
 def watchlogs(environ, taskID):
     values = _initValues(environ)
     if isinstance(taskID, list):
