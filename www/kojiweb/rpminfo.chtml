@@ -59,7 +59,7 @@
     </tr>
     #end if
     <tr>
-      <th>Size</th><td>$rpm.size</td>
+      <th>Size</th><td>$util.formatThousands($rpm.size)</td>
     </tr>
     <tr>
       <th><label title="The MD5 digest of the combined header and payload contents. You can query it by `rpmkeys -Kv foo.rpm`">SIGMD5</label></th><td>$rpm.payloadhash</td>
@@ -236,11 +236,11 @@
           </tr>
           <tr class="list-header">
             <th><a href="rpminfo?fileOrder=$util.toggleOrder($self, 'name', 'fileOrder')$util.passthrough_except($self, 'fileOrder', 'fileStart')#filelist">Name</a> $util.sortImage($self, 'name', 'fileOrder')</th>
-            <th><a href="rpminfo?fileOrder=$util.toggleOrder($self, 'size', 'fileOrder')$util.passthrough_except($self, 'fileOrder', 'fileStart')#filelist">Size</a> $util.sortImage($self, 'size', 'fileOrder')</th>
+            <th align="right"><a href="rpminfo?fileOrder=$util.toggleOrder($self, 'size', 'fileOrder')$util.passthrough_except($self, 'fileOrder', 'fileStart')#filelist">Size</a> $util.sortImage($self, 'size', 'fileOrder')</th>
           </tr>
           #for $file in $files
           <tr class="$util.rowToggle($self)">
-            <td><a href="fileinfo?rpmID=$rpm.id&amp;filename=$quote($file.name)">$util.escapeHTML($file.name)</a></td><td>$file.size</td>
+            <td><a href="fileinfo?rpmID=$rpm.id&amp;filename=$quote($file.name)">$util.escapeHTML($file.name)</a></td><td align="right">$util.formatThousands($file.size)</td>
           </tr>
           #end for
         </table>
