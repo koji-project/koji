@@ -190,19 +190,19 @@ def multi_fnmatch(s, patterns):
     return False
 
 
-def dslice(dict, keys, strict=True):
+def dslice(dict_, keys, strict=True):
     """Returns a new dictionary containing only the specified keys"""
     ret = {}
     for key in keys:
-        if strict or key in dict:
+        if strict or key in dict_:
             #for strict we skip the has_key check and let the dict generate the KeyError
-            ret[key] = dict[key]
+            ret[key] = dict_[key]
     return ret
 
 
-def dslice_ex(dict, keys, strict=True):
+def dslice_ex(dict_, keys, strict=True):
     """Returns a new dictionary with only the specified keys removed"""
-    ret = dict.copy()
+    ret = dict_.copy()
     for key in keys:
         if strict or key in ret:
             del ret[key]
