@@ -6737,6 +6737,37 @@ def get_archive_type(filename=None, type_name=None, type_id=None, strict=False):
     else:
         return None
 
+def add_archive_type(name, description, extensions):
+    """
+    Add new archive type.
+
+    Use this to tell Koji about new builds' files' extensions before
+    importing the files.
+
+    :param str name: archive type name, eg. "yaml"
+    :param str description: eg. "YAML Ain't Markup Language"
+    :param str extensions: space-separated list of descriptions, eg. "yaml yml"
+    """
+    context.session.assertPerm('admin')
+    data = {'name': name,
+            'description': description,
+            'extensions': extensions,
+    }
+    if get_archive_type(type_name=name):
+        raise koji.GenericError("archivetype %s already exists" % name)
+    # No invalid or duplicate extensions
+    for ext in extensions.split(' '):
+        if not ext.replace('.', '').isalnum():
+            raise koji.GenericError('invalid %s file extension' % ext)
+        select = r"""SELECT id FROM archivetypes
+                      WHERE extensions ~* E'(\\s|^)%s(\\s|$)'""" % ext
+        results = _multiRow(select, {}, ('id',))
+        if len(results) > 0:
+            raise koji.GenericError('file extension %s already exists' % ext)
+    insert = InsertProcessor('archivetypes', data=data)
+    insert.execute()
+
+
 def new_maven_build(build, maven_info):
     """
     Add Maven metadata to an existing build.
@@ -10338,6 +10369,8 @@ class RootExports(object):
 
     listBTypes = staticmethod(list_btypes)
     addBType = staticmethod(add_btype)
+
+    addArchiveType = staticmethod(add_archive_type)
 
     def getChangelogEntries(self, buildID=None, taskID=None, filepath=None, author=None, before=None, after=None, queryOpts=None):
         """Get changelog entries for the build with the given ID,
