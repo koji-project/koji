@@ -37,7 +37,7 @@ class TestRestartTask(unittest.TestCase):
         self.session.host.getID.return_value = "HOST ID"
         handler = self.get_handler(host)
         self.assertEqual(handler.Foreground, True)
-        result = handler.run()
+        handler.run()
 
         self.assertEqual(self.manager.restart_pending, True)
 
@@ -47,7 +47,7 @@ class TestRestartTask(unittest.TestCase):
         handler = self.get_handler(host)
         self.assertEqual(handler.Foreground, True)
         with self.assertRaises(koji.GenericError):
-            result = handler.run()
+            handler.run()
 
 
 class TestRestartVerifyTask(unittest.TestCase):
@@ -82,9 +82,9 @@ class TestRestartVerifyTask(unittest.TestCase):
         self.session.host.getID.return_value = "HOST ID"
         self.session.getTaskInfo.return_value = task1
         handler = self.get_handler(task1['id'], host)
-        self.manager.start_time = 100  # greater than task1['start_time']
+        self.manager.start_ts = 100  # greater than task1['start_time']
         self.assertEqual(handler.Foreground, True)
-        result = handler.run()
+        handler.run()
 
     def test_restart_verify_not_closed(self):
         task1 = {
@@ -97,7 +97,7 @@ class TestRestartVerifyTask(unittest.TestCase):
         self.session.getTaskInfo.return_value = task1
         handler = self.get_handler(task1['id'], host)
         try:
-            result = handler.run()
+            handler.run()
         except koji.GenericError as e:
             self.assertEqual(e.args[0], 'Stage one restart task is OPEN')
         else:
@@ -114,7 +114,7 @@ class TestRestartVerifyTask(unittest.TestCase):
         self.session.getTaskInfo.return_value = task1
         handler = self.get_handler(task1['id'], host)
         try:
-            result = handler.run()
+            handler.run()
         except koji.GenericError as e:
             self.assertEqual(e.args[0], 'Host mismatch')
         else:
@@ -130,9 +130,9 @@ class TestRestartVerifyTask(unittest.TestCase):
         self.session.host.getID.return_value = "HOST ID"
         self.session.getTaskInfo.return_value = task1
         handler = self.get_handler(task1['id'], host)
-        self.manager.start_time = 0  # LESS THAN task1['start_time']
+        self.manager.start_ts = 0  # LESS THAN task1['start_time']
         try:
-            result = handler.run()
+            handler.run()
         except koji.GenericError as e:
             self.assertEqual(e.args[0][:30], 'Restart failed - start time is')
         else:
@@ -167,7 +167,7 @@ class TestRestartHostsTask(unittest.TestCase):
         self.session.listHosts.return_value = [host]
         handler = self.get_handler({})
         handler.subtask.side_effect = [101, 102]
-        result = handler.run()
+        handler.run()
 
         self.session.listHosts.assert_called_once_with(enabled=True)
         self.session.taskFinished.assert_not_called()
@@ -181,7 +181,7 @@ class TestRestartHostsTask(unittest.TestCase):
         self.session.listHosts.return_value = []
         handler = self.get_handler({})
         try:
-            result = handler.run()
+            handler.run()
         except koji.GenericError as e:
             self.assertEqual(e.args[0], 'No matching hosts')
         else:
@@ -199,7 +199,7 @@ class TestRestartHostsTask(unittest.TestCase):
         self.session.getChannel.return_value = {'id': 1, 'name': 'default'}
         handler = self.get_handler({'channel': 'default', 'arches': ['x86_64']})
         handler.subtask.side_effect = [101, 102]
-        result = handler.run()
+        handler.run()
 
         self.session.listHosts.assert_called_once_with(enabled=True, channelID=1, arches=['x86_64'])
         self.session.taskFinished.assert_not_called()
@@ -216,7 +216,7 @@ class TestRestartHostsTask(unittest.TestCase):
         handler = self.get_handler({})
         self.session.taskFinished.return_value = True
         handler.subtask.side_effect = [101, 102]
-        result = handler.run()
+        handler.run()
 
         self.session.listHosts.assert_called_once_with(enabled=True)
         self.session.taskFinished.assert_called_once()
@@ -235,7 +235,7 @@ class TestRestartHostsTask(unittest.TestCase):
         self.session.taskFinished.return_value = False
         handler.subtask.side_effect = [101, 102]
         with self.assertRaises(koji.tasks.ServerRestart):
-            result = handler.run()
+            handler.run()
 
         self.session.listHosts.assert_called_once_with(enabled=True)
         self.session.taskFinished.assert_called_once()
