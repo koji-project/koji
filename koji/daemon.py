@@ -564,7 +564,7 @@ class TaskManager(object):
         self.hostdata = {}
         self.task_load = 0.0
         self.host_id = self.session.host.getID()
-        self.start_time = self.session.getSessionInfo()['start_time']
+        self.start_ts = self.session.getSessionInfo()['start_ts']
         self.logger = logging.getLogger("koji.TaskManager")
 
     def findHandlers(self, vars):
