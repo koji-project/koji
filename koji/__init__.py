@@ -1692,14 +1692,14 @@ def openRemoteFile(relpath, topurl=None, topdir=None, tempdir=None):
 
 
 def check_rpm_file(rpmfile):
-    "Do a initial sanity check on an RPM
+    """Do a initial sanity check on an RPM
 
     rpmfile can either be a file name or a file object
 
     This check is used to detect issues with RPMs before they break builds
     See: https://pagure.io/koji/issue/290
-    "
-    if isinstance(rpmfile, basestring):
+    """
+    if isinstance(rpmfile, six.string_types):
         with open(rpmfile, 'rb') as fo:
             return _check_rpm_file(fo)
     else:
@@ -1709,9 +1709,18 @@ def check_rpm_file(rpmfile):
 def _check_rpm_file(fo):
     """Check that the open file appears to be an rpm"""
     # TODO: trap exception and raise something with more infomation
-    rpm.TransactionSet().hdrCheck(fo.read())
+    ts = rpm.TransactionSet()
+    try:
+        hdr = ts.hdrFromFdno(fo.fileno())
+    except rpm.error as ex:
+        raise GenericError("rpm's header can't be extracted: %s (rpm error: %s)" % \
+                           (fo.name, ', '.join(ex.args)))
+    try:
+        rpm.TransactionSet().hdrCheck(hdr.unload())
+    except rpm.error as ex:
+        raise GenericError("rpm's header can't be checked: %s (rpm error: %s)" % \
+                           (fo.name, ', '.join(ex.args)))
     fo.seek(0)
-
 
 
 def config_directory_contents(dir_name, strict=False):
