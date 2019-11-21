@@ -2116,8 +2116,7 @@ def handle_list_signed(goptions, session, args):
         if rinfo is None:
             parser.error(_("No such RPM: %s") % options.rpm)
         if rinfo.get('external_repo_id'):
-            print("External rpm: %(name)s-%(version)s-%(release)s.%(arch)s@%(external_repo_name)s" % rinfo)
-            return 1
+            parser.error(_("External rpm: %(name)s-%(version)s-%(release)s.%(arch)s@%(external_repo_name)s") % rinfo)
         qopts['rpm_id'] = rinfo['id']
     if options.build:
         binfo = session.getBuild(options.build)
@@ -2132,9 +2131,7 @@ def handle_list_signed(goptions, session, args):
     else:
         sigs = session.queryRPMSigs(**qopts)
     if options.tag:
-        print("getting tag listing")
         rpms, builds = session.listTaggedRPMS(options.tag, inherit=False, latest=False)
-        print("got tag listing")
         tagged = {}
         for binfo in builds:
             build_idx.setdefault(binfo['id'], binfo)
