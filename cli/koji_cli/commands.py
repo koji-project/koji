@@ -5663,7 +5663,6 @@ def handle_spin_livemedia(options, session, args):
                "RPMs in the LiveMedia. May be used multiple times. The " +
                "build tag repo associated with the target is the default."))
     parser.add_option("--release", help=_("Forcibly set the release field"))
-    parser.add_option("--title", help=_("Set the image title (defaults to <name>)"))
     parser.add_option("--volid", help=_("Set the volume id"))
     parser.add_option("--specfile", metavar="URL",
         help=_("SCM URL to spec file fragment to use to generate wrapper RPMs"))
@@ -6065,7 +6064,7 @@ def _build_image(options, task_opts, session, args, img_type):
     passthru_opts = [
         'format', 'install_tree_url', 'isoname', 'ksurl',
         'ksversion', 'release', 'repo', 'scratch', 'skip_tag',
-        'specfile', 'title', 'vcpu', 'vmem', 'volid', 'optional_arches',
+        'specfile', 'vcpu', 'vmem', 'volid', 'optional_arches',
         'lorax_dir', 'lorax_url',
         ]
     for opt in passthru_opts:

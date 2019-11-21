@@ -3423,10 +3423,8 @@ class LiveMediaTask(ImageTask):
                    ])
 
         isoname='%s-%s-%s-%s.iso' % (name, arch, version, release)
-        title = self.opts.get('title', name)
         cmd.extend(['--iso-name', isoname,
                     '--releasever', version,
-                    '--title', title,
                    ])
 
 

@@ -41,7 +41,6 @@ LIVEMEDIA_OPTIONS = {
     "lorax_dir": None,
     "lorax_url": None,
     "optional_arches": None,
-    "title": None,
     "volid": None,
 }
 
@@ -414,7 +413,6 @@ Options:
                         times. The build tag repo associated with the target
                         is the default.
   --release=RELEASE     Forcibly set the release field
-  --title=TITLE         Set the image title (defaults to <name>)
   --volid=VOLID         Set the volume id
   --specfile=URL        SCM URL to spec file fragment to use to generate
                         wrapper RPMs
