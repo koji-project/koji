@@ -3,8 +3,8 @@ import koji
 import sys
 import threading
 import traceback
+import mock
 from six.moves import range
-import six
 
 try:
     import unittest2 as unittest
@@ -17,7 +17,7 @@ class ProfilesTestCase(unittest.TestCase):
         """ Test that profiles thread safe"""
         # see: https://pagure.io/koji/issue/58 and https://pagure.io/pungi/issue/253
         # loop a few times to increase chances of hitting race conditions
-        for i in range(20):
+        for i in range(256):
             errors = {}
             threads = [threading.Thread(target=stress, args=(errors, _)) for _ in range(100)]
             for t in threads:
@@ -34,7 +34,8 @@ class ProfilesTestCase(unittest.TestCase):
 def stress(errors, n):
     errors[n] = "Failed to start"
     try:
-        koji.get_profile_module('koji')
+        config = mock.Mock(topdir='topdir')
+        koji.get_profile_module('koji', config=config)
     except Exception:
         # if we don't catch this, nose seems to ignore the test
         errors[n] = ''.join(traceback.format_exception(*sys.exc_info()))
