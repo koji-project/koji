@@ -8070,12 +8070,14 @@ def tag_notification(is_successful, tag_id, from_id, build_id, user_id, ignore_s
         return None
     if tag_id:
         tag = get_tag(tag_id)
-        for email in get_notification_recipients(build, tag['id'], state):
-            recipients[email] = 1
+        if tag:
+            for email in get_notification_recipients(build, tag['id'], state):
+                recipients[email] = 1
     if from_id:
         from_tag = get_tag(from_id)
-        for email in get_notification_recipients(build, from_tag['id'], state):
-            recipients[email] = 1
+        if from_tag:
+            for email in get_notification_recipients(build, from_tag['id'], state):
+                recipients[email] = 1
     recipients_uniq = to_list(recipients.keys())
     if len(recipients_uniq) > 0 and not (is_successful and ignore_success):
         task_id = make_task('tagNotification', [recipients_uniq, is_successful, tag_id, from_id, build_id, user_id, ignore_success, failure_msg])
