@@ -60,5 +60,7 @@ ALTER TABLE host_channels ADD CONSTRAINT active_revoke_sane CHECK (
 ALTER TABLE host_channels ADD PRIMARY KEY (create_event, host_id, channel_id);
 ALTER TABLE host_channels ADD UNIQUE (host_id, channel_id, active);
 ALTER TABLE host_channels DROP CONSTRAINT host_channels_host_id_channel_id_key;
+-- drop potential very old constraint (https://pagure.io/koji/issue/1789)
+ALTER TABLE host_channels DROP CONSTRAINT IF EXISTS host_channels_host_id_key;
 
 COMMIT;
