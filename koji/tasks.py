@@ -29,8 +29,8 @@ import shutil
 import signal
 import time
 
+import requests
 import six.moves.xmlrpc_client
-import six.moves.urllib.request
 from six.moves import range
 
 import koji
@@ -479,12 +479,12 @@ class BaseTaskHandler(object):
                 return fn
             self.logger.debug("Downloading %s", relpath)
             url = "%s/%s" % (self.options.topurl, relpath)
-            fsrc = six.moves.urllib.request.urlopen(url)
-            if not os.path.exists(os.path.dirname(fn)):
-                os.makedirs(os.path.dirname(fn))
-            with open(fn, 'wb') as fdst:
-                shutil.copyfileobj(fsrc, fdst)
-            fsrc.close()
+            with requests.get(url) as resp:
+                if not os.path.exists(os.path.dirname(fn)):
+                    os.makedirs(os.path.dirname(fn))
+                with open(fn, 'wb') as fdst:
+                    for chunk in resp.iter_content(chunk_size=8192):
+                        fdst.write(chunk)
         else:
             fn = "%s/%s" % (self.options.topdir, relpath)
         return fn

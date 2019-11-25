@@ -1667,10 +1667,10 @@ def openRemoteFile(relpath, topurl=None, topdir=None, tempdir=None):
     on options"""
     if topurl:
         url = "%s/%s" % (topurl, relpath)
-        src = six.moves.urllib.request.urlopen(url)
         fo = tempfile.TemporaryFile(dir=tempdir)
-        shutil.copyfileobj(src, fo)
-        src.close()
+        with requests.get(url) as resp:
+            for chunk in resp.iter_content(chunk_size=8192):
+                fo.write(chunk)
         fo.seek(0)
     elif topdir:
         fn = "%s/%s" % (topdir, relpath)
