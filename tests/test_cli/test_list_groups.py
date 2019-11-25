@@ -190,7 +190,7 @@ class TestListGroups(utils.CliTestCase):
 Options:
   -h, --help      show this help message and exit
   --event=EVENT#  query at event
-  --ts=TIMESTAMP  query at timestamp
+  --ts=TIMESTAMP  query at last event before timestamp
   --repo=REPO#    query at event for a repo
   --show-blocked  Show blocked packages
 """ % self.progname)
