@@ -2,7 +2,7 @@ How tag inheritance works
 -------------------------
 
 Almost everything in koji is dealing with tag and their inheritance.
-What is it good for and how it can be configured?
+What is it good for and how can it be configured?
 
 Every tag handles its own configuration and as an administrator you
 can live with just this. But true power of tag structure is hidden in
@@ -66,7 +66,7 @@ be linked together in inheritance chain.
 
 In the example you can see basic inheritance chain. You see ``child``
 tag which is inheriting data from ``parent`` tag. Numbers behind tag
-names are numeric ids, which you don't need to care in normal
+names are numeric ids, which you don't need to care about in normal
 situations, but which can be useful in scripting koji. Four dots in
 the beginning of line are placeholders for different inheritance
 flags. These can be: M, F, I, N which denotes ``maxdepth``,
@@ -100,7 +100,7 @@ these options can specified via CLI.
       can use e.g. priority 15 like in good old Basic times).
 
 ``maxdepth``
-   For longer inheritance chains you may don't want to treat whole
+   For longer inheritance chains you may not want to treat whole
    chain. Let's leave our example and get more real-life situation.
 
    ::
@@ -121,10 +121,10 @@ these options can specified via CLI.
 
    This is not, what you would see in Fedora's koji, because Fedora is
    not reusing anything from previous releases and is doing mass
-   rebuilds instead, but it could have. In such case, we from some
-   reason want only packages from ``linux3-build``, but not anything
-   inherited into it. ``maxdepth`` does exactly this and strips the
-   rest of inheritance chain.
+   rebuilds instead, but it could have. In this case, we only want
+   packages from ``linux3-build``, but not anything inherited into it.
+   ``maxdepth`` does exactly this and strips the rest of inheritance
+   chain.
 
 ``intransitive``
     Intransitive inheritance links are as what they say. If they are
