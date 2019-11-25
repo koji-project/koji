@@ -666,15 +666,20 @@ def taskinfo(environ, taskID):
     elif task['method'] == 'restartVerify':
         values['rtask'] = server.getTaskInfo(params[0], request=True)
 
+    values['taskBuilds'] = []
     if task['state'] in (koji.TASK_STATES['CLOSED'], koji.TASK_STATES['FAILED']):
         try:
             result = server.getTaskResult(task['id'])
-            values['result'] = result
-            values['excClass'] = None
         except:
             excClass, exc = sys.exc_info()[:2]
             values['result'] = exc
             values['excClass'] = excClass
+        if not values.get('result'):
+            values['result'] = result
+            values['excClass'] = None
+            if task['method'] == 'buildContainer' and 'koji_builds' in result:
+                values['taskBuilds'] = [
+                        server.getBuild(int(buildID)) for buildID in result['koji_builds']]
     else:
         values['result'] = None
         values['excClass'] = None
