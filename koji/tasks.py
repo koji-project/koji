@@ -682,8 +682,8 @@ class RestartVerifyTask(BaseTaskHandler):
             raise koji.GenericError("Stage one restart task is %s" % state)
         if host['id'] != self.session.host.getID():
             raise koji.GenericError("Host mismatch")
-        if self.manager.start_time < tinfo['completion_ts']:
-            start_time = time.asctime(time.localtime(self.manager.start_time))
+        if self.manager.start_ts < tinfo['completion_ts']:
+            start_time = time.asctime(time.localtime(self.manager.start_ts))
             raise koji.GenericError("Restart failed - start time is %s" % start_time)
 
 
