@@ -323,7 +323,7 @@ class WindowsBuild(object):
             elif fileinfo['checksum_type'] == 'md5':
                 checksum = hashlib.md5()
             else:
-                raise BuildError('Unknown checksum type %s for %f' % (
+                raise BuildError('Unknown checksum type %s for %s' % (
                         fileinfo['checksum_type'],
                         os.path.basename(fileinfo['localpath'])))
         with open(destpath, 'w') as destfile:
