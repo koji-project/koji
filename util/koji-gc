@@ -15,6 +15,7 @@ except ImportError:  # pragma: no cover
 import koji
 from koji.util import LazyDict, LazyValue, to_list
 import koji.policy
+import datetime
 import fnmatch
 import optparse
 import os
@@ -473,7 +474,7 @@ def handle_trash():
             #XXX - should really check time server side
             if options.debug:
                 print("[%i/%i] Build has been used in a buildroot: %s" % (i, N, nvr))
-                print("Last_used: %r" % ts)
+                print("Last_used: %s" % datetime.datetime.fromtimestamp(ts).isoformat())
             age = time.time() - ts
             if age < min_age:
                 continue
