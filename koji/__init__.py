@@ -127,6 +127,7 @@ for h in (
         'RECOMMENDNAME', 'RECOMMENDVERSION', 'RECOMMENDFLAGS'):
     SUPPORTED_OPT_DEP_HDRS[h] = hasattr(rpm, 'RPMTAG_%s' % h)
 
+## BEGIN kojikamid dup
 
 class Enum(dict):
     """A simple class to track our enumerated constants
@@ -173,6 +174,8 @@ class Enum(dict):
     popitem = _notImplemented
     update = _notImplemented
     setdefault = _notImplemented
+
+## END kojikamid dup
 
 API_VERSION = 1
 
@@ -262,11 +265,15 @@ TAG_UPDATE_TYPES = Enum((
     'MANUAL',
 ))
 
+## BEGIN kojikamid dup
+
 CHECKSUM_TYPES = Enum((
     'md5',
     'sha1',
     'sha256',
 ))
+
+## END kojikamid dup
 
 #PARAMETERS
 BASEDIR = '/mnt/koji'

@@ -316,15 +316,16 @@ class WindowsBuild(object):
         destpath = os.path.join(basedir, fileinfo['localpath'])
         ensuredir(os.path.dirname(destpath))
         if 'checksum_type' in fileinfo:
-            if fileinfo['checksum_type'] == 'sha1':
+            checksum_type = CHECKSUM_TYPES[fileinfo['checksum_type']]
+            if checksum_type == 'sha1':
                 checksum = hashlib.sha1()
-            elif fileinfo['checksum_type'] == 'sha256':
+            elif checksum_type == 'sha256':
                 checksum = hashlib.sha256()
-            elif fileinfo['checksum_type'] == 'md5':
+            elif checksum_type == 'md5':
                 checksum = hashlib.md5()
             else:
                 raise BuildError('Unknown checksum type %s for %s' % (
-                        fileinfo['checksum_type'],
+                        checksum_type,
                         os.path.basename(fileinfo['localpath'])))
         with open(destpath, 'w') as destfile:
             offset = 0
@@ -338,12 +339,15 @@ class WindowsBuild(object):
                 offset += len(data)
                 if 'checksum_type' in fileinfo:
                     checksum.update(data)
-        # rpms don't have a md5sum in the fileinfo, but check it for everything else
-        digest = checksum.hexdigest()
-        if 'checksum' in fileinfo and fileinfo['checksum'] != digest:
-            raise BuildError('checksum validation failed for %s, %s (computed) != %s (provided)' % \
-                  (destpath, digest, fileinfo['checksum']))
-        self.logger.info('Retrieved %s (%s bytes, md5: %s)', destpath, offset, digest)
+        # rpms don't have a checksum in the fileinfo, but check it for everything else
+        if 'checksum_type' in fileinfo:
+            digest = checksum.hexdigest()
+            if fileinfo['checksum'] != digest:
+                raise BuildError('checksum validation failed for %s, %s (computed) != %s (provided)' % \
+                                 (destpath, digest, fileinfo['checksum']))
+            self.logger.info('Retrieved %s (%s bytes, %s: %s)', destpath, offset, checksum_type, digest)
+        else:
+            self.logger.info('Retrieved %s (%s bytes)', destpath, offset)
 
     def fetchBuildReqs(self):
         """Retrieve buildrequires listed in the spec file"""
