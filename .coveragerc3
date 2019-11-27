@@ -1,8 +1,10 @@
 [run]
+data_file = .coverage3
 
 ; extra omissions for py3 for now
 
 omit =
+    setup.py
     /usr/*
     tests/*
 
@@ -11,3 +13,6 @@ exclude_lines =
     pragma: no cover
     no cover 3.x
     if six.PY2
+
+[html]
+directory = htmlcov/py3

@@ -26,8 +26,8 @@ def checkout_run(cmd, ref='HEAD'):
     return output
 
 
-def run_test():
-    return checkout_run(['make', 'test'])
+def run_test2():
+    return checkout_run(['make', 'test2'])
 
 
 def run_test3():
@@ -38,7 +38,7 @@ def main():
     """Run our test targets in parallel using fresh checkouts of HEAD"""
     print("Running tests...")
     p = Pool(2)
-    results = [p.apply_async(f) for f in [run_test, run_test3]]
+    results = [p.apply_async(f) for f in [run_test2, run_test3]]
     for r in results:
         print(r.get().decode('utf-8'))
     p.close()
