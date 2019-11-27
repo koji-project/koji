@@ -901,8 +901,8 @@ class TaskManager(object):
                 #accept this task)
                 bin_avail = avail.get(bin, [0])
                 if self.checkAvailDelay(task, bin_avail, our_avail):
-                        # decline for now and give the upper half a chance
-                        return False
+                    # decline for now and give the upper half a chance
+                    continue
                 #otherwise, we attempt to open the task
                 if self.takeTask(task):
                     return True
