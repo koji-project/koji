@@ -75,6 +75,7 @@ class TestQueryProcessor(unittest.TestCase):
                    " ORDER BY something OFFSET 10 LIMIT 3"
         self.assertEqual(actual, expected)
 
+
     @mock.patch('kojihub.context')
     def test_simple_with_execution(self, context):
         cursor = mock.MagicMock()
@@ -94,6 +95,18 @@ class TestQueryProcessor(unittest.TestCase):
         results = proc.execute()
         cursor.execute.assert_called_once_with('\nSELECT count(*)\n  FROM awesome\n\n\n \n \n\n \n', {})
         self.assertEqual(results, 'some count')
+
+        cursor.reset_mock()
+        args['opts']['group'] = 'id'
+        args['enable_group'] = True
+        proc = kojihub.QueryProcessor(**args)
+        results = proc.execute()
+        cursor.execute.assert_called_once_with(
+            'SELECT count(*)\nFROM (\nSELECT 1\n'
+            '  FROM awesome\n\n\n GROUP BY id\n \n\n \n) numrows', {})
+        self.assertEqual(results, 'some count')
+
+
 
     @mock.patch('kojihub.context')
     def test_simple_execution_with_iterate(self, context):
