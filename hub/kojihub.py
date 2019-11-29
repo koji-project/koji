@@ -6449,13 +6449,13 @@ class CG_Importer(object):
         if rpmlist:
             insert = BulkInsertProcessor('archive_rpm_components')
             for rpminfo in rpmlist:
-                insert.set(archive_id=archive_id, rpm_id=rpminfo['id'])
+                insert.add_record(archive_id=archive_id, rpm_id=rpminfo['id'])
             insert.execute()
 
         if archives:
             insert = BulkInsertProcessor('archive_components')
             for archiveinfo in archives:
-                insert.set(archive_id=archive_id, component_id=archiveinfo['id'])
+                insert.add_record(archive_id=archive_id, component_id=archiveinfo['id'])
             insert.execute()
 
 
