@@ -2980,11 +2980,14 @@ def anon_handle_list_pkgs(goptions, session, args):
         event['timestr'] = time.asctime(time.localtime(event['ts']))
         print("Querying at event %(id)i (%(timestr)s)" % event)
 
-    if not opts['tagID'] and not opts['userID'] and not opts['pkgID']:
-        if opts['event']:
-            parser.error("--event and --ts makes sense only with --tag, --owner or --package")
-        if opts['show_blocked']:
-            parser.error("--show-blocked makes sense only with --tag, --owner or --package")
+    if not opts.get('tagID') and not opts.get('userID') and \
+       not opts.get('pkgID'):
+        if opts.get('event'):
+            parser.error("--event and --ts makes sense only with --tag,"
+                         " --owner or --package")
+        if options.show_blocked:
+            parser.error("--show-blocked makes sense only with --tag,"
+                         " --owner or --package")
 
     data = session.listPackages(**opts)
     if not data:
