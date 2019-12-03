@@ -5809,7 +5809,7 @@ def cg_init_build(cg, data):
     data['cg_id'] = cg_id
     # CGs shouldn't have to worry about epoch
     data.setdefault('epoch', None)
-    build_id = new_build(data, strict=True)
+    build_id = new_build(data, strict=False)
     # store token
     token = generate_token()
     insert = InsertProcessor(table='build_reservations')
@@ -5855,6 +5855,7 @@ def cg_refund_build(cg, build_id, token, state=koji.BUILD_STATES['FAILED']):
     binfo = get_build(build_id, strict=True)
     koji.plugin.run_callbacks('postBuildStateChange', attribute='state',
                               old=koji.BUILD_STATES['BUILDING'], new=state, info=binfo)
+    clear_reservation(build_id)
 
 
 def cg_import(metadata, directory, token=None):
