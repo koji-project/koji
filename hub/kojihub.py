@@ -8658,7 +8658,9 @@ SELECT %(col_str)s
  %(limit_str)s
 """
         if self.opts.get('countOnly'):
-            if self.opts.get('offset') or self.opts.get('limit'):
+            if self.opts.get('offset') \
+                    or self.opts.get('limit') \
+                    or (self.enable_group and self.opts.get('group')):
                 # If we're counting with an offset and/or limit, we need
                 # to wrap the offset/limited query and then count the results,
                 # rather than trying to offset/limit the single row returned
@@ -8684,7 +8686,9 @@ SELECT %(col_str)s
 
         query = query % locals()
         if self.opts.get('countOnly') and \
-           (self.opts.get('offset') or self.opts.get('limit')):
+            (self.opts.get('offset') or
+             self.opts.get('limit') or
+             (self.enable_group and self.opts.get('group'))):
             query = 'SELECT count(*)\nFROM (' + query + ') numrows'
         if self.opts.get('rowlock'):
             query += '\n FOR UPDATE'
