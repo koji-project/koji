@@ -46,11 +46,11 @@ class TestListApi(utils.CliTestCase):
         # Case 2.
         session._listapi.return_value = [
             {
-                'argdesc': '(name, *args, **kwargs)',
-                'doc': 'A debug function',
-                'argspec': [['name'], 'args', 'kwargs', None],
-                'args': ['name'],
-                'name': 'debugFunction'
+                'argdesc': '(tagInfo, **kwargs)',
+                'doc': 'Edit information for an existing tag.',
+                'argspec': [['tagInfo'], None, 'kwargs', None],
+                'args': ['tagInfo'],
+                'name': 'editTag2'
             },
             {
                 'doc': 'Add user to group',
@@ -67,8 +67,8 @@ class TestListApi(utils.CliTestCase):
         ]
         expected = "addGroupMember(group, user, strict=True)\n"
         expected += "  description: Add user to group\n"
-        expected += "debugFunction(name, *args, **kwargs)\n"
-        expected += "  description: A debug function\n"
+        expected += "editTag2(tagInfo, **kwargs)\n"
+        expected += "  description: Edit information for an existing tag.\n"
         expected += "host.getID()\n"
         anon_handle_list_api(options, session, [])
         self.assert_console_message(stdout, expected)

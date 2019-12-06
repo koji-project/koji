@@ -436,7 +436,6 @@ def load_config(environ):
         ['KojiDebug', 'boolean', False],
         ['KojiTraceback', 'string', None],
         ['VerbosePolicy', 'boolean', False],
-        ['EnableFunctionDebug', 'boolean', False],
 
         ['LogLevel', 'string', 'WARNING'],
         ['LogFormat', 'string', '%(asctime)s [%(levelname)s] m=%(method)s u=%(user_name)s p=%(process)s r=%(remoteaddr)s %(name)s: %(message)s'],
