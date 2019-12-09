@@ -20,27 +20,27 @@
 #       Mike Bonnet <mikeb@redhat.com>
 #       Mike McLean <mikem@redhat.com>
 
-from __future__ import absolute_import
-from __future__ import division
+from __future__ import absolute_import, division
+
+import datetime
 import hashlib
+import logging
+import mimetypes
 import os
 import os.path
 import re
 import sys
-import mimetypes
-import six.moves.http_cookies
-import datetime
-import logging
 import time
+
+import six
+import six.moves.http_cookies
+from six.moves import range
+
 import koji
 import kojiweb.util
-from koji.util import to_list
 from koji.server import ServerRedirect
-from kojiweb.util import _initValues
-from kojiweb.util import _genHTML
-from kojiweb.util import _getValidTokens
-from six.moves import range
-import six
+from koji.util import to_list
+from kojiweb.util import _genHTML, _getValidTokens, _initValues
 
 # Convenience definition of a commonly-used sort function
 _sortbyname = lambda x: x['name']
