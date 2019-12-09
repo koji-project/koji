@@ -1,11 +1,12 @@
 #!/usr/bin/python2
 
 import os
-
 from optparse import OptionParser
+
 from six.moves.configparser import RawConfigParser
 
 import koji.db
+
 
 def clean_sessions(cursor, vacuum):
     q = " FROM sessions WHERE update_time < now() - '1 day'::interval"
