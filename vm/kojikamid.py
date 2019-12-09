@@ -27,26 +27,28 @@
 # in a cygwin shell.
 
 from __future__ import absolute_import
-from optparse import OptionParser
-from six.moves.configparser import ConfigParser, SafeConfigParser
+
+import base64
+import glob
+import hashlib
+import logging
 import os
+import re
 import subprocess
 import sys
 import tempfile
+import threading
 import time
+import traceback
+import zipfile
+from optparse import OptionParser
+
+import six
+import six.moves.xmlrpc_client
 # urllib is required by the SCM class which is substituted into this file
 # do not remove the import below
 from six.moves import urllib
-import six.moves.xmlrpc_client
-import base64
-import hashlib
-import logging
-import traceback
-import threading
-import re
-import glob
-import zipfile
-import six
+from six.moves.configparser import ConfigParser, SafeConfigParser
 
 MANAGER_PORT = 7000
 
