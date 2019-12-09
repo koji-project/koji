@@ -24,6 +24,7 @@ docs/build/
 # misc
 *.swp
 .idea
+.vscode
 .DS_STORE
 .vagrant
 .gitreview
