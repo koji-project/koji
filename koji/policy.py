@@ -18,12 +18,13 @@
 #       Mike McLean <mikem@redhat.com>
 
 from __future__ import absolute_import
+
 import fnmatch
 import logging
 
-import koji
 import six
 
+import koji
 from koji.util import to_list
 
 

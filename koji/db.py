@@ -22,8 +22,8 @@
 
 
 from __future__ import absolute_import
+
 import logging
-import psycopg2
 # import psycopg2.extensions
 # # don't convert timestamp fields to DateTime objects
 # del psycopg2.extensions.string_types[1114]
@@ -35,6 +35,9 @@ import re
 import sys
 import time
 import traceback
+
+import psycopg2
+
 from . import context
 
 POSITIONAL_RE = re.compile(r'%[a-z]')

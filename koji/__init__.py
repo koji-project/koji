@@ -22,32 +22,56 @@
 #       Mike Bonnet <mikeb@redhat.com>
 
 
-from __future__ import absolute_import
-from __future__ import division
+from __future__ import absolute_import, division
+
+import base64
+import datetime
+import errno
+import hashlib
+import imp
+import logging
+import logging.handlers
+import optparse
+import os
+import os.path
+import pwd
+import random
+import re
+import shutil
+import signal
+import socket
+import struct
 import sys
-from six.moves import range
-from six.moves import zip
+import tempfile
+import time
+import traceback
+import warnings
+import weakref
+import xml.sax
+import xml.sax.handler
+from fnmatch import fnmatch
+
+import requests
 import six
+import six.moves.configparser
+import six.moves.http_client
+import six.moves.urllib
+from six.moves import range, zip
+
+from koji.xmlrpcplus import Fault, dumps, getparser, loads, xmlrpc_client
+
+from . import util
+
 krbV = None
 try:
     import krbV
 except ImportError:  # pragma: no cover
     pass
-import base64
-import datetime
 dns_resolver = None
 try:
     import dns.resolver as dns_resolver
 except ImportError:  # pragma: no cover
     pass
-import six.moves.configparser
-import errno
-from fnmatch import fnmatch
-import hashlib
-import six.moves.http_client
-import imp
-import logging
-import logging.handlers
 SSL_Error = None
 try:
     from OpenSSL.SSL import Error as SSL_Error
@@ -57,13 +81,6 @@ except Exception:  # pragma: no cover
     # unfortunately the workaround at the above link does not always work, so
     # we ignore it here
     pass
-import optparse
-import os
-import os.path
-import pwd
-import random
-import re
-import requests
 try:
     import requests_kerberos
 except ImportError:  # pragma: no cover
@@ -72,20 +89,6 @@ try:
     import rpm
 except ImportError:
     rpm = None
-import shutil
-import signal
-import socket
-import struct
-import tempfile
-import time
-import traceback
-import warnings
-import weakref
-import xml.sax
-import xml.sax.handler
-import six.moves.urllib
-from . import util
-from koji.xmlrpcplus import getparser, loads, dumps, Fault, xmlrpc_client
 
 
 PROFILE_MODULES = {}  # {module_name: module_instance}

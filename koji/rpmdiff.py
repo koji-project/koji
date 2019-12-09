@@ -19,13 +19,16 @@
 # It was modified to be used as standalone library for the Koji project.
 
 from __future__ import absolute_import
+
 import hashlib
-import json
-import rpm
-import os
 import itertools
+import json
+import os
+
+import rpm
 import six
 from six.moves import zip
+
 
 class BytesJSONEncoder(json.JSONEncoder):
     def default(self, o):

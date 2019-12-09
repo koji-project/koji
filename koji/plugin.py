@@ -20,12 +20,15 @@
 #       Mike Bonnet <mikeb@redhat.com>
 
 from __future__ import absolute_import
+
 import imp
-import koji
 import logging
 import sys
 import traceback
+
 import six
+
+import koji
 from koji.util import encode_datetime_recurse
 
 # the available callback hooks and a list

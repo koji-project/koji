@@ -20,22 +20,25 @@
 #       Mike Bonnet <mikeb@redhat.com>
 
 from __future__ import absolute_import
-import socket
-import string
+
+import base64
 import random
 import re
-import base64
+import socket
+import string
+
+import six
+from six.moves import range, urllib, zip
+
+import koji
+
+from .context import context
+from .util import to_list
+
 try:
     import krbV
 except ImportError:
     krbV = None
-import koji
-from .context import context
-from six.moves import range
-from six.moves import urllib
-from six.moves import zip
-import six
-from .util import to_list
 
 # 1 - load session if provided
 #       - check uri for session id
