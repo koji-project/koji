@@ -6,15 +6,18 @@
 #     Mike Bonnet <mikeb@redhat.com>
 
 from __future__ import absolute_import
-import koji
-from koji.plugin import callback, ignore_error, convert_datetime
-from koji.context import context
-import logging
+
 import json
+import logging
 import random
+
 from proton import Message, SSLDomain
-from proton.reactor import Container
 from proton.handlers import MessagingHandler
+from proton.reactor import Container
+
+import koji
+from koji.context import context
+from koji.plugin import callback, convert_datetime, ignore_error
 
 CONFIG_FILE = '/etc/koji-hub/plugins/protonmsg.conf'
 CONFIG = None

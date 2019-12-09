@@ -6,9 +6,12 @@
 #     Mike Bonnet <mikeb@redhat.com>
 
 from __future__ import absolute_import
-from koji.plugin import callbacks, callback, ignore_error
-from koji.util import to_list
+
 import logging
+
+from koji.plugin import callback, callbacks, ignore_error
+from koji.util import to_list
+
 
 @callback(*to_list(callbacks.keys()))
 @ignore_error

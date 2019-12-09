@@ -4,15 +4,17 @@
 
 
 from __future__ import absolute_import
-from koji.context import context
-from koji.plugin import export
-import koji
+
 import random
 import sys
 
+import koji
+import kojihub
+from koji.context import context
+from koji.plugin import export
+
 #XXX - have to import kojihub for make_task
 sys.path.insert(0, '/usr/share/koji-hub/')
-import kojihub
 
 __all__ = ('runroot',)
 
@@ -60,4 +62,3 @@ def runroot(tagInfo, arch, command, channel=None, **opts):
 
     args = koji.encode_args(tagInfo, arch, command, **opts)
     return kojihub.make_task('runroot', args, **taskopts)
-

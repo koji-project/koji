@@ -6,14 +6,15 @@
 #     Mike Bonnet <mikeb@redhat.com>
 
 from __future__ import absolute_import
-import koji
-from koji.context import context
-from koji.plugin import callback
-from koji.util import joinpath
-from koji.util import rmtree
+
 import fnmatch
 import os
 import subprocess
+
+import koji
+from koji.context import context
+from koji.plugin import callback
+from koji.util import joinpath, rmtree
 
 CONFIG_FILE = '/etc/koji-hub/plugins/rpm2maven.conf'
 
