@@ -23,9 +23,9 @@
 #       Cristian Balint <cbalint@redhat.com>
 
 from __future__ import absolute_import
+
 import base64
 import calendar
-import koji.rpmdiff
 import datetime
 import errno
 import fcntl
@@ -43,18 +43,12 @@ import tarfile
 import tempfile
 import time
 import traceback
-import six.moves.xmlrpc_client
 import zipfile
-try:
-    # py 3.6+
-    import secrets
-except ImportError:
-    import random
-    secrets = None
 
 import rpm
 import six
-
+import six.moves.xmlrpc_client
+from six.moves import range
 from six.moves.urllib.parse import parse_qs
 
 import koji
@@ -62,18 +56,20 @@ import koji.auth
 import koji.db
 import koji.plugin
 import koji.policy
-import koji.xmlrpcplus
+import koji.rpmdiff
 import koji.tasks
+import koji.xmlrpcplus
 from koji.context import context
-from koji.util import base64encode
-from koji.util import decode_bytes
-from koji.util import dslice
-from koji.util import joinpath
-from koji.util import move_and_symlink
-from koji.util import multi_fnmatch
-from koji.util import safer_move
-from koji.util import to_list
-from six.moves import range
+from koji.util import (base64encode, decode_bytes, dslice, joinpath,
+                       move_and_symlink, multi_fnmatch, safer_move, to_list)
+
+try:
+    # py 3.6+
+    import secrets
+except ImportError:
+    import random
+    secrets = None
+
 
 logger = logging.getLogger('koji.hub')
 
