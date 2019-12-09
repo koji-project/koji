@@ -22,15 +22,17 @@
 # written by Seth Vidal
 
 from __future__ import absolute_import
-import createrepo
+
 import os.path
-import rpmUtils.miscutils
 import shutil
 import sys
 import tempfile
+from optparse import OptionParser
+
+import createrepo
+import rpmUtils.miscutils
 import yum
 import yum.misc
-from optparse import OptionParser
 
 # Expand a canonical arch to the full list of
 # arches that should be included in the repo.
