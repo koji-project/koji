@@ -1,16 +1,16 @@
 #!/usr/bin/python2
 
-from __future__ import absolute_import
-from __future__ import print_function
+from __future__ import absolute_import, print_function
+
 import mimetypes
 import os
 import os.path
 import pprint
 import sys
+from wsgiref.simple_server import make_server
+from wsgiref.util import setup_testing_defaults
 
 from six.moves.urllib.parse import quote
-from wsgiref.util import setup_testing_defaults
-from wsgiref.simple_server import make_server
 
 CWD = os.getcwd()
 sys.path.insert(0, CWD)

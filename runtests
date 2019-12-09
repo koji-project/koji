@@ -1,8 +1,8 @@
 #!/usr/bin/python2
 
-from multiprocessing import Pool
 import subprocess
 import tempfile
+from multiprocessing import Pool
 
 
 def explode_ref(ref, dest):
