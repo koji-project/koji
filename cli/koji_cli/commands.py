@@ -118,8 +118,8 @@ def handle_remove_group(goptions, session, args):
     group = args[1]
 
     activate_session(session, goptions)
-    if not session.hasPerm('admin'):
-        error(_("This action requires admin privileges"))
+    if not (session.hasPerm('admin') or session.hasPerm('tag')):
+        parser.error(_("This action requires tag or admin privileges"))
 
     dsttag = session.getTag(tag)
     if not dsttag:
