@@ -59,7 +59,6 @@ import six.moves.urllib
 from six.moves import range, zip
 
 from koji.xmlrpcplus import Fault, dumps, getparser, loads, xmlrpc_client
-
 from . import util
 
 krbV = None

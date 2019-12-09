@@ -31,7 +31,6 @@ import six
 from six.moves import range, urllib, zip
 
 import koji
-
 from .context import context
 from .util import to_list
 
