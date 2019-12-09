@@ -1,27 +1,29 @@
 # coding=utf-8
-from __future__ import absolute_import
-from __future__ import division
+from __future__ import absolute_import, division
+
 import optparse
 import os
 import random
-import requests
-import six
 import socket
 import string
 import sys
 import time
 from contextlib import closing
+
+import requests
+import six
 from six.moves import range
+
+import koji
+# import parse_arches to current namespace for backward compatibility
+from koji import parse_arches
+from koji.util import to_list
 
 try:
     import krbV
 except ImportError:  # pragma: no cover
     krbV = None
 
-import koji
-from koji.util import to_list
-# import parse_arches to current namespace for backward compatibility
-from koji import parse_arches
 
 # for compatibility with plugins based on older version of lib
 # Use optparse imports directly in new code.

@@ -24,26 +24,23 @@
 #       Mike Bonnet <mikeb@redhat.com>
 #       Cristian Balint <cbalint@redhat.com>
 
-from __future__ import absolute_import
-from __future__ import division
+from __future__ import absolute_import, division
+
 import logging
 import os
 import re
-import six
 import sys
+from optparse import SUPPRESS_HELP, OptionParser
 
-from optparse import OptionParser, SUPPRESS_HELP
-
+import six
 import six.moves.configparser
 import six.moves.xmlrpc_client
 
 import koji
-import koji.util
 import koji.plugin
-
-from koji_cli.lib import _, get_epilog_str, greetings, \
-        warn, categories
+import koji.util
 from koji_cli.commands import *
+from koji_cli.lib import _, categories, get_epilog_str, greetings, warn
 
 
 def register_plugin(plugin):

@@ -1,8 +1,6 @@
-from __future__ import absolute_import
-from __future__ import division
+from __future__ import absolute_import, division
 
 import ast
-from collections import defaultdict, OrderedDict
 import fnmatch
 import hashlib
 import json
@@ -15,15 +13,22 @@ import stat
 import sys
 import time
 import traceback
-from optparse import OptionParser, SUPPRESS_HELP
+from collections import OrderedDict, defaultdict
+from optparse import SUPPRESS_HELP, OptionParser
 
 import dateutil.parser
 import six
 import six.moves.xmlrpc_client
-from six.moves import filter
-from six.moves import map
-from six.moves import zip
-from six.moves import range
+from six.moves import filter, map, range, zip
+
+import koji
+from koji.util import base64encode, to_list
+from koji_cli.lib import (_, _list_tasks, _progress_callback, _running_in_bg,
+                          activate_session, arg_filter, download_file, error,
+                          format_inheritance_flags, greetings, linked_upload,
+                          list_task_output_all_volumes, parse_arches,
+                          print_task_headers, print_task_recurse, unique_path,
+                          warn, watch_logs, watch_tasks)
 
 try:
     import libcomps
@@ -33,15 +38,6 @@ except ImportError:  # pragma: no cover
         import yum.comps as yumcomps
     except ImportError:
         yumcomps = None
-
-import koji
-from koji.util import to_list, base64encode
-from koji_cli.lib import _, activate_session, parse_arches, \
-        _running_in_bg, _progress_callback, watch_tasks, \
-        arg_filter, linked_upload, list_task_output_all_volumes, \
-        print_task_headers, print_task_recurse, download_file, watch_logs, \
-        error, warn, greetings, _list_tasks, unique_path, \
-        format_inheritance_flags, get_usage_str
 
 
 def _printable_unicode(s):
