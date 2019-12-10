@@ -11438,6 +11438,20 @@ class RootExports(object):
         context.session.assertPerm('dist-repo')
         repo_id, event_id = dist_repo_init(tag, keys, task_opts)
         task_opts['event'] = event_id
+        # cancel potentially running distRepos
+        tinfo = get_tag(tag, strict=True)
+        if tinfo['extra'].get('distrepo.cancel_others', False):
+            tasks = self.listTasks(opts={
+                                       'state': [koji.TASK_STATES['FREE'],
+                                                 koji.TASK_STATES['OPEN'],
+                                                 koji.TASK_STATES['ASSIGNED']],
+                                       'method': 'distRepo',
+                                       'decode': True})
+            # filter only for this tag
+            task_ids = [t['id'] for t in tasks if t['request'][0] == tag]
+            for task_id in task_ids:
+                logger.debug("Cancelling distRepo task %d" % task_id)
+                Task(task_id).cancel(recurse=True)
         return make_task('distRepo', [tag, repo_id, keys, task_opts], priority=15, channel='createrepo')
 
     def newRepo(self, tag, event=None, src=False, debuginfo=False, separate_src=False):
