@@ -135,6 +135,9 @@ pypi:
 pypi-upload:
 	twine upload dist/*
 
+flake8:
+	flake8
+
 tag::
 	git tag -a $(TAG)
 	@echo "Tagged with: $(TAG)"
