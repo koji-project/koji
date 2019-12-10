@@ -5800,6 +5800,12 @@ def cg_init_build(cg, data):
     """Create (reserve) a build_id for given data.
 
     If build already exists, init_build will raise GenericError
+
+    :param str cg: content generator name
+    :param dict data: build data same as for new_build, for given usecase
+                      only name,version,release,epoch keys make sense. Some
+                      other values will be ignored anyway (owner, state, ...)
+    :return: dict with build_id and token
     """
     assert_cg(cg)
     cg_id = lookup_name('content_generator', cg, strict=True)['id']
@@ -5825,7 +5831,16 @@ def cg_refund_build(cg, build_id, token, state=koji.BUILD_STATES['FAILED']):
     to release reservation and mark build either FAILED or CANCELED.
     For this calling CG needs to know build_id and reservation token.
 
-    On success it doesn't return nothing. On error it raises an exception.
+    Refunded build behaves like any other failed/canceled build. So,
+    its nvr can be reclaimed again and get_next_release can return
+    this nvr.
+
+    :param str cg: content generator name
+    :param int build_id: build id
+    :param str token: token from CGInitBuild
+    :param int state: new state (koji.BUILD_STATES)
+
+    :return: None, on error raises exception
     """
 
     if state not in (koji.BUILD_STATES['FAILED'], koji.BUILD_STATES['CANCELED']):
