@@ -25,7 +25,6 @@ import logging
 import os
 import pprint
 import random
-import shutil
 import signal
 import time
 

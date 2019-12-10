@@ -41,14 +41,14 @@ from optparse import OptionParser
 import libvirt
 import libxml2
 import requests
-import rpm
 import six.moves.xmlrpc_client
 import six.moves.xmlrpc_server
 
 import koji
 import koji.util
 from koji.daemon import SCM, TaskManager
-from koji.tasks import (BaseTaskHandler, MultiPlatformTask, RestartTask,
+# TaskHandlers are required to be imported, do not remove them
+from koji.tasks import (BaseTaskHandler, MultiPlatformTask, RestartTask,  # noqa: F401
                         RestartVerifyTask, ServerExit, ServerRestart)
 
 try:

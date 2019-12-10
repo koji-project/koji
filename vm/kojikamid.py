@@ -47,7 +47,7 @@ import six
 import six.moves.xmlrpc_client
 # urllib is required by the SCM class which is substituted into this file
 # do not remove the import below
-from six.moves import urllib
+from six.moves import urllib  # noqa: F401
 from six.moves.configparser import ConfigParser, SafeConfigParser
 
 MANAGER_PORT = 7000

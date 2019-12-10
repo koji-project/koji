@@ -39,7 +39,7 @@ import six.moves.xmlrpc_client
 import koji
 import koji.plugin
 import koji.util
-from koji_cli.commands import *
+from koji_cli.commands import *  # noqa: F401, F403
 from koji_cli.lib import _, categories, get_epilog_str, greetings, warn
 
 

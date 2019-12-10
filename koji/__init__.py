@@ -37,7 +37,6 @@ import os.path
 import pwd
 import random
 import re
-import shutil
 import signal
 import socket
 import struct
