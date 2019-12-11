@@ -36,6 +36,7 @@
           <td>$enabled_hosts</td>
           <td>$ready_hosts</td>
         </tr>
+      </table>
       #else
       No hosts
       #end if
