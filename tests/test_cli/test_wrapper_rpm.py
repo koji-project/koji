@@ -21,7 +21,7 @@ class TestWrapperRpm(utils.CliTestCase):
         self.scm_url = 'git+https://github.com/project/test#12345'
         self.task_id = 1
 
-        self.error_format = """Usage: %s wrapper-rpm [options] target build-id|n-v-r URL
+        self.error_format = """Usage: %s wrapper-rpm [options] <target> <build-id|n-v-r> <URL>
 (Specify the --help global option for a list of other help options)
 
 %s: error: {message}
@@ -223,7 +223,7 @@ class TestWrapperRpm(utils.CliTestCase):
         """Test  handle_wrapper_rpm help message output"""
         self.assert_help(
             handle_wrapper_rpm,
-            """Usage: %s wrapper-rpm [options] target build-id|n-v-r URL
+            """Usage: %s wrapper-rpm [options] <target> <build-id|n-v-r> <URL>
 (Specify the --help global option for a list of other help options)
 
 Options:

@@ -10,12 +10,20 @@ except ImportError:
 
 import koji
 from koji_cli.commands import handle_assign_task
+from . import utils
 
 
-class TestAssignTask(unittest.TestCase):
+class TestAssignTask(utils.CliTestCase):
 
     # Show long diffs in error output...
     maxDiff = None
+
+    def setUp(self):
+        self.error_format = """Usage: %s assign-task <task_id> <hostname>
+(Specify the --help global option for a list of other help options)
+
+%s: error: {message}
+""" % (self.progname, self.progname)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
@@ -43,10 +51,11 @@ class TestAssignTask(unittest.TestCase):
         arguments.append("--force")
         session.getHost.return_value = hostname
         session.hasPerm.return_value = False
-        handle_assign_task(options, session, arguments)
-        actual = stdout.getvalue()
-        expected = "This action requires admin privileges\n"
-        self.assertMultiLineEqual(actual, expected)
+        self.assert_system_exit(
+            handle_assign_task,
+            options, session, arguments,
+            stderr=self.format_error_message("This action requires admin privileges")
+        )
 
         # Clean stdout buffer
         stdout.truncate(0)
@@ -82,33 +91,24 @@ class TestAssignTask(unittest.TestCase):
             self, activate_session_mock, stderr, stdout):
         arguments = []
         options = mock.MagicMock()
-        progname = os.path.basename(sys.argv[0]) or 'koji'
 
         # Mock out the xmlrpc server
         session = mock.MagicMock()
 
         # Run it and check immediate output
-        with self.assertRaises(SystemExit) as cm:
-            handle_assign_task(options, session, arguments)
-        actual_stdout = stdout.getvalue()
-        actual_stderr = stderr.getvalue()
-        expected_stdout = ''
-        expected_stderr = """Usage: %s assign-task task_id hostname
-(Specify the --help global option for a list of other help options)
-
-%s: error: please specify a task id and a hostname
-""" % (progname, progname)
-        self.assertMultiLineEqual(actual_stdout, expected_stdout)
-        self.assertMultiLineEqual(actual_stderr, expected_stderr)
+        self.assert_system_exit(
+            handle_assign_task,
+            options, session, arguments,
+            stdout='',
+            stderr=self.format_error_message('please specify a task id and a hostname'),
+            activate_session=None,
+            exit_code=2
+        )
 
         # Finally, assert that things were called as we expected.
         activate_session_mock.assert_not_called()
         session.hasHost.assert_not_called()
         session.addHost.assert_not_called()
-        if isinstance(cm.exception, int):
-            self.assertEqual(cm.exception, 2)
-        else:
-            self.assertEqual(cm.exception.code, 2)
 
 
 if __name__ == '__main__':

@@ -117,12 +117,16 @@ class TestBlockGroup(utils.CliTestCase):
                 session,
                 args,
                 stderr=expected,
-                activate_session=None)
+                activate_session=None,
+                exit_code=2)
 
         # if we don't have 'admin' permission
         session.hasPerm.return_value = False
-        rv = handle_block_group(options, session, ['tag', 'grp'])
-        self.assert_console_message(
-            stdout, 'This action requires tag or admin privileges\n')
-        self.assertEqual(rv, 1)
+        self.assert_system_exit(
+            handle_block_group,
+            options, session, ['tag', 'grp'],
+            stderr=self.format_error_message('This action requires tag or admin privileges'),
+            stdout='',
+            exit_code=2,
+            activate_session=None)
         activate_session_mock.assert_called_with(session, options)

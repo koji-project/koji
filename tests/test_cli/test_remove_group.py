@@ -33,7 +33,7 @@ class TestRemoveGroup(utils.CliTestCase):
         session.getTag.return_value = None
 
         with self.assertRaises(SystemExit):
-            rv = handle_remove_group(options, session, arguments)
+            handle_remove_group(options, session, arguments)
 
         # assert that things were called as we expected.
         activate_session_mock.assert_called_once_with(session, options)
@@ -58,7 +58,7 @@ class TestRemoveGroup(utils.CliTestCase):
         session.getTagGroups.return_value = []
 
         with self.assertRaises(SystemExit):
-            rv = handle_remove_group(options, session, arguments)
+            handle_remove_group(options, session, arguments)
 
         # assert that things were called as we expected.
         activate_session_mock.assert_called_once_with(session, options)
@@ -111,8 +111,8 @@ class TestRemoveGroup(utils.CliTestCase):
                 stderr=expected,
                 activate_session=None)
 
-        # if we don't have 'admin' permission
+        # if we don't have 'tag' permission
         session.hasPerm.return_value = False
         with self.assertRaises(SystemExit):
-            rv = handle_remove_group(options, session, ['tag', 'grp'])
+            handle_remove_group(options, session, ['tag', 'grp'])
         activate_session_mock.assert_called_with(session, options)

@@ -116,7 +116,7 @@ class TestAddHost(unittest.TestCase):
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = ''
-        expected_stderr = """Usage: %s add-host [options] hostname arch [arch2 ...]
+        expected_stderr = """Usage: %s add-host [options] <hostname> <arch> [<arch> ...]
 (Specify the --help global option for a list of other help options)
 
 %s: error: Please specify a hostname and at least one arch

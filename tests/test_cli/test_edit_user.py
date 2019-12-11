@@ -70,7 +70,7 @@ class TestEditUser(unittest.TestCase):
             handle_edit_user(options, session, args)
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
-        expected_stdout = """Usage: %s edit-user name [options]
+        expected_stdout = """Usage: %s edit-user <username> [options]
 (Specify the --help global option for a list of other help options)
 
 Options:
@@ -106,7 +106,7 @@ Options:
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = ''
-        expected_stderr = """Usage: %(progname)s edit-user name [options]
+        expected_stderr = """Usage: %(progname)s edit-user <username> [options]
 (Specify the --help global option for a list of other help options)
 
 %(progname)s: error: You must specify the username of the user to edit

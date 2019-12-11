@@ -31,7 +31,7 @@ Log Files:
   /mnt/koji/work/tasks/2/2/mergerepos.log
 """
 
-        self.error_format = """Usage: %s resubmit [options] taskID
+        self.error_format = """Usage: %s resubmit [options] <task_id>
 (Specify the --help global option for a list of other help options)
 
 %s: error: {message}
@@ -123,7 +123,7 @@ Log Files:
         """Test handle_resubmit help message output"""
         self.assert_help(
             handle_resubmit,
-            """Usage: %s resubmit [options] taskID
+            """Usage: %s resubmit [options] <task_id>
 (Specify the --help global option for a list of other help options)
 
 Options:

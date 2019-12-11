@@ -27,7 +27,7 @@ class TestImportCG(utils.CliTestCase):
     def setUp(self):
         self.custom_os_path_exists = {}
         self.os_path_exists = os.path.exists
-        self.error_format = """Usage: %s import-cg [options] metadata_file files_dir
+        self.error_format = """Usage: %s import-cg [options] <metadata_file> <files_dir>
 (Specify the --help global option for a list of other help options)
 
 %s: error: {message}
@@ -209,7 +209,7 @@ class TestImportCG(utils.CliTestCase):
         """Test handle_import_cg help message"""
         self.assert_help(
             handle_import_cg,
-            """Usage: %s import-cg [options] metadata_file files_dir
+            """Usage: %s import-cg [options] <metadata_file> <files_dir>
 (Specify the --help global option for a list of other help options)
 
 Options:

@@ -227,8 +227,8 @@ class TestImageBuild(utils.CliTestCase):
         self.session = mock.MagicMock()
         self.configparser = mock.patch('six.moves.configparser.ConfigParser').start()
 
-        self.error_format = """Usage: %s image-build [options] <name> <version> <target> <install-tree-url> <arch> [<arch>...]
-       %s image-build --config FILE
+        self.error_format = """Usage: %s image-build [options] <name> <version> <target> <install-tree-url> <arch> [<arch> ...]
+       %s image-build --config <FILE>
 
 (Specify the --help global option for a list of other help options)
 
@@ -328,8 +328,8 @@ class TestImageBuild(utils.CliTestCase):
         """Test handle_image_build help message"""
         self.assert_help(
             handle_image_build,
-            """Usage: %s image-build [options] <name> <version> <target> <install-tree-url> <arch> [<arch>...]
-       %s image-build --config FILE
+            """Usage: %s image-build [options] <name> <version> <target> <install-tree-url> <arch> [<arch> ...]
+       %s image-build --config <FILE>
 
 (Specify the --help global option for a list of other help options)
 

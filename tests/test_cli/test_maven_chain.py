@@ -20,7 +20,7 @@ class TestMavenChain(utils.CliTestCase):
         self.config = 'config'
         self.task_id = 101
 
-        self.error_format = """Usage: %s maven-chain [options] target config...
+        self.error_format = """Usage: %s maven-chain [options] <target> <config> [<config> ...]
 (Specify the --help global option for a list of other help options)
 
 %s: error: {message}
@@ -175,7 +175,7 @@ class TestMavenChain(utils.CliTestCase):
         """Test handle_maven_chain help message full output"""
         self.assert_help(
             handle_maven_chain,
-            """Usage: %s maven-chain [options] target config...
+            """Usage: %s maven-chain [options] <target> <config> [<config> ...]
 (Specify the --help global option for a list of other help options)
 
 Options:

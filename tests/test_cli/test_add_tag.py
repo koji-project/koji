@@ -16,7 +16,7 @@ class TestAddTag(utils.CliTestCase):
     maxDiff = None
 
     def setUp(self):
-        self.error_format = """Usage: %s add-tag [options] name
+        self.error_format = """Usage: %s add-tag [options] <name>
 (Specify the --help global option for a list of other help options)
 
 %s: error: {message}
@@ -44,10 +44,13 @@ class TestAddTag(utils.CliTestCase):
             activate_session=None)
 
         # Case 2. not admin account
-        expected = "This action requires tag or admin privileges\n"
         session.hasPerm.return_value = None
-        handle_add_tag(options, session, ['test-tag'])
-        self.assert_console_message(stdout, expected)
+        self.assert_system_exit(
+            handle_add_tag,
+            options, session, ['test-tag'],
+            stdout='',
+            stderr=self.format_error_message("This action requires tag or admin privileges"),
+        )
 
         # Case 3. options test
         arguments = ['test-tag',
@@ -77,7 +80,7 @@ class TestAddTag(utils.CliTestCase):
     def test_handle_add_tag_help(self):
         self.assert_help(
             handle_add_tag,
-            """Usage: %s add-tag [options] name
+            """Usage: %s add-tag [options] <name>
 (Specify the --help global option for a list of other help options)
 
 Options:

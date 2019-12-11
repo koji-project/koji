@@ -182,7 +182,7 @@ class TestAddHostToChannel(unittest.TestCase):
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = ''
-        expected_stderr = """Usage: %s add-host-to-channel [options] hostname channel
+        expected_stderr = """Usage: %s add-host-to-channel [options] <hostname> <channel>
 (Specify the --help global option for a list of other help options)
 
 %s: error: Please specify a hostname and a channel

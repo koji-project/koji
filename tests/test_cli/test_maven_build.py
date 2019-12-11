@@ -108,8 +108,8 @@ Task info: weburl/taskinfo?taskID=1
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = ''
-        expected_stderr = """Usage: %s maven-build [options] target URL
-       %s maven-build --ini=CONFIG... [options] target
+        expected_stderr = """Usage: %s maven-build [options] <target> <URL>
+       %s maven-build --ini=CONFIG... [options] <target>
 (Specify the --help global option for a list of other help options)
 
 %s: error: Exactly two arguments (a build target and a SCM URL) are required
@@ -151,8 +151,8 @@ Task info: weburl/taskinfo?taskID=1
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = ''
-        expected_stderr = """Usage: %s maven-build [options] target URL
-       %s maven-build --ini=CONFIG... [options] target
+        expected_stderr = """Usage: %s maven-build [options] <target> <URL>
+       %s maven-build --ini=CONFIG... [options] <target>
 (Specify the --help global option for a list of other help options)
 
 %s: error: Exactly one argument (a build target) is required
@@ -193,8 +193,8 @@ Task info: weburl/taskinfo?taskID=1
             handle_maven_build(self.options, self.session, args)
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
-        expected_stdout = """Usage: %s maven-build [options] target URL
-       %s maven-build --ini=CONFIG... [options] target
+        expected_stdout = """Usage: %s maven-build [options] <target> <URL>
+       %s maven-build --ini=CONFIG... [options] <target>
 (Specify the --help global option for a list of other help options)
 
 Options:
@@ -268,8 +268,8 @@ Options:
         with self.assertRaises(SystemExit) as cm:
             handle_maven_build(self.options, self.session, args)
         actual = stderr.getvalue()
-        expected = """Usage: %s maven-build [options] target URL
-       %s maven-build --ini=CONFIG... [options] target
+        expected = """Usage: %s maven-build [options] <target> <URL>
+       %s maven-build --ini=CONFIG... [options] <target>
 (Specify the --help global option for a list of other help options)
 
 %s: error: Unknown build target: target
@@ -316,8 +316,8 @@ Options:
         with self.assertRaises(SystemExit) as cm:
             handle_maven_build(self.options, self.session, args)
         actual = stderr.getvalue()
-        expected = """Usage: %s maven-build [options] target URL
-       %s maven-build --ini=CONFIG... [options] target
+        expected = """Usage: %s maven-build [options] <target> <URL>
+       %s maven-build --ini=CONFIG... [options] <target>
 (Specify the --help global option for a list of other help options)
 
 %s: error: Unknown destination tag: dest_tag
@@ -364,8 +364,8 @@ Options:
         with self.assertRaises(SystemExit) as cm:
             handle_maven_build(self.options, self.session, args)
         actual = stderr.getvalue()
-        expected = """Usage: %s maven-build [options] target URL
-       %s maven-build --ini=CONFIG... [options] target
+        expected = """Usage: %s maven-build [options] <target> <URL>
+       %s maven-build --ini=CONFIG... [options] <target>
 (Specify the --help global option for a list of other help options)
 
 %s: error: Destination tag dest_tag is locked
@@ -476,8 +476,8 @@ Task info: weburl/taskinfo?taskID=1
         with self.assertRaises(SystemExit) as cm:
             handle_maven_build(self.options, self.session, args)
         actual = stderr.getvalue()
-        expected = """Usage: %s maven-build [options] target URL
-       %s maven-build --ini=CONFIG... [options] target
+        expected = """Usage: %s maven-build [options] <target> <URL>
+       %s maven-build --ini=CONFIG... [options] <target>
 (Specify the --help global option for a list of other help options)
 
 %s: error: Section section does not contain a maven-build config
@@ -507,8 +507,8 @@ Task info: weburl/taskinfo?taskID=1
         with self.assertRaises(SystemExit) as cm:
             handle_maven_build(self.options, self.session, args)
         actual = stderr.getvalue()
-        expected = """Usage: %s maven-build [options] target URL
-       %s maven-build --ini=CONFIG... [options] target
+        expected = """Usage: %s maven-build [options] <target> <URL>
+       %s maven-build --ini=CONFIG... [options] <target>
 (Specify the --help global option for a list of other help options)
 
 %s: error: errormsg
@@ -557,8 +557,8 @@ Task info: weburl/taskinfo?taskID=1
         with self.assertRaises(SystemExit) as cm:
             handle_maven_build(self.options, self.session, args)
         actual = stderr.getvalue()
-        expected = """Usage: %s maven-build [options] target URL
-       %s maven-build --ini=CONFIG... [options] target
+        expected = """Usage: %s maven-build [options] <target> <URL>
+       %s maven-build --ini=CONFIG... [options] <target>
 (Specify the --help global option for a list of other help options)
 
 %s: error: Invalid SCM URL: badscm

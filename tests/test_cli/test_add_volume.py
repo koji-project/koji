@@ -16,7 +16,7 @@ class TestAddVolume(utils.CliTestCase):
     maxDiff = None
 
     def setUp(self):
-        self.error_format = """Usage: %s add-volume volume-name
+        self.error_format = """Usage: %s add-volume <volume-name>
 (Specify the --help global option for a list of other help options)
 
 %s: error: {message}
@@ -66,7 +66,7 @@ class TestAddVolume(utils.CliTestCase):
     def test_handle_add_volume_help(self):
         self.assert_help(
             handle_add_volume,
-            """Usage: %s add-volume volume-name
+            """Usage: %s add-volume <volume-name>
 (Specify the --help global option for a list of other help options)
 
 Options:

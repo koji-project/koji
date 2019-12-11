@@ -588,7 +588,7 @@ class TestTaskInfo(utils.CliTestCase):
     maxDiff = None
 
     def setUp(self):
-        self.error_format = """Usage: %s taskinfo [options] taskID [taskID...]
+        self.error_format = """Usage: %s taskinfo [options] <task_id> [<task_id> ...]
 (Specify the --help global option for a list of other help options)
 
 %s: error: {message}
@@ -638,7 +638,7 @@ Host: kojibuilder
     def test_anon_handle_taskinfo_help(self):
         self.assert_help(
             anon_handle_taskinfo,
-            """Usage: %s taskinfo [options] taskID [taskID...]
+            """Usage: %s taskinfo [options] <task_id> [<task_id> ...]
 (Specify the --help global option for a list of other help options)
 
 Options:

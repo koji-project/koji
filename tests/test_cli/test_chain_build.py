@@ -105,7 +105,7 @@ Task info: weburl/taskinfo?taskID=1
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = ''
-        expected_stderr = """Usage: %s chain-build [options] target URL [URL2 [:] URL3 [:] URL4 ...]
+        expected_stderr = """Usage: %s chain-build [options] <target> <URL> [<URL> [:] <URL> [:] <URL> ...]
 (Specify the --help global option for a list of other help options)
 
 %s: error: At least two arguments (a build target and a SCM URL) are required
@@ -147,7 +147,7 @@ Task info: weburl/taskinfo?taskID=1
             handle_chain_build(self.options, self.session, args)
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
-        expected_stdout = """Usage: %s chain-build [options] target URL [URL2 [:] URL3 [:] URL4 ...]
+        expected_stdout = """Usage: %s chain-build [options] <target> <URL> [<URL> [:] <URL> [:] <URL> ...]
 (Specify the --help global option for a list of other help options)
 
 Options:
@@ -206,7 +206,7 @@ Options:
         with self.assertRaises(SystemExit) as cm:
             handle_chain_build(self.options, self.session, args)
         actual = stderr.getvalue()
-        expected = """Usage: %s chain-build [options] target URL [URL2 [:] URL3 [:] URL4 ...]
+        expected = """Usage: %s chain-build [options] <target> <URL> [<URL> [:] <URL> [:] <URL> ...]
 (Specify the --help global option for a list of other help options)
 
 %s: error: Unknown build target: target
@@ -268,7 +268,7 @@ Options:
         with self.assertRaises(SystemExit) as cm:
             handle_chain_build(self.options, self.session, args)
         actual = stderr.getvalue()
-        expected = """Usage: %s chain-build [options] target URL [URL2 [:] URL3 [:] URL4 ...]
+        expected = """Usage: %s chain-build [options] <target> <URL> [<URL> [:] <URL> [:] <URL> ...]
 (Specify the --help global option for a list of other help options)
 
 %s: error: Destination tag dest_tag is locked
@@ -461,7 +461,7 @@ Target target is not usable for a chain-build
             with self.assertRaises(SystemExit) as cm:
                 handle_chain_build(self.options, self.session, args)
             actual = stderr.getvalue()
-            expected = """Usage: %s chain-build [options] target URL [URL2 [:] URL3 [:] URL4 ...]
+            expected = """Usage: %s chain-build [options] <target> <URL> [<URL> [:] <URL> [:] <URL> ...]
 (Specify the --help global option for a list of other help options)
 
 %s: error: You must specify at least one dependency between builds with : (colon)

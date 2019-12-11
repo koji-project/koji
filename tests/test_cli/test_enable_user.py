@@ -16,7 +16,7 @@ class TestEnableUser(utils.CliTestCase):
     maxDiff = None
 
     def setUp(self):
-        self.error_format = """Usage: %s enable-user username
+        self.error_format = """Usage: %s enable-user <username>
 (Specify the --help global option for a list of other help options)
 
 %s: error: {message}
@@ -63,7 +63,7 @@ class TestEnableUser(utils.CliTestCase):
     def test_handle_enable_user_help(self):
         self.assert_help(
             handle_enable_user,
-            """Usage: %s enable-user username
+            """Usage: %s enable-user <username>
 (Specify the --help global option for a list of other help options)
 
 Options:

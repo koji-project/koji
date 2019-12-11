@@ -19,7 +19,7 @@ class TestTagBuild(utils.CliTestCase):
         self.session = mock.MagicMock()
         self.options = mock.MagicMock()
 
-        self.error_format = """Usage: %s tag-build [options] <tag> <pkg> [<pkg>...]
+        self.error_format = """Usage: %s tag-build [options] <tag> <pkg> [<pkg> ...]
 (Specify the --help global option for a list of other help options)
 
 %s: error: {message}
@@ -89,7 +89,7 @@ class TestTagBuild(utils.CliTestCase):
     def test_handle_tag_build_help(self):
         self.assert_help(
             handle_tag_build,
-            """Usage: %s tag-build [options] <tag> <pkg> [<pkg>...]
+            """Usage: %s tag-build [options] <tag> <pkg> [<pkg> ...]
 (Specify the --help global option for a list of other help options)
 
 Options:

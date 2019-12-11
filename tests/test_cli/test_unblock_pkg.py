@@ -17,7 +17,7 @@ class TestUnblockPkg(utils.CliTestCase):
     maxDiff = None
 
     def setUp(self):
-        self.error_format = """Usage: %s unblock-pkg [options] tag package [package2 ...]
+        self.error_format = """Usage: %s unblock-pkg [options] <tag> <package> [<package> ...]
 (Specify the --help global option for a list of other help options)
 
 %s: error: {message}
@@ -60,7 +60,7 @@ class TestUnblockPkg(utils.CliTestCase):
     def test_handle_unblock_pkg_help(self):
         self.assert_help(
             handle_unblock_pkg,
-            """Usage: %s unblock-pkg [options] tag package [package2 ...]
+            """Usage: %s unblock-pkg [options] <tag> <package> [<package> ...]
 (Specify the --help global option for a list of other help options)
 
 Options:

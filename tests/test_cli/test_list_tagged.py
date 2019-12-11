@@ -16,7 +16,7 @@ class TestCliListTagged(utils.CliTestCase):
         self.original_timezone = os.environ.get('TZ')
         os.environ['TZ'] = 'US/Eastern'
         time.tzset()
-        self.error_format = """Usage: %s list-tagged [options] tag [package]
+        self.error_format = """Usage: %s list-tagged [options] <tag> [<package>]
 (Specify the --help global option for a list of other help options)
 
 %s: error: {message}
@@ -232,7 +232,7 @@ class TestCliListTagged(utils.CliTestCase):
     def test_handle_list_tagged_help(self):
         self.assert_help(
             anon_handle_list_tagged,
-            """Usage: %s list-tagged [options] tag [package]
+            """Usage: %s list-tagged [options] <tag> [<package>]
 (Specify the --help global option for a list of other help options)
 
 Options:
