@@ -62,7 +62,13 @@ setup(
     #data_files=[
     #    ('/etc', ['cli/koji.conf']),
     #],
-    scripts=['cli/koji'],
+    scripts=[
+        'cli/koji',
+        'util/koji-gc',
+        'util/koji-shadow',
+        'util/koji-sweep-db',
+        'util/kojira',
+    ],
     python_requires='>=2.6',
     install_requires=get_install_requires(),
 )
