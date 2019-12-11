@@ -1,0 +1,15 @@
+#include "includes/header.chtml"
+
+<h4>API reference</h4>
+
+<ul>
+#for method in $methods
+  <li>
+     <pre><b>$method['name']$method['argdesc']</b>
+  $method['doc']
+     </pre>
+  </li>
+#end for
+</ul>
+
+#include "includes/footer.chtml"

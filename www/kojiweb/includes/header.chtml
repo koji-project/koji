@@ -74,6 +74,7 @@ $localnav
             <li id="hostsTab"><a href="hosts">Hosts</a></li>
             <li id="reportsTab"><a href="reports">Reports</a></li>
             <li id="searchTab"><a href="search">Search</a></li>
+            <li id="apiTab"><a href="api">API</a></li>
           </ul>
         </div><!-- end mainNav -->
 
