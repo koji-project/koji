@@ -18,15 +18,12 @@
 #       Mike McLean <mikem@redhat.com>
 #       Mike Bonnet <mikeb@redhat.com>
 
-from __future__ import absolute_import
-from __future__ import division
+from __future__ import absolute_import, division
+
 import base64
 import calendar
 import datetime
 import hashlib
-from koji.xmlrpcplus import DateTime
-from fnmatch import fnmatch
-import koji
 import logging
 import os
 import os.path
@@ -37,11 +34,16 @@ import stat
 import struct
 import sys
 import time
-from zlib import adler32
-from six.moves import range
-import six
 import warnings
-from six.moves import zip
+from fnmatch import fnmatch
+from zlib import adler32
+
+import six
+from six.moves import range, zip
+
+import koji
+from koji.xmlrpcplus import DateTime
+
 
 # imported from kojiweb and kojihub
 def md5_constructor(*args, **kwargs):

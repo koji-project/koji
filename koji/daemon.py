@@ -20,27 +20,28 @@
 #       Mike McLean <mikem@redhat.com>
 #       Mike Bonnet <mikeb@redhat.com>
 
-from __future__ import absolute_import
-from __future__ import division
+from __future__ import absolute_import, division
+
+import errno
+import hashlib
+import logging
+import os
+import signal
+import subprocess
+import sys
+import time
+import traceback
+from fnmatch import fnmatch
+
+import six
+from six.moves import range, urllib
+
 import koji
 import koji.tasks
 import koji.xmlrpcplus
 from koji.tasks import safe_rmtree
-from koji.util import adler32_constructor, parseStatus, \
-                      dslice, to_list, base64encode
-import hashlib
-import os
-import signal
-import logging
-from fnmatch import fnmatch
-import time
-import subprocess
-import sys
-import traceback
-import errno
-from six.moves import range
-from six.moves import urllib
-import six
+from koji.util import (adler32_constructor, base64encode, dslice, parseStatus,
+                       to_list)
 
 
 def incremental_upload(session, fname, fd, path, retries=5, logger=None):

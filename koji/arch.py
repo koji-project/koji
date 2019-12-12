@@ -1,10 +1,11 @@
 # This code is from the rpmUtils.arch module of yum
 # yum is licensed as GPLv2+
 
-import os
-import rpm
 import ctypes
+import os
 import struct
+
+import rpm
 
 _ppc64_native_is_best = True
 

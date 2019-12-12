@@ -24,8 +24,10 @@
 #    - auth data
 
 from __future__ import absolute_import
-import six.moves._thread
+
 import six
+import six.moves._thread
+
 
 class _data(object):
     pass

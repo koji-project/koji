@@ -20,34 +20,37 @@
 # Authors:
 #       Mike Bonnet <mikeb@redhat.com>
 
-from __future__ import absolute_import
-from __future__ import division
+from __future__ import absolute_import, division
+
+import base64
+import fnmatch
+import hashlib
+import logging
+import os
+import pwd
+import random
+import signal
+import socket
+import subprocess
+import sys
+import threading
+import time
+from contextlib import closing
+from optparse import OptionParser
+
+import libvirt
+import libxml2
+import requests
+import six.moves.xmlrpc_client
+import six.moves.xmlrpc_server
+
 import koji
 import koji.util
 from koji.daemon import SCM, TaskManager
-from koji.tasks import ServerExit, ServerRestart, BaseTaskHandler, MultiPlatformTask
-from koji.tasks import RestartTask, RestartVerifyTask
-import hashlib
-import sys
-import logging
-import os
-import six.moves.xmlrpc_client
-import signal
-import time
-import subprocess
-import libvirt
-import libxml2
-import random
-import rpm
-import socket
-import six.moves.xmlrpc_server
-import threading
-import base64
-import pwd
-import requests
-import fnmatch
-from contextlib import closing
-from optparse import OptionParser
+# TaskHandlers are required to be imported, do not remove them
+from koji.tasks import (BaseTaskHandler, MultiPlatformTask, RestartTask,  # noqa: F401
+                        RestartVerifyTask, ServerExit, ServerRestart)
+
 try:
     import krbV
 except ImportError:  # pragma: no cover

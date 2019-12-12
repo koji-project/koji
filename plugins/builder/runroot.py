@@ -1,18 +1,20 @@
 # kojid plugin
 
 from __future__ import absolute_import
-import koji
-import six.moves.configparser
+
 import os
 import platform
 import re
 import subprocess
 
+import six.moves.configparser
+
+import koji
 import koji.tasks
+from __main__ import BuildRoot
+from koji.daemon import log_output
 from koji.tasks import scan_mounts
 from koji.util import isSuccess, parseStatus
-from koji.daemon import log_output
-from __main__ import BuildRoot
 
 __all__ = ('RunRootTask',)
 

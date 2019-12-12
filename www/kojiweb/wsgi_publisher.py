@@ -20,19 +20,21 @@
 #       Mike McLean <mikem@redhat.com>
 
 from __future__ import absolute_import
+
 import cgi
 import inspect
-import koji
-import koji.util
 import logging
 import os.path
 import pprint
 import sys
 import traceback
 
+import six
+
+import koji
+import koji.util
 from koji.server import ServerError, ServerRedirect
 from koji.util import dslice, to_list
-import six
 
 
 class URLNotFound(ServerError):

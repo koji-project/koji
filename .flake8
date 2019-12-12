@@ -1,0 +1,20 @@
+[flake8]
+select = I,C,F4
+ignore = F
+exclude = .git,
+          __pycache__,
+          tests,
+          docs,
+          ./koji-*
+filename = *.py
+           ./cli/koji
+           ./builder/kojid
+           ./builder/mergerepos
+           ./hub/rpmdiff
+           ./util/kojira
+           ./util/koji-gc
+           ./util/koji-shadow
+           ./util/koji-sweep-db
+           ./vm/kojivmd
+application_import_names = koji,koji_cli,kojihub,kojiweb,__main__
+import_order_style = pep8

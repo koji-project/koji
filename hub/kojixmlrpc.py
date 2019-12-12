@@ -18,18 +18,21 @@
 # Authors:
 #       Mike McLean <mikem@redhat.com>
 
-from __future__ import absolute_import
-from __future__ import division
+from __future__ import absolute_import, division
+
 import datetime
 import inspect
 import logging
 import os
-import sys
-import time
-import threading
-import traceback
 import pprint
 import resource
+import sys
+import threading
+import time
+import traceback
+
+import six
+from six.moves import range
 
 import koji
 import koji.auth
@@ -37,11 +40,9 @@ import koji.db
 import koji.plugin
 import koji.policy
 import koji.util
-# import xmlrpclib functions from koji to use tweaked Marshaller
-from koji.xmlrpcplus import getparser, dumps, Fault, ExtendedMarshaller
 from koji.context import context
-from six.moves import range
-import six
+# import xmlrpclib functions from koji to use tweaked Marshaller
+from koji.xmlrpcplus import ExtendedMarshaller, Fault, dumps, getparser
 
 
 class Marshaller(ExtendedMarshaller):

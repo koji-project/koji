@@ -19,24 +19,24 @@
 # Authors:
 #       Mike Bonnet <mikeb@redhat.com>
 #       Mike McLean <mikem@redhat.com>
-from __future__ import absolute_import
-from __future__ import division
+from __future__ import absolute_import, division
+
 import cgi
-import Cheetah.Template
 import datetime
 import hashlib
-import koji
 import os
-import six
 import ssl
 import stat
-import time
-
-from six.moves import range
 #a bunch of exception classes that explainError needs
 from socket import error as socket_error
-from six.moves.xmlrpc_client import ProtocolError
 from xml.parsers.expat import ExpatError
+
+import Cheetah.Template
+import six
+from six.moves import range
+from six.moves.xmlrpc_client import ProtocolError
+
+import koji
 
 
 class NoSuchException(Exception):

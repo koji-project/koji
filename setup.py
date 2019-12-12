@@ -1,6 +1,9 @@
 from __future__ import absolute_import
+
 import sys
+
 from setuptools import setup
+
 
 def get_install_requires():
     # To install all build requires:

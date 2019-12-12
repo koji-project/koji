@@ -7,27 +7,31 @@
 #       Mike McLean <mikem@redhat.com>
 
 from __future__ import absolute_import
-import six
-try:
-    import krbV
-except ImportError:  # pragma: no cover
-    krbV = None
-import koji
-from koji.util import LazyDict, LazyValue, to_list
-import koji.policy
+
 import datetime
 import fnmatch
 import optparse
 import os
 import pprint
 import smtplib
-import socket   # for socket.error
+import socket  # for socket.error
 import sys
 import time
-import six.moves.xmlrpc_client  # for ProtocolError and Fault
-import six.moves.configparser
-from six.moves import email_mime_text as MIMEText
 from string import Template
+
+import six
+import six.moves.configparser
+import six.moves.xmlrpc_client  # for ProtocolError and Fault
+from six.moves import email_mime_text as MIMEText
+
+import koji
+import koji.policy
+from koji.util import LazyDict, LazyValue, to_list
+
+try:
+    import krbV
+except ImportError:  # pragma: no cover
+    krbV = None
 
 
 def _(args):
