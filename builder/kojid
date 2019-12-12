@@ -4764,6 +4764,10 @@ class BuildSRPMFromSCMTask(BaseBuildTask):
         rootopts = {'install_group': 'srpm-build',
                     'setup_dns': True,
                     'repo_id': repo_id}
+        if self.options.scm_credentials_dir is not None and os.path.isdir(self.options.scm_credentials_dir):
+            rootopts['bind_opts'] = {'dirs' : {self.options.scm_credentials_dir : '/credentials',}}
+            ## Force internal_dev_setup back to true because bind_opts is used to turn it off
+            rootopts['internal_dev_setup'] = True
         br_arch = self.find_arch('noarch', self.session.host.getHost(), self.session.getBuildConfig(build_tag['id'], event=event_id))
         broot = BuildRoot(self.session, self.options, build_tag['id'], br_arch, self.id, **rootopts)
         broot.workdir = self.workdir
@@ -6179,6 +6183,7 @@ def get_options():
                 'createrepo_update': True,
                 'pkgurl': None,
                 'allowed_scms': '',
+                'scm_credentials_dir': None,
                 'support_rpm_source_layout': True,
                 'yum_proxy': None,
                 'maven_repo_ignore': '*.md5 *.sha1 maven-metadata*.xml _maven.repositories '
