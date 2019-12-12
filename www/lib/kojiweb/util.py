@@ -486,6 +486,9 @@ def formatMode(mode):
 
     return result
 
+def formatThousands(value):
+    return '{:,}'.format(value)
+
 def rowToggle(template):
     """If the value of template._rowNum is even, return 'row-even';
     if it is odd, return 'row-odd'.  Increment the value before checking it.
