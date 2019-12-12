@@ -445,6 +445,10 @@ def handle_build(options, session, args):
                       help=_("Wait on the build, even if running in the background"))
     parser.add_option("--nowait", action="store_false", dest="wait",
                       help=_("Don't wait on build"))
+    parser.add_option("--wait-repo", action="store_true",
+                       help=_("Wait for the actual buildroot repo of given target"))
+    parser.add_option("--wait-build", metavar="NVR", action="append", dest="wait_builds",
+                       default=[], help=_("Wait for the given nvr to appear in buildroot repo"))
     parser.add_option("--quiet", action="store_true",
                       help=_("Do not print the task information"), default=options.quiet)
     parser.add_option("--arch-override", help=_("Override build arches"))
@@ -478,7 +482,7 @@ def handle_build(options, session, args):
     opts = {}
     if build_opts.arch_override:
         opts['arch_override'] = koji.parse_arches(build_opts.arch_override)
-    for key in ('skip_tag', 'scratch', 'repo_id', 'fail_fast'):
+    for key in ('skip_tag', 'scratch', 'repo_id', 'fail_fast', 'wait_repo', 'wait_builds'):
         val = getattr(build_opts, key)
         if val is not None:
             opts[key] = val

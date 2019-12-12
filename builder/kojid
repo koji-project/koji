@@ -995,7 +995,9 @@ class BuildTask(BaseTaskHandler):
             # use of this option is governed by policy
             self.session.host.assertPolicy('build_from_repo_id', policy_data)
         if not repo_info:
-            repo_info = self.getRepo(build_tag)  #(subtask)
+            wait_builds = [koji.parse_NVR(nvr) for nvr in opts.get('wait_builds', [])]
+            repo_info = self.getRepo(build_tag, builds=wait_builds,
+                                     wait=opts.get('wait_repo'))  #(subtask)
             self.event_id = self.session.getLastEvent()['id']
         srpm = self.getSRPM(src, build_tag, repo_info['id'])
         h = self.readSRPMHeader(srpm)

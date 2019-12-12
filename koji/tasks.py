@@ -544,21 +544,35 @@ class BaseTaskHandler(object):
                                    tag['name'],
                                    ', '.join(sorted(tag_arches))))
 
-    def getRepo(self, tag):
+    def getRepo(self, tag, builds=None, wait=False):
         """
         Get the active repo for the given tag.  If there is no repo available,
         wait for a repo to be created.
+
+        if wait is True - always wait for new repo
+        if builds are present, wait until repo doesn't contain these
         """
-        repo_info = self.session.getRepo(tag)
-        if not repo_info:
-            #make sure there is a target
+        if wait:
+            create_ts = time.time()
+        else:
+            create_ts = None
+            repo_info = self.session.getRepo(tag)
             taginfo = self.session.getTag(tag, strict=True)
-            targets = self.session.getBuildTargets(buildTagID=taginfo['id'])
-            if not targets:
-                raise koji.BuildError('no repo (and no target) for tag %s' % taginfo['name'])
-            #wait for it
+            if not repo_info:
+                #make sure there is a target
+                targets = self.session.getBuildTargets(buildTagID=taginfo['id'])
+                if not targets:
+                    raise koji.BuildError('no repo (and no target) for tag %s' % taginfo['name'])
+                wait = True
+            elif builds:
+                build_infos = [koji.parse_NVR(build) for build in builds]
+                if not koji.util.checkForBuilds(self.session, taginfo['id'],
+                                                build_infos, repo_info['create_event']):
+                    wait = True
+
+        if wait:
             task_id = self.session.host.subtask(method='waitrepo',
-                                                arglist=[tag, None, None],
+                                                arglist=[tag, create_ts, builds],
                                                 parent=self.id)
             repo_info = self.wait(task_id)[task_id]
         return repo_info
