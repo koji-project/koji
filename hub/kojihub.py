@@ -3663,7 +3663,7 @@ def get_external_repo_list(tag_info, event=None):
     return repos
 
 
-def get_user(userInfo=None, strict=False, krb_princs=False):
+def get_user(userInfo=None, strict=False, krb_princs=True):
     """Return information about a user.
 
     :param userInfo: a str (Kerberos principal or name) or an int (user id)
@@ -3671,8 +3671,8 @@ def get_user(userInfo=None, strict=False, krb_princs=False):
                          - id: User's ID
                          - name: User's name
                          - krb_principal: Kerberos principal
-    :param strict: whether raising Error when no user found
-    :param krb_princs: whether show krb_principals in result
+    :param bool strict: whether raising Error when no user found
+    :param bool krb_princs: whether show krb_principals in result
     :return: a dict as user's information:
         id: user id
         name: user name
@@ -3753,7 +3753,7 @@ def edit_user(userInfo, name=None, krb_principal_mappings=None):
 
 def _edit_user(userInfo, name=None, krb_principal_mappings=None):
     """Edit information for an existing user."""
-    user = get_user(userInfo, strict=True, krb_princs=True)
+    user = get_user(userInfo, strict=True)
     if name and user['name'] != name:
         # attempt to update user name
         values = {
@@ -3832,12 +3832,12 @@ def list_user_krb_principals(user_info=None):
     return query.execute() or []
 
 
-def get_user_by_krb_principal(krb_principal, strict=False, krb_princs=False):
+def get_user_by_krb_principal(krb_principal, strict=False, krb_princs=True):
     """get information about a user by kerberos principal.
 
-    :param krb_principal: full user kerberos principals
-    :param strict: whether raising Error when no user found
-    :param krb_princs: whether show krb_principals in result
+    :param str krb_principal: full user kerberos principals
+    :param bool strict: whether raising Error when no user found
+    :param bool krb_princs: whether show krb_principals in result
     :return: a dict as user's information:
         id: user id
         name: user name
@@ -11926,7 +11926,7 @@ class RootExports(object):
         in the same format as getUser(), plus the authtype.  If there is no
         currently logged-in user, return None."""
         if context.session.logged_in:
-            me = self.getUser(context.session.user_id, krb_princs=True)
+            me = self.getUser(context.session.user_id)
             me['authtype'] = context.session.authtype
             # backward compatible for cli moshimoshi, but it's not real
             if me.get('krb_principals'):
