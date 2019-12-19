@@ -2040,7 +2040,12 @@ def handle_list_signed(goptions, session, args):
     if options.key:
         qopts['sigkey'] = options.key
     if options.rpm:
-        rinfo = session.getRPM(options.rpm)
+        rpm_info = options.rpm
+        try:
+            rpm_info = int(rpm_info)
+        except ValueError:
+            pass
+        rinfo = session.getRPM(rpm_info)
         rpm_idx[rinfo['id']] = rinfo
         if rinfo is None:
             parser.error(_("No such RPM: %s") % options.rpm)
@@ -2048,7 +2053,12 @@ def handle_list_signed(goptions, session, args):
             parser.error(_("External rpm: %(name)s-%(version)s-%(release)s.%(arch)s@%(external_repo_name)s") % rinfo)
         qopts['rpm_id'] = rinfo['id']
     if options.build:
-        binfo = session.getBuild(options.build)
+        build = options.build
+        try:
+            build = int(build)
+        except ValueError:
+            pass
+        binfo = session.getBuild(build)
         build_idx[binfo['id']] = binfo
         if binfo is None:
             parser.error(_("No such build: %s") % options.rpm)
@@ -2060,7 +2070,12 @@ def handle_list_signed(goptions, session, args):
     else:
         sigs = session.queryRPMSigs(**qopts)
     if options.tag:
-        rpms, builds = session.listTaggedRPMS(options.tag, inherit=False, latest=False)
+        tag = options.tag
+        try:
+            tag = int(tag)
+        except ValueError:
+            pass
+        rpms, builds = session.listTaggedRPMS(tag, inherit=False, latest=False)
         tagged = {}
         for binfo in builds:
             build_idx.setdefault(binfo['id'], binfo)
