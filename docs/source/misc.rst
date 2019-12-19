@@ -123,6 +123,24 @@ arches, use this command:
 Note: is a single entity, so denote multiple arches within quotes (e.g.
 'i386 i586 i686').
 
+How noarch sub-packages are built
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+It is a technical detail, but can make sense for someone debugging
+noarch issues. If there are multiple architectures defined, multiple
+`buildArch` tasks are spawned. Each of them will produce arch and also
+noarch packages. While arch packages are unique compared to other
+subtasks, noarch packages should be the same. It shouldn't matter on
+which arch you're building it. If there is a difference, it is a bug.
+Koji internally checks some data from these noarch packages and
+chooses randomly one, which will appear in final builds. If
+differences are found, build will fail. Koji is using simple embedded
+rpmdiff variant, which checks for each file included in rpm: mode,
+device, vflags, user, group, digest. Furthermore, Name, Summary,
+Description, Group, License, URL, PreIn, PostIn, PreUn, PostUn,
+Provides, Requires, Conflicts and Obsoletes are compared.  In case of
+failing this test, `BuildError` is raised.
+
 Manually submitting a task
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
