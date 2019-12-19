@@ -3446,11 +3446,20 @@ def add_sys_logger(logger):
     logging.getLogger(logger).addHandler(handler)
 
 def add_mail_logger(logger, addr):
+    """Adding e-mail logger
+
+    :param addr: comma-separated addresses
+    :type addr: str
+
+    :return: -
+    :rtype: None
+    """
     if not addr:
         return
+    addresses = addr.split(',')
     handler = logging.handlers.SMTPHandler("localhost",
                                            "%s@%s" % (pwd.getpwuid(os.getuid())[0], socket.getfqdn()),
-                                           addr,
+                                           addresses,
                                            "%s: error notice" % socket.getfqdn())
     handler.setFormatter(logging.Formatter('%(pathname)s:%(lineno)d [%(levelname)s] %(message)s'))
     handler.setLevel(logging.ERROR)
