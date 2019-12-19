@@ -244,25 +244,29 @@ clone-tag will create the destination tag if it does not already exist
                                            'nvr': 'pkg2-1.0-1',
                                            'package_name': 'pkg2', 'state': 2,
                                            'tag_name': 'src-tag-p',
-                                           'name': 'pkg2'}, force=None),
+                                           'name': 'pkg2'}, force=None,
+                                                           notify=False),
                                        call.tagBuildBypass('dst-tag', {
                                            'owner_name': 'b_owner',
                                            'nvr': 'pkg1-1.0-1',
                                            'package_name': 'pkg1', 'state': 1,
                                            'tag_name': 'src-tag',
-                                           'name': 'pkg1'}, force=None),
+                                           'name': 'pkg1'}, force=None,
+                                                           notify=False),
                                        call.tagBuildBypass('dst-tag', {
                                            'owner_name': 'b_owner',
                                            'nvr': 'pkg1-1.0-2',
                                            'package_name': 'pkg1', 'state': 1,
                                            'tag_name': 'src-tag',
-                                           'name': 'pkg1'}, force=None),
+                                           'name': 'pkg1'}, force=None,
+                                                           notify=False),
                                        call.tagBuildBypass('dst-tag', {
                                            'owner_name': 'b_owner',
                                            'nvr': 'pkg1-1.1-2',
                                            'package_name': 'pkg1', 'state': 1,
                                            'tag_name': 'src-tag',
-                                           'name': 'pkg1'}, force=None),
+                                           'name': 'pkg1'}, force=None,
+                                                           notify=False),
                                        call.multiCall(batch=1000),
                                        call.getTagGroups('src-tag',
                                                          event=None),
@@ -506,38 +510,44 @@ List of changes:
                                            'nvr': 'pkg1-2.1-2',
                                            'package_name': 'pkg1', 'state': 1,
                                            'tag_name': 'dst-tag',
-                                           'name': 'pkg1'}, force=None),
+                                           'name': 'pkg1'}, force=None,
+                                                             notify=False),
                                        call.untagBuildBypass('dst-tag', {
                                            'owner_name': 'b_owner',
                                            'nvr': 'pkg1-0.1-1',
                                            'package_name': 'pkg1', 'state': 1,
                                            'tag_name': 'dst-tag',
-                                           'name': 'pkg1'}, force=None),
+                                           'name': 'pkg1'}, force=None,
+                                                             notify=False),
                                        call.untagBuildBypass('dst-tag', {
                                            'owner_name': 'b_owner',
                                            'nvr': 'pkg3-1.0-1',
                                            'package_name': 'pkg3', 'state': 1,
                                            'tag_name': 'dst-tag',
-                                           'name': 'pkg3'}, force=None),
+                                           'name': 'pkg3'}, force=None,
+                                                             notify=False),
                                        call.multiCall(batch=1000),
                                        call.tagBuildBypass('dst-tag', {
                                            'owner_name': 'b_owner',
                                            'nvr': 'pkg1-0.1-1',
                                            'package_name': 'pkg1', 'state': 1,
                                            'tag_name': 'src-tag',
-                                           'name': 'pkg1'}, force=None),
+                                           'name': 'pkg1'}, force=None,
+                                                           notify=False),
                                        call.tagBuildBypass('dst-tag', {
                                            'owner_name': 'b_owner',
                                            'nvr': 'pkg1-1.0-2',
                                            'package_name': 'pkg1', 'state': 1,
                                            'tag_name': 'src-tag',
-                                           'name': 'pkg1'}, force=None),
+                                           'name': 'pkg1'}, force=None,
+                                                             notify=False),
                                        call.tagBuildBypass('dst-tag', {
                                            'owner_name': 'b_owner',
                                            'nvr': 'pkg1-1.1-2',
                                            'package_name': 'pkg1', 'state': 1,
                                            'tag_name': 'src-tag',
-                                           'name': 'pkg1'}, force=None),
+                                           'name': 'pkg1'}, force=None,
+                                                           notify=False),
                                        call.multiCall(batch=1000),
                                        call.multiCall(batch=1000),
                                        call.groupPackageListAdd('dst-tag',
@@ -633,6 +643,7 @@ Options:
   --event=EVENT     Clone tag at a specific event
   --repo=REPO       Clone tag at a specific repo event
   -v, --verbose     show changes
+  --notify          Send tagging/untagging notifications
   -f, --force       override tag locks if necessary
   -n, --test        test mode
   --batch=SIZE      batch size of multicalls [0 to disable, default: 1000]
