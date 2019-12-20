@@ -4934,9 +4934,12 @@ Status: %(status)s\r
         message = self.message_templ % locals()
         # ensure message is in UTF-8
         message = koji.fixEncoding(message)
-
+        # binary for python3
+        if six.PY3:
+            message = message.encode('utf8')
         server = smtplib.SMTP(self.options.smtphost)
         #server.set_debuglevel(True)
+
         server.sendmail(from_addr, recipients, message)
         server.quit()
 
@@ -5143,7 +5146,9 @@ Build Info: %(weburl)s/buildinfo?buildID=%(build_id)i\r
         message = self.message_templ % locals()
         # ensure message is in UTF-8
         message = koji.fixEncoding(message)
-
+        # binary for python3
+        if six.PY3:
+            message = message.encode('utf8')
         server = smtplib.SMTP(self.options.smtphost)
         # server.set_debuglevel(True)
         server.sendmail(from_addr, recipients, message)
