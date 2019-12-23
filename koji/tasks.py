@@ -478,12 +478,15 @@ class BaseTaskHandler(object):
                 return fn
             self.logger.debug("Downloading %s", relpath)
             url = "%s/%s" % (self.options.topurl, relpath)
-            with requests.get(url) as resp:
+            try:
+                resp = requests.get(url)
                 if not os.path.exists(os.path.dirname(fn)):
                     os.makedirs(os.path.dirname(fn))
                 with open(fn, 'wb') as fdst:
                     for chunk in resp.iter_content(chunk_size=8192):
                         fdst.write(chunk)
+            finally:
+                resp.close()
         else:
             fn = "%s/%s" % (self.options.topdir, relpath)
         return fn
