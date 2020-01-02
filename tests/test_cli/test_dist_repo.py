@@ -288,6 +288,10 @@ Options:
   --nowait              Do not wait for the task to complete
   --skip-missing-signatures
                         Skip RPMs not signed with the desired key(s)
+  --zck                 Generate zchunk files as well as the standard repodata
+  --zck-dict-dir=ZCK_DICT_DIR
+                        Directory containing compression dictionaries for use
+                        by zchunk (on builder)
 """ % self.progname)
 
 

@@ -5508,7 +5508,8 @@ class createDistRepoTask(BaseTaskHandler):
         if oldrepo:
             oldrepodata = os.path.join(oldrepodir, arch, 'repodata')
         self.do_createrepo(self.repodir, '%s/pkglist' % self.repodir,
-                    groupdata, oldpkgs=oldpkgs, oldrepodata=oldrepodata)
+                    groupdata, oldpkgs=oldpkgs, oldrepodata=oldrepodata,
+                    zck=opts.get('zck'), zck_dict_dir=opts.get('zck_dict_dir'))
         for subrepo in self.subrepos:
             if oldrepo:
                 oldrepodata = os.path.join(oldrepodir, arch, subrepo, 'repodata')
@@ -5516,7 +5517,9 @@ class createDistRepoTask(BaseTaskHandler):
                     '%s/%s' % (self.repodir, subrepo),
                     '%s/%s/pkglist' % (self.repodir, subrepo),
                     groupdata, oldpkgs=oldpkgs, oldrepodata=oldrepodata,
-                    logname='createrepo_%s' % subrepo)
+                    logname='createrepo_%s' % subrepo,
+                    zck=opts.get('zck'),
+                    zck_dict_dir=opts.get('zck_dict_dir'))
         if len(self.kojipkgs) == 0:
             fn = os.path.join(self.repodir, "repodata", "EMPTY_REPO")
             with open(fn, 'w') as fp:
@@ -5566,7 +5569,7 @@ class createDistRepoTask(BaseTaskHandler):
         self.session.uploadWrapper(fn, self.uploadpath)
 
     def do_createrepo(self, repodir, pkglist, groupdata, oldpkgs=None,
-            logname=None, oldrepodata=None):
+            logname=None, oldrepodata=None, zck=False, zck_dict_dir=None):
         """Run createrepo
 
         This is derived from CreaterepoTask.create_local_repo, but adapted to
@@ -5577,6 +5580,10 @@ class createDistRepoTask(BaseTaskHandler):
             cmd = ['/usr/bin/createrepo_c']
         else:
             cmd = ['/usr/bin/createrepo']
+            if zck:
+                raise koji.GenericError("createrepo doesn't support zchunks")
+        if zck_dict_dir and not zck:
+            raise koji.GenericError("--zck-dict-dir makes no sense without --zck")
         cmd.extend(['-vd', '-i', pkglist])
         if groupdata and os.path.isfile(groupdata):
             cmd.extend(['-g', groupdata])
@@ -5599,6 +5606,15 @@ class createDistRepoTask(BaseTaskHandler):
             cmd.append('--deltas')
             for op_dir in oldpkgs:
                 cmd.extend(['--oldpackagedirs', op_dir])
+        if zck:
+            cmd.append('--zck')
+        if zck_dict_dir:
+            zck_dict_dir = os.path.normpath(zck_dict_dir)
+            if os.path.isfile(zck_dict_dir):
+                raise koji.GenericError("zchunk dir path is file: %s" % zck_dict_dir)
+            if not os.path.isdir(zck_dict_dir):
+                raise koji.GenericError("zchunk dir path doesn't exist: %s" % zck_dict_dir)
+            cmd.extend(['--zck-dict-dir', zck_dict_dir])
         cmd.append(repodir)
 
         if logname is None:
