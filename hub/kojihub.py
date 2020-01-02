@@ -1179,7 +1179,7 @@ def readPackageList(tagID=None, userID=None, pkgID=None, event=None, inherit=Fal
                 packages[pkgid] = p
     return packages
 
-def list_tags(build=None, package=None, queryOpts=None):
+def list_tags(build=None, package=None, perms=True, queryOpts=None):
     """List tags.  If build is specified, only return tags associated with the
     given build.  If package is specified, only return tags associated with the
     specified package.  If neither is specified, return all tags.  Build can be
@@ -1188,8 +1188,6 @@ def list_tags(build=None, package=None, queryOpts=None):
     a list of maps.  Each map contains keys:
       - id
       - name
-      - perm_id
-      - perm
       - arches
       - locked
 
@@ -1198,20 +1196,24 @@ def list_tags(build=None, package=None, queryOpts=None):
       - owner_name
       - blocked
       - extra_arches
+
+    If perms is True, each map will also contain:
+      - perm_id
+      - perm
     """
     if build is not None and package is not None:
         raise koji.GenericError('only one of build and package may be specified')
 
     tables = ['tag_config']
-    joins = ['tag ON tag.id = tag_config.tag_id',
-             'LEFT OUTER JOIN permissions ON tag_config.perm_id = permissions.id']
-    fields = ['tag.id', 'tag.name', 'tag_config.perm_id', 'permissions.name',
-              'tag_config.arches', 'tag_config.locked', 'tag_config.maven_support',
-              'tag_config.maven_include_all']
-    aliases = ['id', 'name', 'perm_id', 'perm',
-               'arches', 'locked', 'maven_support',
-               'maven_include_all']
+    joins = ['tag ON tag.id = tag_config.tag_id']
+    fields = ['tag.id', 'tag.name', 'tag_config.arches', 'tag_config.locked',
+              'tag_config.maven_support', 'tag_config.maven_include_all']
+    aliases = ['id', 'name', 'arches', 'locked', 'maven_support', 'maven_include_all']
     clauses = ['tag_config.active = true']
+    if perms:
+        joins.append('LEFT OUTER JOIN permissions ON tag_config.perm_id = permissions.id')
+        fields.extend(['tag_config.perm_id', 'permissions.name'])
+        aliases.extend(['perm_id', 'perm'])
 
     if build is not None:
         # lookup build id

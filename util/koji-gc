@@ -346,7 +346,7 @@ def has_krb_creds():
     try:
         ctx = krbV.default_context()
         ccache = ctx.default_ccache()
-        princ = ccache.principal()
+        ccache.principal()
         return True
     except krbV.Krb5Error:
         return False
@@ -438,6 +438,9 @@ def handle_trash():
     i = 0
     N = len(untagged)
     to_trash = []
+
+    print("1st pass: blacklist")
+    continuing = []
     for binfo in untagged:
         i += 1
         nvr = "%(name)s-%(version)s-%(release)s" % binfo
@@ -445,11 +448,15 @@ def handle_trash():
             if options.debug:
                 print("[%i/%i] Skipping package: %s" % (i, N, nvr))
             continue
-        try:
-            refs = session.buildReferences(binfo['id'], limit=10, lazy=True)
-        except six.moves.xmlrpc_client.Fault:
-            print("[%i/%i] Error checking references for %s. Skipping" % (i, N, nvr))
-            continue
+        continuing.append(binfo)
+
+    print("2nd pass: references")
+    i = 0
+    mcall = koji.MultiCallSession(session, batch=1000)
+    for binfo in continuing:
+        mcall.buildReferences(binfo['id'], limit=10, lazy=True)
+    for binfo, [refs] in six.moves.zip(continuing, mcall.call_all()):
+        i += 1
         #XXX - this is more data than we need
         #      also, this call takes waaaay longer than it should
         if refs.get('tags'):
@@ -534,6 +541,7 @@ def handle_trash():
         by_owner.setdefault(binfo['owner_name'], []).append(binfo)
     owners = to_list(by_owner.keys())
     owners.sort()
+    mcall = koji.MultiCallSession(session, batch=1000)
     for owner_name in owners:
         builds = [(b['nvr'], b) for b in by_owner[owner_name]]
         builds.sort()
@@ -555,8 +563,10 @@ def handle_trash():
                     owner = binfo['owner_id']
                 else:
                     owner = max([(n, k) for k, n in six.iteritems(count)])[1]
-                session.packageListAdd(trashcan_tag, binfo['name'], owner)
-                session.tagBuildBypass(trashcan_tag, binfo['id'], force=True)
+                mcall.packageListAdd(trashcan_tag, binfo['name'], owner)
+                mcall.tagBuildBypass(trashcan_tag, binfo['id'], force=True)
+    # run all packageListAdd/tagBuildBypass finally
+    mcall.call_all()
 
 def protected_sig(keys):
     """Check list of keys and see if any are protected
@@ -606,18 +616,35 @@ def handle_delete(just_salvage=False):
     print("...got %i builds" % len(trash))
     #XXX - it would be better if there were more appropriate server calls for this
     grace_period = options.grace_period
+    import time
+
+    print("1st pass: blacklist")
+    continuing = []
     for nvr, binfo in trash:
-        # see if build has been tagged elsewhere
         if not check_package(binfo['name']):
             if options.debug:
                 print("Skipping package: %s" % nvr)
             continue
-        tags = [t['name'] for t in session.listTags(build=binfo['id']) if t['name'] != trashcan_tag]
+        continuing.append((nvr, binfo))
+
+    print("2nd pass: tags")
+    continuing, trash = [], continuing
+    mcall = koji.MultiCallSession(session, batch=1000)
+    for nvr, binfo in trash:
+        mcall.listTags(build=binfo['id'], perms=False)
+    for (nvr, binfo), [tags] in six.moves.zip(trash, mcall.call_all()):
+        # see if build has been tagged elsewhere
+        tags = [t['name'] for t in tags if t['name'] != trashcan_tag]
         if tags:
             print("Build %s tagged elsewhere: %s" % (nvr, tags))
             salvage_build(binfo)
             continue
-        #check build signatures
+        continuing.append((nvr, binfo))
+
+    print("3rd pass: signatures")
+    continuing, trash = [], continuing
+    for nvr, binfo in trash:
+        # check build signatures
         keys = get_build_sigs(binfo['id'], cache=False)
         if keys and options.debug:
             print("Build: %s, Keys: %s" % (nvr, keys))
@@ -628,8 +655,15 @@ def handle_delete(just_salvage=False):
         if just_salvage:
             # skip the rest when salvaging
             continue
+        continuing.append((nvr, binfo))
+
+    print("4th pass: history")
+    continuing, trash = [], continuing
+    for nvr, binfo in trash:
         # determine how long this build has been in the trashcan
-        history = session.tagHistory(build=binfo['id'], tag=trashcan_tag)
+        mcall.tagHistory(build=binfo['id'], tag=trashcan_tag)
+
+    for (nvr, binfo), [history] in zip(trash, mcall.call_all()):
         current = [x for x in history if x['active']]
         if not current:
             #untagged just now?
@@ -644,20 +678,22 @@ def handle_delete(just_salvage=False):
             if options.debug:
                 print("Skipping build %s, age=%i" % (nvr, age))
             continue
+        continuing.append(binfo)
 
+    print("5th pass: deletion")
+    for binfo in continuing:
         # go ahead and delete
         if options.test:
-            print("Would have deleted build from trashcan: %s" % nvr)
+            print("Would have deleted build from trashcan: %s" % binfo['nvr'])
         else:
-            print("Deleting build: %s"  % nvr)
-            session.untagBuildBypass(trashcan_tag,  binfo['id'])
-            try:
-                session.deleteBuild(binfo['id'])
-            except (six.moves.xmlrpc_client.Fault, koji.GenericError) as e:
-                print("Warning: deletion failed: %s" % e)
-                #server issue
-                pass
-        #TODO - log details for delete failures
+            print("Deleting build: %s"  % binfo['nvr'])
+            mcall.untagBuildBypass(trashcan_tag,  binfo['id'])
+            mcall.deleteBuild(binfo['id'])
+
+    for binfo, result in six.moves.zip(continuing, mcall.call_all()):
+        if isinstance(result, dict):
+            print("Warning: deletion failed: %s" % result['faultString'])
+            #TODO - log details for delete failures
 
 
 class TagPruneTest(koji.policy.MatchTest):
@@ -787,7 +823,7 @@ def handle_prune():
     if options.debug:
         pprint.pprint(policies.ruleset)
     #get tags
-    tags = session.listTags(queryOpts={'order': 'name'})
+    tags = session.listTags(perms=False, queryOpts={'order': 'name'})
     untagged = {}
     build_ids = {}
     for taginfo in tags:
@@ -880,7 +916,7 @@ def handle_prune():
         print("Attempting to purge %i builds" % len(untagged))
         for nvr in untagged:
             build_id = build_ids[nvr]
-            tags = [t['name'] for t in  session.listTags(build_id)]
+            tags = [t['name'] for t in  session.listTags(build_id, perms=False)]
             if options.test:
                 #filted out the tags we would have dropped above
                 tags = [t for t in tags if t not in untagged[nvr]]
