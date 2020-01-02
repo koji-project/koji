@@ -6952,8 +6952,14 @@ def handle_regen_repo(options, session, args):
 
 def handle_dist_repo(options, session, args):
     """Create a yum repo with distribution options"""
-    usage = _("usage: %prog dist-repo [options] <tag> <key_id> [<key_id> ...]")
-    parser = OptionParser(usage=get_usage_str(usage))
+    usage = _("usage: %prog dist-repo [options] <tag> <key_id> [<key_id> ...]\n\n"
+              "In normal mode, dist-repo behaves like any other koji task.\n"
+              "Sometimes you want to limit running distRepo tasks per tag to only\n"
+              "one. For such behaviour admin (with 'tag' permission) needs to\n"
+              "modify given tag's extra field 'distrepo.cancel_others' to True'\n"
+              "via 'koji edit-tag -x distrepo.cancel_others=True'\n")
+    usage += _("\n(Specify the --help option for a list of other options)")
+    parser = OptionParser(usage=usage)
     parser.add_option('--allow-missing-signatures', action='store_true',
         default=False,
         help=_('For RPMs not signed with a desired key, fall back to the '

@@ -45,7 +45,14 @@ class TestDistRepo(utils.CliTestCase):
         self.session.distRepo.return_value = self.task_id
 
         self.error_format = """Usage: %s dist-repo [options] <tag> <key_id> [<key_id> ...]
-(Specify the --help global option for a list of other help options)
+
+In normal mode, dist-repo behaves like any other koji task.
+Sometimes you want to limit running distRepo tasks per tag to only
+one. For such behaviour admin (with 'tag' permission) needs to
+modify given tag's extra field 'distrepo.cancel_others' to True'
+via 'koji edit-tag -x distrepo.cancel_others=True'
+
+(Specify the --help option for a list of other options)
 
 %s: error: {message}
 """ % (self.progname, self.progname)
@@ -249,7 +256,14 @@ class TestDistRepo(utils.CliTestCase):
         self.assert_help(
             handle_dist_repo,
             """Usage: %s dist-repo [options] <tag> <key_id> [<key_id> ...]
-(Specify the --help global option for a list of other help options)
+
+In normal mode, dist-repo behaves like any other koji task.
+Sometimes you want to limit running distRepo tasks per tag to only
+one. For such behaviour admin (with 'tag' permission) needs to
+modify given tag's extra field 'distrepo.cancel_others' to True'
+via 'koji edit-tag -x distrepo.cancel_others=True'
+
+(Specify the --help option for a list of other options)
 
 Options:
   -h, --help            show this help message and exit
