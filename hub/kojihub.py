@@ -11510,19 +11510,45 @@ class RootExports(object):
     getBuildTarget = staticmethod(get_build_target)
 
     def taskFinished(self, taskId):
+        """Returns True if task is finished
+
+        :param int task: id of task queried
+
+        :returns bool: task not/finished
+        """
         task = Task(taskId)
         return task.isFinished()
 
     def getTaskRequest(self, taskId):
+        """Return original task request as a list. Content depends on task type
+
+        :param int taskId: id of task queried
+
+        :returns list: request
+        """
         task = Task(taskId)
         return task.getRequest()
 
     def getTaskResult(self, taskId, raise_fault=True):
+        """Returns task results depending on task type. For buildArch it is a dict with build info,
+        for newRepo list with two items, etc.
+
+        :param int taskId: id of task queried
+        :param bool raise_fault: if task's result is a fault, raise it also here, otherwise
+                                just get dict with error code/message
+
+        :returns any: dict/list/etc. with task result"""
         task = Task(taskId)
         return task.getResult(raise_fault=raise_fault)
 
     def getTaskInfo(self, task_id, request=False, strict=False):
-        """Get information about a task"""
+        """Get information about a task
+
+        :param int task_id: Task id
+        :param bool request: if True, return also task's request
+        :param bool strict: raise exception, if task is not found
+
+        :returns dict: task info"""
         single = True
         if isinstance(task_id, (list, tuple)):
             single = False
