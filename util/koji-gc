@@ -444,6 +444,7 @@ def handle_trash():
     for binfo in untagged:
         i += 1
         nvr = "%(name)s-%(version)s-%(release)s" % binfo
+        binfo['nvr'] = nvr
         if not check_package(binfo['name']):
             if options.debug:
                 print("[%i/%i] Skipping package: %s" % (i, N, nvr))
@@ -457,6 +458,7 @@ def handle_trash():
         mcall.buildReferences(binfo['id'], limit=10, lazy=True)
     for binfo, [refs] in six.moves.zip(continuing, mcall.call_all()):
         i += 1
+        nvr = binfo['nvr']
         #XXX - this is more data than we need
         #      also, this call takes waaaay longer than it should
         if refs.get('tags'):
@@ -530,7 +532,6 @@ def handle_trash():
         #ok, go ahead add it to the list
         if binfo2 is None:
             binfo2 = session.getBuild(binfo['id'])
-        binfo2['nvr'] = nvr
         print("[%i/%i] Adding build to trash list: %s" % (i, N, nvr))
         to_trash.append(binfo2)
 
