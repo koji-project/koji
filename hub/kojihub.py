@@ -11465,6 +11465,8 @@ class RootExports(object):
             pass
         else:
             context.session.assertPerm('repo')
+        # raise error when tag does not exist
+        get_tag(tag, strict=True, event=event)
         opts = {}
         if event is not None:
             opts['event'] = event
