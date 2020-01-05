@@ -85,17 +85,15 @@ class TestDistRepoInit(unittest.TestCase):
 
 class TestDistRepo(unittest.TestCase):
 
-    @mock.patch('kojihub.get_tag')
     @mock.patch('kojihub.dist_repo_init')
     @mock.patch('kojihub.make_task')
-    def test_DistRepo(self, make_task, dist_repo_init, get_tag):
+    def test_DistRepo(self, make_task, dist_repo_init):
         session = kojihub.context.session = mock.MagicMock()
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"
         session.assertPerm = mock.MagicMock()
         dist_repo_init.return_value = ('repo_id', 'event_id')
         make_task.return_value = 'task_id'
-        get_tag.return_value = {'id': 1, 'extra': {}}
         exports = kojihub.RootExports()
         exports.getBuildConfig = mock.MagicMock()
         exports.getBuildConfig.return_value = {'extra': {}}
@@ -106,7 +104,7 @@ class TestDistRepo(unittest.TestCase):
         dist_repo_init.assert_called_once()
         make_task.assert_called_once()
         self.assertEquals(ret, make_task.return_value)
-        exports.getBuildConfig.assert_called_once_with(get_tag.return_value)
+        exports.getBuildConfig.assert_called_once_with('tag')
 
 
 class TestDistRepoMove(unittest.TestCase):
