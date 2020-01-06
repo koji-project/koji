@@ -46,13 +46,13 @@ The build map contains the following entries:
    is optional.
 -  build_id: Reserved build ID. This field is optional.
 -  extra: A map of extra metadata associated with the build, which
-   must include one of:
+   must include at least one of:
 
-   - typeinfo: A map whose single entry is the name of the content
-     generator type, which is a map containing type-specific
-     information for this build.
-   - maven, win, or image: Legacy content generator type names which
-     appear at this level instead of inside typeinfo.
+   - typeinfo: A map whose entries are the names of the build types used for
+     this build, which are free form maps containing type-specific information
+     for this build.
+   - maven, win, or image: Legacy build type names which appear at this level
+     instead of inside typeinfo.
 
 buildroots
 ----------
