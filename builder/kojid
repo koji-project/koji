@@ -47,6 +47,7 @@ from gzip import GzipFile
 from optparse import SUPPRESS_HELP, OptionParser
 
 import Cheetah.Template
+import requests
 import rpm
 import six
 import six.moves.xmlrpc_client
@@ -6335,7 +6336,7 @@ if __name__ == "__main__":
                               options.serverca)
         except koji.AuthError as e:
             quit("Error: Unable to log in: %s" % e)
-        except six.moves.xmlrpc_client.ProtocolError:
+        except requests.exceptions.ConnectionError:
             quit("Error: Unable to connect to server %s" % (options.server))
     elif options.user:
         try:
@@ -6343,7 +6344,7 @@ if __name__ == "__main__":
             session.login()
         except koji.AuthError:
             quit("Error: Unable to log in. Bad credentials?")
-        except six.moves.xmlrpc_client.ProtocolError:
+        except requests.exceptions.ConnectionError:
             quit("Error: Unable to connect to server %s" % (options.server))
     elif krbV or requests_kerberos:
         krb_principal = options.krb_principal
@@ -6369,7 +6370,7 @@ if __name__ == "__main__":
     #make sure it works
     try:
         ret = session.echo("OK")
-    except six.moves.xmlrpc_client.ProtocolError:
+    except requests.exceptions.ConnectionError:
         quit("Error: Unable to connect to server %s" % (options.server))
     if ret != ["OK"]:
         quit("Error: incorrect server response: %r" % (ret))

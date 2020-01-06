@@ -108,7 +108,7 @@ def get_usage_str(usage):
 def ensure_connection(session):
     try:
         ret = session.getAPIVersion()
-    except six.moves.xmlrpc_client.ProtocolError:
+    except requests.exceptions.ConnectionError:
         error(_("Error: Unable to connect to server"))
     if ret != koji.API_VERSION:
         warn(_("WARNING: The server is at API version %d and the client is at %d" % (ret, koji.API_VERSION)))
