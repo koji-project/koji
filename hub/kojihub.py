@@ -11439,7 +11439,7 @@ class RootExports(object):
         repo_id, event_id = dist_repo_init(tag, keys, task_opts)
         task_opts['event'] = event_id
         # cancel potentially running distRepos
-        build_config = self.getBuildConfig(get_tag(tag, strict=True))
+        build_config = self.getBuildConfig(tag)
         if build_config['extra'].get('distrepo.cancel_others', False):
             tasks = self.listTasks(opts={
                                        'state': [koji.TASK_STATES['FREE'],
