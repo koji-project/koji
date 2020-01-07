@@ -5797,7 +5797,7 @@ def clear_reservation(build_id):
 def cg_init_build(cg, data):
     """Create (reserve) a build_id for given data.
 
-    If build already exists, init_build will raise GenericError
+    If build or reservation already exists, init_build will raise GenericError
 
     :param str cg: content generator name
     :param dict data: build data same as for new_build, for given usecase
@@ -5814,6 +5814,11 @@ def cg_init_build(cg, data):
     # CGs shouldn't have to worry about epoch
     data.setdefault('epoch', None)
     build_id = new_build(data, strict=False)
+
+    # check potentially existing token
+    if get_reservation_token(build_id):
+        raise koji.GenericError("Build is already reserved")
+
     # store token
     token = generate_token()
     insert = InsertProcessor(table='build_reservations')
