@@ -16,7 +16,7 @@ class TestGrantPermission(utils.CliTestCase):
     maxDiff = None
 
     def setUp(self):
-        self.error_format = """Usage: %s grant-permission <permission> <user> [<user> ...]
+        self.error_format = """Usage: %s grant-permission [--new] <permission> <user> [<user> ...]
 (Specify the --help global option for a list of other help options)
 
 %s: error: {message}
@@ -72,7 +72,7 @@ class TestGrantPermission(utils.CliTestCase):
     def test_handle_grant_permission_help(self):
         self.assert_help(
             handle_grant_permission,
-            """Usage: %s grant-permission <permission> <user> [<user> ...]
+            """Usage: %s grant-permission [--new] <permission> <user> [<user> ...]
 (Specify the --help global option for a list of other help options)
 
 Options:
