@@ -76,6 +76,8 @@ def get_options():
                       help=_("Email domain appended to Koji username for notifications"))
     parser.add_option("--from-addr", default="Koji Build System <buildsys@example.com>",
                       help=_("From address for notifications"))
+    parser.add_option("--cc-addr", help=_("CC address for notifications"))
+    parser.add_option("--bcc-addr", help=_("BCC address for notifications"))
     parser.add_option("--email-template", default="/etc/koji-gc/email.tpl",
                       help=_("notification template"))
     parser.add_option("--action", help=_("action(s) to take"))
@@ -135,6 +137,8 @@ def get_options():
         ['smtp_user', None, 'string'],
         ['smtp_pass', None, 'string'],
         ['from_addr', None, 'string'],
+        ['cc_addr', None, 'string'],
+        ['bcc_addr', None, 'string'],
         ['email_template', None, 'string'],
         ['email_domain', None, 'string'],
         ['mail', None, 'boolean'],
@@ -400,23 +404,30 @@ Build: %%(name)s-%%(version)s-%%(release)s
         msg['Subject'] = "%i builds marked for deletion" % len(builds)
     msg['From'] = options.from_addr
     msg['To'] = "%s@%s" % (owner_name, options.email_domain)  # XXX!
+    emails = [msg['To']]
+    if options.cc_addr:
+        msg['Cc'] = options.cc_addr
+        emails.append(msg['Cc'])
+    if options.bcc_addr:
+        msg['Bcc'] = options.bcc_addr
+        emails.append(msg['Bcc'])
     msg['X-Koji-Builder'] = owner_name
     if options.test:
         if options.debug:
             print(str(msg))
         else:
-            print("Would have sent warning notice to %s" % msg['To'])
+            print("Would have sent warning notice to %s" % emails)
     else:
         if options.debug:
-            print("Sending warning notice to %s" % msg['To'])
+            print("Sending warning notice to %s" % emails)
         try:
             s = smtplib.SMTP(options.smtp_host)
             if options.smtp_user is not None and options.smtp_pass is not None:
                 s.login(options.smtp_user, options.smtp_pass)
-            s.sendmail(msg['From'], msg['To'], msg.as_string())
+                s.sendmail(msg['From'], emails, msg.as_string())
             s.quit()
         except Exception:
-            print("FAILED: Sending warning notice to %s" % msg['To'])
+            print("FAILED: Sending warning notice to %s" % emails)
 
 
 def main(args):
