@@ -3865,6 +3865,7 @@ def _printInheritance(tags, sibdepths=None, reverse=False):
     else:
         siblings = len([tag for tag in tags if tag['child_id'] == currtag['child_id']])
 
+    sys.stdout.write(format_inheritance_flags(currtag))
     outdepth = 0
     for depth in sibdepths:
         if depth < currtag['currdepth']:
@@ -3873,7 +3874,6 @@ def _printInheritance(tags, sibdepths=None, reverse=False):
             sys.stdout.write(_printable_unicode(u'\u2502'))
             outdepth = depth
 
-    sys.stdout.write(format_inheritance_flags(currtag))
     sys.stdout.write(' ' * ((currtag['currdepth'] - outdepth) * 3 - 1))
     if siblings:
         sys.stdout.write(_printable_unicode(u'\u251c'))
