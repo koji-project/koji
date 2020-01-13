@@ -290,6 +290,19 @@ class BuildRoot(object):
             opts['package_manager'] = self.config['extra']['mock.package_manager']
         if 'mock.yum.module_hotfixes' in self.config['extra']:
             opts['module_hotfixes'] = self.config['extra']['mock.yum.module_hotfixes']
+        # Append opts['plugin_conf'] to enable Mock package signing
+        if 'mock.plugin_conf.sign_enable' in self.config['extra']:
+            # check rest of configuration
+            if 'mock.plugin_conf.sign_cmd' not in self.config['extra'] or \
+               'mock.plugin_conf.sign_opts' not in self.config['extra']:
+                   raise koji.GenericError("Tag is not configured properly for mock's sign plugin'")
+            opts['plugin_conf'] = {
+                'sign_enable': self.config['extra']['mock.plugin_conf.sign_enable'],
+                'sign_opts': {
+                    'cmd': self.config['extra']['mock.plugin_conf.sign_opts.cmd'],
+                    'opts': self.config['extra']['mock.plugin_conf.sign_opts.opts'],
+                }
+            }
         if self.internal_dev_setup is not None:
             opts['internal_dev_setup'] = bool(self.internal_dev_setup)
         opts['tag_macros'] = {}
