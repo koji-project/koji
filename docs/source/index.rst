@@ -44,6 +44,7 @@ Contents
     content_generators
     content_generator_metadata
     configuring_jenkins
+    utils
 
 HowTos
 ======
