@@ -884,8 +884,6 @@ def get_options():
                       help="don't show warnings")
     parser.add_option("-v", "--verbose", action="store_true",
                       help="show verbose output")
-    parser.add_option("--with-src", action="store_true",
-                      help="include srpms in repos")
     parser.add_option("--force-lock", action="store_true", default=False,
                       help="force lock for exclusive session")
     parser.add_option("--debug-xmlrpc", action="store_true", default=False,
@@ -905,8 +903,7 @@ def get_options():
     for x in config.sections():
         if x != section:
             quit('invalid section found in config file: %s' % x)
-    defaults = {'with_src': False,
-                'debuginfo_tags': '',
+    defaults = {'debuginfo_tags': '',
                 'source_tags': '',
                 'separate_source_tags': '',
                 'ignore_tags': '',
@@ -951,7 +948,7 @@ def get_options():
         str_opts = ('topdir', 'server', 'user', 'password', 'logfile', 'principal', 'keytab', 'krbservice',
                     'cert', 'ca', 'serverca', 'debuginfo_tags',
                     'source_tags', 'separate_source_tags', 'ignore_tags')  # FIXME: remove ca here
-        bool_opts = ('with_src','verbose','debug','ignore_stray_repos', 'offline_retry',
+        bool_opts = ('verbose','debug','ignore_stray_repos', 'offline_retry',
                      'krb_rdns', 'krb_canon_host', 'no_ssl_verify')
         for name in config.options(section):
             if name in int_opts:
