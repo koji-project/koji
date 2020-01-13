@@ -498,20 +498,30 @@ def download_file(url, relpath, quiet=False, noprogress=False, size=None, num=No
         else:
             print(_("Downloading: %s") % relpath)
 
+    f = open(relpath, 'ab')
+    headers = {}
+    pos = f.tell()
+    if pos:
+        headers['Range'] = f'bytes={pos}-'
+
     # closing needs to be used for requests < 2.18.0
-    with closing(requests.get(url, stream=True)) as response:
-        # raise error if occured
-        response.raise_for_status()
+    with closing(requests.get(url, headers=headers, stream=True)) as response:
+        if (response.status_code == 200): # full content provided?
+            f.close()
+            f = open(relpath, 'wb')
+        elif not (response.status_code == 416 and pos): # error?
+            response.raise_for_status()
         length = int(response.headers.get('content-length') or 0)
-        with open(relpath, 'wb') as f:
+
             pos = 0
-            for chunk in response.iter_content(chunk_size=65536):
+        for chunk in response.iter_content(chunk_size=65536):
                 pos += len(chunk)
-                f.write(chunk)
-                if not (quiet or noprogress):
+            f.write(chunk)
+            if not (quiet or noprogress):
                     _download_progress(length, pos)
-            if not length and not (quiet or noprogress):
+        if not length and not (quiet or noprogress):
                 _download_progress(pos, pos)
+    f.close()
 
     if not (quiet or noprogress):
         print('')
