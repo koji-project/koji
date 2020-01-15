@@ -17,23 +17,25 @@ None
 
 Client Changes
 --------------
-**basic zchunk support for dist-repo**
+**Add basic zchunk support for dist-repo**
 
 | PR: https://pagure.io/koji/pull-request/1743
 
 Fixes: https://pagure.io/koji/issue/1198
 
-From now on ``dist-repo`` supports new options ``--zck`` which enables
-createrepo's zchunk generation and ``--zck-dict-dir`` which points to directory
-on builder which contains zchunk dictionaries to use.
+The ``dist-repo`` supports new options ``--zck``, which enables createrepo's
+zchunk generation, and ``--zck-dict-dir``, which indicates the directory
+the builder that contains zchunk dictionaries to use.
 
-**build can wait for actual repo**
+**Add repo waiting options to the build command**
 
 | PR: https://pagure.io/koji/pull-request/1626
 | PR: https://pagure.io/koji/pull-request/1889
 
-New options ``--wait-build`` and ``--wait-repo`` for ``build`` command are
-simplification of using ``wait-repo`` + ``build`` commands in succession.
+New options ``--wait-build`` and ``--wait-repo`` for the ``build`` command
+cause the build to wait for a repo regeneration.
+This is similar to using ``wait-repo`` + ``build`` in succession, except
+that the repo monitoring is handled in the build task itself.
 
 **Remove title option for livemedia-creator**
 
@@ -41,75 +43,84 @@ simplification of using ``wait-repo`` + ``build`` commands in succession.
 
 livemedia-creator dropped ``--title`` option, so we are.
 
-**--disabled alias for --not-enabled in list-hosts**
+**Add --disabled option to list-hosts command**
 
 | PR: https://pagure.io/koji/pull-request/1738
 
-**unify return values for permission denied**
+This option is simply an alias for the existing ``--not-enabled`` option.
+
+**Unify return values for permission denied**
 
 | PR: https://pagure.io/koji/pull-request/1785
 
 Some places were using ``print`` + ``return 1``, some `parser.error` calls.
 Let's unify it to ``parser.error``.
 
-**list-pkgs: fix opts check**
+**list-pkgs: Fix opts check**
 
 | PR: https://pagure.io/koji/pull-request/1848
 | PR: https://pagure.io/koji/pull-request/1814
 
-Warn, if non-compatible options are used.
+Warn if non-compatible options are used.
 
-**fix downloads w/o content-length**
+**Fix downloads w/o content-length**
 
 | PR: https://pagure.io/koji/pull-request/983
 
 When content-length is not specified, whole file is read to memory. Use chunks instead.
 
-**refine output of list-signed**
+**Refine output of list-signed**
 
 | PR: https://pagure.io/koji/pull-request/1828
 
 Removed debug info.
 
+
 Library Changes
 ---------------
-**check ConfigParser object rather than config path list**
+**Raise error when we have not configuration**
 
 | PR: https://pagure.io/koji/pull-request/1767
 | PR: https://pagure.io/koji/pull-request/1787
 
-**sanity check on remotely opened RPMs**
+Previously, Koji would proceed with only the coded defaults,
+which is no longer sensible.
+
+**Sanity check on remotely opened RPMs**
 
 | PR: https://pagure.io/koji/pull-request/1829
 
 Sometimes RPMs are not downloaded correctly into buildroot and it results in
-weird errors. Simple check was added to detect corruption of downloaded files.
+weird errors. A simple check was added to detect corruption of downloaded files.
 
 **Replace urllib.request with requests library**
 
 | PR: https://pagure.io/koji/pull-request/1542
 
-**util: rename "dict" arg**
+**util: Rename "dict" arg**
 
 | PR: https://pagure.io/koji/pull-request/1807
 
-dict is a built-in Python type. Don't use it as a variable name.
+The ``dslice`` and ``dslice_ex`` functions accepted an argument named ``dict``,
+which conflicts with a built-in Python type.
+These arguments have been renamed to ``dict_``
 
-**include profile name in parsed config options**
+**Include profile name in parsed config options**
 
 | PR: https://pagure.io/koji/pull-request/1525
 
 Fix behaviour to be in line with docs examples.
 
-**make rpm import optional in koji/__init__.py**
+**Make rpm import optional in koji/__init__.py**
 
 | PR: https://pagure.io/koji/pull-request/1773
 | PR: https://pagure.io/koji/pull-request/1795
 
-koji/__init__.py is being used more and more often in virtualenv. As rpm is
+``koji/__init__.py`` is being used more and more often in virtualenv. As rpm is
 always the pain here and most users don't need those specific functions, we can
 make it optional (and require only on spec level). Distribution via PyPi will be
 less painful.
+
 
 API Changes
 -----------
