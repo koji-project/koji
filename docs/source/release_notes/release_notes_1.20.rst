@@ -134,7 +134,7 @@ It was designed for GC, but it is not used anymore.
 
 Adds a new hub method for inserting new archivetype records.
 
-**raise ``GenericError`` on existing build reservation.
+**raise ``GenericError`` on existing build reservation.**
 
 | PR: https://pagure.io/koji/pull-request/1893
 
@@ -458,7 +458,7 @@ Documentation Changes
 
 | PR: https://pagure.io/koji/pull-request/1775
 
-**Update typeinfo metadata documentation
+**Update typeinfo metadata documentation**
 
 | PR: https://pagure.io/koji/pull-request/1917
 
