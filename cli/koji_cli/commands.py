@@ -2580,9 +2580,11 @@ def anon_handle_list_groups(goptions, session, args):
     usage = _("usage: %prog list-groups [options] <tag> [<group>]")
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--event", type='int', metavar="EVENT#", help=_("query at event"))
-    parser.add_option("--ts", type='int', metavar="TIMESTAMP", help=_("query at last event before timestamp"))
+    parser.add_option("--ts", type='int', metavar="TIMESTAMP",
+                      help=_("query at last event before timestamp"))
     parser.add_option("--repo", type='int', metavar="REPO#", help=_("query at event for a repo"))
-    parser.add_option("--show-blocked", action="store_true", dest="incl_blocked", help=_("Show blocked packages"))
+    parser.add_option("--show-blocked", action="store_true", dest="incl_blocked",
+                      help=_("Show blocked packages and groups"))
     (options, args) = parser.parse_args(args)
     if len(args) < 1 or len(args) > 2:
         parser.error(_("Incorrect number of arguments"))
