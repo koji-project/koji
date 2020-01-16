@@ -320,7 +320,7 @@ def handle_rename_channel(goptions, session, args):
 
 def handle_add_pkg(goptions, session, args):
     "[admin] Add a package to the listing for tag"
-    usage = _("usage: %prog add-pkg [options] <tag> <package> [<package> ...]")
+    usage = _("usage: %prog add-pkg [options] --owner <owner> <tag> <package> [<package> ...]")
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--force", action='store_true', help=_("Override blocks if necessary"))
     parser.add_option("--owner", help=_("Specify owner"))

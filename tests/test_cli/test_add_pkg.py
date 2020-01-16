@@ -202,7 +202,7 @@ class TestAddPkg(unittest.TestCase):
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = ''
-        expected_stderr = """Usage: %s add-pkg [options] <tag> <package> [<package> ...]
+        expected_stderr = """Usage: %s add-pkg [options] --owner <owner> <tag> <package> [<package> ...]
 (Specify the --help global option for a list of other help options)
 
 %s: error: Please specify an owner for the package(s)
@@ -239,7 +239,7 @@ class TestAddPkg(unittest.TestCase):
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = ''
-        expected_stderr = """Usage: %s add-pkg [options] <tag> <package> [<package> ...]
+        expected_stderr = """Usage: %s add-pkg [options] --owner <owner> <tag> <package> [<package> ...]
 (Specify the --help global option for a list of other help options)
 
 %s: error: Please specify a tag and at least one package
