@@ -3190,7 +3190,7 @@ def anon_handle_hostinfo(goptions, session, args):
             host = int(host)
         info = session.getHost(host)
         if info is None:
-            print("No such host: %s\n" % host)
+            warn("No such host: %s\n" % host)
             continue
         print("Name: %(name)s" % info)
         print("ID: %(id)d" % info)
