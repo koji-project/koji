@@ -19,11 +19,20 @@ class TestPkglistBlock(unittest.TestCase):
     def tearDown(self):
         mock.patch.stopall()
 
+    @mock.patch('kojihub.readPackageList')
+    @mock.patch('kojihub.lookup_package')
+    @mock.patch('kojihub.get_tag')
     @mock.patch('kojihub.pkglist_add')
-    def test_pkglist_block(self, pkglist_add):
+    def test_pkglist_block(self, pkglist_add, get_tag, lookup_package, readPackageList):
         force = mock.MagicMock()
+        get_tag.return_value = {'name': 'tag', 'id': 123}
+        lookup_package.return_value = {'name': 'pkg', 'id': 321}
+        readPackageList.return_value = ['pkg']
+
         kojihub.pkglist_block('tag', 'pkg', force=force)
 
+        get_tag.assert_called_once_with('tag', strict=True)
+        lookup_package.assert_called_once_with('pkg', strict=True)
         pkglist_add.assert_called_once_with('tag', 'pkg', block=True, force=force)
 
     @mock.patch('kojihub._pkglist_remove')

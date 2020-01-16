@@ -1043,6 +1043,12 @@ def _direct_pkglist_remove(taginfo, pkginfo, force=False, policy=False):
 
 def pkglist_block(taginfo, pkginfo, force=False):
     """Block the package in tag"""
+    # check pkg list existence
+    tag = get_tag(taginfo, strict=True)
+    pkg = lookup_package(pkginfo, strict=True)
+    if not readPackageList(tag['id'], pkgID=pkg['id'], inherit=True):
+        raise koji.GenericError("Package %s is not in tag listing for %s" % \
+                                (pkg['name'], tag['name']))
     pkglist_add(taginfo, pkginfo, block=True, force=force)
 
 def pkglist_unblock(taginfo, pkginfo, force=False):
