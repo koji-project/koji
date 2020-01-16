@@ -10634,6 +10634,8 @@ class RootExports(object):
         """Set task priority"""
         context.session.assertPerm('admin')
         task = Task(task_id)
+        if task.isFinished():
+            raise koji.GenericError("Finished task's priority can't be updated")
         task.setPriority(priority, recurse=recurse)
 
     def listTagged(self, tag, event=None, inherit=False, prefix=None, latest=False, package=None, owner=None, type=None):
