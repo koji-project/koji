@@ -502,7 +502,7 @@ def download_file(url, relpath, quiet=False, noprogress=False, size=None, num=No
     headers = {}
     pos = f.tell()
     if pos:
-        headers['Range'] = f'bytes={pos}-'
+        headers['Range'] = ('bytes=%d-' % pos)
 
     # closing needs to be used for requests < 2.18.0
     with closing(requests.get(url, headers=headers, stream=True)) as response:
