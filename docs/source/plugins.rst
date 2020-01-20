@@ -9,8 +9,8 @@ Runroot
 
 Plugin for running any command in buildroot.
 
-Save Failed Tree Plugin
-=======================
+Save Failed Tree
+================
 
 In some cases developers want to investigate exact environment in which their
 build failed. Reconstructing this environment via mock needn't end with
@@ -66,3 +66,63 @@ TODO
 ----
  * Separate volume/directory on hub
  * garbage collector + policy for retaining generated tarballs
+
+Sidetag
+=======
+
+Sidetag plugin is originally work of Mikolaj Izdebski and was pulled into base
+koji due to easier integration with rest of the code.
+
+It is used for managing `sidetags` which are light-weight short-lived build tags
+for developer's use. Sidetag creation is governed by hub's policy.
+
+Hub
+---
+
+Example for `/etc/koji-hub/hub.conf`:
+
+.. code-block:: ini
+
+    PluginPath = /usr/lib/koji-hub-plugins
+    Plugins = sidetag
+
+    [policy]
+    sidetag =
+        # allow maximum of 10 sidetags per user for f30-build tag
+        tag f30-build && compare number_of_tags <= 10 :: allow
+        # forbid everything else
+        all :: deny
+
+Now Sidetag Koji plugin should be installed.  To verify that, run
+`koji list-api` command -- it should now display `createSideTag`
+as one of available API calls.
+
+Plugin has also its own configuration file
+``/etc/koji-hub/plugins/sidetag.conf`` which for now contains the only boolean
+option ``remove_empty``. If it is set, sidetag is automatically deleted when
+last package is untagged from there.
+
+CLI
+---
+
+For convenient handling, also CLI part is provided. Typical session would look
+like:
+
+.. code-block:: shell
+
+   $ koji add-sidetag f30-build --wait
+   f30-build-side-123456
+   Successfully waited 1:36 for a new f30-build-side-123456 repo
+
+   $ koji remove-sidetag f30-build-side-123456
+
+API
+---
+And in scripts, you can use following calls:
+
+.. code-block:: python
+
+    import koji
+    ks = koji.ClientSession('https://koji.fedoraproject.org/kojihub')
+    ks.gssapi_login()
+    ks.createSideTag('f30-build')
