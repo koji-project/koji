@@ -1676,8 +1676,8 @@ def openRemoteFile(relpath, topurl=None, topdir=None, tempdir=None):
     if topurl:
         url = "%s/%s" % (topurl, relpath)
         fo = tempfile.TemporaryFile(dir=tempdir)
+        resp = requests.get(url, stream=True)
         try:
-            resp = requests.get(url, stream=True)
             for chunk in resp.iter_content(chunk_size=8192):
                 fo.write(chunk)
         finally:
