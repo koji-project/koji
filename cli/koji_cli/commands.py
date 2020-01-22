@@ -2045,10 +2045,8 @@ def handle_list_signed(goptions, session, args):
             rpm_info = int(rpm_info)
         except ValueError:
             pass
-        rinfo = session.getRPM(rpm_info)
+        rinfo = session.getRPM(rpm_info, strict=True)
         rpm_idx[rinfo['id']] = rinfo
-        if rinfo is None:
-            parser.error(_("No such RPM: %s") % options.rpm)
         if rinfo.get('external_repo_id'):
             parser.error(_("External rpm: %(name)s-%(version)s-%(release)s.%(arch)s@%(external_repo_name)s") % rinfo)
         qopts['rpm_id'] = rinfo['id']
@@ -2058,10 +2056,8 @@ def handle_list_signed(goptions, session, args):
             build = int(build)
         except ValueError:
             pass
-        binfo = session.getBuild(build)
+        binfo = session.getBuild(build, strict=True)
         build_idx[binfo['id']] = binfo
-        if binfo is None:
-            parser.error(_("No such build: %s") % options.rpm)
         sigs = []
         rpms = session.listRPMs(buildID=binfo['id'])
         for rinfo in rpms:
