@@ -172,7 +172,14 @@ class TestListGroups(utils.CliTestCase):
                 pkg['tag_name'] = tags.get(pkg['tag_id'], pkg['tag_id'])
                 expected += "  %(package)s: %(basearchonly)s, %(type)s  [%(tag_name)s]" % pkg + "\n"
 
-        self.session.listTags.return_value = _list_tags
+        #self.session.listTags.return_value = _list_tags
+        def get_tag(tag_id, strict=False):
+            self.assertFalse(strict)
+            for tag in _list_tags:
+                if tag['id'] == tag_id:
+                    return tag
+            return None
+        self.session.getTag.side_effect = get_tag
         self.session.getTagGroups.return_value = _get_tag_groups
         args = ['fedora26-build']
         args += [query_group] if query_group != '' else []
