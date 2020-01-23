@@ -11495,18 +11495,6 @@ class RootExports(object):
         context.session.assertPerm('repo')
         repo_problem(repo_id)
 
-    def debugFunction(self, name, *args, **kwargs):
-        # This is potentially dangerous, so it must be explicitly enabled
-        allowed = context.opts.get('EnableFunctionDebug', False)
-        if not allowed:
-            raise koji.ActionNotAllowed('This call is not enabled')
-        context.session.assertPerm('admin')
-        func = globals().get(name)
-        if callable(func):
-            return func(*args, **kwargs)
-        else:
-            raise koji.GenericError('Unable to find function: %s' % name)
-
     tagChangedSinceEvent = staticmethod(tag_changed_since_event)
     createBuildTarget = staticmethod(create_build_target)
     editBuildTarget = staticmethod(edit_build_target)
