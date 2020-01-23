@@ -273,7 +273,7 @@ $value
         <strong>Build Target:</strong> <a href="buildtargetinfo?name=$params[1]">$params[1]</a><br/>
         $printOpts($params[2])
         #elif $task.method == 'waitrepo'
-        <strong>Build Target:</strong> $params[0]<br/>
+        <strong>Build Tag:</strong> $params[0]<br/>
         #if $params[1]
         <strong>Newer Than:</strong> $params[1]<br/>
         #end if
