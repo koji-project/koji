@@ -394,6 +394,9 @@ environment follows:
 * `mock.new_chroot` - 0/1 value. If it is set, `--new-chroot` or
   `--old-chroot` option is appended to any mock call. If it is not set,
   mock's default behavior is used.
+* `mock.bootstrap_chroot` - 0/1 value. If it is set, `--bootstrap-chroot`
+  is appended to the mock init call.  This tells mock to build in two stages,
+  using chroot rpm for creating the build chroot
 
 You may also specify per-tag environment variables for mock to use.
 For example, to set the CC environment variable to clang, you could

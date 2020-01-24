@@ -548,7 +548,13 @@ class BuildRoot(object):
         return koji.pathinfo.taskrelpath(self.task_id)
 
     def init(self):
-        rv = self.mock(['--init'])
+        args = ['--init']
+
+        if 'mock.bootstrap_chroot' in self.config['extra']:
+            if self.config['extra']['mock.bootstrap_chroot']:
+                args.append('--bootstrap-chroot')
+
+        rv = self.mock(args)
 
         if rv:
             self.expire()
