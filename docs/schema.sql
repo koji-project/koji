@@ -1,8 +1,6 @@
 
 -- vim:et:sw=8
 
--- drop statements for old data have moved to schema-clear.sql
-
 BEGIN WORK;
 
 -- We use the events table to sequence time
