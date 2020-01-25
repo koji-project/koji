@@ -6267,8 +6267,10 @@ class CG_Importer(object):
         koji.check_NVR(buildinfo, strict=True)
 
         # get typeinfo
-        b_extra = self.metadata['build'].get('extra', {})
-        typeinfo = b_extra.get('typeinfo', {})
+        buildinfo.setdefault('extra', {})
+        b_extra = buildinfo['extra']
+        b_extra.setdefault('typeinfo', {})
+        typeinfo = b_extra['typeinfo']
 
         # legacy types can be at top level of extra
         for btype in ['maven', 'win', 'image']:
