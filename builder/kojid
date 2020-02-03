@@ -5900,6 +5900,7 @@ enabled=1
         return best
 
     def get_rpms(self, tag_id, arch, keys, opts):
+        keys = [key.lower() for key in keys]
         # get the rpm data
         rpms = []
         builddirs = {}
@@ -5921,7 +5922,7 @@ enabled=1
         # select our rpms
         selected = {}
         for rpm_id in rpm_idx:
-            avail_keys = to_list(rpm_idx[rpm_id].keys())
+            avail_keys = [key.lower() for key in rpm_idx[rpm_id].keys()]
             best_key = self.pick_key(keys, avail_keys)
             if best_key is None:
                 # we lack a matching key for this rpm
