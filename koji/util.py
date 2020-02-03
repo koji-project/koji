@@ -46,14 +46,6 @@ from koji.xmlrpcplus import DateTime
 
 
 # imported from kojiweb and kojihub
-def md5_constructor(*args, **kwargs):
-    deprecated("md5_constructor is deprecated in favour of hashlib.md5 and will be removed in 1.21")
-    return hashlib.md5(*args, **kwargs)
-
-def sha1_constructor(*args, **kwargs):
-    deprecated("sha1_constructor is deprecated in favour of hashlib.md5 and will be removed in 1.21")
-    return hashlib.sha1(*args, **kwargs)
-
 def deprecated(message):
     """Print deprecation warning"""
     with warnings.catch_warnings():
