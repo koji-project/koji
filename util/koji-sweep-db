@@ -101,6 +101,7 @@ def clean_scratch_tasks(cursor, vacuum, test, age):
     cursor.execute("DELETE FROM task WHERE id IN (SELECT task_id FROM temp_scratch_tasks)")
 
     if vacuum:
+        cursor.execute("VACUUM ANALYZE standard_buildroot")
         cursor.execute("VACUUM ANALYZE task")
 
 
@@ -116,7 +117,8 @@ def clean_buildroots(cursor, vacuum, test):
         cursor.execute("DELETE FROM buildroot_listing WHERE buildroot_id IN (SELECT id %s)" % q)
         cursor.execute("DELETE " + q)
         if vacuum:
-            cursor.execute("VACUUM ANALYZE build_reservations")
+            cursor.execute("VACUUM ANALYZE buildroot_listing")
+            cursor.execute("VACUUM ANALYZE buildroot")
 
 
 if __name__ == "__main__":
