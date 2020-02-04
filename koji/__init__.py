@@ -2175,31 +2175,35 @@ def is_conn_error(e):
 
 
 class VirtualMethod(object):
-    # cache for api documentation
-    _apidoc = None
     # some magic to bind an XML-RPC method to an RPC server.
     # supports "nested" methods (e.g. examples.getStateName)
     # supports named arguments (if server does)
-    def __init__(self, func, name):
+    def __init__(self, func, name, session=None):
         self.__func = func
         self.__name = name
+        self.__session = session
+
     def __getattr__(self, name):
         return type(self)(self.__func, "%s.%s" % (self.__name, name))
+
     def __call__(self, *args, **opts):
         return self.__func(self.__name, args, opts)
 
     @property
     def __doc__(self):
+        if self.__session is None:
+            # There could be potentially session-less object
+            return None
         # try to fetch API docs
-        if VirtualMethod._apidoc is None:
+        if self.__session._apidoc is None:
             try:
-                VirtualMethod._apidoc = dict(
+                self.__session._apidoc = dict(
                     [(f["name"], f) for f in self.__func("_listapi", [], {})]
                 )
             except:
-                VirtualMethod._apidoc = {}
+                self.__session._apidoc = {}
 
-        funcdoc = VirtualMethod._apidoc.get(self.__name)
+        funcdoc = self.__session._apidoc.get(self.__name)
         if funcdoc:
             # add argument description to docstring since the
             # call signature is not updated, yet
@@ -2211,7 +2215,6 @@ class VirtualMethod(object):
                 return argdesc
         else:
             return None
-
 
 
 def grab_session_options(options):
@@ -2259,6 +2262,7 @@ class ClientSession(object):
             opts = {}
         else:
             opts = opts.copy()
+        self._apidoc = None
         self.baseurl = baseurl
         self.opts = opts
         self.authtype = None
@@ -2823,7 +2827,9 @@ class ClientSession(object):
     def __getattr__(self, name):
         #if name[:1] == '_':
         #    raise AttributeError("no attribute %r" % name)
-        return VirtualMethod(self._callMethod, name)
+        if name == '_apidoc':
+            return self.__dict__['_apidoc']
+        return VirtualMethod(self._callMethod, name, self)
 
     def fastUpload(self, localfile, path, name=None, callback=None, blocksize=None, overwrite=False, volume=None):
         if blocksize is None:
@@ -3082,7 +3088,7 @@ class MultiCallSession(object):
         self._calls = []
 
     def __getattr__(self, name):
-        return VirtualMethod(self._callMethod, name)
+        return VirtualMethod(self._callMethod, name, self._session)
 
     def _callMethod(self, name, args, kwargs=None, retry=True):
         """Add a new call to the multicall"""
