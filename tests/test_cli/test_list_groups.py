@@ -192,7 +192,7 @@ Options:
   --event=EVENT#  query at event
   --ts=TIMESTAMP  query at last event before timestamp
   --repo=REPO#    query at event for a repo
-  --show-blocked  Show blocked packages
+  --show-blocked  Show blocked packages and groups
 """ % self.progname)
 
 
