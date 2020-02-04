@@ -245,7 +245,7 @@ class TestTaskInfo(unittest.TestCase):
         server = self.__get_server(task)
         self.get_server.return_value = server
         webidx.taskinfo(self.environ, self.task_id)
-        server.getTag.assert_called_with(2)
+        server.getTag.assert_called_with(2, strict=True)
 
         # case 2. buildMaven
         task = copy.deepcopy(self.task)
@@ -264,7 +264,7 @@ class TestTaskInfo(unittest.TestCase):
         server = self.__get_server(task)
         self.get_server.return_value = server
         webidx.taskinfo(self.environ, self.task_id)
-        server.getTag.assert_called_with('testSRPM')
+        server.getTag.assert_called_with('testSRPM', strict=True)
 
         # case 4. tagBuild
         task = copy.deepcopy(self.task)
