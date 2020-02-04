@@ -6115,7 +6115,10 @@ def handle_set_task_priority(goptions, session, args):
     activate_session(session, goptions)
 
     for task_id in tasks:
-        session.setTaskPriority(task_id, options.priority, options.recurse)
+        try:
+            session.setTaskPriority(task_id, options.priority, options.recurse)
+        except koji.GenericError:
+            warn("Can't update task priority on closed task: %s" % task_id)
 
 
 def handle_list_tasks(goptions, session, args):
