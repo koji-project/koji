@@ -89,6 +89,7 @@ class TestDistRepo(unittest.TestCase):
     @mock.patch('kojihub.make_task')
     def test_DistRepo(self, make_task, dist_repo_init):
         session = kojihub.context.session = mock.MagicMock()
+        session.user_id = 123
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"
         session.assertPerm = mock.MagicMock()
@@ -210,7 +211,8 @@ class TestDistRepoMove(unittest.TestCase):
 
 
     def test_distRepoMove(self):
-        kojihub.context.session = mock.MagicMock()
+        session = kojihub.context.session = mock.MagicMock()
+        session.user_id = 123
         exports = kojihub.HostExports()
         exports.distRepoMove(self.rinfo['id'], self.uploadpath, self.arch)
         # check result

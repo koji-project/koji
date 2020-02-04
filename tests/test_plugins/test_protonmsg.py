@@ -44,9 +44,10 @@ class TestProtonMsg(unittest.TestCase):
                                            package={'name': 'test-pkg'},
                                            owner=1,
                                            block=False, extra_arches='i386 x86_64',
-                                           force=False, update=False)
+                                           force=False, update=False,
+                                           user={'name': 'username'})
         self.assertMsg('package.add', type='PackageListChange', tag='test-tag',
-                       package='test-pkg', action='add')
+                       package='test-pkg', action='add', user='username')
 
     def test_prep_package_list_change_update(self):
         protonmsg.prep_package_list_change('postPackageListChange',
@@ -54,9 +55,10 @@ class TestProtonMsg(unittest.TestCase):
                                            package={'name': 'test-pkg'},
                                            owner=1,
                                            block=False, extra_arches='i386 x86_64',
-                                           force=False, update=False)
+                                           force=False, update=False,
+                                           user={'name': 'username'})
         self.assertMsg('package.update', type='PackageListChange', tag='test-tag',
-                       package='test-pkg', action='update')
+                       package='test-pkg', action='update', user='username')
 
     def test_prep_package_list_change_block(self):
         protonmsg.prep_package_list_change('postPackageListChange',
@@ -64,23 +66,26 @@ class TestProtonMsg(unittest.TestCase):
                                            package={'name': 'test-pkg'},
                                            owner=1,
                                            block=False, extra_arches='i386 x86_64',
-                                           force=False, update=False)
+                                           force=False, update=False,
+                                           user={'name': 'username'})
         self.assertMsg('package.block', type='PackageListChange', tag='test-tag',
-                       package='test-pkg', action='block')
+                       package='test-pkg', action='block', user='username')
 
     def test_prep_package_list_change_unblock(self):
         protonmsg.prep_package_list_change('postPackageListChange',
                                            action='unblock', tag={'name': 'test-tag'},
-                                           package={'name': 'test-pkg'})
+                                           package={'name': 'test-pkg'},
+                                           user={'name': 'username'})
         self.assertMsg('package.unblock', type='PackageListChange', tag='test-tag',
-                       package='test-pkg', action='unblock')
+                       package='test-pkg', action='unblock', user='username')
 
     def test_prep_package_list_change_remove(self):
         protonmsg.prep_package_list_change('postPackageListChange',
                                            action='remove', tag={'name': 'test-tag'},
-                                           package={'name': 'test-pkg'})
+                                           package={'name': 'test-pkg'},
+                                           user={'name': 'username'})
         self.assertMsg('package.remove', type='PackageListChange', tag='test-tag',
-                       package='test-pkg', action='remove')
+                       package='test-pkg', action='remove', user='username')
 
     def test_prep_task_state_change(self):
         info = {'id': 5678,
