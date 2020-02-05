@@ -25,11 +25,14 @@ CONFIG = None
 
 
 @export
-def createSideTag(basetag):
+def createSideTag(basetag, debuginfo=False):
     """Create a side tag.
 
     :param basetag: name or ID of base tag
     :type basetag: str or int
+
+    :param debuginfo: should buildroot repos contain debuginfo?
+    :tybe debuginfo: bool
     """
 
     # Any logged-in user is able to request creation of side tags,
@@ -61,15 +64,18 @@ def createSideTag(basetag):
     # id assigned by _create_tag
     tag_id = nextval("tag_id_seq") + 1
     sidetag_name = "%s-side-%s" % (basetag["name"], tag_id)
+    extra = {
+        "sidetag": True,
+        "sidetag_user": user["name"],
+        "sidetag_user_id": user["id"],
+    }
+    if debuginfo:
+        extra['with_debuginfo'] = True
     sidetag_id = _create_tag(
         sidetag_name,
         parent=basetag["id"],
         arches=basetag["arches"],
-        extra={
-            "sidetag": True,
-            "sidetag_user": user["name"],
-            "sidetag_user_id": user["id"],
-        },
+        extra=extra,
     )
     _create_build_target(sidetag_name, sidetag_id, sidetag_id)
 

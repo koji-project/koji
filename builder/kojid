@@ -5341,7 +5341,8 @@ class NewRepoTask(BaseTaskHandler):
             kwargs['with_src'] = True
         if separate_src:
             kwargs['with_separate_src'] = True
-        if debuginfo:
+        # generate debuginfo repo if requested or if specified in sidetag's extra
+        if debuginfo or tinfo['extra'].get('with_debuginfo'):
             kwargs['with_debuginfo'] = True
         repo_id, event_id = self.session.host.repoInit(tinfo['id'], **kwargs)
         path = koji.pathinfo.repo(repo_id, tinfo['name'])
