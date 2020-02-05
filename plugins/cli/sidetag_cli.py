@@ -34,7 +34,7 @@ def handle_add_sidetag(options, session, args):
     activate_session(session, options)
 
     try:
-        tag = session.createSideTag(basetag)
+        tag = session.createSideTag(opts.basetag)
     except koji.ActionNotAllowed:
         parser.error(_("Policy violation"))
 
