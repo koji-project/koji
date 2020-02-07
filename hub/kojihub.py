@@ -12336,13 +12336,27 @@ class RootExports(object):
 
     def search(self, terms, type, matchType, queryOpts=None):
         """Search for an item in the database matching "terms".
-        "type" specifies what object type to search for, and must be
-        one of "package", "build", "tag", "target", "user", "host",
-        "rpm", "maven", or "win".  "matchType" specifies the type of search to
-        perform, and must be one of "glob" or "regexp".  All searches
-        are case-insensitive.  A list of maps containing "id" and
-        "name" will be returned.  If no matches are found, an empty
-        list will be returned."""
+
+        :param str terms: Search for items in the database that match this
+                          value.
+        :param str type: What object type to search for. Must be one of
+                         "package", "build", "tag", "target", "user", "host",
+                         "rpm", "maven", or "win".
+        :param str matchType: The type of search to perform:
+                              - If you specify "glob", Koji will treat "terms"
+                                as a case-insensitive glob.
+                              - If you specify "regexp", Koji will treat
+                                "terms" as a case-insensitive regular
+                                expression.
+                              - Any other value here will cause to Koji to
+                                search for an exact string match for "terms".
+        :param dict queryOpts: Options to pass into the database query. Use
+                               this to limit or order the results of the
+                               search. For example: {'order': 'name'},
+                               or {'limit': 5, 'order': '-build_id'}, etc.
+        :returns: A list of maps containing "id" and "name".  If no matches
+                  are found, this method returns an empty list.
+        """
         if not terms:
             raise koji.GenericError('empty search terms')
         if type == 'file':
