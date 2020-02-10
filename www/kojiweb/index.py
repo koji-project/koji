@@ -706,6 +706,10 @@ def taskinfo(environ, taskID):
     else:
         values['perms'] = []
 
+    try:
+        values['params_parsed'] = _genHTML(environ, 'taskinfo_params.chtml')
+    except:
+        values['params_parsed'] = None
     return _genHTML(environ, 'taskinfo.chtml')
 
 def taskstatus(environ, taskID):
