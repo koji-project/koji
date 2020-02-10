@@ -7740,22 +7740,23 @@ def build_references(build_id, limit=None, lazy=False):
     # find timestamp of most recent use in a buildroot
     event_id = 0
     if build_rpm_ids:
-        query = QueryProcessor(
-                    columns=['max(standard_buildroot.create_event)'],
-                    tables=['buildroot_listing'],
-                    joins=['standard_buildroot ON buildroot_listing.buildroot_id = standard_buildroot.buildroot_id'],
-                    clauses=['buildroot_listing.rpm_id IN %(rpm_ids)s'],
-                    values={'rpm_ids': build_rpm_ids})
-        event_id = query.singleValue(strict=False) or 0
-
+        q = """SELECT MAX(create_event)
+               FROM standard_buildroot
+               WHERE buildroot_id IN (
+                 SELECT buildroot_id
+                 FROM buildroot_listing
+                 WHERE rpm_id IN %(rpm_ids)s
+               )"""
+        event_id = _fetchSingle(q, {'rpm_ids': build_rpm_ids}) or 0
     if build_archive_ids:
-        query = QueryProcessor(
-                    columns=['max(standard_buildroot.create_event)'],
-                    tables=['buildroot_archives'],
-                    joins=['standard_buildroot ON buildroot_archives.buildroot_id = standard_buildroot.buildroot_id'],
-                    clauses=['buildroot_archives.archive_id IN %(archive_ids)s'],
-                    values={'archive_ids': build_archive_ids})
-        event_id2 = query.singleValue(strict=False) or 0
+        q = """SELECT MAX(create_event)
+               FROM standard_buildroot
+               WHERE buildroot_id IN (
+                 SELECT buildroot_id
+                 FROM buildroot_archives
+                 WHERE archive_id IN %(archive_ids)s
+               )"""
+        event_id2 = _fetchSingle(q, {'archive_ids': build_archive_ids}) or 0
         event_id = max(event_id, event_id2)
     if event_id:
         q = """SELECT EXTRACT(EPOCH FROM get_event_time(%(event_id)i))"""
