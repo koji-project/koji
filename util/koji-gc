@@ -116,7 +116,9 @@ def get_options():
                       help=_("url of koji web server (for use in notifications)"))
     parser.add_option("-s", "--server", help=_("url of koji XMLRPC server"))
     parser.add_option("--lock-file", help=_("koji-gc will wait while specified file exists. "
-                                            "Default path is /run/user/<uid>/koji-gc.lock"))
+                                            "Default path is /run/user/<uid>/koji-gc.lock. "
+                                            "For service usage /var/lock/koji-gc.lock is "
+                                            "recommended."))
     parser.add_option("--exit-on-lock", action="store_true",
                       help=_("quit if --lock-file exists, don't wait"))
     #parse once to get the config file
