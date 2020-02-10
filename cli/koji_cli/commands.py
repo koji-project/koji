@@ -2597,23 +2597,33 @@ def anon_handle_list_groups(goptions, session, args):
         opts['event'] = event['id']
         event['timestr'] = time.asctime(time.localtime(event['ts']))
         print("Querying at event %(id)i (%(timestr)s)" % event)
-    tags = dict([(x['id'], x['name']) for x in session.listTags()])
     tmp_list = [(x['name'], x) for x in session.getTagGroups(args[0], **opts)]
     tmp_list.sort()
     groups = [x[1] for x in tmp_list]
+
+    tags_cache = {}
+    def get_cached_tag(tag_id):
+        if tag_id not in tags_cache:
+            tag = session.getTag(tag_id, strict=False)
+            if tag is None:
+                tags_cache[tag_id] = tag_id
+            else:
+                tags_cache[tag_id] = tag['name']
+        return tags_cache[tag_id]
+
     for group in groups:
         if len(args) > 1 and group['name'] != args[1]:
             continue
-        print("%s  [%s]" % (group['name'], tags.get(group['tag_id'], group['tag_id'])))
+        print("%s  [%s]" % (group['name'], get_cached_tag(group['tag_id'])))
         groups = [(x['name'], x) for x in group['grouplist']]
         groups.sort()
         for x in [x[1] for x in groups]:
-            x['tag_name'] = tags.get(x['tag_id'], x['tag_id'])
+            x['tag_name'] = get_cached_tag(x['tag_id'])
             print_group_list_req_group(x)
         pkgs = [(x['package'], x) for x in group['packagelist']]
         pkgs.sort()
         for x in [x[1] for x in pkgs]:
-            x['tag_name'] = tags.get(x['tag_id'], x['tag_id'])
+            x['tag_name'] = get_cached_tag(x['tag_id'])
             print_group_list_req_package(x)
 
 
