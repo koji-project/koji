@@ -1613,10 +1613,10 @@ def handle_prune_signed_copies(options, session, args):
         is_protected = False
         last_latest = None
         tags = {}
-        for entry in session.tagHistory(build=binfo['id']):
-            #we used tagHistory rather than listTags so we can consider tags
+        for entry in session.queryHistory(build=binfo['id'])['tag_listing']:
+            #we used queryHistory rather than listTags so we can consider tags
             #that the build was recently untagged from
-            tags.setdefault(entry['tag_name'], 1)
+            tags.setdefault(entry['tag.name'], 1)
         if options.debug:
             print("Tags: %s" % to_list(tags.keys()))
         for tag_name in tags:
@@ -1635,7 +1635,7 @@ def handle_prune_signed_copies(options, session, args):
                 continue
             #in order to determine how recently this build was latest, we have
             #to look at the tagging history.
-            hist = session.tagHistory(tag=tag_name, package=binfo['name'])
+            hist = session.queryHistory(tag=tag_name, package=binfo['name'])['tag_listing']
             if not hist:
                 #really shouldn't happen
                 raise koji.GenericError("No history found for %s in %s" % (nvr, tag_name))
@@ -4023,6 +4023,9 @@ def anon_handle_list_tag_history(goptions, session, args):
     parser.add_option("--tag", help=_("Only show data for a specific tag"))
     parser.add_option("--all", action="store_true", help=_("Allows listing the entire global history"))
     (options, args) = parser.parse_args(args)
+    koji.util.deprecated("list-tag-history is deprecated and will be removed in a future version. "
+                         "See: https://pagure.io/koji/issue/836")
+
     if len(args) != 0:
         parser.error(_("This command takes no arguments"))
     kwargs = {}

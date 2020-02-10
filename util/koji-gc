@@ -492,7 +492,7 @@ def handle_trash():
             if age < min_age:
                 continue
         #see how long build has been untagged
-        history = session.tagHistory(build=binfo['id'])
+        history = session.queryHistory(build=binfo['id'])['tag_listing']
         age = None
         binfo2 = None
         if not history:
@@ -662,7 +662,7 @@ def handle_delete(just_salvage=False):
     continuing, trash = [], continuing
     for nvr, binfo in trash:
         # determine how long this build has been in the trashcan
-        mcall.tagHistory(build=binfo['id'], tag=trashcan_tag)
+        mcall.queryHistory(build=binfo['id'], tag=trashcan_tag)['tag_listing']
 
     for (nvr, binfo), [history] in zip(trash, mcall.call_all()):
         current = [x for x in history if x['active']]
@@ -853,14 +853,14 @@ def handle_prune():
         if options.debug:
             print("Pruning tag: %s" % tagname)
         #get builds
-        history = session.tagHistory(tag=tagname, active=True, queryOpts={'order': '-create_ts'})
+        history = session.queryHistory(tag=tagname, active=True)['tag_listing']
         if not history:
             if options.debug:
                 print("No history for %s" % tagname)
             continue
         pkghist = {}
         for h in history:
-            if taginfo['maven_include_all'] and h['maven_build_id']:
+            if taginfo['maven_include_all'] and h.get('maven_build_id', default=None):
                 pkghist.setdefault(h['name'] + '-' + h['version'], []).append(h)
             else:
                 pkghist.setdefault(h['name'], []).append(h)
