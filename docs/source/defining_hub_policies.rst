@@ -204,6 +204,9 @@ Available tests
     * for untag operations, tests the tag the build is being removed from
     * only applicable to the tag policy
 
+``target``
+    * matches against the build's target name. Accepts glob patterns.
+
 ``hastag``
     * checks the current tags for the build in question against the arguments.
 
