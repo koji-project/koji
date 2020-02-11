@@ -12557,7 +12557,7 @@ class BuildRoot(object):
         if koji.BR_STATES[row['state']] == 'EXPIRED':
             #we will quietly ignore a request to expire an expired buildroot
             #otherwise this is an error
-            if state == 'EXPIRED':
+            if koji.BR_STATES[state] == 'EXPIRED':
                 return
             else:
                 raise koji.GenericError("buildroot %i is EXPIRED" % self.id)
