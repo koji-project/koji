@@ -163,6 +163,8 @@ Summary: Koji client plugins
 Group: Applications/Internet
 License: LGPLv2
 Requires: python2-%{name} = %{version}-%{release}
+Obsoletes: python2-%{name}-sidetag-plugin-cli < %{version}-%{release}
+Provides: python2-%{name}-sidetag-plugin-cli = %{version}-%{release}
 
 %description -n python2-%{name}-cli-plugins
 Plugins to the koji command-line interface
@@ -174,6 +176,8 @@ Summary: Koji client plugins
 Group: Applications/Internet
 License: LGPLv2
 Requires: python%{python3_pkgversion}-%{name} = %{version}-%{release}
+Obsoletes: python%{python3_pkgversion}-%{name}-sidetag-plugin-cli < %{version}-%{release}
+Provides: python%{python3_pkgversion}-%{name}-sidetag-plugin-cli = %{version}-%{release}
 
 %description -n python%{python3_pkgversion}-%{name}-cli-plugins
 Plugins to the koji command-line interface
@@ -258,6 +262,8 @@ Requires: python2-qpid-proton
 %endif
 Requires: cpio
 Provides: %{name}-hub-plugins-code = %{version}-%{release}
+Obsoletes: python2-%{name}-sidetag-plugin-hub < %{version}-%{release}
+Provides: python2-%{name}-sidetag-plugin-hub = %{version}-%{release}
 
 %description -n python2-%{name}-hub-plugins
 Plugins to the koji XMLRPC interface
@@ -272,6 +278,8 @@ Requires: python%{python3_pkgversion}-%{name}-hub = %{version}-%{release}
 Requires: python%{python3_pkgversion}-qpid-proton
 Requires: cpio
 Provides: %{name}-hub-plugins-code = %{version}-%{release}
+Obsoletes: python%{python3_pkgversion}-%{name}-sidetag-plugin-hub < %{version}-%{release}
+Provides: python%{python3_pkgversion}-%{name}-sidetag-plugin-hub = %{version}-%{release}
 
 %description -n python%{python3_pkgversion}-%{name}-hub-plugins
 Plugins to the koji XMLRPC interface
