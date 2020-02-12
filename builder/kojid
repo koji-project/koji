@@ -559,6 +559,8 @@ class BuildRoot(object):
             pass
         elif os.WIFEXITED(rv) and os.WEXITSTATUS(rv) == 10:
             logfile = 'build.log'
+        elif os.WIFEXITED(rv) and os.WEXITSTATUS(rv) == 1:
+            logfile = 'build.log or root.log'
         else:
             logfile = 'root.log'
         msg = '; see %s for more information' % logfile
