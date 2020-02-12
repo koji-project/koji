@@ -1,11 +1,11 @@
 # Copyright © 2019 Red Hat, Inc.
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
+import sys
 
 from koji.context import context
 from koji.plugin import export, callback
 import koji
-import sys
 
 CONFIG_FILE = "/etc/koji-hub/plugins/sidetag.conf"
 CONFIG = None
@@ -20,7 +20,6 @@ from kojihub import (
     _create_build_target,
     _delete_tag,
     _delete_build_target,
-    readTaggedBuilds,
     QueryProcessor,
     nextval,
 )
