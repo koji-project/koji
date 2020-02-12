@@ -4355,15 +4355,12 @@ def get_build_type(buildInfo, strict=False):
 def list_btypes(query=None, queryOpts=None):
     """List btypes matching query
 
-    Options:
-        query - dictionary specifying selection parameters
-        queryOpts - dictionary specifying other query options
-
-    Supported query parameters:
-        name - select btypes by name
-        id - select btypes by id
-
-    If query is None, then all btypes are returned
+    :param dict query: Select a particular btype by "name" or "id".
+                       Example: {"name": "image"}.
+                       If this parameter is None (default), Koji returns all
+                       btypes.
+    :param dict queryOpts: additional options for this query.
+    :returns: a list of btype dicts.
     """
     if query is None:
         query = {}
