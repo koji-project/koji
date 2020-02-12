@@ -1,4 +1,3 @@
-#import cgi
 #from kojiweb import util
 #from six.moves.urllib.parse import quote
 
@@ -14,7 +13,7 @@
         #end if
         <th>Search</th>
         #try
-            #set $old_terms = cgi.escape($terms)
+            #set $old_terms = util.escapeHTML($terms)
         #except
             #set $old_terms = ""
         #end try
