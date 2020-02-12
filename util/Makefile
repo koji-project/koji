@@ -1,4 +1,4 @@
-BINFILES = kojira koji-gc koji-shadow koji-sweep-db
+BINFILES = kojira koji-gc koji-shadow koji-sweep-db koji-sidetag-cleanup
 SYSTEMDSYSTEMUNITDIR = $(shell pkg-config systemd --variable=systemdsystemunitdir)
 TYPE = systemd
 

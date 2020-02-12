@@ -368,8 +368,12 @@ License: LGPLv2
 Requires: %{name} = %{version}-%{release}
 %if 0%{py3_support} > 1
 Requires: python%{python3_pkgversion}-psycopg2
+Obsoletes: python%{python3_pkgversion}-koji-sidetag-plugin-tools < %{version}-%{release}
+Provides: python%{python3_pkgversion}-koji-sidetag-plugin-tools = %{version}-%{release}
 %else
 Requires: python-psycopg2
+Obsoletes: python2-koji-sidetag-plugin-tools < %{version}-%{release}
+Provides: python2-koji-sidetag-plugin-tools = %{version}-%{release}
 %endif
 %if %{use_systemd}
 Requires(post): systemd
@@ -603,6 +607,7 @@ rm -rf $RPM_BUILD_ROOT
 %{_sbindir}/koji-shadow
 %dir /etc/koji-shadow
 %config(noreplace) /etc/koji-shadow/koji-shadow.conf
+%{_sbindir}/koji-sidetag-cleanup
 
 %files web
 %dir /etc/kojiweb
