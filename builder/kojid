@@ -4989,8 +4989,28 @@ class BuildSRPMFromSCMTask(BaseBuildTask):
         if len(spec_files) == 0:
             raise koji.BuildError("No spec file found")
         elif len(spec_files) > 1:
-            raise koji.BuildError("Multiple spec files found: %s" % spec_files)
-        spec_file = spec_files[0]
+            # If there are multiple spec files, check whether one of them
+            # matches the SCM repo name
+            scm_spec_options = [
+                "%s/%s.spec".format(
+                    sourcedir, os.path.basename(sourcedir)),
+
+                "%s/SPECS/%s.spec".format(
+                    sourcedir, os.path.basename(sourcedir))
+            ]
+
+            for scm_spec in scm_spec_options:
+                if scm_spec in specs:
+                    # We have a match, so use this one.
+                    spec_file = scm_spec
+                    break
+
+            if not spec_file:
+                # We didn't find an exact match, so throw an error
+                raise koji.BuildError(
+                    "Multiple spec files found: %s" % spec_files)
+        else:
+            spec_file = spec_files[0]
 
         # Run spec file sanity checks.  Any failures will throw a BuildError
         self.spec_sanity_checks(spec_file)
