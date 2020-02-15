@@ -60,8 +60,16 @@ import koji.rpmdiff
 import koji.tasks
 import koji.xmlrpcplus
 from koji.context import context
-from koji.util import (base64encode, decode_bytes, dslice, joinpath,
-                       move_and_symlink, multi_fnmatch, safer_move, to_list)
+from koji.util import (
+    base64encode,
+    decode_bytes,
+    dslice,
+    joinpath,
+    move_and_symlink,
+    multi_fnmatch,
+    safer_move,
+    to_list
+)
 
 try:
     # py 3.6+

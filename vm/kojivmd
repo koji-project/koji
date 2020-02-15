@@ -48,8 +48,14 @@ import koji
 import koji.util
 from koji.daemon import SCM, TaskManager
 # TaskHandlers are required to be imported, do not remove them
-from koji.tasks import (BaseTaskHandler, MultiPlatformTask, RestartTask,  # noqa: F401
-                        RestartVerifyTask, ServerExit, ServerRestart)
+from koji.tasks import (  # noqa: F401
+    BaseTaskHandler,
+    MultiPlatformTask,
+    RestartTask,
+    RestartVerifyTask,
+    ServerExit,
+    ServerRestart
+)
 
 try:
     import krbV

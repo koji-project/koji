@@ -40,8 +40,13 @@ import koji
 import koji.tasks
 import koji.xmlrpcplus
 from koji.tasks import safe_rmtree
-from koji.util import (adler32_constructor, base64encode, dslice, parseStatus,
-                       to_list)
+from koji.util import (
+    adler32_constructor,
+    base64encode,
+    dslice,
+    parseStatus,
+    to_list
+)
 
 
 def incremental_upload(session, fname, fd, path, retries=5, logger=None):

@@ -6,8 +6,13 @@ from optparse import OptionParser
 
 import koji
 from koji.plugin import export_cli
-from koji_cli.lib import (_, activate_session, bytes_to_stdout,
-                          list_task_output_all_volumes, watch_tasks)
+from koji_cli.lib import (
+    _,
+    activate_session,
+    bytes_to_stdout,
+    list_task_output_all_volumes,
+    watch_tasks
+)
 
 
 @export_cli

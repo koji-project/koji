@@ -9,8 +9,8 @@ from argparse import ArgumentParser
 
 import koji
 from koji.plugin import export_cli
-from koji_cli.lib import _, activate_session
 from koji_cli.commands import anon_handle_wait_repo
+from koji_cli.lib import _, activate_session
 
 
 @export_cli

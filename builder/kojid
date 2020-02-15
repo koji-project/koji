@@ -60,8 +60,12 @@ import koji.rpmdiff
 import koji.tasks
 import koji.util
 from koji.daemon import SCM, TaskManager, incremental_upload, log_output
-from koji.tasks import (BaseTaskHandler, MultiPlatformTask, ServerExit,
-                        ServerRestart)
+from koji.tasks import (
+    BaseTaskHandler,
+    MultiPlatformTask,
+    ServerExit,
+    ServerRestart
+)
 from koji.util import dslice, dslice_ex, isSuccess, parseStatus, to_list
 
 try:
