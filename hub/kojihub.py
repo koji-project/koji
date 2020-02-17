@@ -993,6 +993,9 @@ def _direct_pkglist_add(taginfo, pkginfo, owner, block, extra_arches, force,
         # don't check policy for admins using force
         if not (force and context.session.hasPerm('admin')):
             assert_policy('package_list', policy_data)
+        else:
+            logger.info("Package list add %s/%s policy overriden by %s" % (
+                tag['name'], pkg['name'], context.session.user_data['name']))
     if not pkg:
         pkg = lookup_package(pkginfo, create=True)
     # validate arches before running callbacks
@@ -1073,6 +1076,10 @@ def _direct_pkglist_remove(taginfo, pkginfo, force=False, policy=False):
         # don't check policy for admins using force
         if not (force and context.session.hasPerm('admin')):
             assert_policy('package_list', policy_data)
+        else:
+            logger.info("Package list %s/%s remove policy overriden by %s" % (
+                tag['name'], pkg['name'], context.session.user_data['name']))
+
     user = get_user(context.session.user_id)
     koji.plugin.run_callbacks(
         'prePackageListChange', action='remove', tag=tag, package=pkg, user=user)
@@ -1105,6 +1112,9 @@ def pkglist_unblock(taginfo, pkginfo, force=False):
     # don't check policy for admins using force
     if not (force and context.session.hasPerm('admin')):
         assert_policy('package_list', policy_data)
+    else:
+        logger.info("Package list %s/%s unblock policy overriden by %s" % (
+            tag['name'], pkg['name'], context.session.user_data['name']))
     user = get_user(context.session.user_id)
     koji.plugin.run_callbacks(
         'prePackageListChange', action='unblock', tag=tag, package=pkg, user=user)
@@ -10619,6 +10629,8 @@ class RootExports(object):
         if pkg_error:
             if force and context.session.hasPerm('admin'):
                 pkglist_add(tag_id, pkg_id, force=True, block=False)
+                logger.info("Package add policy %s/%s overriden by %s" % (
+                    tag['name'], build['nvr'], context.session.user_data['name']))
             else:
                 raise koji.TagError(pkg_error)
         # tag policy check
@@ -10631,6 +10643,9 @@ class RootExports(object):
         if not (force and context.session.hasPerm('admin')):
             assert_policy('tag', policy_data)
             # XXX - we're running this check twice, here and in host.tagBuild (called by the task)
+        else:
+            logger.info("Tag policy %s/%s overriden by %s" % (
+                tag['name'], build['nvr'], context.session.user_data['name']))
         # spawn the tagging task
         return make_task('tagBuild', [tag_id, build_id, force, fromtag_id], priority=10)
 
@@ -10650,6 +10665,9 @@ class RootExports(object):
             # don't check policy for admins using force
             if not (force and context.session.hasPerm('admin')):
                 assert_policy('tag', policy_data)
+            else:
+                logger.info("Untag policy %s/%s overriden by %s" % (
+                    tag, build, context.session.user_data['name']))
             _untag_build(tag, build, strict=strict, force=force)
             tag_notification(True, None, tag, build, user_id)
         except Exception:
@@ -10705,6 +10723,8 @@ class RootExports(object):
         if pkg_error:
             if force and context.session.hasPerm('admin'):
                 pkglist_add(tag2_id, pkg_id, force=True, block=False)
+                logger.info("Package list policy %s/%s overriden by %s" % (
+                    tag2, package, context.session.user_data['name']))
             else:
                 raise koji.TagError(pkg_error)
 
@@ -10725,6 +10745,9 @@ class RootExports(object):
                 assert_policy('tag', policy_data)
                 # XXX - we're running this check twice, here and in host.tagBuild (called by the
                 # task)
+        else:
+            logger.info("Tag move policy %s/%s overriden by %s" % (
+                tag2, package, context.session.user_data['name']))
 
         wait_on = []
         tasklist = []
@@ -13903,6 +13926,9 @@ class HostExports(object):
         perms = koji.auth.get_user_perms(user_id)
         if not force or 'admin' not in perms:
             assert_policy('tag', policy_data)
+        if force and 'admin' in perms:
+            logger.info("Tag build %s/%s policy overriden by %s" % (
+                tag, build['nvr'], context.session.user_data['name']))
         # package list check
         pkgs = readPackageList(tagID=tag_id, pkgID=pkg_id, inherit=True)
         pkg_error = None
@@ -13913,6 +13939,8 @@ class HostExports(object):
         if pkg_error:
             if force and context.session.hasPerm('admin'):
                 pkglist_add(tag_id, pkg_id, force=True, block=False)
+                logger.info("Package added %s/%s by %s" % (
+                    tag, build['nvr'], context.session.user_data['name']))
             else:
                 raise koji.TagError(pkg_error)
         # do the actual work now
