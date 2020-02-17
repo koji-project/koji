@@ -3229,7 +3229,6 @@ def anon_handle_buildinfo(goptions, session, args):
             for archive in win_archives:
                 archives_seen.setdefault(archive['id'], 1)
                 print(os.path.join(koji.pathinfo.winbuild(info), koji.pathinfo.winfile(archive)))
-        rpms = session.listRPMs(buildID=info['id'])
         img_archives = session.listArchives(buildID=info['id'], type='image')
         if img_archives:
             print('Image archives:')
@@ -3246,10 +3245,18 @@ def anon_handle_buildinfo(goptions, session, args):
             print('%s Archives:' % btype.capitalize())
             for archive in archives:
                 print(os.path.join(koji.pathinfo.typedir(info, btype), archive['filename']))
+        rpms = session.listRPMs(buildID=info['id'])
         if rpms:
+            with session.multicall() as mc:
+                for rpm in rpms:
+                    rpm['sigs'] = mc.queryRPMSigs(rpm['id'])
             print("RPMs:")
             for rpm in rpms:
-                print(os.path.join(koji.pathinfo.build(info), koji.pathinfo.rpm(rpm)))
+                l = os.path.join(koji.pathinfo.build(info), koji.pathinfo.rpm(rpm))
+                keys = ', '.join(sorted([x['sigkey'] for x in rpm['sigs'].result if x['sigkey']]))
+                if keys:
+                    l += '\tSignatures: %s' % keys
+                print(l)
         if options.changelog:
             changelog = session.getChangelogEntries(info['id'])
             if changelog:
