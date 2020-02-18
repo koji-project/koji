@@ -1,3 +1,4 @@
+# coding: utf-8
 # Copyright © 2019 Red Hat, Inc.
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
