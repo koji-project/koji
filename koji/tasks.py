@@ -478,8 +478,8 @@ class BaseTaskHandler(object):
                 return fn
             self.logger.debug("Downloading %s", relpath)
             url = "%s/%s" % (self.options.topurl, relpath)
+            resp = requests.get(url, stream=True)
             try:
-                resp = requests.get(url, stream=True)
                 if not os.path.exists(os.path.dirname(fn)):
                     os.makedirs(os.path.dirname(fn))
                 with open(fn, 'wb') as fdst:
