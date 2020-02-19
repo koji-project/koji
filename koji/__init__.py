@@ -2305,6 +2305,7 @@ class ClientSession(object):
         the server side.  ctx is the Kerberos context to use, and should be unique
         per thread.  If ctx is not specified, the default context is used."""
 
+        util.deprecated("Please use gssapi_login instead, krb_login will be removed in koji 1.22")
         try:
             # Silently try GSSAPI first
             if self.gssapi_login(principal, keytab, ccache, proxyuser=proxyuser):
