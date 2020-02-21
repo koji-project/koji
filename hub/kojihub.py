@@ -12377,7 +12377,7 @@ class RootExports(object):
     def filterResults(self, methodName, *args, **kw):
         """Execute the XML-RPC method with the given name and filter the results
         based on the options specified in the keywork option "filterOpts".  The method
-        must return a list of maps.  Any other return type will result in a TypeError.
+        must return a list of maps.  Any other return type will result in a GenericError.
         Currently supported options are:
         - offset: the number of elements to trim off the front of the list
         - limit: the maximum number of results to return
@@ -12396,7 +12396,7 @@ class RootExports(object):
         Execute the XML-RPC method with the given name and filter the results
         based on the options specified in the keywork option "filterOpts".
         The method must return a list of maps.  Any other return type will
-        result in a TypeError.
+        result in a GenericError.
 
         Args:
         offset: the number of elements to trim off the front of the list
@@ -12422,7 +12422,7 @@ class RootExports(object):
             _count = 1
 
         if not isinstance(results, list):
-            raise TypeError('%s() did not return a list' % methodName)
+            raise koji.GenericError('%s() did not return a list' % methodName)
 
         order = filterOpts.get('order')
         if order:
