@@ -81,7 +81,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.20.0
+Version: 1.20.1
 Release: %{release}%{?dist}
 License: LGPLv2 and GPLv2+
 # the included arch lib from yum's rpmUtils is GPLv2+
@@ -724,6 +724,102 @@ fi
 %endif
 
 %changelog
+* Fri Feb 21 2020 Tomas Kopecek <tkopecek at redhat.com> - 1.20.1-1
+- PR#1995: hub: improve search() API documentation
+- PR#1993: Always use stream=True when iterating over a request
+- PR#1982: ensure that all keys in distrepo are lowered
+- PR#1962: improve sql speed in build_references
+- PR#1960: user proper type for buildroot state comparison
+- PR#1958: fix potentially undeclared variable error
+- PR#1967: don't use full listTags in list-groups call
+- PR#1944: analyze/vacuum all affected tables
+- PR#1929: fix flags display for list-tag-inheritance
+- PR#1935: docs for kojira and koji-gc
+- PR#1923: web: fix typo - the param[0] is tag, not target
+- PR#1919: expect, that hub is returning GM time
+- PR#1465: unittest fix: tests/test_cli/test_list_tagged.py
+- PR#1920: display some taskinfo for deleted buildtags
+- PR#1488: Display params also for malformed tasks in webui
+- PR#2020: move needed functions
+- PR#1946: fix usage message for add-pkg
+- PR#1947: fix help message for list-groups
+
+* Mon Jan 20 2020 Tomas Kopecek <tkopecek at redhat.com> - 1.20.0-1
+- PR#1908: koji 1.20 release
+- PR#1909: a follow-up fix for koji-gc
+- PR#1921: fix test for PR1918
+- PR#1893: raise GenericError on existing build reservation
+- PR#1917: Update typeinfo metadata documentation
+- PR#1918: cli: add "--new" option in "grant-permission" help summary
+- PR#1912: hub: [distRepo] fix input tag arg for getBuildConfig call
+- PR#1832: docstrings for API
+- PR#1889: fix nvr/dict params
+- PR#1743: basic zchunk support for dist-repo
+- PR#1869: limit distRepo tasks per tag
+- PR#1873:  koji-gc: untagging/moving to trashcan is very slow
+- PR#1829: Add a sanity check on remotely opened RPMs
+- PR#1892: kojid: use binary msg for python3 in *Notification tasks
+- PR#1854: do not use with statement with requests.get
+- PR#1875: document noarch rpmdiff behaviour
+- PR#1872: hub: getUser: default krb_princs value is changed to True
+- PR#1824: additional options to clean database
+- PR#1246: split admin_emails option for kojid
+- PR#1794: merge duplicate docs
+- PR#763: clean all unused `import` and reorder imports
+- PR#1626: build can wait for actual repo
+- PR#1640: Provide for passing credentials to SRPMfromSCM
+- PR#1820: [web] human-friendly file sizes in taskinfo page
+- PR#1821: browsable api
+- PR#1839: fix closing table tag
+- PR#1785: unify return values for permission denied
+- PR#1428: Add koji-gc/kojira/koji-shadow to setup.py
+- PR#1868: extend docstrings for CGInit/RefundBuild
+- PR#1853: fix CGRefundBuild to release build properly
+- PR#1862: gitignore: exclude .vscode folder
+- PR#1845: QueryProcessor: fix countOnly for group sql
+- PR#1850: fix conflict -r option for kernel version
+- PR#1848: list-pkgs: fix opts check
+- PR#1847: hub: fix BulkInsertProcessor call in CGImport
+- PR#1841: continue instead of exiting
+- PR#1837: A few fixes for kojikamid
+- PR#1823: docs for partitioning buildroot_listings
+- PR#1771: koji-sweep-db: Turn on autocommit to eliminate VACUUMing errors
+- PR#723: improve test and clean targets in Makefiles
+- PR#1037: use --update for dist-repos if possible
+- PR#1817: document tag inheritance
+- PR#1691: human-readable timestamp in koji-gc log
+- PR#1755: drop buildMap API call
+- PR#1814: some list-pkgs options work only in combinations
+- PR#821: Log kernel version used for buildroot
+- PR#983: fix downloads w/o content-length
+- PR#284: Show build link(s) on buildContainer task page
+- PR#1826: fix time type for restartHosts
+- PR#1790: remove old db constraint
+- PR#1775: clarify --ts usage
+- PR#1542: Replace urllib.request with requests library
+- PR#1380: no notifications in case of deleted tag
+- PR#1787: raise error when config search paths is empty
+- PR#1828: cli: refine output of list-signed
+- PR#1781: Remove title option for livemedia-creator
+- PR#1714: use BulkInsertProcessor for hub mass inserts
+- PR#1797: hub: build for policy check should be build_id in host.tagBuild
+- PR#1807: util: rename "dict" arg
+- PR#1149: hub: new addArchiveType RPC
+- PR#1798: rm old test code
+- PR#1795: fix typos for GenericError
+- PR#1799: hub: document cg_import parameters
+- PR#1804: docs: MaxRequestsPerChild -> MaxConnectionsPerChild
+- PR#1806: docs: explain "compile/builder1" user principal
+- PR#1800: rpm: remove %defattr
+- PR#1805: docs: recommend 2048 bit keys
+- PR#1801: docs: fix indent for reloading postgres settings
+- PR#1802: docs: simplify admin bootstrapping intro
+- PR#1803: docs: fix rST syntax for DB listening section
+- PR#1551: cluster health info page
+- PR#1525: include profile name in parsed config options
+- PR#1773: make rpm import optional in koji/__init__.py
+- PR#1767: check ConfigParser object rather than config path list
+
 * Fri Nov  8 2019 Brendan Reilly <breilly at redhat.com> - 1.19.1-1
 - PR#1751: hub: Fix issue with listing users and old versions of Postgres
 - PR#1753: Fix hub reporting of bogus ownership data
