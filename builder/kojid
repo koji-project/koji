@@ -4093,7 +4093,7 @@ class BaseImageTask(OzImageTask):
                               'xz-cp-%s-%s.log' % (format, self.arch))
         log_output(self.session, cmd[0], cmd, conlog, self.getUploadDir(),
                    logerror=1)
-        cmd = ['/usr/bin/xz', '-z9T2', rawimg]
+        cmd = ['/usr/bin/xz', self.options.xz_options, rawimg]
         conlog = os.path.join(self.workdir,
                               'xz-%s-%s.log' % (format, self.arch))
         log_output(self.session, cmd[0], cmd, conlog, self.getUploadDir(),
@@ -6371,6 +6371,7 @@ def get_options():
                 'failed_buildroot_lifetime': 3600 * 4,
                 'rpmbuild_timeout': 3600 * 24,
                 'oz_install_timeout': 0,
+                'xz_options': '-z6T0',
                 'task_avail_delay': 300,
                 'cert': None,
                 'ca': '',  # FIXME: Unused, remove in next major release

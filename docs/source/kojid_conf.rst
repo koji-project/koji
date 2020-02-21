@@ -170,6 +170,11 @@ Building
       This value is used for waiting on all xmlrpc calls to hub. By default
       there is no timeout set.
 
+   xz_options=-z6T0
+      Image builds with ``raw-xz`` type will use this setting when compressing
+      the image. Default value is compromise between speed and resource usage.
+      Only one option (not space-separated) is allowed here for now.
+
 RPM Builds
 ^^^^^^^^^^
 .. glossary::
