@@ -1621,7 +1621,7 @@ def check_tag_access(tag_id, user_id=None):
     override = False
     if 'admin' in perms:
         override = True
-    tag = get_tag(tag_id)
+    tag = get_tag(tag_id, strict=True)
     if tag['locked']:
         return (False, override, "tag is locked")
     if tag['perm_id']:
