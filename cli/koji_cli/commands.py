@@ -3,6 +3,7 @@ from __future__ import absolute_import, division
 import ast
 import fnmatch
 import hashlib
+import itertools
 import json
 import logging
 import os
@@ -6709,8 +6710,17 @@ def handle_untag_build(goptions, session, args):
                 builds.append(binfo)
             seen_pkg[binfo['name']] = 1
     else:
-        tagged = session.listTagged(args[0])
+        # find all pkg's builds in tag
+        pkgs = set([koji.parse_NVR(nvr)['name'] for nvr in args[1:]])
+        tagged = []
+        with session.multicall() as m:
+            for pkg in pkgs:
+                tagged.append(m.listTagged(args[0], package=pkg))
+        # flatten
+        tagged = list(itertools.chain([t.result[0] for t in tagged]))
         idx = dict([(b['nvr'], b) for b in tagged])
+
+        # check exact builds
         builds = []
         for nvr in args[1:]:
             binfo = idx.get(nvr)
