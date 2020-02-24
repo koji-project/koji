@@ -9,7 +9,7 @@ Overall policy for minor release is, that it shouldn't contain anything changing
 API or any compatibility features. Neither it should touch the db schema. Client
 has to be completely compatible with 1.x.0 version.
 
-Reason to introduce them is to make quciker delivery of simple fixes to end
+Reason to introduce them is to make quicker delivery of simple fixes to end
 users. As an administrator of koji instance you're free to not/update as you
 wish. There also needs to be clear update path from 1.x via 1.x.1 to 1.x+1.
 
