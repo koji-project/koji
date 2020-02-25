@@ -93,6 +93,7 @@ Configuration
 
 - *Build* - most important part - script which runs tests itself. Here you can also add missing requirements which will get installed via pip (not via rpms from F24!)
 
+
 .. code-block:: shell
 
   # setup virtual environment
@@ -113,7 +114,7 @@ Configuration
       pip install pip packaging --upgrade --ignore-installed
       pip install setuptools --upgrade --ignore-installed
       pip install psycopg2 requests-mock nose python-qpid-proton mock coverage \
-                  python-multilib --upgrade --ignore-installed
+                  python-multilib flake8 --upgrade --ignore-installed
       if [ -x /usr/bin/python3 ] ; then
           pip install Cheetah3 nose-cover3 --upgrade --ignore-installed
       else
@@ -145,12 +146,20 @@ Configuration
   #pylint . > pylint_report.txt
   #pep8 . > pep8_report.txt
 
+  if [ $NODE_NAME == "EL6" ] ; then
+      # fake report, flake8 is not available for old python
+      echo > flake8_report.txt
+  else
+      flake8 cli hub builder plugins koji util www vm devtools tests --output-file flake8_report.txt
+  fi
+
   # kill virtual environment
   deactivate
 
 - *Post-build actions*
 
   * *Publish Cobertura Coverage report*: coverage.xml - this will create coverage report accessible via jenkins web ui
+  * *Report Violations* - *pep8*: flake8_report.txt
   * *E-mail notification*:
 
     * Recipients: tkopecek@redhat.com brew-devel@redhat.com
