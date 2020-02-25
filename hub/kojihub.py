@@ -10093,7 +10093,8 @@ class RootExports(object):
         sum_cls = get_verify_class(verify)
         if offset != -1:
             if size is not None:
-                if size != len(contents): return False
+                if size != len(contents):
+                    return False
             if verify is not None:
                 if digest != sum_cls(contents).hexdigest():
                     return False
@@ -10153,7 +10154,8 @@ class RootExports(object):
                         os.lseek(fd, 0, 0)
                         while True:
                             block = os.read(fd, 819200)
-                            if not block: break
+                            if not block:
+                                break
                             chksum.update(block)
                         if digest != chksum.hexdigest():
                             return False

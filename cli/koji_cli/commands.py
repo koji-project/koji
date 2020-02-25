@@ -2799,8 +2799,10 @@ def anon_handle_list_hosts(goptions, session, args):
     hosts = [x[1] for x in tmp_list]
 
     def yesno(x):
-        if x: return 'Y'
-        else: return 'N'
+        if x:
+            return 'Y'
+        else:
+            return 'N'
 
     # pull in the last update using multicall to speed it up a bit
     session.multicall = True

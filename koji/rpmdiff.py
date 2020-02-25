@@ -187,8 +187,10 @@ class Rpmdiff:
         oldflags = old[name[:-1] + 'FLAGS']
         newflags = new[name[:-1] + 'FLAGS']
         # fix buggy rpm binding not returning list for single entries
-        if not isinstance(oldflags, list): oldflags = [oldflags]
-        if not isinstance(newflags, list): newflags = [newflags]
+        if not isinstance(oldflags, list):
+            oldflags = [oldflags]
+        if not isinstance(newflags, list):
+            newflags = [newflags]
 
         o = list(zip(old[name], oldflags, old[name[:-1] + 'VERSION']))
         n = list(zip(new[name], newflags, new[name[:-1] + 'VERSION']))

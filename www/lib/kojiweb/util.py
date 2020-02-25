@@ -756,7 +756,8 @@ class TaskResultLine(object):
             if length is None:
                 line_text += fragment.composer()
             else:
-                if size >= length: break
+                if size >= length:
+                    break
                 remainder_size = length - size
                 line_text += fragment.composer(remainder_size)
                 size += fragment.size
@@ -864,7 +865,8 @@ def task_result_to_html(result=None, exc_class=None,
                                           line.end_tag)
             first_part_len = len('%s = ') + key_fragment.size
             remainder_len = length - first_part_len
-            if remainder_len < 0: remainder_len = 0
+            if remainder_len < 0:
+                remainder_len = 0
 
             return '%s%s = %s%s%s' % (
                 line.begin_tag, key_fragment.composer(),

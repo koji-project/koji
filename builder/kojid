@@ -3164,17 +3164,23 @@ class LiveCDTask(ImageTask):
 
         # image metadata
         id = iso.get_application_id()
-        if id is not None: fd.write("Application ID: %s\n" % id)
+        if id is not None:
+            fd.write("Application ID: %s\n" % id)
         id = iso.get_preparer_id()
-        if id is not None: fd.write("Preparer ID: %s\n" % id)
+        if id is not None:
+            fd.write("Preparer ID: %s\n" % id)
         id = iso.get_publisher_id()
-        if id is not None: fd.write("Publisher ID: %s\n" % id)
+        if id is not None:
+            fd.write("Publisher ID: %s\n" % id)
         id = iso.get_system_id()
-        if id is not None: fd.write("System ID: %s\n" % id)
+        if id is not None:
+            fd.write("System ID: %s\n" % id)
         id = iso.get_volume_id()
-        if id is not None: fd.write("Volume ID: %s\n" % id)
+        if id is not None:
+            fd.write("Volume ID: %s\n" % id)
         id = iso.get_volumeset_id()
-        if id is not None: fd.write("Volumeset ID: %s\n" % id)
+        if id is not None:
+            fd.write("Volumeset ID: %s\n" % id)
 
         fd.write('\nSize(bytes)  File Name\n')
         manifest = self.listISODir(iso, '/')
@@ -3344,17 +3350,23 @@ class LiveMediaTask(ImageTask):
 
         # image metadata
         id = iso.get_application_id()
-        if id is not None: fd.write("Application ID: %s\n" % id)
+        if id is not None:
+            fd.write("Application ID: %s\n" % id)
         id = iso.get_preparer_id()
-        if id is not None: fd.write("Preparer ID: %s\n" % id)
+        if id is not None:
+            fd.write("Preparer ID: %s\n" % id)
         id = iso.get_publisher_id()
-        if id is not None: fd.write("Publisher ID: %s\n" % id)
+        if id is not None:
+            fd.write("Publisher ID: %s\n" % id)
         id = iso.get_system_id()
-        if id is not None: fd.write("System ID: %s\n" % id)
+        if id is not None:
+            fd.write("System ID: %s\n" % id)
         id = iso.get_volume_id()
-        if id is not None: fd.write("Volume ID: %s\n" % id)
+        if id is not None:
+            fd.write("Volume ID: %s\n" % id)
         id = iso.get_volumeset_id()
-        if id is not None: fd.write("Volumeset ID: %s\n" % id)
+        if id is not None:
+            fd.write("Volumeset ID: %s\n" % id)
 
         fd.write('\nSize(bytes)  File Name\n')
         manifest = self.listISODir(iso, '/')
