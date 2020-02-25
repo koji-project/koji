@@ -58,7 +58,7 @@ except ImportError:  # pragma: no cover
 def _printable_unicode(s):
     if six.PY2:
         return s.encode('utf-8')
-    else: # no cover: 2.x
+    else:  # no cover: 2.x
         return s
 
 
@@ -354,7 +354,7 @@ def handle_add_pkg(goptions, session, args):
     opts['force'] = options.force
     opts['block'] = False
     # check if list of packages exists for that tag already
-    dsttag=session.getTag(tag)
+    dsttag = session.getTag(tag)
     if dsttag is None:
         print("No such tag: %s" % tag)
         sys.exit(1)
@@ -388,7 +388,7 @@ def handle_block_pkg(goptions, session, args):
     activate_session(session, goptions)
     tag = args[0]
     # check if list of packages exists for that tag already
-    dsttag=session.getTag(tag)
+    dsttag = session.getTag(tag)
     if dsttag is None:
         print("No such tag: %s" % tag)
         return 1
@@ -425,7 +425,7 @@ def handle_remove_pkg(goptions, session, args):
     opts = {}
     opts['force'] = options.force
     # check if list of packages exists for that tag already
-    dsttag=session.getTag(tag)
+    dsttag = session.getTag(tag)
     if dsttag is None:
         print("No such tag: %s" % tag)
         return 1
@@ -717,7 +717,7 @@ def handle_wrapper_rpm(options, session, args):
 
     (build_opts, args) = parser.parse_args(args)
     if build_opts.inis:
-        if len(args)!= 1:
+        if len(args) != 1:
             parser.error(_("Exactly one argument (a build target) is required"))
     else:
         if len(args) < 3:
@@ -1153,14 +1153,14 @@ def handle_import(goptions, session, args):
     activate_session(session, goptions)
     to_import = {}
     for path in args:
-        data = koji.get_header_fields(path, ('name','version','release','epoch',
-                                             'arch','sigmd5','sourcepackage','sourcerpm'))
+        data = koji.get_header_fields(path, ('name', 'version', 'release', 'epoch',
+                                             'arch', 'sigmd5', 'sourcepackage', 'sourcerpm'))
         if data['sourcepackage']:
             data['arch'] = 'src'
             nvr = "%(name)s-%(version)s-%(release)s" % data
         else:
             nvr = "%(name)s-%(version)s-%(release)s" % koji.parse_NVRA(data['sourcerpm'])
-        to_import.setdefault(nvr,[]).append((path,data))
+        to_import.setdefault(nvr, []).append((path, data))
     builds_missing = False
     nvrs = to_list(to_import.keys())
     nvrs.sort()
@@ -1181,7 +1181,7 @@ def handle_import(goptions, session, args):
 
     # local function to help us out below
     def do_import(path, data):
-        rinfo = dict([(k,data[k]) for k in ('name','version','release','arch')])
+        rinfo = dict([(k, data[k]) for k in ('name', 'version', 'release', 'arch')])
         prev = session.getRPM(rinfo)
         if prev and not prev.get('external_repo_id', 0):
             if prev['payloadhash'] == koji.hex_string(data['sigmd5']):
@@ -1247,7 +1247,7 @@ def handle_import(goptions, session, args):
 
         if need_build:
             # if we're doing this here, we weren't given the matching srpm
-            if not options.create_build: # pragma: no cover
+            if not options.create_build:  # pragma: no cover
                 if binfo:
                     # should have caught this earlier, but just in case...
                     b_state = koji.BUILD_STATES[binfo['state']]
@@ -1362,11 +1362,11 @@ def _import_comps(session, filename, tag, options):
     comps.fromxml_f(filename)
     force = options.force
     ptypes = {
-        libcomps.PACKAGE_TYPE_DEFAULT : 'default',
-        libcomps.PACKAGE_TYPE_OPTIONAL : 'optional',
-        libcomps.PACKAGE_TYPE_CONDITIONAL : 'conditional',
-        libcomps.PACKAGE_TYPE_MANDATORY : 'mandatory',
-        libcomps.PACKAGE_TYPE_UNKNOWN : 'unknown',
+        libcomps.PACKAGE_TYPE_DEFAULT: 'default',
+        libcomps.PACKAGE_TYPE_OPTIONAL: 'optional',
+        libcomps.PACKAGE_TYPE_CONDITIONAL: 'conditional',
+        libcomps.PACKAGE_TYPE_MANDATORY: 'mandatory',
+        libcomps.PACKAGE_TYPE_UNKNOWN: 'unknown',
     }
     for group in comps.groups:
         print("Group: %s (%s)" % (group.id, group.name))
@@ -1378,8 +1378,8 @@ def _import_comps(session, filename, tag, options):
             langonly=group.lang_only,
             biarchonly=bool(group.biarchonly))
         for pkg in group.packages:
-            pkgopts = {'type' : ptypes[pkg.type],
-                       'basearchonly' : bool(pkg.basearchonly),
+            pkgopts = {'type': ptypes[pkg.type],
+                       'basearchonly': bool(pkg.basearchonly),
                        }
             if pkg.type == libcomps.PACKAGE_TYPE_CONDITIONAL:
                 pkgopts['requires'] = pkg.requires
@@ -1393,7 +1393,7 @@ def _import_comps(session, filename, tag, options):
         # libcomps does not support metapkgs
 
 
-def _import_comps_alt(session, filename, tag, options): # no cover 3.x
+def _import_comps_alt(session, filename, tag, options):  # no cover 3.x
     """Import comps data using yum.comps module"""
     print('WARN: yum.comps does not support the biarchonly of group and basearchonly of package')
     comps = yumcomps.Comps()
@@ -1413,7 +1413,7 @@ def _import_comps_alt(session, filename, tag, options): # no cover 3.x
                              ('conditional', group.conditional_packages)]:
             for pkg in pdata:
                 # yum.comps does not support basearchonly
-                pkgopts = {'type' : ptype}
+                pkgopts = {'type': ptype}
                 if ptype == 'conditional':
                     pkgopts['requires'] = pdata[pkg]
                 for k in pkgopts.keys():
@@ -1444,7 +1444,7 @@ def handle_import_sig(goptions, session, args):
             parser.error(_("No such file: %s") % path)
     activate_session(session, goptions)
     for path in args:
-        data = koji.get_header_fields(path, ('name','version','release','arch','siggpg','sigpgp','sourcepackage'))
+        data = koji.get_header_fields(path, ('name', 'version', 'release', 'arch', 'siggpg', 'sigpgp', 'sourcepackage'))
         if data['sourcepackage']:
             data['arch'] = 'src'
         sigkey = data['siggpg']
@@ -1524,7 +1524,7 @@ def handle_write_signed_rpm(goptions, session, args):
             rpms.extend(session.listRPMs(buildID=build['id']))
     for i, rpminfo in enumerate(rpms):
         nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" % rpminfo
-        print("[%d/%d] %s" % (i+1, len(rpms), nvra))
+        print("[%d/%d] %s" % (i + 1, len(rpms), nvra))
         session.writeSignedRPM(rpminfo['id'], key)
 
 
@@ -1573,7 +1573,7 @@ def handle_prune_signed_copies(options, session, args):
         if options.verbose:
             print("Getting builds...")
         qopts = {
-            'state' : koji.BUILD_STATES['COMPLETE'],
+            'state': koji.BUILD_STATES['COMPLETE'],
             'queryOpts': {
                 'limit': 50000,
                 'offset': 0,
@@ -1665,7 +1665,7 @@ def handle_prune_signed_copies(options, session, args):
             timeline.sort(key=lambda entry: entry[:2])
             # find most recent creation entry for our build and crop there
             latest_ts = None
-            for i in range(len(timeline)-1, -1, -1):
+            for i in range(len(timeline) - 1, -1, -1):
                 # searching in reverse cronological order
                 event_id, is_create, entry = timeline[i]
                 if entry['build_id'] == binfo['id'] and is_create:
@@ -1678,7 +1678,7 @@ def handle_prune_signed_copies(options, session, args):
             if options.debug:
                 print(_histline(event_id, our_entry))
             # now go through the events since most recent creation entry
-            timeline = timeline[i+1:]
+            timeline = timeline[i + 1:]
             if not timeline:
                 is_latest = True
                 if options.debug:
@@ -1831,7 +1831,7 @@ def handle_prune_signed_copies(options, session, args):
                         print("Error removing %s: %s" % (signedpath, e))
                         print("This script needs write access to %s" % koji.BASEDIR)
                         continue
-                mycount +=1
+                mycount += 1
                 build_files += 1
                 build_space += st.st_size
                 # XXX - this makes some layout assumptions, but
@@ -1894,7 +1894,7 @@ def handle_set_build_volume(goptions, session, args):
         if not binfo:
             print("No such build: %s" % nvr)
         elif binfo['volume_id'] == volinfo['id']:
-            print("Build %s already on volume %s" %(nvr, volinfo['name']))
+            print("Build %s already on volume %s" % (nvr, volinfo['name']))
         else:
             builds.append(binfo)
     if not builds:
@@ -2352,13 +2352,13 @@ def anon_handle_latest_build(goptions, session, args):
             if not options.quiet:
                 if options.type == 'maven':
                     print("%-40s  %-20s  %-20s  %-20s  %s" % ("Build", "Tag", "Group Id", "Artifact Id", "Built by"))
-                    print("%s  %s  %s  %s  %s" % ("-"*40, "-"*20, "-"*20, "-"*20, "-"*16))
+                    print("%s  %s  %s  %s  %s" % ("-" * 40, "-" * 20, "-" * 20, "-" * 20, "-" * 16))
                 else:
-                    print("%-40s  %-20s  %s" % ("Build","Tag","Built by"))
-                    print("%s  %s  %s" % ("-"*40, "-"*20, "-"*16))
+                    print("%-40s  %-20s  %s" % ("Build", "Tag", "Built by"))
+                    print("%s  %s  %s" % ("-" * 40, "-" * 20, "-" * 16))
                 options.quiet = True
 
-        output = [ fmt % x for x in data]
+        output = [fmt % x for x in data]
         output.sort()
         for line in output:
             print(line)
@@ -2452,7 +2452,7 @@ def anon_handle_list_tagged(goptions, session, args):
         rpms, builds = session.listTaggedRPMS(tag, **opts)
         data = rpms
         if options.paths:
-            build_idx = dict([(b['id'],b) for b in builds])
+            build_idx = dict([(b['id'], b) for b in builds])
             for rinfo in data:
                 build = build_idx[rinfo['build_id']]
                 builddir = pathinfo.build(build)
@@ -2488,12 +2488,12 @@ def anon_handle_list_tagged(goptions, session, args):
         if not options.quiet:
             if options.type == 'maven':
                 print("%-40s  %-20s  %-20s  %-20s  %s" % ("Build", "Tag", "Group Id", "Artifact Id", "Built by"))
-                print("%s  %s  %s  %s  %s" % ("-"*40, "-"*20, "-"*20, "-"*20, "-"*16))
+                print("%s  %s  %s  %s  %s" % ("-" * 40, "-" * 20, "-" * 20, "-" * 20, "-" * 16))
             else:
-                print("%-40s  %-20s  %s" % ("Build","Tag","Built by"))
-                print("%s  %s  %s" % ("-"*40, "-"*20, "-"*16))
+                print("%-40s  %-20s  %s" % ("Build", "Tag", "Built by"))
+                print("%s  %s  %s" % ("-" * 40, "-" * 20, "-" * 16))
 
-    output = [ fmt % x for x in data]
+    output = [fmt % x for x in data]
     output.sort()
     for line in output:
         print(line)
@@ -2573,7 +2573,7 @@ def anon_handle_list_untagged(goptions, session, args):
     if options.show_references:
         fmt = fmt + "  %(refs)s"
 
-    output = [ fmt % x for x in data]
+    output = [fmt % x for x in data]
     output.sort()
     for line in output:
         print(line)
@@ -2904,21 +2904,21 @@ def anon_handle_list_pkgs(goptions, session, args):
     if not options.quiet:
         if allpkgs:
             print("Package")
-            print('-'*23)
+            print('-' * 23)
         else:
-            print("%-23s %-23s %-16s %-15s" % ('Package','Tag','Extra Arches','Owner'))
-            print("%s %s %s %s" % ('-'*23,'-'*23,'-'*16,'-'*15))
+            print("%-23s %-23s %-16s %-15s" % ('Package', 'Tag', 'Extra Arches', 'Owner'))
+            print("%s %s %s %s" % ('-' * 23, '-' * 23, '-' * 16, '-' * 15))
     for pkg in data:
         if allpkgs:
             print(pkg['package_name'])
         else:
-            if not options.show_blocked and pkg.get('blocked',False):
+            if not options.show_blocked and pkg.get('blocked', False):
                 continue
             if 'tag_id' in pkg:
                 if pkg['extra_arches'] is None:
                     pkg['extra_arches'] = ""
                 fmt = "%(package_name)-23s %(tag_name)-23s %(extra_arches)-16s %(owner_name)-15s"
-                if pkg.get('blocked',False):
+                if pkg.get('blocked', False):
                     fmt += " [BLOCKED]"
             else:
                 fmt = "%(package_name)s"
@@ -3038,7 +3038,7 @@ def anon_handle_list_builds(goptions, session, args):
     fmt = "%(nvr)-55s  %(owner_name)-16s  %(state)s"
     if not options.quiet:
         print("%-55s  %-16s  %s" % ("Build", "Built by", "State"))
-        print("%s  %s  %s" % ("-"*55, "-"*16, "-"*16))
+        print("%s  %s  %s" % ("-" * 55, "-" * 16, "-" * 16))
 
     for build in data:
         print(fmt % build)
@@ -3102,11 +3102,11 @@ def anon_handle_rpminfo(goptions, session, args):
         if info.get('extra'):
             print("Extra: %(extra)r" % info)
         if options.buildroots:
-            br_list = session.listBuildroots(rpmID=info['id'], queryOpts={'order':'buildroot.id'})
+            br_list = session.listBuildroots(rpmID=info['id'], queryOpts={'order': 'buildroot.id'})
             print("Used in %i buildroots:" % len(br_list))
             if len(br_list):
-                print("  %8s %-28s %-8s %-29s" % ('id','build tag','arch','build host'))
-                print("  %s %s %s %s" % ('-'*8, '-'*28, '-'*8, '-'*29))
+                print("  %8s %-28s %-8s %-29s" % ('id', 'build tag', 'arch', 'build host'))
+                print("  %s %s %s %s" % ('-' * 8, '-' * 28, '-' * 8, '-' * 29))
             for br_info in br_list:
                 print("  %(id)8i %(tag_name)-28s %(arch)-8s %(host_name)-29s" % br_info)
 
@@ -3226,14 +3226,14 @@ def anon_handle_hostinfo(goptions, session, args):
             description = info['description'].splitlines()
             print("Description: %s" % description[0])
             for line in description[1:]:
-                print("%s%s" % (" "*13, line))
+                print("%s%s" % (" " * 13, line))
         else:
             print("Description:")
         if info['comment']:
             comment = info['comment'].splitlines()
             print("Comment: %s" % comment[0])
             for line in comment[1:]:
-                print("%s%s" % (" "*9, line))
+                print("%s%s" % (" " * 9, line))
         else:
             print("Comment:")
         print("Enabled: %s" % (info['enabled'] and 'yes' or 'no'))
@@ -3246,9 +3246,9 @@ def anon_handle_hostinfo(goptions, session, args):
         print("Last Update: %s" % update)
         print("Channels: %s" % ' '.join([c['name'] for c in session.listChannels(hostID=info['id'])]))
         print("Active Buildroots:")
-        states = {0:"INIT", 1:"WAITING", 2:"BUILDING"}
+        states = {0: "INIT", 1: "WAITING", 2: "BUILDING"}
         rows = [('NAME', 'STATE', 'CREATION TIME')]
-        for s in range(0,3):
+        for s in range(0, 3):
             for b in session.listBuildroots(hostID=info['id'], state=s):
                 rows.append((("%s-%s-%s" % (b['tag_name'], b['id'], b['repo_id'])), states[s],
                              b['create_event_time'][:b['create_event_time'].find('.')]))
@@ -3327,9 +3327,9 @@ def handle_clone_tag(goptions, session, args):
                        "Please use --force if this is what you really want to do."))
 
     # init debug lists.
-    chgpkglist=[]
-    chgbldlist=[]
-    chggrplist=[]
+    chgpkglist = []
+    chgbldlist = []
+    chggrplist = []
     # case of brand new dst-tag.
     if not dsttag:
         if not options.config:
@@ -3500,7 +3500,7 @@ def handle_clone_tag(goptions, session, args):
             bdellist.extend(dblds)
         baddlist.sort(key=lambda x: x['package_name'])
         bdellist.sort(key=lambda x: x['package_name'])
-        gaddlist = [] # list containing new groups to be added from src tag
+        gaddlist = []  # list containing new groups to be added from src tag
         for (grpname, group) in six.iteritems(srcgroups):
             if grpname not in dstgroups:
                 gaddlist.append(group)
@@ -3517,8 +3517,8 @@ def handle_clone_tag(goptions, session, args):
                 grpchanges[grpname]['inherited'] = False
                 if dstgroup['tag_id'] != dsttag['id']:
                     grpchanges[grpname]['inherited'] = True
-                srcgrppkglist=[]
-                dstgrppkglist=[]
+                srcgrppkglist = []
+                dstgrppkglist = []
                 for pkg in group['packagelist']:
                     srcgrppkglist.append(pkg['package'])
                 for pkg in dstgroups[grpname]['packagelist']:
@@ -3717,22 +3717,22 @@ def handle_clone_tag(goptions, session, args):
             session.multiCall(batch=options.batch)
     # print final list of actions.
     if options.verbose:
-        pfmt='    %-7s %-28s %-10s %-10s %-10s\n'
-        bfmt='    %-7s %-28s %-40s %-10s %-10s %-10s\n'
-        gfmt='    %-7s %-28s %-28s\n'
+        pfmt = '    %-7s %-28s %-10s %-10s %-10s\n'
+        bfmt = '    %-7s %-28s %-40s %-10s %-10s %-10s\n'
+        gfmt = '    %-7s %-28s %-28s\n'
         sys.stdout.write('\nList of changes:\n\n')
         sys.stdout.write(pfmt % ('Action', 'Package', 'Blocked', 'Owner', 'From Tag'))
-        sys.stdout.write(pfmt % ('-'*7, '-'*28, '-'*10, '-'*10, '-'*10))
+        sys.stdout.write(pfmt % ('-' * 7, '-' * 28, '-' * 10, '-' * 10, '-' * 10))
         for changes in chgpkglist:
             sys.stdout.write(pfmt % changes)
         sys.stdout.write('\n')
         sys.stdout.write(bfmt % ('Action', 'From/To Package', 'Build(s)', 'State', 'Owner', 'From Tag'))
-        sys.stdout.write(bfmt %  ('-'*7, '-'*28, '-'*40, '-'*10, '-'*10, '-'*10))
+        sys.stdout.write(bfmt % ('-' * 7, '-' * 28, '-' * 40, '-' * 10, '-' * 10, '-' * 10))
         for changes in chgbldlist:
             sys.stdout.write(bfmt % changes)
         sys.stdout.write('\n')
         sys.stdout.write(gfmt % ('Action', 'Package', 'Group'))
-        sys.stdout.write(gfmt %  ('-'*7, '-'*28, '-'*28))
+        sys.stdout.write(gfmt % ('-' * 7, '-' * 28, '-' * 28))
         for changes in chggrplist:
             sys.stdout.write(gfmt % changes)
 
@@ -3874,7 +3874,7 @@ def anon_handle_list_targets(goptions, session, args):
 
     fmt = "%(name)-30s %(build_tag_name)-30s %(dest_tag_name)-30s"
     if not options.quiet:
-        print("%-30s %-30s %-30s" % ('Name','Buildroot','Destination'))
+        print("%-30s %-30s %-30s" % ('Name', 'Buildroot', 'Destination'))
         print("-" * 93)
     tmp_list = [(x['name'], x) for x in session.getBuildTargets(options.name)]
     tmp_list.sort()
@@ -4005,7 +4005,7 @@ def anon_handle_list_tags(goptions, session, args):
         if not buildinfo:
             parser.error(_("Invalid build %s" % options.build))
 
-    tags = session.listTags(buildinfo.get('id',None), pkginfo.get('id',None))
+    tags = session.listTags(buildinfo.get('id', None), pkginfo.get('id', None))
     tags.sort(key=lambda x: x['name'])
     # if options.verbose:
     #    fmt = "%(name)s [%(id)i] %(perm)s %(locked)s %(arches)s"
@@ -4107,7 +4107,7 @@ def _print_histline(entry, **kwargs):
         del x['.related']
         bad_edit = None
         if len(edit) != 1:
-            bad_edit = "%i elements" % (len(edit)+1)
+            bad_edit = "%i elements" % (len(edit) + 1)
         other = edit[0]
         # check edit for sanity
         if create or not other[2]:
@@ -4256,7 +4256,7 @@ def _print_histline(entry, **kwargs):
         else:
             fmt = "%s entry revoked" % table
     time_str = time.asctime(time.localtime(ts))
-    parts  = [time_str, fmt % x]
+    parts = [time_str, fmt % x]
     if options.events or options.verbose:
         parts.insert(1, "(eid %i)" % event_id)
     if who:
@@ -4312,23 +4312,23 @@ def _print_histline(entry, **kwargs):
             print("    %s: %s" % (dkey, x[key]))
 
 _table_keys = {
-    'user_perms' : ['user_id', 'perm_id'],
-    'user_groups' : ['user_id', 'group_id'],
-    'cg_users' : ['user_id', 'cg_id'],
-    'tag_inheritance' : ['tag_id', 'parent_id'],
-    'tag_config' : ['tag_id'],
-    'tag_extra' : ['tag_id', 'key'],
-    'build_target_config' : ['build_target_id'],
-    'external_repo_config' : ['external_repo_id'],
+    'user_perms': ['user_id', 'perm_id'],
+    'user_groups': ['user_id', 'group_id'],
+    'cg_users': ['user_id', 'cg_id'],
+    'tag_inheritance': ['tag_id', 'parent_id'],
+    'tag_config': ['tag_id'],
+    'tag_extra': ['tag_id', 'key'],
+    'build_target_config': ['build_target_id'],
+    'external_repo_config': ['external_repo_id'],
     'host_config': ['host_id'],
     'host_channels': ['host_id', 'channel_id'],
-    'tag_external_repos' : ['tag_id', 'external_repo_id'],
-    'tag_listing' : ['build_id', 'tag_id'],
-    'tag_packages' : ['package_id', 'tag_id'],
-    'tag_package_owners' : ['package_id', 'tag_id'],
-    'group_config' : ['group_id', 'tag_id'],
-    'group_req_listing' : ['group_id', 'tag_id', 'req_id'],
-    'group_package_listing' : ['group_id', 'tag_id', 'package'],
+    'tag_external_repos': ['tag_id', 'external_repo_id'],
+    'tag_listing': ['build_id', 'tag_id'],
+    'tag_packages': ['package_id', 'tag_id'],
+    'tag_package_owners': ['package_id', 'tag_id'],
+    'group_config': ['group_id', 'tag_id'],
+    'group_req_listing': ['group_id', 'tag_id', 'req_id'],
+    'group_package_listing': ['group_id', 'tag_id', 'package'],
 }
 
 
@@ -4640,7 +4640,7 @@ def _printTaskInfo(session, task_id, topdir, level=0, recurse=True, verbose=True
        and its children."""
 
     BUILDDIR = '/var/lib/mock'
-    indent = " "*2*level
+    indent = " " * 2 * level
 
     info = session.getTaskInfo(task_id)
 
@@ -4762,8 +4762,8 @@ def anon_handle_taginfo(goptions, session, args):
     for n, info in enumerate(tags):
         if n > 0:
             print('')
-        print("Tag: %(name)s [%(id)d]" %info)
-        print("Arches: %(arches)s" %info)
+        print("Tag: %(name)s [%(id)d]" % info)
+        print("Arches: %(arches)s" % info)
         group_list = [x['name'] for x in session.getTagGroups(info['id'], **event_opts)]
         group_list.sort()
         print("Groups: " + ', '.join(group_list))
@@ -4851,7 +4851,7 @@ def handle_add_tag(goptions, session, args):
             value = arg_filter(value)
             extra[key] = value
         opts['extra'] = extra
-    session.createTag(args[0],**opts)
+    session.createTag(args[0], **opts)
 
 
 def handle_edit_tag(goptions, session, args):
@@ -5119,7 +5119,7 @@ def handle_edit_tag_inheritance(goptions, session, args):
         return 1
 
     new_data = data.copy()
-    if options.priority is not None  and options.priority.isdigit():
+    if options.priority is not None and options.priority.isdigit():
         new_data['priority'] = int(options.priority)
     if options.maxdepth is not None:
         if options.maxdepth.isdigit():
@@ -5226,7 +5226,7 @@ def anon_handle_show_groups(goptions, session, args):
     if options.comps:
         print(koji.generate_comps(groups, expand_groups=options.expand))
     elif options.spec:
-        print(koji.make_groups_spec(groups,name='buildgroups',buildgroup='build'))
+        print(koji.make_groups_spec(groups, name='buildgroups', buildgroup='build'))
     else:
         pprint.pprint(groups)
 
@@ -5235,8 +5235,8 @@ def anon_handle_list_external_repos(goptions, session, args):
     "[info] List external repos"
     usage = _("usage: %prog list-external-repos [options]")
     parser = OptionParser(usage=get_usage_str(usage))
-    parser.add_option("--url",  help=_("Select by url"))
-    parser.add_option("--name",  help=_("Select by name"))
+    parser.add_option("--url", help=_("Select by url"))
+    parser.add_option("--name", help=_("Select by name"))
     parser.add_option("--id", type="int", help=_("Select by id"))
     parser.add_option("--tag", help=_("Select by tag"))
     parser.add_option("--used", action='store_true', help=_("List which tags use the repo(s)"))
@@ -5278,7 +5278,7 @@ def anon_handle_list_external_repos(goptions, session, args):
         format = "basic"
         opts['info'] = options.id or options.name or None
         opts['url'] = options.url or None
-        data = session.listExternalRepos (**opts)
+        data = session.listExternalRepos(**opts)
 
     # There are three different output formats
     #  1) Listing just repo data (name, url)
@@ -5287,15 +5287,15 @@ def anon_handle_list_external_repos(goptions, session, args):
     if format == "basic":
         format = "%(name)-25s %(url)s"
         header1 = "%-25s %s" % ("External repo name", "URL")
-        header2 = "%s %s" % ("-"*25, "-"*40)
+        header2 = "%s %s" % ("-" * 25, "-" * 40)
     elif format == "tag":
         format = "%(priority)-3i %(external_repo_name)-25s %(merge_mode)-10s %(url)s"
         header1 = "%-3s %-25s %-10s URL" % ("Pri", "External repo name", "Mode")
-        header2 = "%s %s %s %s" % ("-"*3, "-"*25, "-"*10, "-"*40)
+        header2 = "%s %s %s %s" % ("-" * 3, "-" * 25, "-" * 10, "-" * 40)
     elif format == "multitag":
         format = "%(tag_name)-20s %(priority)-3i %(merge_mode)-10s %(external_repo_name)s"
         header1 = "%-20s %-3s %-10s %s" % ("Tag", "Pri", "Mode", "External repo name")
-        header2 = "%s %s %s %s" % ("-"*20, "-"*3, "-"*10, "-"*25)
+        header2 = "%s %s %s %s" % ("-" * 20, "-" * 3, "-" * 10, "-" * 25)
     if not options.quiet:
         print(header1)
         print(header2)
@@ -5379,8 +5379,8 @@ def handle_edit_external_repo(goptions, session, args):
     "[admin] Edit data for an external repo"
     usage = _("usage: %prog edit-external-repo <name>")
     parser = OptionParser(usage=get_usage_str(usage))
-    parser.add_option("--url",  help=_("Change the url"))
-    parser.add_option("--name",  help=_("Change the name"))
+    parser.add_option("--url", help=_("Change the url"))
+    parser.add_option("--name", help=_("Change the name"))
     (options, args) = parser.parse_args(args)
     if len(args) != 1:
         parser.error(_("Incorrect number of arguments"))
@@ -5654,17 +5654,17 @@ def _build_image_indirection(options, task_opts, session, args):
             bool(task_opts.base_image_build)):
         raise koji.GenericError(_("You must specify either a base-image task or build ID/NVR"))
 
-    required_opts = [ 'name', 'version', 'arch', 'target', 'indirection_template', 'results_loc' ]
-    optional_opts = [ 'indirection_template_url', 'scratch', 'utility_image_task', 'utility_image_build',
-                      'base_image_task', 'base_image_build', 'release', 'skip_tag' ]
+    required_opts = ['name', 'version', 'arch', 'target', 'indirection_template', 'results_loc']
+    optional_opts = ['indirection_template_url', 'scratch', 'utility_image_task', 'utility_image_build',
+                     'base_image_task', 'base_image_build', 'release', 'skip_tag']
 
-    missing = [ ]
+    missing = []
     for opt in required_opts:
         if not getattr(task_opts, opt, None):
             missing.append(opt)
 
     if len(missing) > 0:
-        print("Missing the following required options: %s" % ' '.join(['--%s' % o.replace('_','-') for o in missing]))
+        print("Missing the following required options: %s" % ' '.join(['--%s' % o.replace('_', '-') for o in missing]))
         raise koji.GenericError(_("Missing required options specified above"))
 
     activate_session(session, options)
@@ -5708,7 +5708,7 @@ def _build_image_indirection(options, task_opts, session, args):
                                                       os.path.basename(templatefile))
         print('')
 
-    hub_opts = { }
+    hub_opts = {}
     # Just pass everything in as opts.  No posiitonal arguments at all.  Why not?
     for opt in required_opts + optional_opts:
         val = getattr(task_opts, opt, None)
@@ -5829,10 +5829,10 @@ def handle_image_build(options, session, args):
         # as do factory-parameters
         section = 'factory-parameters'
         if config.has_section(section):
-            task_options.factory_parameter = [ ]
+            task_options.factory_parameter = []
             for k, v in config.items(section):
                 # We do this, rather than a dict, to match what argparse spits out
-                task_options.factory_parameter.append( (k, v) )
+                task_options.factory_parameter.append((k, v))
 
     else:
         if len(args) < 5:
@@ -6198,7 +6198,7 @@ def handle_set_pkg_arches(goptions, session, args):
     tag = args[1]
     with session.multicall(strict=True) as m:
         for package in args[2:]:
-            m.packageListSetArches(tag,package,arches,force=options.force)
+            m.packageListSetArches(tag, package, arches, force=options.force)
 
 
 def handle_set_pkg_owner(goptions, session, args):
@@ -6214,7 +6214,7 @@ def handle_set_pkg_owner(goptions, session, args):
     tag = args[1]
     with session.multicall(strict=True) as m:
         for package in args[2:]:
-            m.packageListSetOwner(tag,package,owner,force=options.force)
+            m.packageListSetOwner(tag, package, owner, force=options.force)
 
 
 def handle_set_pkg_owner_global(goptions, session, args):
@@ -6237,7 +6237,7 @@ def handle_set_pkg_owner_global(goptions, session, args):
     if not user:
         print("No such user: %s" % owner)
         return 1
-    opts = {'with_dups' : True}
+    opts = {'with_dups': True}
     old_user = None
     if options.old_user:
         old_user = session.getUser(options.old_user)
@@ -6262,7 +6262,7 @@ def handle_set_pkg_owner_global(goptions, session, args):
         if user['id'] == entry['owner_id']:
             if options.verbose:
                 print("Preserving owner=%s for package %s in tag %s" \
-                      % (user['name'], package,  entry['tag_name']))
+                      % (user['name'], package, entry['tag_name']))
         else:
             if options.test:
                 print("Would have changed owner for %s in tag %s: %s -> %s" \
@@ -6527,7 +6527,7 @@ def handle_unblock_pkg(goptions, session, args):
     tag = args[0]
     with session.multicall(strict=True) as m:
         for package in args[1:]:
-            m.packageListUnblock(tag,package)
+            m.packageListUnblock(tag, package)
 
 
 def anon_handle_download_build(options, session, args):
@@ -6729,7 +6729,7 @@ def anon_handle_download_logs(options, session, args):
         if task_info is None:
             error(_("No such task id: %i" % task_id))
         files = list_task_output_all_volumes(session, task_id)
-        logs = [] # list of tuples (filename, volume)
+        logs = []  # list of tuples (filename, volume)
         for filename in files:
             if not filename.endswith(".log"):
                 continue
@@ -6741,7 +6741,7 @@ def anon_handle_download_logs(options, session, args):
                                     "%s-%s" % (task_info["arch"], task_id))
 
         count = 0
-        state =  koji.TASK_STATES[task_info['state']]
+        state = koji.TASK_STATES[task_info['state']]
         if state == 'FAILED':
             if not match or koji.util.multi_fnmatch(FAIL_LOG, match):
                 write_fail_log(task_log_dir, task_id)
@@ -7022,7 +7022,7 @@ def handle_dist_repo(options, session, args):
     parser.add_option("--split-debuginfo", action='store_true', default=False,
                       help='Split debuginfo info a separate repo for each arch')
     parser.add_option('--comps', help='Include a comps file in the repodata')
-    parser.add_option('--delta-rpms', metavar='REPO',default=[],
+    parser.add_option('--delta-rpms', metavar='REPO', default=[],
                       action='append',
                       help=_('Create delta rpms. REPO can be the id of another dist repo '
                              'or the name of a tag that has a dist repo. May be specified '
@@ -7178,7 +7178,7 @@ def handle_moshimoshi(options, session, args):
     u = session.getLoggedInUser()
     if not u:
         print("Not authenticated")
-        u = {'name' : 'anonymous user'}
+        u = {'name': 'anonymous user'}
     print("%s, %s!" % (_printable_unicode(random.choice(greetings)), u["name"]))
     print("")
     print("You are using the hub at %s" % session.baseurl)

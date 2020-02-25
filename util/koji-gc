@@ -81,7 +81,7 @@ def get_options():
     parser.add_option("--smtp-user", dest="smtp_user", metavar="USER",
                       help=_("specify smtp username for notifications"))
     parser.add_option("--smtp-pass", dest="smtp_pass", metavar="PASSWORD",
-                      help=optparse.SUPPRESS_HELP) # do not allow passwords on a command line
+                      help=optparse.SUPPRESS_HELP)  # do not allow passwords on a command line
     parser.add_option("--no-mail", action='store_false', default=True, dest="mail",
                       help=_("don't send notifications"))
     parser.add_option("--send-mail", action='store_true', dest="mail",
@@ -93,7 +93,7 @@ def get_options():
     parser.add_option("--email-template", default="/etc/koji-gc/email.tpl",
                       help=_("notification template"))
     parser.add_option("--action", help=_("action(s) to take"))
-    parser.add_option("--delay", metavar="INTERVAL", default = '5 days',
+    parser.add_option("--delay", metavar="INTERVAL", default='5 days',
                       help="time before eligible builds are placed in trashcan")
     parser.add_option("--grace-period", default='4 weeks', metavar="INTERVAL",
                       help="time that builds are held in trashcan")
@@ -184,7 +184,7 @@ def get_options():
     # figure out actions
     actions = ('prune', 'trash', 'delete', 'salvage')
     if options.action:
-        options.action = options.action.lower().replace(',',' ').split()
+        options.action = options.action.lower().replace(',', ' ').split()
         for x in options.action:
             if x not in actions:
                 parser.error(_("Invalid action: %s") % x)
@@ -193,7 +193,7 @@ def get_options():
 
     # split patterns for unprotected keys
     if options.unprotected_keys:
-        options.unprotected_key_patterns = options.unprotected_keys.replace(',',' ').split()
+        options.unprotected_key_patterns = options.unprotected_keys.replace(',', ' ').split()
     else:
         options.unprotected_key_patterns = []
 
@@ -208,7 +208,7 @@ def get_options():
                 options.key_aliases[parts[0].upper()] = parts[1]
     except ValueError as e:
         print(e)
-        parser.error(_("Invalid key alias data in config: %s") % config.get('main','key_aliases'))
+        parser.error(_("Invalid key alias data in config: %s") % config.get('main', 'key_aliases'))
 
     # parse time intervals
     for key in ('delay', 'grace_period'):
@@ -274,11 +274,11 @@ def check_package(name):
         return True
 
 time_units = {
-    'second' : 1,
-    'minute' : 60,
-    'hour' : 3600,
-    'day' : 86400,
-    'week' : 604800,
+    'second': 1,
+    'minute': 60,
+    'hour': 3600,
+    'day': 86400,
+    'week': 604800,
 }
 time_unit_aliases = [
     # [unit, alias, alias, ...]
@@ -405,14 +405,14 @@ def send_warning_notice(owner_name, builds):
     with open(options.email_template, 'r') as f:
         tpl = Template(f.read())
 
-    fmt="""\
+    fmt = """\
 Build: %%(name)s-%%(version)s-%%(release)s
 %s/buildinfo?buildID=%%(id)i""" % options.weburl
     middle = '\n\n'.join([fmt % b for b in builds])
 
     msg = MIMEText.MIMEText(tpl.safe_substitute(
-        owner = owner_name,
-        builds = middle,
+        owner=owner_name,
+        builds=middle,
     ))
 
     if len(builds) == 1:
@@ -420,7 +420,7 @@ Build: %%(name)s-%%(version)s-%%(release)s
     else:
         msg['Subject'] = "%i builds marked for deletion" % len(builds)
     msg['From'] = options.from_addr
-    msg['To'] = "%s@%s" % (owner_name, options.email_domain)  #XXX!
+    msg['To'] = "%s@%s" % (owner_name, options.email_domain)  # XXX!
     msg['X-Koji-Builder'] = owner_name
     if options.test:
         if options.debug:
@@ -528,7 +528,7 @@ def handle_trash():
             else:
                 age = time.time() - ts
         else:
-            history = [(h['revoke_event'],h) for h in history]
+            history = [(h['revoke_event'], h) for h in history]
             last = max(history)[1]
             if not last['revoke_event']:
                 # this might happen if the build was tagged just now
@@ -690,7 +690,7 @@ def handle_delete(just_salvage=False):
             pprint.pprint(binfo)
             pprint.pprint(history)
             continue
-        assert len(current) == 1   #see db constraint
+        assert len(current) == 1  # see db constraint
         current = current[0]
         age = time.time() - current['create_ts']
         if age < grace_period:
@@ -705,8 +705,8 @@ def handle_delete(just_salvage=False):
         if options.test:
             print("Would have deleted build from trashcan: %s" % binfo['nvr'])
         else:
-            print("Deleting build: %s"  % binfo['nvr'])
-            mcall.untagBuildBypass(trashcan_tag,  binfo['id'])
+            print("Deleting build: %s" % binfo['nvr'])
+            mcall.untagBuildBypass(trashcan_tag, binfo['id'])
             mcall.deleteBuild(binfo['id'])
 
     for binfo, result in six.moves.zip(continuing, mcall.call_all()):
@@ -898,14 +898,14 @@ def handle_prune():
                 # get sig data
                 nvr = "%(name)s-%(version)s-%(release)s" % entry
                 data = {
-                    'tagname' : tagname,
-                    'pkgname' : pkg,
+                    'tagname': tagname,
+                    'pkgname': pkg,
                     'order': order - skipped,
-                    'ts' : entry['create_ts'],
-                    'nvr' : nvr,
+                    'ts': entry['create_ts'],
+                    'nvr': nvr,
                 }
                 data = LazyDict(data)
-                data['keys'] = LazyValue(get_build_sigs, (entry['build_id'],), {'cache':True})
+                data['keys'] = LazyValue(get_build_sigs, (entry['build_id'],), {'cache': True})
                 data['volname'] = LazyValue(lambda x: session.getBuild(x).get('volume_name'),
                                             (entry['build_id'],), cache=True)
                 build_ids[nvr] = entry['build_id']
@@ -923,7 +923,7 @@ def handle_prune():
                         print("Would have untagged %s from %s" % (nvr, tagname))
                         untagged.setdefault(nvr, {})[tagname] = 1
                     else:
-                        print("Untagging build %s from %s"  % (nvr, tagname))
+                        print("Untagging build %s from %s" % (nvr, tagname))
                         try:
                             session.untagBuildBypass(taginfo['id'], entry['build_id'], force=bypass)
                             untagged.setdefault(nvr, {})[tagname] = 1
@@ -935,7 +935,7 @@ def handle_prune():
         print("Attempting to purge %i builds" % len(untagged))
         for nvr in untagged:
             build_id = build_ids[nvr]
-            tags = [t['name'] for t in  session.listTags(build_id, perms=False)]
+            tags = [t['name'] for t in session.listTags(build_id, perms=False)]
             if options.test:
                 # filted out the tags we would have dropped above
                 tags = [t for t in tags if t not in untagged[nvr]]
@@ -958,7 +958,7 @@ def handle_prune():
             if options.test:
                 print("Would have deleted build: %s" % nvr)
             else:
-                print("Deleting untagged build: %s"  % nvr)
+                print("Deleting untagged build: %s" % nvr)
                 try:
                     session.deleteBuild(build_id, strict=False)
                 except (six.moves.xmlrpc_client.Fault, koji.GenericError) as e:

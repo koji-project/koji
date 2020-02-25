@@ -448,7 +448,7 @@ def formatDep(name, version, flags):
             if flags & koji.RPMSENSE_EQUAL:
                 s = s + "="
             if version:
-                s = "%s %s" %(s, version)
+                s = "%s %s" % (s, version)
     return s
 
 def formatMode(mode):
@@ -706,7 +706,7 @@ class TaskResultLine(object):
                 return composer(self, length, postscript)
 
             self.composer = composer_wrapper
-        self.size=self._size()
+        self.size = self._size()
 
     def default_composer(self, length=None, postscript=None):
         line_text = ''

@@ -77,21 +77,21 @@ def arg_filter(arg):
 
 
 categories = {
-    'admin' : 'admin commands',
-    'build' : 'build commands',
-    'search' : 'search commands',
-    'download' : 'download commands',
-    'monitor'  : 'monitor commands',
-    'info' : 'info commands',
-    'bind' : 'bind commands',
-    'misc' : 'miscellaneous commands',
+    'admin': 'admin commands',
+    'build': 'build commands',
+    'search': 'search commands',
+    'download': 'download commands',
+    'monitor': 'monitor commands',
+    'info': 'info commands',
+    'bind': 'bind commands',
+    'misc': 'miscellaneous commands',
 }
 
 
 def get_epilog_str(progname=None):
     if progname is None:
         progname = os.path.basename(sys.argv[0]) or 'koji'
-    categories_ordered=', '.join(sorted(['all'] + to_list(categories.keys())))
+    categories_ordered = ', '.join(sorted(['all'] + to_list(categories.keys())))
     epilog_str = '''
 Try "%(progname)s --help" for help about global options
 Try "%(progname)s help" to get all available commands
@@ -119,29 +119,29 @@ def print_task_headers():
     print("ID       Pri  Owner                State    Arch       Name")
 
 
-def print_task(task,depth=0):
+def print_task(task, depth=0):
     """Print a task"""
     task = task.copy()
-    task['state'] = koji.TASK_STATES.get(task['state'],'BADSTATE')
+    task['state'] = koji.TASK_STATES.get(task['state'], 'BADSTATE')
     fmt = "%(id)-8s %(priority)-4s %(owner_name)-20s %(state)-8s %(arch)-10s "
     if depth:
-        indent = "  "*(depth-1) + " +"
+        indent = "  " * (depth - 1) + " +"
     else:
         indent = ''
     label = koji.taskLabel(task)
     print(''.join([fmt % task, indent, label]))
 
 
-def print_task_recurse(task,depth=0):
+def print_task_recurse(task, depth=0):
     """Print a task and its children"""
-    print_task(task,depth)
-    for child in task.get('children',()):
-        print_task_recurse(child,depth+1)
+    print_task(task, depth)
+    for child in task.get('children', ()):
+        print_task_recurse(child, depth + 1)
 
 
 class TaskWatcher(object):
 
-    def __init__(self,task_id,session,level=0,quiet=False):
+    def __init__(self, task_id, session, level=0, quiet=False):
         self.id = task_id
         self.session = session
         self.info = None
@@ -167,7 +167,7 @@ class TaskWatcher(object):
         error = None
         try:
             self.session.getTaskResult(self.id)
-        except (six.moves.xmlrpc_client.Fault,koji.GenericError) as e:
+        except (six.moves.xmlrpc_client.Fault, koji.GenericError) as e:
             error = e
         if error is None:
             # print("%s: complete" % self.str())
@@ -206,7 +206,7 @@ class TaskWatcher(object):
         if self.info is None:
             return False
         state = koji.TASK_STATES[self.info['state']]
-        return (state in ['CLOSED','CANCELED','FAILED'])
+        return (state in ['CLOSED', 'CANCELED', 'FAILED'])
 
     def is_success(self):
         if self.info is None:
@@ -339,7 +339,7 @@ def watch_logs(session, tasklist, opts, poll_interval):
             print("No such task id: %i" % taskId)
             sys.exit(1)
         state = koji.TASK_STATES[info['state']]
-        return (state in ['CLOSED','CANCELED','FAILED'])
+        return (state in ['CLOSED', 'CANCELED', 'FAILED'])
 
     offsets = {}
     for task_id in tasklist:
@@ -422,7 +422,7 @@ def _format_size(size):
         return "%0.2f GiB" % (size / 1073741824.0)
     if (size / 1048576 >= 1):
         return "%0.2f MiB" % (size / 1048576.0)
-    if (size / 1024 >=1):
+    if (size / 1024 >= 1):
         return "%0.2f KiB" % (size / 1024.0)
     return "%0.2f B" % (size)
 
@@ -439,7 +439,7 @@ def _progress_callback(uploaded, total, piece, time, total_time):
     if total == 0:
         percent_done = 0.0
     else:
-        percent_done = float(uploaded)/float(total)
+        percent_done = float(uploaded) / float(total)
     percent_done_str = "%02d%%" % (percent_done * 100)
     data_done = _format_size(uploaded)
     elapsed = _format_secs(total_time)
@@ -447,12 +447,12 @@ def _progress_callback(uploaded, total, piece, time, total_time):
     speed = "- B/sec"
     if (time):
         if (uploaded != total):
-            speed = _format_size(float(piece)/float(time)) + "/sec"
+            speed = _format_size(float(piece) / float(time)) + "/sec"
         else:
-            speed = _format_size(float(total)/float(total_time)) + "/sec"
+            speed = _format_size(float(total) / float(total_time)) + "/sec"
 
     # write formated string and flush
-    sys.stdout.write("[% -36s] % 4s % 8s % 10s % 14s\r" % ('='*(int(percent_done*36)), percent_done_str, elapsed, data_done, speed))
+    sys.stdout.write("[% -36s] % 4s % 8s % 10s % 14s\r" % ('=' * (int(percent_done * 36)), percent_done_str, elapsed, data_done, speed))
     sys.stdout.flush()
 
 
@@ -587,8 +587,8 @@ def _list_tasks(options, session):
     "Retrieve a list of tasks"
 
     callopts = {
-        'state' : [koji.TASK_STATES[s] for s in ('FREE', 'OPEN', 'ASSIGNED')],
-        'decode' : True,
+        'state': [koji.TASK_STATES[s] for s in ('FREE', 'OPEN', 'ASSIGNED')],
+        'decode': True,
     }
 
     if getattr(options, 'mine', False):
@@ -622,7 +622,7 @@ def _list_tasks(options, session):
             sys.exit(1)
         callopts['host_id'] = host['id']
 
-    qopts = {'order' : 'priority,create_time'}
+    qopts = {'order': 'priority,create_time'}
     tasklist = session.listTasks(callopts, qopts)
     tasks = dict([(x['id'], x) for x in tasklist])
 
@@ -631,7 +631,7 @@ def _list_tasks(options, session):
         if t['parent'] is not None:
             parent = tasks.get(t['parent'])
             if parent:
-                parent.setdefault('children',[])
+                parent.setdefault('children', [])
                 parent['children'].append(t)
                 t['sub'] = True
 
@@ -641,7 +641,7 @@ def _list_tasks(options, session):
 def format_inheritance_flags(parent):
     """Return a human readable string of inheritance flags"""
     flags = ''
-    for code,expr in (
+    for code, expr in (
             ('M', parent['maxdepth'] is not None),
             ('F', parent['pkg_filter']),
             ('I', parent['intransitive']),

@@ -58,12 +58,12 @@ def handle_runroot(options, session, args):
     else:
         command = args[2:]
     try:
-        kwargs = { 'channel':       opts.channel_override,
-                   'packages':      opts.package,
-                   'mounts':        opts.mount,
-                   'repo_id':       opts.repo_id,
-                   'skip_setarch':  opts.skip_setarch,
-                   'weight':        opts.weight }
+        kwargs = {'channel': opts.channel_override,
+                  'packages': opts.package,
+                  'mounts': opts.mount,
+                  'repo_id': opts.repo_id,
+                  'skip_setarch': opts.skip_setarch,
+                  'weight': opts.weight}
         # Only pass this kwarg if it is true - this prevents confusing older
         # builders with a different function signature
         if opts.new_chroot is not None:

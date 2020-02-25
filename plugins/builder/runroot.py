@@ -196,7 +196,7 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
             mock_cmd = ['chroot']
             if new_chroot:
                 mock_cmd.append('--new-chroot')
-            elif new_chroot is False: # None -> no option added
+            elif new_chroot is False:  # None -> no option added
                 mock_cmd.append('--old-chroot')
             if skip_setarch:
                 # we can't really skip it, but we can set it to the current one instead of of the chroot one

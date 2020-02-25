@@ -47,7 +47,7 @@ EXPAND_ARCHES = {
     'alpha': ['alphaev4', 'alphaev45', 'alphaev5', 'alphaev56',
               'alphapca56', 'alphaev6', 'alphaev67', 'alphaev68', 'alphaev7'],
     'armhfp': ['armv7hl', 'armv7hnl', 'armv6hl', 'armv6hnl'],
-    'arm': ['armv5tel', 'armv5tejl', 'armv6l','armv7l'],
+    'arm': ['armv5tel', 'armv5tejl', 'armv6l', 'armv7l'],
     'sh4': ['sh4a']
 }
 
@@ -64,7 +64,7 @@ def parse_args(args):
 
     mergerepos --repo=url --repo=url --outputdir=/some/path"""
 
-    parser = OptionParser(version = "mergerepos 0.1", usage=usage)
+    parser = OptionParser(version="mergerepos 0.1", usage=usage)
     # query options
     parser.add_option("-r", "--repo", dest="repos", default=[], action="append",
                       help="repo url")
@@ -158,7 +158,7 @@ class RepoMerge(object):
         # in the repolist
         count = 0
         for r in self.repolist:
-            count +=1
+            count += 1
             rid = 'repo%s' % count
             sys.stderr.write('Adding repo: %s\n' % r)
             n = self.yumbase.add_enable_repo(rid, baseurls=[r])

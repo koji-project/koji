@@ -51,7 +51,7 @@ except ImportError:  # pragma: no cover
 
 # koji.fp.o keeps stalling, probably network errors...
 # better to time out than to stall
-socket.setdefaulttimeout(180)  #XXX - too short?
+socket.setdefaulttimeout(180)  # XXX - too short?
 
 logfile = None
 
@@ -190,11 +190,11 @@ def get_options():
     return options, args
 
 time_units = {
-    'second' : 1,
-    'minute' : 60,
-    'hour' : 3600,
-    'day' : 86400,
-    'week' : 604800,
+    'second': 1,
+    'minute': 60,
+    'hour': 3600,
+    'day': 86400,
+    'week': 604800,
 }
 time_unit_aliases = [
     # [unit, alias, alias, ...]
@@ -282,8 +282,8 @@ def activate_session(session):
         pass
     elif options.auth_cert and options.serverca:
         # convert to absolute paths
-        options.auth_cert  = os.path.expanduser(options.auth_cert)
-        options.serverca  = os.path.expanduser(options.serverca)
+        options.auth_cert = os.path.expanduser(options.auth_cert)
+        options.serverca = os.path.expanduser(options.serverca)
 
         if os.path.isfile(options.auth_cert):
             # authenticate using SSL client cert
@@ -358,7 +358,7 @@ class TrackedBuild(object):
                 if rinfo['arch'] == 'src':
                     self.srpm = rinfo
             self.getExtraArches()
-            self.getDeps() #sets deps, br_tag, base, order, (maybe state)
+            self.getDeps()  # sets deps, br_tag, base, order, (maybe state)
 
     def updateState(self):
         """Update state from local hub
@@ -475,10 +475,10 @@ class TrackedBuild(object):
             return
         buildroots.sort()
         self.order = buildroots[-1]
-        seen = {}       #used to avoid scanning the same buildroot twice
-        builds = {}     #track which builds we need for a rebuild
-        bases = {}      #track base install for buildroots
-        tags = {}       #track buildroot tag(s)
+        seen = {}  # used to avoid scanning the same buildroot twice
+        builds = {}  # track which builds we need for a rebuild
+        bases = {}  # track base install for buildroots
+        tags = {}  # track buildroot tag(s)
         remote.multicall = True
         unpack = []
         for br_id in buildroots:
@@ -534,7 +534,7 @@ class TrackedBuild(object):
         if len(builds) == 0:
             self.setState("noroot")
         self.deps = builds
-        self.revised_deps = None #BuildTracker will set this later
+        self.revised_deps = None  # BuildTracker will set this later
         self.br_tag = tag
         self.base = base
 
@@ -714,20 +714,20 @@ class BuildTracker(object):
         head = " " * depth
         for ignored in self.ignorelist:
             if (build.name == ignored) or fnmatch.fnmatch(build.name, ignored):
-                log ("%sIgnored Build: %s%s" % (head, build.nvr, tail))
+                log("%sIgnored Build: %s%s" % (head, build.nvr, tail))
                 build.setState('ignore')
                 return build
         check = self.checkFilter(build, grey=None)
         if check is None:
             # greylisted builds are ok as deps, but not primary builds
             if depth == 0:
-                log ("%sGreylisted build %s%s" % (head, build.nvr, tail))
+                log("%sGreylisted build %s%s" % (head, build.nvr, tail))
                 build.setState('grey')
                 return build
             # get rid of 'grey' state (filter will not be checked again)
             build.updateState()
         elif not check:
-            log ("%sBlocked build %s%s" % (head, build.nvr, tail))
+            log("%sBlocked build %s%s" % (head, build.nvr, tail))
             build.setState('blocked')
             return build
         # make sure we dont have the build name protected
@@ -737,29 +737,29 @@ class BuildTracker(object):
             if replace:
                 build.substitute = replace
                 if depth > 0:
-                    log ("%sDep replaced: %s->%s" % (head, build.nvr, replace))
+                    log("%sDep replaced: %s->%s" % (head, build.nvr, replace))
                     return build
             if options.prefer_new and (depth > 0) and (tag is not None) and not (build.state == "common"):
                 latestBuild = self.newerBuild(build, tag)
                 if latestBuild != None:
                     build.substitute = latestBuild.nvr
-                    log ("%sNewer build replaced: %s->%s" % (head, build.nvr, latestBuild.nvr))
+                    log("%sNewer build replaced: %s->%s" % (head, build.nvr, latestBuild.nvr))
                     return build
         else:
-            log ("%sProtected Build: %s" % (head, build.nvr))
+            log("%sProtected Build: %s" % (head, build.nvr))
         if build.state == "common":
             # we're good
             if build.rebuilt:
-                log ("%sCommon build (rebuilt) %s%s" % (head, build.nvr, tail))
+                log("%sCommon build (rebuilt) %s%s" % (head, build.nvr, tail))
             else:
-                log ("%sCommon build %s%s" % (head, build.nvr, tail))
+                log("%sCommon build %s%s" % (head, build.nvr, tail))
         elif build.state == 'pending':
-            log ("%sRebuild in progress: %s%s" % (head, build.nvr, tail))
+            log("%sRebuild in progress: %s%s" % (head, build.nvr, tail))
         elif build.state == "broken":
             # The build already exists locally, but is somehow invalid.
             # We should not replace it automatically. An admin can reset it
             # if that is the correct thing. A substitution might also be in order
-            log ("%sWarning: build exists, but is invalid: %s%s" % (head, build.nvr, tail))
+            log("%sWarning: build exists, but is invalid: %s%s" % (head, build.nvr, tail))
         #
         #  !! Cases where importing a noarch is /not/ ok must occur
         #     before this point
@@ -767,30 +767,30 @@ class BuildTracker(object):
         elif (options.import_noarch or options.import_noarch_only) and build.isNoarch():
             self.importBuild(build, tag)
         elif options.import_noarch_only and not build.isNoarch():
-            log ("%sSkipping archful build: %s" % (head, build.nvr))
+            log("%sSkipping archful build: %s" % (head, build.nvr))
         elif build.state == "noroot":
             # Can't rebuild it, this is what substitutions are for
-            log ("%sWarning: no buildroot data for %s%s" % (head, build.nvr, tail))
+            log("%sWarning: no buildroot data for %s%s" % (head, build.nvr, tail))
         elif build.state == 'brokendeps':
             # should not be possible at this point
-            log ("Error: build reports brokendeps state before dep scan")
+            log("Error: build reports brokendeps state before dep scan")
         elif build.state == "missing":
             # scan its deps
-            log ("%sMissing build %s%s. Scanning deps..." % (head, build.nvr, tail))
+            log("%sMissing build %s%s. Scanning deps..." % (head, build.nvr, tail))
             newdeps = []
             # include extra local builds as deps.
             if self.includelist:
                 for dep in self.includelist:
                     info = session.getBuild(dep)
                     if info:
-                        log ("%s Adding local Dep %s%s" % (head, dep, tail))
+                        log("%s Adding local Dep %s%s" % (head, dep, tail))
                         extradep = LocalBuild(info)
                         newdeps.append(extradep)
                     else:
-                        log ("%s Warning: could not find build for %s" % (head, dep))
+                        log("%s Warning: could not find build for %s" % (head, dep))
             # don't actually set build.revised_deps until we finish the dep scan
             for dep_id in build.deps:
-                dep = self.scanBuild(dep_id, from_build=build, depth=depth+1, tag=tag)
+                dep = self.scanBuild(dep_id, from_build=build, depth=depth + 1, tag=tag)
                 if dep.name in self.ignorelist:
                     # we are not done dep solving yet.  but we dont want this dep in our buildroot
                     continue
@@ -798,10 +798,10 @@ class BuildTracker(object):
                     if dep.substitute:
                         dep2 = self.getSubstitute(dep.substitute)
                         if isinstance(dep2, TrackedBuild):
-                            self.scanBuild(dep2.id, from_build=build, depth=depth+1, tag=tag)
+                            self.scanBuild(dep2.id, from_build=build, depth=depth + 1, tag=tag)
                         elif dep2 is None:
                             # dep is missing on both local and remote
-                            log ("%sSubstitute dep unavailable: %s" % (head, dep2.nvr))
+                            log("%sSubstitute dep unavailable: %s" % (head, dep2.nvr))
                             # no point in continuing
                             break
                         # otherwise dep2 should be LocalBuild instance
@@ -809,7 +809,7 @@ class BuildTracker(object):
                     elif dep.state in ('broken', 'brokendeps', 'noroot', 'blocked'):
                         # no point in continuing
                         build.setState('brokendeps')
-                        log ("%sCan't rebuild %s, %s is %s" % (head, build.nvr, dep.nvr, dep.state))
+                        log("%sCan't rebuild %s, %s is %s" % (head, build.nvr, dep.nvr, dep.state))
                         newdeps = None
                         break
                     else:
@@ -837,11 +837,11 @@ class BuildTracker(object):
                     if options.first_one:
                         return
                 except (socket.timeout, socket.error):
-                    log ("retry")
+                    log("retry")
                     continue
                 break
             else:
-                log ("Error: unable to scan %(name)s-%(version)s-%(release)s" % build)
+                log("Error: unable to scan %(name)s-%(version)s-%(release)s" % build)
                 continue
 
     def _importURL(self, url, fn):
@@ -853,8 +853,8 @@ class BuildTracker(object):
             old_umask = os.umask(0o02)
             try:
                 koji.ensuredir(os.path.dirname(dst))
-                os.chown(os.path.dirname(dst), 48, 48) #XXX - hack
-                log ("Downloading %s to %s" % (url, dst))
+                os.chown(os.path.dirname(dst), 48, 48)  # XXX - hack
+                log("Downloading %s to %s" % (url, dst))
                 fsrc = urllib2.urlopen(url)
                 fdst = open(fn, 'w')
                 shutil.copyfileobj(fsrc, fdst)
@@ -867,24 +867,24 @@ class BuildTracker(object):
             # for now, though, just use uploadWrapper
             koji.ensuredir(options.workpath)
             dst = "%s/%s" % (options.workpath, fn)
-            log ("Downloading %s to %s..." % (url, dst))
+            log("Downloading %s to %s..." % (url, dst))
             fsrc = urllib2.urlopen(url)
             fdst = open(dst, 'w')
             shutil.copyfileobj(fsrc, fdst)
             fsrc.close()
             fdst.close()
-            log ("Uploading %s..." % dst)
+            log("Uploading %s..." % dst)
             session.uploadWrapper(dst, serverdir, blocksize=65536)
         session.importRPM(serverdir, fn)
 
     def importBuild(self, build, tag=None):
         '''import a build from remote hub'''
         if not build.srpm:
-            log ("No srpm for build %s, skipping import" % build.nvr)
+            log("No srpm for build %s, skipping import" % build.nvr)
             # TODO - support no-src imports here
             return False
         if not options.remote_topurl:
-            log ("Skipping import of %s, remote_topurl not specified" % build.nvr)
+            log("Skipping import of %s, remote_topurl not specified" % build.nvr)
             return False
         pathinfo = koji.PathInfo(options.remote_topurl)
         build_url = pathinfo.build(build.info)
@@ -954,7 +954,7 @@ class BuildTracker(object):
         else:
             parents = session.getInheritanceData(taginfo['id'])
             if parents:
-                log ("Warning: shadow build tag has inheritance")
+                log("Warning: shadow build tag has inheritance")
         # check package list
         pkgs = {}
         for pkg in session.listPackages(tagID=taginfo['id']):
@@ -1010,7 +1010,7 @@ class BuildTracker(object):
                 build_group = group
             else:
                 # we should have no other groups but build
-                log ("Warning: found stray group: %s" % group)
+                log("Warning: found stray group: %s" % group)
                 drop_groups.append(group['name'])
         if build_group:
             # fix build group package list based on base of build to shadow
@@ -1021,7 +1021,7 @@ class BuildTracker(object):
             # no group deps needed/allowed
             drop_deps = [(g['name'], 1) for g in build_group['grouplist']]
             if drop_deps:
-                log ("Warning: build group had deps: %r" % build_group)
+                log("Warning: build group had deps: %r" % build_group)
         else:
             add_pkgs = build.base
             drop_pkgs = []
@@ -1061,17 +1061,17 @@ class BuildTracker(object):
         #       [?] use remote SCM url (if avail)?
         src = build.getSource()
         if not src:
-            log ("Couldn't get source for %s" % build.nvr)
+            log("Couldn't get source for %s" % build.nvr)
             return None
         # wait for repo task
-        log ("Waiting on newRepo task %i" % task_id)
+        log("Waiting on newRepo task %i" % task_id)
         while True:
             tinfo = session.getTaskInfo(task_id)
             tstate = koji.TASK_STATES[tinfo['state']]
             if tstate == 'CLOSED':
                 break
             elif tstate in ('CANCELED', 'FAILED'):
-                log ("Error: failed to generate repo")
+                log("Error: failed to generate repo")
                 return None
             # add a timeout?
         # TODO       ...and verify repo
@@ -1127,12 +1127,12 @@ class BuildTracker(object):
         states = sorted(self.state_idx.keys())
         parts = ["%s: %i" % (s, len(self.state_idx[s])) for s in states]
         parts.append("total: %i" % N)
-        log (' '.join(parts))
+        log(' '.join(parts))
 
     def _print_builds(self, mylist):
         """small helper function for output"""
         for build in mylist:
-            log ("    %s (%s)" % (build.nvr, build.state))
+            log("    %s (%s)" % (build.nvr, build.state))
 
     def checkJobs(self, tag=None):
         """Check outstanding jobs. Return true if anything changes"""
@@ -1140,31 +1140,31 @@ class BuildTracker(object):
         for build_id, build in self.state_idx['pending'].items():
             # check pending builds
             if not build.task_id:
-                log ("No task id recorded for %s" % build.nvr)
+                log("No task id recorded for %s" % build.nvr)
                 build.updateState()
                 ret = True
             info = session.getTaskInfo(build.task_id)
             if not info:
-                log ("No such task: %i (build %s)" % (build.task_id, build.nvr))
+                log("No such task: %i (build %s)" % (build.task_id, build.nvr))
                 build.updateState()
                 ret = True
                 continue
             state = koji.TASK_STATES[info['state']]
             if state in ('CANCELED', 'FAILED'):
-                log ("Task %i is %s (build %s)" % (build.task_id, state, build.nvr))
+                log("Task %i is %s (build %s)" % (build.task_id, state, build.nvr))
                 # we have to set the state to broken manually (updateState will mark
                 # a failed build as missing)
                 build.setState('broken')
                 ret = True
             elif state == 'CLOSED':
-                log ("Task %i complete (build %s)" % (build.task_id, build.nvr))
+                log("Task %i complete (build %s)" % (build.task_id, build.nvr))
                 if options.tag_build and not tag == None:
                     self.tagSuccessful(build.nvr, tag)
                 build.updateState()
                 ret = True
                 if build.state != 'common':
-                    log ("Task %i finished, but %s still missing" \
-                         % (build.task_id, build.nvr))
+                    log("Task %i finished, but %s still missing" \
+                        % (build.task_id, build.nvr))
         return ret
 
     def checkBuildDeps(self, build):
@@ -1175,7 +1175,7 @@ class BuildTracker(object):
         problem = [x for x in build.revised_deps
                    if x.state in ('broken', 'brokendeps', 'noroot', 'blocked')]
         if problem:
-            log ("Can't rebuild %s, missing %i deps" % (build.nvr, len(problem)))
+            log("Can't rebuild %s, missing %i deps" % (build.nvr, len(problem)))
             build.setState('brokendeps')
             self._print_builds(problem)
             return False
@@ -1201,7 +1201,7 @@ class BuildTracker(object):
             if not self.checkBuildDeps(build):
                 continue
             # otherwise, we should be good to rebuild
-            log ("rebuild: %s" % build.nvr)
+            log("rebuild: %s" % build.nvr)
             task_id = self.rebuild(build)
             ret = True
             if options.test:
@@ -1209,7 +1209,7 @@ class BuildTracker(object):
                 build.setState('common')
             elif not task_id:
                 # something went wrong setting up the rebuild
-                log ("Did not get a task for %s" % build.nvr)
+                log("Did not get a task for %s" % build.nvr)
                 build.setState('broken')
             else:
                 # build might not show up as 'BUILDING' immediately, so we
@@ -1218,13 +1218,13 @@ class BuildTracker(object):
                 build.setState('pending')
             if options.max_jobs and len(self.state_idx['pending']) >= options.max_jobs:
                 if options.debug:
-                    log ("Maximum number of jobs reached.")
+                    log("Maximum number of jobs reached.")
                 break
         return ret
 
     def runRebuilds(self, tag=None):
         """Rebuild missing builds"""
-        log ("Determining rebuild order")
+        log("Determining rebuild order")
         # using self.state_idx to track build states
         # make sure state_idx has at least these states
         initial_avail = len(self.state_idx['common'])
@@ -1240,16 +1240,16 @@ class BuildTracker(object):
                 time.sleep(30)
                 continue
             self.report_brief()
-        log ("Rebuilt %i builds" % (len(self.state_idx['common']) - initial_avail))
+        log("Rebuilt %i builds" % (len(self.state_idx['common']) - initial_avail))
 
     def tagSuccessful(self, nvr, tag):
         """tag completed builds into final tags"""
         # TODO: check if there are other reasons why tagging may fail and handle them
         try:
             session.tagBuildBypass(tag, nvr)
-            log ("tagged %s to %s" % (nvr, tag))
+            log("tagged %s to %s" % (nvr, tag))
         except koji.TagError:
-            log ("NOTICE: %s already tagged in %s" % (nvr, tag))
+            log("NOTICE: %s already tagged in %s" % (nvr, tag))
 
 
 def main(args):
@@ -1263,11 +1263,11 @@ def main(args):
     if options.logfile:
         filename = options.logfile
         try:
-            logfile = os.open(filename,os.O_CREAT|os.O_RDWR|os.O_APPEND, 0o777)
+            logfile = os.open(filename, os.O_CREAT | os.O_RDWR | os.O_APPEND, 0o777)
         except:
             logfile = None
     if logfile is not None:
-        log ("logging to %s" % filename)
+        log("logging to %s" % filename)
         os.write(logfile, "\n\n========================================================================\n")
 
     if options.build:
@@ -1275,10 +1275,10 @@ def main(args):
         tracker.scanBuild(binfo['id'], tag=tag)
     else:
         if tag is None:
-            log ("Tag is required")
+            log("Tag is required")
             return
         else:
-            log ("Working on tag %s" % (tag))
+            log("Working on tag %s" % (tag))
             tracker.scanTag(tag)
     tracker.report()
     tracker.runRebuilds(tag)

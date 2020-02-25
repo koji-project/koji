@@ -193,9 +193,9 @@ def get_options():
         return options, '_list_commands', [0, '']
 
     aliases = {
-        'cancel-task' : 'cancel',
-        'cxl' : 'cancel',
-        'list-commands' : 'help',
+        'cancel-task': 'cancel',
+        'cxl': 'cancel',
+        'list-commands': 'help',
         'move-pkg': 'move-build',
         'move': 'move-build',
         'latest-pkg': 'latest-build',
@@ -252,7 +252,7 @@ def fix_pyver(options, logger):
     pyver = getattr(options, 'pyver', None)
     if not pyver:
         return
-    if pyver not in [2,3]:
+    if pyver not in [2, 3]:
         logger.warning('Invalid python version requested: %s', pyver)
     if sys.version_info[0] == pyver:
         return
@@ -278,20 +278,20 @@ def list_commands(categories_chosen=None):
         categories_chosen = list(categories_chosen)
     categories_chosen.sort()
     handlers = []
-    for name,value in globals().items():
+    for name, value in globals().items():
         if name.startswith('handle_'):
-            alias = name.replace('handle_','')
-            alias = alias.replace('_','-')
-            handlers.append((alias,value))
+            alias = name.replace('handle_', '')
+            alias = alias.replace('_', '-')
+            handlers.append((alias, value))
         elif name.startswith('anon_handle_'):
-            alias = name.replace('anon_handle_','')
-            alias = alias.replace('_','-')
-            handlers.append((alias,value))
+            alias = name.replace('anon_handle_', '')
+            alias = alias.replace('_', '-')
+            handlers.append((alias, value))
     handlers.sort()
     print(_("Available commands:"))
     for category in categories_chosen:
         print(_("\n%s:" % categories[category]))
-        for alias,handler in handlers:
+        for alias, handler in handlers:
             desc = handler.__doc__ or ''
             if desc.startswith('[%s] ' % category):
                 desc = desc[len('[%s] ' % category):]

@@ -307,7 +307,7 @@ class SCM(object):
         # check for validity: params should be empty, query may be empty, everything else should be populated
         if params:
             raise koji.GenericError('Unable to parse SCM URL: %s . Params element %s should be empty.' % (self.url, params))
-        if not scheme:  #pragma: no cover
+        if not scheme:  # pragma: no cover
             # should not happen because of is_scm_url check earlier
             raise koji.GenericError('Unable to parse SCM URL: %s . Could not find the scheme element.' % self.url)
         if not fragment:
@@ -699,7 +699,7 @@ class TaskManager(object):
                 # can lead to a world of hurt.
                 # We remove the rootdir contents but leave the rootdir unless it
                 # is really old
-                if age > 3600*24:
+                if age > 3600 * 24:
                     # dir untouched for a day
                     self.logger.info("Removing buildroot: %s" % desc)
                     if topdir and safe_rmtree(topdir, unmount=True, strict=False) != 0:
@@ -850,8 +850,8 @@ class TaskManager(object):
         self.logger.debug("  hosts: %r" % hosts)
         self.logger.debug("  tasks: %r" % tasks)
         # now we organize this data into channel-arch bins
-        bin_hosts = {}  #hosts indexed by bin
-        bins = {}       #bins for this host
+        bin_hosts = {}  # hosts indexed by bin
+        bins = {}  # bins for this host
         our_avail = None
         for host in hosts:
             host['bins'] = []

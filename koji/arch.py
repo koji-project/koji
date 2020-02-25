@@ -10,14 +10,14 @@ import rpm
 _ppc64_native_is_best = True
 
 # dict mapping arch -> ( multicompat, best personality, biarch personality )
-multilibArches = { "x86_64":  ( "athlon", "x86_64", "athlon" ),
-                   "sparc64v": ( "sparcv9v", "sparcv9v", "sparc64v" ),
-                   "sparc64": ( "sparcv9", "sparcv9", "sparc64" ),
-                   "ppc64":   ( "ppc", "ppc", "ppc64" ),
-                   "s390x":   ( "s390", "s390x", "s390" ),
-                   }
+multilibArches = {"x86_64": ("athlon", "x86_64", "athlon"),
+                  "sparc64v": ("sparcv9v", "sparcv9v", "sparc64v"),
+                  "sparc64": ("sparcv9", "sparcv9", "sparc64"),
+                  "ppc64": ("ppc", "ppc", "ppc64"),
+                  "s390x": ("s390", "s390x", "s390"),
+                  }
 if _ppc64_native_is_best:
-    multilibArches["ppc64"] = ( "ppc", "ppc64", "ppc64" )
+    multilibArches["ppc64"] = ("ppc", "ppc64", "ppc64")
 
 arches = {
     # ia32
@@ -34,7 +34,7 @@ arches = {
     "ia32e": "x86_64",
 
     # ppc64le
-    "ppc64le":  "noarch",
+    "ppc64le": "noarch",
 
     # ppc
     "ppc64p7": "ppc64",
@@ -56,16 +56,16 @@ arches = {
     "sparc": "noarch",
 
     # alpha
-    "alphaev7":   "alphaev68",
-    "alphaev68":  "alphaev67",
-    "alphaev67":  "alphaev6",
-    "alphaev6":   "alphapca56",
+    "alphaev7": "alphaev68",
+    "alphaev68": "alphaev67",
+    "alphaev67": "alphaev6",
+    "alphaev6": "alphapca56",
     "alphapca56": "alphaev56",
-    "alphaev56":  "alphaev5",
-    "alphaev5":   "alphaev45",
-    "alphaev45":  "alphaev4",
-    "alphaev4":   "alpha",
-    "alpha":      "noarch",
+    "alphaev56": "alphaev5",
+    "alphaev5": "alphaev45",
+    "alphaev45": "alphaev4",
+    "alphaev4": "alpha",
+    "alpha": "noarch",
 
     # arm
     "armv7l": "armv6l",
@@ -124,7 +124,7 @@ def canCoinstall(arch1, arch2):
     # if both are a multlibarch then we can't coinstall  (x86_64, ia32e)
     # if both are not multilibarches then we can't coinstall (i386, i686)
 
-    if 'noarch' in [arch1, arch2]: # noarch can never coinstall
+    if 'noarch' in [arch1, arch2]:  # noarch can never coinstall
         return False
 
     if isMultiLibArch(arch=arch1) == isMultiLibArch(arch=arch2):
@@ -153,7 +153,7 @@ def isMultiLibArch(arch=None):
     if arch is None:
         arch = canonArch
 
-    if arch not in arches: # or we could check if it is noarch
+    if arch not in arches:  # or we could check if it is noarch
         return 0
 
     if arch in multilibArches:
@@ -219,7 +219,7 @@ def getArchList(thisarch=None):
     # hack hack hack
     # sparc64v is also sparc64 compat
     if archlist[0] == "sparc64v":
-        archlist.insert(1,"sparc64")
+        archlist.insert(1, "sparc64")
 
     # if we're a weirdo arch - add noarch on there.
     if len(archlist) == 1 and archlist[0] == thisarch:
@@ -366,7 +366,7 @@ def getCanonX86_64Arch(arch):
         return "ia32e"
     return arch
 
-def getCanonArch(skipRpmPlatform = 0):
+def getCanonArch(skipRpmPlatform=0):
     if not skipRpmPlatform and os.access("/etc/rpm/platform", os.R_OK):
         try:
             f = open("/etc/rpm/platform", "r")
@@ -398,11 +398,11 @@ def getCanonArch(skipRpmPlatform = 0):
 canonArch = getCanonArch()
 
 # this gets you the "compat" arch of a biarch pair
-def getMultiArchInfo(arch = canonArch):
+def getMultiArchInfo(arch=canonArch):
     if arch in multilibArches:
         return multilibArches[arch]
     if arch in arches and arches[arch] != "noarch":
-        return getMultiArchInfo(arch = arches[arch])
+        return getMultiArchInfo(arch=arches[arch])
     return None
 
 # get the best usual userspace arch for the arch we're on.  this is
@@ -430,7 +430,7 @@ def getBaseArch(myarch=None):
     if not myarch:
         myarch = canonArch
 
-    if myarch not in arches: # this is dumb, but <shrug>
+    if myarch not in arches:  # this is dumb, but <shrug>
         return myarch
 
     if myarch.startswith("sparc64"):
@@ -485,7 +485,7 @@ class ArchStorage(object):
         self.basearch = getBaseArch(myarch=self.canonarch)
         self.archlist = getArchList(thisarch=self.canonarch)
 
-        if not archlist_includes_compat_arch: # - do we bother including i686 and below on x86_64
+        if not archlist_includes_compat_arch:  # - do we bother including i686 and below on x86_64
             limit_archlist = []
             for a in self.archlist:
                 if isMultiLibArch(a) or a == 'noarch':
@@ -495,7 +495,7 @@ class ArchStorage(object):
         self.bestarch = getBestArch(myarch=self.canonarch)
         self.compatarches = getMultiArchInfo(arch=self.canonarch)
         self.multilib = isMultiLibArch(arch=self.canonarch)
-        self.legit_multi_arches = legitMultiArchesInSameLib(arch = self.canonarch)
+        self.legit_multi_arches = legitMultiArchesInSameLib(arch=self.canonarch)
 
     def get_best_arch_from_list(self, archlist, fromarch=None):
         if not fromarch:

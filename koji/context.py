@@ -67,8 +67,8 @@ class ThreadLocal(object):
     def __str__(self):
         id = six.moves._thread.get_ident()
         tdict = object.__getattribute__(self, '_tdict')
-        return "(current thread: %s) {" % id  + \
-            ", ".join(["%s : %s" %(k, v.__dict__) for (k, v) in six.iteritems(tdict)]) + \
+        return "(current thread: %s) {" % id + \
+            ", ".join(["%s : %s" % (k, v.__dict__) for (k, v) in six.iteritems(tdict)]) + \
             "}"
 
     def _threadclear(self):

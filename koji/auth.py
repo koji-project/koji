@@ -321,7 +321,7 @@ class Session(object):
         srvkt = krbV.Keytab(name=context.opts.get('AuthKeytab'), context=ctx)
 
         ac = krbV.AuthContext(context=ctx)
-        ac.flags = krbV.KRB5_AUTH_CONTEXT_DO_SEQUENCE|krbV.KRB5_AUTH_CONTEXT_DO_TIME
+        ac.flags = krbV.KRB5_AUTH_CONTEXT_DO_SEQUENCE | krbV.KRB5_AUTH_CONTEXT_DO_TIME
         conninfo = self.getConnInfo()
         ac.addrs = conninfo
 
@@ -537,8 +537,8 @@ class Session(object):
 
         # generate a random key
         alnum = string.ascii_letters + string.digits
-        key = "%s-%s" %(user_id,
-                        ''.join([random.choice(alnum) for x in range(1, 20)]))
+        key = "%s-%s" % (user_id,
+                         ''.join([random.choice(alnum) for x in range(1, 20)]))
         # use sha? sha.new(phrase).hexdigest()
 
         # get a session id
@@ -556,7 +556,7 @@ class Session(object):
         context.cnx.commit()
 
         # return session info
-        return {'session-id' : session_id, 'session-key' : key}
+        return {'session-id': session_id, 'session-key': key}
 
     def subsession(self):
         "Create a subsession"
@@ -607,7 +607,7 @@ class Session(object):
             return None
         c = context.cnx.cursor()
         q = """SELECT id FROM host WHERE user_id = %(uid)d"""
-        c.execute(q, {'uid' : self.user_id})
+        c.execute(q, {'uid': self.user_id})
         r = c.fetchone()
         c.close()
         if r:

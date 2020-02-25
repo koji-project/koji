@@ -93,7 +93,7 @@ class HandlerRegistry(object):
             if not callable(function):
                 continue
             if prefix is not None:
-                name = "%s.%s" %(prefix, name)
+                name = "%s.%s" % (prefix, name)
             self.register_function(function, name=name)
 
     def register_instance(self, instance):
@@ -128,7 +128,7 @@ class HandlerRegistry(object):
             # bound method, remove first arg
             args, varargs, varkw, defaults = ret
             if args:
-                aname = args[0] #generally "self"
+                aname = args[0]  # generally "self"
                 del args[0]
                 if defaults and aname in defaults:
                     # shouldn't happen, but...
@@ -202,7 +202,7 @@ class ModXMLRPCRequestHandler(object):
 
     def __init__(self, handlers):
         self.traceback = False
-        self.handlers = handlers  #expecting HandlerRegistry instance
+        self.handlers = handlers  # expecting HandlerRegistry instance
         self.logger = logging.getLogger('koji.xmlrpc')
 
     def _get_handler(self, name):
@@ -319,7 +319,7 @@ class ModXMLRPCRequestHandler(object):
             rusage = resource.getrusage(resource.RUSAGE_SELF)
             self.logger.info("Completed method %s for session %s (#%s): %f seconds, rss %s, stime %f",
                              method, context.session.id, context.session.callnum,
-                             time.time()-start,
+                             time.time() - start,
                              rusage.ru_maxrss, rusage.ru_stime)
 
         return ret
@@ -771,7 +771,7 @@ def application(environ, start_response):
                 except Exception:
                     pass
             context._threadclear()
-        return [response] #XXX
+        return [response]  # XXX
 
 
 def get_registry(opts, plugins):

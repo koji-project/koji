@@ -41,8 +41,8 @@ setup(
                  " interface."),
     license="LGPLv2 and GPLv2+",
     url="http://pagure.io/koji/",
-    author = 'Koji developers',
-    author_email = 'koji-devel@lists.fedorahosted.org',
+    author='Koji developers',
+    author_email='koji-devel@lists.fedorahosted.org',
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Environment :: Console",

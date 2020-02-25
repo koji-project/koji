@@ -532,8 +532,8 @@ def eventFromOpts(session, opts):
     if repo:
         rinfo = session.repoInfo(repo)
         if rinfo:
-            return {'id' : rinfo['create_event'],
-                    'ts' : rinfo['create_ts']}
+            return {'id': rinfo['create_event'],
+                    'ts': rinfo['create_ts']}
     return None
 
 
@@ -664,7 +664,7 @@ class adler32_constructor(object):
         return dup
 
     digest_size = 4
-    block_size = 1      #I think
+    block_size = 1  # I think
 
 
 def tsort(parts):

@@ -105,7 +105,7 @@ try:
     import pykickstart.parser as ksparser
     import pykickstart.handlers.control as kscontrol
     import pykickstart.errors as kserrors
-    import iso9660 # from pycdio
+    import iso9660  # from pycdio
     image_enabled = True
 except ImportError:  # pragma: no cover
     image_enabled = False
@@ -145,15 +145,15 @@ def main(options, session):
     def restart(*args):
         logger.warn("Initiating graceful restart")
         tm.restart_pending = True
-    signal.signal(signal.SIGTERM,shutdown)
-    signal.signal(signal.SIGUSR1,restart)
+    signal.signal(signal.SIGTERM, shutdown)
+    signal.signal(signal.SIGUSR1, restart)
     while 1:
         try:
             taken = False
             tm.updateBuildroots()
             tm.updateTasks()
             taken = tm.getNextTask()
-        except (SystemExit,ServerExit,KeyboardInterrupt):
+        except (SystemExit, ServerExit, KeyboardInterrupt):
             logger.warn("Exiting")
             break
         except ServerRestart:
@@ -174,7 +174,7 @@ def main(options, session):
                 # The load-balancing code in getNextTask() will prevent a single builder
                 # from getting overloaded.
                 time.sleep(options.sleeptime)
-        except (SystemExit,KeyboardInterrupt):
+        except (SystemExit, KeyboardInterrupt):
             logger.warn("Exiting")
             break
     logger.warn("Shutting down, please wait...")
@@ -185,15 +185,15 @@ def main(options, session):
 
 class BuildRoot(object):
 
-    def __init__(self,session,options,*args,**kwargs):
+    def __init__(self, session, options, *args, **kwargs):
         self.logger = logging.getLogger("koji.build.buildroot")
         self.session = session
         self.options = options
         if len(args) + len(kwargs) == 1:
             # manage an existing mock buildroot
-            self._load(*args,**kwargs)
+            self._load(*args, **kwargs)
         else:
-            self._new(*args,**kwargs)
+            self._new(*args, **kwargs)
 
     def _load(self, data):
         # manage an existing buildroot
@@ -263,7 +263,7 @@ class BuildRoot(object):
     def _writeMockConfig(self):
         # mock config
         configdir = '/etc/mock/koji'
-        configfile = "%s/%s.cfg" % (configdir,self.name)
+        configfile = "%s/%s.cfg" % (configdir, self.name)
         self.mockcfg = "koji/%s" % self.name
 
         opts = {}
@@ -296,7 +296,7 @@ class BuildRoot(object):
         output = koji.genMockConfig(self.name, self.br_arch, managed=True, **opts)
 
         # write config
-        with open(configfile,'w') as fo:
+        with open(configfile, 'w') as fo:
             fo.write(output)
 
     def _repositoryEntries(self, pi, plugin=False):
@@ -400,7 +400,7 @@ class BuildRoot(object):
 
     def mock(self, args):
         """Run mock"""
-        mockpath = getattr(self.options,"mockpath","/usr/bin/mock")
+        mockpath = getattr(self.options, "mockpath", "/usr/bin/mock")
         cmd = [mockpath, "-r", self.mockcfg]
         # if self.options.debug_mock:
         #    cmd.append('--debug')
@@ -520,13 +520,13 @@ class BuildRoot(object):
                     fd = os.open(outfile, flags, 0o666)
                     os.dup2(fd, 1)
                     os.dup2(fd, 2)
-                if os.getuid() == 0 and hasattr(self.options,"mockuser"):
+                if os.getuid() == 0 and hasattr(self.options, "mockuser"):
                     self.logger.info('Running mock as %s' % self.options.mockuser)
-                    uid,gid = pwd.getpwnam(self.options.mockuser)[2:4]
+                    uid, gid = pwd.getpwnam(self.options.mockuser)[2:4]
                     os.setgroups([grp.getgrnam('mock')[2]])
-                    os.setregid(gid,gid)
-                    os.setreuid(uid,uid)
-                os.execvp(cmd[0],cmd)
+                    os.setregid(gid, gid)
+                    os.setreuid(uid, uid)
+                os.execvp(cmd[0], cmd)
             except:
                 # diediedie
                 print("Failed to exec mock")
@@ -546,7 +546,7 @@ class BuildRoot(object):
             raise koji.BuildrootError("could not init mock buildroot, %s" % self._mockResult(rv))
         # log kernel version
         self.mock(['--chroot', 'uname -r'])
-        self.session.host.setBuildRootList(self.id,self.getPackageList())
+        self.session.host.setBuildRootList(self.id, self.getPackageList())
 
     def _mockResult(self, rv, logfile=None):
         if logfile:
@@ -559,7 +559,7 @@ class BuildRoot(object):
         return parseStatus(rv, 'mock') + msg
 
     def rebuild_srpm(self, srpm):
-        self.session.host.setBuildRootState(self.id,'BUILDING')
+        self.session.host.setBuildRootState(self.id, 'BUILDING')
 
         # unpack SRPM to tempdir
         srpm_dir = os.path.join(self.tmpdir(), 'srpm_unpacked')
@@ -592,7 +592,7 @@ class BuildRoot(object):
 
 
     def build_srpm(self, specfile, sourcedir, source_cmd):
-        self.session.host.setBuildRootState(self.id,'BUILDING')
+        self.session.host.setBuildRootState(self.id, 'BUILDING')
         if source_cmd:
             # call the command defined by source_cmd in the chroot so any required files not stored in
             # the SCM can be retrieved
@@ -619,16 +619,16 @@ class BuildRoot(object):
             self.expire()
             raise koji.BuildError("error building srpm, %s" % self._mockResult(rv))
 
-    def build(self,srpm,arch=None):
+    def build(self, srpm, arch=None):
         # run build
-        self.session.host.setBuildRootState(self.id,'BUILDING')
+        self.session.host.setBuildRootState(self.id, 'BUILDING')
         args = ['--no-clean']
         if arch:
             args.extend(['--target', arch])
         args.extend(['--rebuild', srpm])
         rv = self.mock(args)
 
-        self.session.host.updateBuildRootList(self.id,self.getPackageList())
+        self.session.host.updateBuildRootList(self.id, self.getPackageList())
         if rv:
             self.expire()
             raise koji.BuildError("error building package (arch %s), %s" % (arch, self._mockResult(rv)))
@@ -759,7 +759,7 @@ class BuildRoot(object):
         pathinfo = koji.PathInfo(topdir='')
 
         repodir = pathinfo.repo(self.repo_info['id'], self.repo_info['tag_name'])
-        opts = dict([(k, getattr(self.options, k)) for k in ('topurl','topdir')])
+        opts = dict([(k, getattr(self.options, k)) for k in ('topurl', 'topdir')])
         opts['tempdir'] = self.options.workdir
 
         # prefer librepo
@@ -792,8 +792,8 @@ class BuildRoot(object):
                     repodata = repoMDObject.RepoMD('ourrepo', fo)
                 except:
                     raise koji.BuildError("Unable to parse repomd.xml file for %s" % os.path.join(repodir, self.br_arch))
-            data  = repodata.getData('origin')
-            pkgorigins  = data.location[1]
+            data = repodata.getData('origin')
+            pkgorigins = data.location[1]
         else:
             # shouldn't occur
             raise koji.GenericError("install librepo or yum")
@@ -808,11 +808,11 @@ class BuildRoot(object):
             if six.PY3:
                 fo2 = io.TextIOWrapper(fo2, encoding='utf-8')
             for line in fo2:
-                parts=line.split(None, 2)
+                parts = line.split(None, 2)
                 if len(parts) < 2:
                     continue
                 # first field is formated by yum as [e:]n-v-r.a
-                nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" %  koji.parse_NVRA(parts[0])
+                nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" % koji.parse_NVRA(parts[0])
                 origin_idx[nvra] = parts[1]
             fo2.close()
         # mergerepo starts from a local repo in the task workdir, so internal
@@ -872,7 +872,7 @@ class BuildRoot(object):
             return "%s%s" % (self.rootdir(), base)
 
     def expire(self):
-        self.session.host.setBuildRootState(self.id,'EXPIRED')
+        self.session.host.setBuildRootState(self.id, 'EXPIRED')
 
 
 class ChainBuildTask(BaseTaskHandler):
@@ -984,16 +984,16 @@ class BuildTask(BaseTaskHandler):
                 dest_tag = taginfo['id']
         # policy checks...
         policy_data = {
-            'user_id' : task_info['owner'],
-            'source' : src,
-            'task_id' : self.id,
-            'build_tag' : build_tag,  #id
-            'skip_tag' : bool(self.opts.get('skip_tag')),
+            'user_id': task_info['owner'],
+            'source': src,
+            'task_id': self.id,
+            'build_tag': build_tag,  # id
+            'skip_tag': bool(self.opts.get('skip_tag')),
         }
         if target_info:
             policy_data['target'] = target_info['id'],
         if not self.opts.get('skip_tag'):
-            policy_data['tag'] = dest_tag  #id
+            policy_data['tag'] = dest_tag  # id
         if not SCM.is_scm_url(src) and not opts.get('scratch'):
             # let hub policy decide
             self.session.host.assertPolicy('build_from_srpm', policy_data)
@@ -1002,11 +1002,11 @@ class BuildTask(BaseTaskHandler):
             self.session.host.assertPolicy('build_from_repo_id', policy_data)
         if not repo_info:
             repo_info = self.getRepo(build_tag, builds=opts.get('wait_builds'),
-                                     wait=opts.get('wait_repo'))  #(subtask)
+                                     wait=opts.get('wait_repo'))  # (subtask)
             self.event_id = self.session.getLastEvent()['id']
         srpm = self.getSRPM(src, build_tag, repo_info['id'])
         h = self.readSRPMHeader(srpm)
-        data = koji.get_header_fields(h, ['name','version','release','epoch'])
+        data = koji.get_header_fields(h, ['name', 'version', 'release', 'epoch'])
         data['task_id'] = self.id
         if getattr(self, 'source', False):
             data['source'] = self.source['source']
@@ -1014,7 +1014,7 @@ class BuildTask(BaseTaskHandler):
 
         extra_arches = None
         self.logger.info("Reading package config for %(name)s" % data)
-        pkg_cfg = self.session.getPackageConfig(dest_tag,data['name'],event=self.event_id)
+        pkg_cfg = self.session.getPackageConfig(dest_tag, data['name'], event=self.event_id)
         self.logger.debug("%r" % pkg_cfg)
         if pkg_cfg is not None:
             extra_arches = pkg_cfg.get('extra_arches')
@@ -1036,16 +1036,16 @@ class BuildTask(BaseTaskHandler):
         failany = (self.opts.get('fail_fast', False)
                    or not getattr(self.options, 'build_arch_can_fail', False))
         try:
-            self.extra_information = { "src": src, "data": data, "target": target }
-            srpm,rpms,brmap,logs = self.runBuilds(srpm, build_tag, archlist,
-                                                  repo_info['id'], failany=failany)
+            self.extra_information = {"src": src, "data": data, "target": target}
+            srpm, rpms, brmap, logs = self.runBuilds(srpm, build_tag, archlist,
+                                                     repo_info['id'], failany=failany)
 
             if opts.get('scratch'):
                 # scratch builds do not get imported
-                self.session.host.moveBuildToScratch(self.id,srpm,rpms,logs=logs)
+                self.session.host.moveBuildToScratch(self.id, srpm, rpms, logs=logs)
             else:
-                self.session.host.completeBuild(self.id,build_id,srpm,rpms,brmap,logs=logs)
-        except (SystemExit,ServerExit,KeyboardInterrupt):
+                self.session.host.completeBuild(self.id, build_id, srpm, rpms, brmap, logs=logs)
+        except (SystemExit, ServerExit, KeyboardInterrupt):
             # we do not trap these
             raise
         except:
@@ -1055,11 +1055,11 @@ class BuildTask(BaseTaskHandler):
             # reraise the exception
             raise
         if not self.opts.get('skip_tag') and not self.opts.get('scratch'):
-            self.tagBuild(build_id,dest_tag)
+            self.tagBuild(build_id, dest_tag)
 
     def getSRPM(self, src, build_tag, repo_id):
         """Get srpm from src"""
-        if isinstance(src,str):
+        if isinstance(src, str):
             if SCM.is_scm_url(src):
                 return self.getSRPMFromSCM(src, build_tag, repo_id)
             else:
@@ -1107,7 +1107,7 @@ class BuildTask(BaseTaskHandler):
         # srpm arg should be a path relative to <BASEDIR>/work
         self.logger.debug("Reading SRPM")
         relpath = "work/%s" % srpm
-        opts = dict([(k, getattr(self.options, k)) for k in ('topurl','topdir')])
+        opts = dict([(k, getattr(self.options, k)) for k in ('topurl', 'topdir')])
         opts['tempdir'] = self.workdir
         with koji.openRemoteFile(relpath, **opts) as fo:
             koji.check_rpm_file(fo)
@@ -1127,7 +1127,7 @@ class BuildTask(BaseTaskHandler):
         self.logger.debug('arches: %s' % arches)
         if extra:
             self.logger.debug('Got extra arches: %s' % extra)
-            arches = "%s %s" % (arches,extra)
+            arches = "%s %s" % (arches, extra)
         archlist = arches.split()
         self.logger.debug('base archlist: %r' % archlist)
         # - adjust arch list based on srpm macros
@@ -1138,14 +1138,14 @@ class BuildTask(BaseTaskHandler):
             archlist = buildarchs
             self.logger.debug('archlist after buildarchs: %r' % archlist)
         if exclusivearch:
-            archlist = [ a for a in archlist if a in exclusivearch ]
+            archlist = [a for a in archlist if a in exclusivearch]
             self.logger.debug('archlist after exclusivearch: %r' % archlist)
         if excludearch:
-            archlist = [ a for a in archlist if a not in excludearch ]
+            archlist = [a for a in archlist if a not in excludearch]
             self.logger.debug('archlist after excludearch: %r' % archlist)
         # noarch is funny
         if 'noarch' not in excludearch and \
-                ( 'noarch' in buildarchs or 'noarch' in exclusivearch ):
+                ('noarch' in buildarchs or 'noarch' in exclusivearch):
             archlist.append('noarch')
         override = self.opts.get('arch_override')
         if self.opts.get('scratch') and override:
@@ -1187,9 +1187,9 @@ class BuildTask(BaseTaskHandler):
             excludearch = [koji.canonArch(a) for a in excludearch]
             archlist = list(tag_arches)
             if exclusivearch:
-                archlist = [ a for a in archlist if a in exclusivearch ]
+                archlist = [a for a in archlist if a in exclusivearch]
             if excludearch:
-                archlist = [ a for a in archlist if a not in excludearch ]
+                archlist = [a for a in archlist if a not in excludearch]
             if not archlist:
                 raise koji.BuildError("No valid arches were found. tag %r, "
                                       "exclusive %r, exclude %r" % (tag_arches,
@@ -1231,13 +1231,13 @@ class BuildTask(BaseTaskHandler):
         built_srpm = None
         for (arch, task_id) in six.iteritems(subtasks):
             result = results[task_id]
-            self.logger.debug("DEBUG: %r : %r " % (arch,result,))
+            self.logger.debug("DEBUG: %r : %r " % (arch, result,))
             brootid = result['brootid']
             for fn in result['rpms']:
                 rpms.append(fn)
                 brmap[fn] = brootid
             for fn in result['logs']:
-                logs.setdefault(arch,[]).append(fn)
+                logs.setdefault(arch, []).append(fn)
             if result['srpms']:
                 if built_srpm:
                     raise koji.BuildError("multiple builds returned a srpm.  task %i" % self.id)
@@ -1249,14 +1249,14 @@ class BuildTask(BaseTaskHandler):
         else:
             raise koji.BuildError("could not find a built srpm")
 
-        return srpm,rpms,brmap,logs
+        return srpm, rpms, brmap, logs
 
-    def tagBuild(self,build_id,dest_tag):
+    def tagBuild(self, build_id, dest_tag):
         # XXX - need options to skip tagging and to force tagging
         # create the tagBuild subtask
         # this will handle the "post tests"
         task_id = self.session.host.subtask(method='tagBuild',
-                                            arglist=[dest_tag,build_id,False,None,True],
+                                            arglist=[dest_tag, build_id, False, None, True],
                                             label='tag',
                                             parent=self.id,
                                             arch='noarch')
@@ -1377,7 +1377,7 @@ class BuildArchTask(BaseBuildTask):
 
         # run build
         self.logger.debug("Running build")
-        broot.build(fn,arch)
+        broot.build(fn, arch)
 
         # extract results
         resultdir = broot.resultdir()
@@ -1424,7 +1424,7 @@ class BuildArchTask(BaseBuildTask):
         # upload files to storage server
         uploadpath = broot.getUploadPath()
         for f in rpm_files:
-            self.uploadFile("%s/%s" % (resultdir,f))
+            self.uploadFile("%s/%s" % (resultdir, f))
         self.logger.debug("keep srpm %i %s %s" % (self.id, keep_srpm, opts))
         if keep_srpm:
             if len(srpm_files) == 0:
@@ -1433,19 +1433,19 @@ class BuildArchTask(BaseBuildTask):
                 raise koji.BuildError("multiple srpm files found for task %i: %s" % (self.id, srpm_files))
 
             # Run sanity checks.  Any failures will throw a BuildError
-            self.srpm_sanity_checks("%s/%s" % (resultdir,srpm_files[0]))
+            self.srpm_sanity_checks("%s/%s" % (resultdir, srpm_files[0]))
 
-            self.logger.debug("uploading %s/%s to %s" % (resultdir,srpm_files[0], uploadpath))
-            self.uploadFile("%s/%s" % (resultdir,srpm_files[0]))
+            self.logger.debug("uploading %s/%s to %s" % (resultdir, srpm_files[0], uploadpath))
+            self.uploadFile("%s/%s" % (resultdir, srpm_files[0]))
         if rpm_files:
-            ret['rpms'] = [ "%s/%s" % (uploadpath,f) for f in rpm_files ]
+            ret['rpms'] = ["%s/%s" % (uploadpath, f) for f in rpm_files]
         else:
             ret['rpms'] = []
         if keep_srpm:
-            ret['srpms'] = [ "%s/%s" % (uploadpath,f) for f in srpm_files ]
+            ret['srpms'] = ["%s/%s" % (uploadpath, f) for f in srpm_files]
         else:
             ret['srpms'] = []
-        ret['logs'] = [ "%s/%s" % (uploadpath,f) for f in log_files ]
+        ret['logs'] = ["%s/%s" % (uploadpath, f) for f in log_files]
         if rpmdiff_hash[self.id]:
             self.uploadFile(noarch_hash_path)
 
@@ -1563,7 +1563,7 @@ class BuildMavenTask(BaseBuildTask):
                     st = os.lstat(filepath)
                     mtime = time.localtime(st.st_mtime)
                     info = zipfile.ZipInfo(filepath[roottrim:])
-                    info.external_attr |= 0o120000 << 16 # symlink file type
+                    info.external_attr |= 0o120000 << 16  # symlink file type
                     info.compress_type = zipfile.ZIP_STORED
                     info.date_time = mtime[:6]
                     zfo.writestr(info, content)
@@ -2345,7 +2345,7 @@ class TagBuildTask(BaseTaskHandler):
             # computationally expensive 'post' tests.
 
             # XXX - add more post tests
-            self.session.host.tagBuild(self.id,tag_id,build_id,force=force,fromtag=fromtag)
+            self.session.host.tagBuild(self.id, tag_id, build_id, force=force, fromtag=fromtag)
             self.session.host.tagNotification(True, tag_id, fromtag, build_id, user_id, ignore_success)
         except Exception as e:
             exctype, value = sys.exc_info()[:2]
@@ -2478,7 +2478,7 @@ class BuildBaseImageTask(BuildImageTask):
                 self.session.host.completeImageBuild(self.id, bld_info['id'],
                                                      results)
 
-        except (SystemExit,ServerExit,KeyboardInterrupt):
+        except (SystemExit, ServerExit, KeyboardInterrupt):
             # we do not trap these
             raise
         except:
@@ -2564,7 +2564,7 @@ class BuildApplianceTask(BuildImageTask):
             else:
                 self.session.host.moveImageBuildToScratch(self.id, results)
 
-        except (SystemExit,ServerExit,KeyboardInterrupt):
+        except (SystemExit, ServerExit, KeyboardInterrupt):
             # we do not trap these
             raise
         except:
@@ -2648,7 +2648,7 @@ class BuildLiveCDTask(BuildImageTask):
             else:
                 self.session.host.moveImageBuildToScratch(self.id, results)
 
-        except (SystemExit,ServerExit,KeyboardInterrupt):
+        except (SystemExit, ServerExit, KeyboardInterrupt):
             # we do not trap these
             raise
         except:
@@ -2822,7 +2822,7 @@ class ImageTask(BaseTaskHandler):
     Methods = []
     # default to bind mounting /dev, but allow subclasses to change
     # this
-    bind_opts = {'dirs' : {'/dev' : '/dev',}}
+    bind_opts = {'dirs': {'/dev': '/dev', }}
 
     def makeImgBuildRoot(self, buildtag, repoinfo, arch, inst_group):
         """
@@ -2887,8 +2887,8 @@ class ImageTask(BaseTaskHandler):
         else:
             kspath = self.localPath("work/%s" % ksfile)
 
-        self.uploadFile(kspath) # upload the original ks file
-        return kspath # full absolute path to the file in the chroot
+        self.uploadFile(kspath)  # upload the original ks file
+        return kspath  # full absolute path to the file in the chroot
 
     def readKickstart(self, kspath, opts):
         """
@@ -2941,7 +2941,7 @@ class ImageTask(BaseTaskHandler):
         # in the kickstart file. If --repo wasn't specified, then we use the
         # repo associated with the target passed in initially.
         repo_class = kscontrol.dataMap[self.ks.version]['RepoData']
-        self.ks.handler.repo.repoList = [] # delete whatever the ks file told us
+        self.ks.handler.repo.repoList = []  # delete whatever the ks file told us
         if opts.get('repo'):
             user_repos = opts['repo']
             if isinstance(user_repos, six.string_types):
@@ -2973,7 +2973,7 @@ class ImageTask(BaseTaskHandler):
         if not os.path.exists(kskoji):
             raise koji.LiveCDError("KS file missing: %s" % kskoji)
         self.uploadFile(kskoji)
-        return broot.path_without_to_within(kskoji) # absolute path within chroot
+        return broot.path_without_to_within(kskoji)  # absolute path within chroot
 
     def getImagePackages(self, cachepath):
         """
@@ -3281,7 +3281,7 @@ class LiveCDTask(ImageTask):
         if not opts.get('scratch'):
             hdrlist = self.getImagePackages(os.path.join(broot.rootdir(),
                                                          cachedir[1:]))
-            imgdata ['rpmlist'] = hdrlist
+            imgdata['rpmlist'] = hdrlist
             broot.markExternalRPMs(hdrlist)
 
         broot.expire()
@@ -3432,7 +3432,7 @@ class LiveMediaTask(ImageTask):
                     '--iso-only',
                     ])
 
-        isoname='%s-%s-%s-%s.iso' % (name, arch, version, release)
+        isoname = '%s-%s-%s-%s.iso' % (name, arch, version, release)
         cmd.extend(['--iso-name', isoname,
                     '--releasever', version,
                     ])
@@ -3514,7 +3514,7 @@ class LiveMediaTask(ImageTask):
             # (getImagePackages doesn't work here)
             # hdrlist = self.getImagePackages(os.path.join(broot.rootdir(),
             #                                cachedir[1:]))
-            imgdata ['rpmlist'] = []
+            imgdata['rpmlist'] = []
             # broot.markExternalRPMs(hdrlist)
 
         broot.expire()
@@ -3557,15 +3557,15 @@ class OzImageTask(BaseTaskHandler):
                                srcdir=scmsrcdir)
             kspath = os.path.join(scmsrcdir, os.path.basename(ksfile))
         else:
-            tops = dict([(k, getattr(self.options, k)) for k in ('topurl','topdir')])
+            tops = dict([(k, getattr(self.options, k)) for k in ('topurl', 'topdir')])
             tops['tempdir'] = self.workdir
             with koji.openRemoteFile(ksfile, **tops) as ks_src:
                 kspath = os.path.join(self.workdir, os.path.basename(ksfile))
                 with open(kspath, 'wb') as ks_dest:
                     ks_dest.write(ks_src.read())
         self.logger.debug('uploading kickstart from here: %s' % kspath)
-        self.uploadFile(kspath) # upload the original ks file
-        return kspath # absolute path to the ks file
+        self.uploadFile(kspath)  # upload the original ks file
+        return kspath  # absolute path to the ks file
 
     def readKickstart(self, kspath):
         """
@@ -3611,7 +3611,7 @@ class OzImageTask(BaseTaskHandler):
         # url with --repo, then we substitute that in for the repo(s) specified
         # in the kickstart file. If --repo wasn't specified, then we use the
         # repo associated with the target passed in initially.
-        ks.handler.repo.repoList = [] # delete whatever the ks file told us
+        ks.handler.repo.repoList = []  # delete whatever the ks file told us
         repo_class = kscontrol.dataMap[ks.version]['RepoData']
         # TODO: sensibly use "url" and "repo" commands in kickstart
         if self.opts.get('repo'):
@@ -3654,7 +3654,7 @@ class OzImageTask(BaseTaskHandler):
         # put the new ksfile in the output directory
         if not os.path.exists(kspath):
             raise koji.BuildError("KS file missing: %s" % kspath)
-        self.uploadFile(kspath) # upload the modified ks file
+        self.uploadFile(kspath)  # upload the modified ks file
         return kspath
 
     def makeConfig(self):
@@ -3704,7 +3704,7 @@ class OzImageTask(BaseTaskHandler):
         #      image and attempt to ssh in. This breaks docker image creation.
         # TODO: intelligently guess the distro based on the install tree URL
         distname, distver = self.parseDistro(self.opts.get('distro'))
-        if self.arch in ['armhfp','armv7hnl','armv7hl']:
+        if self.arch in ['armhfp', 'armv7hnl', 'armv7hl']:
             arch = 'armv7l'
         else:
             arch = self.arch
@@ -3841,22 +3841,22 @@ class BaseImageTask(OzImageTask):
         Call out to ImageFactory to build the image(s) we want. Returns a dict
         of details for each image type we had to ask ImageFactory to build
         """
-        fcalls = {'raw':   self._buildBase,
+        fcalls = {'raw': self._buildBase,
                   'raw-xz': self._buildXZ,
                   'tar-gz': self._buildTarGZ,
                   'liveimg-squashfs': self._buildSquashfs,
-                  'vmdk':  self._buildConvert,
-                  'vdi':   self._buildConvert,
-                  'qcow':  self._buildConvert,
+                  'vmdk': self._buildConvert,
+                  'vdi': self._buildConvert,
+                  'qcow': self._buildConvert,
                   'qcow2': self._buildConvert,
-                  'vpc':   self._buildConvert,
-                  'rhevm-ova':   self._buildOVA,
+                  'vpc': self._buildConvert,
+                  'rhevm-ova': self._buildOVA,
                   'vsphere-ova': self._buildOVA,
                   'vagrant-virtualbox': self._buildOVA,
-                  'vagrant-libvirt':    self._buildOVA,
+                  'vagrant-libvirt': self._buildOVA,
                   'vagrant-vmware-fusion': self._buildOVA,
                   'vagrant-hyperv': self._buildOVA,
-                  'docker':      self._buildDocker
+                  'docker': self._buildDocker
                   }
         # add a handler to the logger so that we capture ImageFactory's logging
         self.fhandler = logging.FileHandler(self.ozlog)
@@ -3865,7 +3865,7 @@ class BaseImageTask(OzImageTask):
         self.tlog.setLevel(logging.DEBUG)
         self.tlog.addHandler(self.fhandler)
         images = {}
-        random.seed() # necessary to ensure a unique mac address
+        random.seed()  # necessary to ensure a unique mac address
         params = {'install_script': str(ks.handler),
                   'offline_icicle': True}
         # build the base (raw) image
@@ -3925,7 +3925,7 @@ class BaseImageTask(OzImageTask):
             if scrnshot:
                 ext = scrnshot[-3:]
                 self.uploadFile(scrnshot, remoteName='screenshot.%s' % ext)
-            image.os_plugin.abort() # forcibly tear down the VM
+            image.os_plugin.abort()  # forcibly tear down the VM
             # TODO abort when a task is CANCELLED
             if not self.session.checkUpload('', os.path.basename(self.ozlog)):
                 self.tlog.removeHandler(self.fhandler)
@@ -3972,7 +3972,7 @@ class BaseImageTask(OzImageTask):
         self.logger.debug('templates: %s' % template)
         self.logger.debug('pre-merge params: %s' % params)
         # We enforce various things related to the ks file - do not allow override
-        self._mergeFactoryParams(params, [ 'install_script' ])
+        self._mergeFactoryParams(params, ['install_script'])
         self.logger.debug('post-merge params: %s' % params)
         base = self.bd.builder_for_base_image(template, parameters=params)
         if wait:
@@ -4088,22 +4088,22 @@ class BaseImageTask(OzImageTask):
         if format == 'vagrant-virtualbox':
             format = 'vsphere-ova'
             img_opts['vsphere_ova_format'] = 'vagrant-virtualbox'
-            fixed_params = [ 'vsphere_ova_format' ]
+            fixed_params = ['vsphere_ova_format']
         if format == 'vagrant-libvirt':
             format = 'rhevm-ova'
             img_opts['rhevm_ova_format'] = 'vagrant-libvirt'
-            fixed_params = [ 'rhevm_ova_format' ]
+            fixed_params = ['rhevm_ova_format']
         if format == 'vagrant-vmware-fusion':
             format = 'vsphere-ova'
             img_opts['vsphere_ova_format'] = 'vagrant-vmware-fusion'
             # The initial disk image transform for VMWare Fusion/Workstation requires a "standard" VMDK
             # not the stream oriented format used for VirtualBox or regular VMWare OVAs
             img_opts['vsphere_vmdk_format'] = 'standard'
-            fixed_params = [ 'vsphere_ova_format', 'vsphere_vmdk_format' ]
+            fixed_params = ['vsphere_ova_format', 'vsphere_vmdk_format']
         if format == 'vagrant-hyperv':
             format = 'hyperv-ova'
             img_opts['hyperv_ova_format'] = 'hyperv-vagrant'
-            fixed_params = [ 'hyperv_ova_format' ]
+            fixed_params = ['hyperv_ova_format']
         targ = self._do_target_image(self.base_img.base_image.identifier,
                                      format.replace('-ova', ''), img_opts=img_opts, fixed_params=fixed_params)
         targ2 = self._do_target_image(targ.target_image.identifier, 'OVA',
@@ -4177,7 +4177,7 @@ class BaseImageTask(OzImageTask):
         cmd = ['/usr/bin/qemu-img', 'convert', '-f', 'raw', '-O',
                format, self.base_img.base_image.data, newimg]
         if format == 'qcow':
-            cmd.insert(2, '-c') # enable compression for qcow images
+            cmd.insert(2, '-c')  # enable compression for qcow images
         if format == 'qcow2':
             # qemu-img changed its default behavior at some point to generate a
             # v3 image when the requested output format is qcow2.  We don't
@@ -4262,14 +4262,14 @@ class BaseImageTask(OzImageTask):
             for p in icicle.getElementsByTagName('extra'):
                 bits = p.firstChild.nodeValue.split(',')
                 rpm = {
-                    'name':         bits[0],
-                    'version':      bits[1],
-                    'release':      bits[2],
-                    'arch':         bits[3],
+                    'name': bits[0],
+                    'version': bits[1],
+                    'release': bits[2],
+                    'arch': bits[3],
                     # epoch is a special case, as usual
-                    'size':         int(bits[5]),
-                    'payloadhash':  bits[6],
-                    'buildtime':    int(bits[7])
+                    'size': int(bits[5]),
+                    'payloadhash': bits[6],
+                    'buildtime': int(bits[7])
                 }
                 if rpm['name'] in ['buildsys-build', 'gpg-pubkey']:
                     continue
@@ -4369,15 +4369,15 @@ class BuildIndirectionImageTask(OzImageTask):
                                srcdir=scmsrcdir)
             final_path = os.path.join(scmsrcdir, os.path.basename(filepath))
         else:
-            tops = dict([(k, getattr(self.options, k)) for k in ('topurl','topdir')])
+            tops = dict([(k, getattr(self.options, k)) for k in ('topurl', 'topdir')])
             tops['tempdir'] = self.workdir
             final_path = os.path.join(self.workdir, os.path.basename(filepath))
             with koji.openRemoteFile(filepath, **tops) as remote_fileobj:
                 with open(final_path, 'w') as final_fileobj:
                     shutil.copyfileobj(remote_fileobj, final_fileobj)
         self.logger.debug('uploading retrieved file from here: %s' % final_path)
-        self.uploadFile(final_path) # upload the original ks file
-        return final_path # absolute path to the ks file
+        self.uploadFile(final_path)  # upload the original ks file
+        return final_path  # absolute path to the ks file
 
     def handler(self, opts):
         """Governing task for building an image with two other images using Factory Indirection"""
@@ -4406,7 +4406,7 @@ class BuildIndirectionImageTask(OzImageTask):
             task_diskimage = _match_name(result['files'], ".*qcow2$")
             task_tdl = _match_name(result['files'], "tdl.*xml")
 
-            task_dir = os.path.join(koji.pathinfo.work(),koji.pathinfo.taskrelpath(task_id))
+            task_dir = os.path.join(koji.pathinfo.work(), koji.pathinfo.taskrelpath(task_id))
             diskimage_full = os.path.join(task_dir, task_diskimage)
             tdl_full = os.path.join(task_dir, task_tdl)
 
@@ -4443,7 +4443,7 @@ class BuildIndirectionImageTask(OzImageTask):
                 raise koji.BuildError("Could not retrieve archives for build (%s) from NVR (%s)" %
                                       (build['id'], nvr))
 
-            buildfiles = [ x['filename'] for x in buildarchives ]
+            buildfiles = [x['filename'] for x in buildarchives]
             builddir = koji.pathinfo.imagebuild(build)
 
             def _match_name(inlist, namere):
@@ -4509,7 +4509,7 @@ class BuildIndirectionImageTask(OzImageTask):
             release = self.getRelease(name, version)
         if '-' in version:
             raise koji.ApplianceError('The Version may not have a hyphen')
-        if '-' in  release:
+        if '-' in release:
             raise koji.ApplianceError('The Release may not have a hyphen')
 
         indirection_template = self.fetchHubOrSCM(opts.get('indirection_template'),
@@ -4570,8 +4570,8 @@ class BuildIndirectionImageTask(OzImageTask):
             results_loc = "/" + results_loc
         params = {'utility_image': str(utility_factory_image.identifier),
                   'utility_customizations': utility_customizations,
-                  'results_location': results_loc }
-        random.seed() # necessary to ensure a unique mac address
+                  'results_location': results_loc}
+        random.seed()  # necessary to ensure a unique mac address
         try:
             try:
                 # Embedded deep debug option - if template is just the string MOCK
@@ -4584,7 +4584,7 @@ class BuildIndirectionImageTask(OzImageTask):
                     target.target_image = target_image
                     with open(target_image.data, "w") as f:
                         f.write("Mock build from task ID: %s" % self.id)
-                    target_image.status='COMPLETE'
+                    target_image.status = 'COMPLETE'
                 else:
                     target = bd.builder_for_target_image('indirection',
                                                          image_id=base_factory_image.identifier,
@@ -4609,18 +4609,18 @@ class BuildIndirectionImageTask(OzImageTask):
 
         self.uploadFile(target.target_image.data, remoteName=os.path.basename(results_loc))
 
-        myresults = { }
+        myresults = {}
         myresults['task_id'] = self.id
-        myresults['files'] = [ os.path.basename(results_loc) ]
-        myresults['logs'] = [ os.path.basename(ozlog) ]
+        myresults['files'] = [os.path.basename(results_loc)]
+        myresults['logs'] = [os.path.basename(ozlog)]
         myresults['arch'] = opts['arch']
         # TODO: This should instead track the two input images: base and utility
-        myresults['rpmlist'] = [ ]
+        myresults['rpmlist'] = []
 
         # This is compatible with some helper methods originally implemented for the base
         # image build.  In the original usage, the dict contains an entry per build arch
         # TODO: If adding multiarch support, keep this in mind
-        results = { str(self.id): myresults }
+        results = {str(self.id): myresults}
         self.logger.debug('Image Results for hub: %s' % results)
 
         if opts['scratch']:
@@ -4640,7 +4640,7 @@ class BuildIndirectionImageTask(OzImageTask):
         report = ''
         if opts.get('scratch'):
             respath = ', '.join(
-                [os.path.join(koji.pathinfo.work(), koji.pathinfo.taskrelpath(tid)) for tid in [self.id] ])
+                [os.path.join(koji.pathinfo.work(), koji.pathinfo.taskrelpath(tid)) for tid in [self.id]])
             report += 'Scratch '
         else:
             respath = koji.pathinfo.imagebuild(bld_info)
@@ -4773,7 +4773,7 @@ class BuildSRPMFromSCMTask(BaseBuildTask):
                     'setup_dns': True,
                     'repo_id': repo_id}
         if self.options.scm_credentials_dir is not None and os.path.isdir(self.options.scm_credentials_dir):
-            rootopts['bind_opts'] = {'dirs' : {self.options.scm_credentials_dir : '/credentials',}}
+            rootopts['bind_opts'] = {'dirs': {self.options.scm_credentials_dir: '/credentials', }}
             # Force internal_dev_setup back to true because bind_opts is used to turn it off
             rootopts['internal_dev_setup'] = True
         br_arch = self.find_arch('noarch', self.session.host.getHost(), self.session.getBuildConfig(build_tag['id'], event=event_id))
@@ -5092,9 +5092,9 @@ Build Info: %(weburl)s/buildinfo?buildID=%(build_id)i\r
 
         failure = failure_info or cancel_info or ''
 
-        tasks = {'failed' : [task for task in task_data.values() if task['state'] == 'failed'],
-                 'canceled' : [task for task in task_data.values() if task['state'] == 'canceled'],
-                 'closed' : [task for task in task_data.values() if task['state'] == 'closed']}
+        tasks = {'failed': [task for task in task_data.values() if task['state'] == 'failed'],
+                 'canceled': [task for task in task_data.values() if task['state'] == 'canceled'],
+                 'closed': [task for task in task_data.values() if task['state'] == 'closed']}
 
         srpms = []
         for taskinfo in task_data.values():
@@ -5143,7 +5143,7 @@ Build Info: %(weburl)s/buildinfo?buildID=%(build_id)i\r
                     output += "\r\n"
                 output += "\r\n"
 
-        changelog = koji.util.formatChangelog(self.session.getChangelogEntries(build_id, queryOpts={'limit': 3})).replace("\n","\r\n")
+        changelog = koji.util.formatChangelog(self.session.getChangelogEntries(build_id, queryOpts={'limit': 3})).replace("\n", "\r\n")
         if changelog:
             changelog = "Changelog:\r\n%s" % changelog
 
@@ -5230,7 +5230,7 @@ class NewRepoTask(BaseTaskHandler):
             results = self.wait(to_list(subtasks.values()), all=True, failany=True)
             for (arch, task_id) in six.iteritems(subtasks):
                 data[arch] = results[task_id]
-                self.logger.debug("DEBUG: %r : %r " % (arch,data[arch],))
+                self.logger.debug("DEBUG: %r : %r " % (arch, data[arch],))
 
         # finalize
         kwargs = {}
@@ -5448,7 +5448,7 @@ class createDistRepoTask(BaseTaskHandler):
               "ppc64": ("ppc64p7", "ppc64pseries", "ppc64iseries", "ppc64", "noarch"),
               "ppc64le": ("ppc64le", "noarch"),
               "s390": ("s390", "noarch"),
-              "s390x": ("s390x",  "noarch"),
+              "s390x": ("s390x", "noarch"),
               "sparc": ("sparcv9v", "sparcv9", "sparcv8", "sparc", "noarch"),
               "sparc64": ("sparc64v", "sparc64", "noarch"),
               "alpha": ("alphaev6", "alphaev56", "alphaev5", "alpha", "noarch"),
@@ -5703,7 +5703,7 @@ enabled=1
         self.session.uploadWrapper(yconfig_path, self.uploadpath,
                                    os.path.basename(yconfig_path))
         conf = dnf.conf.Conf()
-        conf.reposdir = [] # don't use system repos at all
+        conf.reposdir = []  # don't use system repos at all
         conf.read(yconfig_path)
         dnfbase = dnf.Base(conf)
         if hasattr(koji.arch, 'ArchStorage'):
@@ -6243,7 +6243,7 @@ def get_options():
                     defaults[name] = int(value)
                 except ValueError:
                     quit("value for %s option must be a valid integer" % name)
-            elif name in ['offline_retry', 'use_createrepo_c',  'createrepo_skip_stat',
+            elif name in ['offline_retry', 'use_createrepo_c', 'createrepo_skip_stat',
                           'createrepo_update', 'use_fast_upload', 'support_rpm_source_layout',
                           'krb_rdns', 'krb_canon_host', 'build_arch_can_fail', 'no_ssl_verify',
                           'log_timestamps']:

@@ -144,121 +144,121 @@ def parse_task_params(method, params):
 LEGACY_SIGNATURES = {
     # key is method name, value is list of possible signatures
     # signatures are like getargspec -- args, varargs, keywords, defaults
-    'chainbuild' : [
+    'chainbuild': [
         [['srcs', 'target', 'opts'], None, None, (None,)],
     ],
-    'waitrepo' : [
+    'waitrepo': [
         [['tag', 'newer_than', 'nvrs'], None, None, (None, None)],
     ],
-    'createLiveMedia' : [
+    'createLiveMedia': [
         [['name', 'version', 'release', 'arch', 'target_info', 'build_tag', 'repo_info', 'ksfile', 'opts'], None, None, (None,)],
     ],
-    'createAppliance' : [
+    'createAppliance': [
         [['name', 'version', 'release', 'arch', 'target_info', 'build_tag', 'repo_info', 'ksfile', 'opts'], None, None, (None,)],
     ],
-    'livecd' : [
+    'livecd': [
         [['name', 'version', 'arch', 'target', 'ksfile', 'opts'], None, None, (None,)],
     ],
-    'buildNotification' : [
+    'buildNotification': [
         [['recipients', 'build', 'target', 'weburl'], None, None, None],
     ],
-    'buildMaven' : [
+    'buildMaven': [
         [['url', 'build_tag', 'opts'], None, None, (None,)],
     ],
-    'build' : [
+    'build': [
         [['src', 'target', 'opts'], None, None, (None,)],
     ],
-    'buildSRPMFromSCM' : [
+    'buildSRPMFromSCM': [
         [['url', 'build_tag', 'opts'], None, None, (None,)],
     ],
-    'rebuildSRPM' : [
+    'rebuildSRPM': [
         [['srpm', 'build_tag', 'opts'], None, None, (None,)],
     ],
-    'createrepo' : [
+    'createrepo': [
         [['repo_id', 'arch', 'oldrepo'], None, None, None],
     ],
-    'livemedia' : [
+    'livemedia': [
         [['name', 'version', 'arches', 'target', 'ksfile', 'opts'], None, None, (None,)],
     ],
-    'indirectionimage' : [
+    'indirectionimage': [
         [['opts'], None, None, None],
     ],
-    'wrapperRPM' : [
+    'wrapperRPM': [
         [['spec_url', 'build_target', 'build', 'task', 'opts'], None, None, (None,)],
     ],
-    'createLiveCD' : [
+    'createLiveCD': [
         [['name', 'version', 'release', 'arch', 'target_info', 'build_tag', 'repo_info', 'ksfile', 'opts'], None, None, (None,)],
     ],
-    'appliance' : [
+    'appliance': [
         [['name', 'version', 'arch', 'target', 'ksfile', 'opts'], None, None, (None,)],
     ],
-    'image' : [
+    'image': [
         [['name', 'version', 'arches', 'target', 'inst_tree', 'opts'], None, None, (None,)],
     ],
-    'tagBuild' : [
+    'tagBuild': [
         [['tag_id', 'build_id', 'force', 'fromtag', 'ignore_success'], None, None, (False, None, False)],
     ],
-    'chainmaven' : [
+    'chainmaven': [
         [['builds', 'target', 'opts'], None, None, (None,)],
     ],
-    'newRepo' : [
+    'newRepo': [
         [['tag', 'event', 'src', 'debuginfo', 'separate_src'], None, None, (None, False, False, False)],
     ],
-    'createImage' : [
+    'createImage': [
         [['name', 'version', 'release', 'arch', 'target_info', 'build_tag', 'repo_info', 'inst_tree', 'opts'], None, None, (None,)],
     ],
-    'tagNotification' : [
+    'tagNotification': [
         [['recipients', 'is_successful', 'tag_info', 'from_info', 'build_info', 'user_info', 'ignore_success', 'failure_msg'], None, None, (None, '')],
     ],
-    'buildArch' : [
+    'buildArch': [
         [['pkg', 'root', 'arch', 'keep_srpm', 'opts'], None, None, (None,)],
     ],
-    'maven' : [
+    'maven': [
         [['url', 'target', 'opts'], None, None, (None,)],
     ],
-    'waittest' : [
+    'waittest': [
         [['count', 'seconds'], None, None, (10,)],
     ],
-    'default' : [
+    'default': [
         [[], 'args', 'opts', None],
     ],
-    'shutdown' : [
+    'shutdown': [
         [[], None, None, None],
     ],
-    'restartVerify' : [
+    'restartVerify': [
         [['task_id', 'host'], None, None, None],
     ],
-    'someMethod' : [
+    'someMethod': [
         [[], 'args', None, None],
     ],
-    'restart' : [
+    'restart': [
         [['host'], None, None, None],
     ],
-    'fork' : [
+    'fork': [
         [['n', 'm'], None, None, (5, 37)],
     ],
-    'sleep' : [
+    'sleep': [
         [['n'], None, None, None],
     ],
-    'dependantTask' : [
+    'dependantTask': [
         [['wait_list', 'task_list'], None, None, None],
     ],
-    'subtask' : [
+    'subtask': [
         [['n'], None, None, (4,)],
     ],
-    'restartHosts' : [
+    'restartHosts': [
         [['options'], None, None, (None,)],
     ],
-    'runroot' : [
+    'runroot': [
         [['root', 'arch', 'command', 'keep', 'packages', 'mounts', 'repo_id', 'skip_setarch', 'weight', 'upload_logs', 'new_chroot'], None, None, (False, [], [], None, False, None, None, False)],
     ],
-    'distRepo' : [
+    'distRepo': [
         [['tag', 'repo_id', 'keys', 'task_opts'], None, None, None],
     ],
-    'createdistrepo' : [
+    'createdistrepo': [
         [['tag', 'repo_id', 'arch', 'keys', 'opts'], None, None, None],
     ],
-    'saveFailedTree' : [
+    'saveFailedTree': [
         [['buildrootID', 'full'], None, None, (False,)],
     ],
 }
@@ -278,7 +278,7 @@ class BaseTaskHandler(object):
     Foreground = False
 
     def __init__(self, id, method, params, session, options, workdir=None):
-        self.id = id   #task id
+        self.id = id  # task id
         if method not in self.Methods:
             raise koji.GenericError('method "%s" is not supported' % method)
         self.method = method
@@ -641,7 +641,7 @@ class SubtaskTask(BaseTaskHandler):
     def handler(self, n=4):
         if n > 0:
             task_id = self.session.host.subtask(method='subtask',
-                                                arglist=[n-1],
+                                                arglist=[n - 1],
                                                 label='foo',
                                                 parent=self.id)
             self.wait(task_id)
@@ -715,14 +715,14 @@ class RestartHostsTask(BaseTaskHandler):
         hostquery = {'enabled': True}
         if 'channel' in options:
             chan = self.session.getChannel(options['channel'], strict=True)
-            hostquery['channelID']= chan['id']
+            hostquery['channelID'] = chan['id']
         if 'arches' in options:
             hostquery['arches'] = options['arches']
         hosts = self.session.listHosts(**hostquery)
         if not hosts:
             raise koji.GenericError("No matching hosts")
 
-        timeout = options.get('timeout', 3600*24)
+        timeout = options.get('timeout', 3600 * 24)
 
         # fire off the subtasks
         this_host = self.session.host.getID()

@@ -108,13 +108,13 @@ RPM_FILEDIGESTALGO_IDS = {
     # Taken from RFC 4880
     # A missing algo ID means md5
     None: 'MD5',
-    1:    'MD5',
-    2:    'SHA1',
-    3:    'RIPEMD160',
-    8:    'SHA256',
-    9:    'SHA384',
-    10:   'SHA512',
-    11:   'SHA224'
+    1: 'MD5',
+    2: 'SHA1',
+    3: 'RIPEMD160',
+    8: 'SHA256',
+    9: 'SHA384',
+    10: 'SHA512',
+    11: 'SHA224'
 }
 
 # rpm 4.12 introduces optional deps, but they can also be backported in some
@@ -288,7 +288,7 @@ DEFAULT_AUTH_TIMEOUT = 60
 # BEGIN kojikamid dup #
 
 # Exceptions
-PythonImportError = ImportError # will be masked by koji's one
+PythonImportError = ImportError  # will be masked by koji's one
 
 class GenericError(Exception):
     """Base class for our custom exceptions"""
@@ -640,8 +640,8 @@ class RawHeader(object):
         for i in range(il):
             entry = []
             for j in range(4):
-                ofs = 16 + i*16 + j*4
-                data = [_ord(x) for x in self.header[ofs:ofs+4]]
+                ofs = 16 + i * 16 + j * 4
+                data = [_ord(x) for x in self.header[ofs:ofs + 4]]
                 entry.append(multibyte(data))
 
             # print("Tag: %d, Type: %d, Offset: %x, Count: %d" % tuple(entry))
@@ -693,7 +693,7 @@ class RawHeader(object):
                 # integer
                 n = 1 << (dtype - 2)
                 for i in range(count):
-                    data = [_ord(x) for x in self.header[pos:pos+n]]
+                    data = [_ord(x) for x in self.header[pos:pos + n]]
                     print("%r" % data)
                     num = multibyte(data)
                     print("Int(%d): %d" % (n, num))
@@ -702,23 +702,23 @@ class RawHeader(object):
             elif dtype == 6:
                 # string (null terminated)
                 end = self.header.find(six.b('\0'), pos)
-                print("String(%d): %r" % (end-pos, self.header[pos:end]))
+                print("String(%d): %r" % (end - pos, self.header[pos:end]))
                 next = end + 1
             elif dtype == 7:
-                print("Data: %s" % hex_string(self.header[pos:pos+count]))
-                next = pos+count
+                print("Data: %s" % hex_string(self.header[pos:pos + count]))
+                next = pos + count
             elif dtype == 8:
                 # string array
                 for i in range(count):
                     end = self.header.find(six.b('\0'), pos)
-                    print("String(%d): %r" % (end-pos, self.header[pos:end]))
+                    print("String(%d): %r" % (end - pos, self.header[pos:end]))
                     pos = end + 1
                 next = pos
             elif dtype == 9:
                 # unicode string array
                 for i in range(count):
                     end = self.header.find(six.b('\0'), pos)
-                    print("i18n(%d): %r" % (end-pos, self.header[pos:end]))
+                    print("i18n(%d): %r" % (end - pos, self.header[pos:end]))
                     pos = end + 1
                 next = pos
             else:
@@ -746,7 +746,7 @@ class RawHeader(object):
         if dtype >= 2 and dtype <= 5:
             n = 1 << (dtype - 2)
             # n-byte integer
-            data = [_ord(x) for x in self.header[pos:pos+n]]
+            data = [_ord(x) for x in self.header[pos:pos + n]]
             return multibyte(data)
         elif dtype == 6:
             # string (null terminated)
@@ -754,7 +754,7 @@ class RawHeader(object):
             return self.header[pos:end]
         elif dtype == 7:
             # raw data
-            return self.header[pos:pos+count]
+            return self.header[pos:pos + count]
         else:
             # XXX - not all valid data types are handled
             raise GenericError("Unable to read header data type: %x" % dtype)
@@ -806,7 +806,7 @@ def __parse_packet_header(pgp_packet):
             offset = 1
             length = len(pgp_packet) - offset
         else:
-            (fmt, offset) = {0:('>B', 2), 1:('>H', 3), 2:('>I', 5)}[len_type]
+            (fmt, offset) = {0: ('>B', 2), 1: ('>H', 3), 2: ('>I', 5)}[len_type]
             length = struct.unpack(fmt, pgp_packet[1:offset])[0]
     else:
         tag = byte0 & 0x3F
@@ -843,8 +843,8 @@ def __subpacket_key_ids(subs):
             length = struct.unpack('>I', subs[1:5])[0]
             off = 5
         if _ord(subs[off]) == 16:
-            res.append(subs[off+1 : off+length])
-        subs = subs[off+length:]
+            res.append(subs[off + 1: off + length])
+        subs = subs[off + length:]
     return res
 
 def get_sigpacket_key_id(sigpacket):
@@ -858,9 +858,9 @@ def get_sigpacket_key_id(sigpacket):
         sub_len = struct.unpack('>H', sigpacket[4:6])[0]
         off = 6 + sub_len
         key_ids = __subpacket_key_ids(sigpacket[6:off])
-        sub_len = struct.unpack('>H', sigpacket[off : off+2])[0]
+        sub_len = struct.unpack('>H', sigpacket[off: off + 2])[0]
         off += 2
-        key_ids += __subpacket_key_ids(sigpacket[off : off+sub_len])
+        key_ids += __subpacket_key_ids(sigpacket[off: off + sub_len])
         if len(key_ids) != 1:
             raise NotImplementedError(
                 'Unexpected number of key IDs: %s' % len(key_ids))
@@ -907,7 +907,7 @@ def get_rpm_header(f, ts=None):
         raise GenericError("rpm's python bindings are not installed")
     if ts is None:
         ts = rpm.TransactionSet()
-        ts.setVSFlags(rpm._RPMVSF_NOSIGNATURES|rpm._RPMVSF_NODIGESTS)
+        ts.setVSFlags(rpm._RPMVSF_NOSIGNATURES | rpm._RPMVSF_NODIGESTS)
     if isinstance(f, six.string_types):
         fo = open(f, "rb")
     else:
@@ -1007,8 +1007,8 @@ def parse_NVR(nvr):
     p1 = nvr.rfind("-", 0, p2)
     if p1 == -1 or p1 == p2 - 1:
         raise GenericError("invalid format: %s" % nvr)
-    ret['release'] = nvr[p2+1:]
-    ret['version'] = nvr[p1+1:p2]
+    ret['release'] = nvr[p2 + 1:]
+    ret['version'] = nvr[p1 + 1:p2]
     ret['name'] = nvr[:p1]
     epochIndex = ret['name'].find(':')
     if epochIndex == -1:
@@ -1031,7 +1031,7 @@ def parse_NVRA(nvra):
     p3 = nvra.rfind(".")
     if p3 == -1 or p3 == len(nvra) - 1:
         raise GenericError("invalid format: %s" % nvra)
-    arch = nvra[p3+1:]
+    arch = nvra[p3 + 1:]
     ret = parse_NVR(nvra[:p3])
     ret['arch'] = arch
     if arch == 'src':
@@ -1427,7 +1427,7 @@ def generate_comps(groups, expand_groups=False):
         if expand_groups and g['grouplist']:
             # add a requires entry for all packages in groups required by buildgroup
             need = [req['name'] for req in g['grouplist']]
-            seen_grp = {g['name'] : 1}
+            seen_grp = {g['name']: 1}
             seen_pkg = {}
             for p in g['packagelist']:
                 seen_pkg[p['package']] = 1
@@ -1503,9 +1503,9 @@ def genMockConfig(name, arch, managed=False, repoid=None, tag_name=None, **opts)
     # rely on the mock defaults being correct
     # and only includes changes from the defaults here
     config_opts = {
-        'root' : name,
-        'basedir' : mockdir,
-        'target_arch' : opts.get('target_arch', arch),
+        'root': name,
+        'basedir': mockdir,
+        'target_arch': opts.get('target_arch', arch),
         'chroothome': '/builddir',
         # Use the group data rather than a generated rpm
         'chroot_setup_cmd': 'groupinstall %s' % opts.get('install_group', 'build'),
@@ -1578,9 +1578,9 @@ name=build
     }
 
     macros = {
-        '%_rpmfilename' : '%%{NAME}-%%{VERSION}-%%{RELEASE}.%%{ARCH}.rpm',
-        '%vendor' : opts.get('vendor', 'Koji'),
-        '%packager' : opts.get('packager', 'Koji'),
+        '%_rpmfilename': '%%{NAME}-%%{VERSION}-%%{RELEASE}.%%{ARCH}.rpm',
+        '%vendor': opts.get('vendor', 'Koji'),
+        '%packager': opts.get('packager', 'Koji'),
         '%distribution': opts.get('distribution', 'Unknown')
     }
 
@@ -1747,18 +1747,18 @@ def config_directory_contents(dir_name, strict=False):
 
 def read_config(profile_name, user_config=None):
     config_defaults = {
-        'server' : 'http://localhost/kojihub',
-        'weburl' : 'http://localhost/koji',
-        'topurl' : None,
-        'pkgurl' : None,
-        'topdir' : '/mnt/koji',
-        'max_retries' : None,
+        'server': 'http://localhost/kojihub',
+        'weburl': 'http://localhost/koji',
+        'topurl': None,
+        'pkgurl': None,
+        'topdir': '/mnt/koji',
+        'max_retries': None,
         'retry_interval': None,
-        'anon_retry' : None,
-        'offline_retry' : None,
-        'offline_retry_interval' : None,
-        'timeout' : DEFAULT_REQUEST_TIMEOUT,
-        'auth_timeout' : DEFAULT_AUTH_TIMEOUT,
+        'anon_retry': None,
+        'offline_retry': None,
+        'offline_retry_interval': None,
+        'timeout': DEFAULT_REQUEST_TIMEOUT,
+        'auth_timeout': DEFAULT_AUTH_TIMEOUT,
         'use_fast_upload': False,
         'upload_blocksize': 1048576,
         'poll_interval': 6,
@@ -2109,7 +2109,7 @@ def is_requests_cert_error(e):
 def is_cert_error(e):
     """Determine if an OpenSSL error is due to a bad cert"""
 
-    if SSL_Error is None:  #pragma: no cover
+    if SSL_Error is None:  # pragma: no cover
         # import failed, so we can't determine
         raise Exception("OpenSSL library did not load")
     if not isinstance(e, SSL_Error):
@@ -2980,14 +2980,14 @@ class ClientSession(object):
             tries = 0
             while True:
                 if debug:
-                    self.logger.debug("uploadFile(%r,%r,%r,%r,%r,...)" %(path, name, sz, digest, offset))
+                    self.logger.debug("uploadFile(%r,%r,%r,%r,%r,...)" % (path, name, sz, digest, offset))
                 if self.callMethod('uploadFile', path, name, sz, digest, offset, data, **volopts):
                     break
                 if tries <= retries:
                     tries += 1
                     continue
                 else:
-                    raise GenericError("Error uploading file %s, offset %d" %(path, offset))
+                    raise GenericError("Error uploading file %s, offset %d" % (path, offset))
             if size == 0:
                 break
             ofs += size
@@ -3127,7 +3127,7 @@ class MultiCallSession(object):
             self._session.logger.debug(
                 "MultiCall with batch size %i, calls/groups(%i/%i)",
                 batch, len(calls), round(len(calls) // batch))
-            batches = [calls[i:i+batch] for i in range(0, len(calls), batch)]
+            batches = [calls[i:i + batch] for i in range(0, len(calls), batch)]
         else:
             batches = [calls]
         results = []
@@ -3502,7 +3502,7 @@ def add_file_logger(logger, fn):
         return
     if not os.access(fn, os.W_OK):
         return
-    handler = logging.handlers.RotatingFileHandler(fn, maxBytes=1024*1024*10, backupCount=5)
+    handler = logging.handlers.RotatingFileHandler(fn, maxBytes=1024 * 1024 * 10, backupCount=5)
     handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s'))
     logging.getLogger(logger).addHandler(handler)
 

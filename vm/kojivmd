@@ -214,8 +214,8 @@ def main(options, session):
     def restart(*args):
         logger.warn("Initiating graceful restart")
         tm.restart_pending = True
-    signal.signal(signal.SIGTERM,shutdown)
-    signal.signal(signal.SIGUSR1,restart)
+    signal.signal(signal.SIGTERM, shutdown)
+    signal.signal(signal.SIGUSR1, restart)
     taken = False
     tm.cleanupAllVMs()
     while True:
@@ -224,7 +224,7 @@ def main(options, session):
             tm.updateTasks()
             taken = tm.getNextTask()
             tm.cleanupExpiredVMs()
-        except (SystemExit,ServerExit,KeyboardInterrupt):
+        except (SystemExit, ServerExit, KeyboardInterrupt):
             logger.warn("Exiting")
             break
         except ServerRestart:
@@ -245,7 +245,7 @@ def main(options, session):
                 # The load-balancing code in getNextTask() will prevent a single builder
                 # from getting overloaded.
                 time.sleep(options.sleeptime)
-        except (SystemExit,KeyboardInterrupt):
+        except (SystemExit, KeyboardInterrupt):
             logger.warn("Exiting")
             break
     logger.warn("Shutting down, please wait...")
@@ -293,7 +293,7 @@ class DaemonXMLRPCServer(six.moves.xmlrpc_server.SimpleXMLRPCServer):
     if sys.version_info[:2] <= (2, 4):
         # Copy and paste from SimpleXMLRPCServer, with the addition of passing
         # allow_none=True to xmlrpclib.dumps()
-        def _marshaled_dispatch(self, data, dispatch_method = None):
+        def _marshaled_dispatch(self, data, dispatch_method=None):
             params, method = six.moves.xmlrpc_client.loads(data)
             try:
                 if dispatch_method is not None:
@@ -344,11 +344,11 @@ class WinBuildTask(MultiPlatformTask):
             if not repo_info:
                 raise koji.BuildError('invalid repo ID: %s' % repo_id)
             policy_data = {
-                'user_id' : task_info['owner'],
-                'source' : source_url,
-                'task_id' : self.id,
-                'build_tag' : build_tag['id'],
-                'skip_tag' : bool(opts.get('skip_tag')),
+                'user_id': task_info['owner'],
+                'source': source_url,
+                'task_id': self.id,
+                'build_tag': build_tag['id'],
+                'skip_tag': bool(opts.get('skip_tag')),
                 'target': target_info['id']
             }
             if not opts.get('skip_tag'):
@@ -840,7 +840,7 @@ class VMExecTask(BaseTaskHandler):
 
         conn = libvirt.open(None)
         clone_name = self.clone(conn, name, opts)
-        self.logger.debug('Cloned VM %s to %s',name, clone_name)
+        self.logger.debug('Cloned VM %s to %s', name, clone_name)
         try:
             vm = conn.lookupByName(clone_name)
             macaddr = self.macAddr(vm)

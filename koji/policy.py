@@ -288,7 +288,7 @@ class SimpleRuleSet(object):
                 raise Exception("bad policy line: %s" % line)
             negate = True
         tests = line[:pos]
-        action = line[pos+2:]
+        action = line[pos + 2:]
         tests = [self.get_test_handler(x) for x in tests.split('&&')]
         action = action.strip()
         # just return action = { for nested rules

@@ -62,7 +62,7 @@ def _setUserCookie(environ, user):
     value = "%s:%s" % (shasum.hexdigest(), value)
     cookies = six.moves.http_cookies.SimpleCookie()
     cookies['user'] = value
-    c = cookies['user']  #morsel instance
+    c = cookies['user']  # morsel instance
     c['secure'] = True
     c['path'] = os.path.dirname(environ['SCRIPT_NAME'])
     # the Cookie module treats integer expire times as relative seconds
@@ -75,7 +75,7 @@ def _setUserCookie(environ, user):
 def _clearUserCookie(environ):
     cookies = six.moves.http_cookies.SimpleCookie()
     cookies['user'] = ''
-    c = cookies['user']  #morsel instance
+    c = cookies['user']  # morsel instance
     c['path'] = os.path.dirname(environ['SCRIPT_NAME'])
     c['expires'] = 0
     out = c.OutputString()
@@ -697,7 +697,7 @@ def taskinfo(environ, taskID):
     pathinfo = koji.PathInfo(topdir=topurl)
     values['pathinfo'] = pathinfo
 
-    paths = [] # (volume, relpath) tuples
+    paths = []  # (volume, relpath) tuples
     for relname, volumes in six.iteritems(server.listTaskOutput(task['id'], all_volumes=True)):
         paths += [(volume, relname) for volume in volumes]
     values['output'] = sorted(paths, key=_sortByExtAndName)
@@ -1071,7 +1071,7 @@ def tagparent(environ, tagID, parentID, action):
                 if datum['priority'] > maxPriority:
                     maxPriority = datum['priority']
             values['maxPriority'] = maxPriority
-            inheritanceData = [datum for datum in  inheritanceData \
+            inheritanceData = [datum for datum in inheritanceData \
                                if datum['parent_id'] == parent['id']]
             if len(inheritanceData) == 0:
                 values['inheritanceData'] = None
@@ -1446,8 +1446,8 @@ def archiveinfo(environ, archiveID, fileOrder='name', fileStart=None, buildrootO
     values['wininfo'] = wininfo
     values['builtInRoot'] = builtInRoot
     values['buildroots'] = buildroots
-    values['show_rpm_components'] = server.listRPMs(imageID=archive['id'], queryOpts={'limit':1})
-    values['show_archive_components'] = server.listArchives(imageID=archive['id'], queryOpts={'limit':1})
+    values['show_rpm_components'] = server.listRPMs(imageID=archive['id'], queryOpts={'limit': 1})
+    values['show_archive_components'] = server.listArchives(imageID=archive['id'], queryOpts={'limit': 1})
 
     return _genHTML(environ, 'archiveinfo.chtml')
 

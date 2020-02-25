@@ -40,53 +40,53 @@ class Rpmdiff:
 
     # constants
 
-    TAGS = ( rpm.RPMTAG_NAME, rpm.RPMTAG_SUMMARY,
-             rpm.RPMTAG_DESCRIPTION, rpm.RPMTAG_GROUP,
-             rpm.RPMTAG_LICENSE, rpm.RPMTAG_URL,
-             rpm.RPMTAG_PREIN, rpm.RPMTAG_POSTIN,
-             rpm.RPMTAG_PREUN, rpm.RPMTAG_POSTUN)
+    TAGS = (rpm.RPMTAG_NAME, rpm.RPMTAG_SUMMARY,
+            rpm.RPMTAG_DESCRIPTION, rpm.RPMTAG_GROUP,
+            rpm.RPMTAG_LICENSE, rpm.RPMTAG_URL,
+            rpm.RPMTAG_PREIN, rpm.RPMTAG_POSTIN,
+            rpm.RPMTAG_PREUN, rpm.RPMTAG_POSTUN)
 
-    PRCO = ( 'REQUIRES', 'PROVIDES', 'CONFLICTS', 'OBSOLETES')
+    PRCO = ('REQUIRES', 'PROVIDES', 'CONFLICTS', 'OBSOLETES')
 
     # {fname : (size, mode, mtime, flags, dev, inode,
     #          nlink, state, vflags, user, group, digest)}
-    __FILEIDX = [ ['S', 0],
-                  ['M', 1],
-                  ['5', 11],
-                  ['D', 4],
-                  ['N', 6],
-                  ['L', 7],
-                  ['V', 8],
-                  ['U', 9],
-                  ['G', 10],
-                  ['F', 3],
-                  ['T', 2] ]
+    __FILEIDX = [['S', 0],
+                 ['M', 1],
+                 ['5', 11],
+                 ['D', 4],
+                 ['N', 6],
+                 ['L', 7],
+                 ['V', 8],
+                 ['U', 9],
+                 ['G', 10],
+                 ['F', 3],
+                 ['T', 2]]
 
     try:
         if rpm.RPMSENSE_SCRIPT_PRE:
-            PREREQ_FLAG=rpm.RPMSENSE_PREREQ|rpm.RPMSENSE_SCRIPT_PRE|\
-                rpm.RPMSENSE_SCRIPT_POST|rpm.RPMSENSE_SCRIPT_PREUN|\
+            PREREQ_FLAG = rpm.RPMSENSE_PREREQ | rpm.RPMSENSE_SCRIPT_PRE |\
+                rpm.RPMSENSE_SCRIPT_POST | rpm.RPMSENSE_SCRIPT_PREUN |\
                 rpm.RPMSENSE_SCRIPT_POSTUN
     except AttributeError:
         try:
-            PREREQ_FLAG=rpm.RPMSENSE_PREREQ
+            PREREQ_FLAG = rpm.RPMSENSE_PREREQ
         except:
             # (proyvind): This seems ugly, but then again so does
             #            this whole check as well.
-            PREREQ_FLAG=False
+            PREREQ_FLAG = False
 
     DEPFORMAT = '%-12s%s %s %s %s'
     FORMAT = '%-12s%s'
 
-    ADDED   = 'added'
+    ADDED = 'added'
     REMOVED = 'removed'
 
     # code starts here
 
     def __init__(self, old, new, ignore=None):
         self.result = []
-        self.old_data = { 'tags': {}, 'ignore': ignore }
-        self.new_data = { 'tags': {}, 'ignore': ignore }
+        self.old_data = {'tags': {}, 'ignore': ignore}
+        self.new_data = {'tags': {}, 'ignore': ignore}
         if ignore is None:
             ignore = set()
         else:
@@ -111,7 +111,7 @@ class Rpmdiff:
                     self.__add(self.FORMAT, ('S.5........', tagname))
 
         # compare Provides, Requires, ...
-        for  tag in self.PRCO:
+        for tag in self.PRCO:
             self.__comparePRCOs(old, new, tag)
 
         # compare the files
@@ -183,16 +183,16 @@ class Rpmdiff:
 
     # compare Provides, Requires, Conflicts, Obsoletes
     def __comparePRCOs(self, old, new, name):
-        oldflags = old[name[:-1]+'FLAGS']
-        newflags = new[name[:-1]+'FLAGS']
+        oldflags = old[name[:-1] + 'FLAGS']
+        newflags = new[name[:-1] + 'FLAGS']
         # fix buggy rpm binding not returning list for single entries
-        if not isinstance(oldflags, list): oldflags = [ oldflags ]
-        if not isinstance(newflags, list): newflags = [ newflags ]
+        if not isinstance(oldflags, list): oldflags = [oldflags]
+        if not isinstance(newflags, list): newflags = [newflags]
 
-        o = list(zip(old[name], oldflags, old[name[:-1]+'VERSION']))
-        n = list(zip(new[name], newflags, new[name[:-1]+'VERSION']))
+        o = list(zip(old[name], oldflags, old[name[:-1] + 'VERSION']))
+        n = list(zip(new[name], newflags, new[name[:-1] + 'VERSION']))
 
-        if name == 'PROVIDES': # filter our self provide
+        if name == 'PROVIDES':  # filter our self provide
             oldNV = (old['name'], rpm.RPMSENSE_EQUAL,
                      "%s-%s" % (old['version'], old['release']))
             newNV = (new['name'], rpm.RPMSENSE_EQUAL,

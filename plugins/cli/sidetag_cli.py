@@ -40,7 +40,7 @@ def handle_add_sidetag(options, session, args):
         parser.error(_("Policy violation"))
 
     if not opts.quiet:
-        print (tag["name"])
+        print(tag["name"])
 
     if opts.wait:
         args = ["--target", tag["name"]]
@@ -88,4 +88,4 @@ def handle_list_sidetags(options, session, args):
         user = opts.user
 
     for tag in session.listSideTags(basetag=opts.basetag, user=user):
-        print (tag["name"])
+        print(tag["name"])
