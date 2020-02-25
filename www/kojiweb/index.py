@@ -45,7 +45,7 @@ from kojiweb.util import _genHTML, _getValidTokens, _initValues
 # Convenience definition of a commonly-used sort function
 _sortbyname = lambda x: x['name']
 
-#loggers
+# loggers
 authlogger = logging.getLogger('koji.auth')
 
 def _setUserCookie(environ, user):
@@ -790,7 +790,7 @@ def getfile(environ, taskID, name, volume='DEFAULT', offset=None, size=None):
         if size > (file_size - offset):
             size = file_size - offset
 
-    #environ['koji.headers'].append(['Content-Length', str(size)])
+    # environ['koji.headers'].append(['Content-Length', str(size)])
     return _chunk_file(server, environ, taskID, name, offset, size, volume)
 
 

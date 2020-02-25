@@ -62,7 +62,7 @@ class PluginTracker(object):
 
     def __init__(self, path=None, prefix='_koji_plugin__'):
         self.searchpath = path
-        #prefix should not have a '.' in it, this can cause problems.
+        # prefix should not have a '.' in it, this can cause problems.
         self.prefix = prefix
         self.plugins = {}
 
@@ -71,9 +71,9 @@ class PluginTracker(object):
             return self.plugins[name]
         mod_name = name
         if self.prefix:
-            #mod_name determines how the module is named in sys.modules
-            #Using a prefix helps prevent overlap with other modules
-            #(no '.' -- it causes problems)
+            # mod_name determines how the module is named in sys.modules
+            # Using a prefix helps prevent overlap with other modules
+            # (no '.' -- it causes problems)
             mod_name = self.prefix + name
         if mod_name in sys.modules and not reload:
             raise koji.PluginError('module name conflict: %s' % mod_name)

@@ -164,7 +164,7 @@ class RepoMerge(object):
             n = self.yumbase.add_enable_repo(rid, baseurls=[r])
             n._merge_rank = count
 
-        #setup our sacks
+        # setup our sacks
         self.yumbase._getSacks(archlist=self.archlist)
 
         self.sort_and_filter()
@@ -205,8 +205,8 @@ class RepoMerge(object):
                 if reponum == 0 and not pkg.basepath:
                     # this is the first repo (i.e. the koji repo) and appears
                     # to be using relative urls
-                    #XXX - kind of a hack, but yum leaves us little choice
-                    #force the pkg object to report a relative location
+                    # XXX - kind of a hack, but yum leaves us little choice
+                    # force the pkg object to report a relative location
                     loc = """<location href="%s"/>\n""" % yum.misc.to_xml(pkg.remote_path, attrib=True)
                     pkg._return_remote_location = make_const_func(loc)
                 if pkg.sourcerpm in seen_srpms:
@@ -296,8 +296,8 @@ class RepoMerge(object):
                 if reponum == 0 and not pkg.basepath:
                     # this is the first repo (i.e. the koji repo) and appears
                     # to be using relative urls
-                    #XXX - kind of a hack, but yum leaves us little choice
-                    #force the pkg object to report a relative location
+                    # XXX - kind of a hack, but yum leaves us little choice
+                    # force the pkg object to report a relative location
                     loc = """<location href="%s"/>\n""" % yum.misc.to_xml(pkg.remote_path, attrib=True)
                     pkg._return_remote_location = make_const_func(loc)
 

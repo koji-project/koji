@@ -189,7 +189,7 @@ def dslice(dict_, keys, strict=True):
     ret = {}
     for key in keys:
         if strict or key in dict_:
-            #for strict we skip the has_key check and let the dict generate the KeyError
+            # for strict we skip the has_key check and let the dict generate the KeyError
             ret[key] = dict_[key]
     return ret
 
@@ -639,13 +639,13 @@ def setup_rlimits(opts, logger=None):
 
 class adler32_constructor(object):
 
-    #mimicing the hashlib constructors
+    # mimicing the hashlib constructors
     def __init__(self, arg=''):
         if six.PY3 and isinstance(arg, str):
             arg = bytes(arg, 'utf-8')
         self._value = adler32(arg) & 0xffffffff
-        #the bitwise and works around a bug in some versions of python
-        #see: https://bugs.python.org/issue1202
+        # the bitwise and works around a bug in some versions of python
+        # see: https://bugs.python.org/issue1202
 
     def update(self, arg):
         if six.PY3 and isinstance(arg, str):

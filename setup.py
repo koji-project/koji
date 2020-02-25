@@ -16,9 +16,9 @@ def get_install_requires():
         'requests',
         'requests-kerberos',
         'six',
-        #'libcomps',
-        #'rpm-py-installer', # it is optional feature
-        #'rpm',
+        # 'libcomps',
+        # 'rpm-py-installer', # it is optional feature
+        # 'rpm',
     ]
     if sys.version_info[0] < 3:
         # optional auth library for older hubs
@@ -62,9 +62,9 @@ setup(
         'koji_cli_plugins': 'plugins/cli',
     },
     # doesn't make sense, as we have only example config
-    #data_files=[
-    #    ('/etc', ['cli/koji.conf']),
-    #],
+    # data_files=[
+    #     ('/etc', ['cli/koji.conf']),
+    # ],
     scripts=[
         'cli/koji',
         'util/koji-gc',

@@ -128,7 +128,7 @@ for h in (
         'RECOMMENDNAME', 'RECOMMENDVERSION', 'RECOMMENDFLAGS'):
     SUPPORTED_OPT_DEP_HDRS[h] = hasattr(rpm, 'RPMTAG_%s' % h)
 
-## BEGIN kojikamid dup
+# BEGIN kojikamid dup #
 
 class Enum(dict):
     """A simple class to track our enumerated constants
@@ -167,7 +167,7 @@ class Enum(dict):
 
     # deprecated
     getvalue = _notImplemented
-    #read-only
+    # read-only
     __setitem__ = _notImplemented
     __delitem__ = _notImplemented
     clear = _notImplemented
@@ -176,7 +176,7 @@ class Enum(dict):
     update = _notImplemented
     setdefault = _notImplemented
 
-## END kojikamid dup
+# END kojikamid dup #
 
 API_VERSION = 1
 
@@ -215,7 +215,7 @@ AUTHTYPE_KERB = 1
 AUTHTYPE_SSL = 2
 AUTHTYPE_GSSAPI = 3
 
-#dependency types
+# dependency types
 DEP_REQUIRE = 0
 DEP_PROVIDE = 1
 DEP_OBSOLETE = 2
@@ -225,7 +225,7 @@ DEP_ENHANCE = 5
 DEP_SUPPLEMENT = 6
 DEP_RECOMMEND = 7
 
-#dependency flags
+# dependency flags
 RPMSENSE_LESS = 2
 RPMSENSE_GREATER = 4
 RPMSENSE_EQUAL = 8
@@ -266,7 +266,7 @@ TAG_UPDATE_TYPES = Enum((
     'MANUAL',
 ))
 
-## BEGIN kojikamid dup
+# BEGIN kojikamid dup #
 
 CHECKSUM_TYPES = Enum((
     'md5',
@@ -274,9 +274,9 @@ CHECKSUM_TYPES = Enum((
     'sha256',
 ))
 
-## END kojikamid dup
+# END kojikamid dup #
 
-#PARAMETERS
+# PARAMETERS
 BASEDIR = '/mnt/koji'
 # default task priority
 PRIO_DEFAULT = 20
@@ -285,9 +285,9 @@ PRIO_DEFAULT = 20
 DEFAULT_REQUEST_TIMEOUT = 60 * 60 * 12
 DEFAULT_AUTH_TIMEOUT = 60
 
-## BEGIN kojikamid dup
+# BEGIN kojikamid dup #
 
-#Exceptions
+# Exceptions
 PythonImportError = ImportError # will be masked by koji's one
 
 class GenericError(Exception):
@@ -302,7 +302,7 @@ class GenericError(Exception):
                 return str(self.args[0])
             except:
                 return str(self.__dict__)
-## END kojikamid dup
+# END kojikamid dup #
 
 class LockError(GenericError):
     """Raised when there is a lock conflict"""
@@ -320,12 +320,12 @@ class ActionNotAllowed(GenericError):
     """Raised when the session does not have permission to take some action"""
     faultCode = 1004
 
-## BEGIN kojikamid dup
+# BEGIN kojikamid dup #
 
 class BuildError(GenericError):
     """Raised when a build fails"""
     faultCode = 1005
-## END kojikamid dup
+# END kojikamid dup #
 
 class AuthLockError(AuthError):
     """Raised when a lock prevents authentication"""
@@ -403,7 +403,7 @@ class MultiCallInProgress(object):
     pass
 
 
-#A function to get create an exception from a fault
+# A function to get create an exception from a fault
 def convertFault(fault):
     """Convert a fault to the corresponding Exception type, if possible"""
     code = getattr(fault, 'faultCode', None)
@@ -415,7 +415,7 @@ def convertFault(fault):
             ret = v(fault.faultString)
             ret.fromFault = True
             return ret
-    #otherwise...
+    # otherwise...
     return fault
 
 def listFaults():
@@ -440,7 +440,7 @@ def listFaults():
     ret.sort(key=lambda x: x['faultCode'])
     return ret
 
-#functions for encoding/decoding optional arguments
+# functions for encoding/decoding optional arguments
 
 def encode_args(*args, **opts):
     """The function encodes optional arguments as regular arguments.
@@ -481,10 +481,10 @@ def decode_int(n):
     """If n is not an integer, attempt to convert it"""
     if isinstance(n, six.integer_types):
         return n
-    #else
+    # else
     return int(n)
 
-#commonly used functions
+# commonly used functions
 
 def safe_xmlrpc_loads(s):
     """Load xmlrpc data from a string, but catch faults"""
@@ -493,7 +493,7 @@ def safe_xmlrpc_loads(s):
     except Fault as f:
         return f
 
-## BEGIN kojikamid dup
+# BEGIN kojikamid dup #
 
 
 def ensuredir(directory):
@@ -528,7 +528,7 @@ def ensuredir(directory):
                 raise
     return directory
 
-## END kojikamid dup
+# END kojikamid dup #
 
 def daemonize():
     """Detach and run in background"""
@@ -537,12 +537,12 @@ def daemonize():
         os._exit(0)
     os.setsid()
     signal.signal(signal.SIGHUP, signal.SIG_IGN)
-    #fork again
+    # fork again
     pid = os.fork()
     if pid:
         os._exit(0)
     os.chdir("/")
-    #redirect stdin/stdout/sterr
+    # redirect stdin/stdout/sterr
     fd0 = os.open('/dev/null', os.O_RDONLY)
     fd1 = os.open('/dev/null', os.O_RDWR)
     fd2 = os.open('/dev/null', os.O_RDWR)
@@ -597,7 +597,7 @@ def rpm_hdr_size(f, ofs=None):
     il = multibyte(data[0:4])
     dl = multibyte(data[4:8])
 
-    #this is what the section data says the size should be
+    # this is what the section data says the size should be
     hdrsize = 8 + 16 * il + dl
 
     # hdrsize rounded up to nearest 8 bytes
@@ -624,7 +624,7 @@ class RawHeader(object):
         self._index()
 
     def version(self):
-        #fourth byte is the version
+        # fourth byte is the version
         return _ord(self.header[3])
 
     def _index(self):
@@ -635,7 +635,7 @@ class RawHeader(object):
         il = multibyte(data[:4])
         dl = multibyte(data[4:8])
 
-        #read the index (starts at offset 16)
+        # read the index (starts at offset 16)
         index = {}
         for i in range(il):
             entry = []
@@ -643,30 +643,31 @@ class RawHeader(object):
                 ofs = 16 + i*16 + j*4
                 data = [_ord(x) for x in self.header[ofs:ofs+4]]
                 entry.append(multibyte(data))
-            #print("Tag: %d, Type: %d, Offset: %x, Count: %d" % tuple(entry))
+
+            # print("Tag: %d, Type: %d, Offset: %x, Count: %d" % tuple(entry))
             index[entry[0]] = entry
         self.datalen = dl
         self.index = index
 
     def dump(self):
         print("HEADER DUMP:")
-        #calculate start of store
+        # calculate start of store
         il = len(self.index)
         store = 16 + il * 16
-        #print("start is: %d" % start)
-        #print("index length: %d" % il)
+        # print("start is: %d" % start)
+        # print("index length: %d" % il)
         print("Store at offset %d (%0x)" % (store, store))
-        #sort entries by offset, dtype
-        #also rearrange: tag, dtype, offset, count -> offset, dtype, tag, count
+        # sort entries by offset, dtype
+        # also rearrange: tag, dtype, offset, count -> offset, dtype, tag, count
         order = sorted([(x[2], x[1], x[0], x[3]) for x in six.itervalues(self.index)])
         next = store
-        #map some rpmtag codes
+        # map some rpmtag codes
         tags = {}
         for name, code in six.iteritems(rpm.__dict__):
             if name.startswith('RPMTAG_') and isinstance(code, int):
                 tags[code] = name[7:].lower()
         for entry in order:
-            #tag, dtype, offset, count = entry
+            # tag, dtype, offset, count = entry
             offset, dtype, tag, count = entry
             pos = store + offset
             if next is not None:
@@ -679,17 +680,17 @@ class RawHeader(object):
             print("Tag: %d [%s], Type: %d, Offset: %x, Count: %d" \
                     % (tag, tags.get(tag, '?'), dtype, offset, count))
             if dtype == 0:
-                #null
+                # null
                 print("[NULL entry]")
                 next = pos
             elif dtype == 1:
-                #char
+                # char
                 for i in range(count):
                     print("Char: %r" % self.header[pos])
                     pos += 1
                 next = pos
             elif dtype >= 2 and dtype <= 5:
-                #integer
+                # integer
                 n = 1 << (dtype - 2)
                 for i in range(count):
                     data = [_ord(x) for x in self.header[pos:pos+n]]
@@ -738,7 +739,7 @@ class RawHeader(object):
         return self._getitem(dtype, offset, count)
 
     def _getitem(self, dtype, offset, count):
-        #calculate start of store
+        # calculate start of store
         il = len(self.index)
         store = 16 + il * 16
         pos = store + offset
@@ -752,10 +753,10 @@ class RawHeader(object):
             end = self.header.find('\0', pos)
             return self.header[pos:end]
         elif dtype == 7:
-            #raw data
+            # raw data
             return self.header[pos:pos+count]
         else:
-            #XXX - not all valid data types are handled
+            # XXX - not all valid data types are handled
             raise GenericError("Unable to read header data type: %x" % dtype)
 
     def get(self, key, default=None):
@@ -1108,7 +1109,7 @@ def is_debuginfo(name):
 
 def canonArch(arch):
     """Given an arch, return the "canonical" arch"""
-    #XXX - this could stand to be smarter, and we should probably
+    # XXX - this could stand to be smarter, and we should probably
     #   have some other related arch-mangling functions.
     if fnmatch(arch, 'i?86') or arch == 'athlon':
         return 'i386'
@@ -1295,12 +1296,12 @@ BuildArch: noarch
 
 #package requirements
 """]
-    #add a requires entry for all the packages in buildgroup, and in
-    #groups required by buildgroup
+    # add a requires entry for all the packages in buildgroup, and in
+    # groups required by buildgroup
     need = [buildgroup]
     seen_grp = {}
     seen_pkg = {}
-    #index groups
+    # index groups
     groups = dict([(g['name'], g) for g in grplist])
     for group_name in need:
         if group_name in seen_grp:
@@ -1375,7 +1376,7 @@ def generate_comps(groups, expand_groups=False):
 """    <biarchonly>%s</biarchonly>
 """ % boolean_text(True))
 
-        #print grouplist, if any
+        # print grouplist, if any
         if g['grouplist'] and not expand_groups:
             data.append(
 """    <grouplist>
@@ -1383,7 +1384,7 @@ def generate_comps(groups, expand_groups=False):
             grouplist = list(g['grouplist'])
             grouplist.sort(key=lambda x: x['name'])
             for x in grouplist:
-                #['req_id','type','is_metapkg','name']
+                # ['req_id','type','is_metapkg','name']
                 name = x['name']
                 thetype = x['type']
                 tag = "groupreq"
@@ -1401,9 +1402,9 @@ def generate_comps(groups, expand_groups=False):
 """    </grouplist>
 """)
 
-        #print packagelist, if any
+        # print packagelist, if any
         def package_entry(pkg):
-            #p['package_id','type','basearchonly','requires','name']
+            # p['package_id','type','basearchonly','requires','name']
             name = pkg['package']
             opts = 'type="%s"' % pkg['type']
             if pkg['basearchonly']:
@@ -1424,7 +1425,7 @@ def generate_comps(groups, expand_groups=False):
 """ % package_entry(p))
             # also include expanded list, if needed
         if expand_groups and g['grouplist']:
-            #add a requires entry for all packages in groups required by buildgroup
+            # add a requires entry for all packages in groups required by buildgroup
             need = [req['name'] for req in g['grouplist']]
             seen_grp = {g['name'] : 1}
             seen_pkg = {}
@@ -1484,12 +1485,12 @@ def genMockConfig(name, arch, managed=False, repoid=None, tag_name=None, **opts)
             raise GenericError("please provide a repo and tag")
         topurls = opts.get('topurls')
         if not topurls:
-            #cli command still passes plain topurl
+            # cli command still passes plain topurl
             topurl = opts.get('topurl')
             if topurl:
                 topurls = [topurl]
         if topurls:
-            #XXX - PathInfo isn't quite right for this, but it will do for now
+            # XXX - PathInfo isn't quite right for this, but it will do for now
             pathinfos = [PathInfo(topdir=_u) for _u in topurls]
             urls = ["%s/%s" % (_p.repo(repoid, tag_name), arch) for _p in pathinfos]
         else:
@@ -1539,7 +1540,7 @@ def genMockConfig(name, arch, managed=False, repoid=None, tag_name=None, **opts)
     if mavenrc:
         files['etc/mavenrc'] = mavenrc
 
-    #generate yum.conf
+    # generate yum.conf
     yc_parts = ["[main]\n"]
     # HTTP proxy for yum
     if opts.get('yum_proxy'):
@@ -1780,7 +1781,7 @@ def read_config(profile_name, user_config=None):
 
     result = config_defaults.copy()
 
-    #note: later config files override earlier ones
+    # note: later config files override earlier ones
 
     # /etc/koji.conf.d
     configs = ['/etc/koji.conf.d']
@@ -1807,9 +1808,9 @@ def read_config(profile_name, user_config=None):
         got_conf = True
         result['profile'] = profile_name
         for name, value in config.items(profile_name):
-            #note the config_defaults dictionary also serves to indicate which
-            #options *can* be set via the config file. Such options should
-            #not have a default value set in the option parser.
+            # note the config_defaults dictionary also serves to indicate which
+            # options *can* be set via the config file. Such options should
+            # not have a default value set in the option parser.
             if name in result:
                 if name in ('anon_retry', 'offline_retry',
                             'use_fast_upload', 'krb_rdns', 'debug',
@@ -1984,7 +1985,7 @@ class PathInfo(object):
     def volumedir(self, volume):
         if volume == 'DEFAULT' or volume is None:
             return self.topdir
-        #else
+        # else
         return self.topdir + ("/vol/%s" % volume)
 
     def build(self, build):
@@ -2141,7 +2142,7 @@ def is_cert_error(e):
                     'certificate expired' in ssl_reason):
                 return True
 
-    #otherwise
+    # otherwise
     return False
 
 
@@ -2553,7 +2554,7 @@ class ClientSession(object):
             handler, headers, request = self._prepCall('logout', ())
             self._sendCall(handler, headers, request)
         except AuthExpired:
-            #this can happen when an exclusive session is forced
+            # this can happen when an exclusive session is forced
             pass
         self.setSession(None)
 
@@ -2578,10 +2579,10 @@ class ClientSession(object):
             return
         self.setSession(None)
 
-    #we've had some trouble with this method causing strange problems
-    #(like infinite recursion). Possibly triggered by initialization failure,
-    #and possibly due to some interaction with __getattr__.
-    #Re-enabling with a small improvement
+    # we've had some trouble with this method causing strange problems
+    # (like infinite recursion). Possibly triggered by initialization failure,
+    # and possibly due to some interaction with __getattr__.
+    # Re-enabling with a small improvement
     def __del__(self):
         if self.__dict__:
             try:
@@ -2594,7 +2595,7 @@ class ClientSession(object):
         return self._callMethod(name, args, opts)
 
     def _prepCall(self, name, args, kwargs=None):
-        #pass named opts in a way the server can understand
+        # pass named opts in a way the server can understand
         if kwargs is None:
             kwargs = {}
         if name == 'rawUpload':
@@ -2713,27 +2714,27 @@ class ClientSession(object):
                 self.retries += 1
                 try:
                     return self._sendCall(handler, headers, request)
-                #basically, we want to retry on most errors, with a few exceptions
+                # basically, we want to retry on most errors, with a few exceptions
                 #  - faults (this means the call completed and failed)
                 #  - SystemExit, KeyboardInterrupt
                 # note that, for logged-in sessions the server should tell us (via a RetryError fault)
                 # if the call cannot be retried. For non-logged-in sessions, all calls should be read-only
                 # and hence retryable.
                 except Fault as fault:
-                    #try to convert the fault to a known exception
+                    # try to convert the fault to a known exception
                     err = convertFault(fault)
                     if isinstance(err, ServerOffline):
                         if self.opts.get('offline_retry', False):
                             secs = self.opts.get('offline_retry_interval', interval)
                             self.logger.debug("Server offline. Retrying in %i seconds", secs)
                             time.sleep(secs)
-                            #reset try count - this isn't a typical error, this is a running server
-                            #correctly reporting an outage
+                            # reset try count - this isn't a typical error, this is a running server
+                            # correctly reporting an outage
                             tries = 0
                             continue
                     raise err
                 except (SystemExit, KeyboardInterrupt):
-                    #(depending on the python version, these may or may not be subclasses of Exception)
+                    # (depending on the python version, these may or may not be subclasses of Exception)
                     raise
                 except Exception as e:
                     tb_str = ''.join(traceback.format_exception(*sys.exc_info()))
@@ -2744,8 +2745,8 @@ class ClientSession(object):
                         raise
 
                     if not self.logged_in:
-                        #in the past, non-logged-in sessions did not retry. For compatibility purposes
-                        #this behavior is governed by the anon_retry opt.
+                        # in the past, non-logged-in sessions did not retry. For compatibility purposes
+                        # this behavior is governed by the anon_retry opt.
                         if not self.opts.get('anon_retry', False):
                             raise
 
@@ -2754,14 +2755,14 @@ class ClientSession(object):
 
                     if tries > max_retries:
                         raise
-                    #otherwise keep retrying
+                    # otherwise keep retrying
                     if self.logger.isEnabledFor(logging.DEBUG):
                         self.logger.debug(tb_str)
                     self.logger.info("Try #%s for call %s (%s) failed: %s", tries, self.callnum, name, e)
                 if tries > 1:
                     # first retry is immediate, after that we honor retry_interval
                     time.sleep(interval)
-            #not reached
+            # not reached
 
     def multiCall(self, strict=False, batch=None):
         """Execute a prepared multicall
@@ -2816,7 +2817,7 @@ class ClientSession(object):
         else:
             ret = self._callMethod('multiCall', (calls,), {})
         if strict:
-            #check for faults and raise first one
+            # check for faults and raise first one
             for entry in ret:
                 if isinstance(entry, dict):
                     fault = Fault(entry['faultCode'], entry['faultString'])
@@ -2825,7 +2826,7 @@ class ClientSession(object):
         return ret
 
     def __getattr__(self, name):
-        #if name[:1] == '_':
+        # if name[:1] == '_':
         #    raise AttributeError("no attribute %r" % name)
         if name == '_apidoc':
             return self.__dict__['_apidoc']
@@ -2953,7 +2954,7 @@ class ClientSession(object):
         start = time.time()
         # XXX - stick in a config or something
         retries = 3
-        fo = open(localfile, "rb")  #specify bufsize?
+        fo = open(localfile, "rb")  # specify bufsize?
         totalsize = os.path.getsize(localfile)
         ofs = 0
         md5sum = hashlib.md5()
@@ -3207,15 +3208,15 @@ class DBHandler(logging.Handler):
                 columns.append(key)
                 values.append("%%(%s)s" % key)
                 data[key] = value % record.__dict__
-                #values.append(_quote(value % record.__dict__))
+                # values.append(_quote(value % record.__dict__))
             columns = ",".join(columns)
             values = ",".join(values)
             command = "INSERT INTO %s (%s) VALUES (%s)" % (self.table, columns, values)
-            #note we're letting cursor.execute do the escaping
+            # note we're letting cursor.execute do the escaping
             cursor.execute(command, data)
             cursor.close()
-            #self.cnx.commit()
-            #XXX - committing here is most likely wrong, but we need to set commit_pending or something
+            # self.cnx.commit()
+            # XXX - committing here is most likely wrong, but we need to set commit_pending or something
             #      ...and this is really the wrong place for that
         except:
             self.handleError(record)
@@ -3328,7 +3329,7 @@ def _taskLabel(taskInfo):
                 extra = build_target['name']
     elif method == 'winbuild':
         if 'request' in taskInfo:
-            #vm = taskInfo['request'][0]
+            # vm = taskInfo['request'][0]
             url = taskInfo['request'][1]
             target = taskInfo['request'][2]
             module_info = _module_info(url)

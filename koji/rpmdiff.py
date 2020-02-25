@@ -48,7 +48,7 @@ class Rpmdiff:
 
     PRCO = ( 'REQUIRES', 'PROVIDES', 'CONFLICTS', 'OBSOLETES')
 
-    #{fname : (size, mode, mtime, flags, dev, inode,
+    # {fname : (size, mode, mtime, flags, dev, inode,
     #          nlink, state, vflags, user, group, digest)}
     __FILEIDX = [ ['S', 0],
                   ['M', 1],
@@ -71,7 +71,7 @@ class Rpmdiff:
         try:
             PREREQ_FLAG=rpm.RPMSENSE_PREREQ
         except:
-            #(proyvind): This seems ugly, but then again so does
+            # (proyvind): This seems ugly, but then again so does
             #            this whole check as well.
             PREREQ_FLAG=False
 

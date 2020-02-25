@@ -44,7 +44,7 @@ class URLNotFound(ServerError):
 class Dispatcher(object):
 
     def __init__(self):
-        #we can't do much setup until we get a request
+        # we can't do much setup until we get a request
         self.firstcall = True
         self.options = {}
         self.startup_error = None
@@ -66,7 +66,7 @@ class Dispatcher(object):
         self.logger = logging.getLogger("koji.web")
 
     cfgmap = [
-        #option, type, default
+        # option, type, default
         ['SiteName', 'string', None],
         ['KojiHubURL', 'string', 'http://localhost/kojihub'],
         ['KojiFilesURL', 'string', 'http://localhost/kojifiles'],
@@ -156,7 +156,7 @@ class Dispatcher(object):
     def setup_logging2(self, environ):
         """Adjust logging based on configuration options"""
         opts = self.options
-        #determine log level
+        # determine log level
         level = opts['LogLevel']
         valid_levels = ('DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL')
         # the config value can be a single level name or a series of
@@ -172,7 +172,7 @@ class Dispatcher(object):
                 default = level
             if level not in valid_levels:
                 raise koji.GenericError("Invalid log level: %s" % level)
-            #all our loggers start with koji
+            # all our loggers start with koji
             if name == '':
                 name = 'koji'
                 default = level
@@ -187,7 +187,7 @@ class Dispatcher(object):
         if opts.get('KojiDebug'):
             logger.setLevel(logging.DEBUG)
         elif default is None:
-            #LogLevel did not configure a default level
+            # LogLevel did not configure a default level
             logger.setLevel(logging.WARNING)
         self.formatter = HubFormatter(opts['LogFormat'])
         self.formatter.environ = environ
@@ -213,7 +213,7 @@ class Dispatcher(object):
     def prep_handler(self, environ):
         path_info = environ['PATH_INFO']
         if not path_info:
-            #empty path info (no trailing slash) breaks our relative urls
+            # empty path info (no trailing slash) breaks our relative urls
             environ['koji.redirect'] = environ['REQUEST_URI'] + '/'
             raise ServerRedirect
         elif path_info == '/':
@@ -225,7 +225,7 @@ class Dispatcher(object):
         func = self.handler_index.get(method)
         if not func:
             raise URLNotFound
-        #parse form args
+        # parse form args
         data = {}
         fs = cgi.FieldStorage(fp=environ['wsgi.input'], environ=environ.copy(), keep_blank_values=True)
         for field in fs.list:
@@ -245,7 +245,7 @@ class Dispatcher(object):
         if not varkw:
             # remove any unexpected args
             data = dslice(data, args, strict=False)
-            #TODO (warning in header or something?)
+            # TODO (warning in header or something?)
         return func, data
 
 
@@ -318,7 +318,7 @@ class Dispatcher(object):
         except (NameError, AttributeError):
             tb_str = ''.join(traceback.format_exception(*sys.exc_info()))
             self.logger.error(tb_str)
-            #fallback to simple error page
+            # fallback to simple error page
             return self.simple_error_page(message, err=tb_short)
         values = _initValues(environ, *desc)
         values['etype'] = etype

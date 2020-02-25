@@ -484,11 +484,11 @@ def handle_build(options, session, args):
             opts[key] = val
     priority = None
     if build_opts.background:
-        #relative to koji.PRIO_DEFAULT
+        # relative to koji.PRIO_DEFAULT
         priority = 5
     # try to check that source is an SRPM
     if '://' not in source:
-        #treat source as an srpm and upload it
+        # treat source as an srpm and upload it
         if not build_opts.quiet:
             print("Uploading srpm: %s" % source)
         serverdir = unique_path('cli-build')
@@ -546,7 +546,7 @@ def handle_chain_build(options, session, args):
 
     src_list = []
     build_level = []
-    #src_lists is a list of lists of sources to build.
+    # src_lists is a list of lists of sources to build.
     #  each list is block of builds ("build level") which must all be completed
     #  before the next block begins. Blocks are separated on the command line with ':'
     for src in sources:
@@ -571,7 +571,7 @@ def handle_chain_build(options, session, args):
 
     priority = None
     if build_opts.background:
-        #relative to koji.PRIO_DEFAULT
+        # relative to koji.PRIO_DEFAULT
         priority = 5
 
     task_id = session.chainBuild(src_list, target, priority=priority)
@@ -671,7 +671,7 @@ def handle_maven_build(options, session, args):
         opts['skip_tag'] = True
     priority = None
     if build_opts.background:
-        #relative to koji.PRIO_DEFAULT
+        # relative to koji.PRIO_DEFAULT
         priority = 5
     task_id = session.mavenBuild(source, target, opts, priority=priority)
     if not build_opts.quiet:
@@ -894,7 +894,7 @@ def anon_handle_mock_config(goptions, session, args):
     (options, args) = parser.parse_args(args)
     activate_session(session, goptions)
     if args:
-        #for historical reasons, we also accept buildroot name as first arg
+        # for historical reasons, we also accept buildroot name as first arg
         if not options.name:
             options.name = args[0]
         else:
@@ -1155,7 +1155,7 @@ def handle_import(goptions, session, args):
             if data['sourcepackage']:
                 break
         else:
-            #no srpm included, check for build
+            # no srpm included, check for build
             binfo = session.getBuild(nvr)
             if not binfo:
                 print(_("Missing build or srpm: %s") % nvr)
@@ -1164,7 +1164,7 @@ def handle_import(goptions, session, args):
         print(_("Aborting import"))
         return
 
-    #local function to help us out below
+    # local function to help us out below
     def do_import(path, data):
         rinfo = dict([(k,data[k]) for k in ('name','version','release','arch')])
         prev = session.getRPM(rinfo)
@@ -1391,13 +1391,13 @@ def _import_comps_alt(session, filename, tag, options): # no cover 3.x
                         uservisible=bool(group.user_visible),
                         description=group.description,
                         langonly=group.langonly)
-        #yum.comps does not support the biarchonly field
+        # yum.comps does not support the biarchonly field
         for ptype, pdata in [('mandatory', group.mandatory_packages),
                              ('default', group.default_packages),
                              ('optional', group.optional_packages),
                              ('conditional', group.conditional_packages)]:
             for pkg in pdata:
-                #yum.comps does not support basearchonly
+                # yum.comps does not support basearchonly
                 pkgopts = {'type' : ptype}
                 if ptype == 'conditional':
                     pkgopts['requires'] = pdata[pkg]
@@ -1407,8 +1407,8 @@ def _import_comps_alt(session, filename, tag, options): # no cover 3.x
                 s_opts = ', '.join(["'%s': %r" % (k, pkgopts[k]) for k in sorted(pkgopts.keys())])
                 print("  Package: %s: {%s}" % (pkg, s_opts))
                 session.groupPackageListAdd(tag, group.groupid, pkg, force=force, **pkgopts)
-        #yum.comps does not support group dependencies
-        #yum.comps does not support metapkgs
+        # yum.comps does not support group dependencies
+        # yum.comps does not support metapkgs
 
 
 def handle_import_sig(goptions, session, args):
@@ -1540,9 +1540,9 @@ def handle_prune_signed_copies(options, session, args):
     #  4) for a specified tag, remove all signed copies (no inheritance)
     #     (but skip builds that are multiply tagged)
 
-    #for now, we're just implementing mode #1
-    #(with the modification that we check to see if the build was latest within
-    #the last N days)
+    # for now, we're just implementing mode #1
+    # (with the modification that we check to see if the build was latest within
+    # the last N days)
     if options.ignore_tag_file:
         with open(options.ignore_tag_file) as fo:
             options.ignore_tag.extend([line.strip() for line in fo.readlines()])
@@ -1579,7 +1579,7 @@ def handle_prune_signed_copies(options, session, args):
             print("...got %i builds" % len(builds))
         builds.sort()
     else:
-        #single build
+        # single build
         binfo = session.getBuild(options.build)
         if not binfo:
             parser.error('No such build: %s' % options.build)
@@ -1601,21 +1601,21 @@ def handle_prune_signed_copies(options, session, args):
         time_str = time.asctime(time.localtime(ts))
         return "%s: %s" % (time_str, fmt % x)
     for nvr, binfo in builds:
-        #listBuilds returns slightly different data than normal
+        # listBuilds returns slightly different data than normal
         if 'id' not in binfo:
             binfo['id'] = binfo['build_id']
         if 'name' not in binfo:
             binfo['name'] = binfo['package_name']
         if options.debug:
             print("DEBUG: %s" % nvr)
-        #see how recently this build was latest for a tag
+        # see how recently this build was latest for a tag
         is_latest = False
         is_protected = False
         last_latest = None
         tags = {}
         for entry in session.queryHistory(build=binfo['id'])['tag_listing']:
-            #we used queryHistory rather than listTags so we can consider tags
-            #that the build was recently untagged from
+            # we used queryHistory rather than listTags so we can consider tags
+            # that the build was recently untagged from
             tags.setdefault(entry['tag.name'], 1)
         if options.debug:
             print("Tags: %s" % to_list(tags.keys()))
@@ -1633,43 +1633,43 @@ def handle_prune_signed_copies(options, session, args):
                     break
             if ignore_tag:
                 continue
-            #in order to determine how recently this build was latest, we have
-            #to look at the tagging history.
+            # in order to determine how recently this build was latest, we have
+            # to look at the tagging history.
             hist = session.queryHistory(tag=tag_name, package=binfo['name'])['tag_listing']
             if not hist:
-                #really shouldn't happen
+                # really shouldn't happen
                 raise koji.GenericError("No history found for %s in %s" % (nvr, tag_name))
             timeline = []
             for x in hist:
-                #note that for revoked entries, we're effectively splitting them into
-                #two parts: creation and revocation.
+                # note that for revoked entries, we're effectively splitting them into
+                # two parts: creation and revocation.
                 timeline.append((x['create_event'], 1, x))
-                #at the same event, revokes happen first
+                # at the same event, revokes happen first
                 if x['revoke_event'] is not None:
                     timeline.append((x['revoke_event'], 0, x))
             timeline.sort(key=lambda entry: entry[:2])
-            #find most recent creation entry for our build and crop there
+            # find most recent creation entry for our build and crop there
             latest_ts = None
             for i in range(len(timeline)-1, -1, -1):
-                #searching in reverse cronological order
+                # searching in reverse cronological order
                 event_id, is_create, entry = timeline[i]
                 if entry['build_id'] == binfo['id'] and is_create:
                     latest_ts = event_id
                     break
             if not latest_ts:
-                #really shouldn't happen
+                # really shouldn't happen
                 raise koji.GenericError("No creation event found for %s in %s" % (nvr, tag_name))
             our_entry = entry
             if options.debug:
                 print(_histline(event_id, our_entry))
-            #now go through the events since most recent creation entry
+            # now go through the events since most recent creation entry
             timeline = timeline[i+1:]
             if not timeline:
                 is_latest = True
                 if options.debug:
                     print("%s is latest in tag %s" % (nvr, tag_name))
                 break
-            #before we go any further, is this a protected tag?
+            # before we go any further, is this a protected tag?
             protect_tag = False
             for pattern in options.protect_tag:
                 if fnmatch.fnmatch(tag_name, pattern):
@@ -1680,13 +1680,13 @@ def handle_prune_signed_copies(options, session, args):
                 # if this build was in this tag within that limit, then we will
                 # not prune its signed copies
                 if our_entry['revoke_event'] is None:
-                    #we're still tagged with a protected tag
+                    # we're still tagged with a protected tag
                     if options.debug:
                         print("Build %s has protected tag %s" % (nvr, tag_name))
                     is_protected = True
                     break
                 elif our_entry['revoke_ts'] > cutoff_ts:
-                    #we were still tagged here sometime before the cutoff
+                    # we were still tagged here sometime before the cutoff
                     if options.debug:
                         print("Build %s had protected tag %s until %s" \
                                 % (nvr, tag_name, time.asctime(time.localtime(our_entry['revoke_ts']))))
@@ -1696,40 +1696,40 @@ def handle_prune_signed_copies(options, session, args):
             revoke_ts = None
             others = {}
             for event_id, is_create, entry in timeline:
-                #So two things can knock this build from the title of latest:
+                # So two things can knock this build from the title of latest:
                 #  - it could be untagged (entry revoked)
                 #  - another build could become latest (replaced)
-                #Note however that if the superceding entry is itself revoked, then
-                #our build could become latest again
+                # Note however that if the superceding entry is itself revoked, then
+                # our build could become latest again
                 if options.debug:
                     print(_histline(event_id, entry))
                 if entry['build_id'] == binfo['id']:
                     if is_create:
-                        #shouldn't happen
+                        # shouldn't happen
                         raise koji.GenericError("Duplicate creation event found for %s in %s" \
                                                     % (nvr, tag_name))
                     else:
-                        #we've been revoked
+                        # we've been revoked
                         revoke_ts = entry['revoke_ts']
                         break
                 else:
                     if is_create:
-                        #this build has become latest
+                        # this build has become latest
                         replaced_ts = entry['create_ts']
                         if entry['active']:
-                            #this entry not revoked yet, so we're done for this tag
+                            # this entry not revoked yet, so we're done for this tag
                             break
-                        #since this entry is revoked later, our build might eventually be
-                        #uncovered, so we have to keep looking
+                        # since this entry is revoked later, our build might eventually be
+                        # uncovered, so we have to keep looking
                         others[entry['build_id']] = 1
                     else:
-                        #other build revoked
-                        #see if our build has resurfaced
+                        # other build revoked
+                        # see if our build has resurfaced
                         if entry['build_id'] in others:
                             del others[entry['build_id']]
                         if replaced_ts is not None and not others:
-                            #we've become latest again
-                            #(note: we're not revoked yet because that triggers a break above)
+                            # we've become latest again
+                            # (note: we're not revoked yet because that triggers a break above)
                             replaced_ts = None
                             latest_ts = entry['revoke_ts']
             if last_latest is None:
@@ -1738,25 +1738,25 @@ def handle_prune_signed_copies(options, session, args):
                 timestamps = [last_latest]
             if revoke_ts is None:
                 if replaced_ts is None:
-                    #turns out we are still latest
+                    # turns out we are still latest
                     is_latest = True
                     if options.debug:
                         print("%s is latest (again) in tag %s" % (nvr, tag_name))
                     break
                 else:
-                    #replaced (but not revoked)
+                    # replaced (but not revoked)
                     timestamps.append(replaced_ts)
                     if options.debug:
                         print("tag %s: %s not latest (replaced %s)" \
                                 % (tag_name, nvr, time.asctime(time.localtime(replaced_ts))))
             elif replaced_ts is None:
-                #revoked but not replaced
+                # revoked but not replaced
                 timestamps.append(revoke_ts)
                 if options.debug:
                     print("tag %s: %s not latest (revoked %s)" \
                             % (tag_name, nvr, time.asctime(time.localtime(revoke_ts))))
             else:
-                #revoked AND replaced
+                # revoked AND replaced
                 timestamps.append(min(revoke_ts, replaced_ts))
                 if options.debug:
                     print("tag %s: %s not latest (revoked %s, replaced %s)" \
@@ -1772,13 +1772,13 @@ def handle_prune_signed_copies(options, session, args):
             continue
         if is_protected:
             continue
-        #not latest anywhere since cutoff, so we can remove all signed copies
+        # not latest anywhere since cutoff, so we can remove all signed copies
         rpms = session.listRPMs(buildID=binfo['id'])
         session.multicall = True
         for rpminfo in rpms:
             session.queryRPMSigs(rpm_id=rpminfo['id'])
         by_sig = {}
-        #index by sig
+        # index by sig
         for rpminfo, [sigs] in zip(rpms, session.multiCall()):
             for sig in sigs:
                 sigkey = sig['sigkey']
@@ -1799,7 +1799,7 @@ def handle_prune_signed_copies(options, session, args):
                 except OSError:
                     continue
                 if not stat.S_ISREG(st.st_mode):
-                    #warn about this
+                    # warn about this
                     print("Skipping %s. Not a regular file" % signedpath)
                     continue
                 if st.st_mtime > cutoff_ts:
@@ -1819,7 +1819,7 @@ def handle_prune_signed_copies(options, session, args):
                 mycount +=1
                 build_files += 1
                 build_space += st.st_size
-                #XXX - this makes some layout assumptions, but
+                # XXX - this makes some layout assumptions, but
                 #      pathinfo doesn't report what we need
                 mydir = os.path.dirname(signedpath)
                 archdirs[mydir] = 1
@@ -2078,7 +2078,7 @@ def handle_list_signed(goptions, session, args):
         for rinfo in rpms:
             rpm_idx.setdefault(rinfo['id'], rinfo)
             tagged[rinfo['id']] = 1
-    #Now figure out which sig entries actually have live copies
+    # Now figure out which sig entries actually have live copies
     for sig in sigs:
         rpm_id = sig['rpm_id']
         sigkey = sig['sigkey']
@@ -2862,7 +2862,7 @@ def anon_handle_list_pkgs(goptions, session, args):
         # no limiting clauses were specified
         allpkgs = True
     opts['inherited'] = not options.noinherit
-    #hiding dups only makes sense if we're querying a tag
+    # hiding dups only makes sense if we're querying a tag
     if options.tag:
         opts['with_dups'] = options.show_dups
     else:
@@ -3736,7 +3736,7 @@ def handle_add_target(goptions, session, args):
     if len(args) > 2:
         dest_tag = args[2]
     else:
-        #most targets have the same name as their destination
+        # most targets have the same name as their destination
         dest_tag = name
     activate_session(session, goptions)
     if not (session.hasPerm('admin') or session.hasPerm('target')):
@@ -3866,7 +3866,7 @@ def anon_handle_list_targets(goptions, session, args):
     targets = [x[1] for x in tmp_list]
     for target in targets:
         print(fmt % target)
-    #pprint.pprint(session.getBuildTargets())
+    # pprint.pprint(session.getBuildTargets())
 
 
 def _printInheritance(tags, sibdepths=None, reverse=False):
@@ -3992,7 +3992,7 @@ def anon_handle_list_tags(goptions, session, args):
 
     tags = session.listTags(buildinfo.get('id',None), pkginfo.get('id',None))
     tags.sort(key=lambda x: x['name'])
-    #if options.verbose:
+    # if options.verbose:
     #    fmt = "%(name)s [%(id)i] %(perm)s %(locked)s %(arches)s"
     if options.show_id:
         fmt = "%(name)s [%(id)i]"
@@ -4094,14 +4094,14 @@ def _print_histline(entry, **kwargs):
         if len(edit) != 1:
             bad_edit = "%i elements" % (len(edit)+1)
         other = edit[0]
-        #check edit for sanity
+        # check edit for sanity
         if create or not other[2]:
             bad_edit = "out of order"
         if event_id != other[0]:
             bad_edit = "non-matching"
         if bad_edit:
             print("Warning: unusual edit at event %i in table %s (%s)" % (event_id, table, bad_edit))
-            #we'll simply treat them as separate events
+            # we'll simply treat them as separate events
             pprint.pprint(entry)
             pprint.pprint(edit)
             _print_histline(entry, **kwargs)
@@ -4415,11 +4415,11 @@ def anon_handle_list_history(goptions, session, args):
                 if x['revoke_event'] is not None:
                     if distinguish_match(x, 'revoked'):
                         timeline.append((x['revoke_event'], table, 0, x.copy()))
-                    #pprint.pprint(timeline[-1])
+                    # pprint.pprint(timeline[-1])
                 if distinguish_match(x, 'created'):
                     timeline.append((x['create_event'], table, 1, x))
         timeline.sort(key=lambda entry: entry[:3])
-        #group edits together
+        # group edits together
         new_timeline = []
         last_event = None
         edit_index = {}
@@ -4892,7 +4892,7 @@ def handle_edit_tag(goptions, session, args):
         opts['extra'] = extra
     if options.remove_extra:
         opts['remove_extra'] = options.remove_extra
-    #XXX change callname
+    # XXX change callname
     session.editTag2(tag, **opts)
 
 
@@ -4927,7 +4927,7 @@ def handle_lock_tag(goptions, session, args):
         selected = [session.getTag(name, strict=True) for name in args]
     for tag in selected:
         if options.master:
-            #set the master lock
+            # set the master lock
             if tag['locked']:
                 print(_("Tag %s: master lock already set") % tag['name'])
                 continue
@@ -5293,12 +5293,12 @@ def anon_handle_list_external_repos(goptions, session, args):
 def _pick_external_repo_priority(session, tag):
     """pick priority after current ones, leaving space for later insertions"""
     repolist = session.getTagExternalRepos(tag_info=tag)
-    #ordered by priority
+    # ordered by priority
     if not repolist:
         priority = 5
     else:
         priority = (repolist[-1]['priority'] + 7) // 5 * 5
-        #at least 3 higher than current max and a multiple of 5
+        # at least 3 higher than current max and a multiple of 5
     return priority
 
 
@@ -5404,7 +5404,7 @@ def handle_remove_external_repo(goptions, session, args):
             return 0
         tags = current_tags
     if delete:
-        #removing entirely
+        # removing entirely
         if current_tags and not options.force:
             print(_("Error: external repo %s used by tag(s): %s") % (repo, ', '.join(current_tags)))
             print(_("Use --force to remove anyway"))
@@ -5708,10 +5708,10 @@ def _build_image_indirection(options, task_opts, session, args):
     if not options.quiet:
         print("Created task: %d" % task_id)
         print("Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id))
-    #if task_opts.wait or (task_opts.wait is None and not _running_in_bg()):
+    # if task_opts.wait or (task_opts.wait is None and not _running_in_bg()):
     #    session.logout()
     #    return watch_tasks(session, [task_id], quiet=options.quiet)
-    #else:
+    # else:
     #    return
 
 
@@ -6045,7 +6045,7 @@ def handle_win_build(options, session, args):
             opts[key] = val
     priority = None
     if build_opts.background:
-        #relative to koji.PRIO_DEFAULT
+        # relative to koji.PRIO_DEFAULT
         priority = 5
     task_id = session.winBuild(vm_name, scmurl, target, opts, priority=priority)
     if not build_opts.quiet:
@@ -6376,7 +6376,7 @@ def handle_tag_build(opts, session, args):
     tasks = []
     for pkg in args[1:]:
         task_id = session.tagBuild(args[0], pkg, force=options.force)
-        #XXX - wait on task
+        # XXX - wait on task
         tasks.append(task_id)
         print("Created task %d" % task_id)
     if _running_in_bg() or options.nowait:
@@ -6468,7 +6468,7 @@ def handle_untag_build(goptions, session, args):
         builds = []
         for binfo in tagged:
             if binfo['name'] not in seen_pkg:
-                #latest for this package
+                # latest for this package
                 if options.verbose:
                     print(_("Leaving latest build for package %(name)s: %(nvr)s") % binfo)
             else:

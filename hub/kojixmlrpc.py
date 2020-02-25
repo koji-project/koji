@@ -64,7 +64,7 @@ class HandlerRegistry(object):
 
     def __init__(self):
         self.funcs = {}
-        #introspection functions
+        # introspection functions
         self.register_function(self.list_api, name="_listapi")
         self.register_function(self.system_listMethods, name="system.listMethods")
         self.register_function(self.system_methodSignature, name="system.methodSignature")
@@ -106,7 +106,7 @@ class HandlerRegistry(object):
         """
         for v in six.itervalues(vars(plugin)):
             if isinstance(v, type):
-                #skip classes
+                # skip classes
                 continue
             if callable(v):
                 if getattr(v, 'exported', False):
@@ -138,8 +138,8 @@ class HandlerRegistry(object):
     def list_api(self):
         funcs = []
         for name, func in self.funcs.items():
-            #the keys in self.funcs determine the name of the method as seen over xmlrpc
-            #func.__name__ might differ (e.g. for dotted method names)
+            # the keys in self.funcs determine the name of the method as seen over xmlrpc
+            # func.__name__ might differ (e.g. for dotted method names)
             args = self._getFuncArgs(func)
             argspec = self.getargspec(func)
             funcs.append({'name': name,
@@ -164,7 +164,7 @@ class HandlerRegistry(object):
         return koji.util.to_list(self.funcs.keys())
 
     def system_methodSignature(self, method):
-        #it is not possible to autogenerate this data
+        # it is not possible to autogenerate this data
         return 'signatures not supported'
 
     def system_methodHelp(self, method):
@@ -268,7 +268,7 @@ class ModXMLRPCRequestHandler(object):
         return response
 
     def handle_upload(self, environ):
-        #uploads can't be in a multicall
+        # uploads can't be in a multicall
         context.method = None
         self.check_session()
         self.enforce_lockout()
@@ -280,13 +280,13 @@ class ModXMLRPCRequestHandler(object):
 
     def check_session(self):
         if not hasattr(context, "session"):
-            #we may be called again by one of our meta-calls (like multiCall)
-            #so we should only create a session if one does not already exist
+            # we may be called again by one of our meta-calls (like multiCall)
+            # so we should only create a session if one does not already exist
             context.session = koji.auth.Session()
             try:
                 context.session.validate()
             except koji.AuthLockError:
-                #might be ok, depending on method
+                # might be ok, depending on method
                 if context.method not in ('exclusiveSession', 'login', 'krbLogin', 'logout'):
                     raise
 
@@ -359,7 +359,7 @@ class ModXMLRPCRequestHandler(object):
         """Handle a single XML-RPC request"""
 
         pass
-        #XXX no longer used
+        # XXX no longer used
 
 
 def offline_reply(start_response, msg=None):
@@ -395,13 +395,13 @@ def load_config(environ):
         - all PythonOptions (except ConfigFile) are now deprecated and support for them
           will disappear in a future version of Koji
     """
-    #get our config file(s)
+    # get our config file(s)
     cf = environ.get('koji.hub.ConfigFile', '/etc/koji-hub/hub.conf')
     cfdir = environ.get('koji.hub.ConfigDir', '/etc/koji-hub/hub.conf.d')
     config = koji.read_config_files([cfdir, (cf, True)], raw=True)
 
     cfgmap = [
-        #option, type, default
+        # option, type, default
         ['DBName', 'string', None],
         ['DBUser', 'string', None],
         ['DBHost', 'string', None],
@@ -479,7 +479,7 @@ def load_config(environ):
     # load policies
     # (only from config file)
     if config and config.has_section('policy'):
-        #for the moment, we simply transfer the policy conf to opts
+        # for the moment, we simply transfer the policy conf to opts
         opts['policy'] = dict(config.items('policy'))
     else:
         opts['policy'] = {}
@@ -504,7 +504,7 @@ def load_plugins(opts):
             tracker.load(name)
         except Exception:
             logger.error(''.join(traceback.format_exception(*sys.exc_info())))
-            #make this non-fatal, but set ServerOffline
+            # make this non-fatal, but set ServerOffline
             opts['ServerOffline'] = True
             opts['OfflineMessage'] = 'configuration error'
     return tracker
@@ -542,7 +542,7 @@ _default_policies = {
 def get_policy(opts, plugins):
     if not opts.get('policy'):
         return
-    #first find available policy tests
+    # first find available policy tests
     alltests = [koji.policy.findSimpleTests([vars(kojihub), vars(koji.policy)])]
     # we delay merging these to allow a test to be overridden for a specific policy
     for plugin_name in opts.get('Plugins', '').split():
@@ -552,7 +552,7 @@ def get_policy(opts, plugins):
         alltests.append(koji.policy.findSimpleTests(vars(plugin)))
     policy = {}
     for pname, text in six.iteritems(opts['policy']):
-        #filter/merge tests
+        # filter/merge tests
         merged = {}
         for tests in alltests:
             # tests can be limited to certain policies by setting a class variable
@@ -598,7 +598,7 @@ def setup_logging1():
     global log_handler
     logger = logging.getLogger("koji")
     logger.setLevel(logging.WARNING)
-    #stderr logging (stderr goes to httpd logs)
+    # stderr logging (stderr goes to httpd logs)
     log_handler = logging.StreamHandler()
     log_format = '%(asctime)s [%(levelname)s] SETUP p=%(process)s %(name)s: %(message)s'
     log_handler.setFormatter(HubFormatter(log_format))
@@ -608,7 +608,7 @@ def setup_logging1():
 def setup_logging2(opts):
     global log_handler
     """Adjust logging based on configuration options"""
-    #determine log level
+    # determine log level
     level = opts['LogLevel']
     valid_levels = ('DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL')
     # the config value can be a single level name or a series of
@@ -624,7 +624,7 @@ def setup_logging2(opts):
             default = level
         if level not in valid_levels:
             raise koji.GenericError("Invalid log level: %s" % level)
-        #all our loggers start with koji
+        # all our loggers start with koji
         if name == '':
             name = 'koji'
             default = level
@@ -639,9 +639,9 @@ def setup_logging2(opts):
     if opts.get('KojiDebug'):
         logger.setLevel(logging.DEBUG)
     elif default is None:
-        #LogLevel did not configure a default level
+        # LogLevel did not configure a default level
         logger.setLevel(logging.WARNING)
-    #log_handler defined in setup_logging1
+    # log_handler defined in setup_logging1
     log_handler.setFormatter(HubFormatter(opts['LogFormat']))
 
 
@@ -746,7 +746,7 @@ def application(environ, start_response):
             ]
             start_response('200 OK', headers)
             if h.traceback:
-                #rollback
+                # rollback
                 context.cnx.rollback()
             elif context.commit_pending:
                 # Currently there is not much data we can provide to the
@@ -764,7 +764,7 @@ def application(environ, start_response):
             h.logger.debug("Returning %d bytes after %f seconds", len(response),
                         time.time() - start)
         finally:
-            #make sure context gets cleaned up
+            # make sure context gets cleaned up
             if hasattr(context, 'cnx'):
                 try:
                     context.cnx.close()

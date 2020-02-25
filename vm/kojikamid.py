@@ -54,12 +54,12 @@ MANAGER_PORT = 7000
 
 KOJIKAMID = True
 
-## INSERT kojikamid dup
+# INSERT kojikamid dup #
 
 class fakemodule(object):
     pass
 
-#make parts of the above insert accessible as koji.X
+# make parts of the above insert accessible as koji.X
 koji = fakemodule()
 koji.GenericError = GenericError  # noqa: F821
 koji.BuildError = BuildError  # noqa: F821
@@ -68,7 +68,7 @@ def encode_int(n):
     """If n is too large for a 32bit signed, convert it to a string"""
     if n <= 2147483647:
         return n
-    #else
+    # else
     return str(n)
 
 class WindowsBuild(object):

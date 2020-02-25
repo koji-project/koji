@@ -75,8 +75,8 @@ class DBWrapper:
         if not self.cnx:
             raise Exception('connection is closed')
         self.cnx.cursor().execute('ROLLBACK')
-        #We do this rather than cnx.rollback to avoid opening a new transaction
-        #If our connection gets recycled cnx.rollback will be called then.
+        # We do this rather than cnx.rollback to avoid opening a new transaction
+        # If our connection gets recycled cnx.rollback will be called then.
         self.cnx = None
 
 
@@ -177,7 +177,7 @@ def connect():
             return DBWrapper(conn)
         except psycopg2.Error:
             del _DBconn.conn
-    #create a fresh connection
+    # create a fresh connection
     opts = _DBopts
     if opts is None:
         opts = {}

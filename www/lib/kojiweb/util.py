@@ -26,7 +26,7 @@ import hashlib
 import os
 import ssl
 import stat
-#a bunch of exception classes that explainError needs
+# a bunch of exception classes that explainError needs
 from socket import error as socket_error
 from xml.parsers.expat import ExpatError
 

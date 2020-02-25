@@ -118,9 +118,10 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
         if weight is not None:
             weight = max(weight, 0.5)
             self.session.host.setTaskWeight(self.id, weight)
-        #noarch is funny
+
+        # noarch is funny
         if arch == "noarch":
-            #we need a buildroot arch. Pick one that:
+            # we need a buildroot arch. Pick one that:
             #  a) this host can handle
             #  b) the build tag can support
             #  c) is canonical
@@ -130,16 +131,16 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
             tag_arches = self.session.getBuildConfig(root)['arches']
             if not tag_arches:
                 raise koji.BuildError("No arch list for tag: %s" % root)
-            #index canonical host arches
+            # index canonical host arches
             host_arches = set([koji.canonArch(a) for a in host_arches.split()])
-            #pick the first suitable match from tag's archlist
+            # pick the first suitable match from tag's archlist
             for br_arch in tag_arches.split():
                 br_arch = koji.canonArch(br_arch)
                 if br_arch in host_arches:
-                    #we're done
+                    # we're done
                     break
             else:
-                #no overlap
+                # no overlap
                 raise koji.BuildError("host does not match tag arches: %s (%s)" % (root, tag_arches))
         else:
             br_arch = arch
@@ -152,7 +153,7 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
         else:
             repo_info = self.session.getRepo(root)
         if not repo_info:
-            #wait for it
+            # wait for it
             task_id = self.session.host.subtask(method='waitrepo',
                                            arglist=[root, None, None],
                                            parent=self.id)
@@ -163,13 +164,13 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
         broot.workdir = self.workdir
         broot.init()
         rootdir = broot.rootdir()
-        #workaround for rpm oddness
+        # workaround for rpm oddness
         os.system('rm -f "%s"/var/lib/rpm/__db.*' % rootdir)
-        #update buildroot state (so that updateBuildRootList() will work)
+        # update buildroot state (so that updateBuildRootList() will work)
         self.session.host.setBuildRootState(broot.id, 'BUILDING')
         try:
             if packages:
-                #pkglog = '%s/%s' % (broot.resultdir(), 'packages.log')
+                # pkglog = '%s/%s' % (broot.resultdir(), 'packages.log')
                 pkgcmd = ['--install'] + packages
                 status = broot.mock(pkgcmd)
                 self.session.host.updateBuildRootList(broot.id, broot.getPackageList())
@@ -179,9 +180,9 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
             if isinstance(command, str):
                 cmdstr = command
             else:
-                #we were passed an arglist
-                #we still have to run this through the shell (for redirection)
-                #but we can preserve the list structure precisely with careful escaping
+                # we were passed an arglist
+                # we still have to run this through the shell (for redirection)
+                # but we can preserve the list structure precisely with careful escaping
                 cmdstr = ' '.join(["'%s'" % arg.replace("'", r"'\''") for arg in command])
             # A nasty hack to put command output into its own file until mock can be
             # patched to do something more reasonable than stuff everything into build.log
@@ -198,7 +199,7 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
             elif new_chroot is False: # None -> no option added
                 mock_cmd.append('--old-chroot')
             if skip_setarch:
-                #we can't really skip it, but we can set it to the current one instead of of the chroot one
+                # we can't really skip it, but we can set it to the current one instead of of the chroot one
                 myarch = platform.uname()[5]
                 mock_cmd.extend(['--arch', myarch])
             mock_cmd.append('--')
@@ -235,9 +236,9 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
                 if mount.startswith(safe_root):
                     break
             else:
-                #no match
+                # no match
                 raise koji.GenericError("read-write mount point is not safe: %s" % mount)
-            #normpath should have removed any .. dirs, but just in case...
+            # normpath should have removed any .. dirs, but just in case...
             if mount.find('/../') != -1:
                 raise koji.GenericError("read-write mount point is not safe: %s" % mount)
 
@@ -266,7 +267,7 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
                 else:
                     opts = opts.split(',')
                 if 'bind' in opts:
-                    #make sure dir exists
+                    # make sure dir exists
                     if not os.path.isdir(dev):
                         error = koji.GenericError("No such directory or mount: %s" % dev)
                         break
@@ -297,7 +298,7 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
             with open(fn, 'r') as fslog:
                 for line in fslog.readlines():
                     mounts.add(line.strip())
-        #also, check /proc/mounts just in case
+        # also, check /proc/mounts just in case
         mounts |= set(scan_mounts(rootdir))
         mounts = sorted(mounts)
         # deeper directories first

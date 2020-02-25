@@ -33,7 +33,7 @@ arches = {
     "amd64": "x86_64",
     "ia32e": "x86_64",
 
-    #ppc64le
+    # ppc64le
     "ppc64le":  "noarch",
 
     # ppc
@@ -73,7 +73,7 @@ arches = {
     "armv5tejl": "armv5tel",
     "armv5tel": "noarch",
 
-    #arm hardware floating point
+    # arm hardware floating point
     "armv7hnl": "armv7hl",
     "armv7hl": "armv6hl",
     "armv6hl": "noarch",
@@ -86,7 +86,7 @@ arches = {
     "sh4": "noarch",
     "sh3": "noarch",
 
-    #itanium
+    # itanium
     "ia64": "noarch",
     }
 

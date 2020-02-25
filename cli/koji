@@ -50,7 +50,7 @@ def register_plugin(plugin):
     """
     for v in six.itervalues(vars(plugin)):
         if isinstance(v, six.class_types):
-            #skip classes
+            # skip classes
             continue
         if callable(v):
             if getattr(v, 'exported_cli', False):
@@ -166,12 +166,12 @@ def get_options():
         value = os.path.expanduser(getattr(options, name))
         setattr(options, name, value)
 
-    #honor topdir
+    # honor topdir
     if options.topdir:
         koji.BASEDIR = options.topdir
         koji.pathinfo.topdir = options.topdir
 
-    #pkgurl is obsolete
+    # pkgurl is obsolete
     if options.pkgurl:
         if options.topurl:
             warn("Warning: the pkgurl option is obsolete")

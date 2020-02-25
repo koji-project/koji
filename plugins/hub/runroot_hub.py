@@ -1,4 +1,4 @@
-#koji hub plugin
+# koji hub plugin
 # There is a kojid plugin that goes with this hub plugin. The kojid builder
 # plugin has a config file.  This hub plugin has no config file.
 
@@ -14,7 +14,6 @@ sys.path.insert(0, '/usr/share/koji-hub/')
 import kojihub
 from koji.context import context
 from koji.plugin import export
-
 
 __all__ = ('runroot',)
 
@@ -41,11 +40,11 @@ def runroot(tagInfo, arch, command, channel=None, **opts):
 
     tag = kojihub.get_tag(tagInfo, strict=True)
     if arch == 'noarch':
-        #not all arches can generate a proper buildroot for all tags
+        # not all arches can generate a proper buildroot for all tags
         if not tag['arches']:
             raise koji.GenericError('no arches defined for tag %s' % tag['name'])
 
-        #get all known arches for the system
+        # get all known arches for the system
         fullarches = kojihub.get_all_arches()
 
         tagarches = tag['arches'].split()

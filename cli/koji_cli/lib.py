@@ -72,7 +72,7 @@ def arg_filter(arg):
         pass
     if arg in ARGMAP:
         return ARGMAP[arg]
-    #handle lists/dicts?
+    # handle lists/dicts?
     return arg
 
 
@@ -148,7 +148,7 @@ class TaskWatcher(object):
         self.level = level
         self.quiet = quiet
 
-    #XXX - a bunch of this stuff needs to adapt to different tasks
+    # XXX - a bunch of this stuff needs to adapt to different tasks
 
     def str(self):
         if self.info:
@@ -189,7 +189,7 @@ class TaskWatcher(object):
             sys.exit(1)
         state = self.info['state']
         if last:
-            #compare and note status changes
+            # compare and note status changes
             laststate = last['state']
             if laststate != state:
                 if not self.quiet:
@@ -555,7 +555,7 @@ def activate_session(session, options):
     noauth = options.authtype == "noauth" or getattr(options, 'noauth', False)
     runas = getattr(options, 'runas', None)
     if noauth:
-        #skip authentication
+        # skip authentication
         pass
     elif options.authtype == "ssl" or os.path.isfile(options.cert) and options.authtype is None:
         # authenticate using SSL client cert
@@ -626,7 +626,7 @@ def _list_tasks(options, session):
     tasklist = session.listTasks(callopts, qopts)
     tasks = dict([(x['id'], x) for x in tasklist])
 
-    #thread the tasks
+    # thread the tasks
     for t in tasklist:
         if t['parent'] is not None:
             parent = tasks.get(t['parent'])

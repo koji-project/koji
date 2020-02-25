@@ -51,7 +51,7 @@ def scan_mounts(topdir):
                 logger.warning('Found deleted mountpoint: %s' % path)
             mplist.append(path)
     fo.close()
-    #reverse sort so deeper dirs come first
+    # reverse sort so deeper dirs come first
     mplist.sort(reverse=True)
     return mplist
 
@@ -64,7 +64,7 @@ def umount_all(topdir):
         rv = os.spawnvp(os.P_WAIT, cmd[0], cmd)
         if rv != 0:
             raise koji.GenericError('umount failed (exit code %r) for %s' % (rv, path))
-    #check mounts again
+    # check mounts again
     remain = scan_mounts(topdir)
     if remain:
         raise koji.GenericError("Unmounting incomplete: %r" % remain)
@@ -340,7 +340,7 @@ class BaseTaskHandler(object):
         if self.workdir is None:
             return
         safe_rmtree(self.workdir, unmount=False, strict=True)
-        #os.spawnvp(os.P_WAIT, 'rm', ['rm', '-rf', self.workdir])
+        # os.spawnvp(os.P_WAIT, 'rm', ['rm', '-rf', self.workdir])
 
     def wait(self, subtasks=None, all=False, failany=False, canfail=None,
                 timeout=None):
@@ -385,7 +385,7 @@ class BaseTaskHandler(object):
         while True:
             finished, unfinished = self.session.host.taskWait(self.id)
             if len(unfinished) == 0:
-                #all done
+                # all done
                 break
             elif len(finished) > 0:
                 if all:
@@ -561,7 +561,7 @@ class BaseTaskHandler(object):
             repo_info = self.session.getRepo(tag)
             taginfo = self.session.getTag(tag, strict=True)
             if not repo_info:
-                #make sure there is a target
+                # make sure there is a target
                 targets = self.session.getBuildTargets(buildTagID=taginfo['id'])
                 if not targets:
                     raise koji.BuildError('no repo (and no target) for tag %s' % taginfo['name'])
@@ -666,7 +666,7 @@ class ShutdownTask(BaseTaskHandler):
     _taskWeight = 0.0
     Foreground = True
     def handler(self):
-        #note: this is a foreground task
+        # note: this is a foreground task
         raise ServerExit
 
 
@@ -677,7 +677,7 @@ class RestartTask(BaseTaskHandler):
     _taskWeight = 0.1
     Foreground = True
     def handler(self, host):
-        #note: this is a foreground task
+        # note: this is a foreground task
         if host['id'] != self.session.host.getID():
             raise koji.GenericError("Host mismatch")
         self.manager.restart_pending = True
@@ -691,7 +691,7 @@ class RestartVerifyTask(BaseTaskHandler):
     _taskWeight = 0.1
     Foreground = True
     def handler(self, task_id, host):
-        #note: this is a foreground task
+        # note: this is a foreground task
         tinfo = self.session.getTaskInfo(task_id)
         state = koji.TASK_STATES[tinfo['state']]
         if state != 'CLOSED':
@@ -754,7 +754,7 @@ class RestartHostsTask(BaseTaskHandler):
 class DependantTask(BaseTaskHandler):
 
     Methods = ['dependantTask']
-    #mostly just waiting on other tasks
+    # mostly just waiting on other tasks
     _taskWeight = 0.2
 
     def handler(self, wait_list, task_list):

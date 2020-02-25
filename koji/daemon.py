@@ -171,7 +171,7 @@ def log_output(session, path, args, outfile, uploadpath, cwd=None, logerror=0, a
                 return status[1]
 
 
-## BEGIN kojikamid dup
+# BEGIN kojikamid dup #
 
 class SCM(object):
     "SCM abstraction class"
@@ -397,7 +397,7 @@ class SCM(object):
         env = None
         def _run(cmd, chdir=None, fatal=False, log=True, _count=[0]):
             if globals().get('KOJIKAMID'):
-                #we've been inserted into kojikamid, use its run()
+                # we've been inserted into kojikamid, use its run()
                 return run(cmd, chdir=chdir, fatal=fatal, log=log)  # noqa: F821
             else:
                 append = (_count[0] > 0)
@@ -546,7 +546,7 @@ class SCM(object):
             # just use the same url
             r['source'] = self.url
         return r
-## END kojikamid dup
+# END kojikamid dup #
 
 
 class TaskManager(object):
@@ -613,7 +613,7 @@ class TaskManager(object):
 
         If nolocal is True, do not try to scan local buildroots.
         """
-        #query buildroots in db that are not expired
+        # query buildroots in db that are not expired
         states = [koji.BR_STATES[x] for x in ('INIT', 'WAITING', 'BUILDING')]
         db_br = self.session.listBuildroots(hostID=self.host_id, state=tuple(states))
         # index by id
@@ -627,8 +627,8 @@ class TaskManager(object):
                 self.logger.warn("Expiring taskless buildroot: %(id)i/%(tag_name)s/%(arch)s" % br)
                 self.session.host.setBuildRootState(id, st_expired)
             elif task_id not in self.tasks:
-                #task not running - expire the buildroot
-                #TODO - consider recycling hooks here (with strong sanity checks)
+                # task not running - expire the buildroot
+                # TODO - consider recycling hooks here (with strong sanity checks)
                 self.logger.info("Expiring buildroot: %(id)i/%(tag_name)s/%(arch)s" % br)
                 self.logger.debug("Buildroot task: %r, Current tasks: %r" % (task_id, to_list(self.tasks.keys())))
                 self.session.host.setBuildRootState(id, st_expired)
@@ -640,13 +640,13 @@ class TaskManager(object):
         local_only = [id for id in local_br if id not in db_br]
         if local_only:
             missed_br = self.session.listBuildroots(buildrootID=tuple(local_only))
-            #get all the task info in one call
+            # get all the task info in one call
             tasks = []
             for br in missed_br:
                 task_id = br['task_id']
                 if task_id:
                     tasks.append(task_id)
-            #index
+            # index
             missed_br = dict([(row['id'], row) for row in missed_br])
             tasks = dict([(row['id'], row) for row in self.session.getTaskInfo(tasks)])
             for id in local_only:
@@ -671,7 +671,7 @@ class TaskManager(object):
                         self.logger.warn("%s: invalid task %s" % (desc, br['task_id']))
                         continue
                     if (task['state'] == koji.TASK_STATES['FAILED'] and age < self.options.failed_buildroot_lifetime):
-                        #XXX - this could be smarter
+                        # XXX - this could be smarter
                         # keep buildroots for failed tasks around for a little while
                         self.logger.debug("Keeping failed buildroot: %s" % desc)
                         continue
@@ -689,17 +689,17 @@ class TaskManager(object):
                             continue
                     else:
                         age = min(age, time.time() - st.st_mtime)
-                #note: https://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=192153)
-                #If rpmlib is installing in this chroot, removing it entirely
-                #can lead to a world of hurt.
-                #We remove the rootdir contents but leave the rootdir unless it
-                #is really old
+                # note: https://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=192153)
+                # If rpmlib is installing in this chroot, removing it entirely
+                # can lead to a world of hurt.
+                # We remove the rootdir contents but leave the rootdir unless it
+                # is really old
                 if age > 3600*24:
-                    #dir untouched for a day
+                    # dir untouched for a day
                     self.logger.info("Removing buildroot: %s" % desc)
                     if topdir and safe_rmtree(topdir, unmount=True, strict=False) != 0:
                         continue
-                    #also remove the config
+                    # also remove the config
                     try:
                         os.unlink(data['cfg'])
                     except OSError as e:
@@ -726,7 +726,7 @@ class TaskManager(object):
         self.logger.debug("Expired/stray buildroots: %d" % len(local_only))
 
     def _scanLocalBuildroots(self):
-        #XXX
+        # XXX
         configdir = '/etc/mock/koji'
         buildroots = {}
         for f in os.listdir(configdir):
@@ -785,13 +785,13 @@ class TaskManager(object):
             # by this host.
             id = task['id']
             if id not in self.pids:
-                #We don't have a process for this
-                #Expected to happen after a restart, otherwise this is an error
+                # We don't have a process for this
+                # Expected to happen after a restart, otherwise this is an error
                 stale.append(id)
                 continue
             tasks[id] = task
             if task.get('alert', False):
-                #wake up the process
+                # wake up the process
                 self.logger.info("Waking up task: %r" % task)
                 os.kill(self.pids[id], signal.SIGUSR2)
             if not task['waiting']:
@@ -801,8 +801,8 @@ class TaskManager(object):
         self.tasks = tasks
         self.logger.debug("Current tasks: %r" % self.tasks)
         if len(stale) > 0:
-            #A stale task is one which is opened to us, but we know nothing
-            #about). This will happen after a daemon restart, for example.
+            # A stale task is one which is opened to us, but we know nothing
+            # about). This will happen after a daemon restart, for example.
             self.logger.info("freeing stale tasks: %r" % stale)
             self.session.host.freeTasks(stale)
         for id, pid in list(self.pids.items()):
@@ -844,15 +844,15 @@ class TaskManager(object):
         self.logger.debug("Load Data:")
         self.logger.debug("  hosts: %r" % hosts)
         self.logger.debug("  tasks: %r" % tasks)
-        #now we organize this data into channel-arch bins
+        # now we organize this data into channel-arch bins
         bin_hosts = {}  #hosts indexed by bin
         bins = {}       #bins for this host
         our_avail = None
         for host in hosts:
             host['bins'] = []
             if host['id'] == self.host_id:
-                #note: task_load reported by server might differ from what we
-                #sent due to precision variation
+                # note: task_load reported by server might differ from what we
+                # sent due to precision variation
                 our_avail = host['capacity'] - host['task_load']
             for chan in host['channels']:
                 for arch in host['arches'].split() + ['noarch']:
@@ -867,7 +867,7 @@ class TaskManager(object):
         elif not bins:
             self.logger.info("No bins for this host. Missing channel/arch config?")
             # Note: we may still take an assigned task below
-        #sort available capacities for each of our bins
+        # sort available capacities for each of our bins
         avail = {}
         for bin in bins:
             avail[bin] = [host['capacity'] - host['task_load'] for host in bin_hosts[bin]]
@@ -889,7 +889,7 @@ class TaskManager(object):
             if task['state'] == koji.TASK_STATES['ASSIGNED']:
                 self.logger.debug("task is assigned")
                 if self.host_id == task['host_id']:
-                    #assigned to us, we can take it regardless
+                    # assigned to us, we can take it regardless
                     if self.takeTask(task):
                         return True
             elif task['state'] == koji.TASK_STATES['FREE']:
@@ -897,18 +897,18 @@ class TaskManager(object):
                 self.logger.debug("task is free, bin=%r" % bin)
                 if bin not in bins:
                     continue
-                #see where our available capacity is compared to other hosts for this bin
-                #(note: the hosts in this bin are exactly those that could
-                #accept this task)
+                # see where our available capacity is compared to other hosts for this bin
+                # (note: the hosts in this bin are exactly those that could
+                # accept this task)
                 bin_avail = avail.get(bin, [0])
                 if self.checkAvailDelay(task, bin_avail, our_avail):
                     # decline for now and give the upper half a chance
                     continue
-                #otherwise, we attempt to open the task
+                # otherwise, we attempt to open the task
                 if self.takeTask(task):
                     return True
             else:
-                #should not happen
+                # should not happen
                 raise Exception("Invalid task state reported by server")
         return False
 
@@ -968,11 +968,11 @@ class TaskManager(object):
         try:
             (childpid, status) = os.waitpid(pid, os.WNOHANG)
         except OSError as e:
-            #check errno
+            # check errno
             if e.errno != errno.ECHILD:
-                #should not happen
+                # should not happen
                 raise
-            #otherwise assume the process is gone
+            # otherwise assume the process is gone
             self.logger.info("%s: %s" % (prefix, e))
             return True
         if childpid != 0:
@@ -1118,7 +1118,7 @@ class TaskManager(object):
         if children:
             self._killChildren(task_id, children, sig=signal.SIGKILL, timeout=3.0)
 
-        #expire the task's subsession
+        # expire the task's subsession
         session_id = self.subsessions.get(task_id)
         if session_id:
             self.logger.info("Expiring subsession %i (task %i)" % (session_id, task_id))
@@ -1126,7 +1126,7 @@ class TaskManager(object):
                 self.session.logoutChild(session_id)
                 del self.subsessions[task_id]
             except:
-                #not much we can do about it
+                # not much we can do about it
                 pass
         if wait:
             return self._waitTask(task_id, pid)
@@ -1200,7 +1200,7 @@ class TaskManager(object):
             self.status = "Load average %.2f > %.2f" % (loadavgs[0], maxload)
             self.logger.info(self.status)
             return False
-        #XXX - add more checks
+        # XXX - add more checks
         return True
 
     def takeTask(self, task):
@@ -1250,7 +1250,7 @@ class TaskManager(object):
             if state != 'OPEN':
                 self.logger.warn("Task %i changed is %s", task_id, state)
                 return False
-            #otherwise...
+            # otherwise...
             raise
         if handler.Foreground:
             self.logger.info("running task in foreground")
@@ -1263,27 +1263,27 @@ class TaskManager(object):
         return True
 
     def forkTask(self, handler):
-        #get the subsession before we fork
+        # get the subsession before we fork
         newhub = self.session.subsession()
         session_id = newhub.sinfo['session-id']
         pid = os.fork()
         if pid:
             newhub._forget()
             return pid, session_id
-        #in no circumstance should we return after the fork
-        #nor should any exceptions propagate past here
+        # in no circumstance should we return after the fork
+        # nor should any exceptions propagate past here
         try:
             self.session._forget()
-            #set process group
+            # set process group
             os.setpgrp()
-            #use the subsession
+            # use the subsession
             self.session = newhub
             handler.session = self.session
-            #set a do-nothing handler for sigusr2
+            # set a do-nothing handler for sigusr2
             signal.signal(signal.SIGUSR2, lambda *args: None)
             self.runTask(handler)
         finally:
-            #diediedie
+            # diediedie
             try:
                 self.session.logout()
             finally:
@@ -1302,10 +1302,10 @@ class TaskManager(object):
             tb = ''.join(traceback.format_exception(*sys.exc_info())).replace(r"\n", "\n")
             self.logger.warn("FAULT:\n%s" % tb)
         except (SystemExit, koji.tasks.ServerExit, KeyboardInterrupt):
-            #we do not trap these
+            # we do not trap these
             raise
         except koji.tasks.ServerRestart:
-            #freeing this task will allow the pending restart to take effect
+            # freeing this task will allow the pending restart to take effect
             self.session.host.freeTasks([handler.id])
             return
         except:
@@ -1315,7 +1315,7 @@ class TaskManager(object):
             e_class, e = sys.exc_info()[:2]
             faultCode = getattr(e_class, 'faultCode', 1)
             if issubclass(e_class, koji.GenericError):
-                #just pass it through
+                # just pass it through
                 tb = str(e)
             response = koji.xmlrpcplus.dumps(koji.xmlrpcplus.Fault(faultCode, tb))
 
