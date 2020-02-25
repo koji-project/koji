@@ -292,8 +292,8 @@ class ModXMLRPCRequestHandler(object):
 
     def enforce_lockout(self):
         if context.opts.get('LockOut') and \
-            context.method not in ('login', 'krbLogin', 'sslLogin', 'logout') and \
-            not context.session.hasPerm('admin'):
+                context.method not in ('login', 'krbLogin', 'sslLogin', 'logout') and \
+                not context.session.hasPerm('admin'):
             raise koji.ServerOffline("Server disabled for maintenance")
 
     def _dispatch(self, method, params):
@@ -307,7 +307,7 @@ class ModXMLRPCRequestHandler(object):
 
         if self.logger.isEnabledFor(logging.INFO):
             self.logger.info("Handling method %s for session %s (#%s)",
-                            method, context.session.id, context.session.callnum)
+                             method, context.session.id, context.session.callnum)
             if method != 'uploadFile' and self.logger.isEnabledFor(logging.DEBUG):
                 self.logger.debug("Params: %s", pprint.pformat(params))
                 self.logger.debug("Opts: %s", pprint.pformat(opts))
@@ -318,9 +318,9 @@ class ModXMLRPCRequestHandler(object):
         if self.logger.isEnabledFor(logging.INFO):
             rusage = resource.getrusage(resource.RUSAGE_SELF)
             self.logger.info("Completed method %s for session %s (#%s): %f seconds, rss %s, stime %f",
-                            method, context.session.id, context.session.callnum,
-                            time.time()-start,
-                            rusage.ru_maxrss, rusage.ru_stime)
+                             method, context.session.id, context.session.callnum,
+                             time.time()-start,
+                             rusage.ru_maxrss, rusage.ru_stime)
 
         return ret
 
@@ -682,7 +682,7 @@ def server_setup(environ):
         opts = {
             'ServerOffline': True,
             'OfflineMessage': 'server startup error',
-            }
+        }
 
 
 #
@@ -762,7 +762,7 @@ def application(environ, start_response):
                     paramstr = paramstr[:117] + "..."
                 h.logger.warning("Memory usage of process %d grew from %d KiB to %d KiB (+%d KiB) processing request %s with args %s" % (os.getpid(), memory_usage_at_start, memory_usage_at_end, memory_usage_at_end - memory_usage_at_start, context.method, paramstr))
             h.logger.debug("Returning %d bytes after %f seconds", len(response),
-                        time.time() - start)
+                           time.time() - start)
         finally:
             # make sure context gets cleaned up
             if hasattr(context, 'cnx'):

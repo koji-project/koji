@@ -200,7 +200,7 @@ class SCM(object):
         # otherwise not valid
         if strict:
             raise koji.GenericError('Invalid scheme in scm url. Valid schemes '
-                    'are: %s' % ' '.join(sorted(schemes)))
+                                    'are: %s' % ' '.join(sorted(schemes)))
         else:
             return False
 
@@ -410,7 +410,7 @@ class SCM(object):
                 if log_output(session, cmd[0], cmd, logfile, uploadpath,
                               cwd=chdir, logerror=1, append=append, env=env):
                     raise koji.BuildError('Error running %s command "%s", see %s for details' % \
-                        (self.scmtype, ' '.join(cmd), os.path.basename(logfile)))
+                                          (self.scmtype, ' '.join(cmd), os.path.basename(logfile)))
 
         if self.scmtype == 'CVS':
             pserver = ':pserver:%s@%s:%s' % ((self.user or 'anonymous'), self.host, self.repository)
@@ -945,7 +945,7 @@ class TaskManager(object):
         # return True if we should delay
         if now - ts < delay:
             self.logger.debug("skipping task %i, age=%s rank=%s"
-                                % (task['id'], int(now - ts), rank))
+                              % (task['id'], int(now - ts), rank))
             return True
         # otherwise
         del self.skipped_tasks[task['id']]

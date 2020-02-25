@@ -88,14 +88,14 @@ arches = {
 
     # itanium
     "ia64": "noarch",
-    }
+}
 
 #  Will contain information parsed from /proc/self/auxv via _parse_auxv().
 # Should move into rpm really.
 _aux_vector = {
     "platform": "",
     "hwcap": 0,
-    }
+}
 
 def legitMultiArchesInSameLib(arch=None):
     # this is completely crackrock - if anyone has a better way I

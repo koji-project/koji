@@ -171,7 +171,7 @@ class CompareTest(BaseSimpleTest):
         '>=': lambda a, b: a >= b,
         '=': lambda a, b: a == b,
         '!=': lambda a, b: a != b,
-        }
+    }
 
     def __init__(self, str):
         """Read the test parameters from string"""

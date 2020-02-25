@@ -49,13 +49,13 @@ EXPAND_ARCHES = {
     'armhfp': ['armv7hl', 'armv7hnl', 'armv6hl', 'armv6hnl'],
     'arm': ['armv5tel', 'armv5tejl', 'armv6l','armv7l'],
     'sh4': ['sh4a']
-    }
+}
 
 MULTILIB_ARCHES = {
     'x86_64': 'i386',
     'ppc64': 'ppc',
     's390x': 's390'
-    }
+}
 
 def parse_args(args):
     """Parse our opts/args"""
@@ -221,13 +221,13 @@ class RepoMerge(object):
                         # We found a rpm built from an srpm with the same name in a previous repo.
                         # The previous repo takes precedence, so ignore the srpm found here.
                         sys.stderr.write('Package %s already provided by repo %s'
-                                ' (at %s in repo %s)\n'
-                                % (srpm_name, other_repoid, str(pkg), pkg.repoid))
+                                         ' (at %s in repo %s)\n'
+                                         % (srpm_name, other_repoid, str(pkg), pkg.repoid))
                         continue
                     else:
                         # We're in the same repo, so compare srpm NVRs
                         other_srpm_name, other_ver, other_rel, other_epoch, other_arch = \
-                                         rpmUtils.miscutils.splitFilename(other_srpm)
+                            rpmUtils.miscutils.splitFilename(other_srpm)
                         cmp = rpmUtils.miscutils.compareEVR((epoch, ver, rel),
                                                             (other_epoch, other_ver, other_rel))
                         if cmp > 0:
@@ -235,10 +235,10 @@ class RepoMerge(object):
                             # existing srpm in the dict, so update the dict
                             include_srpms[srpm_name] = (pkg.sourcerpm, pkg.repoid)
                             sys.stderr.write('Replacing older source nvr: '
-                                    '%s > %s\n' % (pkg.sourcerpm, other_srpm))
+                                             '%s > %s\n' % (pkg.sourcerpm, other_srpm))
                         elif cmp < 0:
                             sys.stderr.write('Ignoring older source nvr: '
-                                    '%s < %s\n' % (pkg.sourcerpm, other_srpm))
+                                             '%s < %s\n' % (pkg.sourcerpm, other_srpm))
                         # otherwise same, so we already have it
                 elif srpm_name in self.blocked:
                     sys.stderr.write('Ignoring blocked package: %s\n\n' % \
@@ -260,14 +260,14 @@ class RepoMerge(object):
                     sys.stderr.write('Duplicate rpm: %s\n' % pkg_nvra)
                 elif incl_srpm is None:
                     sys.stderr.write('Excluding %s (%s is blocked)\n'
-                            % (pkg_nvra, srpm_name))
+                                     % (pkg_nvra, srpm_name))
                     repo.sack.delPackage(pkg)
                 elif incl_srpm == pkg.sourcerpm:
                     origins.write('%s\t%s\n' % (pkg_nvra, repo.urls[0]))
                     seen_rpms[pkg_nvra] = 1
                 else:
                     sys.stderr.write('Excluding %s (wrong srpm version '
-                            '%s != %s)\n' % (pkg_nvra, pkg.sourcerpm, incl_srpm))
+                                     '%s != %s)\n' % (pkg_nvra, pkg.sourcerpm, incl_srpm))
                     repo.sack.delPackage(pkg)
 
         origins.close()

@@ -617,7 +617,7 @@ def get_mgmt_server():
     logger.debug('found MAC address %s, connecting to %s:%s',
                  macaddr, gateway, MANAGER_PORT)
     server = six.moves.xmlrpc_client.ServerProxy('http://%s:%s/' %
-                                   (gateway, MANAGER_PORT), allow_none=True)
+                                                 (gateway, MANAGER_PORT), allow_none=True)
     # we would set a timeout on the socket here, but that is apparently not
     # supported by python/cygwin/Windows
     task_port = server.getPort(macaddr)

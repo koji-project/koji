@@ -551,8 +551,8 @@ def escapeHTML(value):
 
     value = koji.fixEncoding(value)
     return value.replace('&', '&amp;').\
-           replace('<', '&lt;').\
-           replace('>', '&gt;')
+        replace('<', '&lt;').\
+        replace('>', '&gt;')
 
 def authToken(template, first=False, form=False):
     """Return the current authToken if it exists.
@@ -644,7 +644,7 @@ class TaskResultFragment(object):
         - empty_str_placeholder
     """
     def __init__(self, text='', size=None, need_escape=None, begin_tag='',
-                     end_tag='', composer=None, empty_str_placeholder=None):
+                 end_tag='', composer=None, empty_str_placeholder=None):
         self.text = text
         if size is None:
             self.size = len(text)
@@ -689,7 +689,7 @@ class TaskResultLine(object):
         - composer
     """
     def __init__(self, fragments=None, need_escape=None, begin_tag='',
-                     end_tag='<br />', composer=None):
+                 end_tag='<br />', composer=None):
         if fragments is None:
             self.fragments = []
         else:
@@ -746,18 +746,18 @@ def _parse_value(key, value, sep=', '):
         _str = sep.join([str(val) for val in value])
     elif isinstance(value, dict):
         _str = sep.join(['%s=%s' % ((n == '' and "''" or n), v)
-                             for n, v in value.items()])
+                         for n, v in value.items()])
     else:
         _str = str(value)
     if _str is None:
         _str = ''
 
     return TaskResultFragment(text=_str, need_escape=need_escape,
-                                  begin_tag=begin_tag, end_tag=end_tag)
+                              begin_tag=begin_tag, end_tag=end_tag)
 
 def task_result_to_html(result=None, exc_class=None,
-                            max_abbr_lines=None, max_abbr_len=None,
-                            abbr_postscript=None):
+                        max_abbr_lines=None, max_abbr_len=None,
+                        abbr_postscript=None):
     """convert the result to a mutiple lines HTML fragment
 
     Args:
@@ -801,7 +801,7 @@ def task_result_to_html(result=None, exc_class=None,
 
     def _parse_properties(props):
         return ', '.join([v is not None and '%s=%s' % (n, v) or str(n)
-                              for n, v in props.items()])
+                          for n, v in props.items()])
 
     if exc_class:
         if hasattr(result, 'faultString'):
@@ -810,7 +810,7 @@ def task_result_to_html(result=None, exc_class=None,
             _str = "%s: %s" % (exc_class.__name__, str(result))
         fragment = TaskResultFragment(text=_str, need_escape=True)
         line = TaskResultLine(fragments=[fragment],
-                                  begin_tag='<pre>', end_tag='</pre>')
+                              begin_tag='<pre>', end_tag='</pre>')
         lines.append(line)
     elif isinstance(result, dict):
 
@@ -821,8 +821,8 @@ def task_result_to_html(result=None, exc_class=None,
             val_fragment = line.fragments[1]
             if length is None:
                 return '%s%s = %s%s%s' % (line.begin_tag, key_fragment.composer(),
-                                            val_fragment.composer(), postscript,
-                                            line.end_tag)
+                                          val_fragment.composer(), postscript,
+                                          line.end_tag)
             first_part_len = len('%s = ') + key_fragment.size
             remainder_len = length - first_part_len
             if remainder_len < 0: remainder_len = 0
@@ -840,7 +840,7 @@ def task_result_to_html(result=None, exc_class=None,
                 val_fragment = _parse_value(k, v)
                 key_fragment = TaskResultFragment(text=k, need_escape=True)
                 line = TaskResultLine(fragments=[key_fragment, val_fragment],
-                                          need_escape=False, composer=composer)
+                                      need_escape=False, composer=composer)
             lines.append(line)
     else:
         if result is not None:

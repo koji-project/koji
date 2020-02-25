@@ -116,7 +116,7 @@ def parse_task_params(method, params):
 
     # check for new style
     if (len(params) == 1 and isinstance(params[0], dict)
-                and '__method__' in params[0]):
+            and '__method__' in params[0]):
         ret = params[0].copy()
         del ret['__method__']
         return ret
@@ -343,7 +343,7 @@ class BaseTaskHandler(object):
         # os.spawnvp(os.P_WAIT, 'rm', ['rm', '-rf', self.workdir])
 
     def wait(self, subtasks=None, all=False, failany=False, canfail=None,
-                timeout=None):
+             timeout=None):
         """Wait on subtasks
 
         subtasks is a list of integers (or an integer). If more than one subtask
@@ -417,7 +417,7 @@ class BaseTaskHandler(object):
                     self.logger.info('Subtasks timed out')
                     self.session.cancelTaskChildren(self.id)
                     raise koji.GenericError('Subtasks timed out after %.1f '
-                                'seconds' % duration)
+                                            'seconds' % duration)
             else:
                 # signal handler set by TaskManager.forkTask
                 self.logger.debug("Pausing...")
@@ -429,7 +429,7 @@ class BaseTaskHandler(object):
         if all:
             finished = subtasks
         return dict(self.session.host.taskWaitResults(self.id, finished,
-                                                    canfail=canfail))
+                                                      canfail=canfail))
 
 
     def getUploadDir(self):

@@ -191,7 +191,7 @@ def _construct_url(environ, page):
     host = environ['SERVER_NAME']
     url_scheme = environ['wsgi.url_scheme']
     if (url_scheme == 'https' and port == '443') or \
-        (url_scheme == 'http' and port == '80'):
+            (url_scheme == 'http' and port == '80'):
         return "%s://%s%s" % (url_scheme, host, page)
     return "%s://%s:%s%s" % (url_scheme, host, port, page)
 
@@ -683,7 +683,7 @@ def taskinfo(environ, taskID):
             values['excClass'] = None
             if task['method'] == 'buildContainer' and 'koji_builds' in result:
                 values['taskBuilds'] = [
-                        server.getBuild(int(buildID)) for buildID in result['koji_builds']]
+                    server.getBuild(int(buildID)) for buildID in result['koji_builds']]
     else:
         values['result'] = None
         values['excClass'] = None
@@ -819,7 +819,7 @@ def tags(environ, start=None, order=None, childID=None):
     values['order'] = order
 
     kojiweb.util.paginateMethod(server, values, 'listTags', kw=None,
-                                 start=start, dataName='tags', prefix='tag', order=order)
+                                start=start, dataName='tags', prefix='tag', order=order)
 
     if environ['koji.currentUser']:
         values['perms'] = server.getUserPerms(environ['koji.currentUser']['id'])
@@ -859,8 +859,8 @@ def packages(environ, tagID=None, userID=None, order='package_name', start=None,
     values['inherited'] = inherited
 
     kojiweb.util.paginateMethod(server, values, 'listPackages',
-                                    kw={'tagID': tagID, 'userID': userID, 'prefix': prefix, 'inherited': bool(inherited)},
-                                    start=start, dataName='packages', prefix='package', order=order)
+                                kw={'tagID': tagID, 'userID': userID, 'prefix': prefix, 'inherited': bool(inherited)},
+                                start=start, dataName='packages', prefix='package', order=order)
 
     values['chars'] = _PREFIX_CHARS
 
@@ -1652,8 +1652,8 @@ def channelinfo(environ, channelID):
 
     states = [koji.TASK_STATES[s] for s in ('FREE', 'OPEN', 'ASSIGNED')]
     values['taskCount'] = \
-            server.listTasks(opts={'channel_id': channelID, 'state': states},
-                             queryOpts={'countOnly': True})
+        server.listTasks(opts={'channel_id': channelID, 'state': states},
+                         queryOpts={'countOnly': True})
 
     hosts = server.listHosts(channelID=channelID)
     hosts.sort(key=_sortbyname)
@@ -1756,7 +1756,7 @@ def archivelist(environ, type, buildrootID=None, imageID=None, start=None, order
                                         start=start, dataName='archives', prefix='archive', order=order)
         elif type == 'built':
             kojiweb.util.paginateMethod(server, values, 'listArchives', kw={'buildrootID': buildroot['id']},
-                                    start=start, dataName='archives', prefix='archive', order=order)
+                                        start=start, dataName='archives', prefix='archive', order=order)
         else:
             raise koji.GenericError('unrecognized type of archivelist')
     elif imageID is not None:

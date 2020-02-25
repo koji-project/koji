@@ -348,11 +348,11 @@ class RepoManager(object):
                 # we're already tracking it
                 if repo.state != data['state']:
                     self.logger.info('State changed for repo %s: %s -> %s'
-                                       %(repo_id, koji.REPO_STATES[repo.state], koji.REPO_STATES[data['state']]))
+                                     %(repo_id, koji.REPO_STATES[repo.state], koji.REPO_STATES[data['state']]))
                     repo.state = data['state']
             else:
                 self.logger.info('Found repo %s, state=%s'
-                                   %(repo_id, koji.REPO_STATES[data['state']]))
+                                 %(repo_id, koji.REPO_STATES[data['state']]))
                 repo = ManagedRepo(self, data)
                 self.repos[repo_id] = repo
             if not getTag(self.session, repo.tag_id) and not repo.expired():
@@ -488,7 +488,7 @@ class RepoManager(object):
                     if not self.options.ignore_stray_repos:
                         age = time.time() - dir_ts
                         self.logger.debug("did not expect %s; age: %s",
-                                repodir, age)
+                                          repodir, age)
                         if age > max_age:
                             self.logger.info("Removing unexpected directory (no such repo): %s", repodir)
                             if symlink:
@@ -545,7 +545,7 @@ class RepoManager(object):
         stats = self.tagUseStats(entry['taginfo']['id'])
         # normalize use count
         max_n = max([t.get('n_recent', 0) for t in self.needed_tags.values()]
-                        or [1])
+                    or [1])
         if max_n == 0:
             # no recent use or missing data
             max_n = 1
@@ -559,7 +559,7 @@ class RepoManager(object):
             age = 0
         entry['score'] = age * adj
         self.logger.debug("Needed tag %s got score %.2f",
-                    entry['taginfo']['name'], entry['score'])
+                          entry['taginfo']['name'], entry['score'])
         # so a day old unused repo gets about the regen same score as a
         # 2.4-hour-old, very popular repo
 
@@ -572,7 +572,7 @@ class RepoManager(object):
         self.logger.debug("Current tasks: %r" % self.tasks)
         if self.other_tasks:
             self.logger.debug("Found %i untracked newRepo tasks",
-                        len(self.other_tasks))
+                              len(self.other_tasks))
         self.logger.debug("Updating repos")
 
         self.readCurrentRepos()
@@ -634,7 +634,7 @@ class RepoManager(object):
 
         # also check other newRepo tasks
         repo_tasks = self.session.listTasks(opts={'method':'newRepo',
-                            'state':([koji.TASK_STATES[s] for s in ('FREE', 'OPEN')])})
+                                                  'state':([koji.TASK_STATES[s] for s in ('FREE', 'OPEN')])})
         others = [t for t in repo_tasks if t['id'] not in self.tasks]
         for tinfo in others:
             if tinfo['id'] not in self.other_tasks:
@@ -651,7 +651,7 @@ class RepoManager(object):
         self.build_tags = set([
             t['build_tag'] for t in self.session.getBuildTargets()
             if not koji.util.multi_fnmatch(t['build_tag_name'], ignore)
-            ])
+        ])
         # index repos by tag
         tag_repos = {}
         for repo in to_list(self.repos.values()):
@@ -672,7 +672,7 @@ class RepoManager(object):
                 if covered:
                     # no longer needed
                     self.logger.info("Tag %(name)s has a current or in "
-                            "progress repo", entry['taginfo'])
+                                     "progress repo", entry['taginfo'])
                     del self.needed_tags[tag_id]
                 # if not covered, we already know
                 continue
@@ -699,10 +699,10 @@ class RepoManager(object):
                 ts = time.time()
 
             entry = {
-                    'taginfo': taginfo,
-                    'expire_ts': ts,
-                    'needed_since' : time.time(),
-                    }
+                'taginfo': taginfo,
+                'expire_ts': ts,
+                'needed_since' : time.time(),
+            }
             self.setTagScore(entry)
             self.needed_tags[tag_id] = entry
 
@@ -711,7 +711,7 @@ class RepoManager(object):
             entry = self.needed_tags.get(tag_id)
             if tag_id not in self.build_tags:
                 self.logger.info("Tag %(name)s is no longer a build tag",
-                        entry['taginfo'])
+                                 entry['taginfo'])
                 del self.needed_tags[tag_id]
         for tag_id, repolist in tag_repos.items():
             if tag_id not in self.build_tags:
@@ -750,7 +750,7 @@ class RepoManager(object):
                 self.logger.info("Maximum number of repo tasks reached")
                 return
             elif (len(self.tasks) + len(self.other_tasks)
-                            >= self.options.repo_tasks_limit):
+                  >= self.options.repo_tasks_limit):
                 self.logger.info("Repo task limit reached")
                 return
             tagname = tag['taginfo']['name']
@@ -765,7 +765,7 @@ class RepoManager(object):
                 else:
                     # should not happen
                     logger.warning('Needed tag refers to unknown task. '
-                            '%s -> %i', tagname, task_id)
+                                   '%s -> %i', tagname, task_id)
                     # we'll advance and create a new task
             taskopts = {}
             if koji.util.multi_fnmatch(tagname, debuginfo_pat):
@@ -788,14 +788,14 @@ class RepoManager(object):
             else:
                 time_expired = "%.1f" % (time.time() - expire_ts)
             self.logger.info("Created newRepo task %s for tag %s (%s), "
-                    "expired for %s sec", task_id, tag['taginfo']['id'],
-                    tag['taginfo']['name'], time_expired)
+                             "expired for %s sec", task_id, tag['taginfo']['id'],
+                             tag['taginfo']['name'], time_expired)
             self.tasks[task_id] = {
-                    'id': task_id,
-                    'taskinfo': self.session.getTaskInfo(task_id),
-                    'tag_id': tag['taginfo']['id'],
-                    'maven': maven,
-                    }
+                'id': task_id,
+                'taskinfo': self.session.getTaskInfo(task_id),
+                'tag_id': tag['taginfo']['id'],
+                'maven': maven,
+            }
             tag['task_id'] = task_id
         if running_tasks_maven >= self.options.max_repo_tasks_maven:
             self.logger.info("Maximum number of maven repo tasks reached")
@@ -804,7 +804,7 @@ class RepoManager(object):
 def start_currency_checker(session, repomgr):
     subsession = session.subsession()
     thread = threading.Thread(name='currencyChecker',
-                        target=repomgr.currencyChecker, args=(subsession,))
+                              target=repomgr.currencyChecker, args=(subsession,))
     thread.setDaemon(True)
     thread.start()
     return thread
@@ -813,7 +813,7 @@ def start_currency_checker(session, repomgr):
 def start_regen_loop(session, repomgr):
     subsession = session.subsession()
     thread = threading.Thread(name='regenLoop',
-                        target=repomgr.regenLoop, args=(subsession,))
+                              target=repomgr.regenLoop, args=(subsession,))
     thread.setDaemon(True)
     thread.start()
     return thread

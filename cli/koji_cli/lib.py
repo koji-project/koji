@@ -34,22 +34,22 @@ greetings = ('hello', 'hi', 'yo', "what's up", "g'day", 'back to work',
              'hallo',
              'ciao',
              'hola',
-            u'olá',
-            u'dobrý den',
-            u'zdravstvuite',
-            u'góðan daginn',
+             u'olá',
+             u'dobrý den',
+             u'zdravstvuite',
+             u'góðan daginn',
              'hej',
              'tervehdys',
-            u'grüezi',
-            u'céad míle fáilte',
-            u'hylô',
-            u'bună ziua',
-            u'jó napot',
+             u'grüezi',
+             u'céad míle fáilte',
+             u'hylô',
+             u'bună ziua',
+             u'jó napot',
              'dobre dan',
-            u'你好',
-            u'こんにちは',
-            u'नमस्कार',
-            u'안녕하세요')
+             u'你好',
+             u'こんにちは',
+             u'नमस्कार',
+             u'안녕하세요')
 
 ARGMAP = {'None': None,
           'True': True,
@@ -276,7 +276,7 @@ def watch_tasks(session, tasklist, quiet=False, poll_interval=60, ki_handler=Non
                 tlist = ['%s: %s' % (t.str(), t.display_state(t.info))
                          for t in tasks.values() if not t.is_done()]
                 print(
-"""Tasks still running. You can continue to watch with the '%s watch-task' command.
+                    """Tasks still running. You can continue to watch with the '%s watch-task' command.
 Running Tasks:
 %s""" % (progname, '\n'.join(tlist)))
     sys.stdout.flush()
@@ -414,7 +414,7 @@ def unique_path(prefix):
     # For some reason repr(time.time()) includes 4 or 5
     # more digits of precision than str(time.time())
     return '%s/%r.%s' % (prefix, time.time(),
-                      ''.join([random.choice(string.ascii_letters) for i in range(8)]))
+                         ''.join([random.choice(string.ascii_letters) for i in range(8)]))
 
 
 def _format_size(size):

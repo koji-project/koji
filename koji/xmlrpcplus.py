@@ -100,7 +100,7 @@ def dumps(params, methodname=None, methodresponse=None, encoding=None,
             "<methodName>", methodname, "</methodName>\n",
             data,
             "</methodCall>\n"
-            )
+        )
     elif methodresponse:
         # a method response, or a fault structure
         parts = (
@@ -108,7 +108,7 @@ def dumps(params, methodname=None, methodresponse=None, encoding=None,
             "<methodResponse>\n",
             data,
             "</methodResponse>\n"
-            )
+        )
     else:
         return data  # return as is
     return ''.join(parts)

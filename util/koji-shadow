@@ -82,7 +82,7 @@ def get_options():
     parser.add_option("--krbservice", help=_("the service name of the"
                                              " principal being used by the hub"))
     parser.add_option("--runas", metavar="USER",
-             help=_("run as the specified user (requires special privileges)"))
+                      help=_("run as the specified user (requires special privileges)"))
     parser.add_option("--user", help=_("specify user"))
     parser.add_option("--password", help=_("specify password"))
     parser.add_option("--krb-rdns", action="store_true", default=False,
@@ -316,7 +316,7 @@ def _unique_path(prefix):
     # For some reason repr(time.time()) includes 4 or 5
     # more digits of precision than str(time.time())
     return '%s/%r.%s' % (prefix, time.time(),
-                      ''.join([random.choice(string.ascii_letters) for i in range(8)]))
+                         ''.join([random.choice(string.ascii_letters) for i in range(8)]))
 
 
 class LocalBuild(object):
@@ -547,7 +547,7 @@ class BuildTracker(object):
         self.state_idx = {}
         self.nvr_idx = {}
         for state in ('common', 'pending', 'missing', 'broken', 'brokendeps',
-                     'noroot', 'blocked', 'grey'):
+                      'noroot', 'blocked', 'grey'):
             self.state_idx.setdefault(state, {})
         self.scanRules()
 
@@ -1164,7 +1164,7 @@ class BuildTracker(object):
                 ret = True
                 if build.state != 'common':
                     log ("Task %i finished, but %s still missing" \
-                            % (build.task_id, build.nvr))
+                         % (build.task_id, build.nvr))
         return ret
 
     def checkBuildDeps(self, build):
@@ -1173,14 +1173,14 @@ class BuildTracker(object):
             # log("No revised deplist yet for %s" % build.nvr)
             return False
         problem = [x for x in build.revised_deps
-                         if x.state in ('broken', 'brokendeps', 'noroot', 'blocked')]
+                   if x.state in ('broken', 'brokendeps', 'noroot', 'blocked')]
         if problem:
             log ("Can't rebuild %s, missing %i deps" % (build.nvr, len(problem)))
             build.setState('brokendeps')
             self._print_builds(problem)
             return False
         not_common = [x for x in build.revised_deps
-                         if x.state not in ('common', 'local')]
+                      if x.state not in ('common', 'local')]
         if not_common:
             # could be missing or still building or whatever
             # log("Still missing %i revised deps for %s" % (len(not_common), build.nvr))

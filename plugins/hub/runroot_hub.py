@@ -56,7 +56,7 @@ def runroot(tagInfo, arch, command, channel=None, **opts):
             choices = [x for x in tagarches if x in chanarches]
             if not choices:
                 raise koji.GenericError('no common arches for tag/channel: %s/%s' \
-                            % (tagInfo, taskopts['channel']))
+                                        % (tagInfo, taskopts['channel']))
             taskopts['arch'] = koji.canonArch(random.choice(choices))
 
     args = koji.encode_args(tagInfo, arch, command, **opts)

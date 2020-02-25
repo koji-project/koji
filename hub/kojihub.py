@@ -96,25 +96,25 @@ class Task(object):
     """A task for the build hosts"""
 
     fields = (
-                ('task.id', 'id'),
-                ('task.state', 'state'),
-                ('task.create_time', 'create_time'),
-                ('EXTRACT(EPOCH FROM create_time)', 'create_ts'),
-                ('task.start_time', 'start_time'),
-                ('EXTRACT(EPOCH FROM task.start_time)', 'start_ts'),
-                ('task.completion_time', 'completion_time'),
-                ('EXTRACT(EPOCH FROM completion_time)', 'completion_ts'),
-                ('task.channel_id', 'channel_id'),
-                ('task.host_id', 'host_id'),
-                ('task.parent', 'parent'),
-                ('task.label', 'label'),
-                ('task.waiting', 'waiting'),
-                ('task.awaited', 'awaited'),
-                ('task.owner', 'owner'),
-                ('task.method', 'method'),
-                ('task.arch', 'arch'),
-                ('task.priority', 'priority'),
-                ('task.weight', 'weight'))
+        ('task.id', 'id'),
+        ('task.state', 'state'),
+        ('task.create_time', 'create_time'),
+        ('EXTRACT(EPOCH FROM create_time)', 'create_ts'),
+        ('task.start_time', 'start_time'),
+        ('EXTRACT(EPOCH FROM task.start_time)', 'start_ts'),
+        ('task.completion_time', 'completion_time'),
+        ('EXTRACT(EPOCH FROM completion_time)', 'completion_ts'),
+        ('task.channel_id', 'channel_id'),
+        ('task.host_id', 'host_id'),
+        ('task.parent', 'parent'),
+        ('task.label', 'label'),
+        ('task.waiting', 'waiting'),
+        ('task.awaited', 'awaited'),
+        ('task.owner', 'owner'),
+        ('task.method', 'method'),
+        ('task.arch', 'arch'),
+        ('task.priority', 'priority'),
+        ('task.weight', 'weight'))
 
     def __init__(self, id):
         self.id = id
@@ -192,12 +192,12 @@ class Task(object):
             if state == koji.TASK_STATES['FREE']:
                 if otherhost is not None:
                     log_error("Error: task %i is both free and locked (host %i)"
-                        % (task_id, otherhost))
+                              % (task_id, otherhost))
                     return False
             elif state == koji.TASK_STATES['ASSIGNED']:
                 if otherhost is None:
                     log_error("Error: task %i is assigned, but has no assignee"
-                        % (task_id))
+                              % (task_id))
                     return False
                 elif otherhost != host_id:
                     # task is assigned to someone else
@@ -206,7 +206,7 @@ class Task(object):
             else:
                 if otherhost is None:
                     log_error("Error: task %i is non-free but unlocked (state %i)"
-                        % (task_id, state))
+                              % (task_id, state))
                 return False
         # if we reach here, task is either
         #  - free and unlocked
@@ -236,7 +236,7 @@ class Task(object):
             # get more complete data to return
             fields = self.fields + (('task.request', 'request'),)
             query = QueryProcessor(tables=['task'], clauses=['id=%(id)i'], values=vars(self),
-                            columns=[f[0] for f in fields], aliases=[f[1] for f in fields])
+                                   columns=[f[0] for f in fields], aliases=[f[1] for f in fields])
             ret = query.executeOne()
             if ret['request'].find('<?xml', 0, 10) == -1:
                 # handle older base64 encoded data
@@ -261,7 +261,7 @@ class Task(object):
         oldstate = row[0]
         if koji.TASK_STATES[oldstate] in ['CLOSED', 'CANCELED', 'FAILED']:
             raise koji.GenericError("Cannot free task %i, state is %s" % \
-                    (self.id, koji.TASK_STATES[oldstate]))
+                                    (self.id, koji.TASK_STATES[oldstate]))
         newstate = koji.TASK_STATES['FREE']
         newhost = None
         q = """UPDATE task SET state=%(newstate)s,host_id=%(newhost)s
@@ -613,13 +613,13 @@ def make_task(method, arglist, **opts):
             elif parts[0] == "parent":
                 if not opts.get('parent'):
                     logger.error("Invalid channel policy result (no parent task): %s",
-                                    ruleset.last_rule())
+                                 ruleset.last_rule())
                     raise koji.GenericError("invalid channel policy")
                 opts['channel_id'] = pdata['channel_id']
             elif parts[0] == "req":
                 if 'channel' not in opts:
                     logger.error('Invalid channel policy result (no channel requested): %s',
-                                    ruleset.last_rule())
+                                 ruleset.last_rule())
                     raise koji.GenericError("invalid channel policy")
                 opts['channel_id'] = req_channel_id
             else:
@@ -664,7 +664,7 @@ def eventCondition(event, table=None):
 def readGlobalInheritance(event=None):
     c = context.cnx.cursor()
     fields = ('tag_id', 'parent_id', 'name', 'priority', 'maxdepth', 'intransitive',
-                'noconfig', 'pkg_filter')
+              'noconfig', 'pkg_filter')
     q = """SELECT %s FROM tag_inheritance JOIN tag ON parent_id = id
     WHERE %s
     ORDER BY priority
@@ -777,7 +777,7 @@ def _writeInheritanceData(tag_id, changes, clear=False):
             continue
         # revoke old values
         update = UpdateProcessor('tag_inheritance', values=locals(),
-                    clauses=['tag_id=%(tag_id)s', 'parent_id = %(parent_id)s'])
+                                 clauses=['tag_id=%(tag_id)s', 'parent_id = %(parent_id)s'])
         update.make_revoke()
         update.execute()
     for parent_id, link in six.iteritems(data):
@@ -943,11 +943,11 @@ def _pkglist_add(tag_id, pkg_id, owner, block, extra_arches):
 def pkglist_add(taginfo, pkginfo, owner=None, block=None, extra_arches=None, force=False, update=False):
     """Add to (or update) package list for tag"""
     return _direct_pkglist_add(taginfo, pkginfo, owner, block, extra_arches,
-            force, update, policy=True)
+                               force, update, policy=True)
 
 
 def _direct_pkglist_add(taginfo, pkginfo, owner, block, extra_arches, force,
-        update, policy=False):
+                        update, policy=False):
     """Like pkglist_add, but without policy or access check"""
     # access control comes a little later (via an assert_policy)
     # should not make any changes until after policy is checked
@@ -991,7 +991,7 @@ def _direct_pkglist_add(taginfo, pkginfo, owner, block, extra_arches, force,
         if update and not force:
             # if update flag is true, require that there be a previous entry
             raise koji.GenericError("cannot update: tag %s has no data for package %s" \
-                    % (tag['name'], pkg['name']))
+                                    % (tag['name'], pkg['name']))
     else:
         # already there (possibly via inheritance)
         if owner is None:
@@ -1086,7 +1086,7 @@ def pkglist_unblock(taginfo, pkginfo, force=False):
     previous = pkglist.get(pkg_id, None)
     if previous is None:
         raise koji.GenericError("no data (blocked or otherwise) for package %s in tag %s" \
-                % (pkg['name'], tag['name']))
+                                % (pkg['name'], tag['name']))
     if not previous['blocked']:
         raise koji.GenericError("package %s NOT blocked in tag %s" % (pkg['name'], tag['name']))
     if previous['tag_id'] != tag_id:
@@ -1325,7 +1325,7 @@ def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None,
             raise koji.GenericError('unsupported build type: %s' % type)
         btype_id = btype['id']
         type_join = ('JOIN build_types ON build.id = build_types.build_id '
-                'AND btype_id = %(btype_id)s')
+                     'AND btype_id = %(btype_id)s')
 
     q = """SELECT %s
     FROM tag_listing
@@ -1407,7 +1407,7 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None, inherit=False, late
               ('rpminfo.build_id', 'build_id'),
               ('rpminfo.metadata_only', 'metadata_only'),
               ('rpminfo.extra', 'extra'),
-            ]
+              ]
     tables = ['rpminfo']
     joins = ['tag_listing ON rpminfo.build_id = tag_listing.build_id']
     clauses = [eventCondition(event, 'tag_listing'), 'tag_id=%(tagid)s']
@@ -1499,7 +1499,7 @@ def readTaggedArchives(tag, package=None, event=None, inherit=False, latest=True
               ('archiveinfo.checksum_type', 'checksum_type'),
               ('archiveinfo.metadata_only', 'metadata_only'),
               ('archiveinfo.extra', 'extra'),
-             ]
+              ]
     tables = ['archiveinfo']
     joins = ['tag_listing ON archiveinfo.build_id = tag_listing.build_id',
              'btype ON archiveinfo.btype_id = btype.id']
@@ -1676,7 +1676,7 @@ def _direct_untag_build(tag, build, user, strict=True, force=False):
     koji.plugin.run_callbacks('preUntag', tag=tag, build=build, user=user, force=force, strict=strict)
     values = {'tag_id': tag['id'], 'build_id': build['id']}
     update = UpdateProcessor('tag_listing', values=values,
-                clauses=['tag_id=%(tag_id)i', 'build_id=%(build_id)i'])
+                             clauses=['tag_id=%(tag_id)i', 'build_id=%(build_id)i'])
     update.make_revoke(user_id=user['id'])
     count = update.execute()
     if count == 0 and strict:
@@ -1738,7 +1738,7 @@ def _grplist_add(taginfo, grpinfo, block, force, **opts):
     opts['group_id'] = group['id']
     # revoke old entry (if present)
     update = UpdateProcessor('group_config', values=opts,
-                clauses=['group_id=%(group_id)s', 'tag_id=%(tag_id)s'])
+                             clauses=['group_id=%(group_id)s', 'tag_id=%(tag_id)s'])
     update.make_revoke()
     update.execute()
     # add new entry
@@ -1859,7 +1859,7 @@ def _grp_pkg_add(taginfo, grpinfo, pkg_name, block, force, **opts):
         # already there (possibly via inheritance)
         if previous['blocked'] and not force:
             raise koji.GenericError("package %s blocked in group %s, tag %s" \
-                    % (pkg_name, group['name'], tag['name']))
+                                    % (pkg_name, group['name'], tag['name']))
         # check for duplication and grab old data for defaults
         changed = False
         for field in cfg_fields:
@@ -1883,7 +1883,7 @@ def _grp_pkg_add(taginfo, grpinfo, pkg_name, block, force, **opts):
     opts['blocked'] = block
     # revoke old entry (if present)
     update = UpdateProcessor('group_package_listing', values=opts,
-                clauses=['group_id=%(group_id)s', 'tag_id=%(tag_id)s', 'package=%(package)s'])
+                             clauses=['group_id=%(group_id)s', 'tag_id=%(tag_id)s', 'package=%(package)s'])
     update.make_revoke()
     update.execute()
     # add new entry
@@ -1908,7 +1908,7 @@ def _grp_pkg_remove(taginfo, grpinfo, pkg_name, force):
     tag_id = get_tag_id(taginfo, strict=True)
     grp_id = get_group_id(grpinfo, strict=True)
     update = UpdateProcessor('group_package_listing', values=locals(),
-                clauses=['package=%(pkg_name)s', 'tag_id=%(tag_id)s', 'group_id = %(grp_id)s'])
+                             clauses=['package=%(pkg_name)s', 'tag_id=%(tag_id)s', 'group_id = %(grp_id)s'])
     update.make_revoke()
     update.execute()
 
@@ -1941,7 +1941,7 @@ def _grp_pkg_unblock(taginfo, grpinfo, pkg_name):
     blocked = query.singleValue(strict=False)
     if not blocked:
         raise koji.GenericError("package %s is NOT blocked in group %s, tag %s" \
-                    % (pkg_name, grp_id, tag_id))
+                                % (pkg_name, grp_id, tag_id))
     update = UpdateProcessor('group_package_listing', values=locals(), clauses=clauses)
     update.make_revoke()
     update.execute()
@@ -1983,7 +1983,7 @@ def _grp_req_add(taginfo, grpinfo, reqinfo, block, force, **opts):
         # already there (possibly via inheritance)
         if previous['blocked'] and not force:
             raise koji.GenericError("requirement on group %s blocked in group %s, tag %s" \
-                    % (req['name'], group['name'], tag['name']))
+                                    % (req['name'], group['name'], tag['name']))
         # check for duplication and grab old data for defaults
         changed = False
         for field in cfg_fields:
@@ -2007,7 +2007,7 @@ def _grp_req_add(taginfo, grpinfo, reqinfo, block, force, **opts):
     opts['blocked'] = block
     # revoke old entry (if present)
     update = UpdateProcessor('group_req_listing', values=opts,
-                clauses=['group_id=%(group_id)s', 'tag_id=%(tag_id)s', 'req_id=%(req_id)s'])
+                             clauses=['group_id=%(group_id)s', 'tag_id=%(tag_id)s', 'req_id=%(req_id)s'])
     update.make_revoke()
     update.execute()
     # add new entry
@@ -2033,7 +2033,7 @@ def _grp_req_remove(taginfo, grpinfo, reqinfo, force):
     grp_id = get_group_id(grpinfo, strict=True)
     req_id = get_group_id(reqinfo, strict=True)
     update = UpdateProcessor('group_req_listing', values=locals(),
-                clauses=['req_id=%(req_id)s', 'tag_id=%(tag_id)s', 'group_id = %(grp_id)s'])
+                             clauses=['req_id=%(req_id)s', 'tag_id=%(tag_id)s', 'group_id = %(grp_id)s'])
     update.make_revoke()
     update.execute()
 
@@ -2068,7 +2068,7 @@ def _grp_req_unblock(taginfo, grpinfo, reqinfo):
     blocked = query.singleValue(strict=False)
     if not blocked:
         raise koji.GenericError("group req %s is NOT blocked in group %s, tag %s" \
-                    % (req_id, grp_id, tag_id))
+                                % (req_id, grp_id, tag_id))
     update = UpdateProcessor('group_req_listing', values=locals(), clauses=clauses)
     update.make_revoke()
     update.execute()
@@ -2274,12 +2274,12 @@ def remove_channel(channel_name, force=False):
     channel_id = get_channel_id(channel_name, strict=True)
     # check for task references
     query = QueryProcessor(tables=['task'], clauses=['channel_id=%(channel_id)i'],
-                    values=locals(), columns=['id'], opts={'limit':1})
+                           values=locals(), columns=['id'], opts={'limit':1})
     # XXX slow query
     if query.execute():
         raise koji.GenericError('channel %s has task references' % channel_name)
     query = QueryProcessor(tables=['host_channels'], clauses=['channel_id=%(channel_id)i'],
-                    values=locals(), columns=['host_id'], opts={'limit':1})
+                           values=locals(), columns=['host_id'], opts={'limit':1})
     if query.execute():
         if not force:
             raise koji.GenericError('channel %s has host references' % channel_name)
@@ -2494,7 +2494,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None, with_separa
     rpms, builds = readTaggedRPMS(tag_id, event=event_id, inherit=True, latest=latest)
     groups = readTagGroups(tag_id, event=event_id, inherit=True)
     blocks = [pkg for pkg in readPackageList(tag_id, event=event_id, inherit=True).values() \
-                  if pkg['blocked']]
+              if pkg['blocked']]
     repodir = koji.pathinfo.repo(repo_id, tinfo['name'])
     os.makedirs(repodir)  #should not already exist
 
@@ -2507,14 +2507,14 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None, with_separa
 
     # write repo info to disk
     repo_info = {
-            'id': repo_id,
-            'tag': tinfo['name'],
-            'tag_id': tinfo['id'],
-            'event_id': event_id,
-            'with_src': with_src,
-            'with_separate_src': with_separate_src,
-            'with_debuginfo': with_debuginfo,
-            }
+        'id': repo_id,
+        'tag': tinfo['name'],
+        'tag_id': tinfo['id'],
+        'event_id': event_id,
+        'with_src': with_src,
+        'with_separate_src': with_separate_src,
+        'with_debuginfo': with_debuginfo,
+    }
     with open('%s/repo.json' % repodir, 'w') as fp:
         json.dump(repo_info, fp, indent=2)
 
@@ -2577,7 +2577,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None, with_separa
                          'release': archive['build_release'],
                          'epoch': archive['build_epoch'],
                          'volume_name': archive['volume_name'],
-                        }
+                         }
             srcdir = joinpath(koji.pathinfo.mavenbuild(buildinfo),
                               koji.pathinfo.mavenrepo(archive))
             destlink = joinpath(repodir, 'maven',
@@ -2649,15 +2649,15 @@ def dist_repo_init(tag, keys, task_opts):
     arches = list(set([koji.canonArch(a) for a in task_opts['arch']]))
     # note: we need to match args from the other preRepoInit callback
     koji.plugin.run_callbacks('preRepoInit', tag=tinfo, with_src=False,
-            with_debuginfo=False, event=event, repo_id=None,
-            dist=True, keys=keys, arches=arches, task_opts=task_opts,
-            with_separate_src=False)
+                              with_debuginfo=False, event=event, repo_id=None,
+                              dist=True, keys=keys, arches=arches, task_opts=task_opts,
+                              with_separate_src=False)
     if not event:
         event = get_event()
     repo_id = nextval('repo_id_seq')
     insert = InsertProcessor('repo')
     insert.set(id=repo_id, create_event=event, tag_id=tag_id,
-        state=state, dist=True)
+               state=state, dist=True)
     insert.execute()
     repodir = koji.pathinfo.distrepo(repo_id, tinfo['name'], volume=volume)
     for arch in arches:
@@ -2673,23 +2673,23 @@ def dist_repo_init(tag, keys, task_opts):
         groupsdir = joinpath(repodir, 'groups')
         koji.ensuredir(groupsdir)
         shutil.copyfile(joinpath(koji.pathinfo.work(),
-            task_opts['comps']), groupsdir + '/comps.xml')
+                                 task_opts['comps']), groupsdir + '/comps.xml')
     # write repo info to disk
     repo_info = {
-            'id': repo_id,
-            'tag': tinfo['name'],
-            'tag_id': tinfo['id'],
-            'keys': keys,
-            'volume': volume,
-            'task_opts': task_opts,
-            }
+        'id': repo_id,
+        'tag': tinfo['name'],
+        'tag_id': tinfo['id'],
+        'keys': keys,
+        'volume': volume,
+        'task_opts': task_opts,
+    }
     with open('%s/repo.json' % repodir, 'w') as fp:
         json.dump(repo_info, fp, indent=2)
     # note: we need to match args from the other postRepoInit callback
     koji.plugin.run_callbacks('postRepoInit', tag=tinfo, with_src=False,
-            with_debuginfo=False, event=event, repo_id=repo_id,
-            dist=True, keys=keys, arches=arches, task_opts=task_opts,
-            repodir=repodir, with_reparate_src=False)
+                              with_debuginfo=False, event=event, repo_id=repo_id,
+                              dist=True, keys=keys, arches=arches, task_opts=task_opts,
+                              repodir=repodir, with_reparate_src=False)
     return repo_id, event
 
 
@@ -2701,7 +2701,7 @@ def repo_set_state(repo_id, state, check=True):
         oldstate = _singleValue(q, locals())
         if oldstate > state:
             raise koji.GenericError("Invalid repo state transition %s->%s" \
-                    % (oldstate, state))
+                                    % (oldstate, state))
     q = """UPDATE repo SET state=%(state)s WHERE id = %(repo_id)s"""
     _dml(q, locals())
 
@@ -2775,7 +2775,7 @@ def repo_references(repo_id):
     values = {'repo_id': repo_id}
     clauses = ['repo_id=%(repo_id)s', 'retire_event IS NULL']
     query = QueryProcessor(columns=fields, aliases=aliases, tables=['standard_buildroot'],
-                clauses=clauses, values=values)
+                           clauses=clauses, values=values)
     # check results for bad states
     ret = []
     for data in query.execute():
@@ -2805,7 +2805,7 @@ def get_active_repos():
     joins = ['tag ON repo.tag_id=tag.id', 'events ON repo.create_event = events.id']
     clauses = ['repo.state != %(st_deleted)s']
     query = QueryProcessor(columns=fields, aliases=aliases, tables=['repo'],
-                joins=joins, clauses=clauses, values=values)
+                           joins=joins, clauses=clauses, values=values)
     return query.execute()
 
 
@@ -2824,8 +2824,8 @@ def tag_changed_since_event(event, taglist):
     # first check the tag_updates table
     clauses = ['update_event > %(event)i', 'tag_id IN %(taglist)s']
     query = QueryProcessor(tables=['tag_updates'], columns=['id'],
-                            clauses=clauses, values=data,
-                            opts={'limit': 1})
+                           clauses=clauses, values=data,
+                           opts={'limit': 1})
     if query.execute():
         return True
     # also check these versioned tables
@@ -2843,7 +2843,7 @@ def tag_changed_since_event(event, taglist):
                'tag_id IN %(taglist)s']
     for table in tables:
         query = QueryProcessor(tables=[table], columns=['tag_id'], clauses=clauses,
-                                values=data, opts={'limit': 1})
+                               values=data, opts={'limit': 1})
         if query.execute():
             return True
     return False
@@ -2948,7 +2948,7 @@ def _edit_build_target(buildTargetInfo, name, build_tag, dest_tag):
         _dml(rename, locals())
 
     update = UpdateProcessor('build_target_config', values=locals(),
-                clauses=["build_target_id = %(buildTargetID)i"])
+                             clauses=["build_target_id = %(buildTargetID)i"])
     update.make_revoke()
 
     insert = InsertProcessor('build_target_config')
@@ -2977,7 +2977,7 @@ def _delete_build_target(buildTargetInfo):
     # build targets are versioned, so we do not delete them from the db
     # instead we revoke the config entry
     update = UpdateProcessor('build_target_config', values=locals(),
-                clauses=["build_target_id = %(targetID)i"])
+                             clauses=["build_target_id = %(targetID)i"])
     update.make_revoke()
     update.execute()
 
@@ -3224,7 +3224,7 @@ def get_tag(tagInfo, strict=False, event=None):
               'tag_config.locked': 'locked',
               'tag_config.maven_support': 'maven_support',
               'tag_config.maven_include_all': 'maven_include_all'
-             }
+              }
     clauses = [eventCondition(event, table='tag_config')]
     if isinstance(tagInfo, six.integer_types):
         clauses.append("tag.id = %(tagInfo)i")
@@ -3290,7 +3290,7 @@ def edit_tag(tagInfo, **kwargs):
 def _edit_tag(tagInfo, **kwargs):
     """Edit information for an existing tag."""
     if not context.opts.get('EnableMaven') \
-                and dslice(kwargs, ['maven_support', 'maven_include_all'], strict=False):
+            and dslice(kwargs, ['maven_support', 'maven_include_all'], strict=False):
         raise koji.GenericError("Maven support not enabled")
 
     tag = get_tag(tagInfo, strict=True)
@@ -3313,7 +3313,7 @@ def _edit_tag(tagInfo, **kwargs):
         values = {
             'name': name,
             'tagID': tag['id']
-            }
+        }
         q = """SELECT id FROM tag WHERE name=%(name)s"""
         id = _singleValue(q, values, strict=False)
         if id is not None:
@@ -3406,7 +3406,7 @@ def _delete_tag(tagInfo):
 
     def _tagDelete(tableName, value, columnName='tag_id'):
         update = UpdateProcessor(tableName, clauses=["%s = %%(value)i" % columnName],
-                    values={'value':value})
+                                 values={'value':value})
         update.make_revoke()
         update.execute()
 
@@ -3519,7 +3519,7 @@ def edit_external_repo(info, name=None, url=None):
             url += '/'
 
         update = UpdateProcessor('external_repo_config', values=locals(),
-                    clauses=['external_repo_id = %(repo_id)i'])
+                                 clauses=['external_repo_id = %(repo_id)i'])
         update.make_revoke()
 
         insert = InsertProcessor('external_repo_config')
@@ -3542,7 +3542,7 @@ def delete_external_repo(info):
                                       repo_info=repo_id)
 
     update = UpdateProcessor('external_repo_config', values=locals(),
-                    clauses=['external_repo_id = %(repo_id)i'])
+                             clauses=['external_repo_id = %(repo_id)i'])
     update.make_revoke()
     update.execute()
 
@@ -3562,10 +3562,10 @@ def add_external_repo_to_tag(tag_info, repo_info, priority, merge_mode='koji'):
     tag_repos = get_tag_external_repos(tag_info=tag_id)
     if [tr for tr in tag_repos if tr['external_repo_id'] == repo_id]:
         raise koji.GenericError('tag %s already associated with external repo %s' % \
-            (tag['name'], repo['name']))
+                                (tag['name'], repo['name']))
     if [tr for tr in tag_repos if tr['priority'] == priority]:
         raise koji.GenericError('tag %s already associated with an external repo at priority %i' % \
-            (tag['name'], priority))
+                                (tag['name'], priority))
 
     insert = InsertProcessor('tag_external_repos')
     insert.set(tag_id=tag_id, external_repo_id=repo_id, priority=priority,
@@ -3585,10 +3585,10 @@ def remove_external_repo_from_tag(tag_info, repo_info):
 
     if not get_tag_external_repos(tag_info=tag_id, repo_info=repo_id):
         raise koji.GenericError('external repo %s not associated with tag %s' % \
-            (repo['name'], tag['name']))
+                                (repo['name'], tag['name']))
 
     update = UpdateProcessor('tag_external_repos', values=locals(),
-                clauses=["tag_id = %(tag_id)i", "external_repo_id = %(repo_id)i"])
+                             clauses=["tag_id = %(tag_id)i", "external_repo_id = %(repo_id)i"])
     update.make_revoke()
     update.execute()
 
@@ -3606,7 +3606,7 @@ def edit_tag_external_repo(tag_info, repo_info, priority):
     tag_repos = get_tag_external_repos(tag_info=tag_id, repo_info=repo_id)
     if not tag_repos:
         raise koji.GenericError('external repo %s not associated with tag %s' % \
-            (repo['name'], tag['name']))
+                                (repo['name'], tag['name']))
     tag_repo = tag_repos[0]
 
     if priority != tag_repo['priority']:
@@ -3631,14 +3631,14 @@ def get_tag_external_repos(tag_info=None, repo_info=None, event=None):
              'external_repo ON tag_external_repos.external_repo_id = external_repo.id',
              'external_repo_config ON external_repo.id = external_repo_config.external_repo_id']
     fields = {
-            'external_repo.id': 'external_repo_id',
-            'external_repo.name': 'external_repo_name',
-            'priority': 'priority',
-            'tag.id': 'tag_id',
-            'tag.name': 'tag_name',
-            'url': 'url',
-            'merge_mode': 'merge_mode',
-            }
+        'external_repo.id': 'external_repo_id',
+        'external_repo.name': 'external_repo_name',
+        'priority': 'priority',
+        'tag.id': 'tag_id',
+        'tag.name': 'tag_name',
+        'url': 'url',
+        'merge_mode': 'merge_mode',
+    }
     columns, aliases = zip(*fields.items())
 
     clauses = [eventCondition(event, table='tag_external_repos'), eventCondition(event, table='external_repo_config')]
@@ -3784,7 +3784,7 @@ def _edit_user(userInfo, name=None, krb_principal_mappings=None):
         values = {
             'name': name,
             'userID': user['id']
-            }
+        }
         q = """SELECT id FROM users WHERE name=%(name)s"""
         id = _singleValue(q, values, strict=False)
         if id is not None:
@@ -3978,7 +3978,7 @@ def get_build(buildInfo, strict=False):
              'package on build.pkg_id = package.id',
              'volume on build.volume_id = volume.id',
              'users on build.owner = users.id',
-            ]
+             ]
     clauses = ['build.id = %(buildID)i']
     query = QueryProcessor(columns=fields, aliases=aliases, values=locals(),
                            transform=_fix_extra_field,
@@ -4021,7 +4021,7 @@ def get_build_logs(build):
                 'name': fn,
                 'dir': subdir,
                 'path': "%s/%s/%s" % (logreldir, subdir, fn)
-                }
+            }
             logs.append(loginfo)
     return logs
 
@@ -4030,14 +4030,14 @@ def get_next_release(build_info):
     """find the last successful or deleted build of this N-V. If building is
     specified, skip also builds in progress"""
     values = {
-                  'name': build_info['name'],
-                  'version': build_info['version'],
-                  'states': (
-                      koji.BUILD_STATES['COMPLETE'],
-                      koji.BUILD_STATES['DELETED'],
-                      koji.BUILD_STATES['BUILDING']
-                  )
-             }
+        'name': build_info['name'],
+        'version': build_info['version'],
+        'states': (
+            koji.BUILD_STATES['COMPLETE'],
+            koji.BUILD_STATES['DELETED'],
+            koji.BUILD_STATES['BUILDING']
+        )
+    }
     query = QueryProcessor(tables=['build'], joins=['package ON build.pkg_id = package.id'],
                            columns=['build.id', 'release'],
                            clauses=['name = %(name)s', 'version = %(version)s',
@@ -4124,7 +4124,7 @@ def get_rpm(rpminfo, strict=False, multi=False):
         ('buildtime', 'buildtime'),
         ('metadata_only', 'metadata_only'),
         ('extra', 'extra'),
-        )
+    )
     # we can look up by id or NVRA
     data = None
     if isinstance(rpminfo, six.integer_types):
@@ -4214,7 +4214,7 @@ def list_rpms(buildID=None, buildrootID=None, imageID=None, componentBuildrootID
               ('external_repo.name', 'external_repo_name'),
               ('rpminfo.metadata_only', 'metadata_only'),
               ('rpminfo.extra', 'extra'),
-             ]
+              ]
     joins = ['LEFT JOIN external_repo ON rpminfo.external_repo_id = external_repo.id']
     clauses = []
 
@@ -4334,13 +4334,13 @@ def get_build_type(buildInfo, strict=False):
         return None
 
     query = QueryProcessor(
-                tables=['btype'],
-                columns=['name'],
-                joins=['build_types ON btype_id=btype.id'],
-                clauses=['build_id = %(id)i'],
-                values=binfo,
-                opts={'asList':True},
-            )
+        tables=['btype'],
+        columns=['name'],
+        joins=['build_types ON btype_id=btype.id'],
+        clauses=['build_id = %(id)i'],
+        values=binfo,
+        opts={'asList':True},
+    )
 
     ret = {}
     extra = binfo['extra'] or {}
@@ -4479,7 +4479,7 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
               ('archivetypes.name', 'type_name'),
               ('archivetypes.description', 'type_description'),
               ('archivetypes.extensions', 'type_extensions'),
-            ]
+              ]
     clauses = []
 
     if buildID is not None:
@@ -4496,9 +4496,9 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
         fields.append(['buildroot_archives.project_dep', 'project'])
     if imageID != None:
         # TODO: arg name is now a misnomer, could be any archive
-       clauses.append('archive_components.archive_id = %(imageID)i')
-       values['imageID'] = imageID
-       joins.append('archive_components ON archiveinfo.id = archive_components.component_id')
+        clauses.append('archive_components.archive_id = %(imageID)i')
+        values['imageID'] = imageID
+        joins.append('archive_components ON archiveinfo.id = archive_components.component_id')
     if hostID is not None:
         joins.append('standard_buildroot on archiveinfo.buildroot_id = standard_buildroot.buildroot_id')
         clauses.append('standard_buildroot.host_id = %(host_id)i')
@@ -4522,9 +4522,9 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
     elif type == 'maven':
         joins.append('maven_archives ON archiveinfo.id = maven_archives.archive_id')
         fields.extend([
-                ('maven_archives.group_id', 'group_id'),
-                ('maven_archives.artifact_id', 'artifact_id'),
-                ('maven_archives.version', 'version'),
+            ('maven_archives.group_id', 'group_id'),
+            ('maven_archives.artifact_id', 'artifact_id'),
+            ('maven_archives.version', 'version'),
         ])
 
         if typeInfo:
@@ -4535,9 +4535,9 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
     elif type == 'win':
         joins.append('win_archives ON archiveinfo.id = win_archives.archive_id')
         fields.extend([
-                ('win_archives.relpath', 'relpath'),
-                ('win_archives.platforms', 'platforms'),
-                ('win_archives.flags', 'flags'),
+            ('win_archives.relpath', 'relpath'),
+            ('win_archives.platforms', 'platforms'),
+            ('win_archives.flags', 'flags'),
         ])
 
         if typeInfo:
@@ -4566,14 +4566,14 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
             raise koji.GenericError('unsupported archive type: %s' % type)
         if typeInfo:
             raise koji.GenericError('typeInfo queries not supported for type '
-                    '%(name)s' % btype)
+                                    '%(name)s' % btype)
         clauses.append('archiveinfo.btype_id = %(btype_id)s')
         values['btype_id'] = btype['id']
 
     columns, aliases = zip(*fields)
     ret = QueryProcessor(tables=tables, columns=columns, aliases=aliases, joins=joins,
-                          transform=_fix_archive_row,
-                          clauses=clauses, values=values, opts=queryOpts).execute()
+                         transform=_fix_archive_row,
+                         clauses=clauses, values=values, opts=queryOpts).execute()
     if strict and not ret:
         raise koji.GenericError('No archives found.')
     return ret
@@ -5116,13 +5116,13 @@ def query_buildroots(hostID=None, tagID=None, state=None, rpmID=None, archiveID=
 
     tables = ['buildroot']
     joins = ['LEFT OUTER JOIN standard_buildroot ON standard_buildroot.buildroot_id = buildroot.id',
-           'LEFT OUTER JOIN content_generator ON buildroot.cg_id = content_generator.id',
-           'LEFT OUTER JOIN host ON host.id = standard_buildroot.host_id',
-           'LEFT OUTER JOIN repo ON repo.id = standard_buildroot.repo_id',
-           'LEFT OUTER JOIN tag ON tag.id = repo.tag_id',
-           'LEFT OUTER JOIN events AS create_events ON create_events.id = standard_buildroot.create_event',
-           'LEFT OUTER JOIN events AS retire_events ON standard_buildroot.retire_event = retire_events.id',
-           'LEFT OUTER JOIN events AS repo_create ON repo_create.id = repo.create_event']
+             'LEFT OUTER JOIN content_generator ON buildroot.cg_id = content_generator.id',
+             'LEFT OUTER JOIN host ON host.id = standard_buildroot.host_id',
+             'LEFT OUTER JOIN repo ON repo.id = standard_buildroot.repo_id',
+             'LEFT OUTER JOIN tag ON tag.id = repo.tag_id',
+             'LEFT OUTER JOIN events AS create_events ON create_events.id = standard_buildroot.create_event',
+             'LEFT OUTER JOIN events AS retire_events ON standard_buildroot.retire_event = retire_events.id',
+             'LEFT OUTER JOIN events AS repo_create ON repo_create.id = repo.create_event']
 
     clauses = []
     if buildrootID != None:
@@ -5178,8 +5178,8 @@ def list_channels(hostID=None, event=None):
         tables = ['host_channels']
         joins = ['channels ON channels.id = host_channels.channel_id']
         clauses = [
-                eventCondition(event, table='host_channels'),
-                'host_channels.host_id = %(host_id)s']
+            eventCondition(event, table='host_channels'),
+            'host_channels.host_id = %(host_id)s']
         values = {'host_id': hostID}
         query = QueryProcessor(tables=tables, aliases=aliases,
                                columns=columns, joins=joins,
@@ -5231,7 +5231,7 @@ def remove_volume(volume):
     context.session.assertPerm('admin')
     volinfo = lookup_name('volume', volume, strict=True)
     query = QueryProcessor(tables=['build'], clauses=['volume_id=%(id)i'],
-                    values=volinfo, columns=['id'], opts={'limit':1})
+                           values=volinfo, columns=['id'], opts={'limit':1})
     if query.execute():
         raise koji.GenericError('volume %(name)s has build references' % volinfo)
     delete = """DELETE FROM volume WHERE id=%(id)i"""
@@ -5479,7 +5479,7 @@ def new_build(data, strict=False):
 
     # insert the new data
     insert_data = dslice(data, ['pkg_id', 'version', 'release', 'epoch', 'state', 'volume_id',
-                         'task_id', 'owner', 'start_time', 'completion_time', 'source', 'extra'])
+                                'task_id', 'owner', 'start_time', 'completion_time', 'source', 'extra'])
     if 'cg_id' in data:
         insert_data['cg_id'] = data['cg_id']
     data['id'] = insert_data['id'] = _singleValue("SELECT nextval('build_id_seq')")
@@ -5501,36 +5501,36 @@ def recycle_build(old, data):
             # the controlling task must have restarted (and called initBuild again)
             return
         raise koji.GenericError("Build already in progress (task %(task_id)d)"
-                                    % old)
+                                % old)
         # TODO? - reclaim 'stale' builds (state=BUILDING and task_id inactive)
 
     if st_desc not in ('FAILED', 'CANCELED'):
         raise koji.GenericError("Build already exists (id=%d, state=%s): %r"
-                % (old['id'], st_desc, data))
+                                % (old['id'], st_desc, data))
 
     # check for evidence of tag activity
     query = QueryProcessor(columns=['tag_id'], tables=['tag_listing'],
-                clauses = ['build_id = %(id)s'], values=old)
+                           clauses = ['build_id = %(id)s'], values=old)
     if query.execute():
         raise koji.GenericError("Build already exists. Unable to recycle, "
-                "has tag history")
+                                "has tag history")
 
     # check for rpms or archives
     query = QueryProcessor(columns=['id'], tables=['rpminfo'],
-                clauses = ['build_id = %(id)s'], values=old)
+                           clauses = ['build_id = %(id)s'], values=old)
     if query.execute():
         raise koji.GenericError("Build already exists. Unable to recycle, "
-                "has rpm data")
+                                "has rpm data")
     query = QueryProcessor(columns=['id'], tables=['archiveinfo'],
-                clauses = ['build_id = %(id)s'], values=old)
+                           clauses = ['build_id = %(id)s'], values=old)
     if query.execute():
         raise koji.GenericError("Build already exists. Unable to recycle, "
-                "has archive data")
+                                "has archive data")
 
-   # If we reach here, should be ok to replace
+    # If we reach here, should be ok to replace
 
     koji.plugin.run_callbacks('preBuildStateChange', attribute='state',
-                old=old['state'], new=data['state'], info=data)
+                              old=old['state'], new=data['state'], info=data)
 
     # If there is any old build type info, clear it
     delete = """DELETE FROM maven_builds WHERE build_id = %(id)i"""
@@ -5545,8 +5545,8 @@ def recycle_build(old, data):
     data['id'] = old['id']
     update = UpdateProcessor('build', clauses=['id=%(id)s'], values=data)
     update.set(**dslice(data,
-        ['state', 'task_id', 'owner', 'start_time', 'completion_time',
-         'epoch', 'source', 'extra', 'volume_id']))
+                        ['state', 'task_id', 'owner', 'start_time', 'completion_time',
+                         'epoch', 'source', 'extra', 'volume_id']))
     if 'cg_id' in data:
         update.set(cg_id=data['cg_id'])
     update.rawset(create_event='get_event()')
@@ -5556,7 +5556,7 @@ def recycle_build(old, data):
         koji.util.rmtree(builddir)
     buildinfo = get_build(data['id'], strict=True)
     koji.plugin.run_callbacks('postBuildStateChange', attribute='state',
-                old=old['state'], new=data['state'], info=buildinfo)
+                              old=old['state'], new=data['state'], info=buildinfo)
 
 
 def check_noarch_rpms(basepath, rpms, logs=None):
@@ -5640,13 +5640,13 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
     build['task_id'] = task_id
 
     policy_data = {
-            'package': build['name'],
-            'version': build['version'],
-            'release': build['release'],
-            'buildroots': to_list(brmap.values()),
-            'import': True,
-            'import_type': 'rpm',
-            }
+        'package': build['name'],
+        'version': build['version'],
+        'release': build['release'],
+        'buildroots': to_list(brmap.values()),
+        'import': True,
+        'import_type': 'rpm',
+    }
     vol = check_volume_policy(policy_data, strict=False, default='DEFAULT')
     build['volume_id'] = vol['id']
     build['volume_name'] = vol['name']
@@ -5666,7 +5666,7 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
                 raise koji.GenericError("Unable to complete build: %s mismatch (build: %s, rpm: %s)" % (key, binfo[key], build[key]))
         if binfo['state'] != koji.BUILD_STATES['BUILDING']:
             raise koji.GenericError("Unable to complete build: state is %s" \
-                    % koji.BUILD_STATES[binfo['state']])
+                                    % koji.BUILD_STATES[binfo['state']])
         # update build state
         update = UpdateProcessor('build', clauses=['id=%(id)s'], values=binfo)
         update.set(state=st_complete)
@@ -5708,7 +5708,7 @@ def import_rpm(fn, buildinfo=None, brootid=None, wrapper=False, fileinfo=None):
     # read rpm info
     hdr = koji.get_rpm_header(fn)
     rpminfo = koji.get_header_fields(hdr, ['name', 'version', 'release', 'epoch',
-                    'sourcepackage', 'arch', 'buildtime', 'sourcerpm'])
+                                           'sourcepackage', 'arch', 'buildtime', 'sourcerpm'])
     if rpminfo['sourcepackage'] == 1:
         rpminfo['arch'] = "src"
 
@@ -5746,10 +5746,10 @@ def import_rpm(fn, buildinfo=None, brootid=None, wrapper=False, fileinfo=None):
         if rpminfo['sourcepackage'] != 1:
             if rpminfo['sourcerpm'] != srpmname:
                 raise koji.GenericError("srpm mismatch for %s: %s (expected %s)" \
-                        % (fn, rpminfo['sourcerpm'], srpmname))
+                                        % (fn, rpminfo['sourcerpm'], srpmname))
         elif basename != srpmname:
             raise koji.GenericError("srpm mismatch for %s: %s (expected %s)" \
-                    % (fn, basename, srpmname))
+                                    % (fn, basename, srpmname))
 
     # if we're adding an rpm to it, then this build is of rpm type
     # harmless if build already has this type
@@ -5945,7 +5945,7 @@ class CG_Importer(object):
         self.check_build_dir()
 
         koji.plugin.run_callbacks('preImport', type='cg', metadata=metadata,
-                directory=directory)
+                                  directory=directory)
 
         # finalize import
         self.get_build(token)
@@ -6021,14 +6021,14 @@ class CG_Importer(object):
         """Use policy to determine what the volume should be"""
         # we have to be careful and provide sufficient data
         policy_data = {
-                'package': self.buildinfo['name'],
-                'version': self.buildinfo['version'],
-                'release': self.buildinfo['release'],
-                'source': self.buildinfo['source'],
-                'cg_list': list(self.cgs),
-                'import': True,
-                'import_type': 'cg',
-                }
+            'package': self.buildinfo['name'],
+            'version': self.buildinfo['version'],
+            'release': self.buildinfo['release'],
+            'source': self.buildinfo['source'],
+            'cg_list': list(self.cgs),
+            'import': True,
+            'import_type': 'cg',
+        }
         vol = check_volume_policy(policy_data, strict=False)
         if vol:
             self.buildinfo['volume_id'] = vol['id']
@@ -6332,19 +6332,19 @@ class CG_Importer(object):
         for key in ['nvr', 'filename']:
             if key not in comp:
                 raise koji.GenericError('%s field missing for component, '
-                        'archive_id=%s' % (key, archive['id']))
+                                        'archive_id=%s' % (key, archive['id']))
         expected = {
-                'nvr': build['nvr'],
-                'filename': archive['filename'],
-                'filesize': int(archive['size']),
-                'checksum': archive['checksum'],
-                'checksum_type': koji.CHECKSUM_TYPES[archive['checksum_type']],
-                }
+            'nvr': build['nvr'],
+            'filename': archive['filename'],
+            'filesize': int(archive['size']),
+            'checksum': archive['checksum'],
+            'checksum_type': koji.CHECKSUM_TYPES[archive['checksum_type']],
+        }
         for key in expected:
             if key in comp and expected[key] != comp[key]:
                 raise koji.GenericError('Component field %s does not match for '
-                    'archive_id=%s: %s != %s' % (key, archive['id'],
-                        expected[key], comp[key]))
+                                        'archive_id=%s: %s != %s' % (key, archive['id'],
+                                                                     expected[key], comp[key]))
         return archive
 
     def prep_outputs(self):
@@ -6361,7 +6361,7 @@ class CG_Importer(object):
             filesize = os.path.getsize(path)
             if filesize != fileinfo['filesize']:
                 raise koji.GenericError("File size %s for %s (expected %s) doesn't match. Corrupted upload?" %
-                        (filesize, fileinfo['filename'], fileinfo['filesize']))
+                                        (filesize, fileinfo['filename'], fileinfo['filesize']))
 
             # checksum
             if fileinfo['checksum_type'] != 'md5':
@@ -6377,7 +6377,7 @@ class CG_Importer(object):
                     m.update(contents)
                 if fileinfo['checksum'] != m.hexdigest():
                     raise koji.GenericError("File checksum mismatch for %s: %s != %s" %
-                            (fileinfo['filename'], fileinfo['checksum'], m.hexdigest()))
+                                            (fileinfo['filename'], fileinfo['checksum'], m.hexdigest()))
             fileinfo['hub.checked_md5'] = True
 
             if fileinfo['buildroot_id'] not in self.br_prep:
@@ -6417,7 +6417,7 @@ class CG_Importer(object):
                 continue
             if btype is not None:
                 raise koji.GenericError("Output file has multiple types: "
-                    "%(filename)s" % fileinfo)
+                                        "%(filename)s" % fileinfo)
             btype = key
             type_info = extra[key]
         for key in extra.get('typeinfo', {}):
@@ -6425,7 +6425,7 @@ class CG_Importer(object):
                 raise koji.GenericError("Duplicate typeinfo for: %r" % btype)
             elif btype is not None:
                 raise koji.GenericError("Output file has multiple types: "
-                    "%(filename)s" % fileinfo)
+                                        "%(filename)s" % fileinfo)
             btype = key
             type_info = extra['typeinfo'][key]
 
@@ -6434,7 +6434,7 @@ class CG_Importer(object):
 
         if btype not in self.typeinfo:
             raise koji.GenericError('Output type %s not listed in build '
-                        'types' % btype)
+                                    'types' % btype)
 
         fileinfo['hub.btype'] = btype
         fileinfo['hub.type_info'] = type_info
@@ -6442,7 +6442,7 @@ class CG_Importer(object):
         if 'components' in fileinfo:
             if btype in ('maven', 'win'):
                 raise koji.GenericError("Component list not allowed for "
-                        "archives of type %s" % btype)
+                                        "archives of type %s" % btype)
             # for new types, we trust the metadata
             components = fileinfo['components']
             rpmlist, archives = self.match_components(components)
@@ -6545,7 +6545,7 @@ def add_external_rpm(rpminfo, external_repo, strict=True):
                 raise koji.GenericError("external rpm already exists: %s" % disp)
             elif data['payloadhash'] != previous['payloadhash']:
                 raise koji.GenericError("hash changed for external rpm: %s (%s -> %s)" \
-                        % (disp, previous['payloadhash'], data['payloadhash']))
+                                        % (disp, previous['payloadhash'], data['payloadhash']))
             else:
                 return previous
 
@@ -6642,7 +6642,7 @@ def merge_scratch(task_id):
                 else:
                     if srpm != srpm_name:
                         raise koji.ImportError('task srpm names do not match: %s, %s' % \
-                              (srpm, srpm_name))
+                                               (srpm, srpm_name))
             elif output.endswith('.noarch.rpm'):
                 continue
             elif output.endswith('.rpm'):
@@ -6651,7 +6651,7 @@ def merge_scratch(task_id):
                     info['arch'] = rpminfo['arch']
                 elif info['arch'] != rpminfo['arch']:
                     raise koji.ImportError('multiple arches generated by task %s: %s, %s' % \
-                          (child['id'], info['arch'], rpminfo['arch']))
+                                           (child['id'], info['arch'], rpminfo['arch']))
                 info['rpms'].append(output)
             elif output.endswith('.log'):
                 info['logs'].append(output)
@@ -6673,7 +6673,7 @@ def merge_scratch(task_id):
     build = get_build(build_nvr)
     if not build:
         raise koji.ImportError('no such build: %(name)s-%(version)s-%(release)s' % \
-              build_nvr)
+                               build_nvr)
     if build['state'] != koji.BUILD_STATES['COMPLETE']:
         raise koji.ImportError('%s did not complete successfully' % build['nvr'])
     if not build['task_id']:
@@ -6686,14 +6686,14 @@ def merge_scratch(task_id):
     # compare the task and build and make sure they are compatible with importing
     if task_info['request'][0] != build_task_info['request'][0]:
         raise koji.ImportError('SCM URLs for the task and build do not match: %s, %s' % \
-              (task_info['request'][0], build_task_info['request'][0]))
+                               (task_info['request'][0], build_task_info['request'][0]))
     build_arches = set()
     for rpminfo in list_rpms(buildID=build['id']):
         if rpminfo['arch'] == 'src':
             build_srpm = '%s.src.rpm' % rpminfo['nvr']
             if srpm != build_srpm:
                 raise koji.ImportError('task and build srpm names do not match: %s, %s' % \
-                      (srpm, build_srpm))
+                                       (srpm, build_srpm))
         elif rpminfo['arch'] == 'noarch':
             continue
         else:
@@ -6704,7 +6704,7 @@ def merge_scratch(task_id):
     overlapping_arches = task_arches.intersection(build_arches)
     if overlapping_arches:
         raise koji.ImportError('task %s and %s produce rpms with the same arches: %s' % \
-              (task_info['id'], build['nvr'], ', '.join(overlapping_arches)))
+                               (task_info['id'], build['nvr'], ', '.join(overlapping_arches)))
 
     # everything looks good, do the import
     for task_id, info in tasks.items():
@@ -6756,10 +6756,10 @@ def get_archive_type(filename=None, type_name=None, type_id=None, strict=False):
 
     parts = filename.split('.')
     query = QueryProcessor(
-            tables=['archivetypes'],
-            columns=['id', 'name', 'description', 'extensions'],
-            clauses=['extensions ~* %(pattern)s'],
-            )
+        tables=['archivetypes'],
+        columns=['id', 'name', 'description', 'extensions'],
+        clauses=['extensions ~* %(pattern)s'],
+    )
     for start in range(len(parts)-1, -1, -1):
         ext = '.'.join(parts[start:])
         query.values['pattern'] = r'(\s|^)%s(\s|$)' % ext
@@ -6791,7 +6791,7 @@ def add_archive_type(name, description, extensions):
     data = {'name': name,
             'description': description,
             'extensions': extensions,
-    }
+            }
     if get_archive_type(type_name=name):
         raise koji.GenericError("archivetype %s already exists" % name)
     # No invalid or duplicate extensions
@@ -6821,7 +6821,7 @@ def new_maven_build(build, maven_info):
         for field in ('group_id', 'artifact_id', 'version'):
             if current_maven_info[field] != maven_info[field]:
                 raise koji.BuildError('%s mismatch (current: %s, new: %s)' % \
-                    (field, current_maven_info[field], maven_info[field]))
+                                      (field, current_maven_info[field], maven_info[field]))
     else:
         maven_info['build_id'] = build['id']
         data = dslice(maven_info, ['build_id', 'group_id', 'artifact_id', 'version'])
@@ -6955,14 +6955,14 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
             # check against metadata
             if archiveinfo['size'] != fileinfo['filesize']:
                 raise koji.GenericError("File size mismatch for %s: %s != %s" %
-                        (filename, archiveinfo['size'], fileinfo['filesize']))
+                                        (filename, archiveinfo['size'], fileinfo['filesize']))
             if fileinfo['checksum_type'] != 'md5':
                 # XXX
                 # until we change the way we handle checksums, we have to limit this to md5
                 raise koji.GenericError("Unsupported checksum type: %(checksum_type)s" % fileinfo)
             if archiveinfo['checksum'] != fileinfo['checksum']:
                 raise koji.GenericError("File checksum mismatch for %s: %s != %s" %
-                        (filename, archiveinfo['checksum'], fileinfo['checksum']))
+                                        (filename, archiveinfo['checksum'], fileinfo['checksum']))
     archivetype = get_archive_type(filename, strict=True)
     archiveinfo['type_id'] = archivetype['id']
     btype = lookup_name('btype', type, strict=False)
@@ -6995,11 +6995,11 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
             # sanity check: Maven info from pom must match the user-supplied typeInfo
             if koji.mavenLabel(pom_maveninfo) != koji.mavenLabel(typeInfo):
                 raise koji.BuildError('Maven info from .pom file (%s) does not match user-supplied typeInfo (%s)' % \
-                    (koji.mavenLabel(pom_maveninfo), koji.mavenLabel(typeInfo)))
+                                      (koji.mavenLabel(pom_maveninfo), koji.mavenLabel(typeInfo)))
             # sanity check: the filename of the pom file must match <artifactId>-<version>.pom
             if filename != '%(artifact_id)s-%(version)s.pom' % typeInfo:
                 raise koji.BuildError('Maven info (%s) is not consistent with pom filename (%s)' % \
-                      (koji.mavenLabel(typeInfo), filename))
+                                      (koji.mavenLabel(typeInfo), filename))
 
         insert = InsertProcessor('maven_archives', data=dslice(typeInfo, ('group_id', 'artifact_id', 'version')))
         insert.set(archive_id=archive_id)
@@ -7097,7 +7097,7 @@ def add_rpm_sig(an_rpm, sighdr):
     rinfo = get_rpm(an_rpm, strict=True)
     if rinfo['external_repo_id']:
         raise koji.GenericError("Not an internal rpm: %s (from %s)" \
-                % (an_rpm, rinfo['external_repo_name']))
+                                % (an_rpm, rinfo['external_repo_name']))
     binfo = get_build(rinfo['build_id'])
     builddir = koji.pathinfo.build(binfo)
     if not os.path.isdir(builddir):
@@ -7212,7 +7212,7 @@ def check_rpm_sig(an_rpm, sigkey, sighdr):
         found_key = koji.get_sigpacket_key_id(raw_key)
     if sigkey != found_key:
         raise koji.GenericError("Signature key mismatch: got %s, expected %s" \
-                              % (found_key, sigkey))
+                                % (found_key, sigkey))
     os.unlink(temp)
 
 
@@ -7233,7 +7233,7 @@ def write_signed_rpm(an_rpm, sigkey, force=False):
     rinfo = get_rpm(an_rpm, strict=True)
     if rinfo['external_repo_id']:
         raise koji.GenericError("Not an internal rpm: %s (from %s)" \
-                % (an_rpm, rinfo['external_repo_name']))
+                                % (an_rpm, rinfo['external_repo_name']))
     binfo = get_build(rinfo['build_id'])
     nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" % rinfo
     builddir = koji.pathinfo.build(binfo)
@@ -7303,19 +7303,19 @@ def query_history(tables=None, **kwargs):
         'revoke_event': 'revoke_event',
         'creator_id': 'creator_id',
         'revoker_id': 'revoker_id',
-        }
+    }
     common_joins = [
         "events AS ev1 ON ev1.id = create_event",
         "LEFT OUTER JOIN events AS ev2 ON ev2.id = revoke_event",
         "users AS creator ON creator.id = creator_id",
         "LEFT OUTER JOIN users AS revoker ON revoker.id = revoker_id",
-        ]
+    ]
     common_joined_fields = {
         'creator.name': 'creator_name',
         'revoker.name': 'revoker_name',
         'EXTRACT(EPOCH FROM ev1.time) AS create_ts': 'create_ts',
         'EXTRACT(EPOCH FROM ev2.time) AS revoke_ts': 'revoke_ts',
-        }
+    }
     table_fields = {
         'user_perms': ['user_id', 'perm_id'],
         'user_groups': ['user_id', 'group_id'],
@@ -7332,10 +7332,10 @@ def query_history(tables=None, **kwargs):
         'tag_packages': ['package_id', 'tag_id', 'blocked', 'extra_arches'],
         'tag_package_owners': ['package_id', 'tag_id', 'owner'],
         'group_config': ['group_id', 'tag_id', 'blocked', 'exported', 'display_name', 'is_default', 'uservisible',
-                            'description', 'langonly', 'biarchonly'],
+                         'description', 'langonly', 'biarchonly'],
         'group_req_listing': ['group_id', 'tag_id', 'req_id', 'blocked', 'type', 'is_metapkg'],
         'group_package_listing': ['group_id', 'tag_id', 'package', 'blocked', 'type', 'basearchonly', 'requires'],
-        }
+    }
     name_joins = {
         # joins triggered by table fields for name lookup
         # field : [table, join-alias, alias]
@@ -7355,7 +7355,7 @@ def query_history(tables=None, **kwargs):
         'package_id': ['package'],
         'owner': ['users', 'owner'],
         'req_id': ['groups', 'req'],
-        }
+    }
     if tables is None:
         tables = sorted(table_fields.keys())
     else:
@@ -7563,12 +7563,12 @@ def tag_history(build=None, tag=None, package=None, active=None, queryOpts=None)
               'EXTRACT(EPOCH FROM ev1.time)', 'EXTRACT(EPOCH FROM ev2.time)',
               'maven_builds.build_id', 'win_builds.build_id')
     aliases = ('build_id', 'name', 'version', 'release',
-              'tag_id', 'tag_name', 'active',
-              'create_event', 'revoke_event',
-              'creator_id', 'revoker_id',
-              'creator_name', 'revoker_name',
-              'create_ts', 'revoke_ts',
-              'maven_build_id', 'win_build_id')
+               'tag_id', 'tag_name', 'active',
+               'create_event', 'revoke_event',
+               'creator_id', 'revoker_id',
+               'creator_name', 'revoker_name',
+               'create_ts', 'revoke_ts',
+               'maven_build_id', 'win_build_id')
     st_complete = koji.BUILD_STATES['COMPLETE']
     tables = ['tag_listing']
     joins = ["tag ON tag.id = tag_listing.tag_id",
@@ -7691,7 +7691,7 @@ def build_references(build_id, limit=None, lazy=False):
     if limit:
         qopts['limit'] = limit
     query = QueryProcessor(columns=fields, tables=['archive_rpm_components'],
-            clauses=clauses, joins=joins, values=values, opts=qopts)
+                           clauses=clauses, joins=joins, values=values, opts=qopts)
     for (rpm_id,) in build_rpm_ids:
         query.values['rpm_id'] = rpm_id
         archive_ids = [i[0] for i in query.execute()]
@@ -7733,7 +7733,7 @@ def build_references(build_id, limit=None, lazy=False):
     if limit:
         qopts['limit'] = limit
     query = QueryProcessor(columns=fields, tables=['archive_components'],
-            clauses=clauses, joins=joins, values=values, opts=qopts)
+                           clauses=clauses, joins=joins, values=values, opts=qopts)
     for (archive_id,) in build_archive_ids:
         query.values['archive_id'] = archive_id
         archive_ids = [i[0] for i in query.execute()]
@@ -8037,7 +8037,7 @@ def get_notification_recipients(build, tag_id, state):
         recipients.append({
             'user_id': build['owner_id'],
             'email': '%s@%s' % (build['owner_name'], email_domain)
-            })
+        })
 
         if tag_id:
             packages = readPackageList(pkgID=package_id, tagID=tag_id, inherit=True)
@@ -8052,7 +8052,7 @@ def get_notification_recipients(build, tag_id, state):
                     recipients.append({
                         'user_id': owner['id'],
                         'email': '%s@%s' % (owner['name'], email_domain)
-                        })
+                    })
         # FIXME - if tag_id is None, we don't have a good way to get the package owner.
         #   using all package owners from all tags would be way overkill.
 
@@ -8073,7 +8073,7 @@ def get_notification_recipients(build, tag_id, state):
         else:
             clauses.append('tag_id IS NULL')
         query = QueryProcessor(columns=['user_id'], clauses=clauses,
-                tables=['build_notifications_block'], values=locals())
+                               tables=['build_notifications_block'], values=locals())
         optouts = [r['user_id'] for r in query.execute()]
         optouts = set(optouts)
     else:
@@ -8307,7 +8307,7 @@ def revoke_cg_access(user, cg):
     cg = lookup_name('content_generator', cg, strict=True)
     data = {'user_id': user['id'], 'cg_id' : cg['id']}
     update = UpdateProcessor('cg_users', values=data,
-                clauses=["user_id = %(user_id)i", "cg_id = %(cg_id)i"])
+                             clauses=["user_id = %(user_id)i", "cg_id = %(cg_id)i"])
     update.make_revoke()
     update.execute()
 
@@ -8691,7 +8691,7 @@ class QueryProcessor(object):
 
     def __str__(self):
         query = \
-"""
+            """
 SELECT %(col_str)s
   FROM %(table_str)s
 %(join_str)s
@@ -9012,7 +9012,7 @@ def policy_get_cgs(data):
     # note that br_id will be None if a component had no buildroot
     if 'cg_list' in data:
         cgs = [lookup_name('content_generator', cg, strict=True)
-                for cg in data['cg_list']]
+               for cg in data['cg_list']]
         return set(cgs)
     # otherwise try buildroot data
     cgs = set()
@@ -9489,7 +9489,7 @@ def rpmdiff(basepath, rpmlist, hashes):
         # (files may have been generated at build time and contain
         #  embedded dates or other insignificant differences)
         d = koji.rpmdiff.Rpmdiff(joinpath(basepath, first_rpm),
-            joinpath(basepath, other_rpm), ignore='S5TN')
+                                 joinpath(basepath, other_rpm), ignore='S5TN')
         if d.differs():
             raise koji.BuildError(
                 'The following noarch package built differently on different architectures: %s\n'
@@ -9791,7 +9791,7 @@ class RootExports(object):
             if priority < 0:
                 if not context.session.hasPerm('admin'):
                     raise koji.ActionNotAllowed(
-                               'only admins may create high-priority tasks')
+                        'only admins may create high-priority tasks')
 
             taskOpts['priority'] = koji.PRIO_DEFAULT + priority
 
@@ -9809,7 +9809,7 @@ class RootExports(object):
             if priority < 0:
                 if not context.session.hasPerm('admin'):
                     raise koji.ActionNotAllowed(
-                               'only admins may create high-priority tasks')
+                        'only admins may create high-priority tasks')
 
             taskOpts['priority'] = koji.PRIO_DEFAULT + priority
         if 'scratch' not in opts and 'indirection_template_url' not in opts:
@@ -9831,7 +9831,7 @@ class RootExports(object):
             if priority < 0:
                 if not context.session.hasPerm('admin'):
                     raise koji.ActionNotAllowed(
-                               'only admins may create high-priority tasks')
+                        'only admins may create high-priority tasks')
 
             taskOpts['priority'] = koji.PRIO_DEFAULT + priority
         if 'scratch' not in opts and 'ksurl' not in opts:
@@ -10103,7 +10103,7 @@ class RootExports(object):
     deleteExternalRepo = staticmethod(delete_external_repo)
 
     def addExternalRepoToTag(self, tag_info, repo_info, priority,
-                merge_mode='koji'):
+                             merge_mode='koji'):
         """Add an external repo to a tag"""
         # wrap the local method so we don't expose the event parameter
         add_external_repo_to_tag(tag_info, repo_info, priority, merge_mode)
@@ -10848,7 +10848,7 @@ class RootExports(object):
                 raise koji.GenericError('unsupported build type: %s' % type)
             btype_id = btype['id']
             joins.append('build_types ON build.id = build_types.build_id '
-                    'AND btype_id = %(btype_id)s')
+                         'AND btype_id = %(btype_id)s')
 
         query = QueryProcessor(columns=[pair[0] for pair in fields],
                                aliases=[pair[1] for pair in fields],
@@ -11241,8 +11241,8 @@ class RootExports(object):
             if pkgID is not None:
                 pkgID = get_package_id(pkgID, strict=True)
             result_list = list(readPackageList(tagID=tagID, userID=userID, pkgID=pkgID,
-                                          inherit=inherited, with_dups=with_dups,
-                                          event=event).values())
+                                               inherit=inherited, with_dups=with_dups,
+                                               event=event).values())
             if with_dups:
                 # when with_dups=True, readPackageList returns a list of list of dicts
                 # convert it to a list of dicts for consistency
@@ -11273,7 +11273,7 @@ class RootExports(object):
             'package_name' and 'package_id'.
         """
         fields = (('package.id', 'package_id'),
-                      ('package.name', 'package_name'))
+                  ('package.name', 'package_name'))
         if prefix is None:
             clauses = None
         else:
@@ -11332,7 +11332,7 @@ class RootExports(object):
         if perm['name'] not in koji.auth.get_user_perms(user_id):
             raise koji.GenericError('user %s does not have permission: %s' % (userinfo, perm['name']))
         update = UpdateProcessor('user_perms', values=locals(),
-                    clauses=["user_id = %(user_id)i", "perm_id = %(perm_id)i"])
+                                 clauses=["user_id = %(user_id)i", "perm_id = %(perm_id)i"])
         update.make_revoke()
         update.execute()
 
@@ -11483,11 +11483,11 @@ class RootExports(object):
         build_config = self.getBuildConfig(tag)
         if build_config['extra'].get('distrepo.cancel_others', False):
             tasks = self.listTasks(opts={
-                                       'state': [koji.TASK_STATES['FREE'],
-                                                 koji.TASK_STATES['OPEN'],
-                                                 koji.TASK_STATES['ASSIGNED']],
-                                       'method': 'distRepo',
-                                       'decode': True})
+                'state': [koji.TASK_STATES['FREE'],
+                          koji.TASK_STATES['OPEN'],
+                          koji.TASK_STATES['ASSIGNED']],
+                'method': 'distRepo',
+                'decode': True})
             # filter only for this tag
             task_ids = [t['id'] for t in tasks if t['request'][0] == tag]
             for task_id in task_ids:
@@ -11662,14 +11662,14 @@ class RootExports(object):
         else:
             joins = ['LEFT JOIN users ON task.owner = users.id']
         flist = Task.fields + (
-                    ('task.request', 'request'),
-                    ('task.result', 'result'),
-                    )
+            ('task.request', 'request'),
+            ('task.result', 'result'),
+        )
         if not countOnly:
             flist += (
-                    ('users.name', 'owner_name'),
-                    ('users.usertype', 'owner_type'),
-                    )
+                ('users.name', 'owner_name'),
+                ('users.usertype', 'owner_type'),
+            )
         fields = [f[0] for f in flist]
         aliases = [f[1] for f in flist]
 
@@ -11705,16 +11705,16 @@ class RootExports(object):
             conditions.append('method = %(method)s')
 
         time_opts = [
-                ['createdBefore', 'create_time', '<'],
-                ['createdAfter', 'create_time', '>'],
-                ['startedBefore', 'start_time', '<'],
-                ['startedAfter', 'start_time', '>'],
-                ['completeBefore', 'completion_time', '<'],
-                ['completeAfter', 'completion_time', '>'],
-                # and a couple aliases for api compat:
-                ['completedBefore', 'completion_time', '<'],
-                ['completedAfter', 'completion_time', '>'],
-            ]
+            ['createdBefore', 'create_time', '<'],
+            ['createdAfter', 'create_time', '>'],
+            ['startedBefore', 'start_time', '<'],
+            ['startedAfter', 'start_time', '>'],
+            ['completeBefore', 'completion_time', '<'],
+            ['completeAfter', 'completion_time', '>'],
+            # and a couple aliases for api compat:
+            ['completedBefore', 'completion_time', '<'],
+            ['completedAfter', 'completion_time', '>'],
+        ]
         for key, field, cmp in time_opts:
             if opts.get(key) != None:
                 value = opts[key]
@@ -11919,20 +11919,20 @@ class RootExports(object):
             clauses.append('user_id = %(userID)i')
 
         fields = {'host.id': 'id',
-              'host.user_id': 'user_id',
-              'host.name': 'name',
-              'host.ready': 'ready',
-              'host.task_load': 'task_load',
-              'host_config.arches': 'arches',
-              'host_config.capacity': 'capacity',
-              'host_config.description': 'description',
-              'host_config.comment': 'comment',
-              'host_config.enabled': 'enabled',
-              }
+                  'host.user_id': 'user_id',
+                  'host.name': 'name',
+                  'host.ready': 'ready',
+                  'host.task_load': 'task_load',
+                  'host_config.arches': 'arches',
+                  'host_config.capacity': 'capacity',
+                  'host_config.description': 'description',
+                  'host_config.comment': 'comment',
+                  'host_config.enabled': 'enabled',
+                  }
         tables = ['host_config']
         fields, aliases = zip(*fields.items())
         query = QueryProcessor(columns=fields, aliases=aliases,
-                tables=tables, joins=joins, clauses=clauses, values=locals())
+                               tables=tables, joins=joins, clauses=clauses, values=locals())
         return query.execute()
 
     def getLastHostUpdate(self, hostID):
@@ -12203,7 +12203,7 @@ class RootExports(object):
         orig_notif = self.getBuildNotification(id, strict=True)
         if not (orig_notif['user_id'] == currentUser['id'] or self.hasPerm('admin')):
             raise koji.GenericError('user %i cannot update notifications for user %i' % \
-                  (currentUser['id'], orig_notif['user_id']))
+                                    (currentUser['id'], orig_notif['user_id']))
 
         # sanitize input
         if package_id is not None:
@@ -12216,7 +12216,7 @@ class RootExports(object):
         for notification in get_build_notifications(orig_notif['user_id']):
             if (notification['package_id'] == package_id and
                 notification['tag_id'] == tag_id and
-                notification['success_only'] == success_only):
+                    notification['success_only'] == success_only):
                 raise koji.GenericError('notification already exists')
 
         update = UpdateProcessor('build_notifications',
@@ -12237,7 +12237,7 @@ class RootExports(object):
 
         if not (notificationUser['id'] == currentUser['id'] or self.hasPerm('admin')):
             raise koji.GenericError('user %s cannot create notifications for user %s' % \
-                  (currentUser['name'], notificationUser['name']))
+                                    (currentUser['name'], notificationUser['name']))
 
         # sanitize input
         user_id = notificationUser['id']
@@ -12253,7 +12253,7 @@ class RootExports(object):
         for notification in get_build_notifications(user_id):
             if (notification['package_id'] == package_id and
                 notification['tag_id'] == tag_id and
-                notification['success_only'] == success_only):
+                    notification['success_only'] == success_only):
                 raise koji.GenericError('notification already exists')
 
         insert = InsertProcessor('build_notifications')
@@ -12272,7 +12272,7 @@ class RootExports(object):
         if not (notification['user_id'] == currentUser['id'] or
                 self.hasPerm('admin')):
             raise koji.GenericError('user %i cannot delete notifications for user %i' % \
-                  (currentUser['id'], notification['user_id']))
+                                    (currentUser['id'], notification['user_id']))
         delete = """DELETE FROM build_notifications WHERE id = %(id)i"""
         _dml(delete, locals())
 
@@ -12290,7 +12290,7 @@ class RootExports(object):
 
         if not (notificationUser['id'] == currentUser['id'] or self.hasPerm('admin')):
             raise koji.GenericError('user %s cannot create notification blocks for user %s' % \
-                  (currentUser['name'], notificationUser['name']))
+                                    (currentUser['name'], notificationUser['name']))
 
         # sanitize input
         user_id = notificationUser['id']
@@ -12319,7 +12319,7 @@ class RootExports(object):
         if not (block['user_id'] == currentUser['id'] or
                 self.hasPerm('admin')):
             raise koji.GenericError('user %i cannot delete notification blocks for user %i' % \
-                  (currentUser['id'], block['user_id']))
+                                    (currentUser['id'], block['user_id']))
         delete = """DELETE FROM build_notifications_block WHERE id = %(id)i"""
         _dml(delete, locals())
 
@@ -12443,10 +12443,10 @@ class BuildRoot(object):
             'host_os',
             'host_arch',
             'extra',
-            ]
+        ]
         query = QueryProcessor(columns=fields, tables=['buildroot'],
-                    transform=_fix_extra_field,
-                    values={'id': id}, clauses=['id=%(id)s'])
+                               transform=_fix_extra_field,
+                               values={'id': id}, clauses=['id=%(id)s'])
         data = query.executeOne()
         if not data:
             raise koji.GenericError('no buildroot with ID: %i' % id)
@@ -12465,9 +12465,9 @@ class BuildRoot(object):
             'create_event',
             'retire_event',
             'state',
-            ]
+        ]
         query = QueryProcessor(columns=fields, tables=['standard_buildroot'],
-                    values={'id': self.id}, clauses=['buildroot_id=%(id)s'])
+                               values={'id': self.id}, clauses=['buildroot_id=%(id)s'])
         data = query.executeOne()
         if not data:
             raise koji.GenericError('Not a standard buildroot: %i' % self.id)
@@ -12503,7 +12503,7 @@ class BuildRoot(object):
             'host_os',
             'host_arch',
             'extra',
-            ]
+        ]
         data.setdefault('br_type', koji.BR_TYPES['EXTERNAL'])
         data = dslice(data, fields)
         for key in fields:
@@ -12553,8 +12553,8 @@ class BuildRoot(object):
             # we do not re-init buildroots
             raise koji.GenericError("Cannot change buildroot state to INIT")
         query = QueryProcessor(columns=['state', 'retire_event'], values=self.data,
-                    tables=['standard_buildroot'], clauses=['buildroot_id=%(id)s'],
-                    opts={'rowlock':True})
+                               tables=['standard_buildroot'], clauses=['buildroot_id=%(id)s'],
+                               opts={'rowlock':True})
         row = query.executeOne()
         if not row:
             raise koji.GenericError("Unable to get state for buildroot %s" % self.id)
@@ -12589,12 +12589,12 @@ class BuildRoot(object):
             ('build_id', 'build_id'),
             ('external_repo_id', 'external_repo_id'),
             ('external_repo.name', 'external_repo_name'),
-            )
+        )
         query = QueryProcessor(columns=[f[0] for f in fields], aliases=[f[1] for f in fields],
-                        tables=['buildroot_listing'],
-                        joins=["rpminfo ON rpm_id = rpminfo.id", "external_repo ON external_repo_id = external_repo.id"],
-                        clauses=["buildroot_listing.buildroot_id = %(brootid)i"],
-                        values=locals())
+                               tables=['buildroot_listing'],
+                               joins=["rpminfo ON rpm_id = rpminfo.id", "external_repo ON external_repo_id = external_repo.id"],
+                               clauses=["buildroot_listing.buildroot_id = %(brootid)i"],
+                               values=locals())
         return query.execute()
 
     def _setList(self, rpmlist, update=False):
@@ -12655,7 +12655,7 @@ class BuildRoot(object):
                   ('checksum', 'checksum'),
                   ('checksum_type', 'checksum_type'),
                   ('project_dep', 'project_dep'),
-                 ]
+                  ]
         columns, aliases = zip(*fields)
         query = QueryProcessor(tables=tables, columns=columns,
                                joins=joins, clauses=clauses,
@@ -12754,7 +12754,7 @@ class Host(object):
             update.execute()
             # clear awaited flag on any other child tasks
             update = UpdateProcessor('task', values=locals(),
-                            clauses=['id NOT IN %(tasks)s', 'parent=%(parent)s', 'awaited=true'])
+                                     clauses=['id NOT IN %(tasks)s', 'parent=%(parent)s', 'awaited=true'])
             update.set(awaited=False)
             update.execute()
         else:
@@ -12807,8 +12807,8 @@ class Host(object):
             states = tuple([koji.TASK_STATES[s]
                             for s in ['CLOSED', 'FAILED','CANCELED']])
             query = QueryProcessor(tables=['task'], columns=['id'],
-                        clauses=['parent=%(parent)s', 'state in %(states)s'],
-                        values=locals(), opts={'asList': True})
+                                   clauses=['parent=%(parent)s', 'state in %(states)s'],
+                                   values=locals(), opts={'asList': True})
             tasks = [r[0] for r in query.execute()]
         # Would use a dict, but xmlrpc requires the keys to be strings
         results = []
@@ -13150,7 +13150,7 @@ class HostExports(object):
             scratchdir = koji.pathinfo.scratch()
             username = get_user(task.getOwner())['name']
             destdir = joinpath(scratchdir, username,
-                'task_%s' % sub_results['task_id'])
+                               'task_%s' % sub_results['task_id'])
             for img in sub_results['files'] + sub_results['logs']:
                 src = joinpath(workdir, img)
                 dest = joinpath(destdir, img)
@@ -13211,11 +13211,11 @@ class HostExports(object):
         # check volume policy
         vol_update = False
         policy_data = {
-                'build': build_info,
-                'package': build_info['name'],
-                'import': True,
-                'import_type': 'maven',
-                }
+            'build': build_info,
+            'package': build_info['name'],
+            'import': True,
+            'import_type': 'maven',
+        }
         vol = check_volume_policy(policy_data, strict=False, default='DEFAULT')
         if vol['id'] != build_info['volume_id']:
             build_info['volume_id'] = vol['id']
@@ -13291,11 +13291,11 @@ class HostExports(object):
         # check volume policy
         vol_update = False
         policy_data = {
-                'build': build_info,
-                'package': build_info['name'],
-                'import': True,
-                'import_type': 'maven',
-                }
+            'build': build_info,
+            'package': build_info['name'],
+            'import': True,
+            'import_type': 'maven',
+        }
         vol = check_volume_policy(policy_data, strict=False, default='DEFAULT')
         if vol['id'] != build_info['volume_id']:
             build_info['volume_id'] = vol['id']
@@ -13400,7 +13400,7 @@ class HostExports(object):
 
         if build_info['state'] != koji.BUILD_STATES['COMPLETE']:
             raise koji.GenericError('cannot import wrapper rpms for %s: build state is %s, not complete' % \
-                (koji.buildLabel(build_info), koji.BUILD_STATES[build_info['state']].lower()))
+                                    (koji.buildLabel(build_info), koji.BUILD_STATES[build_info['state']].lower()))
 
         if list_rpms(buildID=build_info['id']):
             # don't allow overwriting of already-imported wrapper RPMs
@@ -13461,11 +13461,11 @@ class HostExports(object):
         # check volume policy
         vol_update = False
         policy_data = {
-                'build': build_info,
-                'package': build_info['name'],
-                'import': True,
-                'import_type': 'win',
-                }
+            'build': build_info,
+            'package': build_info['name'],
+            'import': True,
+            'import_type': 'win',
+        }
         vol = check_volume_policy(policy_data, strict=False, default='DEFAULT')
         if vol['id'] != build_info['volume_id']:
             build_info['volume_id'] = vol['id']
@@ -13536,10 +13536,10 @@ class HostExports(object):
 
         if result['state'] != koji.BUILD_STATES['BUILDING']:
             raise koji.GenericError('cannot update build %i, state: %s' % \
-                  (build_id, koji.BUILD_STATES[result['state']]))
+                                    (build_id, koji.BUILD_STATES[result['state']]))
         elif result['completion_time'] is not None:
             raise koji.GenericError('cannot update build %i, completed at %s' % \
-                  (build_id, result['completion_time']))
+                                    (build_id, result['completion_time']))
 
         update = """UPDATE build
         SET state = %(st_failed)i,
@@ -13608,7 +13608,7 @@ class HostExports(object):
             if 'rpmresults' in sub_results:
                 rpm_results = sub_results['rpmresults']
                 _import_wrapper(rpm_results['task_id'],
-                    get_build(build_id, strict=True), rpm_results)
+                                get_build(build_id, strict=True), rpm_results)
 
     def tagNotification(self, is_successful, tag_id, from_id, build_id, user_id, ignore_success=False, failure_msg=''):
         """Create a tag notification message.
@@ -13782,9 +13782,9 @@ class HostExports(object):
             maven_label = koji.mavenLabel(maven_info)
             ignore_archives = ignore_by_label.get(maven_label, {})
             build_id = maven_build_index.get(
-                        maven_info['group_id'], {}).get(
-                            maven_info['artifact_id'], {}).get(
-                                maven_info['version'])
+                maven_info['group_id'], {}).get(
+                maven_info['artifact_id'], {}).get(
+                maven_info['version'])
             if not build_id:
                 if not ignore_unknown:
                     # just warn for now. might be in ignore list. the loop below will check.
@@ -13814,7 +13814,7 @@ class HostExports(object):
                         if tag_archive:
                             logger.error("Size mismatch, br: %i, db: %i", fileinfo['size'], tag_archive['size'])
                         raise koji.BuildrootError('Unknown file in build environment: %s, size: %s' % \
-                              ('%s/%s' % (fileinfo['path'], fileinfo['filename']), fileinfo['size']))
+                                                  ('%s/%s' % (fileinfo['path'], fileinfo['filename']), fileinfo['size']))
 
         return br.updateArchiveList(archives, project)
 
@@ -13949,7 +13949,7 @@ class HostExports(object):
         build_dirs = {}
         rpmdata = {}
         rpm_check_keys = ['name', 'version', 'release', 'arch', 'epoch',
-                'size', 'payloadhash', 'build_id']
+                          'size', 'payloadhash', 'build_id']
         for bnp in kojipkgs:
             rpminfo = kojipkgs[bnp]
             rpm_id = rpminfo['id']
@@ -13958,8 +13958,8 @@ class HostExports(object):
             for key in rpm_check_keys:
                 if key not in rpminfo or rpminfo[key] != _rpminfo[key]:
                     raise koji.GenericError(
-                            'kojipkgs entry does not match db: file %s, key %s'
-                            % (bnp, key))
+                        'kojipkgs entry does not match db: file %s, key %s'
+                        % (bnp, key))
             if sigkey is None or sigkey == '':
                 relpath = koji.pathinfo.rpm(rpminfo)
             else:
@@ -14119,6 +14119,6 @@ def handle_upload(environ):
         ret['hexdigest'] = chksum.hexdigest()
     logger.debug("Upload result: %r", ret)
     logger.info("Completed upload for session %s (#%s): %f seconds, %i bytes, %s",
-                    context.session.id, context.session.callnum,
-                    time.time()-start, size, fn)
+                context.session.id, context.session.callnum,
+                time.time()-start, size, fn)
     return ret

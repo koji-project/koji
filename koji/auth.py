@@ -110,7 +110,7 @@ class Session(object):
             'EXTRACT(EPOCH FROM start_time)': 'start_ts',
             'EXTRACT(EPOCH FROM update_time)': 'update_ts',
             'user_id': 'user_id',
-            }
+        }
         # sort for stability (unittests)
         fields, aliases = zip(*sorted(fields.items(), key=lambda x: x[1]))
         q = """
@@ -138,7 +138,7 @@ class Session(object):
             if lastcall is not None:
                 if lastcall > callnum:
                     raise koji.SequenceError("%d > %d (session %d)" \
-                            % (lastcall, callnum, id))
+                                             % (lastcall, callnum, id))
                 elif lastcall == callnum:
                     # Some explanation:
                     # This function is one of the few that performs its own commit.
@@ -339,7 +339,7 @@ class Session(object):
                 login_principal = proxyuser
             else:
                 raise koji.AuthError(
-                      'Kerberos principal %s is not authorized to log in other users' % cprinc.name)
+                    'Kerberos principal %s is not authorized to log in other users' % cprinc.name)
         else:
             login_principal = cprinc.name
 
@@ -538,7 +538,7 @@ class Session(object):
         # generate a random key
         alnum = string.ascii_letters + string.digits
         key = "%s-%s" %(user_id,
-                ''.join([random.choice(alnum) for x in range(1, 20)]))
+                        ''.join([random.choice(alnum) for x in range(1, 20)]))
         # use sha? sha.new(phrase).hexdigest()
 
         # get a session id
@@ -566,7 +566,7 @@ class Session(object):
         if master is None:
             master = self.id
         return self.createSession(self.user_id, self.hostip, self.authtype,
-                    master=master)
+                                  master=master)
 
     def getPerms(self):
         if not self.logged_in:

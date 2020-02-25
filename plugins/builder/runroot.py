@@ -53,11 +53,11 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
     def _read_config(self):
         cp = koji.read_config_files(CONFIG_FILE)
         self.config = {
-           'default_mounts': [],
-           'safe_roots': [],
-           'path_subs': [],
-           'paths': [],
-           'internal_dev_setup': None,
+            'default_mounts': [],
+            'safe_roots': [],
+            'path_subs': [],
+            'paths': [],
+            'internal_dev_setup': None,
         }
 
         # main options
@@ -155,12 +155,12 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
         if not repo_info:
             # wait for it
             task_id = self.session.host.subtask(method='waitrepo',
-                                           arglist=[root, None, None],
-                                           parent=self.id)
+                                                arglist=[root, None, None],
+                                                parent=self.id)
             repo_info = self.wait(task_id)[task_id]
         broot = BuildRoot(self.session, self.options, root, br_arch, self.id,
-                repo_id=repo_info['id'], setup_dns=True,
-                internal_dev_setup=self.config['internal_dev_setup'])
+                          repo_id=repo_info['id'], setup_dns=True,
+                          internal_dev_setup=self.config['internal_dev_setup'])
         broot.workdir = self.workdir
         broot.init()
         rootdir = broot.rootdir()
@@ -282,7 +282,7 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
                 status = log_output(self.session, cmd[0], cmd, logfile, uploadpath, logerror=True, append=True)
                 if not isSuccess(status):
                     error = koji.GenericError("Unable to mount %s: %s" \
-                            % (mpoint, parseStatus(status, cmd)))
+                                              % (mpoint, parseStatus(status, cmd)))
                     break
                 fslog.write("%s\n" % mpoint)
                 fslog.flush()

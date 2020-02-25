@@ -66,8 +66,8 @@ def expand_rpm(filepath, tmpdir):
                             close_fds=True)
     if rpm2cpio.wait() != 0 or cpio.wait() != 0:
         raise koji.CallbackError('error extracting files from %s, ' \
-              'rpm2cpio returned %s, cpio returned %s' % \
-              (filepath, rpm2cpio.wait(), cpio.wait()))
+                                 'rpm2cpio returned %s, cpio returned %s' % \
+                                 (filepath, rpm2cpio.wait(), cpio.wait()))
     devnull.close()
 
 

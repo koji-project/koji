@@ -65,8 +65,8 @@ def formatChangelog(entries):
 %s
 
 """ % (_changelogDate(entry['date']),
-       koji._fix_print(entry['author']),
-       koji._fix_print(entry['text']))
+            koji._fix_print(entry['author']),
+            koji._fix_print(entry['text']))
     return result
 
 DATE_RE = re.compile(r'(\d+)-(\d+)-(\d+)')
@@ -92,7 +92,7 @@ def parseTime(val):
     if result:
         time = [int(r) for r in result.groups()]
     return calendar.timegm(
-            datetime.datetime(*(date + time)).timetuple())
+        datetime.datetime(*(date + time)).timetuple())
 
 
 def checkForBuilds(session, tag, builds, event, latest=False):
@@ -291,7 +291,7 @@ def apply_argspec(argspec, args, kwargs=None):
     for n, arg in enumerate(f_args):
         if arg not in data:
             raise koji.ParameterError('missing required argument %r (#%i)'
-                                        % (arg, n))
+                                      % (arg, n))
     return data
 
 
@@ -696,7 +696,7 @@ class MavenConfigOptAdapter(object):
     """
     MULTILINE = ['properties', 'envs']
     MULTIVALUE = ['goals', 'profiles', 'packages',
-                   'jvm_options', 'maven_options', 'buildrequires']
+                  'jvm_options', 'maven_options', 'buildrequires']
 
     def __init__(self, conf, section):
         self._conf = conf
