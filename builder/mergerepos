@@ -242,7 +242,7 @@ class RepoMerge(object):
                                              '%s < %s\n' % (pkg.sourcerpm, other_srpm))
                         # otherwise same, so we already have it
                 elif srpm_name in self.blocked:
-                    sys.stderr.write('Ignoring blocked package: %s\n\n' % \
+                    sys.stderr.write('Ignoring blocked package: %s\n\n' %
                                      pkg.sourcerpm)
                     continue
                 else:

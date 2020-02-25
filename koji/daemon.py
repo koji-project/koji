@@ -412,7 +412,7 @@ class SCM(object):
                 _count[0] += 1
                 if log_output(session, cmd[0], cmd, logfile, uploadpath,
                               cwd=chdir, logerror=1, append=append, env=env):
-                    raise koji.BuildError('Error running %s command "%s", see %s for details' % \
+                    raise koji.BuildError('Error running %s command "%s", see %s for details' %
                                           (self.scmtype, ' '.join(cmd), os.path.basename(logfile)))
 
         if self.scmtype == 'CVS':

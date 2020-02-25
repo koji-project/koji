@@ -233,7 +233,7 @@ class BuildRoot(object):
         self.tag_id = self.config['id']
         self.tag_name = self.config['name']
         if self.config['id'] != repo_info['tag_id']:
-            raise koji.BuildrootError("tag/repo mismatch: %s vs %s" \
+            raise koji.BuildrootError("tag/repo mismatch: %s vs %s"
                                       % (self.config['name'], repo_info['tag_name']))
         repo_state = koji.REPO_STATES[repo_info['state']]
         if repo_state == 'EXPIRED':
@@ -699,7 +699,7 @@ class BuildRoot(object):
             if maven_files:
                 path_comps = relpath.split('/')
                 if len(path_comps) < 3:
-                    raise koji.BuildrootError('files found in unexpected path in local Maven repo, directory: %s, files: %s' % \
+                    raise koji.BuildrootError('files found in unexpected path in local Maven repo, directory: %s, files: %s' %
                                               (relpath, ', '.join([f['filename'] for f in maven_files])))
                 # extract the Maven info from the path within the local repo
                 maven_info = {'version': path_comps[-1],
@@ -967,7 +967,7 @@ class BuildTask(BaseTaskHandler):
             if repo_info is not None:
                 # make sure specified repo matches target
                 if repo_info['tag_id'] != target_info['build_tag']:
-                    raise koji.BuildError('Repo/Target mismatch: %s/%s' \
+                    raise koji.BuildError('Repo/Target mismatch: %s/%s'
                                           % (repo_info['tag_name'], target_info['build_tag_name']))
         else:
             # if repo_id is specified, we can allow the 'target' arg to simply specify
@@ -1023,10 +1023,10 @@ class BuildTask(BaseTaskHandler):
         if not self.opts.get('skip_tag') and not self.opts.get('scratch'):
             # Make sure package is on the list for this tag
             if pkg_cfg is None:
-                raise koji.BuildError("package %s not in list for tag %s" \
+                raise koji.BuildError("package %s not in list for tag %s"
                                       % (data['name'], target_info['dest_tag_name']))
             elif pkg_cfg['blocked']:
-                raise koji.BuildError("package %s is blocked for tag %s" \
+                raise koji.BuildError("package %s is blocked for tag %s"
                                       % (data['name'], target_info['dest_tag_name']))
             # TODO - more pre tests
         archlist = self.getArchList(build_tag, h, extra=extra_arches)
@@ -1278,8 +1278,8 @@ class BaseBuildTask(BaseTaskHandler):
             tag_arches = [koji.canonArch(a) for a in tag['arches'].split()]
             host_arches = hostdata['arches'].split()
             if not set(tag_arches).intersection(host_arches):
-                self.logger.info('Task %s (%s): tag arches (%s) and ' \
-                                 'host arches (%s) are disjoint' % \
+                self.logger.info('Task %s (%s): tag arches (%s) and '
+                                 'host arches (%s) are disjoint' %
                                  (self.id, self.method,
                                   ', '.join(tag_arches), ', '.join(host_arches)))
                 return False
@@ -1506,10 +1506,10 @@ class MavenTask(MultiPlatformTask):
                 dest_cfg = self.session.getPackageConfig(dest_tag['id'], build_info['name'])
                 # Make sure package is on the list for this tag
                 if dest_cfg is None:
-                    raise koji.BuildError("package %s not in list for tag %s" \
+                    raise koji.BuildError("package %s not in list for tag %s"
                                           % (build_info['name'], dest_tag['name']))
                 elif dest_cfg['blocked']:
-                    raise koji.BuildError("package %s is blocked for tag %s" \
+                    raise koji.BuildError("package %s is blocked for tag %s"
                                           % (build_info['name'], dest_tag['name']))
 
             build_info = self.session.host.initMavenBuild(self.id, build_info, maven_info)
@@ -1666,8 +1666,8 @@ class BuildMavenTask(BaseBuildTask):
         # Apply patches, if present
         if self.opts.get('patches'):
             # filter out directories and files beginning with . (probably scm metadata)
-            patches = [patch for patch in os.listdir(patchcheckoutdir) if \
-                       os.path.isfile(os.path.join(patchcheckoutdir, patch)) and \
+            patches = [patch for patch in os.listdir(patchcheckoutdir) if
+                       os.path.isfile(os.path.join(patchcheckoutdir, patch)) and
                        patch.endswith('.patch')]
             if not patches:
                 raise koji.BuildError('no patches found at %s' % self.opts.get('patches'))
@@ -2019,10 +2019,10 @@ class WrapperRPMTask(BaseBuildTask):
             if not opts.get('skip_tag'):
                 # Make sure package is on the list for this tag
                 if pkg_cfg is None:
-                    raise koji.BuildError("package %s not in list for tag %s" \
+                    raise koji.BuildError("package %s not in list for tag %s"
                                           % (data['name'], build_target['dest_tag_name']))
                 elif pkg_cfg['blocked']:
-                    raise koji.BuildError("package %s is blocked for tag %s" \
+                    raise koji.BuildError("package %s is blocked for tag %s"
                                           % (data['name'], build_target['dest_tag_name']))
             self.new_build_id = self.session.host.initBuild(data)
 
@@ -2047,7 +2047,7 @@ class WrapperRPMTask(BaseBuildTask):
                 else:
                     if self.new_build_id:
                         self.session.host.failBuild(self.id, self.new_build_id)
-                    raise koji.BuildError('multiple srpms found in %s: %s, %s' % \
+                    raise koji.BuildError('multiple srpms found in %s: %s, %s' %
                                           (resultdir, srpm, filename))
             elif filename.endswith('.rpm'):
                 rpms.append(filename)
@@ -2056,7 +2056,7 @@ class WrapperRPMTask(BaseBuildTask):
             else:
                 if self.new_build_id:
                     self.session.host.failBuild(self.id, self.new_build_id)
-                raise koji.BuildError('unexpected file found in %s: %s' % \
+                raise koji.BuildError('unexpected file found in %s: %s' %
                                       (resultdir, filename))
 
         if not srpm:
@@ -2141,10 +2141,10 @@ class ChainMavenTask(MultiPlatformTask):
                 dest_cfg = self.session.getPackageConfig(dest_tag['id'], package)
                 # Make sure package is on the list for this tag
                 if dest_cfg is None:
-                    raise koji.BuildError("package %s not in list for tag %s" \
+                    raise koji.BuildError("package %s not in list for tag %s"
                                           % (package, dest_tag['name']))
                 elif dest_cfg['blocked']:
-                    raise koji.BuildError("package %s is blocked for tag %s" \
+                    raise koji.BuildError("package %s is blocked for tag %s"
                                           % (package, dest_tag['name']))
 
         self.depmap = {}
@@ -2236,7 +2236,7 @@ class ChainMavenTask(MultiPlatformTask):
                                 break
                         else:
                             raise koji.BuildError('could not find buildMaven subtask of %s' % task_id)
-                    self.results.append('%s built from %s by task %s' % \
+                    self.results.append('%s built from %s by task %s' %
                                         (package, task_url, task_id))
                 else:
                     task_builds = self.session.listBuilds(taskID=task_id)
@@ -2987,7 +2987,7 @@ class ImageTask(BaseTaskHandler):
         """
         found = False
         hdrlist = []
-        fields = ['name', 'version', 'release', 'epoch', 'arch', \
+        fields = ['name', 'version', 'release', 'epoch', 'arch',
                   'buildtime', 'sigmd5']
         for root, dirs, files in os.walk(cachepath):
             for f in files:
@@ -5322,7 +5322,7 @@ class CreaterepoTask(BaseTaskHandler):
         logfile = '%s/createrepo.log' % self.workdir
         status = log_output(self.session, cmd[0], cmd, logfile, self.getUploadDir(), logerror=True)
         if not isSuccess(status):
-            raise koji.GenericError('failed to create repo: %s' \
+            raise koji.GenericError('failed to create repo: %s'
                                     % parseStatus(status, ' '.join(cmd)))
 
     def merge_repos(self, external_repos, arch, groupdata):
@@ -5381,7 +5381,7 @@ class CreaterepoTask(BaseTaskHandler):
         logfile = '%s/mergerepos.log' % self.workdir
         status = log_output(self.session, cmd[0], cmd, logfile, self.getUploadDir(), logerror=True)
         if not isSuccess(status):
-            raise koji.GenericError('failed to merge repos: %s' \
+            raise koji.GenericError('failed to merge repos: %s'
                                     % parseStatus(status, ' '.join(cmd)))
 
 
@@ -5632,7 +5632,7 @@ class createDistRepoTask(BaseTaskHandler):
         logfile = '%s/%s.log' % (self.workdir, logname)
         status = log_output(self.session, cmd[0], cmd, logfile, self.getUploadDir(), logerror=True)
         if not isSuccess(status):
-            raise koji.GenericError('failed to create repo: %s' \
+            raise koji.GenericError('failed to create repo: %s'
                                     % parseStatus(status, ' '.join(cmd)))
 
     def do_multilib_dnf(self, arch, ml_arch, conf):
@@ -6096,12 +6096,12 @@ class WaitrepoTask(BaseTaskHandler):
             if repo and repo != last_repo:
                 if builds:
                     if koji.util.checkForBuilds(self.session, taginfo['id'], builds, repo['create_event']):
-                        self.logger.debug("Successfully waited %s for %s to appear in the %s repo" % \
+                        self.logger.debug("Successfully waited %s for %s to appear in the %s repo" %
                                           (koji.util.duration(start), koji.util.printList(nvrs), taginfo['name']))
                         return repo
                 elif newer_than:
                     if repo['create_ts'] > newer_than:
-                        self.logger.debug("Successfully waited %s for a new %s repo" % \
+                        self.logger.debug("Successfully waited %s for a new %s repo" %
                                           (koji.util.duration(start), taginfo['name']))
                         return repo
                 else:
@@ -6110,10 +6110,10 @@ class WaitrepoTask(BaseTaskHandler):
 
             if (time.time() - start) > (self.TIMEOUT * 60.0):
                 if builds:
-                    raise koji.GenericError("Unsuccessfully waited %s for %s to appear in the %s repo" % \
+                    raise koji.GenericError("Unsuccessfully waited %s for %s to appear in the %s repo" %
                                             (koji.util.duration(start), koji.util.printList(nvrs), taginfo['name']))
                 else:
-                    raise koji.GenericError("Unsuccessfully waited %s for a new %s repo" % \
+                    raise koji.GenericError("Unsuccessfully waited %s for a new %s repo" %
                                             (koji.util.duration(start), taginfo['name']))
 
             time.sleep(self.PAUSE)

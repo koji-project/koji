@@ -262,7 +262,7 @@ class Task(object):
             raise koji.GenericError("No such task: %i" % self.id)
         oldstate = row[0]
         if koji.TASK_STATES[oldstate] in ['CLOSED', 'CANCELED', 'FAILED']:
-            raise koji.GenericError("Cannot free task %i, state is %s" % \
+            raise koji.GenericError("Cannot free task %i, state is %s" %
                                     (self.id, koji.TASK_STATES[oldstate]))
         newstate = koji.TASK_STATES['FREE']
         newhost = None
@@ -1003,7 +1003,7 @@ def _direct_pkglist_add(taginfo, pkginfo, owner, block, extra_arches, force,
         block = bool(block)
         if update and not force:
             # if update flag is true, require that there be a previous entry
-            raise koji.GenericError("cannot update: tag %s has no data for package %s" \
+            raise koji.GenericError("cannot update: tag %s has no data for package %s"
                                     % (tag['name'], pkg['name']))
     else:
         # already there (possibly via inheritance)
@@ -1075,7 +1075,7 @@ def pkglist_block(taginfo, pkginfo, force=False):
     tag = get_tag(taginfo, strict=True)
     pkg = lookup_package(pkginfo, strict=True)
     if not readPackageList(tag['id'], pkgID=pkg['id'], inherit=True):
-        raise koji.GenericError("Package %s is not in tag listing for %s" % \
+        raise koji.GenericError("Package %s is not in tag listing for %s" %
                                 (pkg['name'], tag['name']))
     pkglist_add(taginfo, pkginfo, block=True, force=force)
 
@@ -1100,7 +1100,7 @@ def pkglist_unblock(taginfo, pkginfo, force=False):
     pkglist = readPackageList(tag_id, pkgID=pkg_id, inherit=True)
     previous = pkglist.get(pkg_id, None)
     if previous is None:
-        raise koji.GenericError("no data (blocked or otherwise) for package %s in tag %s" \
+        raise koji.GenericError("no data (blocked or otherwise) for package %s in tag %s"
                                 % (pkg['name'], tag['name']))
     if not previous['blocked']:
         raise koji.GenericError("package %s NOT blocked in tag %s" % (pkg['name'], tag['name']))
@@ -1884,7 +1884,7 @@ def _grp_pkg_add(taginfo, grpinfo, pkg_name, block, force, **opts):
     if previous is not None:
         # already there (possibly via inheritance)
         if previous['blocked'] and not force:
-            raise koji.GenericError("package %s blocked in group %s, tag %s" \
+            raise koji.GenericError("package %s blocked in group %s, tag %s"
                                     % (pkg_name, group['name'], tag['name']))
         # check for duplication and grab old data for defaults
         changed = False
@@ -1966,7 +1966,7 @@ def _grp_pkg_unblock(taginfo, grpinfo, pkg_name):
                            values=locals(), opts={'rowlock': True})
     blocked = query.singleValue(strict=False)
     if not blocked:
-        raise koji.GenericError("package %s is NOT blocked in group %s, tag %s" \
+        raise koji.GenericError("package %s is NOT blocked in group %s, tag %s"
                                 % (pkg_name, grp_id, tag_id))
     update = UpdateProcessor('group_package_listing', values=locals(), clauses=clauses)
     update.make_revoke()
@@ -2008,7 +2008,7 @@ def _grp_req_add(taginfo, grpinfo, reqinfo, block, force, **opts):
     if previous is not None:
         # already there (possibly via inheritance)
         if previous['blocked'] and not force:
-            raise koji.GenericError("requirement on group %s blocked in group %s, tag %s" \
+            raise koji.GenericError("requirement on group %s blocked in group %s, tag %s"
                                     % (req['name'], group['name'], tag['name']))
         # check for duplication and grab old data for defaults
         changed = False
@@ -2093,7 +2093,7 @@ def _grp_req_unblock(taginfo, grpinfo, reqinfo):
                            values=locals(), opts={'rowlock': True})
     blocked = query.singleValue(strict=False)
     if not blocked:
-        raise koji.GenericError("group req %s is NOT blocked in group %s, tag %s" \
+        raise koji.GenericError("group req %s is NOT blocked in group %s, tag %s"
                                 % (req_id, grp_id, tag_id))
     update = UpdateProcessor('group_req_listing', values=locals(), clauses=clauses)
     update.make_revoke()
@@ -2531,7 +2531,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None, with_separa
     #       see https://pagure.io/koji/issue/588 for background
     rpms, builds = readTaggedRPMS(tag_id, event=event_id, inherit=True, latest=latest)
     groups = readTagGroups(tag_id, event=event_id, inherit=True)
-    blocks = [pkg for pkg in readPackageList(tag_id, event=event_id, inherit=True).values() \
+    blocks = [pkg for pkg in readPackageList(tag_id, event=event_id, inherit=True).values()
               if pkg['blocked']]
     repodir = koji.pathinfo.repo(repo_id, tinfo['name'])
     os.makedirs(repodir)  # should not already exist
@@ -2740,7 +2740,7 @@ def repo_set_state(repo_id, state, check=True):
         q = """SELECT state FROM repo WHERE id = %(repo_id)s FOR UPDATE"""
         oldstate = _singleValue(q, locals())
         if oldstate > state:
-            raise koji.GenericError("Invalid repo state transition %s->%s" \
+            raise koji.GenericError("Invalid repo state transition %s->%s"
                                     % (oldstate, state))
     q = """UPDATE repo SET state=%(state)s WHERE id = %(repo_id)s"""
     _dml(q, locals())
@@ -3631,10 +3631,10 @@ def add_external_repo_to_tag(tag_info, repo_info, priority, merge_mode='koji'):
 
     tag_repos = get_tag_external_repos(tag_info=tag_id)
     if [tr for tr in tag_repos if tr['external_repo_id'] == repo_id]:
-        raise koji.GenericError('tag %s already associated with external repo %s' % \
+        raise koji.GenericError('tag %s already associated with external repo %s' %
                                 (tag['name'], repo['name']))
     if [tr for tr in tag_repos if tr['priority'] == priority]:
-        raise koji.GenericError('tag %s already associated with an external repo at priority %i' % \
+        raise koji.GenericError('tag %s already associated with an external repo at priority %i' %
                                 (tag['name'], priority))
 
     insert = InsertProcessor('tag_external_repos')
@@ -3655,7 +3655,7 @@ def remove_external_repo_from_tag(tag_info, repo_info):
     repo_id = repo['id']
 
     if not get_tag_external_repos(tag_info=tag_id, repo_info=repo_id):
-        raise koji.GenericError('external repo %s not associated with tag %s' % \
+        raise koji.GenericError('external repo %s not associated with tag %s' %
                                 (repo['name'], tag['name']))
 
     update = UpdateProcessor('tag_external_repos', values=locals(),
@@ -3677,7 +3677,7 @@ def edit_tag_external_repo(tag_info, repo_info, priority):
 
     tag_repos = get_tag_external_repos(tag_info=tag_id, repo_info=repo_id)
     if not tag_repos:
-        raise koji.GenericError('external repo %s not associated with tag %s' % \
+        raise koji.GenericError('external repo %s not associated with tag %s' %
                                 (repo['name'], tag['name']))
     tag_repo = tag_repos[0]
 
@@ -5764,7 +5764,7 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
             if build[key] != binfo[key]:
                 raise koji.GenericError("Unable to complete build: %s mismatch (build: %s, rpm: %s)" % (key, binfo[key], build[key]))
         if binfo['state'] != koji.BUILD_STATES['BUILDING']:
-            raise koji.GenericError("Unable to complete build: state is %s" \
+            raise koji.GenericError("Unable to complete build: state is %s"
                                     % koji.BUILD_STATES[binfo['state']])
         # update build state
         update = UpdateProcessor('build', clauses=['id=%(id)s'], values=binfo)
@@ -5844,10 +5844,10 @@ def import_rpm(fn, buildinfo=None, brootid=None, wrapper=False, fileinfo=None):
         # itself (for the srpm)
         if rpminfo['sourcepackage'] != 1:
             if rpminfo['sourcerpm'] != srpmname:
-                raise koji.GenericError("srpm mismatch for %s: %s (expected %s)" \
+                raise koji.GenericError("srpm mismatch for %s: %s (expected %s)"
                                         % (fn, rpminfo['sourcerpm'], srpmname))
         elif basename != srpmname:
-            raise koji.GenericError("srpm mismatch for %s: %s (expected %s)" \
+            raise koji.GenericError("srpm mismatch for %s: %s (expected %s)"
                                     % (fn, basename, srpmname))
 
     # if we're adding an rpm to it, then this build is of rpm type
@@ -6620,7 +6620,7 @@ def add_external_rpm(rpminfo, external_repo, strict=True):
             if strict:
                 raise koji.GenericError("external rpm already exists: %s" % disp)
             elif data['payloadhash'] != previous['payloadhash']:
-                raise koji.GenericError("hash changed for external rpm: %s (%s -> %s)" \
+                raise koji.GenericError("hash changed for external rpm: %s (%s -> %s)"
                                         % (disp, previous['payloadhash'], data['payloadhash']))
             else:
                 return previous
@@ -6721,7 +6721,7 @@ def merge_scratch(task_id):
                     srpm = srpm_name
                 else:
                     if srpm != srpm_name:
-                        raise koji.ImportError('task srpm names do not match: %s, %s' % \
+                        raise koji.ImportError('task srpm names do not match: %s, %s' %
                                                (srpm, srpm_name))
             elif output.endswith('.noarch.rpm'):
                 continue
@@ -6730,7 +6730,7 @@ def merge_scratch(task_id):
                 if 'arch' not in info:
                     info['arch'] = rpminfo['arch']
                 elif info['arch'] != rpminfo['arch']:
-                    raise koji.ImportError('multiple arches generated by task %s: %s, %s' % \
+                    raise koji.ImportError('multiple arches generated by task %s: %s, %s' %
                                            (child['id'], info['arch'], rpminfo['arch']))
                 info['rpms'].append(output)
             elif output.endswith('.log'):
@@ -6752,7 +6752,7 @@ def merge_scratch(task_id):
     build_nvr = koji.parse_NVRA(srpm)
     build = get_build(build_nvr)
     if not build:
-        raise koji.ImportError('no such build: %(name)s-%(version)s-%(release)s' % \
+        raise koji.ImportError('no such build: %(name)s-%(version)s-%(release)s' %
                                build_nvr)
     if build['state'] != koji.BUILD_STATES['COMPLETE']:
         raise koji.ImportError('%s did not complete successfully' % build['nvr'])
@@ -6765,14 +6765,14 @@ def merge_scratch(task_id):
 
     # compare the task and build and make sure they are compatible with importing
     if task_info['request'][0] != build_task_info['request'][0]:
-        raise koji.ImportError('SCM URLs for the task and build do not match: %s, %s' % \
+        raise koji.ImportError('SCM URLs for the task and build do not match: %s, %s' %
                                (task_info['request'][0], build_task_info['request'][0]))
     build_arches = set()
     for rpminfo in list_rpms(buildID=build['id']):
         if rpminfo['arch'] == 'src':
             build_srpm = '%s.src.rpm' % rpminfo['nvr']
             if srpm != build_srpm:
-                raise koji.ImportError('task and build srpm names do not match: %s, %s' % \
+                raise koji.ImportError('task and build srpm names do not match: %s, %s' %
                                        (srpm, build_srpm))
         elif rpminfo['arch'] == 'noarch':
             continue
@@ -6783,7 +6783,7 @@ def merge_scratch(task_id):
     task_arches = set([t['arch'] for t in tasks.values()])
     overlapping_arches = task_arches.intersection(build_arches)
     if overlapping_arches:
-        raise koji.ImportError('task %s and %s produce rpms with the same arches: %s' % \
+        raise koji.ImportError('task %s and %s produce rpms with the same arches: %s' %
                                (task_info['id'], build['nvr'], ', '.join(overlapping_arches)))
 
     # everything looks good, do the import
@@ -6905,7 +6905,7 @@ def new_maven_build(build, maven_info):
         # already exists, verify that it matches
         for field in ('group_id', 'artifact_id', 'version'):
             if current_maven_info[field] != maven_info[field]:
-                raise koji.BuildError('%s mismatch (current: %s, new: %s)' % \
+                raise koji.BuildError('%s mismatch (current: %s, new: %s)' %
                                       (field, current_maven_info[field], maven_info[field]))
     else:
         maven_info['build_id'] = build['id']
@@ -7081,11 +7081,11 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
             pom_maveninfo = koji.pom_to_maven_info(pom_info)
             # sanity check: Maven info from pom must match the user-supplied typeInfo
             if koji.mavenLabel(pom_maveninfo) != koji.mavenLabel(typeInfo):
-                raise koji.BuildError('Maven info from .pom file (%s) does not match user-supplied typeInfo (%s)' % \
+                raise koji.BuildError('Maven info from .pom file (%s) does not match user-supplied typeInfo (%s)' %
                                       (koji.mavenLabel(pom_maveninfo), koji.mavenLabel(typeInfo)))
             # sanity check: the filename of the pom file must match <artifactId>-<version>.pom
             if filename != '%(artifact_id)s-%(version)s.pom' % typeInfo:
-                raise koji.BuildError('Maven info (%s) is not consistent with pom filename (%s)' % \
+                raise koji.BuildError('Maven info (%s) is not consistent with pom filename (%s)' %
                                       (koji.mavenLabel(typeInfo), filename))
 
         insert = InsertProcessor('maven_archives', data=dslice(typeInfo, ('group_id', 'artifact_id', 'version')))
@@ -7185,7 +7185,7 @@ def add_rpm_sig(an_rpm, sighdr):
     # calling function should perform permission checks, if applicable
     rinfo = get_rpm(an_rpm, strict=True)
     if rinfo['external_repo_id']:
-        raise koji.GenericError("Not an internal rpm: %s (from %s)" \
+        raise koji.GenericError("Not an internal rpm: %s (from %s)"
                                 % (an_rpm, rinfo['external_repo_name']))
     binfo = get_build(rinfo['build_id'])
     builddir = koji.pathinfo.build(binfo)
@@ -7302,7 +7302,7 @@ def check_rpm_sig(an_rpm, sigkey, sighdr):
     else:
         found_key = koji.get_sigpacket_key_id(raw_key)
     if sigkey != found_key:
-        raise koji.GenericError("Signature key mismatch: got %s, expected %s" \
+        raise koji.GenericError("Signature key mismatch: got %s, expected %s"
                                 % (found_key, sigkey))
     os.unlink(temp)
 
@@ -7323,7 +7323,7 @@ def write_signed_rpm(an_rpm, sigkey, force=False):
     """Write a signed copy of the rpm"""
     rinfo = get_rpm(an_rpm, strict=True)
     if rinfo['external_repo_id']:
-        raise koji.GenericError("Not an internal rpm: %s (from %s)" \
+        raise koji.GenericError("Not an internal rpm: %s (from %s)"
                                 % (an_rpm, rinfo['external_repo_name']))
     binfo = get_build(rinfo['build_id'])
     nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" % rinfo
@@ -12333,7 +12333,7 @@ class RootExports(object):
 
         orig_notif = self.getBuildNotification(id, strict=True)
         if not (orig_notif['user_id'] == currentUser['id'] or self.hasPerm('admin')):
-            raise koji.GenericError('user %i cannot update notifications for user %i' % \
+            raise koji.GenericError('user %i cannot update notifications for user %i' %
                                     (currentUser['id'], orig_notif['user_id']))
 
         # sanitize input
@@ -12367,7 +12367,7 @@ class RootExports(object):
             raise koji.GenericError('invalid user ID: %s' % user_id)
 
         if not (notificationUser['id'] == currentUser['id'] or self.hasPerm('admin')):
-            raise koji.GenericError('user %s cannot create notifications for user %s' % \
+            raise koji.GenericError('user %s cannot create notifications for user %s' %
                                     (currentUser['name'], notificationUser['name']))
 
         # sanitize input
@@ -12402,7 +12402,7 @@ class RootExports(object):
 
         if not (notification['user_id'] == currentUser['id'] or
                 self.hasPerm('admin')):
-            raise koji.GenericError('user %i cannot delete notifications for user %i' % \
+            raise koji.GenericError('user %i cannot delete notifications for user %i' %
                                     (currentUser['id'], notification['user_id']))
         delete = """DELETE FROM build_notifications WHERE id = %(id)i"""
         _dml(delete, locals())
@@ -12420,7 +12420,7 @@ class RootExports(object):
             raise koji.GenericError('invalid user ID: %s' % user_id)
 
         if not (notificationUser['id'] == currentUser['id'] or self.hasPerm('admin')):
-            raise koji.GenericError('user %s cannot create notification blocks for user %s' % \
+            raise koji.GenericError('user %s cannot create notification blocks for user %s' %
                                     (currentUser['name'], notificationUser['name']))
 
         # sanitize input
@@ -12449,7 +12449,7 @@ class RootExports(object):
 
         if not (block['user_id'] == currentUser['id'] or
                 self.hasPerm('admin')):
-            raise koji.GenericError('user %i cannot delete notification blocks for user %i' % \
+            raise koji.GenericError('user %i cannot delete notification blocks for user %i' %
                                     (currentUser['id'], block['user_id']))
         delete = """DELETE FROM build_notifications_block WHERE id = %(id)i"""
         _dml(delete, locals())
@@ -12662,7 +12662,7 @@ class BuildRoot(object):
     def assertTask(self, task_id):
         self.assertStandard()
         if not self.verifyTask(task_id):
-            raise koji.ActionNotAllowed('Task %s does not have lock on buildroot %s' \
+            raise koji.ActionNotAllowed('Task %s does not have lock on buildroot %s'
                                         % (task_id, self.id))
 
     def verifyHost(self, host_id):
@@ -12672,7 +12672,7 @@ class BuildRoot(object):
     def assertHost(self, host_id):
         self.assertStandard()
         if not self.verifyHost(host_id):
-            raise koji.ActionNotAllowed("Host %s not owner of buildroot %s" \
+            raise koji.ActionNotAllowed("Host %s not owner of buildroot %s"
                                         % (host_id, self.id))
 
     def setState(self, state):
@@ -13529,7 +13529,7 @@ class HostExports(object):
         build_info = get_build(build_id, strict=True)
 
         if build_info['state'] != koji.BUILD_STATES['COMPLETE']:
-            raise koji.GenericError('cannot import wrapper rpms for %s: build state is %s, not complete' % \
+            raise koji.GenericError('cannot import wrapper rpms for %s: build state is %s, not complete' %
                                     (koji.buildLabel(build_info), koji.BUILD_STATES[build_info['state']].lower()))
 
         if list_rpms(buildID=build_info['id']):
@@ -13665,10 +13665,10 @@ class HostExports(object):
         result = _singleRow(query, locals(), ('state', 'completion_time'))
 
         if result['state'] != koji.BUILD_STATES['BUILDING']:
-            raise koji.GenericError('cannot update build %i, state: %s' % \
+            raise koji.GenericError('cannot update build %i, state: %s' %
                                     (build_id, koji.BUILD_STATES[result['state']]))
         elif result['completion_time'] is not None:
-            raise koji.GenericError('cannot update build %i, completed at %s' % \
+            raise koji.GenericError('cannot update build %i, completed at %s' %
                                     (build_id, result['completion_time']))
 
         update = """UPDATE build
@@ -13943,7 +13943,7 @@ class HostExports(object):
                             logger.error("Build supplies %i archives: %r", len(build_archives), to_list(build_archives.keys()))
                         if tag_archive:
                             logger.error("Size mismatch, br: %i, db: %i", fileinfo['size'], tag_archive['size'])
-                        raise koji.BuildrootError('Unknown file in build environment: %s, size: %s' % \
+                        raise koji.BuildrootError('Unknown file in build environment: %s, size: %s' %
                                                   ('%s/%s' % (fileinfo['path'], fileinfo['filename']), fileinfo['size']))
 
         return br.updateArchiveList(archives, project)

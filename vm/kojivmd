@@ -383,10 +383,10 @@ class WinBuildTask(MultiPlatformTask):
             if not opts.get('skip_tag'):
                 # Make sure package is on the list for this tag
                 if pkg_cfg is None:
-                    raise koji.BuildError("package %s not in list for tag %s" \
+                    raise koji.BuildError("package %s not in list for tag %s"
                                           % (build_info['name'], dest_tag['name']))
                 elif pkg_cfg['blocked']:
-                    raise koji.BuildError("package %s is blocked for tag %s" \
+                    raise koji.BuildError("package %s is blocked for tag %s"
                                           % (build_info['name'], dest_tag['name']))
 
             build_info = self.session.host.initWinBuild(self.id, build_info,
@@ -456,7 +456,7 @@ class VMExecTask(BaseTaskHandler):
         output, dummy = proc.communicate()
         ret = proc.wait()
         if ret:
-            raise koji.BuildError('unable to create qcow2 image, "%s" returned %s; output was: %s' % \
+            raise koji.BuildError('unable to create qcow2 image, "%s" returned %s; output was: %s' %
                                   (' '.join(cmd), ret, output))
         vm_user = pwd.getpwnam(self.options.vmuser)
         os.chown(new_path, vm_user.pw_uid, vm_user.pw_gid)
@@ -712,7 +712,7 @@ class VMExecTask(BaseTaskHandler):
                         os.path.basename(fileinfo['localpath']),
                         fileinfo['payloadhash'], payloadhash))
                 if not koji.util.check_sigmd5(localpath):
-                    raise koji.BuildError("Downloaded rpm %s doesn't match sigmd5" % \
+                    raise koji.BuildError("Downloaded rpm %s doesn't match sigmd5" %
                                           os.path.basename(fileinfo['localpath']))
             else:
                 self.verifyChecksum(localpath, fileinfo['checksum'], koji.CHECKSUM_TYPES[fileinfo['checksum_type']])
@@ -752,7 +752,7 @@ class VMExecTask(BaseTaskHandler):
                 raise koji.BuildError('% does not exist' % local_path)
             size = os.path.getsize(local_path)
             if offset != size:
-                raise koji.BuildError('cannot write to %s at offset %s, size is %s' % \
+                raise koji.BuildError('cannot write to %s at offset %s, size is %s' %
                                       (local_path, offset, size))
             fobj = open(local_path, 'r+')
             fobj.seek(offset)
@@ -796,7 +796,7 @@ class VMExecTask(BaseTaskHandler):
         if sum.hexdigest() == checksum:
             return True
         else:
-            raise koji.BuildError('%s checksum validation failed for %s, %s (computed) != %s (provided)' % \
+            raise koji.BuildError('%s checksum validation failed for %s, %s (computed) != %s (provided)' %
                                   (algo, local_path, sum.hexdigest(), checksum))
 
     def closeTask(self, output):
@@ -861,7 +861,7 @@ class VMExecTask(BaseTaskHandler):
             self.logger.info('Started VM %s', clone_name)
         except libvirt.libvirtError as e:
             self.logger.error('error starting VM %s', clone_name, exc_info=True)
-            raise koji.PreBuildError('error starting VM %s, error was: %s' % \
+            raise koji.PreBuildError('error starting VM %s, error was: %s' %
                                      (clone_name, e))
 
         start = time.time()
@@ -879,7 +879,7 @@ class VMExecTask(BaseTaskHandler):
                 if mins > timeout:
                     vm.destroy()
                     self.server.server_close()
-                    raise koji.BuildError('Task did not complete after %.2f minutes, VM %s has been destroyed' % \
+                    raise koji.BuildError('Task did not complete after %.2f minutes, VM %s has been destroyed' %
                                           (mins, clone_name))
             else:
                 vm.destroy()

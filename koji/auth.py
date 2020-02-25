@@ -137,7 +137,7 @@ class Session(object):
             lastcall = session_data['callnum']
             if lastcall is not None:
                 if lastcall > callnum:
-                    raise koji.SequenceError("%d > %d (session %d)" \
+                    raise koji.SequenceError("%d > %d (session %d)"
                                              % (lastcall, callnum, id))
                 elif lastcall == callnum:
                     # Some explanation:
@@ -151,7 +151,7 @@ class Session(object):
                     method = getattr(context, 'method', 'UNKNOWN')
                     if method not in RetryWhitelist:
                         raise koji.RetryError(
-                            "unable to retry call %d (method %s) for session %d" \
+                            "unable to retry call %d (method %s) for session %d"
                             % (callnum, method, id))
 
         # read user data

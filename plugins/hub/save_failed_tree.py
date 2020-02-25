@@ -42,7 +42,7 @@ def saveFailedTree(buildrootID, full=False, **opts):
     if task_info['state'] != koji.TASK_STATES['FAILED']:
         raise koji.PreBuildError("Task %s has not failed. Only failed tasks can upload their buildroots." % taskID)
     elif allowed_methods != '*' and task_info['method'] not in allowed_methods:
-        raise koji.PreBuildError("Only %s tasks can upload their buildroots (Task %s is %s)." % \
+        raise koji.PreBuildError("Only %s tasks can upload their buildroots (Task %s is %s)." %
                                  (', '.join(allowed_methods), task_info['id'], task_info['method']))
     elif task_info["owner"] != context.session.user_id and not context.session.hasPerm('admin'):
         raise koji.ActionNotAllowed("Only owner of failed task or 'admin' can run this task.")

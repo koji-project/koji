@@ -281,7 +281,7 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
                 koji.ensuredir(mpoint)
                 status = log_output(self.session, cmd[0], cmd, logfile, uploadpath, logerror=True, append=True)
                 if not isSuccess(status):
-                    error = koji.GenericError("Unable to mount %s: %s" \
+                    error = koji.GenericError("Unable to mount %s: %s"
                                               % (mpoint, parseStatus(status, cmd)))
                     break
                 fslog.write("%s\n" % mpoint)

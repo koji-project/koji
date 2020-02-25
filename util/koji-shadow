@@ -1175,7 +1175,7 @@ class BuildTracker(object):
                 build.updateState()
                 ret = True
                 if build.state != 'common':
-                    log("Task %i finished, but %s still missing" \
+                    log("Task %i finished, but %s still missing"
                         % (build.task_id, build.nvr))
         return ret
 

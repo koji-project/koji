@@ -716,7 +716,7 @@ class RawHeader(object):
                     print("Data: %r" % self.header[next:pos])
                 elif pos < next:
                     print("** OVERLAPPING entries")
-            print("Tag: %d [%s], Type: %d, Offset: %x, Count: %d" \
+            print("Tag: %d [%s], Type: %d, Offset: %x, Count: %d"
                   % (tag, tags.get(tag, '?'), dtype, offset, count))
             if dtype == 0:
                 # null
@@ -1777,12 +1777,12 @@ def _check_rpm_file(fo):
     try:
         hdr = ts.hdrFromFdno(fo.fileno())
     except rpm.error as ex:
-        raise GenericError("rpm's header can't be extracted: %s (rpm error: %s)" % \
+        raise GenericError("rpm's header can't be extracted: %s (rpm error: %s)" %
                            (fo.name, ', '.join(ex.args)))
     try:
         rpm.TransactionSet().hdrCheck(hdr.unload())
     except rpm.error as ex:
-        raise GenericError("rpm's header can't be checked: %s (rpm error: %s)" % \
+        raise GenericError("rpm's header can't be checked: %s (rpm error: %s)" %
                            (fo.name, ', '.join(ex.args)))
     fo.seek(0)
 
@@ -2932,7 +2932,7 @@ class ClientSession(object):
             if result['size'] != len(chunk):
                 raise GenericError("server returned wrong chunk size: %s != %s" % (result['size'], len(chunk)))
             if result['hexdigest'] != hexdigest:
-                raise GenericError('upload checksum failed: %s != %s' \
+                raise GenericError('upload checksum failed: %s != %s'
                                    % (result['hexdigest'], hexdigest))
             ofs += len(chunk)
             now = time.time()
@@ -2952,10 +2952,10 @@ class ClientSession(object):
         if result is None:
             raise GenericError("File upload failed: %s/%s" % (path, name))
         if int(result['size']) != ofs:
-            raise GenericError("Uploaded file is wrong length: %s/%s, %s != %s" \
+            raise GenericError("Uploaded file is wrong length: %s/%s, %s != %s"
                                % (path, name, result['size'], ofs))
         if problems and result['hexdigest'] != full_chksum.hexdigest():
-            raise GenericError("Uploaded file has wrong checksum: %s/%s, %s != %s" \
+            raise GenericError("Uploaded file has wrong checksum: %s/%s, %s != %s"
                                % (path, name, result['hexdigest'], full_chksum.hexdigest()))
         self.logger.debug("Fast upload: %s complete. %i bytes in %.1f seconds", localfile, size, t2)
 

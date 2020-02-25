@@ -1703,7 +1703,7 @@ def handle_prune_signed_copies(options, session, args):
                 elif our_entry['revoke_ts'] > cutoff_ts:
                     # we were still tagged here sometime before the cutoff
                     if options.debug:
-                        print("Build %s had protected tag %s until %s" \
+                        print("Build %s had protected tag %s until %s"
                               % (nvr, tag_name, time.asctime(time.localtime(our_entry['revoke_ts']))))
                     is_protected = True
                     break
@@ -1721,7 +1721,7 @@ def handle_prune_signed_copies(options, session, args):
                 if entry['build_id'] == binfo['id']:
                     if is_create:
                         # shouldn't happen
-                        raise koji.GenericError("Duplicate creation event found for %s in %s" \
+                        raise koji.GenericError("Duplicate creation event found for %s in %s"
                                                 % (nvr, tag_name))
                     else:
                         # we've been revoked
@@ -1762,19 +1762,19 @@ def handle_prune_signed_copies(options, session, args):
                     # replaced (but not revoked)
                     timestamps.append(replaced_ts)
                     if options.debug:
-                        print("tag %s: %s not latest (replaced %s)" \
+                        print("tag %s: %s not latest (replaced %s)"
                               % (tag_name, nvr, time.asctime(time.localtime(replaced_ts))))
             elif replaced_ts is None:
                 # revoked but not replaced
                 timestamps.append(revoke_ts)
                 if options.debug:
-                    print("tag %s: %s not latest (revoked %s)" \
+                    print("tag %s: %s not latest (revoked %s)"
                           % (tag_name, nvr, time.asctime(time.localtime(revoke_ts))))
             else:
                 # revoked AND replaced
                 timestamps.append(min(revoke_ts, replaced_ts))
                 if options.debug:
-                    print("tag %s: %s not latest (revoked %s, replaced %s)" \
+                    print("tag %s: %s not latest (revoked %s, replaced %s)"
                           % (tag_name, nvr, time.asctime(time.localtime(revoke_ts)),
                              time.asctime(time.localtime(replaced_ts))))
             last_latest = max(timestamps)
@@ -1866,7 +1866,7 @@ def handle_prune_signed_copies(options, session, args):
             total_files += build_files
             total_space += build_space
             if options.verbose:
-                print("Build: %s, Removed %i signed copies (%i bytes). Total: %i/%i" \
+                print("Build: %s, Removed %i signed copies (%i bytes). Total: %i/%i"
                       % (nvr, build_files, build_space, total_files, total_space))
         elif options.debug and by_sig:
             print("(build has no signed copies)")
@@ -5373,7 +5373,7 @@ def handle_add_external_repo(goptions, session, args):
             if options.mode:
                 callopts['merge_mode'] = options.mode
             session.addExternalRepoToTag(tag, rinfo['name'], priority, **callopts)
-            print("Added external repo %s to tag %s (priority %i)" \
+            print("Added external repo %s to tag %s (priority %i)"
                   % (rinfo['name'], tag, priority))
 
 
@@ -6004,17 +6004,17 @@ def handle_win_build(options, session, args):
     usage = _("usage: %prog win-build [options] <target> <URL> <VM>")
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--winspec", metavar="URL",
-                      help=_("SCM URL to retrieve the build descriptor from. " + \
-                             "If not specified, the winspec must be in the root directory " + \
+                      help=_("SCM URL to retrieve the build descriptor from. " +
+                             "If not specified, the winspec must be in the root directory " +
                              "of the source repository."))
     parser.add_option("--patches", metavar="URL",
-                      help=_("SCM URL of a directory containing patches to apply " + \
+                      help=_("SCM URL of a directory containing patches to apply " +
                              "to the sources before building"))
     parser.add_option("--cpus", type="int",
-                      help=_("Number of cpus to allocate to the build VM " + \
+                      help=_("Number of cpus to allocate to the build VM " +
                              "(requires admin access)"))
     parser.add_option("--mem", type="int",
-                      help=_("Amount of memory (in megabytes) to allocate to the build VM " + \
+                      help=_("Amount of memory (in megabytes) to allocate to the build VM " +
                              "(requires admin access)"))
     parser.add_option("--static-mac", action="store_true",
                       help=_("Retain the original MAC address when cloning the VM"))
@@ -6261,15 +6261,15 @@ def handle_set_pkg_owner_global(goptions, session, args):
     for entry in to_change:
         if user['id'] == entry['owner_id']:
             if options.verbose:
-                print("Preserving owner=%s for package %s in tag %s" \
+                print("Preserving owner=%s for package %s in tag %s"
                       % (user['name'], package, entry['tag_name']))
         else:
             if options.test:
-                print("Would have changed owner for %s in tag %s: %s -> %s" \
+                print("Would have changed owner for %s in tag %s: %s -> %s"
                       % (entry['package_name'], entry['tag_name'], entry['owner_name'], user['name']))
                 continue
             if options.verbose:
-                print("Changing owner for %s in tag %s: %s -> %s" \
+                print("Changing owner for %s in tag %s: %s -> %s"
                       % (entry['package_name'], entry['tag_name'], entry['owner_name'], user['name']))
             session.packageListSetOwner(entry['tag_id'], entry['package_name'], user['id'])
 

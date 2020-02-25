@@ -200,8 +200,8 @@ class WindowsBuild(object):
 
     def applyPatches(self, sourcedir, patchdir):
         """Apply patches in patchdir to files in sourcedir)"""
-        patches = [patch for patch in os.listdir(patchdir) if \
-                   os.path.isfile(os.path.join(patchdir, patch)) and \
+        patches = [patch for patch in os.listdir(patchdir) if
+                   os.path.isfile(os.path.join(patchdir, patch)) and
                    patch.endswith('.patch')]
         if not patches:
             raise BuildError('no patches found at %s' % patchdir)  # noqa: F821

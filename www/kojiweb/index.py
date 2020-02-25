@@ -1105,7 +1105,7 @@ def tagparent(environ, tagID, parentID, action):
                 if datum['priority'] > maxPriority:
                     maxPriority = datum['priority']
             values['maxPriority'] = maxPriority
-            inheritanceData = [datum for datum in inheritanceData \
+            inheritanceData = [datum for datum in inheritanceData
                                if datum['parent_id'] == parent['id']]
             if len(inheritanceData) == 0:
                 values['inheritanceData'] = None
@@ -1775,7 +1775,7 @@ def rpmlist(environ, type, buildrootID=None, imageID=None, start=None, order='nv
         # If/When future image types are supported, add elifs here if needed.
         if type == 'image':
             kojiweb.util.paginateMethod(server, values, 'listRPMs',
-                                        kw={'imageID': imageID}, \
+                                        kw={'imageID': imageID},
                                         start=start, dataName='rpms',
                                         prefix='rpm', order=order)
         else:
