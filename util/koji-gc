@@ -7,8 +7,9 @@
 #       Mike McLean <mikem@redhat.com>
 
 from __future__ import absolute_import
-import fcntl
+
 import datetime
+import fcntl
 import fnmatch
 import optparse
 import os
