@@ -71,7 +71,7 @@ class Rpmdiff:
     except AttributeError:
         try:
             PREREQ_FLAG = rpm.RPMSENSE_PREREQ
-        except:
+        except BaseException:
             # (proyvind): This seems ugly, but then again so does
             #            this whole check as well.
             PREREQ_FLAG = False
@@ -119,9 +119,8 @@ class Rpmdiff:
 
         old_files_dict = self.__fileIteratorToDict(old.fiFromHeader())
         new_files_dict = self.__fileIteratorToDict(new.fiFromHeader())
-        files = list(set(itertools.chain(six.iterkeys(old_files_dict),
-                                         six.iterkeys(new_files_dict))))
-        files.sort()
+        files = sorted(set(itertools.chain(six.iterkeys(old_files_dict),
+                                           six.iterkeys(new_files_dict))))
         self.old_data['files'] = old_files_dict
         self.new_data['files'] = new_files_dict
 

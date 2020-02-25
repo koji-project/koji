@@ -240,7 +240,7 @@ class ModXMLRPCRequestHandler(object):
         except Fault as fault:
             self.traceback = True
             response = dumps(fault, marshaller=Marshaller)
-        except:
+        except BaseException:
             self.traceback = True
             # report exception back to server
             e_class, e = sys.exc_info()[:2]

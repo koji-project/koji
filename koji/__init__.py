@@ -303,10 +303,10 @@ class GenericError(Exception):
     def __str__(self):
         try:
             return str(self.args[0]['args'][0])
-        except:
+        except BaseException:
             try:
                 return str(self.args[0])
-            except:
+            except BaseException:
                 return str(self.__dict__)
 # END kojikamid dup #
 
@@ -1727,7 +1727,7 @@ def format_exc_plus():
             # COULD cause any exception, so we MUST catch any...:
             try:
                 rv += "%s\n" % value
-            except:
+            except BaseException:
                 rv += "<ERROR WHILE PRINTING VALUE>\n"
     return rv
 
@@ -2265,7 +2265,7 @@ class VirtualMethod(object):
                 self.__session._apidoc = dict(
                     [(f["name"], f) for f in self.__func("_listapi", [], {})]
                 )
-            except:
+            except BaseException:
                 self.__session._apidoc = {}
 
         funcdoc = self.__session._apidoc.get(self.__name)
@@ -2651,7 +2651,7 @@ class ClientSession(object):
         if self.__dict__:
             try:
                 self.logout()
-            except:
+            except BaseException:
                 pass
 
     def callMethod(self, name, *args, **opts):
@@ -3283,7 +3283,7 @@ class DBHandler(logging.Handler):
             # self.cnx.commit()
             # XXX - committing here is most likely wrong, but we need to set commit_pending or something
             #      ...and this is really the wrong place for that
-        except:
+        except BaseException:
             self.handleError(record)
 
 

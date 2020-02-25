@@ -449,7 +449,7 @@ Build: %%(name)s-%%(version)s-%%(release)s
                 s.login(options.smtp_user, options.smtp_pass)
             s.sendmail(msg['From'], msg['To'], msg.as_string())
             s.quit()
-        except:
+        except BaseException:
             print("FAILED: Sending warning notice to %s" % msg['To'])
 
 
@@ -571,12 +571,10 @@ def handle_trash():
     by_owner = {}
     for binfo in to_trash:
         by_owner.setdefault(binfo['owner_name'], []).append(binfo)
-    owners = to_list(by_owner.keys())
-    owners.sort()
+    owners = sorted(to_list(by_owner.keys()))
     mcall = koji.MultiCallSession(session, batch=1000)
     for owner_name in owners:
-        builds = [(b['nvr'], b) for b in by_owner[owner_name]]
-        builds.sort()
+        builds = sorted([(b['nvr'], b) for b in by_owner[owner_name]])
         send_warning_notice(owner_name, [x[1] for x in builds])
         for nvr, binfo in builds:
             if options.test:
@@ -646,8 +644,7 @@ def handle_delete(just_salvage=False):
     """
     print("Getting list of builds in trash...")
     trashcan_tag = options.trashcan_tag
-    trash = [(b['nvr'], b) for b in session.listTagged(trashcan_tag)]
-    trash.sort()
+    trash = sorted([(b['nvr'], b) for b in session.listTagged(trashcan_tag)])
     print("...got %i builds" % len(trash))
     # XXX - it would be better if there were more appropriate server calls for this
     grace_period = options.grace_period
@@ -902,8 +899,7 @@ def handle_prune():
                 pkghist.setdefault(h['name'] + '-' + h['version'], []).append(h)
             else:
                 pkghist.setdefault(h['name'], []).append(h)
-        pkgs = to_list(pkghist.keys())
-        pkgs.sort()
+        pkgs = sorted(to_list(pkghist.keys()))
         for pkg in pkgs:
             if not check_package(pkg):
                 # if options.debug:
@@ -1010,7 +1006,7 @@ if __name__ == "__main__":
                 if options.exit_on_lock:
                     try:
                         session.logout()
-                    except:
+                    except BaseException:
                         pass
                     sys.exit(1)
             os.close(lock_fd)
@@ -1041,7 +1037,7 @@ if __name__ == "__main__":
     #        print("%s: %s" % (exctype, value))
     try:
         session.logout()
-    except:
+    except BaseException:
         pass
     if not options.skip_main:
         sys.exit(rv)

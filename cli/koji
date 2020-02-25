@@ -335,7 +335,7 @@ if __name__ == "__main__":
             rv = 0
     except (KeyboardInterrupt, SystemExit):
         rv = 1
-    except:
+    except BaseException:
         if options.debug:
             raise
         else:
@@ -344,6 +344,6 @@ if __name__ == "__main__":
             logger.error("%s: %s" % (exctype.__name__, value))
     try:
         session.logout()
-    except:
+    except BaseException:
         pass
     sys.exit(rv)

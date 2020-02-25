@@ -45,7 +45,7 @@ class NoSuchException(Exception):
 try:
     # pyOpenSSL might not be around
     from OpenSSL.SSL import Error as SSL_Error
-except:
+except BaseException:
     SSL_Error = NoSuchException
 
 

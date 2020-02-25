@@ -498,14 +498,14 @@ def download_file(url, relpath, quiet=False, noprogress=False, size=None, num=No
         response.raise_for_status()
         length = int(response.headers.get('content-length') or 0)
         with open(relpath, 'wb') as f:
-            l = 0
+            pos = 0
             for chunk in response.iter_content(chunk_size=65536):
-                l += len(chunk)
+                pos += len(chunk)
                 f.write(chunk)
                 if not (quiet or noprogress):
-                    _download_progress(length, l)
+                    _download_progress(length, pos)
             if not length and not (quiet or noprogress):
-                _download_progress(l, l)
+                _download_progress(pos, pos)
 
     if not (quiet or noprogress):
         print('')

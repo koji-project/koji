@@ -105,7 +105,8 @@ class CursorWrapper:
         if hasattr(self.cursor, "mogrify"):
             quote = self.cursor.mogrify
         else:
-            quote = lambda a, b: a % b
+            def quote(a, b):
+                return a % b
         try:
             return quote(operation, parameters)
         except Exception:

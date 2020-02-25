@@ -241,7 +241,7 @@ def main(options, session):
             break
         except koji.RetryError:
             raise
-        except:
+        except BaseException:
             # XXX - this is a little extreme
             # log the exception and continue
             logger.error('Error in main loop', exc_info=True)
@@ -293,7 +293,7 @@ class DaemonXMLRPCServer(six.moves.xmlrpc_server.SimpleXMLRPCServer):
                         self.close_request(conn)
             except socket.timeout:
                 pass
-            except:
+            except BaseException:
                 self.logger.error('Error handling requests', exc_info=True)
 
     if sys.version_info[:2] <= (2, 4):
@@ -310,7 +310,7 @@ class DaemonXMLRPCServer(six.moves.xmlrpc_server.SimpleXMLRPCServer):
                 response = six.moves.xmlrpc_client.dumps(response, methodresponse=1, allow_none=True)
             except six.moves.xmlrpc_client.Fault as fault:
                 response = six.moves.xmlrpc_client.dumps(fault)
-            except:
+            except BaseException:
                 # report exception back to server
                 response = six.moves.xmlrpc_client.dumps(
                     six.moves.xmlrpc_client.Fault(1, "%s:%s" % (sys.exc_type, sys.exc_value))
@@ -407,7 +407,7 @@ class WinBuildTask(MultiPlatformTask):
         except (SystemExit, ServerExit, KeyboardInterrupt):
             # we do not trap these
             raise
-        except:
+        except BaseException:
             if not opts.get('scratch'):
                 # scratch builds do not get imported
                 self.session.host.failBuild(self.id, build_id)
@@ -1037,7 +1037,7 @@ class VMTaskManager(TaskManager):
                 if os.path.isfile(disk):
                     os.unlink(disk)
                     self.logger.debug('Removed disk file %s for VM %s', disk, vm_name)
-            except:
+            except BaseException:
                 self.logger.error('Error removing disk file %s for VM %s', disk, vm_name,
                                   exc_info=True)
                 return False
@@ -1054,7 +1054,7 @@ class VMTaskManager(TaskManager):
         """
         vms = self.libvirt_conn.listDefinedDomains() + self.libvirt_conn.listDomainsID()
         for vm_name in vms:
-            if type(vm_name) == int:
+            if isinstance(vm_name, int):
                 vm_name = self.libvirt_conn.lookupByID(vm_name).name()
             if vm_name.startswith(VMExecTask.CLONE_PREFIX):
                 self.cleanupVM(vm_name)

@@ -1162,8 +1162,7 @@ def handle_import(goptions, session, args):
             nvr = "%(name)s-%(version)s-%(release)s" % koji.parse_NVRA(data['sourcerpm'])
         to_import.setdefault(nvr, []).append((path, data))
     builds_missing = False
-    nvrs = to_list(to_import.keys())
-    nvrs.sort()
+    nvrs = sorted(to_list(to_import.keys()))
     for nvr in nvrs:
         to_import[nvr].sort()
         for path, data in to_import[nvr]:
@@ -2358,8 +2357,7 @@ def anon_handle_latest_build(goptions, session, args):
                     print("%s  %s  %s" % ("-" * 40, "-" * 20, "-" * 16))
                 options.quiet = True
 
-        output = [fmt % x for x in data]
-        output.sort()
+        output = sorted([fmt % x for x in data])
         for line in output:
             print(line)
 
@@ -2379,7 +2377,7 @@ def anon_handle_list_api(goptions, session, args):
             # older servers may not provide argdesc
             expanded = []
             for arg in x['args']:
-                if type(arg) is str:
+                if isinstance(arg, str):
                     expanded.append(arg)
                 else:
                     expanded.append('%s=%s' % (arg[0], arg[1]))
@@ -2493,8 +2491,7 @@ def anon_handle_list_tagged(goptions, session, args):
                 print("%-40s  %-20s  %s" % ("Build", "Tag", "Built by"))
                 print("%s  %s  %s" % ("-" * 40, "-" * 20, "-" * 16))
 
-    output = [fmt % x for x in data]
-    output.sort()
+    output = sorted([fmt % x for x in data])
     for line in output:
         print(line)
 
@@ -2519,8 +2516,7 @@ def anon_handle_list_buildroot(goptions, session, args):
     data = session.listRPMs(**opts)
 
     fmt = "%(nvr)s.%(arch)s"
-    order = [(fmt % x, x) for x in data]
-    order.sort()
+    order = sorted([(fmt % x, x) for x in data])
     for nvra, rinfo in order:
         if options.verbose and rinfo.get('is_update'):
             print(nvra, "[update]")
@@ -2573,8 +2569,7 @@ def anon_handle_list_untagged(goptions, session, args):
     if options.show_references:
         fmt = fmt + "  %(refs)s"
 
-    output = [fmt % x for x in data]
-    output.sort()
+    output = sorted([fmt % x for x in data])
     for line in output:
         print(line)
 
@@ -2612,8 +2607,7 @@ def anon_handle_list_groups(goptions, session, args):
         opts['event'] = event['id']
         event['timestr'] = time.asctime(time.localtime(event['ts']))
         print("Querying at event %(id)i (%(timestr)s)" % event)
-    tmp_list = [(x['name'], x) for x in session.getTagGroups(args[0], **opts)]
-    tmp_list.sort()
+    tmp_list = sorted([(x['name'], x) for x in session.getTagGroups(args[0], **opts)])
     groups = [x[1] for x in tmp_list]
 
     tags_cache = {}
@@ -2631,8 +2625,7 @@ def anon_handle_list_groups(goptions, session, args):
         if len(args) > 1 and group['name'] != args[1]:
             continue
         print("%s  [%s]" % (group['name'], get_cached_tag(group['tag_id'])))
-        groups = [(x['name'], x) for x in group['grouplist']]
-        groups.sort()
+        groups = sorted([(x['name'], x) for x in group['grouplist']])
         for x in [x[1] for x in groups]:
             x['tag_name'] = get_cached_tag(x['tag_id'])
             print_group_list_req_group(x)
@@ -2794,8 +2787,7 @@ def anon_handle_list_hosts(goptions, session, args):
         opts['ready'] = options.ready
     if options.enabled is not None:
         opts['enabled'] = options.enabled
-    tmp_list = [(x['name'], x) for x in session.listHosts(**opts)]
-    tmp_list.sort()
+    tmp_list = sorted([(x['name'], x) for x in session.listHosts(**opts)])
     hosts = [x[1] for x in tmp_list]
 
     def yesno(x):
@@ -3011,7 +3003,7 @@ def anon_handle_list_builds(goptions, session, args):
             dt = dateutil.parser.parse(val)
             ts = time.mktime(dt.timetuple())
             setattr(options, opt, ts)
-        except:
+        except BaseException:
             parser.error(_("Invalid time specification: %s") % val)
     if options.before:
         opts['completeBefore'] = getattr(options, 'before')
@@ -3879,8 +3871,7 @@ def anon_handle_list_targets(goptions, session, args):
     if not options.quiet:
         print("%-30s %-30s %-30s" % ('Name', 'Buildroot', 'Destination'))
         print("-" * 93)
-    tmp_list = [(x['name'], x) for x in session.getBuildTargets(options.name)]
-    tmp_list.sort()
+    tmp_list = sorted([(x['name'], x) for x in session.getBuildTargets(options.name)])
     targets = [x[1] for x in tmp_list]
     for target in targets:
         print(fmt % target)
@@ -4278,8 +4269,7 @@ def _print_histline(entry, **kwargs):
         else:
             return '%s.name' % key
     if edit:
-        keys = to_list(x.keys())
-        keys.sort()
+        keys = sorted(to_list(x.keys()))
         y = other[-1]
         for key in keys:
             if key in hidden_fields:
@@ -4293,8 +4283,7 @@ def _print_histline(entry, **kwargs):
                 continue
             print("    %s: %s -> %s" % (key, x[key], y[key]))
     elif create and options.verbose and table != 'tag_listing':
-        keys = to_list(x.keys())
-        keys.sort()
+        keys = sorted(to_list(x.keys()))
         # the table keys have already been represented in the base format string
         also_hidden = list(_table_keys[table])
         also_hidden.extend([get_nkey(k) for k in also_hidden])
@@ -4385,7 +4374,7 @@ def anon_handle_list_history(goptions, session, args):
             dt = dateutil.parser.parse(val)
             ts = time.mktime(dt.timetuple())
             setattr(options, opt, ts)
-        except:
+        except BaseException:
             parser.error(_("Invalid time specification: %s") % val)
     for opt in ('package', 'tag', 'build', 'editor', 'user', 'permission',
                 'cg', 'external_repo', 'build_target', 'group', 'before',
@@ -4768,8 +4757,7 @@ def anon_handle_taginfo(goptions, session, args):
             print('')
         print("Tag: %(name)s [%(id)d]" % info)
         print("Arches: %(arches)s" % info)
-        group_list = [x['name'] for x in session.getTagGroups(info['id'], **event_opts)]
-        group_list.sort()
+        group_list = sorted([x['name'] for x in session.getTagGroups(info['id'], **event_opts)])
         print("Groups: " + ', '.join(group_list))
         if info.get('locked'):
             print('LOCKED')
@@ -6811,8 +6799,10 @@ def anon_handle_download_task(options, session, args):
     base_task = session.getTaskInfo(base_task_id)
     if not base_task:
         error(_('No such task: #%i') % base_task_id)
+    
+    def check_downloadable(task):
+        return task["method"] == "buildArch"
 
-    check_downloadable = lambda task: task["method"] == "buildArch"
     downloadable_tasks = []
 
     if check_downloadable(base_task):

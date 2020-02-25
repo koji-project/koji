@@ -205,7 +205,7 @@ class Dispatcher(object):
                 args = inspect.getargspec(val)
                 if not args[0] or args[0][0] != 'environ':
                     continue
-            except:
+            except BaseException:
                 tb_str = ''.join(traceback.format_exception(*sys.exc_info()))
                 self.logger.error(tb_str)
             self.handler_index[name] = val

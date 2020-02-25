@@ -79,7 +79,7 @@ def safe_rmtree(path, unmount=False, strict=True):
         logger.debug("Removing: %s" % path)
         try:
             os.remove(path)
-        except:
+        except BaseException:
             if strict:
                 raise
             else:

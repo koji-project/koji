@@ -450,7 +450,7 @@ class TrackedBuild(object):
                     # XXX - Move SCM class out of kojid and use it to check for scm url
                     if src.startswith('cvs:'):
                         return src
-                except:
+                except BaseException:
                     pass
         # otherwise fail
         return None
@@ -980,8 +980,7 @@ class BuildTracker(object):
                 for pkg in session.listPackages(pkgID=name):
                     owners.setdefault(pkg['owner_id'], []).append(pkg)
                 if owners:
-                    order = [(len(v), k) for k, v in six.iteritems(owners)]
-                    order.sort()
+                    order = sorted([(len(v), k) for k, v in six.iteritems(owners)])
                     owner = order[-1][1]
                 else:
                     # just use ourselves
@@ -1207,8 +1206,7 @@ class BuildTracker(object):
         ret = False
         if options.max_jobs and len(self.state_idx['pending']) >= options.max_jobs:
             return ret
-        missing = [(b.order, b.id, b) for b in six.itervalues(self.state_idx['missing'])]
-        missing.sort()
+        missing = sorted([(b.order, b.id, b) for b in six.itervalues(self.state_idx['missing'])])
         for order, build_id, build in missing:
             if not self.checkBuildDeps(build):
                 continue
@@ -1276,7 +1274,7 @@ def main(args):
         filename = options.logfile
         try:
             logfile = os.open(filename, os.O_CREAT | os.O_RDWR | os.O_APPEND, 0o777)
-        except:
+        except BaseException:
             logfile = None
     if logfile is not None:
         log("logging to %s" % filename)
@@ -1330,6 +1328,6 @@ if __name__ == "__main__":
     #        log ("%s: %s" % (exctype, value))
     try:
         session.logout()
-    except:
+    except BaseException:
         pass
     sys.exit(rv)

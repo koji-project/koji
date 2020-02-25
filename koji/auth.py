@@ -95,7 +95,7 @@ class Session(object):
             raise koji.AuthError('%s not specified in session args' % field)
         try:
             callnum = args['callnum'][0]
-        except:
+        except BaseException:
             callnum = None
         # lookup the session
         c = context.cnx.cursor()

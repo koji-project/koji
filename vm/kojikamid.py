@@ -687,7 +687,7 @@ def stream_logs(server, handler, builds):
                     try:
                         fd = open(log, 'r')
                         logs[log] = (relpath, fd)
-                    except:
+                    except BaseException:
                         log_local('Error opening %s' % log)
                         continue
                 else:
@@ -701,7 +701,7 @@ def stream_logs(server, handler, builds):
                 del contents
                 try:
                     server.uploadDirect(relpath, offset, size, digest, data)
-                except:
+                except BaseException:
                     log_local('error uploading %s' % relpath)
         time.sleep(1)
 
@@ -717,14 +717,14 @@ def fail(server, handler):
             logfd.flush()
             upload_file(server, os.path.dirname(logfile),
                         os.path.basename(logfile))
-        except:
+        except BaseException:
             log_local('error calling upload_file()')
         while True:
             try:
                 # this is the very last thing we do, keep trying as long as we can
                 server.failTask(tb)
                 break
-            except:
+            except BaseException:
                 log_local('error calling server.failTask()')
     sys.exit(1)
 
@@ -794,7 +794,7 @@ def main():
         results['logs'].append(os.path.basename(logfile))
 
         server.closeTask(results)
-    except:
+    except BaseException:
         fail(server, handler)
     sys.exit(0)
 
