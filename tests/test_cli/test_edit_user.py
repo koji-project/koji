@@ -10,11 +10,12 @@ except ImportError:
 
 
 from koji_cli.commands import handle_edit_user
+from . import utils
 
 progname = os.path.basename(sys.argv[0]) or 'koji'
 
 
-class TestEditUser(unittest.TestCase):
+class TestEditUser(utils.CliTestCase):
     # Show long diffs in error output...
     maxDiff = None
 
@@ -101,8 +102,9 @@ Options:
         # Run it and check immediate output
         # args: --help
         # expected: failed, help info shows
-        with self.assertRaises(SystemExit) as cm:
+        with self.assertRaises(SystemExit) as ex:
             handle_edit_user(options, session, args)
+        self.assertExitCode(ex, 2)
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = ''
@@ -116,11 +118,6 @@ Options:
         # Finally, assert that things were called as we expected.
         activate_session_mock.assert_not_called()
         session.editUser.assert_not_called()
-        if isinstance(cm.exception, int):
-            # RHEL6
-            self.assertEqual(cm.exception, 2)
-        else:
-            self.assertEqual(cm.exception.code, 2)
 
 
 if __name__ == '__main__':

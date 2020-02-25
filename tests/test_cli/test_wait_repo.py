@@ -61,19 +61,39 @@ class TestWaitRepo(utils.CliTestCase):
 
     @mock.patch('time.time')
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    def __test_wait_repo(self, args, expected, stdout, time_mock):
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
+    def __test_wait_repo(self, args, expected, stderr, stdout, time_mock, ret_code=0):
         self.options.quiet = False
         time_mock.side_effect = [0, 1, 2, 3]
-        anon_handle_wait_repo(self.options, self.session, args)
-        self.assert_console_message(stdout, expected)
+        if ret_code:
+            with self.assertRaises(SystemExit) as ex:
+                anon_handle_wait_repo(self.options, self.session, args)
+            self.assertExitCode(ex, ret_code)
+            self.assert_console_message(stderr, expected)
+            self.assert_console_message(stdout, '')
+        else:
+            rv = anon_handle_wait_repo(self.options, self.session, args)
+            self.assert_console_message(stdout, expected)
+            self.assert_console_message(stderr, '')
+            self.assertIn(rv, [0, None])
 
     @mock.patch('time.time')
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    def __test_wait_repo_timeout(self, args, expected, stdout, time_mock):
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
+    def __test_wait_repo_timeout(self, args, expected, stderr, stdout, time_mock, ret_code=0):
         self.options.quiet = False
         time_mock.side_effect = [0, 61, 62]
-        anon_handle_wait_repo(self.options, self.session, args + ['--timeout', '1'])
-        self.assert_console_message(stdout, expected)
+        if ret_code:
+            with self.assertRaises(SystemExit) as ex:
+                anon_handle_wait_repo(self.options, self.session, args + ['--timeout', '1'])
+            self.assertExitCode(ex, ret_code)
+            self.assert_console_message(stderr, expected)
+            self.assert_console_message(stdout, '')
+        else:
+            rv = anon_handle_wait_repo(self.options, self.session, args + ['--timeout', '1'])
+            self.assert_console_message(stdout, expected)
+            self.assert_console_message(stderr, '')
+            self.assertIn(rv, [0, None])
 
     def test_anon_handle_wait_repo(self):
         """Test anon_handle_wait_repo function"""
@@ -102,7 +122,7 @@ class TestWaitRepo(utils.CliTestCase):
         self.session.getRepo.return_value = {}
         self.checkForBuilds.return_value = True
         expected = 'Unsuccessfully waited 1:02 for a new %s repo' % self.tag_name + '\n'
-        self.__test_wait_repo_timeout(arguments, expected)
+        self.__test_wait_repo_timeout(arguments, expected, ret_code=1)
 
     def test_anon_handle_wait_repo_with_build(self):
         """Test anon_handle_wait_repo function with --build options"""
@@ -147,7 +167,7 @@ class TestWaitRepo(utils.CliTestCase):
         self.checkForBuilds.return_value = True
         self.session.getRepo.return_value = {}
         expected = 'Unsuccessfully waited 1:02 for %s to appear in the %s repo' % (pkgs, self.tag_name) + '\n'
-        self.__test_wait_repo_timeout(arguments, expected)
+        self.__test_wait_repo_timeout(arguments, expected, ret_code=1)
 
     def test_anon_handle_wait_repo_errors(self):
         """Test anon_handle_wait_repo function errors and exceptions"""
@@ -172,17 +192,18 @@ class TestWaitRepo(utils.CliTestCase):
                 activate_session=None)
         self.activate_session.assert_not_called()
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
-    def test_anon_handle_wait_repo_target_not_found(self, stdout):
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
+    def test_anon_handle_wait_repo_target_not_found(self, stderr):
         """Test anon_handle_wait_repo function on target not found cases"""
 
         # Case 1. both build and dest targets are not found
         self.session.getTag.return_value = self.TAG.copy()
         self.session.getBuildTargets.return_value = []
-        rv = anon_handle_wait_repo(self.options, self.session, [self.tag_name])
-        self.assertEqual(rv, 1)
+        with self.assertRaises(SystemExit) as ex:
+            anon_handle_wait_repo(self.options, self.session, [self.tag_name])
+        self.assertExitCode(ex, 1)
         expected = "%(name)s is not a build tag for any target" % self.TAG + "\n"
-        self.assert_console_message(stdout, expected)
+        self.assert_console_message(stderr, expected)
 
         # Cas 2. dest is matched, show suggestion
         self.session.getBuildTargets.side_effect = [
@@ -193,11 +214,12 @@ class TestWaitRepo(utils.CliTestCase):
                 {'build_tag_name': 'build-tag-3'},
             ],
         ]
-        rv = anon_handle_wait_repo(self.options, self.session, [self.tag_name])
-        self.assertEqual(rv, 1)
+        with self.assertRaises(SystemExit) as ex:
+            anon_handle_wait_repo(self.options, self.session, [self.tag_name])
+        self.assertExitCode(ex, 1)
         expected = "%(name)s is not a build tag for any target" % self.TAG + "\n"
         expected += "Suggested tags: build-tag-1, build-tag-2, build-tag-3\n"
-        self.assert_console_message(stdout, expected)
+        self.assert_console_message(stderr, expected)
 
     def test_anon_handle_wait_repo_help(self):
         """Test anon_handle_wait_repo help message"""

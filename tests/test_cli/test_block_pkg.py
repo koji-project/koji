@@ -3,17 +3,14 @@ import mock
 import os
 import six
 import sys
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
 
 from mock import call
 
 from koji_cli.commands import handle_block_pkg
+from . import utils
 
 
-class TestBlockPkg(unittest.TestCase):
+class TestBlockPkg(utils.CliTestCase):
 
     # Show long diffs in error output...
     maxDiff = None
@@ -48,7 +45,7 @@ class TestBlockPkg(unittest.TestCase):
         session.packageListBlock.assert_called_once_with(
             tag, package, force=True)
         session.multiCall.assert_called_once_with(strict=True)
-        self.assertNotEqual(rv, 1)
+        self.assertFalse(rv)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
@@ -88,9 +85,9 @@ class TestBlockPkg(unittest.TestCase):
                 call.multiCall(strict=True)])
         self.assertNotEqual(rv, 1)
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_block_pkg_no_package(self, activate_session_mock, stdout):
+    def test_handle_block_pkg_no_package(self, activate_session_mock, stderr):
         tag = 'tag'
         dsttag = {'name': tag, 'id': 1}
         packages = ['package1', 'package2', 'package3']
@@ -108,8 +105,10 @@ class TestBlockPkg(unittest.TestCase):
         # Run it and check immediate output
         # args: tag, package1, package2, package3
         # expected: failed: can not find package2 under tag
-        rv = handle_block_pkg(options, session, args)
-        actual = stdout.getvalue()
+        with self.assertRaises(SystemExit) as ex:
+            handle_block_pkg(options, session, args)
+        self.assertExitCode(ex, 1)
+        actual = stderr.getvalue()
         expected = 'Package package2 doesn\'t exist in tag tag\n'
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
@@ -119,12 +118,11 @@ class TestBlockPkg(unittest.TestCase):
             tagID=dsttag['id'], inherited=True)
         session.packageListBlock.assert_not_called()
         session.multiCall.assert_not_called()
-        self.assertEqual(rv, 1)
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
     def test_handle_block_pkg_tag_no_exists(
-            self, activate_session_mock, stdout):
+            self, activate_session_mock, stderr):
         tag = 'tag'
         dsttag = None
         packages = ['package1', 'package2', 'package3']
@@ -138,8 +136,10 @@ class TestBlockPkg(unittest.TestCase):
         # Run it and check immediate output
         # args: tag, package1, package2, package3
         # expected: failed: tag does not exist
-        rv = handle_block_pkg(options, session, args)
-        actual = stdout.getvalue()
+        with self.assertRaises(SystemExit) as ex:
+            handle_block_pkg(options, session, args)
+        self.assertExitCode(ex, 1)
+        actual = stderr.getvalue()
         expected = 'No such tag: tag\n'
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
@@ -147,7 +147,6 @@ class TestBlockPkg(unittest.TestCase):
         session.getTag.assert_called_once_with(tag)
         session.listPackages.assert_not_called()
         session.packageListBlock.assert_not_called()
-        self.assertEqual(rv, 1)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)
@@ -163,8 +162,9 @@ class TestBlockPkg(unittest.TestCase):
         session = mock.MagicMock()
 
         # Run it and check immediate output
-        with self.assertRaises(SystemExit) as cm:
+        with self.assertRaises(SystemExit) as ex:
             handle_block_pkg(options, session, args)
+        self.assertExitCode(ex, 2)
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = ''
@@ -181,11 +181,3 @@ class TestBlockPkg(unittest.TestCase):
         session.getTag.assert_not_called()
         session.listPackages.assert_not_called()
         session.packageListBlock.assert_not_called()
-        if isinstance(cm.exception, int):
-            self.assertEqual(cm.exception, 2)
-        else:
-            self.assertEqual(cm.exception.code, 2)
-
-
-if __name__ == '__main__':
-    unittest.main()

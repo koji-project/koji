@@ -3,17 +3,14 @@ import mock
 import os
 import six
 import sys
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
 
 from koji_cli.commands import handle_edit_tag
+from . import utils
 
 progname = os.path.basename(sys.argv[0]) or 'koji'
 
 
-class TestEditTag(unittest.TestCase):
+class TestEditTag(utils.CliTestCase):
     # Show long diffs in error output...
     maxDiff = None
 
@@ -107,8 +104,9 @@ class TestEditTag(unittest.TestCase):
         # Run it and check immediate output
         # args: --help
         # expected: failed, help info shows
-        with self.assertRaises(SystemExit) as cm:
+        with self.assertRaises(SystemExit) as ex:
             handle_edit_tag(options, session, args)
+        self.assertExitCode(ex, 0)
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = """Usage: %s edit-tag [options] <name>
@@ -139,10 +137,6 @@ Options:
         # Finally, assert that things were called as we expected.
         activate_session_mock.assert_not_called()
         session.editTag2.assert_not_called()
-        if isinstance(cm.exception, int):
-            self.assertEqual(cm.exception, 2)
-        else:
-            self.assertEqual(cm.exception.code, 0)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)
@@ -157,8 +151,9 @@ Options:
         # Run it and check immediate output
         # args: --help
         # expected: failed, help info shows
-        with self.assertRaises(SystemExit) as cm:
+        with self.assertRaises(SystemExit) as ex:
             handle_edit_tag(options, session, args)
+        self.assertExitCode(ex, 2)
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = ''
@@ -172,11 +167,3 @@ Options:
         # Finally, assert that things were called as we expected.
         activate_session_mock.assert_not_called()
         session.editTag2.assert_not_called()
-        if isinstance(cm.exception, int):
-            self.assertEqual(cm.exception, 2)
-        else:
-            self.assertEqual(cm.exception.code, 2)
-
-
-if __name__ == '__main__':
-    unittest.main()

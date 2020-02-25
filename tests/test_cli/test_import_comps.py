@@ -23,8 +23,9 @@ from nose.plugins.skip import SkipTest
 import koji_cli.commands
 from koji_cli.commands import handle_import_comps, _import_comps,\
                               _import_comps_alt
+from . import utils
 
-class TestImportComps(unittest.TestCase):
+class TestImportComps(utils.CliTestCase):
     # Show long diffs in error output...
     maxDiff = None
 
@@ -109,7 +110,7 @@ class TestImportComps(unittest.TestCase):
             session, filename, tag, local_options)
         self.assertNotEqual(rv, 1)
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.libcomps', new=None)
     @mock.patch('koji_cli.commands.yumcomps', new=None, create=True)
     @mock.patch('koji_cli.commands.activate_session')
@@ -120,7 +121,7 @@ class TestImportComps(unittest.TestCase):
             mock_import_comps_alt,
             mock_import_comps,
             mock_activate_session,
-            stdout):
+            stderr):
         filename = './data/comps-example.xml'
         tag = 'tag'
         tag_info = {'name': tag, 'id': 1}
@@ -134,8 +135,10 @@ class TestImportComps(unittest.TestCase):
         # Run it and check immediate output
         # args: --force, ./data/comps-example.xml, tag
         # expected: failed, no comps available
-        rv = handle_import_comps(options, session, args)
-        actual = stdout.getvalue()
+        with self.assertRaises(SystemExit) as ex:
+            handle_import_comps(options, session, args)
+        self.assertExitCode(ex, 1)
+        actual = stderr.getvalue()
         expected = 'comps module not available\n'
         self.assertMultiLineEqual(actual, expected)
 
@@ -144,9 +147,8 @@ class TestImportComps(unittest.TestCase):
         session.getTag.assert_called_once_with(tag)
         mock_import_comps.assert_not_called()
         mock_import_comps_alt.assert_not_called()
-        self.assertEqual(rv, 1)
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
     @mock.patch('koji_cli.commands._import_comps')
     @mock.patch('koji_cli.commands._import_comps_alt')
@@ -155,7 +157,7 @@ class TestImportComps(unittest.TestCase):
             mock_import_comps_alt,
             mock_import_comps,
             mock_activate_session,
-            stdout):
+            stderr):
         filename = './data/comps-example.xml'
         tag = 'tag'
         tag_info = None
@@ -169,8 +171,10 @@ class TestImportComps(unittest.TestCase):
         # Run it and check immediate output
         # args: ./data/comps-example.xml, tag
         # expected: failed: tag does not exist
-        rv = handle_import_comps(options, session, args)
-        actual = stdout.getvalue()
+        with self.assertRaises(SystemExit) as ex:
+            handle_import_comps(options, session, args)
+        self.assertExitCode(ex, 1)
+        actual = stderr.getvalue()
         expected = 'No such tag: tag\n'
         self.assertMultiLineEqual(actual, expected)
 
@@ -179,7 +183,6 @@ class TestImportComps(unittest.TestCase):
         session.getTag.assert_called_once_with(tag)
         mock_import_comps.assert_not_called()
         mock_import_comps_alt.assert_not_called()
-        self.assertEqual(rv, 1)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)
@@ -200,8 +203,9 @@ class TestImportComps(unittest.TestCase):
         session = mock.MagicMock()
 
         # Run it and check immediate output
-        with self.assertRaises(SystemExit) as cm:
-            rv = handle_import_comps(options, session, args)
+        with self.assertRaises(SystemExit) as ex:
+            handle_import_comps(options, session, args)
+        self.assertExitCode(ex, 2)
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = ''
@@ -218,10 +222,6 @@ class TestImportComps(unittest.TestCase):
         session.getTag.assert_not_called()
         session.getTagGroups.assert_not_called()
         session.groupListAdd.assert_not_called()
-        if isinstance(cm.exception, int):
-            self.assertEqual(cm.exception, 2)
-        else:
-            self.assertEqual(cm.exception.code, 2)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     def test_import_comps_libcomps(self, stdout):

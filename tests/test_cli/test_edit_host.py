@@ -11,8 +11,9 @@ except ImportError:
 from mock import call
 
 from koji_cli.commands import handle_edit_host
+from . import utils
 
-class TestEditHost(unittest.TestCase):
+class TestEditHost(utils.CliTestCase):
 
     # Show long diffs in error output...
     maxDiff = None
@@ -157,8 +158,9 @@ class TestEditHost(unittest.TestCase):
         # Run it and check immediate output
         # args: _empty_
         # expected: failed - should specify host
-        with self.assertRaises(SystemExit) as cm:
+        with self.assertRaises(SystemExit) as ex:
             handle_edit_host(options, session, args)
+        self.assertExitCode(ex, 2)
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = ''
@@ -175,14 +177,10 @@ class TestEditHost(unittest.TestCase):
         session.getHost.assert_not_called()
         session.editHost.assert_not_called()
         session.multiCall.assert_not_called()
-        if isinstance(cm.exception, int):
-            self.assertEqual(cm.exception, 2)
-        else:
-            self.assertEqual(cm.exception.code, 2)
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_edit_host_no_host(self, activate_session_mock, stdout):
+    def test_handle_edit_host_no_host(self, activate_session_mock, stderr):
         host = 'host'
         host_info = None
         arches = 'arch1 arch2'
@@ -204,8 +202,10 @@ class TestEditHost(unittest.TestCase):
         # args: host, --arches='arch1 arch2', --capacity=0.22,
         # --description=description, --comment=comment
         # expected: failed -- getHost() == None
-        rv = handle_edit_host(options, session, args)
-        actual = stdout.getvalue()
+        with self.assertRaises(SystemExit) as ex:
+            handle_edit_host(options, session, args)
+        self.assertExitCode(ex, 1)
+        actual = stderr.getvalue()
         expected = """Host host does not exist
 No changes made, please correct the command line
 """
@@ -215,7 +215,6 @@ No changes made, please correct the command line
         session.getHost.assert_called_once_with(host)
         session.editHost.assert_not_called()
         self.assertEqual(session.multiCall.call_count, 1)
-        self.assertEqual(rv, 1)
 
 if __name__ == '__main__':
     unittest.main()

@@ -4,17 +4,14 @@ from mock import call
 import os
 import six
 import sys
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
 
 from koji_cli.commands import anon_handle_download_task
+from . import utils
 
 progname = os.path.basename(sys.argv[0]) or 'koji'
 
 
-class TestDownloadTask(unittest.TestCase):
+class TestDownloadTask(utils.CliTestCase):
     # Show long diffs in error output...
     maxDiff = None
 
@@ -98,8 +95,9 @@ class TestDownloadTask(unittest.TestCase):
         # Run it and check immediate output
         # args: task_id
         # expected: error
-        with self.assertRaises(SystemExit) as cm:
+        with self.assertRaises(SystemExit) as ex:
             anon_handle_download_task(self.options, self.session, args)
+        self.assertExitCode(ex, 1)
         actual = self.stdout.getvalue()
         expected = ''
         self.assertMultiLineEqual(actual, expected)
@@ -111,10 +109,6 @@ class TestDownloadTask(unittest.TestCase):
                                                       self.options)
         self.session.getTaskInfo.assert_called_once_with(task_id)
         self.session.getTaskChildren.assert_not_called()
-        if isinstance(cm.exception, int):
-            self.assertEqual(cm.exception, 1)
-        else:
-            self.assertEqual(cm.exception.code, 1)
 
     def test_handle_download_task_parent(self):
         task_id = 123333
@@ -220,8 +214,9 @@ class TestDownloadTask(unittest.TestCase):
         # Run it and check immediate output
         # args: task_id --arch=s390,ppc
         # expected: failure
-        with self.assertRaises(SystemExit) as cm:
+        with self.assertRaises(SystemExit) as ex:
             anon_handle_download_task(self.options, self.session, args)
+        self.assertExitCode(ex, 1)
         actual = self.stdout.getvalue()
         expected = ''
         self.assertMultiLineEqual(actual, expected)
@@ -234,10 +229,6 @@ class TestDownloadTask(unittest.TestCase):
         self.session.getTaskChildren.assert_not_called()
         self.list_task_output_all_volumes.assert_called_once_with(self.session, task_id)
         self.download_file.assert_not_called()
-        if isinstance(cm.exception, int):
-            self.assertEqual(cm.exception, 1)
-        else:
-            self.assertEqual(cm.exception.code, 1)
 
     def test_handle_download_parent_not_finished(self):
         task_id = 123333
@@ -256,8 +247,9 @@ class TestDownloadTask(unittest.TestCase):
         # Run it and check immediate output
         # args: task_id
         # expected: failure
-        with self.assertRaises(SystemExit) as cm:
+        with self.assertRaises(SystemExit) as ex:
             anon_handle_download_task(self.options, self.session, args)
+        self.assertExitCode(ex, 1)
         actual = self.stdout.getvalue()
         expected = ''
         self.assertMultiLineEqual(actual, expected)
@@ -270,10 +262,6 @@ class TestDownloadTask(unittest.TestCase):
         self.session.getTaskChildren.assert_not_called()
         self.list_task_output_all_volumes.assert_called_once_with(self.session, task_id)
         self.download_file.assert_not_called()
-        if isinstance(cm.exception, int):
-            self.assertEqual(cm.exception, 1)
-        else:
-            self.assertEqual(cm.exception.code, 1)
 
     def test_handle_download_child_not_finished(self):
         task_id = 123333
@@ -290,8 +278,9 @@ class TestDownloadTask(unittest.TestCase):
         # Run it and check immediate output
         # args: task_id
         # expected: failure
-        with self.assertRaises(SystemExit) as cm:
+        with self.assertRaises(SystemExit) as ex:
             anon_handle_download_task(self.options, self.session, args)
+        self.assertExitCode(ex, 1)
         actual = self.stdout.getvalue()
         expected = ''
         self.assertMultiLineEqual(actual, expected)
@@ -304,10 +293,6 @@ class TestDownloadTask(unittest.TestCase):
         self.session.getTaskChildren.assert_called_once_with(task_id)
         self.list_task_output_all_volumes.assert_called_once_with(self.session, 22222)
         self.download_file.assert_not_called()
-        if isinstance(cm.exception, int):
-            self.assertEqual(cm.exception, 1)
-        else:
-            self.assertEqual(cm.exception.code, 1)
 
     def test_handle_download_invalid_file_name(self):
         task_id = 123333
@@ -320,8 +305,9 @@ class TestDownloadTask(unittest.TestCase):
         # Run it and check immediate output
         # args: task_id
         # expected: failure
-        with self.assertRaises(SystemExit) as cm:
+        with self.assertRaises(SystemExit) as ex:
             anon_handle_download_task(self.options, self.session, args)
+        self.assertExitCode(ex, 1)
         actual = self.stdout.getvalue()
         expected = ''
         self.assertMultiLineEqual(actual, expected)
@@ -334,18 +320,15 @@ class TestDownloadTask(unittest.TestCase):
         self.session.getTaskChildren.assert_not_called()
         self.list_task_output_all_volumes.assert_called_once_with(self.session, task_id)
         self.download_file.assert_not_called()
-        if isinstance(cm.exception, int):
-            self.assertEqual(cm.exception, 1)
-        else:
-            self.assertEqual(cm.exception.code, 1)
 
     def test_handle_download_help(self):
         args = ['--help']
         # Run it and check immediate output
         # args: --help
         # expected: failure
-        with self.assertRaises(SystemExit) as cm:
+        with self.assertRaises(SystemExit) as ex:
             anon_handle_download_task(self.options, self.session, args)
+        self.assertExitCode(ex, 0)
         actual = self.stdout.getvalue()
         expected = """Usage: %s download-task <task_id>
 (Specify the --help global option for a list of other help options)
@@ -363,18 +346,15 @@ Options:
         actual = self.stderr.getvalue()
         expected = ''
         self.assertEqual(actual, expected)
-        if isinstance(cm.exception, int):
-            self.assertEqual(cm.exception, 0)
-        else:
-            self.assertEqual(cm.exception.code, 0)
 
     def test_handle_download_no_task_id(self):
         args = []
         # Run it and check immediate output
         # no args
         # expected: failure
-        with self.assertRaises(SystemExit) as cm:
+        with self.assertRaises(SystemExit) as ex:
             anon_handle_download_task(self.options, self.session, args)
+        self.assertExitCode(ex, 2)
         actual = self.stdout.getvalue()
         expected = ''
         self.assertMultiLineEqual(actual, expected)
@@ -385,18 +365,15 @@ Options:
 %s: error: Please specify a task ID
 """ % (progname, progname)
         self.assertEqual(actual, expected)
-        if isinstance(cm.exception, int):
-            self.assertEqual(cm.exception, 2)
-        else:
-            self.assertEqual(cm.exception.code, 2)
 
     def test_handle_download_multi_task_id(self):
         args = ["123", "456"]
         # Run it and check immediate output
         # args: 123 456
         # expected: failure
-        with self.assertRaises(SystemExit) as cm:
+        with self.assertRaises(SystemExit) as ex:
             anon_handle_download_task(self.options, self.session, args)
+        self.assertExitCode(ex, 2)
         actual = self.stdout.getvalue()
         expected = ''
         self.assertMultiLineEqual(actual, expected)
@@ -407,11 +384,3 @@ Options:
 %s: error: Only one task ID may be specified
 """ % (progname, progname)
         self.assertEqual(actual, expected)
-        if isinstance(cm.exception, int):
-            self.assertEqual(cm.exception, 2)
-        else:
-            self.assertEqual(cm.exception.code, 2)
-
-
-if __name__ == '__main__':
-    unittest.main()

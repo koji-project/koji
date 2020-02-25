@@ -51,9 +51,9 @@ class TestAddGroup(utils.CliTestCase):
         session.groupListAdd.assert_called_once_with(tag, group)
         self.assertNotEqual(rv, 1)
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_add_group_dupl(self, activate_session_mock, stdout):
+    def test_handle_add_group_dupl(self, activate_session_mock, stderr):
         tag = 'tag'
         group = 'group'
         arguments = [tag, group]
@@ -67,8 +67,10 @@ class TestAddGroup(utils.CliTestCase):
             {'name': 'group', 'group_id': 'groupId'}]
 
         # Run it and check immediate output
-        rv = handle_add_group(options, session, arguments)
-        actual = stdout.getvalue()
+        with self.assertRaises(SystemExit) as ex:
+            handle_add_group(options, session, arguments)
+        self.assertExitCode(ex, 1)
+        actual = stderr.getvalue()
         expected = 'Group group already exists for tag tag\n'
         self.assertMultiLineEqual(actual, expected)
 
@@ -78,7 +80,6 @@ class TestAddGroup(utils.CliTestCase):
         session.getTag.assert_called_once_with(tag)
         session.getTagGroups.assert_called_once_with(tag, inherit=False)
         session.groupListAdd.assert_not_called()
-        self.assertEqual(rv, 1)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)
@@ -139,9 +140,9 @@ class TestAddGroup(utils.CliTestCase):
         session.getTagGroups.assert_not_called()
         session.groupListAdd.assert_not_called()
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_add_group_no_tag(self, activate_session_mock, stdout):
+    def test_handle_add_group_no_tag(self, activate_session_mock, stderr):
         tag = 'tag'
         group = 'group'
         arguments = [tag, group]
@@ -153,8 +154,10 @@ class TestAddGroup(utils.CliTestCase):
         session.getTag.return_value = None
 
         # Run it and check immediate output
-        rv = handle_add_group(options, session, arguments)
-        actual = stdout.getvalue()
+        with self.assertRaises(SystemExit) as ex:
+            handle_add_group(options, session, arguments)
+        self.assertExitCode(ex, 1)
+        actual = stderr.getvalue()
         expected = 'Unknown tag: tag\n'
         self.assertMultiLineEqual(actual, expected)
 
@@ -164,7 +167,6 @@ class TestAddGroup(utils.CliTestCase):
         session.getTag.assert_called_once_with(tag)
         session.getTagGroups.assert_not_called()
         session.groupListAdd.assert_not_called()
-        self.assertEqual(rv, 1)
 
 
 if __name__ == '__main__':

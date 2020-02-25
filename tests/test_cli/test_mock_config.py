@@ -142,8 +142,10 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
 
         arguments = ['--task', str(task_id)]
         expected = "No buildroots for task %s (or no such task)\n" % str(task_id)
-        self.assertEqual(1, anon_handle_mock_config(options, session, arguments))
-        self.assert_console_message(stdout, expected)
+        with self.assertRaises(SystemExit) as ex:
+            anon_handle_mock_config(options, session, arguments)
+        self.assertExitCode(ex, 1)
+        self.assert_console_message(stderr, expected)
 
         multi_broots = [
             {'id': 1101, 'repo_id': 101, 'tag_name': 'tag_101', 'arch': 'x86_64'},
@@ -191,8 +193,10 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
 
         arguments = ['--tag', tag['name']]
         expected = "Please specify an arch\n"
-        self.assertEqual(1, anon_handle_mock_config(options, session, arguments))
-        self.assert_console_message(stdout, expected)
+        with self.assertRaises(SystemExit) as ex:
+            anon_handle_mock_config(options, session, arguments)
+        self.assertExitCode(ex, 1)
+        self.assert_console_message(stderr, expected)
 
         arguments = ['--tag', tag['name'], '--arch', tag['arch']]
         expected = self.format_error_message("Invalid tag: %s" % tag['name'])
@@ -206,14 +210,18 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
         # return tag info
         session.getTag.return_value = tag
         expected = "Could not get config info for tag: %(name)s\n" % tag
-        self.assertEqual(1, anon_handle_mock_config(options, session, arguments))
-        self.assert_console_message(stdout, expected)
+        with self.assertRaises(SystemExit) as ex:
+            anon_handle_mock_config(options, session, arguments)
+        self.assertExitCode(ex, 1)
+        self.assert_console_message(stderr, expected)
 
         # return build config
         session.getBuildConfig.return_value = {'id': 301, 'extra': {}}
         expected = "Could not get a repo for tag: %(name)s\n" % tag
-        self.assertEqual(1, anon_handle_mock_config(options, session, arguments))
-        self.assert_console_message(stdout, expected)
+        with self.assertRaises(SystemExit) as ex:
+            anon_handle_mock_config(options, session, arguments)
+        self.assertExitCode(ex, 1)
+        self.assert_console_message(stderr, expected)
 
         # return repo
         session.getRepo.return_value = {'id': 101}
@@ -262,8 +270,10 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
 
         arguments = ['--target', target['name']]
         expected = "Please specify an arch\n"
-        self.assertEqual(1, anon_handle_mock_config(options, session, arguments))
-        self.assert_console_message(stdout, expected)
+        with self.assertRaises(SystemExit) as ex:
+            anon_handle_mock_config(options, session, arguments)
+        self.assertExitCode(ex, 1)
+        self.assert_console_message(stderr, expected)
 
         arguments = ['--target', target['name'],
                      '--arch', arch]
@@ -278,8 +288,10 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
 
         session.getBuildTarget.return_value = target
         expected = "Could not get a repo for tag: %s\n" % target['build_tag_name']
-        self.assertEqual(1, anon_handle_mock_config(options, session, arguments))
-        self.assert_console_message(stdout, expected)
+        with self.assertRaises(SystemExit) as ex:
+            anon_handle_mock_config(options, session, arguments)
+        self.assertExitCode(ex, 1)
+        self.assert_console_message(stderr, expected)
 
         arguments = self.common_args + ['--target', target['name'],
                                         '--arch', arch,

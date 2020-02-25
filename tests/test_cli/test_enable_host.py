@@ -23,12 +23,14 @@ class TestEnableHost(utils.CliTestCase):
 %s: error: {message}
 """ % (self.progname, self.progname)
 
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
     def test_handle_enable_host(
             self,
             activate_session_mock,
-            stdout):
+            stdout,
+            stderr):
         """Test %s function""" % handle_enable_host.__name__
         arguments = []
         options = mock.MagicMock()
@@ -58,7 +60,9 @@ class TestEnableHost(utils.CliTestCase):
         session.multiCall.return_value = [[None], [None]]
 
         arguments = ['host1', 'host2']
-        self.assertEqual(1, handle_enable_host(options, session, arguments))
+        with self.assertRaises(SystemExit) as ex:
+            handle_enable_host(options, session, arguments)
+        self.assertExitCode(ex, 1)
         activate_session_mock.assert_called_once()
         session.getHost.assert_has_calls([call('host1'), call('host2')])
         session.multiCall.assert_called_once()
@@ -67,8 +71,9 @@ class TestEnableHost(utils.CliTestCase):
         expect = ''
         for host in arguments:
             expect += "Host %s does not exist\n" % host
-        expect += "No changes made. Please correct the command line.\n"
+        stderr_exp = "No changes made. Please correct the command line.\n"
         self.assert_console_message(stdout, expect)
+        self.assert_console_message(stderr, stderr_exp)
 
         # reset session mocks
         activate_session_mock.reset_mock()

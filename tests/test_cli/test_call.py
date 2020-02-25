@@ -122,15 +122,12 @@ class TestCall(utils.CliTestCase):
 
         for mod, msg in module.items():
             with mock.patch('koji_cli.commands.%s' % mod, new=None):
-                with self.assertRaises(SystemExit) as cm:
+                with self.assertRaises(SystemExit) as ex:
                     handle_call(options, session, arguments)
+                self.assertExitCode(ex, 2)
             expected = self.format_error_message(msg)
             self.assert_console_message(stderr, expected)
             activate_session_mock.assert_not_called()
-            if isinstance(cm.exception, int):
-                self.assertEqual(cm.exception, 2)
-            else:
-                self.assertEqual(cm.exception.code, 2)
 
     def test_handle_call_help(self):
         """Test handle_call help message"""
