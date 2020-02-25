@@ -12153,7 +12153,7 @@ class RootExports(object):
                          arch=taskInfo['arch'], channel=channel['name'],
                          priority=taskInfo['priority'])
 
-    def addHost(self, hostname, arches, krb_principal=None):
+    def addHost(self, hostname, arches, krb_principal=None, force=False):
         """
         Add a builder host to the database.
 
@@ -12161,6 +12161,7 @@ class RootExports(object):
         :param list arches: list of architectures this builder supports.
         :param str krb_principal: (optional) a non-default kerberos principal
                                   for the host.
+        :param bool force: override user type
         :returns: new host id
 
         If krb_principal is not given then that field will be generated
@@ -12178,9 +12179,24 @@ class RootExports(object):
             fmt = context.opts.get('HostPrincipalFormat')
             if fmt:
                 krb_principal = fmt % hostname
-        # users entry
-        userID = context.session.createUser(hostname, usertype=koji.USERTYPES['HOST'],
-                                            krb_principal=krb_principal)
+        # builder user can already exist, if host tried to log in before adding into db
+        user = get_user(userInfo={'name': hostname, 'krb_principals': [krb_principal]})
+        if user:
+            if user['usertype'] != koji.USERTYPES['HOST']:
+                if force and user['usertype'] == koji.USERTYPES['NORMAL']:
+                    # override usertype in this special case
+                    update = UpdateProcessor('users',
+                                             values={'userID': user['id']},
+                                             clauses=['id = %(userID)i'])
+                    update.set(usertype=koji.USERTYPES['HOST'])
+                    update.execute()
+                else:
+                    raise koji.GenericError(
+                        'user %s already exists and it is not a host' % hostname)
+            userID = user['id']
+        else:
+            userID = context.session.createUser(hostname, usertype=koji.USERTYPES['HOST'],
+                                                krb_principal=krb_principal)
         # host entry
         hostID = _singleValue("SELECT nextval('host_id_seq')", strict=True)
         insert = "INSERT INTO host (id, user_id, name) VALUES (%(hostID)i, %(userID)i, " \

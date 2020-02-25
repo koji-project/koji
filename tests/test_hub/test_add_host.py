@@ -77,3 +77,77 @@ class TestAddHost(unittest.TestCase):
         self.assertEqual(_dml.call_count, 1)
         _dml.assert_called_once_with("INSERT INTO host (id, user_id, name) VALUES (%(hostID)i, %(userID)i, %(hostname)s)",
                       {'hostID': 12, 'userID': 456, 'hostname': 'hostname'})
+
+    @mock.patch('kojihub.get_user')
+    @mock.patch('kojihub._dml')
+    @mock.patch('kojihub.get_host')
+    @mock.patch('kojihub._singleValue')
+    def test_add_host_wrong_user(self, _singleValue, get_host, _dml, get_user):
+        get_user.return_value = {
+            'id': 1,
+            'name': 'hostname',
+            'usertype': koji.USERTYPES['NORMAL']
+        }
+        get_host.return_value = {}
+        with self.assertRaises(koji.GenericError):
+            self.exports.addHost('hostname', ['i386', 'x86_64'])
+        _dml.assert_not_called()
+        get_user.assert_called_once_with(userInfo={
+            'name': 'hostname',
+            'krb_principals': ['-hostname-']})
+        get_host.assert_called_once_with('hostname')
+        _singleValue.assert_called_once()
+        self.assertEqual(len(self.inserts), 0)
+        self.assertEqual(len(self.updates), 0)
+
+    @mock.patch('kojihub.get_user')
+    @mock.patch('kojihub._dml')
+    @mock.patch('kojihub.get_host')
+    @mock.patch('kojihub._singleValue')
+    def test_add_host_wrong_user_forced(self, _singleValue, get_host, _dml, get_user):
+        get_user.return_value = {
+            'id': 123,
+            'name': 'hostname',
+            'usertype': koji.USERTYPES['NORMAL']
+        }
+        get_host.return_value = {}
+
+        self.exports.addHost('hostname', ['i386', 'x86_64'], force=True)
+
+        _dml.assert_called_once()
+        get_user.assert_called_once_with(userInfo={
+            'name': 'hostname',
+            'krb_principals': ['-hostname-']})
+        get_host.assert_called_once_with('hostname')
+        _singleValue.assert_called()
+        self.assertEqual(len(self.inserts), 2)
+        self.assertEqual(len(self.updates), 1)
+        update = self.updates[0]
+        self.assertEqual(update.values, {'userID': 123})
+        self.assertEqual(update.table, 'users')
+        self.assertEqual(update.clauses, ['id = %(userID)i'])
+        self.assertEqual(update.data, {'usertype': koji.USERTYPES['HOST']})
+
+    @mock.patch('kojihub.get_user')
+    @mock.patch('kojihub._dml')
+    @mock.patch('kojihub.get_host')
+    @mock.patch('kojihub._singleValue')
+    def test_add_host_superwrong_user_forced(self, _singleValue, get_host, _dml, get_user):
+        get_user.return_value = {
+            'id': 123,
+            'name': 'hostname',
+            'usertype': koji.USERTYPES['GROUP']
+        }
+        get_host.return_value = {}
+
+        with self.assertRaises(koji.GenericError):
+            self.exports.addHost('hostname', ['i386', 'x86_64'], force=True)
+
+        _dml.assert_not_called()
+        get_user.assert_called_once_with(userInfo={
+            'name': 'hostname',
+            'krb_principals': ['-hostname-']})
+        get_host.assert_called_once_with('hostname')
+        _singleValue.assert_called()
+        self.assertEqual(len(self.inserts), 0)
+        self.assertEqual(len(self.updates), 0)

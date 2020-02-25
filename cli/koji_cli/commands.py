@@ -187,6 +187,8 @@ def handle_add_host(goptions, session, args):
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--krb-principal",
                       help=_("set a non-default kerberos principal for the host"))
+    parser.add_option("--force", default=False, action="store_true",
+                      help=_("if existing used is a regular user, convert it to a host"))
     (options, args) = parser.parse_args(args)
     if len(args) < 2:
         parser.error(_("Please specify a hostname and at least one arch"))
@@ -194,15 +196,13 @@ def handle_add_host(goptions, session, args):
     activate_session(session, goptions)
     id = session.getHost(host)
     if id:
-        print("%s is already in the database" % host)
-        return 1
+        error("%s is already in the database" % host)
     else:
-        kwargs = {}
+        kwargs = {'force': options.force}
         if options.krb_principal is not None:
             kwargs['krb_principal'] = options.krb_principal
         id = session.addHost(host, args[1:], **kwargs)
-        if id:
-            print("%s added: id %d" % (host, id))
+        print("%s added: id %d" % (host, id))
 
 
 def handle_edit_host(options, session, args):
