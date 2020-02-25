@@ -182,23 +182,6 @@ def get_options():
             else:
                 log(config.get(*alias))
                 setattr(defaults, name, config.get(*alias))
-    #config file options without a cmdline equivalent
-    otheropts = [
-        #name, type, default
-        ['keytab', None, 'string'],
-        ['principal', None, 'string'],
-        ['runas', None, 'string'],
-        ['user', None, 'string'],
-        ['password', None, 'string'],
-        ['noauth', None, 'boolean'],
-        ['server', None, 'string'],
-        ['remote', None, 'string'],
-        ['max_jobs', None, 'int'],
-        ['serverca', None, 'string'],
-        ['auth_cert', None, 'string'],
-        ['arches', None, 'string'],
-        ]
-
 
     #parse again with updated defaults
     (options, args) = parser.parse_args(values=defaults)
@@ -920,11 +903,6 @@ class BuildTracker(object):
         if options.tag_build and not tag == None:
             self.tagSuccessful(build.nvr, tag)
         return True
-
-    def scan(self):
-        """Scan based on config file"""
-        to_scan = []
-        alltags = remote.listTags()
 
     def rebuild(self, build):
         """Rebuild a remote build using closest possible buildroot"""
