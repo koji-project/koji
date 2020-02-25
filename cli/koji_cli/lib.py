@@ -301,7 +301,7 @@ Running Tasks:
                         rv = 1
                 for child in session.getTaskChildren(task_id):
                     child_id = child['id']
-                    if not child_id in tasks.keys():
+                    if child_id not in tasks.keys():
                         tasks[child_id] = TaskWatcher(child_id, session, task.level + 1, quiet=quiet)
                         tasks[child_id].update()
                         # If we found new children, go through the list again,

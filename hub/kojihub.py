@@ -1156,13 +1156,13 @@ def readPackageList(tagID=None, userID=None, pkgID=None, event=None, inherit=Fal
         tag_packages.package_id = tag_package_owners.package_id
     JOIN users ON users.id = tag_package_owners.owner
     WHERE %(cond1)s AND %(cond2)s"""
-    if tagID != None:
+    if tagID is not None:
         q += """
         AND tag.id = %%(tagID)i"""
-    if userID != None:
+    if userID is not None:
         q += """
         AND users.id = %%(userID)i"""
-    if pkgID != None:
+    if pkgID is not None:
         if isinstance(pkgID, six.integer_types):
             q += """
             AND package.id = %%(pkgID)i"""
@@ -2236,11 +2236,11 @@ def add_host_to_channel(hostname, channel_name, create=False):
     """
     context.session.assertPerm('host')
     host = get_host(hostname)
-    if host == None:
+    if host is None:
         raise koji.GenericError('host does not exist: %s' % hostname)
     host_id = host['id']
     channel_id = get_channel_id(channel_name, create=create)
-    if channel_id == None:
+    if channel_id is None:
         raise koji.GenericError('channel does not exist: %s' % channel_name)
     channels = list_channels(host_id)
     for channel in channels:
@@ -2255,11 +2255,11 @@ def add_host_to_channel(hostname, channel_name, create=False):
 def remove_host_from_channel(hostname, channel_name):
     context.session.assertPerm('host')
     host = get_host(hostname)
-    if host == None:
+    if host is None:
         raise koji.GenericError('host does not exist: %s' % hostname)
     host_id = host['id']
     channel_id = get_channel_id(channel_name)
-    if channel_id == None:
+    if channel_id is None:
         raise koji.GenericError('channel does not exist: %s' % channel_name)
     found = False
     channels = list_channels(host_id)
@@ -2385,7 +2385,7 @@ AND channel_id IN %(channels)s)'''
 
 
 def get_task_descendents(task, childMap=None, request=False):
-    if childMap == None:
+    if childMap is None:
         childMap = {}
     children = task.getChildren(request=request)
     children.sort(key=lambda x: x['id'])
@@ -2628,7 +2628,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None, with_separa
         created_dirs = set()
         for srcdir, destlink in dir_links:
             dest_parent = os.path.dirname(destlink)
-            if not dest_parent in created_dirs:
+            if dest_parent not in created_dirs:
                 koji.ensuredir(dest_parent)
                 created_dirs.add(dest_parent)
             relpath = os.path.relpath(srcdir, dest_parent)
@@ -3053,9 +3053,9 @@ def get_build_targets(info=None, event=None, buildTagID=None, destTagID=None, qu
             clauses.append('build_target.id = %(info)i')
         else:
             raise koji.GenericError('invalid type for lookup: %s' % type(info))
-    if buildTagID != None:
+    if buildTagID is not None:
         clauses.append('build_tag = %(buildTagID)i')
-    if destTagID != None:
+    if destTagID is not None:
         clauses.append('dest_tag = %(destTagID)i')
 
     query = QueryProcessor(columns=[f[0] for f in fields], aliases=[f[1] for f in fields],
@@ -4030,7 +4030,7 @@ def get_build(buildInfo, strict=False):
         associated task ids, and not all import methods provide source info.
     """
     buildID = find_build_id(buildInfo, strict=strict)
-    if buildID == None:
+    if buildID is None:
         return None
 
     fields = (('build.id', 'id'), ('build.version', 'version'), ('build.release', 'release'),
@@ -4294,11 +4294,11 @@ def list_rpms(buildID=None, buildrootID=None, imageID=None, componentBuildrootID
     joins = ['LEFT JOIN external_repo ON rpminfo.external_repo_id = external_repo.id']
     clauses = []
 
-    if buildID != None:
+    if buildID is not None:
         clauses.append('rpminfo.build_id = %(buildID)i')
-    if buildrootID != None:
+    if buildrootID is not None:
         clauses.append('rpminfo.buildroot_id = %(buildrootID)i')
-    if componentBuildrootID != None:
+    if componentBuildrootID is not None:
         fields.append(('buildroot_listing.buildroot_id as component_buildroot_id',
                        'component_buildroot_id'))
         fields.append(('buildroot_listing.is_update', 'is_update'))
@@ -4306,14 +4306,14 @@ def list_rpms(buildID=None, buildrootID=None, imageID=None, componentBuildrootID
         clauses.append('buildroot_listing.buildroot_id = %(componentBuildrootID)i')
 
     # image specific constraints
-    if imageID != None:
+    if imageID is not None:
         clauses.append('archive_rpm_components.archive_id = %(imageID)i')
         joins.append('archive_rpm_components ON rpminfo.id = archive_rpm_components.rpm_id')
 
-    if hostID != None:
+    if hostID is not None:
         joins.append('standard_buildroot ON rpminfo.buildroot_id = standard_buildroot.buildroot_id')
         clauses.append('standard_buildroot.host_id = %(hostID)i')
-    if arches != None:
+    if arches is not None:
         if isinstance(arches, (list, tuple)):
             clauses.append('rpminfo.arch IN %(arches)s')
         elif isinstance(arches, str):
@@ -4572,7 +4572,7 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
         values['component_buildroot_id'] = componentBuildrootID
         fields.append(['buildroot_archives.buildroot_id', 'component_buildroot_id'])
         fields.append(['buildroot_archives.project_dep', 'project'])
-    if imageID != None:
+    if imageID is not None:
         # TODO: arg name is now a misnomer, could be any archive
         clauses.append('archive_components.archive_id = %(imageID)i')
         values['imageID'] = imageID
@@ -5217,28 +5217,28 @@ def query_buildroots(hostID=None, tagID=None, state=None, rpmID=None, archiveID=
              'LEFT OUTER JOIN events AS repo_create ON repo_create.id = repo.create_event']
 
     clauses = []
-    if buildrootID != None:
+    if buildrootID is not None:
         if isinstance(buildrootID, (list, tuple)):
             clauses.append('buildroot.id IN %(buildrootID)s')
         else:
             clauses.append('buildroot.id = %(buildrootID)i')
-    if hostID != None:
+    if hostID is not None:
         clauses.append('host.id = %(hostID)i')
-    if tagID != None:
+    if tagID is not None:
         clauses.append('tag.id = %(tagID)i')
-    if state != None:
+    if state is not None:
         if isinstance(state, (list, tuple)):
             clauses.append('standard_buildroot.state IN %(state)s')
         else:
             clauses.append('standard_buildroot.state = %(state)i')
-    if rpmID != None:
+    if rpmID is not None:
         joins.insert(0, 'buildroot_listing ON buildroot.id = buildroot_listing.buildroot_id')
         fields.append(('buildroot_listing.is_update', 'is_update'))
         clauses.append('buildroot_listing.rpm_id = %(rpmID)i')
-    if archiveID != None:
+    if archiveID is not None:
         joins.append('buildroot_archives ON buildroot.id = buildroot_archives.buildroot_id')
         clauses.append('buildroot_archives.archive_id = %(archiveID)i')
-    if taskID != None:
+    if taskID is not None:
         clauses.append('standard_buildroot.task_id = %(taskID)i')
 
     query = QueryProcessor(columns=[f[0] for f in fields], aliases=[f[1] for f in fields],
@@ -8052,7 +8052,7 @@ def cancel_build(build_id, cancel_task=True):
     if build['state'] != st_canceled:
         return False
     task_id = build['task_id']
-    if task_id != None:
+    if task_id is not None:
         build_notification(task_id, build_id)
         if cancel_task:
             Task(task_id).cancelFull(strict=False)
@@ -10220,9 +10220,9 @@ class RootExports(object):
         with open(filePath, 'rb') as f:
             if isinstance(offset, str):
                 offset = int(offset)
-            if offset != None and offset > 0:
+            if offset is not None and offset > 0:
                 f.seek(offset, 0)
-            elif offset != None and offset < 0:
+            elif offset is not None and offset < 0:
                 f.seek(offset, 2)
             contents = f.read(size)
         return base64encode(contents)
@@ -10745,7 +10745,7 @@ class RootExports(object):
         Return True if the build was successfully canceled, False if not."""
         context.session.assertLogin()
         build = get_build(buildID)
-        if build == None:
+        if build is None:
             return False
         if build['owner_id'] != context.session.user_id:
             if not context.session.hasPerm('admin'):
@@ -10919,13 +10919,13 @@ class RootExports(object):
                  'LEFT JOIN volume ON build.volume_id = volume.id',
                  'LEFT JOIN users ON build.owner = users.id']
         clauses = []
-        if packageID != None:
+        if packageID is not None:
             clauses.append('package.id = %(packageID)i')
-        if userID != None:
+        if userID is not None:
             clauses.append('users.id = %(userID)i')
-        if volumeID != None:
+        if volumeID is not None:
             clauses.append('volume.id = %(volumeID)i')
-        if taskID != None:
+        if taskID is not None:
             if taskID == -1:
                 clauses.append('build.task_id IS NOT NULL')
             else:
@@ -10935,7 +10935,7 @@ class RootExports(object):
             clauses.append('build.source ilike %(source)s')
         if prefix:
             clauses.append("package.name ilike %(prefix)s || '%%'")
-        if state != None:
+        if state is not None:
             clauses.append('build.state = %(state)i')
         if createdBefore:
             if not isinstance(createdBefore, str):
@@ -11851,7 +11851,7 @@ class RootExports(object):
             ['completedAfter', 'completion_time', '>'],
         ]
         for key, field, cmp in time_opts:
-            if opts.get(key) != None:
+            if opts.get(key) is not None:
                 value = opts[key]
                 if not isinstance(value, str):
                     opts[key] = datetime.datetime.fromtimestamp(value).isoformat(' ')
@@ -11946,7 +11946,7 @@ class RootExports(object):
         if not (task.isCanceled() or task.isFailed()):
             raise koji.GenericError('only canceled or failed tasks may be resubmitted')
         taskInfo = task.getInfo()
-        if taskInfo['parent'] != None:
+        if taskInfo['parent'] is not None:
             raise koji.GenericError('only top-level tasks may be resubmitted')
         if not (context.session.user_id == taskInfo['owner'] or self.hasPerm('admin')):
             raise koji.GenericError('only the task owner or an admin may resubmit a task')
@@ -12191,7 +12191,7 @@ class RootExports(object):
         will return len(value), and a return value of any other type will return 1.  An invalid
         methodName will raise an AttributeError, and invalid arguments will raise a TypeError."""
         result = getattr(self, methodName)(*args, **kw)
-        if result == None:
+        if result is None:
             return 0
         elif isinstance(result, (list, tuple, dict)):
             return len(result)

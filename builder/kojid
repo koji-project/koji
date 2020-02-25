@@ -3067,7 +3067,7 @@ class ApplianceTask(ImageTask):
 
     def handler(self, name, version, release, arch, target_info, build_tag, repo_info, ksfile, opts=None):
 
-        if opts == None:
+        if opts is None:
             opts = {}
         self.opts = opts
         broot = self.makeImgBuildRoot(build_tag, repo_info, arch,
@@ -3088,7 +3088,7 @@ class ApplianceTask(ImageTask):
                '--logfile', app_log, '--cache', cachedir, '-o', odir]
         for arg_name in ('vmem', 'vcpu', 'format'):
             arg = opts.get(arg_name)
-            if arg != None:
+            if arg is not None:
                 cmd.extend(['--%s' % arg_name, arg])
         appname = '%s-%s-%s' % (name, version, release)
         cmd.extend(['--name', appname])
@@ -3223,7 +3223,7 @@ class LiveCDTask(ImageTask):
 
     def handler(self, name, version, release, arch, target_info, build_tag, repo_info, ksfile, opts=None):
 
-        if opts == None:
+        if opts is None:
             opts = {}
         self.opts = opts
 
@@ -3409,7 +3409,7 @@ class LiveMediaTask(ImageTask):
 
     def handler(self, name, version, release, arch, target_info, build_tag, repo_info, ksfile, opts=None):
 
-        if opts == None:
+        if opts is None:
             opts = {}
         self.opts = opts
 
@@ -4211,7 +4211,7 @@ class BaseImageTask(OzImageTask):
             self.logger.error("ImageFactory features require the following dependencies: pykickstart, imagefactory, oz and possibly python-hashlib")
             raise koji.ApplianceError('ImageFactory functions not available')
 
-        if opts == None:
+        if opts is None:
             opts = {}
         self.arch = arch
         self.target_info = target_info
@@ -4492,7 +4492,7 @@ class BuildIndirectionImageTask(OzImageTask):
             # We can now reference this object directly or via its UUID in persistent storage
             return factory_base_image
 
-        if opts == None:
+        if opts is None:
             opts = {}
         self.opts = opts
 

@@ -184,7 +184,7 @@ def convert_datetime(f):
 
 
 def register_callback(cbtype, func):
-    if not cbtype in callbacks:
+    if cbtype not in callbacks:
         raise koji.PluginError('"%s" is not a valid callback type' % cbtype)
     if not callable(func):
         raise koji.PluginError('%s is not callable' % getattr(func, '__name__', 'function'))
@@ -192,7 +192,7 @@ def register_callback(cbtype, func):
 
 
 def run_callbacks(cbtype, *args, **kws):
-    if not cbtype in callbacks:
+    if cbtype not in callbacks:
         raise koji.PluginError('"%s" is not a valid callback type' % cbtype)
     cache = {}
     for func in callbacks[cbtype]:

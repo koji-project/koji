@@ -104,9 +104,9 @@ class Rpmdiff:
             self.new_data['tags'][tag] = new[tag]
             if old_tag != new_tag:
                 tagname = rpm.tagnames[tag]
-                if old_tag == None:
+                if old_tag is None:
                     self.__add(self.FORMAT, (self.ADDED, tagname))
-                elif new_tag == None:
+                elif new_tag is None:
                     self.__add(self.FORMAT, (self.REMOVED, tagname))
                 else:
                     self.__add(self.FORMAT, ('S.5........', tagname))
@@ -207,7 +207,7 @@ class Rpmdiff:
         self.new_data[name] = sorted(n)
 
         for oldentry in o:
-            if not oldentry in n:
+            if oldentry not in n:
                 if name == 'REQUIRES' and oldentry[1] & self.PREREQ_FLAG:
                     tagname = 'PREREQ'
                 else:
@@ -216,7 +216,7 @@ class Rpmdiff:
                            (self.REMOVED, tagname, oldentry[0],
                             self.sense2str(oldentry[1]), oldentry[2]))
         for newentry in n:
-            if not newentry in o:
+            if newentry not in o:
                 if name == 'REQUIRES' and newentry[1] & self.PREREQ_FLAG:
                     tagname = 'PREREQ'
                 else:

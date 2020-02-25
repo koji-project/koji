@@ -619,7 +619,7 @@ def rpm_hdr_size(f, ofs=None):
         fo = open(f, 'rb')
     else:
         fo = f
-    if ofs != None:
+    if ofs is not None:
         fo.seek(ofs, 0)
     magic = fo.read(3)
     if magic != RPM_HEADER_MAGIC:
@@ -2323,7 +2323,7 @@ class ClientSession(object):
 
     def __init__(self, baseurl, opts=None, sinfo=None):
         assert baseurl, "baseurl argument must not be empty"
-        if opts == None:
+        if opts is None:
             opts = {}
         else:
             opts = opts.copy()
@@ -2422,13 +2422,13 @@ class ClientSession(object):
         if not ctx:
             ctx = krbV.default_context()
 
-        if ccache != None:
+        if ccache is not None:
             ccache = krbV.CCache(name=ccache, context=ctx)
         else:
             ccache = ctx.default_ccache()
 
-        if principal != None:
-            if keytab != None:
+        if principal is not None:
+            if keytab is not None:
                 cprinc = krbV.Principal(name=principal, context=ctx)
                 keytab = krbV.Keytab(name=keytab, context=ctx)
                 ccache.init(cprinc)
@@ -3319,7 +3319,7 @@ def formatTimeLong(value):
 def buildLabel(buildInfo, showEpoch=False):
     """Format buildInfo (dict) into a descriptive label."""
     epoch = buildInfo.get('epoch')
-    if showEpoch and epoch != None:
+    if showEpoch and epoch is not None:
         epochStr = '%i:' % epoch
     else:
         epochStr = ''

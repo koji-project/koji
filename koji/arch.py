@@ -185,7 +185,7 @@ def getBestArchFromList(archlist, myarch=None):
     bestarch = getBestArch(myarch)
     if bestarch != myarch:
         bestarchchoice = getBestArchFromList(archlist, bestarch)
-        if bestarchchoice != None and bestarchchoice != "noarch":
+        if bestarchchoice is not None and bestarchchoice != "noarch":
             return bestarchchoice
 
     thisarch = archlist[0]

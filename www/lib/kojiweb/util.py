@@ -174,7 +174,7 @@ def _genToken(environ, tstamp=None):
         user = environ['koji.currentLogin']
     else:
         return ''
-    if tstamp == None:
+    if tstamp is None:
         tstamp = _truncTime()
     value = user + str(tstamp) + environ['koji.options']['Secret'].value
     if six.PY3:
@@ -247,7 +247,7 @@ def passthrough(template, *vars):
     result = []
     for var in vars:
         value = template.getVar(var, default=None)
-        if value != None:
+        if value is not None:
             result.append('%s=%s' % (var, value))
     if result:
         return '&' + '&'.join(result)
@@ -267,7 +267,7 @@ def passthrough_except(template, *exclude):
     """
     passvars = []
     for var in template._PASSTHROUGH:
-        if not var in exclude:
+        if var not in exclude:
             passvars.append(var)
     return passthrough(template, *passvars)
 
@@ -292,7 +292,7 @@ def paginateList(values, data, start, dataName, prefix=None, order=None, noneGre
     under which a number of list-related metadata variables will
     be added to the value map.
     """
-    if order != None:
+    if order is not None:
         if order.startswith('-'):
             order = order[1:]
             reverse = True
@@ -596,7 +596,7 @@ def authToken(template, first=False, form=False):
     If first is True, prefix it with ?, otherwise prefix it
     with &.  If no authToken exists, return an empty string."""
     token = template.getVar('authToken', default=None)
-    if token != None:
+    if token is not None:
         if form:
             return '<input type="hidden" name="a" value="%s"/>' % token
         if first:

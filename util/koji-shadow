@@ -753,7 +753,7 @@ class BuildTracker(object):
                     return build
             if options.prefer_new and (depth > 0) and (tag is not None) and not (build.state == "common"):
                 latestBuild = self.newerBuild(build, tag)
-                if latestBuild != None:
+                if latestBuild is not None:
                     build.substitute = latestBuild.nvr
                     log("%sNewer build replaced: %s->%s" % (head, build.nvr, latestBuild.nvr))
                     return build
@@ -912,7 +912,7 @@ class BuildTracker(object):
             fname = os.path.basename(relpath)
             self._importURL(url, fname)
         build.updateState()
-        if options.tag_build and not tag == None:
+        if options.tag_build and tag is not None:
             self.tagSuccessful(build.nvr, tag)
         return True
 
@@ -1170,7 +1170,7 @@ class BuildTracker(object):
                 ret = True
             elif state == 'CLOSED':
                 log("Task %i complete (build %s)" % (build.task_id, build.nvr))
-                if options.tag_build and not tag == None:
+                if options.tag_build and tag is not None:
                     self.tagSuccessful(build.nvr, tag)
                 build.updateState()
                 ret = True

@@ -362,7 +362,7 @@ def handle_add_pkg(goptions, session, args):
     to_add = []
     for package in args[1:]:
         package_id = pkglist.get(package, None)
-        if not package_id is None:
+        if package_id is not None:
             print("Package %s already exists in tag %s" % (package, tag))
             continue
         to_add.append(package)
@@ -3793,7 +3793,7 @@ def handle_edit_target(goptions, session, args):
         parser.error(_("This action requires target or admin privileges"))
 
     targetInfo = session.getBuildTarget(args[0])
-    if targetInfo == None:
+    if targetInfo is None:
         raise koji.GenericError("No build target with the name or id '%s'" % args[0])
 
     targetInfo['orig_name'] = targetInfo['name']
@@ -3890,7 +3890,7 @@ def anon_handle_list_targets(goptions, session, args):
 def _printInheritance(tags, sibdepths=None, reverse=False):
     if len(tags) == 0:
         return
-    if sibdepths == None:
+    if sibdepths is None:
         sibdepths = []
     currtag = tags[0]
     tags = tags[1:]
@@ -5431,7 +5431,7 @@ def handle_remove_external_repo(goptions, session, args):
         session.deleteExternalRepo(args[0])
     else:
         for tag in tags:
-            if not tag in current_tags:
+            if tag not in current_tags:
                 print(_("External repo %s not associated with tag %s") % (repo, tag))
                 continue
             session.removeExternalRepoFromTag(tag, repo)
@@ -6435,7 +6435,7 @@ def handle_move_build(opts, session, args):
             if not build:
                 print(_("Invalid build %s, skipping." % arg))
                 continue
-            if not build in builds:
+            if build not in builds:
                 builds.append(build)
 
         for build in builds:
@@ -7097,11 +7097,11 @@ def handle_dist_repo(options, session, args):
     if task_opts.multilib:
         if not os.path.exists(task_opts.multilib):
             parser.error(_('could not find %s') % task_opts.multilib)
-        if 'x86_64' in task_opts.arch and not 'i686' in task_opts.arch:
+        if 'x86_64' in task_opts.arch and 'i686' not in task_opts.arch:
             parser.error(_('The multilib arch (i686) must be included'))
-        if 's390x' in task_opts.arch and not 's390' in task_opts.arch:
+        if 's390x' in task_opts.arch and 's390' not in task_opts.arch:
             parser.error(_('The multilib arch (s390) must be included'))
-        if 'ppc64' in task_opts.arch and not 'ppc' in task_opts.arch:
+        if 'ppc64' in task_opts.arch and 'ppc' not in task_opts.arch:
             parser.error(_('The multilib arch (ppc) must be included'))
         session.uploadWrapper(task_opts.multilib, stuffdir,
                               callback=_progress_callback)

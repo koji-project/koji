@@ -347,7 +347,7 @@ def notificationedit(environ, notificationID):
 
     notificationID = int(notificationID)
     notification = server.getBuildNotification(notificationID)
-    if notification == None:
+    if notification is None:
         raise koji.GenericError('no notification with ID: %i' % notificationID)
 
     form = environ['koji.form']
@@ -635,7 +635,7 @@ def taskinfo(environ, taskID):
     values['estCompletion'] = None
     if taskBuild and taskBuild['state'] == koji.BUILD_STATES['BUILDING']:
         avgDuration = server.getAverageBuildDuration(taskBuild['package_id'])
-        if avgDuration != None:
+        if avgDuration is not None:
             avgDelta = datetime.timedelta(seconds=avgDuration)
             startTime = datetime.datetime.fromtimestamp(taskBuild['creation_ts'])
             values['estCompletion'] = startTime + avgDelta
@@ -840,7 +840,7 @@ def tags(environ, start=None, order=None, childID=None):
     values = _initValues(environ, 'Tags', 'tags')
     server = _getServer(environ)
 
-    if order == None:
+    if order is None:
         order = 'name'
     values['order'] = order
 
@@ -864,14 +864,14 @@ def packages(environ, tagID=None, userID=None, order='package_name', start=None,
     values = _initValues(environ, 'Packages', 'packages')
     server = _getServer(environ)
     tag = None
-    if tagID != None:
+    if tagID is not None:
         if tagID.isdigit():
             tagID = int(tagID)
         tag = server.getTag(tagID, strict=True)
     values['tagID'] = tagID
     values['tag'] = tag
     user = None
-    if userID != None:
+    if userID is not None:
         if userID.isdigit():
             userID = int(userID)
         user = server.getUser(userID, strict=True)
@@ -902,7 +902,7 @@ def packageinfo(environ, packageID, tagOrder='name', tagStart=None, buildOrder='
     if packageID.isdigit():
         packageID = int(packageID)
     package = server.getPackage(packageID)
-    if package == None:
+    if package is None:
         raise koji.GenericError('invalid package ID: %s' % packageID)
 
     values['title'] = package['name'] + ' | Package Info'
@@ -959,7 +959,7 @@ def taginfo(environ, tagID, all='0', packageOrder='package_name', packageStart=N
     values['external_repos'] = server.getExternalRepoList(tag['id'])
 
     child = None
-    if childID != None:
+    if childID is not None:
         child = server.getTag(int(childID), strict=True)
     values['child'] = child
 
@@ -1018,7 +1018,7 @@ def tagedit(environ, tagID):
 
     tagID = int(tagID)
     tag = server.getTag(tagID)
-    if tag == None:
+    if tag is None:
         raise koji.GenericError('no tag with ID: %i' % tagID)
 
     form = environ['koji.form']
@@ -1059,7 +1059,7 @@ def tagdelete(environ, tagID):
 
     tagID = int(tagID)
     tag = server.getTag(tagID)
-    if tag == None:
+    if tag is None:
         raise koji.GenericError('no tag with ID: %i' % tagID)
 
     server.deleteTag(tag['id'])
@@ -1262,7 +1262,7 @@ def buildinfo(environ, buildID):
             values['start_time'] = task['start_time']
     if build['state'] == koji.BUILD_STATES['BUILDING']:
         avgDuration = server.getAverageBuildDuration(build['package_id'])
-        if avgDuration != None:
+        if avgDuration is not None:
             avgDelta = datetime.timedelta(seconds=avgDuration)
             startTime = datetime.datetime.fromtimestamp(build['creation_ts'])
             values['estCompletion'] = startTime + avgDelta
@@ -1308,7 +1308,7 @@ def builds(environ, userID=None, tagID=None, packageID=None, state=None, order='
 
     if state == 'all':
         state = None
-    elif state != None:
+    elif state is not None:
         state = int(state)
     values['state'] = state
 
@@ -1409,15 +1409,15 @@ def rpminfo(environ, rpmID, fileOrder='name', fileStart=None, buildrootOrder='-i
 
     values['title'] = '%(name)s-%%s%(version)s-%(release)s.%(arch)s.rpm' % rpm + ' | RPM Info'
     epochStr = ''
-    if rpm['epoch'] != None:
+    if rpm['epoch'] is not None:
         epochStr = '%s:' % rpm['epoch']
     values['title'] = values['title'] % epochStr
 
     build = None
-    if rpm['build_id'] != None:
+    if rpm['build_id'] is not None:
         build = server.getBuild(rpm['build_id'])
     builtInRoot = None
-    if rpm['buildroot_id'] != None:
+    if rpm['buildroot_id'] is not None:
         builtInRoot = server.getBuildroot(rpm['buildroot_id'])
     if rpm['external_repo_id'] == 0:
         dep_names = {
@@ -1469,7 +1469,7 @@ def archiveinfo(environ, archiveID, fileOrder='name', fileStart=None, buildrootO
     if 'relpath' in archive:
         wininfo = True
     builtInRoot = None
-    if archive['buildroot_id'] != None:
+    if archive['buildroot_id'] is not None:
         builtInRoot = server.getBuildroot(archive['buildroot_id'])
     kojiweb.util.paginateMethod(server, values, 'listArchiveFiles', args=[archive['id']],
                                 start=fileStart, dataName='files', prefix='file', order=fileOrder)
@@ -1534,7 +1534,7 @@ def cancelbuild(environ, buildID):
 
     buildID = int(buildID)
     build = server.getBuild(buildID)
-    if build == None:
+    if build is None:
         raise koji.GenericError('unknown build ID: %i' % buildID)
 
     result = server.cancelBuild(build['id'])
@@ -1583,7 +1583,7 @@ def hostinfo(environ, hostID=None, userID=None):
         if hostID.isdigit():
             hostID = int(hostID)
         host = server.getHost(hostID)
-        if host == None:
+        if host is None:
             raise koji.GenericError('invalid host ID: %s' % hostID)
     elif userID:
         userID = int(userID)
@@ -1591,7 +1591,7 @@ def hostinfo(environ, hostID=None, userID=None):
         host = None
         if hosts:
             host = hosts[0]
-        if host == None:
+        if host is None:
             raise koji.GenericError('invalid host ID: %s' % userID)
     else:
         raise koji.GenericError('hostID or userID must be provided')
@@ -1622,7 +1622,7 @@ def hostedit(environ, hostID):
 
     hostID = int(hostID)
     host = server.getHost(hostID)
-    if host == None:
+    if host is None:
         raise koji.GenericError('no host with ID: %i' % hostID)
 
     form = environ['koji.form']
@@ -1694,7 +1694,7 @@ def channelinfo(environ, channelID):
 
     channelID = int(channelID)
     channel = server.getChannel(channelID)
-    if channel == None:
+    if channel is None:
         raise koji.GenericError('invalid channel ID: %i' % channelID)
 
     values['title'] = channel['name'] + ' | Channel Info'
@@ -1722,7 +1722,7 @@ def buildrootinfo(environ, buildrootID, builtStart=None, builtOrder=None, compon
     buildrootID = int(buildrootID)
     buildroot = server.getBuildroot(buildrootID)
 
-    if buildroot == None:
+    if buildroot is None:
         raise koji.GenericError('unknown buildroot ID: %i' % buildrootID)
 
     elif buildroot['br_type'] == koji.BR_TYPES['STANDARD']:
@@ -1749,11 +1749,11 @@ def rpmlist(environ, type, buildrootID=None, imageID=None, start=None, order='nv
     values = _initValues(environ, 'RPM List', 'hosts')
     server = _getServer(environ)
 
-    if buildrootID != None:
+    if buildrootID is not None:
         buildrootID = int(buildrootID)
         buildroot = server.getBuildroot(buildrootID)
         values['buildroot'] = buildroot
-        if buildroot == None:
+        if buildroot is None:
             raise koji.GenericError('unknown buildroot ID: %i' % buildrootID)
 
         if type == 'component':
@@ -1769,7 +1769,7 @@ def rpmlist(environ, type, buildrootID=None, imageID=None, start=None, order='nv
         else:
             raise koji.GenericError('unrecognized type of rpmlist')
 
-    elif imageID != None:
+    elif imageID is not None:
         imageID = int(imageID)
         values['image'] = server.getArchive(imageID)
         # If/When future image types are supported, add elifs here if needed.
@@ -1800,7 +1800,7 @@ def archivelist(environ, type, buildrootID=None, imageID=None, start=None, order
         buildroot = server.getBuildroot(buildrootID)
         values['buildroot'] = buildroot
 
-        if buildroot == None:
+        if buildroot is None:
             raise koji.GenericError('unknown buildroot ID: %i' % buildrootID)
 
         if type == 'component':
@@ -1851,13 +1851,13 @@ def buildtargetinfo(environ, targetID=None, name=None):
     server = _getServer(environ)
 
     target = None
-    if targetID != None:
+    if targetID is not None:
         targetID = int(targetID)
         target = server.getBuildTarget(targetID)
-    elif name != None:
+    elif name is not None:
         target = server.getBuildTarget(name)
 
-    if target == None:
+    if target is None:
         raise koji.GenericError('invalid build target: %s' % (targetID or name))
 
     values['title'] = target['name'] + ' | Build Target Info'
@@ -1883,7 +1883,7 @@ def buildtargetedit(environ, targetID):
     targetID = int(targetID)
 
     target = server.getBuildTarget(targetID)
-    if target == None:
+    if target is None:
         raise koji.GenericError('invalid build target: %s' % targetID)
 
     form = environ['koji.form']
@@ -1892,12 +1892,12 @@ def buildtargetedit(environ, targetID):
         name = form.getfirst('name')
         buildTagID = int(form.getfirst('buildTag'))
         buildTag = server.getTag(buildTagID)
-        if buildTag == None:
+        if buildTag is None:
             raise koji.GenericError('invalid tag ID: %i' % buildTagID)
 
         destTagID = int(form.getfirst('destTag'))
         destTag = server.getTag(destTagID)
-        if destTag == None:
+        if destTag is None:
             raise koji.GenericError('invalid tag ID: %i' % destTagID)
 
         server.editBuildTarget(target['id'], name, buildTag['id'], destTag['id'])
@@ -1933,7 +1933,7 @@ def buildtargetcreate(environ):
         server.createBuildTarget(name, buildTagID, destTagID)
         target = server.getBuildTarget(name)
 
-        if target == None:
+        if target is None:
             raise koji.GenericError('error creating build target "%s"' % name)
 
         _redirect(environ, 'buildtargetinfo?targetID=%i' % target['id'])
@@ -1958,7 +1958,7 @@ def buildtargetdelete(environ, targetID):
     targetID = int(targetID)
 
     target = server.getBuildTarget(targetID)
-    if target == None:
+    if target is None:
         raise koji.GenericError('invalid build target: %i' % targetID)
 
     server.deleteBuildTarget(target['id'])
@@ -2029,7 +2029,7 @@ def rpmsbyhost(environ, start=None, order=None, hostArch=None, rpmArch=None):
     values['rpmArch'] = rpmArch
     values['rpmArchList'] = hostArchList + ['noarch', 'src']
 
-    if order == None:
+    if order is None:
         order = '-rpms'
     values['order'] = order
 
@@ -2059,7 +2059,7 @@ def packagesbyuser(environ, start=None, order=None):
         if numPackages > maxPackages:
             maxPackages = numPackages
 
-    if order == None:
+    if order is None:
         order = '-packages'
     values['order'] = order
 
@@ -2277,13 +2277,13 @@ def recentbuilds(environ, user=None, tag=None, package=None):
     server = _getServer(environ)
 
     tagObj = None
-    if tag != None:
+    if tag is not None:
         if tag.isdigit():
             tag = int(tag)
         tagObj = server.getTag(tag)
 
     userObj = None
-    if user != None:
+    if user is not None:
         if user.isdigit():
             user = int(user)
         userObj = server.getUser(user)
@@ -2294,7 +2294,7 @@ def recentbuilds(environ, user=None, tag=None, package=None):
             package = int(package)
         packageObj = server.getPackage(package)
 
-    if tagObj != None:
+    if tagObj is not None:
         builds = server.listTagged(tagObj['id'], inherit=True, package=(packageObj and packageObj['name'] or None),
                                    owner=(userObj and userObj['name'] or None))
         builds.sort(key=kojiweb.util.sortByKeyFuncNoneGreatest('completion_time'), reverse=True)

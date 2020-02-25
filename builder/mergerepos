@@ -100,7 +100,7 @@ def parse_args(args):
                 opts.arches.extend(EXPAND_ARCHES[multilib_arch])
 
     # always include noarch
-    if not 'noarch' in opts.arches:
+    if 'noarch' not in opts.arches:
         opts.arches.append('noarch')
 
     if not opts.outputdir:
