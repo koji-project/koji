@@ -61,8 +61,8 @@ class fakemodule(object):
 
 #make parts of the above insert accessible as koji.X
 koji = fakemodule()
-koji.GenericError = GenericError
-koji.BuildError = BuildError
+koji.GenericError = GenericError  # noqa: F821
+koji.BuildError = BuildError  # noqa: F821
 
 def encode_int(n):
     """If n is too large for a 32bit signed, convert it to a string"""
@@ -88,9 +88,9 @@ class WindowsBuild(object):
         else:
             self.task_opts = {}
         self.workdir = '/tmp/build'
-        ensuredir(self.workdir)
+        ensuredir(self.workdir)  # noqa: F821
         self.buildreq_dir = os.path.join(self.workdir, 'buildreqs')
-        ensuredir(self.buildreq_dir)
+        ensuredir(self.buildreq_dir)  # noqa: F821
         self.source_dir = None
         self.spec_dir = None
         self.patches_dir = None
@@ -148,20 +148,20 @@ class WindowsBuild(object):
                 else:
                     self.logger.info('file %s exists', entry)
         if errors:
-            raise BuildError('error validating build environment: %s' % \
-                  ', '.join(errors))
+            raise BuildError('error validating build environment: %s' %  # noqa: F821
+                             ', '.join(errors))
 
     def updateClam(self):
         """update ClamAV virus definitions"""
         ret, output = run(['/bin/freshclam', '--quiet'])
         if ret:
-            raise BuildError('could not update ClamAV database: %s' % output)
+            raise BuildError('could not update ClamAV database: %s' % output)  # noqa: F821
 
     def checkEnv(self):
         """make the environment is fit for building in"""
         for tool in ['/bin/freshclam', '/bin/clamscan', '/bin/patch']:
             if not os.path.isfile(tool):
-                raise BuildError('%s is missing from the build environment' % tool)
+                raise BuildError('%s is missing from the build environment' % tool)  # noqa: F821
 
     def zipDir(self, rootdir, filename):
         rootbase = os.path.basename(rootdir)
@@ -178,18 +178,18 @@ class WindowsBuild(object):
 
     def checkout(self):
         """Checkout sources, winspec, and patches, and apply patches"""
-        src_scm = SCM(self.source_url)
-        self.source_dir = src_scm.checkout(ensuredir(os.path.join(self.workdir, 'source')))
+        src_scm = SCM(self.source_url)  # noqa: F821
+        self.source_dir = src_scm.checkout(ensuredir(os.path.join(self.workdir, 'source')))  # noqa: F821
         self.zipDir(self.source_dir, os.path.join(self.workdir, 'sources.zip'))
         if 'winspec' in self.task_opts:
-            spec_scm = SCM(self.task_opts['winspec'])
-            self.spec_dir = spec_scm.checkout(ensuredir(os.path.join(self.workdir, 'spec')))
+            spec_scm = SCM(self.task_opts['winspec'])  # noqa: F821
+            self.spec_dir = spec_scm.checkout(ensuredir(os.path.join(self.workdir, 'spec')))  # noqa: F821
             self.zipDir(self.spec_dir, os.path.join(self.workdir, 'spec.zip'))
         else:
             self.spec_dir = self.source_dir
         if 'patches' in self.task_opts:
-            patch_scm = SCM(self.task_opts['patches'])
-            self.patches_dir = patch_scm.checkout(ensuredir(os.path.join(self.workdir, 'patches')))
+            patch_scm = SCM(self.task_opts['patches'])  # noqa: F821
+            self.patches_dir = patch_scm.checkout(ensuredir(os.path.join(self.workdir, 'patches')))  # noqa: F821
             self.zipDir(self.patches_dir, os.path.join(self.workdir, 'patches.zip'))
             self.applyPatches(self.source_dir, self.patches_dir)
         self.virusCheck(self.workdir)
@@ -200,7 +200,7 @@ class WindowsBuild(object):
                    os.path.isfile(os.path.join(patchdir, patch)) and \
                    patch.endswith('.patch')]
         if not patches:
-            raise BuildError('no patches found at %s' % patchdir)
+            raise BuildError('no patches found at %s' % patchdir)  # noqa: F821
         patches.sort()
         for patch in patches:
             cmd = ['/bin/patch', '--verbose', '-d', sourcedir, '-p1', '-i', os.path.join(patchdir, patch)]
@@ -210,9 +210,9 @@ class WindowsBuild(object):
         """Load build configuration from the spec file."""
         specfiles = [spec for spec in os.listdir(self.spec_dir) if spec.endswith('.ini')]
         if len(specfiles) == 0:
-            raise BuildError('No .ini file found')
+            raise BuildError('No .ini file found')  # noqa: F821
         elif len(specfiles) > 1:
-            raise BuildError('Multiple .ini files found')
+            raise BuildError('Multiple .ini files found')  # noqa: F821
 
         if six.PY2:
             conf = SafeConfigParser()
@@ -306,7 +306,7 @@ class WindowsBuild(object):
         """Create the buildroot object on the hub."""
         repo_id = self.task_opts.get('repo_id')
         if not repo_id:
-            raise BuildError('repo_id must be specified')
+            raise BuildError('repo_id must be specified')  # noqa: F821
         self.buildroot_id = self.server.initBuildroot(repo_id, self.platform)
 
     def expireBuildroot(self):
@@ -316,9 +316,9 @@ class WindowsBuild(object):
     def fetchFile(self, basedir, buildinfo, fileinfo, brtype):
         """Download the file from buildreq, at filepath, into the basedir"""
         destpath = os.path.join(basedir, fileinfo['localpath'])
-        ensuredir(os.path.dirname(destpath))
+        ensuredir(os.path.dirname(destpath))  # noqa: F821
         if 'checksum_type' in fileinfo:
-            checksum_type = CHECKSUM_TYPES[fileinfo['checksum_type']]
+            checksum_type = CHECKSUM_TYPES[fileinfo['checksum_type']]  # noqa: F821
             if checksum_type == 'sha1':
                 checksum = hashlib.sha1()
             elif checksum_type == 'sha256':
@@ -326,7 +326,7 @@ class WindowsBuild(object):
             elif checksum_type == 'md5':
                 checksum = hashlib.md5()
             else:
-                raise BuildError('Unknown checksum type %s for %s' % (
+                raise BuildError('Unknown checksum type %s for %s' % (  # noqa: F821
                         checksum_type,
                         os.path.basename(fileinfo['localpath'])))
         with open(destpath, 'w') as destfile:
@@ -345,7 +345,7 @@ class WindowsBuild(object):
         if 'checksum_type' in fileinfo:
             digest = checksum.hexdigest()
             if fileinfo['checksum'] != digest:
-                raise BuildError('checksum validation failed for %s, %s (computed) != %s (provided)' % \
+                raise BuildError('checksum validation failed for %s, %s (computed) != %s (provided)' %  # noqa: F821
                                  (destpath, digest, fileinfo['checksum']))
             self.logger.info('Retrieved %s (%s bytes, %s: %s)', destpath, offset, checksum_type, digest)
         else:
@@ -361,7 +361,7 @@ class WindowsBuild(object):
             buildinfo = self.server.getLatestBuild(self.build_tag, buildreq,
                                                    self.task_opts.get('repo_id'))
             br_dir = os.path.join(self.buildreq_dir, buildreq, brtype)
-            ensuredir(br_dir)
+            ensuredir(br_dir)  # noqa: F821
             brinfo['dir'] = br_dir
             brfiles = []
             brinfo['files'] = brfiles
@@ -438,7 +438,7 @@ class WindowsBuild(object):
         cmd = ['cmd.exe', '/C', 'C:\\Windows\\Temp\\' + os.path.basename(tmpname)]
         ret, output = run(cmd, chdir=self.source_dir)
         if ret:
-            raise BuildError('build command failed, see build.log for details')
+            raise BuildError('build command failed, see build.log for details')  # noqa: F821
 
     def bashBuild(self):
         """Do the build: run the execute line(s) with bash"""
@@ -470,7 +470,7 @@ class WindowsBuild(object):
         cmd = ['/bin/bash', '-e', '-x', tmpname]
         ret, output = run(cmd, chdir=self.source_dir)
         if ret:
-            raise BuildError('build command failed, see build.log for details')
+            raise BuildError('build command failed, see build.log for details')  # noqa: F821
 
     def checkBuild(self):
         """Verify that the build completed successfully."""
@@ -497,13 +497,13 @@ class WindowsBuild(object):
                     errors.append('file %s does not exist' % entry)
         self.virusCheck(self.workdir)
         if errors:
-            raise BuildError('error validating build output: %s' % \
+            raise BuildError('error validating build output: %s' %  # noqa: F821
                   ', '.join(errors))
 
     def virusCheck(self, path):
         """ensure a path is virus free with ClamAV. path should be absolute"""
         if not path.startswith('/'):
-            raise BuildError('Invalid path to scan for viruses: ' + path)
+            raise BuildError('Invalid path to scan for viruses: ' + path)  # noqa: F821
         run(['/bin/clamscan', '--quiet', '--recursive', path], fatal=True)
 
     def gatherResults(self):
@@ -555,7 +555,7 @@ def run(cmd, chdir=None, fatal=False, log=True):
             msg += ', see %s for details' % (os.path.basename(logfd.name))
         else:
             msg += ', output: %s' % output
-        raise BuildError(msg)
+        raise BuildError(msg)  # noqa: F821
     return ret, output
 
 def find_net_info():

@@ -398,7 +398,7 @@ class SCM(object):
         def _run(cmd, chdir=None, fatal=False, log=True, _count=[0]):
             if globals().get('KOJIKAMID'):
                 #we've been inserted into kojikamid, use its run()
-                return run(cmd, chdir=chdir, fatal=fatal, log=log)
+                return run(cmd, chdir=chdir, fatal=fatal, log=log)  # noqa: F821
             else:
                 append = (_count[0] > 0)
                 _count[0] += 1

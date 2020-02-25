@@ -395,7 +395,6 @@ def load_config(environ):
         - all PythonOptions (except ConfigFile) are now deprecated and support for them
           will disappear in a future version of Koji
     """
-    logger = logging.getLogger("koji")
     #get our config file(s)
     cf = environ.get('koji.hub.ConfigFile', '/etc/koji-hub/hub.conf')
     cfdir = environ.get('koji.hub.ConfigDir', '/etc/koji-hub/hub.conf.d')

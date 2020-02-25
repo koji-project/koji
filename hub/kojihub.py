@@ -3041,7 +3041,7 @@ def lookup_name(table, info, strict=False, create=False):
         q = """SELECT id,name FROM %s WHERE id=%%(info)d""" % table
     elif isinstance(info, str):
         q = """SELECT id,name FROM %s WHERE name=%%(info)s""" % table
-    elif six.PY2 and isinstance(info, unicode):
+    elif six.PY2 and isinstance(info, unicode):  # noqa: F821
         info = koji.fixEncoding(info)
         q = """SELECT id,name FROM %s WHERE name=%%(info)s""" % table
     else:

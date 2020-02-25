@@ -521,7 +521,7 @@ def ensuredir(directory):
         # note: if head is blank, then we've reached the top of a relative path
         try:
             os.mkdir(directory)
-        except OSError as e:
+        except OSError:
             # do not thrown when dir already exists (could happen in a race)
             if not os.path.isdir(directory):
                 # something else must have gone wrong
@@ -3458,7 +3458,7 @@ def fix_encoding(value, fallback='iso8859-15', remove_nonprintable=False):
 
     # play encoding tricks for py2 strings
     if six.PY2:
-        if isinstance(value, unicode):
+        if isinstance(value, unicode):  # noqa: F821
             # just convert it to a utf8-encoded str
             value = value.encode('utf8')
         elif isinstance(value, str):

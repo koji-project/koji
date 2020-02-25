@@ -176,8 +176,6 @@ def getBestArchFromList(archlist, myarch=None):
     if myarch is None:
         myarch = canonArch
 
-    mybestarch = getBestArch(myarch)
-
     bestarch = getBestArch(myarch)
     if bestarch != myarch:
         bestarchchoice = getBestArchFromList(archlist, bestarch)

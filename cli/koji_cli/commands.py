@@ -1369,7 +1369,7 @@ def _import_comps(session, filename, tag, options):
             if pkg.type == libcomps.PACKAGE_TYPE_CONDITIONAL:
                 pkgopts['requires'] = pkg.requires
             for k in pkgopts.keys():
-                if six.PY2 and isinstance(pkgopts[k], unicode):
+                if six.PY2 and isinstance(pkgopts[k], unicode):  # noqa: F821
                     pkgopts[k] = str(pkgopts[k])
             s_opts = ', '.join(["'%s': %r" % (k, pkgopts[k]) for k in sorted(pkgopts.keys())])
             print("  Package: %s: {%s}" % (pkg.name, s_opts))
@@ -1402,7 +1402,7 @@ def _import_comps_alt(session, filename, tag, options): # no cover 3.x
                 if ptype == 'conditional':
                     pkgopts['requires'] = pdata[pkg]
                 for k in pkgopts.keys():
-                    if six.PY2 and isinstance(pkgopts[k], unicode):
+                    if six.PY2 and isinstance(pkgopts[k], unicode):  # noqa: F821
                         pkgopts[k] = str(pkgopts[k])
                 s_opts = ', '.join(["'%s': %r" % (k, pkgopts[k]) for k in sorted(pkgopts.keys())])
                 print("  Package: %s: {%s}" % (pkg, s_opts))

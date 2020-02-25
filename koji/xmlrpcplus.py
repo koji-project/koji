@@ -52,7 +52,7 @@ class ExtendedMarshaller(xmlrpc_client.Marshaller):
 
 
 if six.PY2:
-    ExtendedMarshaller.dispatch[long] = ExtendedMarshaller.dump_int
+    ExtendedMarshaller.dispatch[long] = ExtendedMarshaller.dump_int  # noqa: F821
 
 
 

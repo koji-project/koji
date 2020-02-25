@@ -1,6 +1,5 @@
 [flake8]
-select = I,C,F4
-ignore = F
+select = I,C,F
 exclude = .git,
           __pycache__,
           tests,
