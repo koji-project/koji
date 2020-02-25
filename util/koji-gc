@@ -123,7 +123,7 @@ def get_options():
                                             "recommended."))
     parser.add_option("--exit-on-lock", action="store_true",
                       help=_("quit if --lock-file exists, don't wait"))
-    #parse once to get the config file
+    # parse once to get the config file
     (options, args) = parser.parse_args()
 
     defaults = parser.get_default_values()
@@ -177,11 +177,11 @@ def get_options():
                 setattr(defaults, name, config.getboolean(*alias))
             else:
                 setattr(defaults, name, config.get(*alias))
-    #parse again with defaults
+    # parse again with defaults
     (options, args) = parser.parse_args(values=defaults)
     options.config = config
 
-    #figure out actions
+    # figure out actions
     actions = ('prune', 'trash', 'delete', 'salvage')
     if options.action:
         options.action = options.action.lower().replace(',',' ').split()
@@ -191,13 +191,13 @@ def get_options():
     else:
         options.action = ('delete', 'prune', 'trash')
 
-    #split patterns for unprotected keys
+    # split patterns for unprotected keys
     if options.unprotected_keys:
         options.unprotected_key_patterns = options.unprotected_keys.replace(',',' ').split()
     else:
         options.unprotected_key_patterns = []
 
-    #parse key aliases
+    # parse key aliases
     options.key_aliases = {}
     try:
         if config.has_option('main', 'key_aliases'):
@@ -210,7 +210,7 @@ def get_options():
         print(e)
         parser.error(_("Invalid key alias data in config: %s") % config.get('main','key_aliases'))
 
-    #parse time intervals
+    # parse time intervals
     for key in ('delay', 'grace_period'):
         try:
             value = getattr(options, key)
@@ -252,10 +252,10 @@ def check_tag(name):
         for pattern in options.tag_filter:
             if fnmatch.fnmatch(name, pattern):
                 return True
-        #doesn't match any pattern in filter
+        # doesn't match any pattern in filter
         return False
     else:
-        #not ignored and no filter specified
+        # not ignored and no filter specified
         return True
 
 def check_package(name):
@@ -267,10 +267,10 @@ def check_package(name):
         for pattern in options.pkg_filter:
             if fnmatch.fnmatch(name, pattern):
                 return True
-        #doesn't match any pattern in filter
+        # doesn't match any pattern in filter
         return False
     else:
-        #no filter specified
+        # no filter specified
         return True
 
 time_units = {
@@ -281,7 +281,7 @@ time_units = {
     'week' : 604800,
 }
 time_unit_aliases = [
-    #[unit, alias, alias, ...]
+    # [unit, alias, alias, ...]
     ['week', 'weeks', 'wk', 'wks'],
     ['hour', 'hours', 'hr', 'hrs'],
     ['day', 'days'],
@@ -308,7 +308,7 @@ def parse_duration(str):
             n = parse_num(x)
             if n is not None:
                 continue
-            #perhaps the unit is appended w/o a space
+            # perhaps the unit is appended w/o a space
             for names in time_unit_aliases:
                 for name in names:
                     if x.endswith(name):
@@ -371,13 +371,13 @@ def activate_session(session):
     """Test and login the session is applicable"""
     global options
     if options.noauth:
-        #skip authentication
+        # skip authentication
         pass
     elif options.cert is not None and os.path.isfile(options.cert):
         # authenticate using SSL client cert
         session.ssl_login(options.cert, None, options.serverca, proxyuser=options.runas)
     elif options.user:
-        #authenticate using user/password
+        # authenticate using user/password
         session.login()
     elif has_krb_creds() or (options.keytab and options.principal):
         try:
@@ -452,7 +452,7 @@ def handle_trash():
     print("...got %i builds" % len(untagged))
     min_age = options.delay
     trashcan_tag = options.trashcan_tag
-    #Step 1: place unreferenced builds into trashcan
+    # Step 1: place unreferenced builds into trashcan
     i = 0
     N = len(untagged)
     to_trash = []
@@ -477,7 +477,7 @@ def handle_trash():
     for binfo, [refs] in six.moves.zip(continuing, mcall.call_all()):
         i += 1
         nvr = binfo['nvr']
-        #XXX - this is more data than we need
+        # XXX - this is more data than we need
         #      also, this call takes waaaay longer than it should
         if refs.get('tags'):
             # must have been tagged just now
@@ -486,12 +486,12 @@ def handle_trash():
         if refs.get('rpms'):
             if options.debug:
                 print("[%i/%i] Build has %i rpm references: %s" % (i, N, len(refs['rpms']), nvr))
-                #pprint.pprint(refs['rpms'])
+                # pprint.pprint(refs['rpms'])
             continue
         if refs.get('archives'):
             if options.debug:
                 print("[%i/%i] Build has %i archive references: %s" % (i, N, len(refs['archives']), nvr))
-                #pprint.pprint(refs['archives'])
+                # pprint.pprint(refs['archives'])
             continue
         if refs.get('component_of'):
             if options.debug:
@@ -499,22 +499,22 @@ def handle_trash():
             continue
         ts = refs['last_used']
         if ts:
-            #work around server bug
+            # work around server bug
             if isinstance(ts, list):
                 ts = ts[0]
-            #XXX - should really check time server side
+            # XXX - should really check time server side
             if options.debug:
                 print("[%i/%i] Build has been used in a buildroot: %s" % (i, N, nvr))
                 print("Last_used: %s" % datetime.datetime.fromtimestamp(ts).isoformat())
             age = time.time() - ts
             if age < min_age:
                 continue
-        #see how long build has been untagged
+        # see how long build has been untagged
         history = session.queryHistory(build=binfo['id'])['tag_listing']
         age = None
         binfo2 = None
         if not history:
-            #never tagged, we'll have to use the build create time
+            # never tagged, we'll have to use the build create time
             binfo2 = session.getBuild(binfo['id'])
             ts = binfo2.get('creation_ts')
             if ts is None:
@@ -531,7 +531,7 @@ def handle_trash():
             history = [(h['revoke_event'],h) for h in history]
             last = max(history)[1]
             if not last['revoke_event']:
-                #this might happen if the build was tagged just now
+                # this might happen if the build was tagged just now
                 print("[%i/%i] Warning: build not untagged: %s" % (i, N, nvr))
                 continue
             age = time.time() - last['revoke_ts']
@@ -539,7 +539,7 @@ def handle_trash():
             if options.debug:
                 print("[%i/%i] Build untagged only recently: %s" % (i, N, nvr))
             continue
-        #check build signatures
+        # check build signatures
         keys = get_build_sigs(binfo['id'], cache=True)
         if keys and options.debug:
             print("Build: %s, Keys: %s" % (nvr, keys))
@@ -547,14 +547,14 @@ def handle_trash():
             print("Skipping build %s. Keys: %s" % (nvr, keys))
             continue
 
-        #ok, go ahead add it to the list
+        # ok, go ahead add it to the list
         if binfo2 is None:
             binfo2 = session.getBuild(binfo['id'])
         print("[%i/%i] Adding build to trash list: %s" % (i, N, nvr))
         to_trash.append(binfo2)
 
-    #process to_trash
-    #group by owner so we can reduce the number of notices
+    # process to_trash
+    # group by owner so we can reduce the number of notices
     by_owner = {}
     for binfo in to_trash:
         by_owner.setdefault(binfo['owner_name'], []).append(binfo)
@@ -571,14 +571,14 @@ def handle_trash():
             else:
                 if options.debug:
                     print("Moving to trashcan: %s" % nvr)
-                #figure out package owner
+                # figure out package owner
                 count = {}
                 for pkg in session.listPackages(pkgID=binfo['name']):
                     count.setdefault(pkg['owner_id'], 0)
                     count[pkg['owner_id']] += 1
                 if not count:
                     print("Warning: no owner for %s, using build owner" % nvr)
-                    #best we can do currently
+                    # best we can do currently
                     owner = binfo['owner_id']
                 else:
                     owner = max([(n, k) for k, n in six.iteritems(count)])[1]
@@ -597,7 +597,7 @@ def protected_sig(keys):
         if not key:
             continue
         if not sigmatch(key, options.unprotected_key_patterns):
-            #this key is protected
+            # this key is protected
             return True
     return False
 
@@ -633,7 +633,7 @@ def handle_delete(just_salvage=False):
     trash = [(b['nvr'], b) for b in session.listTagged(trashcan_tag)]
     trash.sort()
     print("...got %i builds" % len(trash))
-    #XXX - it would be better if there were more appropriate server calls for this
+    # XXX - it would be better if there were more appropriate server calls for this
     grace_period = options.grace_period
     import time
 
@@ -685,7 +685,7 @@ def handle_delete(just_salvage=False):
     for (nvr, binfo), [history] in zip(trash, mcall.call_all()):
         current = [x for x in history if x['active']]
         if not current:
-            #untagged just now?
+            # untagged just now?
             print("Warning: history missing for %s" % nvr)
             pprint.pprint(binfo)
             pprint.pprint(history)
@@ -712,7 +712,7 @@ def handle_delete(just_salvage=False):
     for binfo, result in six.moves.zip(continuing, mcall.call_all()):
         if isinstance(result, dict):
             print("Warning: deletion failed: %s" % result['faultString'])
-            #TODO - log details for delete failures
+            # TODO - log details for delete failures
 
 
 class TagPruneTest(koji.policy.MatchTest):
@@ -814,7 +814,7 @@ def get_build_sigs(build, cache=False):
         ret = build_sig_cache[build] = []
         return ret
     else:
-        #TODO - multicall helps, but it might be good to have a more robust server-side call
+        # TODO - multicall helps, but it might be good to have a more robust server-side call
         session.multicall = True
         for rpminfo in rpms:
             session.queryRPMSigs(rpm_id=rpminfo['id'])
@@ -830,18 +830,18 @@ def handle_prune():
 
     If purge is True, will also attempt to delete the pruned builds afterwards
     """
-    #read policy
+    # read policy
     if not options.config or not options.config.has_option('prune', 'policy'):
         print("Skipping prune step. No policies available.")
         return
-    #policies = read_policies(options.policy_file)
+    # policies = read_policies(options.policy_file)
     policies = scan_policies(options.config.get('prune', 'policy'))
     for action in policies.all_actions():
         if action not in ("keep", "untag", "skip"):
             raise Exception("Invalid action: %s" % action)
     if options.debug:
         pprint.pprint(policies.ruleset)
-    #get tags
+    # get tags
     tags = session.listTags(perms=False, queryOpts={'order': 'name'})
     untagged = {}
     build_ids = {}
@@ -852,7 +852,7 @@ def handle_prune():
                 print("Skipping trashcan tag: %s" % tagname)
             continue
         if not check_tag(tagname):
-            #if options.debug:
+            # if options.debug:
             #    print("skipping tag due to filter: %s" % tagname)
             continue
         bypass = False
@@ -870,7 +870,7 @@ def handle_prune():
                 continue
         if options.debug:
             print("Pruning tag: %s" % tagname)
-        #get builds
+        # get builds
         history = session.queryHistory(tag=tagname, active=True)['tag_listing']
         if not history:
             if options.debug:
@@ -886,13 +886,13 @@ def handle_prune():
         pkgs.sort()
         for pkg in pkgs:
             if not check_package(pkg):
-                #if options.debug:
+                # if options.debug:
                 #    print("skipping package due to filter: %s" % pkg)
                 continue
             if options.debug:
                 print(pkg)
             hist = pkghist[pkg]
-            #these are the *active* history entries for tag/pkg
+            # these are the *active* history entries for tag/pkg
             skipped = 0
             for order, entry in enumerate(hist):
                 # get sig data
@@ -937,19 +937,19 @@ def handle_prune():
             build_id = build_ids[nvr]
             tags = [t['name'] for t in  session.listTags(build_id, perms=False)]
             if options.test:
-                #filted out the tags we would have dropped above
+                # filted out the tags we would have dropped above
                 tags = [t for t in tags if t not in untagged[nvr]]
             if tags:
-                #still tagged somewhere
+                # still tagged somewhere
                 print("Skipping %s, still tagged: %s" % (nvr, tags))
                 continue
-            #check cached sigs first to save a little time
+            # check cached sigs first to save a little time
             if build_id in build_sig_cache:
                 keys = build_sig_cache[build_id]
                 if protected_sig(keys):
                     print("Skipping %s, signatures: %s" % (nvr, keys))
                     continue
-            #recheck signatures in case build was signed during run
+            # recheck signatures in case build was signed during run
             keys = get_build_sigs(build_id, cache=False)
             if protected_sig(keys):
                 print("Skipping %s, signatures: %s" % (nvr, keys))
@@ -963,7 +963,7 @@ def handle_prune():
                     session.deleteBuild(build_id, strict=False)
                 except (six.moves.xmlrpc_client.Fault, koji.GenericError) as e:
                     print("Warning: deletion failed: %s" % e)
-                    #server issue
+                    # server issue
                     pass
 
 if __name__ == "__main__":
@@ -1011,7 +1011,7 @@ if __name__ == "__main__":
         pass
     except SystemExit:
         rv = 1
-    #except:
+    # except:
     #    if options.debug:
     #        raise
     #    else:

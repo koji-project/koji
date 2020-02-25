@@ -169,7 +169,7 @@ if __name__ == "__main__":
     config.read(options.conf)
 
     cfgmap = [
-        #option, type, default
+        # option, type, default
         ['DBName', 'string', None],
         ['DBUser', 'string', None],
         ['DBHost', 'string', None],
