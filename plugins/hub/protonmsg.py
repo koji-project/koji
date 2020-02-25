@@ -22,6 +22,7 @@ from koji.plugin import callback, convert_datetime, ignore_error
 CONFIG_FILE = '/etc/koji-hub/plugins/protonmsg.conf'
 CONFIG = None
 
+
 class TimeoutHandler(MessagingHandler):
     def __init__(self, url, msgs, conf, *args, **kws):
         super(TimeoutHandler, self).__init__(*args, **kws)
@@ -151,6 +152,7 @@ def queue_msg(address, props, data):
     body = json.dumps(data, default=json_serialize)
     msgs.append((address, props, body))
 
+
 @convert_datetime
 @callback('postPackageListChange')
 def prep_package_list_change(cbtype, *args, **kws):
@@ -161,6 +163,7 @@ def prep_package_list_change(cbtype, *args, **kws):
              'action': kws['action'],
              'user': kws['user']['name']}
     queue_msg(address, props, kws)
+
 
 @convert_datetime
 @callback('postTaskStateChange')
@@ -176,6 +179,7 @@ def prep_task_state_change(cbtype, *args, **kws):
              'old': kws['old'],
              'new': kws['new']}
     queue_msg(address, props, kws)
+
 
 @convert_datetime
 @callback('postBuildStateChange')
@@ -196,6 +200,7 @@ def prep_build_state_change(cbtype, *args, **kws):
              'new': new}
     queue_msg(address, props, kws)
 
+
 @convert_datetime
 @callback('postImport')
 def prep_import(cbtype, *args, **kws):
@@ -206,6 +211,7 @@ def prep_import(cbtype, *args, **kws):
              'version': kws['build']['version'],
              'release': kws['build']['release']}
     queue_msg(address, props, kws)
+
 
 @convert_datetime
 @callback('postRPMSign')
@@ -224,6 +230,7 @@ def prep_rpm_sign(cbtype, *args, **kws):
              'rpm_arch': kws['rpm']['arch']}
     queue_msg(address, props, kws)
 
+
 def _prep_tag_msg(address, cbtype, kws):
     build = kws['build']
     props = {'type': cbtype[4:],
@@ -234,15 +241,18 @@ def _prep_tag_msg(address, cbtype, kws):
              'user': kws['user']['name']}
     queue_msg(address, props, kws)
 
+
 @convert_datetime
 @callback('postTag')
 def prep_tag(cbtype, *args, **kws):
     _prep_tag_msg('build.tag', cbtype, kws)
 
+
 @convert_datetime
 @callback('postUntag')
 def prep_untag(cbtype, *args, **kws):
     _prep_tag_msg('build.untag', cbtype, kws)
+
 
 @convert_datetime
 @callback('postRepoInit')
@@ -253,6 +263,7 @@ def prep_repo_init(cbtype, *args, **kws):
              'repo_id': kws['repo_id']}
     queue_msg(address, props, kws)
 
+
 @convert_datetime
 @callback('postRepoDone')
 def prep_repo_done(cbtype, *args, **kws):
@@ -262,6 +273,7 @@ def prep_repo_done(cbtype, *args, **kws):
              'repo_id': kws['repo']['id'],
              'expire': kws['expire']}
     queue_msg(address, props, kws)
+
 
 @ignore_error
 @convert_datetime

@@ -32,6 +32,7 @@ import six.moves._thread
 class _data(object):
     pass
 
+
 class ThreadLocal(object):
     def __init__(self):
         object.__setattr__(self, '_tdict', {})

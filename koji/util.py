@@ -52,6 +52,7 @@ def deprecated(message):
         warnings.simplefilter('always', DeprecationWarning)
         warnings.warn(message, DeprecationWarning)
 
+
 def _changelogDate(cldate):
     return time.strftime('%a %b %d %Y', time.strptime(koji.formatTime(cldate), '%Y-%m-%d %H:%M:%S'))
 
@@ -68,6 +69,7 @@ def formatChangelog(entries):
             koji._fix_print(entry['author']),
             koji._fix_print(entry['text']))
     return result
+
 
 DATE_RE = re.compile(r'(\d+)-(\d+)-(\d+)')
 TIME_RE = re.compile(r'(\d+):(\d+):(\d+)')
@@ -496,7 +498,6 @@ def move_and_symlink(src, dst, relative=True, create_dir=False):
     if relative:
         dst = os.path.relpath(dst, os.path.dirname(src))
     os.symlink(dst, src)
-
 
 
 def joinpath(path, *paths):

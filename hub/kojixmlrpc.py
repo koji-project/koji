@@ -379,6 +379,7 @@ def offline_reply(start_response, msg=None):
     start_response('200 OK', headers)
     return [response]
 
+
 def load_config(environ):
     """Load configuration options
 
@@ -509,6 +510,7 @@ def load_plugins(opts):
             opts['OfflineMessage'] = 'configuration error'
     return tracker
 
+
 _default_policies = {
     'build_from_srpm': '''
             has_perm admin :: allow
@@ -538,6 +540,7 @@ _default_policies = {
             all :: DEFAULT
             ''',
 }
+
 
 def get_policy(opts, plugins):
     if not opts.get('policy'):
@@ -593,6 +596,7 @@ class HubFormatter(logging.Formatter):
             record.user_name = None
         return logging.Formatter.format(self, record)
 
+
 def setup_logging1():
     """Set up basic logging, before options are loaded"""
     global log_handler
@@ -604,6 +608,7 @@ def setup_logging1():
     log_handler.setFormatter(HubFormatter(log_format))
     log_handler.setLevel(logging.DEBUG)
     logger.addHandler(log_handler)
+
 
 def setup_logging2(opts):
     global log_handler
@@ -659,6 +664,7 @@ def get_memory_usage():
     size, res, shr, text, lib, data, dirty = statm
     return res - shr
 
+
 def server_setup(environ):
     global opts, plugins, registry, policy
     logger = logging.getLogger('koji')
@@ -691,6 +697,7 @@ def server_setup(environ):
 
 firstcall = True
 firstcall_lock = threading.Lock()
+
 
 def application(environ, start_response):
     global firstcall

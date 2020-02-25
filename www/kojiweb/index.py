@@ -48,6 +48,7 @@ _sortbyname = lambda x: x['name']
 # loggers
 authlogger = logging.getLogger('koji.auth')
 
+
 def _setUserCookie(environ, user):
     options = environ['koji.options']
     # include the current time in the cookie so we can verify that
@@ -72,6 +73,7 @@ def _setUserCookie(environ, user):
     environ['koji.headers'].append(['Set-Cookie', out])
     environ['koji.headers'].append(['Cache-Control', 'no-cache="set-cookie"'])
 
+
 def _clearUserCookie(environ):
     cookies = six.moves.http_cookies.SimpleCookie()
     cookies['user'] = ''
@@ -80,6 +82,7 @@ def _clearUserCookie(environ):
     c['expires'] = 0
     out = c.OutputString()
     environ['koji.headers'].append(['Set-Cookie', out])
+
 
 def _getUserCookie(environ):
     options = environ['koji.options']
@@ -118,6 +121,7 @@ def _getUserCookie(environ):
     # Otherwise, cookie is valid and current
     return user
 
+
 def _krbLogin(environ, session, principal):
     options = environ['koji.options']
     wprinc = options['WebPrincipal']
@@ -126,6 +130,7 @@ def _krbLogin(environ, session, principal):
     return session.krb_login(principal=wprinc, keytab=keytab,
                              ccache=ccache, proxyuser=principal)
 
+
 def _sslLogin(environ, session, username):
     options = environ['koji.options']
     client_cert = options['WebCert']
@@ -133,6 +138,7 @@ def _sslLogin(environ, session, username):
 
     return session.ssl_login(client_cert, None, server_ca,
                              proxyuser=username)
+
 
 def _assertLogin(environ):
     session = environ['koji.session']
@@ -165,6 +171,7 @@ def _assertLogin(environ):
         _redirect(environ, 'login')
         assert False  # pragma: no cover
 
+
 def _getServer(environ):
     opts = environ['koji.options']
     s_opts = {'krbservice': opts['KrbService'],
@@ -186,6 +193,7 @@ def _getServer(environ):
     environ['koji.session'] = session
     return session
 
+
 def _construct_url(environ, page):
     port = environ['SERVER_PORT']
     host = environ['SERVER_NAME']
@@ -195,13 +203,16 @@ def _construct_url(environ, page):
         return "%s://%s%s" % (url_scheme, host, page)
     return "%s://%s:%s%s" % (url_scheme, host, port, page)
 
+
 def _getBaseURL(environ):
     base = environ['SCRIPT_NAME']
     return _construct_url(environ, base)
 
+
 def _redirect(environ, location):
     environ['koji.redirect'] = location
     raise ServerRedirect
+
 
 def _redirectBack(environ, page, forceSSL):
     if page:
@@ -226,6 +237,7 @@ def _redirectBack(environ, page, forceSSL):
 
     # and redirect to the page
     _redirect(environ, page)
+
 
 def login(environ, page=None):
     session = _getServer(environ)
@@ -270,6 +282,7 @@ def login(environ, page=None):
     # To protect the session cookie, we must forceSSL
     _redirectBack(environ, page, forceSSL=True)
 
+
 def logout(environ, page=None):
     user = _getUserCookie(environ)
     _clearUserCookie(environ)
@@ -277,6 +290,7 @@ def logout(environ, page=None):
         authlogger.info('Logout by %s', user)
 
     _redirectBack(environ, page, forceSSL=False)
+
 
 def index(environ, packageOrder='package_name', packageStart=None):
     values = _initValues(environ)
@@ -326,6 +340,7 @@ def index(environ, packageOrder='package_name', packageStart=None):
 
     return _genHTML(environ, 'index.chtml')
 
+
 def notificationedit(environ, notificationID):
     server = _getServer(environ)
     _assertLogin(environ)
@@ -371,6 +386,7 @@ def notificationedit(environ, notificationID):
 
         return _genHTML(environ, 'notificationedit.chtml')
 
+
 def notificationcreate(environ):
     server = _getServer(environ)
     _assertLogin(environ)
@@ -415,6 +431,7 @@ def notificationcreate(environ):
 
         return _genHTML(environ, 'notificationedit.chtml')
 
+
 def notificationdelete(environ, notificationID):
     server = _getServer(environ)
     _assertLogin(environ)
@@ -427,6 +444,7 @@ def notificationdelete(environ, notificationID):
     server.deleteNotification(notification['id'])
 
     _redirect(environ, 'index')
+
 
 # All Tasks
 _TASKS = ['build',
@@ -462,6 +480,7 @@ _TASKS = ['build',
 _TOPLEVEL_TASKS = ['build', 'buildNotification', 'chainbuild', 'maven', 'chainmaven', 'wrapperRPM', 'winbuild', 'newRepo', 'distRepo', 'tagBuild', 'tagNotification', 'waitrepo', 'livecd', 'appliance', 'image', 'livemedia']
 # Tasks that can have children
 _PARENT_TASKS = ['build', 'chainbuild', 'maven', 'chainmaven', 'winbuild', 'newRepo', 'distRepo', 'wrapperRPM', 'livecd', 'appliance', 'image', 'livemedia']
+
 
 def tasks(environ, owner=None, state='active', view='tree', method='all', hostID=None, channelID=None, start=None, order='-id'):
     values = _initValues(environ, 'Tasks', 'tasks')
@@ -565,6 +584,7 @@ def tasks(environ, owner=None, state='active', view='tree', method='all', hostID
             task['descendents'] = descendents
 
     return _genHTML(environ, 'tasks.chtml')
+
 
 def taskinfo(environ, taskID):
     server = _getServer(environ)
@@ -712,6 +732,7 @@ def taskinfo(environ, taskID):
         values['params_parsed'] = None
     return _genHTML(environ, 'taskinfo.chtml')
 
+
 def taskstatus(environ, taskID):
     server = _getServer(environ)
 
@@ -726,6 +747,7 @@ def taskstatus(environ, taskID):
             output += '%s:%s:%s\n' % (volume, filename, file_stats['st_size'])
     return output
 
+
 def resubmittask(environ, taskID):
     server = _getServer(environ)
     _assertLogin(environ)
@@ -733,6 +755,7 @@ def resubmittask(environ, taskID):
     taskID = int(taskID)
     newTaskID = server.resubmitTask(taskID)
     _redirect(environ, 'taskinfo?taskID=%i' % newTaskID)
+
 
 def canceltask(environ, taskID):
     server = _getServer(environ)
@@ -742,10 +765,12 @@ def canceltask(environ, taskID):
     server.cancelTask(taskID)
     _redirect(environ, 'taskinfo?taskID=%i' % taskID)
 
+
 def _sortByExtAndName(item):
     """Sort filename tuples key function, first by extension, and then by name."""
     kRoot, kExt = os.path.splitext(os.path.basename(item[1]))
     return (kExt, kRoot)
+
 
 def getfile(environ, taskID, name, volume='DEFAULT', offset=None, size=None):
     server = _getServer(environ)
@@ -810,6 +835,7 @@ def _chunk_file(server, environ, taskID, name, offset, size, volume):
         offset += content_length
         remaining -= content_length
 
+
 def tags(environ, start=None, order=None, childID=None):
     values = _initValues(environ, 'Tags', 'tags')
     server = _getServer(environ)
@@ -830,7 +856,9 @@ def tags(environ, start=None, order=None, childID=None):
 
     return _genHTML(environ, 'tags.chtml')
 
+
 _PREFIX_CHARS = [chr(char) for char in list(range(48, 58)) + list(range(97, 123))]
+
 
 def packages(environ, tagID=None, userID=None, order='package_name', start=None, prefix=None, inherited='1'):
     values = _initValues(environ, 'Packages', 'packages')
@@ -866,6 +894,7 @@ def packages(environ, tagID=None, userID=None, order='package_name', start=None,
 
     return _genHTML(environ, 'packages.chtml')
 
+
 def packageinfo(environ, packageID, tagOrder='name', tagStart=None, buildOrder='-completion_time', buildStart=None):
     values = _initValues(environ, 'Package Info', 'packages')
     server = _getServer(environ)
@@ -887,6 +916,7 @@ def packageinfo(environ, packageID, tagOrder='name', tagStart=None, buildOrder='
                                 start=buildStart, dataName='builds', prefix='build', order=buildOrder)
 
     return _genHTML(environ, 'packageinfo.chtml')
+
 
 def taginfo(environ, tagID, all='0', packageOrder='package_name', packageStart=None, buildOrder='-completion_time', buildStart=None, childID=None):
     values = _initValues(environ, 'Tag Info', 'tags')
@@ -943,6 +973,7 @@ def taginfo(environ, tagID, all='0', packageOrder='package_name', packageStart=N
 
     return _genHTML(environ, 'taginfo.chtml')
 
+
 def tagcreate(environ):
     server = _getServer(environ)
     _assertLogin(environ)
@@ -977,6 +1008,7 @@ def tagcreate(environ):
         values['permissions'] = server.getAllPerms()
 
         return _genHTML(environ, 'tagedit.chtml')
+
 
 def tagedit(environ, tagID):
     server = _getServer(environ)
@@ -1020,6 +1052,7 @@ def tagedit(environ, tagID):
 
         return _genHTML(environ, 'tagedit.chtml')
 
+
 def tagdelete(environ, tagID):
     server = _getServer(environ)
     _assertLogin(environ)
@@ -1032,6 +1065,7 @@ def tagdelete(environ, tagID):
     server.deleteTag(tag['id'])
 
     _redirect(environ, 'tags')
+
 
 def tagparent(environ, tagID, parentID, action):
     server = _getServer(environ)
@@ -1096,6 +1130,7 @@ def tagparent(environ, tagID, parentID, action):
 
     _redirect(environ, 'taginfo?tagID=%i' % tag['id'])
 
+
 def externalrepoinfo(environ, extrepoID):
     values = _initValues(environ, 'External Repo Info', 'tags')
     server = _getServer(environ)
@@ -1110,6 +1145,7 @@ def externalrepoinfo(environ, extrepoID):
     values['repoTags'] = repoTags
 
     return _genHTML(environ, 'externalrepoinfo.chtml')
+
 
 def buildinfo(environ, buildID):
     values = _initValues(environ, 'Build Info', 'builds')
@@ -1236,6 +1272,7 @@ def buildinfo(environ, buildID):
     values['pathinfo'] = pathinfo
     return _genHTML(environ, 'buildinfo.chtml')
 
+
 def builds(environ, userID=None, tagID=None, packageID=None, state=None, order='-build_id', start=None, prefix=None, inherited='1', latest='1', type=None):
     values = _initValues(environ, 'Builds', 'builds')
     server = _getServer(environ)
@@ -1319,6 +1356,7 @@ def builds(environ, userID=None, tagID=None, packageID=None, state=None, order='
 
     return _genHTML(environ, 'builds.chtml')
 
+
 def users(environ, order='name', start=None, prefix=None):
     values = _initValues(environ, 'Users', 'users')
     server = _getServer(environ)
@@ -1337,6 +1375,7 @@ def users(environ, order='name', start=None, prefix=None):
     values['chars'] = _PREFIX_CHARS
 
     return _genHTML(environ, 'users.chtml')
+
 
 def userinfo(environ, userID, packageOrder='package_name', packageStart=None, buildOrder='-completion_time', buildStart=None):
     values = _initValues(environ, 'User Info', 'users')
@@ -1359,6 +1398,7 @@ def userinfo(environ, userID, packageOrder='package_name', packageStart=None, bu
                                 start=buildStart, dataName='builds', prefix='build', order=buildOrder, pageSize=10)
 
     return _genHTML(environ, 'userinfo.chtml')
+
 
 def rpminfo(environ, rpmID, fileOrder='name', fileStart=None, buildrootOrder='-id', buildrootStart=None):
     values = _initValues(environ, 'RPM Info', 'builds')
@@ -1413,6 +1453,7 @@ def rpminfo(environ, rpmID, fileOrder='name', fileStart=None, buildrootOrder='-i
 
     return _genHTML(environ, 'rpminfo.chtml')
 
+
 def archiveinfo(environ, archiveID, fileOrder='name', fileStart=None, buildrootOrder='-id', buildrootStart=None):
     values = _initValues(environ, 'Archive Info', 'builds')
     server = _getServer(environ)
@@ -1451,6 +1492,7 @@ def archiveinfo(environ, archiveID, fileOrder='name', fileStart=None, buildrootO
 
     return _genHTML(environ, 'archiveinfo.chtml')
 
+
 def fileinfo(environ, filename, rpmID=None, archiveID=None):
     values = _initValues(environ, 'File Info', 'builds')
     server = _getServer(environ)
@@ -1485,6 +1527,7 @@ def fileinfo(environ, filename, rpmID=None, archiveID=None):
 
     return _genHTML(environ, 'fileinfo.chtml')
 
+
 def cancelbuild(environ, buildID):
     server = _getServer(environ)
     _assertLogin(environ)
@@ -1499,6 +1542,7 @@ def cancelbuild(environ, buildID):
         raise koji.GenericError('unable to cancel build')
 
     _redirect(environ, 'buildinfo?buildID=%i' % build['id'])
+
 
 def hosts(environ, state='enabled', start=None, order='name'):
     values = _initValues(environ, 'Hosts', 'hosts')
@@ -1529,6 +1573,7 @@ def hosts(environ, state='enabled', start=None, order='name'):
     kojiweb.util.paginateList(values, hosts, start, 'hosts', 'host', order)
 
     return _genHTML(environ, 'hosts.chtml')
+
 
 def hostinfo(environ, hostID=None, userID=None):
     values = _initValues(environ, 'Host Info', 'hosts')
@@ -1569,6 +1614,7 @@ def hostinfo(environ, hostID=None, userID=None):
         values['perms'] = []
 
     return _genHTML(environ, 'hostinfo.chtml')
+
 
 def hostedit(environ, hostID):
     server = _getServer(environ)
@@ -1619,6 +1665,7 @@ def hostedit(environ, hostID):
 
         return _genHTML(environ, 'hostedit.chtml')
 
+
 def disablehost(environ, hostID):
     server = _getServer(environ)
     _assertLogin(environ)
@@ -1629,6 +1676,7 @@ def disablehost(environ, hostID):
 
     _redirect(environ, 'hostinfo?hostID=%i' % host['id'])
 
+
 def enablehost(environ, hostID):
     server = _getServer(environ)
     _assertLogin(environ)
@@ -1638,6 +1686,7 @@ def enablehost(environ, hostID):
     server.enableHost(host['name'])
 
     _redirect(environ, 'hostinfo?hostID=%i' % host['id'])
+
 
 def channelinfo(environ, channelID):
     values = _initValues(environ, 'Channel Info', 'hosts')
@@ -1665,6 +1714,7 @@ def channelinfo(environ, channelID):
 
     return _genHTML(environ, 'channelinfo.chtml')
 
+
 def buildrootinfo(environ, buildrootID, builtStart=None, builtOrder=None, componentStart=None, componentOrder=None):
     values = _initValues(environ, 'Buildroot Info', 'hosts')
     server = _getServer(environ)
@@ -1687,6 +1737,7 @@ def buildrootinfo(environ, buildrootID, builtStart=None, builtOrder=None, compon
     values['buildroot'] = buildroot
 
     return _genHTML(environ, template)
+
 
 def rpmlist(environ, type, buildrootID=None, imageID=None, start=None, order='nvr'):
     """
@@ -1739,6 +1790,7 @@ def rpmlist(environ, type, buildrootID=None, imageID=None, start=None, order='nv
 
     return _genHTML(environ, 'rpmlist.chtml')
 
+
 def archivelist(environ, type, buildrootID=None, imageID=None, start=None, order='filename'):
     values = _initValues(environ, 'Archive List', 'hosts')
     server = _getServer(environ)
@@ -1777,6 +1829,7 @@ def archivelist(environ, type, buildrootID=None, imageID=None, start=None, order
 
     return _genHTML(environ, 'archivelist.chtml')
 
+
 def buildtargets(environ, start=None, order='name'):
     values = _initValues(environ, 'Build Targets', 'buildtargets')
     server = _getServer(environ)
@@ -1791,6 +1844,7 @@ def buildtargets(environ, start=None, order='name'):
         values['perms'] = []
 
     return _genHTML(environ, 'buildtargets.chtml')
+
 
 def buildtargetinfo(environ, targetID=None, name=None):
     values = _initValues(environ, 'Build Target Info', 'buildtargets')
@@ -1820,6 +1874,7 @@ def buildtargetinfo(environ, targetID=None, name=None):
         values['perms'] = []
 
     return _genHTML(environ, 'buildtargetinfo.chtml')
+
 
 def buildtargetedit(environ, targetID):
     server = _getServer(environ)
@@ -1860,6 +1915,7 @@ def buildtargetedit(environ, targetID):
 
         return _genHTML(environ, 'buildtargetedit.chtml')
 
+
 def buildtargetcreate(environ):
     server = _getServer(environ)
     _assertLogin(environ)
@@ -1894,6 +1950,7 @@ def buildtargetcreate(environ):
 
         return _genHTML(environ, 'buildtargetedit.chtml')
 
+
 def buildtargetdelete(environ, targetID):
     server = _getServer(environ)
     _assertLogin(environ)
@@ -1908,10 +1965,12 @@ def buildtargetdelete(environ, targetID):
 
     _redirect(environ, 'buildtargets')
 
+
 def reports(environ):
     _getServer(environ)
     _initValues(environ, 'Reports', 'reports')
     return _genHTML(environ, 'reports.chtml')
+
 
 def buildsbyuser(environ, start=None, order='-builds'):
     values = _initValues(environ, 'Builds by User', 'reports')
@@ -1939,6 +1998,7 @@ def buildsbyuser(environ, start=None, order='-builds'):
     kojiweb.util.paginateList(values, users, start, 'userBuilds', 'userBuild', order)
 
     return _genHTML(environ, 'buildsbyuser.chtml')
+
 
 def rpmsbyhost(environ, start=None, order=None, hostArch=None, rpmArch=None):
     values = _initValues(environ, 'RPMs by Host', 'reports')
@@ -1981,6 +2041,7 @@ def rpmsbyhost(environ, start=None, order=None, hostArch=None, rpmArch=None):
 
     return _genHTML(environ, 'rpmsbyhost.chtml')
 
+
 def packagesbyuser(environ, start=None, order=None):
     values = _initValues(environ, 'Packages by User', 'reports')
     server = _getServer(environ)
@@ -2009,6 +2070,7 @@ def packagesbyuser(environ, start=None, order=None):
     kojiweb.util.paginateList(values, users, start, 'users', 'user', order)
 
     return _genHTML(environ, 'packagesbyuser.chtml')
+
 
 def tasksbyhost(environ, start=None, order='-tasks', hostArch=None):
     values = _initValues(environ, 'Tasks by Host', 'reports')
@@ -2046,6 +2108,7 @@ def tasksbyhost(environ, start=None, order='-tasks', hostArch=None):
 
     return _genHTML(environ, 'tasksbyhost.chtml')
 
+
 def tasksbyuser(environ, start=None, order='-tasks'):
     values = _initValues(environ, 'Tasks by User', 'reports')
     server = _getServer(environ)
@@ -2073,6 +2136,7 @@ def tasksbyuser(environ, start=None, order='-tasks'):
     kojiweb.util.paginateList(values, users, start, 'users', 'user', order)
 
     return _genHTML(environ, 'tasksbyuser.chtml')
+
 
 def buildsbystatus(environ, days='7'):
     values = _initValues(environ, 'Builds by Status', 'reports')
@@ -2108,6 +2172,7 @@ def buildsbystatus(environ, days='7'):
     values['increment'] = graphWidth / maxBuilds
 
     return _genHTML(environ, 'buildsbystatus.chtml')
+
 
 def buildsbytarget(environ, days='7', start=None, order='-builds'):
     values = _initValues(environ, 'Builds by Target', 'reports')
@@ -2148,11 +2213,13 @@ def buildsbytarget(environ, days='7', start=None, order='-builds'):
 
     return _genHTML(environ, 'buildsbytarget.chtml')
 
+
 def _filter_hosts_by_arch(hosts, arch):
     if arch == '__all__':
         return hosts
     else:
         return [h for h in hosts if arch in h['arches'].split()]
+
 
 def clusterhealth(environ, arch='__all__'):
     values = _initValues(environ, 'Cluster health', 'reports')
@@ -2203,6 +2270,7 @@ def clusterhealth(environ, arch='__all__'):
     values['graphWidth'] = graphWidth
     values['channels'] = sorted(channels, key=lambda x: x['name'])
     return _genHTML(environ, 'clusterhealth.chtml')
+
 
 def recentbuilds(environ, user=None, tag=None, package=None):
     values = _initValues(environ, 'Recent Build RSS')
@@ -2273,6 +2341,7 @@ def recentbuilds(environ, user=None, tag=None, package=None):
     environ['koji.headers'].append(['Content-Type', 'text/xml'])
     return _genHTML(environ, 'recentbuilds.chtml')
 
+
 _infoURLs = {'package': 'packageinfo?packageID=%(id)i',
              'build': 'buildinfo?buildID=%(id)i',
              'tag': 'taginfo?tagID=%(id)i',
@@ -2298,6 +2367,7 @@ _DEFAULT_SEARCH_ORDER = {
     'package': 'name',
     # any type not listed will default to 'name'
 }
+
 
 def search(environ, start=None, order=None):
     values = _initValues(environ, 'Search', 'search')

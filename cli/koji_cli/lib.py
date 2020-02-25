@@ -105,6 +105,7 @@ Available categories are: %(categories)s
 def get_usage_str(usage):
     return usage + _("\n(Specify the --help global option for a list of other help options)")
 
+
 def ensure_connection(session):
     try:
         ret = session.getAPIVersion()
@@ -379,7 +380,6 @@ def watch_logs(session, tasklist, opts, poll_interval):
                             sys.stdout.write("==> %s <==\n" % currlog)
                             lastlog = currlog
                         bytes_to_stdout(contents)
-
 
             if opts.follow:
                 for child in session.getTaskChildren(task_id):

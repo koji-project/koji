@@ -36,6 +36,7 @@ class BytesJSONEncoder(json.JSONEncoder):
             return o.decode('utf-8')
         return json.JSONEncoder.default(self, o)
 
+
 class Rpmdiff:
 
     # constants

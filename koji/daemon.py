@@ -84,6 +84,7 @@ def incremental_upload(session, fname, fd, path, retries=5, logger=None):
                 logger.error("Error uploading file %s to %s at offset %d" % (fname, path, offset))
                 break
 
+
 def fast_incremental_upload(session, fname, fd, path, retries, logger):
     """Like incremental_upload, but use the fast upload mechanism"""
 
@@ -107,6 +108,7 @@ def fast_incremental_upload(session, fname, fd, path, retries, logger):
             else:
                 logger.error("Error uploading file %s to %s at offset %d" % (fname, path, offset))
                 break
+
 
 def log_output(session, path, args, outfile, uploadpath, cwd=None, logerror=0, append=0, chroot=None, env=None):
     """Run command with output redirected.  If chroot is not None, chroot to the directory specified
@@ -400,6 +402,7 @@ class SCM(object):
         update_checkout_cmd = None
         update_checkout_dir = None
         env = None
+
         def _run(cmd, chdir=None, fatal=False, log=True, _count=[0]):
             if globals().get('KOJIKAMID'):
                 # we've been inserted into kojikamid, use its run()

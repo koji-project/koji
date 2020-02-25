@@ -91,11 +91,13 @@ except ImportError:
 
 PROFILE_MODULES = {}  # {module_name: module_instance}
 
+
 def _(args):
     """Stub function for translation"""
     return args  # pragma: no cover
 
 ## Constants ##
+
 
 RPM_HEADER_MAGIC = six.b('\x8e\xad\xe8')
 RPM_TAG_HEADERSIGNATURES = 62
@@ -129,6 +131,7 @@ for h in (
     SUPPORTED_OPT_DEP_HDRS[h] = hasattr(rpm, 'RPMTAG_%s' % h)
 
 # BEGIN kojikamid dup #
+
 
 class Enum(dict):
     """A simple class to track our enumerated constants
@@ -177,6 +180,7 @@ class Enum(dict):
     setdefault = _notImplemented
 
 # END kojikamid dup #
+
 
 API_VERSION = 1
 
@@ -290,10 +294,12 @@ DEFAULT_AUTH_TIMEOUT = 60
 # Exceptions
 PythonImportError = ImportError  # will be masked by koji's one
 
+
 class GenericError(Exception):
     """Base class for our custom exceptions"""
     faultCode = 1000
     fromFault = False
+
     def __str__(self):
         try:
             return str(self.args[0]['args'][0])
@@ -304,17 +310,21 @@ class GenericError(Exception):
                 return str(self.__dict__)
 # END kojikamid dup #
 
+
 class LockError(GenericError):
     """Raised when there is a lock conflict"""
     faultCode = 1001
+
 
 class AuthError(GenericError):
     """Raised when there is an error in authentication"""
     faultCode = 1002
 
+
 class TagError(GenericError):
     """Raised when a tagging operation fails"""
     faultCode = 1003
+
 
 class ActionNotAllowed(GenericError):
     """Raised when the session does not have permission to take some action"""
@@ -322,78 +332,97 @@ class ActionNotAllowed(GenericError):
 
 # BEGIN kojikamid dup #
 
+
 class BuildError(GenericError):
     """Raised when a build fails"""
     faultCode = 1005
 # END kojikamid dup #
 
+
 class AuthLockError(AuthError):
     """Raised when a lock prevents authentication"""
     faultCode = 1006
+
 
 class AuthExpired(AuthError):
     """Raised when a session has expired"""
     faultCode = 1007
 
+
 class SequenceError(AuthError):
     """Raised when requests are received out of sequence"""
     faultCode = 1008
+
 
 class RetryError(AuthError):
     """Raised when a request is received twice and cannot be rerun"""
     faultCode = 1009
 
+
 class PreBuildError(BuildError):
     """Raised when a build fails during pre-checks"""
     faultCode = 1010
+
 
 class PostBuildError(BuildError):
     """Raised when a build fails during post-checks"""
     faultCode = 1011
 
+
 class BuildrootError(BuildError):
     """Raised when there is an error with the buildroot"""
     faultCode = 1012
+
 
 class FunctionDeprecated(GenericError):
     """Raised by a deprecated function"""
     faultCode = 1013
 
+
 class ServerOffline(GenericError):
     """Raised when the server is offline"""
     faultCode = 1014
+
 
 class LiveCDError(GenericError):
     """Raised when LiveCD Image creation fails"""
     faultCode = 1015
 
+
 class PluginError(GenericError):
     """Raised when there is an error with a plugin"""
     faultCode = 1016
+
 
 class CallbackError(PluginError):
     """Raised when there is an error executing a callback"""
     faultCode = 1017
 
+
 class ApplianceError(GenericError):
     """Raised when Appliance Image creation fails"""
     faultCode = 1018
+
 
 class ParameterError(GenericError):
     """Raised when an rpc call receives incorrect arguments"""
     faultCode = 1019
 
+
 class ImportError(GenericError):
     """Raised when an import fails"""
     faultCode = 1020
+
 
 class ConfigurationError(GenericError):
     """Raised when load of koji configuration fails"""
     faultCode = 1021
 
+
 class LiveMediaError(GenericError):
     """Raised when LiveMedia Image creation fails"""
     faultCode = 1022
+
 
 class MultiCallInProgress(object):
     """
@@ -417,6 +446,7 @@ def convertFault(fault):
             return ret
     # otherwise...
     return fault
+
 
 def listFaults():
     """Return a list of faults
@@ -442,6 +472,7 @@ def listFaults():
 
 # functions for encoding/decoding optional arguments
 
+
 def encode_args(*args, **opts):
     """The function encodes optional arguments as regular arguments.
 
@@ -452,6 +483,7 @@ def encode_args(*args, **opts):
         opts['__starstar'] = True
         args = args + (opts,)
     return args
+
 
 def decode_args(*args):
     """Decodes optional arguments from a flat argument list
@@ -468,6 +500,7 @@ def decode_args(*args):
             args = args[:-1]
     return args, opts
 
+
 def decode_args2(args, names, strict=True):
     "An alternate form of decode_args, returns a dictionary"
     args, opts = decode_args(*args)
@@ -477,6 +510,7 @@ def decode_args2(args, names, strict=True):
     ret.update(opts)
     return ret
 
+
 def decode_int(n):
     """If n is not an integer, attempt to convert it"""
     if isinstance(n, six.integer_types):
@@ -485,6 +519,7 @@ def decode_int(n):
     return int(n)
 
 # commonly used functions
+
 
 def safe_xmlrpc_loads(s):
     """Load xmlrpc data from a string, but catch faults"""
@@ -530,6 +565,7 @@ def ensuredir(directory):
 
 # END kojikamid dup #
 
+
 def daemonize():
     """Detach and run in background"""
     pid = os.fork()
@@ -553,6 +589,7 @@ def daemonize():
     os.close(fd1)
     os.close(fd2)
 
+
 def multibyte(data):
     """Convert a list of bytes to an integer (network byte order)"""
     sum = 0
@@ -560,6 +597,7 @@ def multibyte(data):
     for i in range(n):
         sum += data[i] << (8 * (n - i - 1))
     return sum
+
 
 def find_rpm_sighdr(path):
     """Finds the offset and length of the signature header."""
@@ -569,6 +607,7 @@ def find_rpm_sighdr(path):
     sig_start = 96
     sigsize = rpm_hdr_size(path, sig_start)
     return (sig_start, sigsize)
+
 
 def rpm_hdr_size(f, ofs=None):
     """Returns the length (in bytes) of the rpm header
@@ -776,6 +815,7 @@ def rip_rpm_sighdr(src):
     fo.close()
     return sighdr
 
+
 def rip_rpm_hdr(src):
     """Rip the main header out of an rpm"""
     (start, size) = find_rpm_sighdr(src)
@@ -787,12 +827,14 @@ def rip_rpm_hdr(src):
     fo.close()
     return hdr
 
+
 def _ord(s):
     # in python2 it is char/str, while in py3 it is already int/bytes
     if isinstance(s, int):
         return s
     else:
         return ord(s)
+
 
 def __parse_packet_header(pgp_packet):
     """Parse pgp_packet header, return tag type and the rest of pgp_packet"""
@@ -828,6 +870,7 @@ def __parse_packet_header(pgp_packet):
         raise ValueError('Invalid OpenPGP packet length')
     return (tag, pgp_packet[offset:])
 
+
 def __subpacket_key_ids(subs):
     """Parse v4 signature subpackets and return a list of issuer key IDs"""
     res = []
@@ -846,6 +889,7 @@ def __subpacket_key_ids(subs):
             res.append(subs[off + 1: off + length])
         subs = subs[off + length:]
     return res
+
 
 def get_sigpacket_key_id(sigpacket):
     """Return ID of the key used to create sigpacket as a hexadecimal string"""
@@ -870,6 +914,7 @@ def get_sigpacket_key_id(sigpacket):
             'Unknown PGP signature packet version %s' % _ord(sigpacket[0]))
     return hex_string(key_id)
 
+
 def get_sighdr_key(sighdr):
     """Parse the sighdr and return the sigkey"""
     rh = RawHeader(sighdr)
@@ -880,6 +925,7 @@ def get_sighdr_key(sighdr):
         return None
     else:
         return get_sigpacket_key_id(sig)
+
 
 def splice_rpm_sighdr(sighdr, src, dst=None, bufsize=8192):
     """Write a copy of an rpm with signature header spliced in"""
@@ -900,6 +946,7 @@ def splice_rpm_sighdr(sighdr, src, dst=None, bufsize=8192):
     src_fo.close()
     dst_fo.close()
     return dst
+
 
 def get_rpm_header(f, ts=None):
     """Return the rpm header."""
@@ -998,6 +1045,7 @@ def get_header_fields(X, fields, src_arch=False):
         ret[f] = get_header_field(hdr, f, src_arch=src_arch)
     return ret
 
+
 def parse_NVR(nvr):
     """split N-V-R into dictionary of data"""
     ret = {}
@@ -1017,6 +1065,7 @@ def parse_NVR(nvr):
         ret['epoch'] = ret['name'][:epochIndex]
         ret['name'] = ret['name'][epochIndex + 1:]
     return ret
+
 
 def parse_NVRA(nvra):
     """split N-V-R.A.rpm into dictionary of data
@@ -1060,6 +1109,7 @@ def check_NVR(nvr, strict=False):
             raise
         else:
             return False
+
 
 def _check_NVR(nvr):
     if isinstance(nvr, six.string_types):
@@ -1107,6 +1157,7 @@ def is_debuginfo(name):
     return (name.endswith('-debuginfo') or name.endswith('-debugsource') or
             '-debuginfo-' in name)
 
+
 def canonArch(arch):
     """Given an arch, return the "canonical" arch"""
     # XXX - this could stand to be smarter, and we should probably
@@ -1131,6 +1182,7 @@ def canonArch(arch):
         return 'arm'
     else:
         return arch
+
 
 def parse_arches(arches, to_list=False, strict=False, allow_none=False):
     """Normalize user input for a list of arches.
@@ -1195,7 +1247,9 @@ class POMHandler(xml.sax.handler.ContentHandler):
         self.tag_content = None
         self.values.clear()
 
+
 ENTITY_RE = re.compile(r'&[A-Za-z0-9]+;')
+
 
 def parse_pom(path=None, contents=None):
     """
@@ -1236,6 +1290,7 @@ def parse_pom(path=None, contents=None):
             raise GenericError('could not extract %s from POM: %s' % (field, (path or '<contents>')))
     return values
 
+
 def pom_to_maven_info(pominfo):
     """
     Convert the output of parsing a POM into a format compatible
@@ -1249,6 +1304,7 @@ def pom_to_maven_info(pominfo):
                  'artifact_id': pominfo['artifactId'],
                  'version': pominfo['version']}
     return maveninfo
+
 
 def maven_info_to_nvr(maveninfo):
     """
@@ -1264,12 +1320,14 @@ def maven_info_to_nvr(maveninfo):
     nvr['package_name'] = nvr['name']
     return nvr
 
+
 def mavenLabel(maveninfo):
     """
     Return a user-friendly label for the given maveninfo.  maveninfo is
     a dict as returned by kojihub:getMavenBuild().
     """
     return '%(group_id)s-%(artifact_id)s-%(version)s' % maveninfo
+
 
 def hex_string(s):
     """Converts a string to a string of hex digits"""
@@ -1338,6 +1396,7 @@ This is a meta-package that requires a defined group of packages
 %doc
 """)
     return ''.join(data)
+
 
 def generate_comps(groups, expand_groups=False):
     """Generate comps content from groups data"""
@@ -1635,11 +1694,14 @@ name=build
 
     return ''.join(parts)
 
+
 def get_sequence_value(cursor, sequence):
     cursor.execute("""SELECT nextval(%(sequence)s)""", locals())
     return cursor.fetchone()[0]
 
 # From Python Cookbook 2nd Edition, Recipe 8.6
+
+
 def format_exc_plus():
     """ Format the usual traceback information, followed by a listing of
         all the local variables in each frame.
@@ -1668,6 +1730,7 @@ def format_exc_plus():
             except:
                 rv += "<ERROR WHILE PRINTING VALUE>\n"
     return rv
+
 
 def openRemoteFile(relpath, topurl=None, topdir=None, tempdir=None):
     """Open a file on the main server (read-only)
@@ -2084,6 +2147,7 @@ class PathInfo(object):
     def task(self, task_id, volume=None):
         """Return the output directory for the task with the given id"""
         return self.work(volume=volume) + '/' + self.taskrelpath(task_id)
+
 
 pathinfo = PathInfo()
 
@@ -3171,6 +3235,7 @@ class DBHandler(logging.Handler):
     A handler class which writes logging records, appropriately formatted,
     to a database.
     """
+
     def __init__(self, cnx, table, mapping=None):
         """
         Initialize the handler.
@@ -3221,6 +3286,7 @@ class DBHandler(logging.Handler):
         except:
             self.handleError(record)
 
+
 def formatTime(value):
     """Format a timestamp so it looks nicer"""
     if not value:
@@ -3237,6 +3303,7 @@ def formatTime(value):
         else:
             return value
 
+
 def formatTimeLong(value):
     """Format a timestamp to a more human-reable format, i.e.:
     Sat, 07 Sep 2002 00:00:01 GMT
@@ -3247,6 +3314,7 @@ def formatTimeLong(value):
         # Assume the string value passed in is the local time
         localtime = time.mktime(time.strptime(formatTime(value), '%Y-%m-%d %H:%M:%S'))
         return time.strftime('%a, %d %b %Y %H:%M:%S %Z', time.localtime(localtime))
+
 
 def buildLabel(buildInfo, showEpoch=False):
     """Format buildInfo (dict) into a descriptive label."""
@@ -3261,6 +3329,7 @@ def buildLabel(buildInfo, showEpoch=False):
     return '%s%s-%s-%s' % (epochStr, name,
                            buildInfo.get('version'),
                            buildInfo.get('release'))
+
 
 def _module_info(url):
     module_info = ''
@@ -3280,11 +3349,13 @@ def _module_info(url):
     else:
         return '%s:%s' % (repo_info, rev_info)
 
+
 def taskLabel(taskInfo):
     try:
         return _taskLabel(taskInfo)
     except Exception:
         return "malformed task"
+
 
 def _taskLabel(taskInfo):
     """Format taskInfo (dict) into a descriptive label."""
@@ -3405,10 +3476,13 @@ def _taskLabel(taskInfo):
     else:
         return '%s (%s)' % (method, arch)
 
+
 CONTROL_CHARS = [chr(i) for i in range(32)]
 NONPRINTABLE_CHARS = ''.join([c for c in CONTROL_CHARS if c not in '\r\n\t'])
 if six.PY3:
     NONPRINTABLE_CHARS_TABLE = dict.fromkeys(map(ord, NONPRINTABLE_CHARS), None)
+
+
 def removeNonprintable(value):
     # expects raw-encoded string, not unicode
     if six.PY2:
@@ -3506,11 +3580,13 @@ def add_file_logger(logger, fn):
     handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s'))
     logging.getLogger(logger).addHandler(handler)
 
+
 def add_stderr_logger(logger):
     handler = logging.StreamHandler()
     handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] {%(process)d} %(name)s:%(lineno)d %(message)s'))
     handler.setLevel(logging.DEBUG)
     logging.getLogger(logger).addHandler(handler)
+
 
 def add_sys_logger(logger):
     # For remote logging;
@@ -3521,6 +3597,7 @@ def add_sys_logger(logger):
     handler.setFormatter(logging.Formatter('%(name)s: %(message)s'))
     handler.setLevel(logging.INFO)
     logging.getLogger(logger).addHandler(handler)
+
 
 def add_mail_logger(logger, addr):
     """Adding e-mail logger
@@ -3541,6 +3618,7 @@ def add_mail_logger(logger, addr):
     handler.setFormatter(logging.Formatter('%(pathname)s:%(lineno)d [%(levelname)s] %(message)s'))
     handler.setLevel(logging.ERROR)
     logging.getLogger(logger).addHandler(handler)
+
 
 def remove_log_handler(logger, handler):
     logging.getLogger(logger).removeHandler(handler)

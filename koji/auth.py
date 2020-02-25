@@ -546,7 +546,6 @@ class Session(object):
         c.execute(q, {})
         (session_id,) = c.fetchone()
 
-
         # add session id to database
         q = """
         INSERT INTO sessions (id, user_id, key, hostip, authtype, master)
@@ -799,6 +798,7 @@ def get_user_groups(user_id):
     c.execute(q, locals())
     return dict(c.fetchall())
 
+
 def get_user_perms(user_id):
     c = context.cnx.cursor()
     q = """SELECT name
@@ -807,6 +807,7 @@ def get_user_perms(user_id):
     c.execute(q, locals())
     # return a list of permissions by name
     return [row[0] for row in c.fetchall()]
+
 
 def get_user_data(user_id):
     c = context.cnx.cursor()
@@ -818,27 +819,35 @@ def get_user_data(user_id):
         return None
     return dict(zip(fields, row))
 
+
 def login(*args, **opts):
     return context.session.login(*args, **opts)
+
 
 def krbLogin(*args, **opts):
     return context.session.krbLogin(*args, **opts)
 
+
 def sslLogin(*args, **opts):
     return context.session.sslLogin(*args, **opts)
+
 
 def logout():
     return context.session.logout()
 
+
 def subsession():
     return context.session.subsession()
+
 
 def logoutChild(session_id):
     return context.session.logoutChild(session_id)
 
+
 def exclusiveSession(*args, **opts):
     """Make this session exclusive"""
     return context.session.makeExclusive(*args, **opts)
+
 
 def sharedSession():
     """Drop out of exclusive mode"""

@@ -43,6 +43,7 @@ from koji.util import parseStatus, rmtree, to_list
 
 tag_cache = {}
 
+
 def getTag(session, tag, event=None):
     """A caching version of the hub call"""
     cache = tag_cache
@@ -724,7 +725,6 @@ class RepoManager(object):
             self.logger.info('Needed tags count went from %i to %i', n_need,
                              len(self.needed_tags))
 
-
     def regenRepos(self):
         """Trigger newRepo tasks for needed tags"""
 
@@ -822,6 +822,7 @@ def start_regen_loop(session, repomgr):
 def main(options, session):
     repomgr = RepoManager(options, session)
     repomgr.readCurrentRepos()
+
     def shutdown(*args):
         raise SystemExit
     signal.signal(signal.SIGTERM, shutdown)
@@ -863,6 +864,7 @@ def main(options, session):
         repomgr.killChildren()
     finally:
         session.logout()
+
 
 def get_options():
     """process options from command line and config file"""
@@ -976,12 +978,14 @@ def get_options():
                 setattr(options, name, fn)
     return options
 
+
 def quit(msg=None, code=1):
     if msg:
         logging.getLogger("koji.repo").error(msg)
         sys.stderr.write('%s\n' % msg)
         sys.stderr.flush()
     sys.exit(code)
+
 
 if __name__ == "__main__":
 

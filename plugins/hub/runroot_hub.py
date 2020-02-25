@@ -27,6 +27,7 @@ def get_channel_arches(channel):
             ret[koji.canonArch(a)] = 1
     return ret
 
+
 @export
 def runroot(tagInfo, arch, command, channel=None, **opts):
     """ Create a runroot task """

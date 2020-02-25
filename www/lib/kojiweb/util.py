@@ -41,6 +41,7 @@ import koji
 class NoSuchException(Exception):
     pass
 
+
 try:
     # pyOpenSSL might not be around
     from OpenSSL.SSL import Error as SSL_Error
@@ -50,6 +51,7 @@ except:
 
 themeInfo = {}
 themeCache = {}
+
 
 def _initValues(environ, title='Build System Info', pageID='summary'):
     global themeInfo
@@ -68,6 +70,7 @@ def _initValues(environ, title='Build System Info', pageID='summary'):
     environ['koji.values'] = values
 
     return values
+
 
 def themePath(path, local=False):
     global themeInfo
@@ -95,6 +98,7 @@ def themePath(path, local=False):
     themeCache[path, local] = ret
     return ret
 
+
 class DecodeUTF8(Cheetah.Filters.Filter):
     def filter(self, *args, **kw):
         """Convert all strs to unicode objects"""
@@ -106,6 +110,8 @@ class DecodeUTF8(Cheetah.Filters.Filter):
         return result
 
 # Escape ampersands so the output can be valid XHTML
+
+
 class XHTMLFilter(DecodeUTF8):
     def filter(self, *args, **kw):
         result = super(XHTMLFilter, self).filter(*args, **kw)
@@ -116,7 +122,9 @@ class XHTMLFilter(DecodeUTF8):
         result = result.replace('&amp;gt;', '&gt;')
         return result
 
+
 TEMPLATES = {}
+
 
 def _genHTML(environ, fileName):
     reqdir = os.path.dirname(environ['SCRIPT_FILENAME'])
@@ -154,10 +162,12 @@ def _genHTML(environ, fileName):
     else:
         return tmpl_inst.respond()
 
+
 def _truncTime():
     now = datetime.datetime.now()
     # truncate to the nearest 15 minutes
     return now.replace(minute=(now.minute // 15 * 15), second=0, microsecond=0)
+
 
 def _genToken(environ, tstamp=None):
     if 'koji.currentLogin' in environ and environ['koji.currentLogin']:
@@ -171,6 +181,7 @@ def _genToken(environ, tstamp=None):
         value = value.encode('utf-8')
     return hashlib.md5(value).hexdigest()[-8:]
 
+
 def _getValidTokens(environ):
     tokens = []
     now = _truncTime()
@@ -181,6 +192,7 @@ def _getValidTokens(environ):
             tokens.append(token)
     return tokens
 
+
 def toggleOrder(template, sortKey, orderVar='order'):
     """
     If orderVar equals 'sortKey', return '-sortKey', else
@@ -190,6 +202,7 @@ def toggleOrder(template, sortKey, orderVar='order'):
         return '-' + sortKey
     else:
         return sortKey
+
 
 def toggleSelected(template, var, option, checked=False):
     """
@@ -206,6 +219,7 @@ def toggleSelected(template, var, option, checked=False):
     else:
         return ''
 
+
 def sortImage(template, sortKey, orderVar='order'):
     """
     Return an html img tag suitable for inclusion in the sortKey of a sortable table,
@@ -218,6 +232,7 @@ def sortImage(template, sortKey, orderVar='order'):
         return '<img src="%s" class="sort" alt="descending sort"/>' % themePath("images/gray-triangle-down.gif")
     else:
         return ''
+
 
 def passthrough(template, *vars):
     """
@@ -239,6 +254,7 @@ def passthrough(template, *vars):
     else:
         return ''
 
+
 def passthrough_except(template, *exclude):
     """
     Construct a string suitable for use as URL
@@ -255,6 +271,7 @@ def passthrough_except(template, *exclude):
             passvars.append(var)
     return passthrough(template, *passvars)
 
+
 def sortByKeyFuncNoneGreatest(key):
     """Return a function to sort a list of maps by the given key.
     None will sort higher than all other values (instead of lower).
@@ -264,6 +281,7 @@ def sortByKeyFuncNoneGreatest(key):
         # Nones has priority, others are second
         return (v is None, v)
     return internal_key
+
 
 def paginateList(values, data, start, dataName, prefix=None, order=None, noneGreatest=False, pageSize=50):
     """
@@ -296,6 +314,7 @@ def paginateList(values, data, start, dataName, prefix=None, order=None, noneGre
 
     return data
 
+
 def paginateMethod(server, values, methodName, args=None, kw=None,
                    start=None, dataName=None, prefix=None, order=None, pageSize=50):
     """Paginate the results of the method with the given name when called with the given args and kws.
@@ -323,6 +342,7 @@ def paginateMethod(server, values, methodName, args=None, kw=None,
     _populateValues(values, dataName, prefix, data, totalRows, start, count, pageSize, order)
 
     return data
+
 
 def paginateResults(server, values, methodName, args=None, kw=None,
                     start=None, dataName=None, prefix=None, order=None, pageSize=50):
@@ -352,6 +372,7 @@ def paginateResults(server, values, methodName, args=None, kw=None,
 
     return data
 
+
 def _populateValues(values, dataName, prefix, data, totalRows, start, count, pageSize, order):
     """Populate the values list with the data about the list provided."""
     values[dataName] = data
@@ -372,20 +393,24 @@ def _populateValues(values, dataName, prefix, data, totalRows, start, count, pag
     pages = [page for page in range(0, totalPages) if (abs(page - currentPage) < 100 or ((page + 1) % 100 == 0))]
     values[(prefix and prefix + 'Pages') or 'pages'] = pages
 
+
 def stateName(stateID):
     """Convert a numeric build state into a readable name."""
     return koji.BUILD_STATES[stateID].lower()
+
 
 def imageTag(name):
     """Return an img tag that loads an icon with the given name"""
     return '<img class="stateimg" src="%s" title="%s" alt="%s"/>' \
            % (themePath("images/%s.png" % name), name, name)
 
+
 def stateImage(stateID):
     """Return an IMG tag that loads an icon appropriate for
     the given state"""
     name = stateName(stateID)
     return imageTag(name)
+
 
 def brStateName(stateID):
     """Convert a numeric buildroot state into a readable name."""
@@ -414,13 +439,16 @@ def repoStateName(stateID):
     else:
         return 'unknown'
 
+
 def taskState(stateID):
     """Convert a numeric task state into a readable name"""
     return koji.TASK_STATES[stateID].lower()
 
+
 formatTime = koji.formatTime
 formatTimeRSS = koji.formatTimeLong
 formatTimeLong = koji.formatTimeLong
+
 
 def formatTimestampDifference(start_ts, end_ts):
     diff = end_ts - start_ts
@@ -430,6 +458,7 @@ def formatTimestampDifference(start_ts, end_ts):
     diff = diff // 60
     hours = diff
     return "%d:%02d:%02d" % (hours, minutes, seconds)
+
 
 def formatDep(name, version, flags):
     """Format dependency information into
@@ -450,6 +479,7 @@ def formatDep(name, version, flags):
             if version:
                 s = "%s %s" % (s, version)
     return s
+
 
 def formatMode(mode):
     """Format a numeric mode into a ls-like string describing the access mode."""
@@ -485,8 +515,10 @@ def formatMode(mode):
 
     return result
 
+
 def formatThousands(value):
     return '{:,}'.format(value)
+
 
 def rowToggle(template):
     """If the value of template._rowNum is even, return 'row-even';
@@ -529,6 +561,7 @@ _fileFlags = {1: 'configuration',
               1024: 'unpatched',
               2048: 'public key'}
 
+
 def formatFileFlags(flags):
     """Format rpm fileflags for display.  Returns
     a list of human-readable strings specifying the
@@ -538,6 +571,7 @@ def formatFileFlags(flags):
         if flags & flag:
             results.append(desc)
     return results
+
 
 def escapeHTML(value):
     """Replace special characters to the text can be displayed in
@@ -553,6 +587,7 @@ def escapeHTML(value):
     return value.replace('&', '&amp;').\
         replace('<', '&lt;').\
         replace('>', '&gt;')
+
 
 def authToken(template, first=False, form=False):
     """Return the current authToken if it exists.
@@ -570,6 +605,7 @@ def authToken(template, first=False, form=False):
             return '&a=' + token
     else:
         return ''
+
 
 def explainError(error):
     """Explain an exception in user-consumable terms
@@ -643,6 +679,7 @@ class TaskResultFragment(object):
         - composer
         - empty_str_placeholder
     """
+
     def __init__(self, text='', size=None, need_escape=None, begin_tag='',
                  end_tag='', composer=None, empty_str_placeholder=None):
         self.text = text
@@ -688,6 +725,7 @@ class TaskResultLine(object):
         - end_tag
         - composer
     """
+
     def __init__(self, fragments=None, need_escape=None, begin_tag='',
                  end_tag='<br />', composer=None):
         if fragments is None:
@@ -754,6 +792,7 @@ def _parse_value(key, value, sep=', '):
 
     return TaskResultFragment(text=_str, need_escape=need_escape,
                               begin_tag=begin_tag, end_tag=end_tag)
+
 
 def task_result_to_html(result=None, exc_class=None,
                         max_abbr_lines=None, max_abbr_len=None,

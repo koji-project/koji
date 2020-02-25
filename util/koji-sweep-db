@@ -193,7 +193,6 @@ if __name__ == "__main__":
     if opts['DBHost'] is None:
         opts['DBHost'] = opts['DBhost']
 
-
     koji.db.provideDBopts(database=opts["DBName"],
                           user=opts["DBUser"],
                           password=opts.get("DBPass", None),

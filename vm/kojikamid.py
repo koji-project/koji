@@ -56,13 +56,16 @@ KOJIKAMID = True
 
 # INSERT kojikamid dup #
 
+
 class fakemodule(object):
     pass
+
 
 # make parts of the above insert accessible as koji.X
 koji = fakemodule()
 koji.GenericError = GenericError  # noqa: F821
 koji.BuildError = BuildError  # noqa: F821
+
 
 def encode_int(n):
     """If n is too large for a 32bit signed, convert it to a string"""
@@ -70,6 +73,7 @@ def encode_int(n):
         return n
     # else
     return str(n)
+
 
 class WindowsBuild(object):
 
@@ -529,6 +533,7 @@ class WindowsBuild(object):
         self.expireBuildroot()
         return self.gatherResults()
 
+
 def run(cmd, chdir=None, fatal=False, log=True):
     global logfd
     output = ''
@@ -558,6 +563,7 @@ def run(cmd, chdir=None, fatal=False, log=True):
         raise BuildError(msg)  # noqa: F821
     return ret, output
 
+
 def find_net_info():
     """
     Find the network gateway configured for this VM.
@@ -586,6 +592,7 @@ def find_net_info():
         gateway = None
     return macaddr, gateway
 
+
 def upload_file(server, prefix, path):
     """upload a single file to the vmd"""
     logger = logging.getLogger('koji.vm')
@@ -606,6 +613,7 @@ def upload_file(server, prefix, path):
     server.verifyChecksum(path, digest, 'md5')
     logger.info('Uploaded %s (%s bytes, md5: %s)', destpath, offset, digest)
 
+
 def get_mgmt_server():
     """Get a ServerProxy object we can use to retrieve task info"""
     logger = logging.getLogger('koji.vm')
@@ -624,6 +632,7 @@ def get_mgmt_server():
     logger.debug('found task-specific port %s', task_port)
     return six.moves.xmlrpc_client.ServerProxy('http://%s:%s/' % (gateway, task_port), allow_none=True)
 
+
 def get_options():
     """handle usage and parse options"""
     usage = """%prog [options]
@@ -636,6 +645,7 @@ def get_options():
     parser.add_option('-u', '--uninstall', action='store_true', help='Uninstall this daemon if it was installed previously as a service', default=False)
     (options, args) = parser.parse_args()
     return options
+
 
 def setup_logging(opts):
     global logfile, logfd
@@ -651,10 +661,12 @@ def setup_logging(opts):
     logger.addHandler(handler)
     return handler
 
+
 def log_local(msg):
     tb = ''.join(traceback.format_exception(*sys.exc_info()))
     sys.stderr.write('%s: %s\n' % (time.ctime(), msg))
     sys.stderr.write(tb)
+
 
 def stream_logs(server, handler, builds):
     """Stream logs incrementally to the server.
@@ -693,6 +705,7 @@ def stream_logs(server, handler, builds):
                     log_local('error uploading %s' % relpath)
         time.sleep(1)
 
+
 def fail(server, handler):
     """do the right thing when a build fails"""
     global logfile, logfd
@@ -718,6 +731,7 @@ def fail(server, handler):
 
 logfile = '/tmp/build.log'
 logfd = None
+
 
 def main():
     prog = os.path.basename(sys.argv[0])

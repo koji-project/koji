@@ -248,7 +248,6 @@ class Dispatcher(object):
             # TODO (warning in header or something?)
         return func, data
 
-
     def _setup(self, environ):
         global kojiweb_handlers
         global kojiweb

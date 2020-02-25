@@ -50,12 +50,14 @@ class BaseSimpleTest(object):
 
 class TrueTest(BaseSimpleTest):
     name = 'true'
+
     def run(self, data):
         return True
 
 
 class FalseTest(BaseSimpleTest):
     name = 'false'
+
     def run(self, data):
         return False
 
@@ -97,6 +99,7 @@ class BoolTest(BaseSimpleTest):
     """
     name = 'bool'
     field = None
+
     def run(self, data):
         args = self.str.split()[1:]
         if self.field is None:
@@ -121,6 +124,7 @@ class MatchTest(BaseSimpleTest):
     """
     name = 'match'
     field = None
+
     def run(self, data):
         args = self.str.split()[1:]
         if self.field is None:

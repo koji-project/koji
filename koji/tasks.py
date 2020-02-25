@@ -55,6 +55,7 @@ def scan_mounts(topdir):
     mplist.sort(reverse=True)
     return mplist
 
+
 def umount_all(topdir):
     "Unmount every mount under topdir"
     logger = logging.getLogger("koji.build")
@@ -68,6 +69,7 @@ def umount_all(topdir):
     remain = scan_mounts(topdir)
     if remain:
         raise koji.GenericError("Unmounting incomplete: %r" % remain)
+
 
 def safe_rmtree(path, unmount=False, strict=True):
     logger = logging.getLogger("koji.build")
@@ -102,6 +104,7 @@ def safe_rmtree(path, unmount=False, strict=True):
 class ServerExit(Exception):
     """Raised to shutdown the server"""
     pass
+
 
 class ServerRestart(Exception):
     """Raised to restart the server"""
@@ -431,7 +434,6 @@ class BaseTaskHandler(object):
         return dict(self.session.host.taskWaitResults(self.id, finished,
                                                       canfail=canfail))
 
-
     def getUploadDir(self):
         return koji.pathinfo.taskrelpath(self.id)
 
@@ -579,7 +581,6 @@ class BaseTaskHandler(object):
             repo_info = self.wait(task_id)[task_id]
         return repo_info
 
-
     def run_callbacks(self, plugin, *args, **kwargs):
         if 'taskinfo' not in kwargs:
             try:
@@ -595,6 +596,7 @@ class BaseTaskHandler(object):
 class FakeTask(BaseTaskHandler):
     Methods = ['someMethod']
     Foreground = True
+
     def handler(self, *args):
         self.logger.info("This is a fake task.  Args: " + str(args))
         return 42
@@ -603,16 +605,20 @@ class FakeTask(BaseTaskHandler):
 class SleepTask(BaseTaskHandler):
     Methods = ['sleep']
     _taskWeight = 0.25
+
     def handler(self, n):
         self.logger.info("Sleeping for %s seconds" % n)
         time.sleep(n)
         self.logger.info("Finished sleeping")
 
+
 class ForkTask(BaseTaskHandler):
     Methods = ['fork']
+
     def handler(self, n=5, m=37):
         for i in range(n):
             os.spawnvp(os.P_NOWAIT, 'sleep', ['sleep', str(m)])
+
 
 class WaitTestTask(BaseTaskHandler):
     """
@@ -624,6 +630,7 @@ class WaitTestTask(BaseTaskHandler):
     """
     Methods = ['waittest']
     _taskWeight = 0.1
+
     def handler(self, count, seconds=10):
         tasks = []
         for i in range(count):
@@ -638,6 +645,7 @@ class WaitTestTask(BaseTaskHandler):
 class SubtaskTask(BaseTaskHandler):
     Methods = ['subtask']
     _taskWeight = 0.1
+
     def handler(self, n=4):
         if n > 0:
             task_id = self.session.host.subtask(method='subtask',
@@ -657,6 +665,7 @@ class DefaultTask(BaseTaskHandler):
     """Used when no matching method is found"""
     Methods = ['default']
     _taskWeight = 0.1
+
     def handler(self, *args, **opts):
         raise koji.GenericError("Invalid method: %s" % self.method)
 
@@ -665,6 +674,7 @@ class ShutdownTask(BaseTaskHandler):
     Methods = ['shutdown']
     _taskWeight = 0.0
     Foreground = True
+
     def handler(self):
         # note: this is a foreground task
         raise ServerExit
@@ -676,6 +686,7 @@ class RestartTask(BaseTaskHandler):
     Methods = ['restart']
     _taskWeight = 0.1
     Foreground = True
+
     def handler(self, host):
         # note: this is a foreground task
         if host['id'] != self.session.host.getID():
@@ -690,6 +701,7 @@ class RestartVerifyTask(BaseTaskHandler):
     Methods = ['restartVerify']
     _taskWeight = 0.1
     Foreground = True
+
     def handler(self, task_id, host):
         # note: this is a foreground task
         tinfo = self.session.getTaskInfo(task_id)
@@ -708,6 +720,7 @@ class RestartHostsTask(BaseTaskHandler):
 
     Methods = ['restartHosts']
     _taskWeight = 0.1
+
     def handler(self, options=None):
         if options is None:
             options = {}
@@ -783,6 +796,7 @@ class DependantTask(BaseTaskHandler):
                 subtasks.append(task_id)
         if subtasks:
             self.wait(subtasks, all=True)
+
 
 class MultiPlatformTask(BaseTaskHandler):
     def buildWrapperRPM(self, spec_url, build_task_id, build_target, build, repo_id, **opts):

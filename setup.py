@@ -33,6 +33,7 @@ def get_install_requires():
 
     return requires
 
+
 setup(
     name="koji",
     version="1.20.0",

@@ -40,6 +40,7 @@ def _(args):
     """Stub function for translation"""
     return args
 
+
 def get_options():
     """process options from command line and config file"""
 
@@ -238,6 +239,7 @@ def get_options():
 
     return options, args
 
+
 def check_tag(name):
     """Check tag name against options and determine if we should process it
 
@@ -258,6 +260,7 @@ def check_tag(name):
         # not ignored and no filter specified
         return True
 
+
 def check_package(name):
     """Check package name against options and determine if we should process it
 
@@ -272,6 +275,7 @@ def check_package(name):
     else:
         # no filter specified
         return True
+
 
 time_units = {
     'second': 1,
@@ -288,11 +292,14 @@ time_unit_aliases = [
     ['minute', 'minutes', 'min', 'mins'],
     ['second', 'seconds', 'sec', 'secs', 's'],
 ]
+
+
 def parse_duration(str):
     """Parse time duration from string, returns duration in seconds"""
     ret = 0
     n = None
     unit = None
+
     def parse_num(s):
         try:
             return int(s)
@@ -338,15 +345,18 @@ def parse_duration(str):
         unit = None
     return ret
 
+
 def error(msg=None, code=1):
     if msg:
         sys.stderr.write(msg + "\n")
         sys.stderr.flush()
     sys.exit(code)
 
+
 def warn(msg):
     sys.stderr.write(msg + "\n")
     sys.stderr.flush()
+
 
 def ensure_connection(session):
     try:
@@ -355,6 +365,7 @@ def ensure_connection(session):
         error(_("Error: Unable to connect to server"))
     if ret != koji.API_VERSION:
         warn(_("WARNING: The server is at API version %d and the client is at %d" % (ret, koji.API_VERSION)))
+
 
 def has_krb_creds():
     if krbV is None:
@@ -366,6 +377,7 @@ def has_krb_creds():
         return True
     except krbV.Krb5Error:
         return False
+
 
 def activate_session(session):
     """Test and login the session is applicable"""
@@ -394,6 +406,7 @@ def activate_session(session):
     ensure_connection(session)
     if options.debug:
         print("successfully connected to hub")
+
 
 def send_warning_notice(owner_name, builds):
     if not options.mail:
@@ -587,6 +600,7 @@ def handle_trash():
     # run all packageListAdd/tagBuildBypass finally
     mcall.call_all()
 
+
 def protected_sig(keys):
     """Check list of keys and see if any are protected
 
@@ -612,6 +626,7 @@ def handle_salvage():
     run this action only."""
     return handle_delete(just_salvage=True)
 
+
 def salvage_build(binfo):
     """Removes trashcan tag from a build and prints a message"""
     if options.test:
@@ -620,6 +635,7 @@ def salvage_build(binfo):
         if options.debug:
             print("Untagging from trashcan: %(nvr)s" % binfo)
         session.untagBuildBypass(options.trashcan_tag, binfo['id'], force=True)
+
 
 def handle_delete(just_salvage=False):
     """Delete builds that have been in the trashcan for long enough
@@ -793,6 +809,7 @@ def read_policies(fn=None):
     fo.close()
     return ret
 
+
 def scan_policies(str):
     """Read tag gc policies from a string
 
@@ -802,7 +819,9 @@ def scan_policies(str):
     tests = koji.policy.findSimpleTests(globals())
     return koji.policy.SimpleRuleSet(str.splitlines(), tests)
 
+
 build_sig_cache = {}
+
 
 def get_build_sigs(build, cache=False):
     if cache and build in build_sig_cache:
@@ -824,6 +843,7 @@ def get_build_sigs(build, cache=False):
                     keys.setdefault(sig['sigkey'], 1)
     ret = build_sig_cache[build] = to_list(keys.keys())
     return ret
+
 
 def handle_prune():
     """Untag old builds according to policy
@@ -965,6 +985,7 @@ def handle_prune():
                     print("Warning: deletion failed: %s" % e)
                     # server issue
                     pass
+
 
 if __name__ == "__main__":
 

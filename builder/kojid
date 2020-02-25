@@ -127,6 +127,7 @@ try:
 except ImportError:  # pragma: no cover
     ozif_enabled = False
 
+
 def main(options, session):
     logger = logging.getLogger("koji.build")
     logger.info('Starting up')
@@ -140,8 +141,10 @@ def main(options, session):
         for name in options.plugin:
             logger.info('Loading plugin: %s' % name)
             tm.scanPlugin(pt.load(name))
+
     def shutdown(*args):
         raise SystemExit
+
     def restart(*args):
         logger.warn("Initiating graceful restart")
         tm.restart_pending = True
@@ -589,7 +592,6 @@ class BuildRoot(object):
         if rv:
             self.expire()
             raise koji.BuildError("error building srpm, %s" % self._mockResult(rv))
-
 
     def build_srpm(self, specfile, sourcedir, source_cmd):
         self.session.host.setBuildRootState(self.id, 'BUILDING')
@@ -1162,7 +1164,6 @@ class BuildTask(BaseTaskHandler):
             raise koji.BuildError("No matching arches were found")
         return to_list(archdict.keys())
 
-
     def choose_taskarch(self, arch, srpm, build_tag):
         """Adjust the arch for buildArch subtask as needed"""
         if koji.util.multi_fnmatch(arch, self.options.literal_task_arches):
@@ -1202,7 +1203,6 @@ class BuildTask(BaseTaskHandler):
 
         # otherwise, noarch is ok
         return 'noarch'
-
 
     def runBuilds(self, srpm, build_tag, archlist, repo_id, failany=True):
         self.logger.debug("Spawning jobs for arches: %r" % (archlist))
@@ -1456,6 +1456,7 @@ class BuildArchTask(BaseBuildTask):
 
         return ret
 
+
 class MavenTask(MultiPlatformTask):
 
     Methods = ['maven']
@@ -1541,6 +1542,7 @@ class MavenTask(MultiPlatformTask):
                                                     parent=self.id,
                                                     arch='noarch')
             self.wait(tag_task_id)
+
 
 class BuildMavenTask(BaseBuildTask):
 
@@ -1632,7 +1634,6 @@ class BuildMavenTask(BaseBuildTask):
 
         logfile = self.workdir + '/checkout.log'
         uploadpath = self.getUploadDir()
-
 
         self.run_callbacks('preSCMCheckout', scminfo=scm.get_info(), build_tag=build_tag, scratch=opts.get('scratch'))
         # Check out sources from the SCM
@@ -1766,6 +1767,7 @@ class BuildMavenTask(BaseBuildTask):
                 'buildroot_id': buildroot.id,
                 'logs': logs,
                 'files': output_files}
+
 
 class WrapperRPMTask(BaseBuildTask):
     """Build a wrapper rpm around archives output from a Maven or Windows build.
@@ -2118,6 +2120,7 @@ class WrapperRPMTask(BaseBuildTask):
 
         return results
 
+
 class ChainMavenTask(MultiPlatformTask):
 
     Methods = ['chainmaven']
@@ -2328,6 +2331,7 @@ class ChainMavenTask(MultiPlatformTask):
         # everything matches
         return build
 
+
 class TagBuildTask(BaseTaskHandler):
 
     Methods = ['tagBuild']
@@ -2352,6 +2356,7 @@ class TagBuildTask(BaseTaskHandler):
             self.session.host.tagNotification(False, tag_id, fromtag, build_id, user_id, ignore_success, "%s: %s" % (exctype, value))
             raise e
 
+
 class BuildImageTask(MultiPlatformTask):
 
     def initImageBuild(self, name, version, release, target_info, opts):
@@ -2371,6 +2376,7 @@ class BuildImageTask(MultiPlatformTask):
     def getRelease(self, name, ver):
         """return the next available release number for an N-V"""
         return self.session.getNextRelease(dict(name=name, version=ver))
+
 
 class BuildBaseImageTask(BuildImageTask):
     Methods = ['image']
@@ -2524,7 +2530,6 @@ class BuildApplianceTask(BuildImageTask):
         if koji.canonArch(arch) not in tag_archlist:
             raise koji.BuildError("Invalid arch for build tag: %s" % arch)
 
-
         if not opts:
             opts = {}
 
@@ -2592,6 +2597,7 @@ class BuildApplianceTask(BuildImageTask):
             report = ''
         report += 'appliance build results in: %s' % respath
         return report
+
 
 class BuildLiveCDTask(BuildImageTask):
     Methods = ['livecd']
@@ -2726,7 +2732,6 @@ class BuildLiveMediaTask(BuildImageTask):
                 if arch in opts.get('optional_arches', []):
                     canfail.append(subtasks[arch])
             self.logger.debug("Tasks that can fail: %r", canfail)
-
 
             self.logger.debug("Got image subtasks: %r", subtasks)
             self.logger.debug("Waiting on livemedia subtasks...")
@@ -3136,6 +3141,8 @@ class ApplianceTask(ImageTask):
 # via the livecd-build group. livecd-creator is then executed in the chroot
 # to create the LiveCD image.
 #
+
+
 class LiveCDTask(ImageTask):
 
     Methods = ['createLiveCD']
@@ -3207,7 +3214,6 @@ class LiveCDTask(ImageTask):
                 manifest.append("%-10d   %s\n" % (size, filepath))
 
         return manifest
-
 
     def handler(self, name, version, release, arch, target_info, build_tag, repo_info, ksfile, opts=None):
 
@@ -3286,7 +3292,6 @@ class LiveCDTask(ImageTask):
 
         broot.expire()
         return imgdata
-
 
 
 # livemedia-creator
@@ -3406,7 +3411,6 @@ class LiveMediaTask(ImageTask):
         livemedia_log = broot.tmpdir(within=True) + '/lmc-logs/livemedia-out.log'
         resultdir = broot.tmpdir(within=True) + '/lmc'
 
-
         # Common LMC command setup, needs extending
         cmd = ['/sbin/livemedia-creator',
                '--ks', kskoji,
@@ -3416,7 +3420,6 @@ class LiveMediaTask(ImageTask):
                '--project', name,
                # '--tmp', '/tmp'
                ]
-
 
         volid = opts.get('volid')
         if not volid:
@@ -3437,14 +3440,12 @@ class LiveMediaTask(ImageTask):
                     '--releasever', version,
                     ])
 
-
         if arch == 'x86_64':
             cmd.append('--macboot')
 
         if 'lorax_url' in self.opts:
             templates_dir = self.fetch_lorax_templates_from_scm(broot)
             cmd.extend(['--lorax-templates', templates_dir])
-
 
         # Run livemedia-creator
         rv = broot.mock(['--cwd', broot.tmpdir(within=True), '--chroot', '--'] + cmd)
@@ -3490,7 +3491,6 @@ class LiveMediaTask(ImageTask):
             raise koji.LiveMediaError('could not find iso file in chroot')
         isosrc = os.path.join(rootresultsdir, isofile)
 
-
         # Generate the file manifest of the image, upload the results
         manifest = os.path.join(broot.resultdir(), 'manifest.log')
         self.genISOManifest(isosrc, manifest)
@@ -3522,6 +3522,8 @@ class LiveMediaTask(ImageTask):
 
 # A generic task for building disk images using Oz
 # Other Oz-based image handlers should inherit this.
+
+
 class OzImageTask(BaseTaskHandler):
     Methods = []
 
@@ -3757,7 +3759,6 @@ class OzImageTask(BaseTaskHandler):
             raise koji.BuildError('Unknown or supported distro given: %s' % distro)
 
     def fixImageXML(self, format, filename, xmltext):
-
         """
         The XML generated by Oz/ImageFactory knows nothing about the name
         or image format conversions Koji does. We fix those values in the
@@ -3802,6 +3803,7 @@ class OzImageTask(BaseTaskHandler):
         if len(found) > 0:
             screenshot = found[0]
         return screenshot
+
 
 class BaseImageTask(OzImageTask):
 
@@ -4003,7 +4005,6 @@ class BaseImageTask(OzImageTask):
                    logerror=1)
         return {'image': newimg}
 
-
     def _buildTarGZ(self, format):
         """
         Use tar and gzip to compress a raw disk image.
@@ -4033,7 +4034,6 @@ class BaseImageTask(OzImageTask):
         os.unlink(rawimg)
 
         return {'image': newimg}
-
 
     def _buildSquashfs(self, format):
         """
@@ -4309,6 +4309,7 @@ class BaseImageTask(OzImageTask):
         # no need to delete anything since self.workdir will get scrubbed
         return imgdata
 
+
 class BuildIndirectionImageTask(OzImageTask):
     Methods = ['indirectionimage']
 
@@ -4549,7 +4550,6 @@ class BuildIndirectionImageTask(OzImageTask):
                     self.session.host.failBuild(self.id, bld_info['id'])
             # reraise the exception
             raise
-
 
     def _do_indirection(self, opts, base_factory_image, utility_factory_image,
                         indirection_template, tlog, ozlog, fhandler, bld_info,
@@ -4861,6 +4861,7 @@ class BuildSRPMFromSCMTask(BaseBuildTask):
                 'source': source,
                 }
 
+
 class TagNotificationTask(BaseTaskHandler):
     Methods = ['tagNotification']
 
@@ -4951,6 +4952,7 @@ Status: %(status)s\r
         server.quit()
 
         return 'sent notification of tag operation %i to: %s' % (self.id, to_addrs)
+
 
 class BuildNotificationTask(BaseTaskHandler):
     Methods = ['buildNotification']
@@ -5633,7 +5635,6 @@ class createDistRepoTask(BaseTaskHandler):
             raise koji.GenericError('failed to create repo: %s' \
                                     % parseStatus(status, ' '.join(cmd)))
 
-
     def do_multilib_dnf(self, arch, ml_arch, conf):
         repodir = koji.pathinfo.distrepo(self.rinfo['id'], self.rinfo['tag_name'])
         mldir = os.path.join(repodir, koji.canonArch(ml_arch))
@@ -5759,7 +5760,6 @@ enabled=1
             rpminfo['_pkgpath'] = dep_path
             rpminfo['_multilib'] = True
             self.kojipkgs[bnp] = rpminfo
-
 
     def do_multilib_yum(self, arch, ml_arch, conf):
         repodir = koji.pathinfo.distrepo(self.rinfo['id'], self.rinfo['tag_name'])
@@ -6303,12 +6303,14 @@ def get_options():
 
     return options
 
+
 def quit(msg=None, code=1):
     if msg:
         logging.getLogger("koji.build").error(msg)
         sys.stderr.write('%s\n' % msg)
         sys.stderr.flush()
     sys.exit(code)
+
 
 if __name__ == "__main__":
     koji.add_file_logger("koji", "/var/log/kojid.log")

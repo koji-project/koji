@@ -97,6 +97,7 @@ _aux_vector = {
     "hwcap": 0,
 }
 
+
 def legitMultiArchesInSameLib(arch=None):
     # this is completely crackrock - if anyone has a better way I
     # am all ears
@@ -135,6 +136,8 @@ def canCoinstall(arch1, arch2):
     return False
 
 # this computes the difference between myarch and targetarch
+
+
 def archDifference(myarch, targetarch):
     if myarch == targetarch:
         return 1
@@ -145,8 +148,10 @@ def archDifference(myarch, targetarch):
         return 0
     return 0
 
+
 def score(arch):
     return archDifference(canonArch, arch)
+
 
 def isMultiLibArch(arch=None):
     """returns true if arch is a multilib arch, false if not"""
@@ -163,6 +168,7 @@ def isMultiLibArch(arch=None):
         return 1
 
     return 0
+
 
 def getBestArchFromList(archlist, myarch=None):
     """
@@ -226,6 +232,7 @@ def getArchList(thisarch=None):
         archlist.append('noarch')
     return archlist
 
+
 def _try_read_cpuinfo():
     """ Try to read /proc/cpuinfo ... if we can't ignore errors (ie. proc not
         mounted). """
@@ -233,6 +240,7 @@ def _try_read_cpuinfo():
         return open("/proc/cpuinfo", "r")
     except:
         return []
+
 
 def _parse_auxv():
     """ Read /proc/self/auxv and parse it into global dict for easier access
@@ -260,6 +268,7 @@ def _parse_auxv():
             _aux_vector["hwcap"] = at_val
         offset = offset + fmtlen
 
+
 def getCanonX86Arch(arch):
     #
     if arch == "i586":
@@ -285,6 +294,7 @@ def getCanonX86Arch(arch):
 
     return arch
 
+
 def getCanonARMArch(arch):
     # the %{_target_arch} macro in rpm will let us know the abi we are using
     target = rpm.expandMacro('%{_target_cpu}')
@@ -293,6 +303,7 @@ def getCanonARMArch(arch):
     if target.startswith('armv7h'):
         return target
     return arch
+
 
 def getCanonPPCArch(arch):
     # FIXME: should I do better handling for mac, etc?
@@ -324,6 +335,7 @@ def getCanonPPCArch(arch):
         return "ppc64iseries"
     return arch
 
+
 def getCanonSPARCArch(arch):
     # Deal with sun4v, sun4u, sun4m cases
     SPARCtype = None
@@ -348,6 +360,7 @@ def getCanonSPARCArch(arch):
         return "sparcv8"
     return arch
 
+
 def getCanonX86_64Arch(arch):
     if arch != "x86_64":
         return arch
@@ -365,6 +378,7 @@ def getCanonX86_64Arch(arch):
     if vendor.find("GenuineIntel") != -1:
         return "ia32e"
     return arch
+
 
 def getCanonArch(skipRpmPlatform=0):
     if not skipRpmPlatform and os.access("/etc/rpm/platform", os.R_OK):
@@ -395,9 +409,12 @@ def getCanonArch(skipRpmPlatform=0):
 
     return arch
 
+
 canonArch = getCanonArch()
 
 # this gets you the "compat" arch of a biarch pair
+
+
 def getMultiArchInfo(arch=canonArch):
     if arch in multilibArches:
         return multilibArches[arch]
@@ -408,6 +425,8 @@ def getMultiArchInfo(arch=canonArch):
 # get the best usual userspace arch for the arch we're on.  this is
 # our arch unless we're on an arch that uses the secondary as its
 # userspace (eg ppc64, sparc64)
+
+
 def getBestArch(myarch=None):
     if myarch:
         arch = myarch
@@ -421,6 +440,7 @@ def getBestArch(myarch=None):
         arch = 'ppc'
 
     return arch
+
 
 def getBaseArch(myarch=None):
     """returns 'base' arch for myarch, if specified, or canonArch if not.
@@ -467,6 +487,7 @@ def getBaseArch(myarch=None):
 class ArchStorage(object):
     """class for keeping track of what arch we have set and doing various
        permutations based on it"""
+
     def __init__(self):
         self.canonarch = None
         self.basearch = None

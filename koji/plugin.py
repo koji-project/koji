@@ -58,6 +58,7 @@ callbacks = {
     'postSCMCheckout': [],
 }
 
+
 class PluginTracker(object):
 
     def __init__(self, path=None, prefix='_koji_plugin__'):
@@ -113,6 +114,7 @@ def export(f):
     setattr(f, 'exported', True)
     return f
 
+
 def export_cli(f):
     """a decorator that marks a function as exported for CLI
 
@@ -121,6 +123,7 @@ def export_cli(f):
     """
     setattr(f, 'exported_cli', True)
     return f
+
 
 def export_as(alias):
     """returns a decorator that marks a function as exported and gives it an alias
@@ -132,6 +135,7 @@ def export_as(alias):
         setattr(f, 'export_alias', alias)
         return f
     return dec
+
 
 def export_in(module, alias=None):
     """returns a decorator that marks a function as exported with a module prepended
@@ -150,6 +154,7 @@ def export_in(module, alias=None):
         return f
     return dec
 
+
 def callback(*cbtypes):
     """A decorator that indicates a function is a callback.
     cbtypes is a list of callback types to register for.  Valid
@@ -161,6 +166,7 @@ def callback(*cbtypes):
         setattr(f, 'callbacks', cbtypes)
         return f
     return dec
+
 
 def ignore_error(f):
     """a decorator that marks a callback as ok to fail

@@ -55,7 +55,6 @@ if six.PY2:
     ExtendedMarshaller.dispatch[long] = ExtendedMarshaller.dump_int  # noqa: F821
 
 
-
 def dumps(params, methodname=None, methodresponse=None, encoding=None,
           allow_none=1, marshaller=None):
     """encode an xmlrpc request or response

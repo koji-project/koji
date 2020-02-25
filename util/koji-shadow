@@ -60,15 +60,18 @@ def _(args):
     """Stub function for translation"""
     return args
 
+
 def log(str):
     global logfile
     print("%s" % str)
     if logfile is not None:
         os.write(logfile, "%s\n" % str)
 
+
 class SubOption(object):
     """A simple container to help with tracking ConfigParser data"""
     pass
+
 
 def get_options():
     """process options from command line and config file"""
@@ -189,6 +192,7 @@ def get_options():
 
     return options, args
 
+
 time_units = {
     'second': 1,
     'minute': 60,
@@ -204,11 +208,14 @@ time_unit_aliases = [
     ['minute', 'minutes', 'min', 'mins'],
     ['second', 'seconds', 'sec', 'secs', 's'],
 ]
+
+
 def parse_duration(str):
     """Parse time duration from string, returns duration in seconds"""
     ret = 0
     n = None
     unit = None
+
     def parse_num(s):
         try:
             return int(s)
@@ -254,15 +261,18 @@ def parse_duration(str):
         unit = None
     return ret
 
+
 def error(msg=None, code=1):
     if msg:
         sys.stderr.write(msg + "\n")
         sys.stderr.flush()
     sys.exit(code)
 
+
 def warn(msg):
     sys.stderr.write(msg + "\n")
     sys.stderr.flush()
+
 
 def ensure_connection(session):
     try:
@@ -272,6 +282,7 @@ def ensure_connection(session):
     if ret != koji.API_VERSION:
         warn(_("WARNING: The server is at API version %d and the client is at "
                "%d" % (ret, koji.API_VERSION)))
+
 
 def activate_session(session):
     """Test and login the session is applicable"""
@@ -306,6 +317,7 @@ def activate_session(session):
     ensure_connection(session)
     if options.debug:
         log("successfully connected to hub")
+
 
 def _unique_path(prefix):
     """Create a unique path fragment by appending a path component

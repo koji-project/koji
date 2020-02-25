@@ -68,6 +68,8 @@ def libvirt_callback(ignore, err):
     if err[3] != libvirt.VIR_ERR_ERROR:
         # Don't log libvirt errors: global error handler will do that
         logging.warn("Non-error from libvirt: '%s'", err[2])
+
+
 libvirt.registerErrorHandler(f=libvirt_callback, ctx=None)
 
 
@@ -191,12 +193,14 @@ def get_options():
 
     return options
 
+
 def quit(msg=None, code=1):
     if msg:
         logging.getLogger("koji.vm").error(msg)
         sys.stderr.write('%s\n' % msg)
         sys.stderr.flush()
     sys.exit(code)
+
 
 def main(options, session):
     logger = logging.getLogger("koji.vm")
@@ -209,8 +213,10 @@ def main(options, session):
         for name in options.plugin:
             logger.info('Loading plugin: %s', name)
             tm.scanPlugin(pt.load(name))
+
     def shutdown(*args):
         raise SystemExit
+
     def restart(*args):
         logger.warn("Initiating graceful restart")
         tm.restart_pending = True
@@ -415,6 +421,7 @@ class WinBuildTask(MultiPlatformTask):
                                                     channel='default',
                                                     parent=self.id)
             self.wait(tag_task_id)
+
 
 class VMExecTask(BaseTaskHandler):
     """
@@ -882,6 +889,7 @@ class VMExecTask(BaseTaskHandler):
                     return self.output
                 else:
                     raise koji.BuildError(self.output)
+
 
 class VMTaskManager(TaskManager):
     def __init__(self, options, session):

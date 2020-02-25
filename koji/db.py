@@ -55,6 +55,7 @@ _DBopts = None
 # but play it safe anyway.
 _DBconn = context.ThreadLocal()
 
+
 class DBWrapper:
     def __init__(self, cnx):
         self.cnx = cnx
@@ -151,12 +152,15 @@ def provideDBopts(**opts):
     if _DBopts is None:
         _DBopts = dict([i for i in opts.items() if i[1] is not None])
 
+
 def setDBopts(**opts):
     global _DBopts
     _DBopts = opts
 
+
 def getDBopts():
     return _DBopts
+
 
 def connect():
     logger = logging.getLogger('koji.db')

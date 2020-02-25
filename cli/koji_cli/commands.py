@@ -2617,6 +2617,7 @@ def anon_handle_list_groups(goptions, session, args):
     groups = [x[1] for x in tmp_list]
 
     tags_cache = {}
+
     def get_cached_tag(tag_id):
         if tag_id not in tags_cache:
             tag = session.getTag(tag_id, strict=False)
@@ -4311,6 +4312,7 @@ def _print_histline(entry, **kwargs):
                 dkey = key
             print("    %s: %s" % (dkey, x[key]))
 
+
 _table_keys = {
     'user_perms': ['user_id', 'perm_id'],
     'user_groups': ['user_id', 'group_id'],
@@ -5635,7 +5637,6 @@ def handle_image_build_indirection(options, session, args):
     parser.add_option("--noprogress", action="store_true",
                       help=_("Do not display progress of the upload"))
 
-
     (task_options, args) = parser.parse_args(args)
     _build_image_indirection(options, task_options, session, args)
 
@@ -5693,7 +5694,6 @@ def _build_image_indirection(options, task_opts, session, args):
 
     # Set the architecture
     task_opts.arch = koji.canonArch(task_opts.arch)
-
 
     # Upload the indirection template file to the staging area.
     # If it's a URL, it's kojid's job to go get it when it does the checkout.
@@ -6907,7 +6907,6 @@ def anon_handle_wait_repo(options, session, args):
             return 1
         tag_id = tag_info['id']
 
-
     for nvr in builds:
         data = session.getLatestBuilds(tag_id, package=nvr["name"])
         if len(data) == 0:
@@ -7140,6 +7139,7 @@ def handle_dist_repo(options, session, args):
 
 _search_types = ('package', 'build', 'tag', 'target', 'user', 'host', 'rpm',
                  'maven', 'win')
+
 
 def anon_handle_search(options, session, args):
     "[search] Search the system"
