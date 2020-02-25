@@ -7,7 +7,7 @@ import koji
 from koji.context import context
 from koji.plugin import callback, export
 sys.path.insert(0, "/usr/share/koji-hub/")
-from kojihub import (
+from kojihub import (  # noqa: F402
     QueryProcessor,
     _create_build_target,
     _create_tag,
