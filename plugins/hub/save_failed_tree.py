@@ -3,11 +3,12 @@ from __future__ import absolute_import
 import sys
 
 import koji
+sys.path.insert(0, '/usr/share/koji-hub/')
 import kojihub
 from koji.context import context
 from koji.plugin import export
 
-sys.path.insert(0, '/usr/share/koji-hub/')
+
 
 __all__ = ('saveFailedTree',)
 

@@ -9,12 +9,12 @@ import random
 import sys
 
 import koji
+# XXX - have to import kojihub for make_task
+sys.path.insert(0, '/usr/share/koji-hub/')
 import kojihub
 from koji.context import context
 from koji.plugin import export
 
-#XXX - have to import kojihub for make_task
-sys.path.insert(0, '/usr/share/koji-hub/')
 
 __all__ = ('runroot',)
 
