@@ -135,6 +135,20 @@ class TimeoutHandler(MessagingHandler):
             self.timeout_task = None
 
 
+def _strip_extra(buildinfo):
+    """If extra_limit is configured, compare extra's size and drop it,
+    if it is over"""
+    global CONFIG
+    if not CONFIG:
+        CONFIG = koji.read_config_files([(CONFIG_FILE, True)])
+    if CONFIG.has_option('message', 'extra_limit'):
+        extra_limit = CONFIG.getint('message', 'extra_limit')
+        extra_size = len(json_serialize(buildinfo.get('extra', {})))
+        if extra_limit and extra_size > extra_limit:
+            del buildinfo['extra']
+    return buildinfo
+
+
 def json_serialize(o):
     """JSON helper to encode otherwise unserializable data types"""
     if isinstance(o, set):
@@ -191,6 +205,7 @@ def prep_build_state_change(cbtype, *args, **kws):
         old = koji.BUILD_STATES[old]
     new = koji.BUILD_STATES[kws['new']]
     address = 'build.' + new.lower()
+    kws['info'] = _strip_extra(kws['info'])
     props = {'type': cbtype[4:],
              'name': kws['info']['name'],
              'version': kws['info']['version'],
@@ -204,6 +219,7 @@ def prep_build_state_change(cbtype, *args, **kws):
 @convert_datetime
 @callback('postImport')
 def prep_import(cbtype, *args, **kws):
+    kws['build'] = _strip_extra(kws['build'])
     address = 'import.' + kws['type']
     props = {'type': cbtype[4:],
              'importType': kws['type'],
@@ -218,6 +234,7 @@ def prep_import(cbtype, *args, **kws):
 def prep_rpm_sign(cbtype, *args, **kws):
     if not kws['sigkey']:
         return
+    kws['build'] = _strip_extra(kws['build'])
     address = 'sign.rpm'
     props = {'type': cbtype[4:],
              'sigkey': kws['sigkey'],
@@ -232,12 +249,12 @@ def prep_rpm_sign(cbtype, *args, **kws):
 
 
 def _prep_tag_msg(address, cbtype, kws):
-    build = kws['build']
+    kws['build'] = _strip_extra(kws['build'])
     props = {'type': cbtype[4:],
              'tag': kws['tag']['name'],
-             'name': build['name'],
-             'version': build['version'],
-             'release': build['release'],
+             'name': kws['build']['name'],
+             'version': kws['build']['version'],
+             'release': kws['build']['release'],
              'user': kws['user']['name']}
     queue_msg(address, props, kws)
 
