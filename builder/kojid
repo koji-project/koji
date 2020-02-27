@@ -1948,7 +1948,8 @@ class WrapperRPMTask(BaseBuildTask):
             elif task['method'] == 'vmExec':
                 self.copy_fields(task_result, values, 'epoch', 'name', 'version', 'release')
                 values['win_info'] = {'platform': task_result['platform']}
-            elif task['method'] in ('createLiveCD', 'createAppliance', 'createImage', 'createLiveMedia'):
+            elif task['method'] in ('createLiveCD', 'createAppliance', 'createImage',
+                                    'createLiveMedia'):
                 self.copy_fields(task_result, values, 'epoch', 'name', 'version', 'release')
             else:
                 # can't happen
