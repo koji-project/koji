@@ -316,7 +316,9 @@ class DaemonXMLRPCServer(six.moves.xmlrpc_server.SimpleXMLRPCServer):
             except BaseException:
                 # report exception back to server
                 response = six.moves.xmlrpc_client.dumps(
-                    six.moves.xmlrpc_client.Fault(1, "%s:%s" % (sys.exc_type, sys.exc_value))
+                    six.moves.xmlrpc_client.Fault(
+                        1, "%s:%s" %
+                        (sys.exc_info()[0], sys.exc_info()[1]))
                 )
             return response
 

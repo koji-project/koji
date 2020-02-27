@@ -1,6 +1,12 @@
 [flake8]
-select = I,C,F,E
-ignore = E266,E731
+select = E,F,W,C,I
+ignore =
+    # too many leading ‘#’ for block comment
+    E266,
+    # do not assign a lambda expression, use a def
+    E731,
+    # line break after binary operator
+    W504
 max_line_length = 99
 exclude =
     .git,

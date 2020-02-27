@@ -118,8 +118,7 @@ def parse_task_params(method, params):
     """
 
     # check for new style
-    if (len(params) == 1 and isinstance(params[0], dict)
-            and '__method__' in params[0]):
+    if len(params) == 1 and isinstance(params[0], dict) and '__method__' in params[0]:
         ret = params[0].copy()
         del ret['__method__']
         return ret

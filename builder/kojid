@@ -1046,8 +1046,8 @@ class BuildTask(BaseTaskHandler):
             # scratch builds do not get imported
             build_id = self.session.host.initBuild(data)
         # (initBuild raises an exception if there is a conflict)
-        failany = (self.opts.get('fail_fast', False)
-                   or not getattr(self.options, 'build_arch_can_fail', False))
+        failany = (self.opts.get('fail_fast', False) or
+                   not getattr(self.options, 'build_arch_can_fail', False))
         try:
             self.extra_information = {"src": src, "data": data, "target": target}
             srpm, rpms, brmap, logs = self.runBuilds(srpm, build_tag, archlist,
@@ -1691,8 +1691,8 @@ class BuildMavenTask(BaseBuildTask):
         # Apply patches, if present
         if self.opts.get('patches'):
             # filter out directories and files beginning with . (probably scm metadata)
-            patches = [patch for patch in os.listdir(patchcheckoutdir) if
-                       os.path.isfile(os.path.join(patchcheckoutdir, patch)) and
+            patches = [patch for patch in os.listdir(patchcheckoutdir)
+                       if os.path.isfile(os.path.join(patchcheckoutdir, patch)) and
                        patch.endswith('.patch')]
             if not patches:
                 raise koji.BuildError('no patches found at %s' % self.opts.get('patches'))
@@ -1818,7 +1818,7 @@ class WrapperRPMTask(BaseBuildTask):
             if re.match("%s:" % tag, spec, re.M):
                 raise koji.BuildError("%s is not allowed to be set in spec file" % tag)
         for tag in ("packager", "distribution", "vendor"):
-            if re.match("%%define\s+%s\s+" % tag, spec, re.M):
+            if re.match(r"%%define\s+%s\s+" % tag, spec, re.M):
                 raise koji.BuildError("%s is not allowed to be defined in spec file" % tag)
 
     def checkHost(self, hostdata):
@@ -4563,8 +4563,8 @@ class BuildIndirectionImageTask(OzImageTask):
                     if re.search(namere, filename):
                         return filename
 
-            build_diskimage = _match_name(buildfiles, ".*%s\.qcow2$" % (arch))
-            build_tdl = _match_name(buildfiles, "tdl.%s\.xml" % (arch))
+            build_diskimage = _match_name(buildfiles, r".*%s\.qcow2$" % (arch))
+            build_tdl = _match_name(buildfiles, r"tdl.%s\.xml" % (arch))
 
             diskimage_full = os.path.join(builddir, build_diskimage)
             tdl_full = os.path.join(builddir, build_tdl)
@@ -4859,7 +4859,7 @@ class BuildSRPMFromSCMTask(BaseBuildTask):
             if re.match("%s:" % tag, spec, re.M):
                 raise koji.BuildError("%s is not allowed to be set in spec file" % tag)
         for tag in ("packager", "distribution", "vendor"):
-            if re.match("%%define\s+%s\s+" % tag, spec, re.M):
+            if re.match(r"%%define\s+%s\s+" % tag, spec, re.M):
                 raise koji.BuildError("%s is not allowed to be defined in spec file" % tag)
 
     def patch_scm_source(self, sourcedir, logfile, opts):
@@ -5188,8 +5188,10 @@ Build Info: %(weburl)s/buildinfo?buildID=%(build_id)i\r
             return
 
         build_pkg_name = build['package_name']
-        build_pkg_evr = '%s%s-%s' % ((build['epoch'] and str(build['epoch']) +
-                                      ':' or ''), build['version'], build['release'])
+        build_pkg_evr = '%s%s-%s' % \
+                        ((build['epoch'] and str(build['epoch']) + ':' or ''),
+                         build['version'],
+                         build['release'])
         build_nvr = koji.buildLabel(build)
         build_id = build['id']
         build_owner = build['owner_name']
@@ -6131,8 +6133,8 @@ enabled=1
                     avail = to_list(rpm_idx.get(rpm_id, {}).keys())
                     outfile.write('%s: %r\n' % (fname, avail))
             self.session.uploadWrapper(missing_log, self.uploadpath)
-            if (not opts['skip_missing_signatures']
-                    and not opts['allow_missing_signatures']):
+            if (not opts['skip_missing_signatures'] and
+                    not opts['allow_missing_signatures']):
                 raise koji.GenericError('Unsigned packages found. See '
                                         'missing_signatures.log')
 

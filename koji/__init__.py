@@ -988,11 +988,9 @@ def get_header_field(hdr, name, src_arch=False):
     if not SUPPORTED_OPT_DEP_HDRS.get(name, True):
         return []
 
-    if (src_arch and name == "ARCH"
-            and get_header_field(hdr, "sourcepackage")):
+    if src_arch and name == "ARCH" and get_header_field(hdr, "sourcepackage"):
         # return "src" or "nosrc" arch instead of build arch for src packages
-        if (get_header_field(hdr, "nosource")
-                or get_header_field(hdr, "nopatch")):
+        if get_header_field(hdr, "nosource") or get_header_field(hdr, "nopatch"):
             return "nosrc"
         return "src"
 
@@ -2172,8 +2170,8 @@ def is_requests_cert_error(e):
     # are way more ugly.
     errstr = str(e)
     if ('Permission denied' in errstr or  # certificate not readable
-        'certificate revoked' in errstr or
-        'certificate expired' in errstr or
+            'certificate revoked' in errstr or
+            'certificate expired' in errstr or
             'certificate verify failed' in errstr):
         return True
 

@@ -2676,8 +2676,7 @@ def anon_handle_list_groups(goptions, session, args):
         for x in [x[1] for x in groups]:
             x['tag_name'] = get_cached_tag(x['tag_id'])
             print_group_list_req_group(x)
-        pkgs = [(x['package'], x) for x in group['packagelist']]
-        pkgs.sort()
+        pkgs = sorted([(x['package'], x) for x in group['packagelist']])
         for x in [x[1] for x in pkgs]:
             x['tag_name'] = get_cached_tag(x['tag_id'])
             print_group_list_req_package(x)
@@ -6935,7 +6934,7 @@ def anon_handle_download_task(options, session, args):
     base_task = session.getTaskInfo(base_task_id)
     if not base_task:
         error(_('No such task: #%i') % base_task_id)
-    
+
     def check_downloadable(task):
         return task["method"] == "buildArch"
 

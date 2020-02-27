@@ -83,7 +83,7 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
 
         # path section are in form 'path%d' while order is important as some
         # paths can be mounted inside other mountpoints
-        path_sections = [p for p in cp.sections() if re.match('path\d+', p)]
+        path_sections = [p for p in cp.sections() if re.match(r'path\d+', p)]
         for section_name in sorted(path_sections, key=lambda x: int(x[4:])):
             try:
                 self.config['paths'].append({
