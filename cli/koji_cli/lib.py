@@ -575,17 +575,12 @@ def activate_session(session, options):
     elif options.authtype == "kerberos" or has_krb_creds() and options.authtype is None:
         try:
             if getattr(options, 'keytab', None) and getattr(options, 'principal', None):
-                session.krb_login(principal=options.principal, keytab=options.keytab,
-                                  proxyuser=runas)
+                session.gssapi_login(principal=options.principal, keytab=options.keytab,
+                                     proxyuser=runas)
             else:
-                session.krb_login(proxyuser=runas)
+                session.gssapi_login(proxyuser=runas)
         except socket.error as e:
             warn(_("Could not connect to Kerberos authentication service: %s") % e.args[1])
-        except Exception as e:
-            if krbV is not None and isinstance(e, krbV.Krb5Error):
-                error(_("Kerberos authentication failed: %s (%s)") % (e.args[1], e.args[0]))
-            else:
-                raise
     if not noauth and not session.logged_in:
         error(_("Unable to log in, no authentication methods available"))
     ensure_connection(session)
