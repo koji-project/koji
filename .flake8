@@ -5,6 +5,8 @@ ignore =
     E266,
     # do not assign a lambda expression, use a def
     E731,
+    # [PY2] list comprehension redefines `name` from line `N`
+    F812,
     # line break after binary operator
     W504
 max_line_length = 99
