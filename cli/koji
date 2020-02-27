@@ -129,7 +129,8 @@ def get_options():
                       help=_("do not authenticate"))
     parser.add_option("--force-auth", action="store_true", default=False,
                       help=_("authenticate even for read-only operations"))
-    parser.add_option("--authtype", help=_("force use of a type of authentication, options: noauth, ssl, password, or kerberos"))
+    parser.add_option("--authtype", help=_("force use of a type of authentication, options: "
+                                           "noauth, ssl, password, or kerberos"))
     parser.add_option("-d", "--debug", action="store_true",
                       help=_("show debug output"))
     parser.add_option("--debug-xmlrpc", action="store_true",
@@ -145,7 +146,8 @@ def get_options():
     parser.add_option("--pkgurl", help=SUPPRESS_HELP)
     parser.add_option("--plugin-paths", metavar='PATHS',
                       help=_("specify additional plugin paths (colon separated)"))
-    parser.add_option("--help-commands", action="store_true", default=False, help=_("list commands"))
+    parser.add_option("--help-commands", action="store_true", default=False,
+                      help=_("list commands"))
     (options, args) = parser.parse_args()
 
     # load local config

@@ -185,7 +185,8 @@ def handle_add_host(goptions, session, args):
     "[admin] Add a host"
     usage = _("usage: %prog add-host [options] <hostname> <arch> [<arch> ...]")
     parser = OptionParser(usage=get_usage_str(usage))
-    parser.add_option("--krb-principal", help=_("set a non-default kerberos principal for the host"))
+    parser.add_option("--krb-principal",
+                      help=_("set a non-default kerberos principal for the host"))
     (options, args) = parser.parse_args(args)
     if len(args) < 2:
         parser.error(_("Please specify a hostname and at least one arch"))
@@ -208,7 +209,8 @@ def handle_edit_host(options, session, args):
     "[admin] Edit a host"
     usage = _("usage: %prog edit-host <hostname> [<hostname> ...] [options]")
     parser = OptionParser(usage=get_usage_str(usage))
-    parser.add_option("--arches", help=_("Space or comma-separated list of supported architectures"))
+    parser.add_option("--arches",
+                      help=_("Space or comma-separated list of supported architectures"))
     parser.add_option("--capacity", type="float", help=_("Capacity of this host"))
     parser.add_option("--description", metavar="DESC", help=_("Description of this host"))
     parser.add_option("--comment", help=_("A brief comment about this host"))
@@ -358,7 +360,8 @@ def handle_add_pkg(goptions, session, args):
     if dsttag is None:
         print("No such tag: %s" % tag)
         sys.exit(1)
-    pkglist = dict([(p['package_name'], p['package_id']) for p in session.listPackages(tagID=dsttag['id'])])
+    pkglist = dict([(p['package_name'], p['package_id'])
+                    for p in session.listPackages(tagID=dsttag['id'])])
     to_add = []
     for package in args[1:]:
         package_id = pkglist.get(package, None)
@@ -381,7 +384,8 @@ def handle_block_pkg(goptions, session, args):
     "[admin] Block a package in the listing for tag"
     usage = _("usage: %prog block-pkg [options] <tag> <package> [<package> ...]")
     parser = OptionParser(usage=get_usage_str(usage))
-    parser.add_option("--force", action='store_true', default=False, help=_("Override blocks and owner if necessary"))
+    parser.add_option("--force", action='store_true', default=False,
+                      help=_("Override blocks and owner if necessary"))
     (options, args) = parser.parse_args(args)
     if len(args) < 2:
         parser.error(_("Please specify a tag and at least one package"))
@@ -392,7 +396,8 @@ def handle_block_pkg(goptions, session, args):
     if dsttag is None:
         print("No such tag: %s" % tag)
         return 1
-    pkglist = dict([(p['package_name'], p['package_id']) for p in session.listPackages(tagID=dsttag['id'], inherited=True)])
+    pkglist = dict([(p['package_name'], p['package_id'])
+                    for p in session.listPackages(tagID=dsttag['id'], inherited=True)])
     ret = 0
     for package in args[1:]:
         package_id = pkglist.get(package, None)
@@ -429,7 +434,8 @@ def handle_remove_pkg(goptions, session, args):
     if dsttag is None:
         print("No such tag: %s" % tag)
         return 1
-    pkglist = dict([(p['package_name'], p['package_id']) for p in session.listPackages(tagID=dsttag['id'])])
+    pkglist = dict([(p['package_name'], p['package_id'])
+                    for p in session.listPackages(tagID=dsttag['id'])])
     ret = 0
     for package in args[1:]:
         package_id = pkglist.get(package, None)
@@ -472,7 +478,8 @@ def handle_build(options, session, args):
                       help=_("Run the build at a lower priority"))
     (build_opts, args) = parser.parse_args(args)
     if len(args) != 2:
-        parser.error(_("Exactly two arguments (a build target and a SCM URL or srpm file) are required"))
+        parser.error(_("Exactly two arguments (a build target and a SCM URL or srpm file) are "
+                       "required"))
     if build_opts.arch_override and not build_opts.scratch:
         parser.error(_("--arch_override is only allowed for --scratch builds"))
     activate_session(session, options)
@@ -552,8 +559,10 @@ def handle_chain_build(options, session, args):
     # check that the destination tag is in the inheritance tree of the build tag
     # otherwise there is no way that a chain-build can work
     ancestors = session.getFullInheritance(build_target['build_tag'])
-    if dest_tag['id'] not in [build_target['build_tag']] + [ancestor['parent_id'] for ancestor in ancestors]:
-        print(_("Packages in destination tag %(dest_tag_name)s are not inherited by build tag %(build_tag_name)s" % build_target))
+    if dest_tag['id'] not in [build_target['build_tag']] + \
+            [ancestor['parent_id'] for ancestor in ancestors]:
+        print(_("Packages in destination tag %(dest_tag_name)s are not inherited by build tag "
+                "%(build_tag_name)s" % build_target))
         print(_("Target %s is not usable for a chain-build" % build_target['name']))
         return 1
 
@@ -582,7 +591,8 @@ def handle_chain_build(options, session, args):
         src_list.append(build_level)
 
     if len(src_list) < 2:
-        parser.error(_('You must specify at least one dependency between builds with : (colon)\nIf there are no dependencies, use the build command instead'))
+        parser.error(_('You must specify at least one dependency between builds with : (colon)\n'
+                       'If there are no dependencies, use the build command instead'))
 
     priority = None
     if build_opts.background:
@@ -607,7 +617,8 @@ def handle_maven_build(options, session, args):
     usage += _("\n       %prog maven-build --ini=CONFIG... [options] <target>")
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--patches", action="store", metavar="URL",
-                      help=_("SCM URL of a directory containing patches to apply to the sources before building"))
+                      help=_("SCM URL of a directory containing patches to apply to the sources "
+                             "before building"))
     parser.add_option("-G", "--goal", action="append",
                       dest="goals", metavar="GOAL", default=[],
                       help=_("Additional goal to run before \"deploy\""))
@@ -673,7 +684,8 @@ def handle_maven_build(options, session, args):
             parser.error(e.args[0])
         opts = to_list(params.values())[0]
         if opts.pop('type', 'maven') != 'maven':
-            parser.error(_("Section %s does not contain a maven-build config") % to_list(params.keys())[0])
+            parser.error(_("Section %s does not contain a maven-build config") %
+                         to_list(params.keys())[0])
         source = opts.pop('scmurl')
     else:
         source = args[1]
@@ -704,16 +716,19 @@ def handle_wrapper_rpm(options, session, args):
     """[build] Build wrapper rpms for any archives associated with a build."""
     usage = _("usage: %prog wrapper-rpm [options] <target> <build-id|n-v-r> <URL>")
     parser = OptionParser(usage=get_usage_str(usage))
-    parser.add_option("--create-build", action="store_true", help=_("Create a new build to contain wrapper rpms"))
+    parser.add_option("--create-build", action="store_true",
+                      help=_("Create a new build to contain wrapper rpms"))
     parser.add_option("--ini", action="append",
                       dest="inis", metavar="CONFIG", default=[],
                       help=_("Pass build parameters via a .ini file"))
     parser.add_option("-s", "--section",
                       help=_("Get build parameters from this section of the .ini"))
-    parser.add_option("--skip-tag", action="store_true", help=_("If creating a new build, don't tag it"))
+    parser.add_option("--skip-tag", action="store_true",
+                      help=_("If creating a new build, don't tag it"))
     parser.add_option("--scratch", action="store_true", help=_("Perform a scratch build"))
     parser.add_option("--nowait", action="store_true", help=_("Don't wait on build"))
-    parser.add_option("--background", action="store_true", help=_("Run the build at a lower priority"))
+    parser.add_option("--background", action="store_true",
+                      help=_("Run the build at a lower priority"))
 
     (build_opts, args) = parser.parse_args(args)
     if build_opts.inis:
@@ -721,7 +736,8 @@ def handle_wrapper_rpm(options, session, args):
             parser.error(_("Exactly one argument (a build target) is required"))
     else:
         if len(args) < 3:
-            parser.error(_("You must provide a build target, a build ID or NVR, and a SCM URL to a specfile fragment"))
+            parser.error(_("You must provide a build target, a build ID or NVR, "
+                           "and a SCM URL to a specfile fragment"))
     activate_session(session, options)
 
     target = args[0]
@@ -733,7 +749,8 @@ def handle_wrapper_rpm(options, session, args):
             parser.error(e.args[0])
         opts = to_list(params.values())[0]
         if opts.get('type') != 'wrapper':
-            parser.error(_("Section %s does not contain a wrapper-rpm config") % to_list(params.keys())[0])
+            parser.error(_("Section %s does not contain a wrapper-rpm config") %
+                         to_list(params.keys())[0])
         url = opts['scmurl']
         package = opts['buildrequires'][0]
         target_info = session.getBuildTarget(target, strict=True)
@@ -852,7 +869,8 @@ def handle_call(goptions, session, args):
     usage = _("usage: %prog call [options] <name> [<arg> ...]")
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--python", action="store_true", help=_("Use python syntax for values"))
-    parser.add_option("--kwargs", help=_("Specify keyword arguments as a dictionary (implies --python)"))
+    parser.add_option("--kwargs",
+                      help=_("Specify keyword arguments as a dictionary (implies --python)"))
     parser.add_option("--json-output", action="store_true", help=_("Use JSON syntax for output"))
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
@@ -895,7 +913,8 @@ def anon_handle_mock_config(goptions, session, args):
     parser.add_option("--target", help=_("Create a mock config for a build target"))
     parser.add_option("--task", help=_("Duplicate the mock config of a previous task"))
     parser.add_option("--latest", action="store_true", help=_("use the latest redirect url"))
-    parser.add_option("--buildroot", help=_("Duplicate the mock config for the specified buildroot id"))
+    parser.add_option("--buildroot",
+                      help=_("Duplicate the mock config for the specified buildroot id"))
     parser.add_option("--mockdir", default="/var/lib/mock", metavar="DIR",
                       help=_("Specify mockdir"))
     parser.add_option("--topdir", metavar="DIR",
@@ -1136,9 +1155,11 @@ def handle_import(goptions, session, args):
     "[admin] Import externally built RPMs into the database"
     usage = _("usage: %prog import [options] <package> [<package> ...]")
     parser = OptionParser(usage=get_usage_str(usage))
-    parser.add_option("--link", action="store_true", help=_("Attempt to hardlink instead of uploading"))
+    parser.add_option("--link", action="store_true",
+                      help=_("Attempt to hardlink instead of uploading"))
     parser.add_option("--test", action="store_true", help=_("Don't actually import"))
-    parser.add_option("--create-build", action="store_true", help=_("Auto-create builds as needed"))
+    parser.add_option("--create-build", action="store_true",
+                      help=_("Auto-create builds as needed"))
     parser.add_option("--src-epoch", help=_("When auto-creating builds, use this epoch"))
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
@@ -1284,7 +1305,8 @@ def handle_import_cg(goptions, session, args):
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--noprogress", action="store_true",
                       help=_("Do not display progress of the upload"))
-    parser.add_option("--link", action="store_true", help=_("Attempt to hardlink instead of uploading"))
+    parser.add_option("--link", action="store_true",
+                      help=_("Attempt to hardlink instead of uploading"))
     parser.add_option("--test", action="store_true", help=_("Don't actually import"))
     parser.add_option("--token", action="store", default=None, help=_("Build reservation token"))
     (options, args) = parser.parse_args(args)
@@ -1443,7 +1465,8 @@ def handle_import_sig(goptions, session, args):
             parser.error(_("No such file: %s") % path)
     activate_session(session, goptions)
     for path in args:
-        data = koji.get_header_fields(path, ('name', 'version', 'release', 'arch', 'siggpg', 'sigpgp', 'sourcepackage'))
+        data = koji.get_header_fields(path, ('name', 'version', 'release', 'arch', 'siggpg',
+                                             'sigpgp', 'sourcepackage'))
         if data['sourcepackage']:
             data['arch'] = 'src'
         sigkey = data['siggpg']
@@ -1463,7 +1486,8 @@ def handle_import_sig(goptions, session, args):
             print("No such rpm in system: %(name)s-%(version)s-%(release)s.%(arch)s" % data)
             continue
         if rinfo.get('external_repo_id'):
-            print("Skipping external rpm: %(name)s-%(version)s-%(release)s.%(arch)s@%(external_repo_name)s" % rinfo)
+            print("Skipping external rpm: %(name)s-%(version)s-%(release)s.%(arch)s@"
+                  "%(external_repo_name)s" % rinfo)
             continue
         sighdr = koji.rip_rpm_sighdr(path)
         previous = session.queryRPMSigs(rpm_id=rinfo['id'], sigkey=sigkey)
@@ -1490,7 +1514,8 @@ def handle_write_signed_rpm(goptions, session, args):
     "[admin] Write signed RPMs to disk"
     usage = _("usage: %prog write-signed-rpm [options] <signature-key> <n-v-r> [<n-v-r> ...]")
     parser = OptionParser(usage=get_usage_str(usage))
-    parser.add_option("--all", action="store_true", help=_("Write out all RPMs signed with this key"))
+    parser.add_option("--all", action="store_true",
+                      help=_("Write out all RPMs signed with this key"))
     parser.add_option("--buildid", help=_("Specify a build id rather than an n-v-r"))
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
@@ -1703,7 +1728,8 @@ def handle_prune_signed_copies(options, session, args):
                     # we were still tagged here sometime before the cutoff
                     if options.debug:
                         print("Build %s had protected tag %s until %s"
-                              % (nvr, tag_name, time.asctime(time.localtime(our_entry['revoke_ts']))))
+                              % (nvr, tag_name,
+                                 time.asctime(time.localtime(our_entry['revoke_ts']))))
                     is_protected = True
                     break
             replaced_ts = None
@@ -2062,7 +2088,8 @@ def handle_list_signed(goptions, session, args):
         rinfo = session.getRPM(rpm_info, strict=True)
         rpm_idx[rinfo['id']] = rinfo
         if rinfo.get('external_repo_id'):
-            parser.error(_("External rpm: %(name)s-%(version)s-%(release)s.%(arch)s@%(external_repo_name)s") % rinfo)
+            parser.error(_("External rpm: %(name)s-%(version)s-%(release)s.%(arch)s@"
+                           "%(external_repo_name)s") % rinfo)
         qopts['rpm_id'] = rinfo['id']
     if options.build:
         build = options.build
@@ -2123,13 +2150,18 @@ def handle_import_archive(options, session, args):
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--noprogress", action="store_true",
                       help=_("Do not display progress of the upload"))
-    parser.add_option("--create-build", action="store_true", help=_("Auto-create builds as needed"))
-    parser.add_option("--link", action="store_true", help=_("Attempt to hardlink instead of uploading"))
-    parser.add_option("--type", help=_("The type of archive being imported.  Currently supported types: maven, win, image"))
-    parser.add_option("--type-info", help=_("Type-specific information to associate with the archives.  "
-                                            "For Maven archives this should be a local path to a .pom file.  "
-                                            "For Windows archives this should be relpath:platforms[:flags]))  "
-                                            "Images need an arch"))
+    parser.add_option("--create-build", action="store_true",
+                      help=_("Auto-create builds as needed"))
+    parser.add_option("--link", action="store_true",
+                      help=_("Attempt to hardlink instead of uploading"))
+    parser.add_option("--type",
+                      help=_("The type of archive being imported. "
+                             "Currently supported types: maven, win, image"))
+    parser.add_option("--type-info",
+                      help=_("Type-specific information to associate with the archives. "
+                             "For Maven archives this should be a local path to a .pom file. "
+                             "For Windows archives this should be relpath:platforms[:flags])) "
+                             "Images need an arch"))
     (suboptions, args) = parser.parse_args(args)
 
     if not len(args) > 1:
@@ -2297,11 +2329,14 @@ def anon_handle_latest_build(goptions, session, args):
     usage = _("usage: %prog latest-build [options] <tag> <package> [<package> ...]")
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--arch", help=_("List all of the latest packages for this arch"))
-    parser.add_option("--all", action="store_true", help=_("List all of the latest packages for this tag"))
+    parser.add_option("--all", action="store_true",
+                      help=_("List all of the latest packages for this tag"))
     parser.add_option("--quiet", action="store_true", default=goptions.quiet,
                       help=_("Do not print the header information"))
     parser.add_option("--paths", action="store_true", help=_("Show the file paths"))
-    parser.add_option("--type", help=_("Show builds of the given type only.  Currently supported types: maven"))
+    parser.add_option("--type",
+                      help=_("Show builds of the given type only. "
+                             "Currently supported types: maven"))
     (options, args) = parser.parse_args(args)
     if len(args) == 0:
         parser.error(_("A tag name must be specified"))
@@ -2338,20 +2373,24 @@ def anon_handle_latest_build(goptions, session, args):
                 if options.type == 'maven':
                     for x in data:
                         x['path'] = pathinfo.mavenbuild(x)
-                    fmt = "%(path)-40s  %(tag_name)-20s  %(maven_group_id)-20s  %(maven_artifact_id)-20s  %(owner_name)s"
+                    fmt = "%(path)-40s  %(tag_name)-20s  %(maven_group_id)-20s  " \
+                          "%(maven_artifact_id)-20s  %(owner_name)s"
                 else:
                     for x in data:
                         x['path'] = pathinfo.build(x)
                     fmt = "%(path)-40s  %(tag_name)-20s  %(owner_name)s"
             else:
                 if options.type == 'maven':
-                    fmt = "%(nvr)-40s  %(tag_name)-20s  %(maven_group_id)-20s  %(maven_artifact_id)-20s  %(owner_name)s"
+                    fmt = "%(nvr)-40s  %(tag_name)-20s  %(maven_group_id)-20s  " \
+                          "%(maven_artifact_id)-20s  %(owner_name)s"
                 else:
                     fmt = "%(nvr)-40s  %(tag_name)-20s  %(owner_name)s"
             if not options.quiet:
                 if options.type == 'maven':
-                    print("%-40s  %-20s  %-20s  %-20s  %s" % ("Build", "Tag", "Group Id", "Artifact Id", "Built by"))
-                    print("%s  %s  %s  %s  %s" % ("-" * 40, "-" * 20, "-" * 20, "-" * 20, "-" * 16))
+                    print("%-40s  %-20s  %-20s  %-20s  %s" %
+                          ("Build", "Tag", "Group Id", "Artifact Id", "Built by"))
+                    print("%s  %s  %s  %s  %s" %
+                          ("-" * 40, "-" * 20, "-" * 20, "-" * 20, "-" * 16))
                 else:
                     print("%-40s  %-20s  %s" % ("Build", "Tag", "Built by"))
                     print("%s  %s  %s" % ("-" * 40, "-" * 20, "-" * 16))
@@ -2397,14 +2436,18 @@ def anon_handle_list_tagged(goptions, session, args):
     parser.add_option("--rpms", action="store_true", help=_("Show rpms instead of builds"))
     parser.add_option("--inherit", action="store_true", help=_("Follow inheritance"))
     parser.add_option("--latest", action="store_true", help=_("Only show the latest builds/rpms"))
-    parser.add_option("--latest-n", type='int', metavar="N", help=_("Only show the latest N builds/rpms"))
+    parser.add_option("--latest-n", type='int', metavar="N",
+                      help=_("Only show the latest N builds/rpms"))
     parser.add_option("--quiet", action="store_true", default=goptions.quiet,
                       help=_("Do not print the header information"))
     parser.add_option("--paths", action="store_true", help=_("Show the file paths"))
     parser.add_option("--sigs", action="store_true", help=_("Show signatures"))
-    parser.add_option("--type", help=_("Show builds of the given type only.  Currently supported types: maven, win, image"))
+    parser.add_option("--type",
+                      help=_("Show builds of the given type only. "
+                             "Currently supported types: maven, win, image"))
     parser.add_option("--event", type='int', metavar="EVENT#", help=_("query at event"))
-    parser.add_option("--ts", type='int', metavar="TIMESTAMP", help=_("query at last event before timestamp"))
+    parser.add_option("--ts", type='int', metavar="TIMESTAMP",
+                      help=_("query at last event before timestamp"))
     parser.add_option("--repo", type='int', metavar="REPO#", help=_("query at event for a repo"))
     (options, args) = parser.parse_args(args)
     if len(args) == 0:
@@ -2473,20 +2516,24 @@ def anon_handle_list_tagged(goptions, session, args):
             if options.type == 'maven':
                 for x in data:
                     x['path'] = pathinfo.mavenbuild(x)
-                fmt = "%(path)-40s  %(tag_name)-20s  %(maven_group_id)-20s  %(maven_artifact_id)-20s  %(owner_name)s"
+                fmt = "%(path)-40s  %(tag_name)-20s  %(maven_group_id)-20s  " \
+                      "%(maven_artifact_id)-20s  %(owner_name)s"
             else:
                 for x in data:
                     x['path'] = pathinfo.build(x)
                 fmt = "%(path)-40s  %(tag_name)-20s  %(owner_name)s"
         else:
             if options.type == 'maven':
-                fmt = "%(nvr)-40s  %(tag_name)-20s  %(maven_group_id)-20s  %(maven_artifact_id)-20s  %(owner_name)s"
+                fmt = "%(nvr)-40s  %(tag_name)-20s  %(maven_group_id)-20s  " \
+                      "%(maven_artifact_id)-20s  %(owner_name)s"
             else:
                 fmt = "%(nvr)-40s  %(tag_name)-20s  %(owner_name)s"
         if not options.quiet:
             if options.type == 'maven':
-                print("%-40s  %-20s  %-20s  %-20s  %s" % ("Build", "Tag", "Group Id", "Artifact Id", "Built by"))
-                print("%s  %s  %s  %s  %s" % ("-" * 40, "-" * 20, "-" * 20, "-" * 20, "-" * 16))
+                print("%-40s  %-20s  %-20s  %-20s  %s" %
+                      ("Build", "Tag", "Group Id", "Artifact Id", "Built by"))
+                print("%s  %s  %s  %s  %s" %
+                      ("-" * 40, "-" * 20, "-" * 20, "-" * 20, "-" * 16))
             else:
                 print("%-40s  %-20s  %s" % ("Build", "Tag", "Built by"))
                 print("%s  %s  %s" % ("-" * 40, "-" * 20, "-" * 16))
@@ -2756,7 +2803,8 @@ def anon_handle_list_channels(goptions, session, args):
         if not options.quiet:
             print('Channel        Enabled  Ready Disbld   Load    Cap    Perc')
         for channel in channels:
-            print("%(name)-15s %(enabled)6d %(ready)6d %(disabled)6d %(load)6d %(capacity)6d %(perc_load)6d%%" % channel)
+            print("%(name)-15s %(enabled)6d %(ready)6d %(disabled)6d %(load)6d %(capacity)6d "
+                  "%(perc_load)6d%%" % channel)
 
 
 def anon_handle_list_hosts(goptions, session, args):
@@ -2766,10 +2814,13 @@ def anon_handle_list_hosts(goptions, session, args):
     parser.add_option("--arch", action="append", default=[], help=_("Specify an architecture"))
     parser.add_option("--channel", help=_("Specify a channel"))
     parser.add_option("--ready", action="store_true", help=_("Limit to ready hosts"))
-    parser.add_option("--not-ready", action="store_false", dest="ready", help=_("Limit to not ready hosts"))
+    parser.add_option("--not-ready", action="store_false", dest="ready",
+                      help=_("Limit to not ready hosts"))
     parser.add_option("--enabled", action="store_true", help=_("Limit to enabled hosts"))
-    parser.add_option("--not-enabled", action="store_false", dest="enabled", help=_("Limit to not enabled hosts"))
-    parser.add_option("--disabled", action="store_false", dest="enabled", help=_("Alias for --not-enabled"))
+    parser.add_option("--not-enabled", action="store_false", dest="enabled",
+                      help=_("Limit to not enabled hosts"))
+    parser.add_option("--disabled", action="store_false", dest="enabled",
+                      help=_("Alias for --not-enabled"))
     parser.add_option("--quiet", action="store_true", default=goptions.quiet,
                       help=_("Do not print header information"))
     parser.add_option("--show-channels", action="store_true", help=_("Show host's channels"))
@@ -2824,11 +2875,13 @@ def anon_handle_list_hosts(goptions, session, args):
     else:
         longest_host = 8
     if not options.quiet:
-        hdr = "{hostname:<{longest_host}} Enb Rdy Load/Cap  Arches           Last Update".format(longest_host=longest_host, hostname='Hostname')
+        hdr = "{hostname:<{longest_host}} Enb Rdy Load/Cap  Arches           Last Update".format(
+            longest_host=longest_host, hostname='Hostname')
         if options.show_channels:
             hdr += "         Channels"
         print(hdr)
-    mask = "%%(name)-%ss %%(enabled)-3s %%(ready)-3s %%(task_load)4.1f/%%(capacity)-4.1f %%(arches)-16s %%(update)-19s" % longest_host
+    mask = "%%(name)-%ss %%(enabled)-3s %%(ready)-3s %%(task_load)4.1f/%%(capacity)-4.1f " \
+           "%%(arches)-16s %%(update)-19s" % longest_host
     if options.show_channels:
         mask += " %(channels)s"
     for host in hosts:
@@ -2848,7 +2901,8 @@ def anon_handle_list_pkgs(goptions, session, args):
     parser.add_option("--show-blocked", action="store_true", help=_("Show blocked packages"))
     parser.add_option("--show-dups", action="store_true", help=_("Show superseded owners"))
     parser.add_option("--event", type='int', metavar="EVENT#", help=_("query at event"))
-    parser.add_option("--ts", type='int', metavar="TIMESTAMP", help=_("query at last event before timestamp"))
+    parser.add_option("--ts", type='int', metavar="TIMESTAMP",
+                      help=_("query at last event before timestamp"))
     parser.add_option("--repo", type='int', metavar="REPO#", help=_("query at event for a repo"))
     (options, args) = parser.parse_args(args)
     if len(args) != 0:
@@ -3043,7 +3097,8 @@ def anon_handle_rpminfo(goptions, session, args):
     "[info] Print basic information about an RPM"
     usage = _("usage: %prog rpminfo [options] <n-v-r.a> [<n-v-r.a> ...]")
     parser = OptionParser(usage=get_usage_str(usage))
-    parser.add_option("--buildroots", action="store_true", help=_("show buildroots the rpm was used in"))
+    parser.add_option("--buildroots", action="store_true",
+                      help=_("show buildroots the rpm was used in"))
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
         parser.error(_("Please specify an RPM"))
@@ -3071,10 +3126,13 @@ def anon_handle_rpminfo(goptions, session, args):
             print("External Repository: %(name)s [%(id)i]" % repo)
             print("External Repository url: %(url)s" % repo)
         else:
-            print("RPM Path: %s" % os.path.join(koji.pathinfo.build(buildinfo), koji.pathinfo.rpm(info)))
+            print("RPM Path: %s" %
+                  os.path.join(koji.pathinfo.build(buildinfo), koji.pathinfo.rpm(info)))
             print("SRPM: %(epoch)s%(name)s-%(version)s-%(release)s [%(id)d]" % buildinfo)
-            print("SRPM Path: %s" % os.path.join(koji.pathinfo.build(buildinfo), koji.pathinfo.rpm(buildinfo)))
-            print("Built: %s" % time.strftime('%a, %d %b %Y %H:%M:%S %Z', time.localtime(info['buildtime'])))
+            print("SRPM Path: %s" %
+                  os.path.join(koji.pathinfo.build(buildinfo), koji.pathinfo.rpm(buildinfo)))
+            print("Built: %s" % time.strftime('%a, %d %b %Y %H:%M:%S %Z',
+                                              time.localtime(info['buildtime'])))
         print("SIGMD5: %(payloadhash)s" % info)
         print("Size: %(size)s" % info)
         if not info.get('external_repo_id', 0):
@@ -3087,7 +3145,8 @@ def anon_handle_rpminfo(goptions, session, args):
         else:
             br_info = session.getBuildroot(info['buildroot_id'])
             if br_info['br_type'] == koji.BR_TYPES['STANDARD']:
-                print("Buildroot: %(id)i (tag %(tag_name)s, arch %(arch)s, repo %(repo_id)i)" % br_info)
+                print("Buildroot: %(id)i (tag %(tag_name)s, arch %(arch)s, repo %(repo_id)i)" %
+                      br_info)
                 print("Build Host: %(host_name)s" % br_info)
                 print("Build Task: %(task_id)i" % br_info)
             else:
@@ -3110,7 +3169,8 @@ def anon_handle_buildinfo(goptions, session, args):
     "[info] Print basic information about a build"
     usage = _("usage: %prog buildinfo [options] <n-v-r> [<n-v-r> ...]")
     parser = OptionParser(usage=get_usage_str(usage))
-    parser.add_option("--changelog", action="store_true", help=_("Show the changelog for the build"))
+    parser.add_option("--changelog", action="store_true",
+                      help=_("Show the changelog for the build"))
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
         parser.error(_("Please specify a build"))
@@ -3162,7 +3222,8 @@ def anon_handle_buildinfo(goptions, session, args):
             print("Maven archives:")
             for archive in maven_archives:
                 archives_seen.setdefault(archive['id'], 1)
-                print(os.path.join(koji.pathinfo.mavenbuild(info), koji.pathinfo.mavenfile(archive)))
+                print(os.path.join(koji.pathinfo.mavenbuild(info),
+                                   koji.pathinfo.mavenfile(archive)))
         win_archives = session.listArchives(buildID=info['id'], type='win')
         if win_archives:
             print("Windows archives:")
@@ -3239,7 +3300,8 @@ def anon_handle_hostinfo(goptions, session, args):
         else:
             update = update[:update.find('.')]
         print("Last Update: %s" % update)
-        print("Channels: %s" % ' '.join([c['name'] for c in session.listChannels(hostID=info['id'])]))
+        print("Channels: %s" % ' '.join([c['name']
+                                         for c in session.listChannels(hostID=info['id'])]))
         print("Active Buildroots:")
         states = {0: "INIT", 1: "WAITING", 2: "BUILDING"}
         rows = [('NAME', 'STATE', 'CREATION TIME')]
@@ -3317,7 +3379,8 @@ def handle_clone_tag(goptions, session, args):
     dsttag = session.getTag(args[1])
     if not srctag:
         parser.error(_("Unknown src-tag: %s" % args[0]))
-    if (srctag['locked'] and not options.force) or (dsttag and dsttag['locked'] and not options.force):
+    if (srctag['locked'] and not options.force) \
+            or (dsttag and dsttag['locked'] and not options.force):
         parser.error(_("Error: You are attempting to clone from or to a tag which is locked.\n"
                        "Please use --force if this is what you really want to do."))
 
@@ -3721,7 +3784,8 @@ def handle_clone_tag(goptions, session, args):
         for changes in chgpkglist:
             sys.stdout.write(pfmt % changes)
         sys.stdout.write('\n')
-        sys.stdout.write(bfmt % ('Action', 'From/To Package', 'Build(s)', 'State', 'Owner', 'From Tag'))
+        sys.stdout.write(bfmt %
+                         ('Action', 'From/To Package', 'Build(s)', 'State', 'Owner', 'From Tag'))
         sys.stdout.write(bfmt % ('-' * 7, '-' * 28, '-' * 40, '-' * 10, '-' * 10, '-' * 10))
         for changes in chgbldlist:
             sys.stdout.write(bfmt % changes)
@@ -3808,7 +3872,8 @@ def handle_edit_target(goptions, session, args):
             return 1
         targetInfo['dest_tag_name'] = options.dest_tag
 
-    session.editBuildTarget(targetInfo['orig_name'], targetInfo['name'], targetInfo['build_tag_name'], targetInfo['dest_tag_name'])
+    session.editBuildTarget(targetInfo['orig_name'], targetInfo['name'],
+                            targetInfo['build_tag_name'], targetInfo['dest_tag_name'])
 
 
 def handle_remove_target(goptions, session, args):
@@ -3924,11 +3989,13 @@ def anon_handle_list_tag_inheritance(goptions, session, args):
     "[info] Print the inheritance information for a tag"
     usage = _("usage: %prog list-tag-inheritance [options] <tag>")
     parser = OptionParser(usage=get_usage_str(usage))
-    parser.add_option("--reverse", action="store_true", help=_("Process tag's children instead of its parents"))
+    parser.add_option("--reverse", action="store_true",
+                      help=_("Process tag's children instead of its parents"))
     parser.add_option("--stop", help=_("Stop processing inheritance at this tag"))
     parser.add_option("--jump", help=_("Jump from one tag to another when processing inheritance"))
     parser.add_option("--event", type='int', metavar="EVENT#", help=_("query at event"))
-    parser.add_option("--ts", type='int', metavar="TIMESTAMP", help=_("query at last event before timestamp"))
+    parser.add_option("--ts", type='int', metavar="TIMESTAMP",
+                      help=_("query at last event before timestamp"))
     parser.add_option("--repo", type='int', metavar="REPO#", help=_("query at event for a repo"))
     (options, args) = parser.parse_args(args)
     if len(args) != 1:
@@ -4036,7 +4103,8 @@ def anon_handle_list_tag_history(goptions, session, args):
     parser.add_option("--build", help=_("Only show data for a specific build"))
     parser.add_option("--package", help=_("Only show data for a specific package"))
     parser.add_option("--tag", help=_("Only show data for a specific tag"))
-    parser.add_option("--all", action="store_true", help=_("Allows listing the entire global history"))
+    parser.add_option("--all", action="store_true",
+                      help=_("Allows listing the entire global history"))
     (options, args) = parser.parse_args(args)
     koji.util.deprecated("list-tag-history is deprecated and will be removed in a future version. "
                          "See: https://pagure.io/koji/issue/836")
@@ -4109,7 +4177,8 @@ def _print_histline(entry, **kwargs):
         if event_id != other[0]:
             bad_edit = "non-matching"
         if bad_edit:
-            print("Warning: unusual edit at event %i in table %s (%s)" % (event_id, table, bad_edit))
+            print("Warning: unusual edit at event %i in table %s (%s)" %
+                  (event_id, table, bad_edit))
             # we'll simply treat them as separate events
             pprint.pprint(entry)
             pprint.pprint(edit)
@@ -4333,28 +4402,36 @@ def anon_handle_list_history(goptions, session, args):
     parser.add_option("--build", help=_("Only show data for a specific build"))
     parser.add_option("--package", help=_("Only show data for a specific package"))
     parser.add_option("--tag", help=_("Only show data for a specific tag"))
-    parser.add_option("--editor", "--by", metavar="USER", help=_("Only show entries modified by user"))
+    parser.add_option("--editor", "--by", metavar="USER",
+                      help=_("Only show entries modified by user"))
     parser.add_option("--user", help=_("Only show entries affecting a user"))
     parser.add_option("--permission", help=_("Only show entries relating to a given permission"))
     parser.add_option("--cg", help=_("Only show entries relating to a given permission"))
-    parser.add_option("--external-repo", "--erepo", help=_("Only show entries relating to a given external repo"))
-    parser.add_option("--build-target", "--target", help=_("Only show entries relating to a given build target"))
+    parser.add_option("--external-repo", "--erepo",
+                      help=_("Only show entries relating to a given external repo"))
+    parser.add_option("--build-target", "--target",
+                      help=_("Only show entries relating to a given build target"))
     parser.add_option("--group", help=_("Only show entries relating to a given group"))
     parser.add_option("--host", help=_("Only show entries related to given host"))
     parser.add_option("--channel", help=_("Only show entries related to given channel"))
-    parser.add_option("--before", metavar="TIMESTAMP", help=_("Only show entries before timestamp"))
+    parser.add_option("--before", metavar="TIMESTAMP",
+                      help=_("Only show entries before timestamp"))
     parser.add_option("--after", metavar="TIMESTAMP", help=_("Only show entries after timestamp"))
-    parser.add_option("--before-event", metavar="EVENT_ID", type='int', help=_("Only show entries before event"))
-    parser.add_option("--after-event", metavar="EVENT_ID", type='int', help=_("Only show entries after event"))
+    parser.add_option("--before-event", metavar="EVENT_ID", type='int',
+                      help=_("Only show entries before event"))
+    parser.add_option("--after-event", metavar="EVENT_ID", type='int',
+                      help=_("Only show entries after event"))
     parser.add_option("--watch", action="store_true", help=_("Monitor history data"))
-    parser.add_option("--active", action='store_true', help=_("Only show entries that are currently active"))
+    parser.add_option("--active", action='store_true',
+                      help=_("Only show entries that are currently active"))
     parser.add_option("--revoked", action='store_false', dest='active',
                       help=_("Only show entries that are currently revoked"))
     parser.add_option("--context", action="store_true", help=_("Show related entries"))
     parser.add_option("-s", "--show", action="append", help=_("Show data from selected tables"))
     parser.add_option("-v", "--verbose", action="store_true", help=_("Show more detail"))
     parser.add_option("-e", "--events", action="store_true", help=_("Show event ids"))
-    parser.add_option("--all", action="store_true", help=_("Allows listing the entire global history"))
+    parser.add_option("--all", action="store_true",
+                      help=_("Allows listing the entire global history"))
     (options, args) = parser.parse_args(args)
     if len(args) != 0:
         parser.error(_("This command takes no arguments"))
@@ -4556,7 +4633,8 @@ def _do_parseTaskParams(session, method, task_id, topdir):
         if len(params) > 2:
             _handleOpts(lines, params[2])
     elif method in ('createLiveCD', 'createAppliance', 'createLiveMedia'):
-        argnames = ['Name', 'Version', 'Release', 'Arch', 'Target Info', 'Build Tag', 'Repo', 'Kickstart File']
+        argnames = ['Name', 'Version', 'Release', 'Arch', 'Target Info', 'Build Tag', 'Repo',
+                    'Kickstart File']
         for n, v in zip(argnames, params):
             lines.append("%s: %s" % (n, v))
         if len(params) > 8:
@@ -4580,7 +4658,8 @@ def _do_parseTaskParams(session, method, task_id, topdir):
             lines.append("Old Repo ID: %i" % oldrepo['id'])
             lines.append("Old Repo Creation: %s" % koji.formatTimeLong(oldrepo['creation_time']))
         if len(params) > 3:
-            lines.append("External Repos: %s" % ', '.join([ext['external_repo_name'] for ext in params[3]]))
+            lines.append("External Repos: %s" %
+                         ', '.join([ext['external_repo_name'] for ext in params[3]]))
     elif method == 'tagNotification':
         destTag = session.getTag(params[2])
         srcTag = None
@@ -4604,7 +4683,8 @@ def _do_parseTaskParams(session, method, task_id, topdir):
         lines.append("Subtasks:")
         for subtask in params[1]:
             lines.append("  Method: %s" % subtask[0])
-            lines.append("  Parameters: %s" % ", ".join([str(subparam) for subparam in subtask[1]]))
+            lines.append("  Parameters: %s" %
+                         ", ".join([str(subparam) for subparam in subtask[1]]))
             if len(subtask) > 2 and subtask[2]:
                 subopts = subtask[2]
                 _handleOpts(lines, subopts, prefix='  ')
@@ -4682,7 +4762,8 @@ def _printTaskInfo(session, task_id, topdir, level=0, recurse=True, verbose=True
     if buildroot_infos:
         print("%sBuildroots:" % indent)
         for root in buildroot_infos:
-            print("%s  %s/%s-%d-%d/" % (indent, BUILDDIR, root['tag_name'], root['id'], root['repo_id']))
+            print("%s  %s/%s-%d-%d/" %
+                  (indent, BUILDDIR, root['tag_name'], root['id'], root['repo_id']))
     if logs:
         print("%sLog Files:" % indent)
         for log_path in logs:
@@ -4707,7 +4788,8 @@ def anon_handle_taskinfo(goptions, session, args):
     """[info] Show information about a task"""
     usage = _("usage: %prog taskinfo [options] <task_id> [<task_id> ...]")
     parser = OptionParser(usage=get_usage_str(usage))
-    parser.add_option("-r", "--recurse", action="store_true", help=_("Show children of this task as well"))
+    parser.add_option("-r", "--recurse", action="store_true",
+                      help=_("Show children of this task as well"))
     parser.add_option("-v", "--verbose", action="store_true", help=_("Be verbose"))
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
@@ -4725,7 +4807,8 @@ def anon_handle_taginfo(goptions, session, args):
     usage = _("usage: %prog taginfo [options] <tag> [<tag> ...]")
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--event", type='int', metavar="EVENT#", help=_("query at event"))
-    parser.add_option("--ts", type='int', metavar="TIMESTAMP", help=_("query at last event before timestamp"))
+    parser.add_option("--ts", type='int', metavar="TIMESTAMP",
+                      help=_("query at last event before timestamp"))
     parser.add_option("--repo", type='int', metavar="REPO#", help=_("query at event for a repo"))
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
@@ -4766,7 +4849,8 @@ def anon_handle_taginfo(goptions, session, args):
             print("Required permission: %r" % perms.get(perm_id, perm_id))
         if session.mavenEnabled():
             print("Maven support?: %s" % (info['maven_support'] and 'yes' or 'no'))
-            print("Include all Maven archives?: %s" % (info['maven_include_all'] and 'yes' or 'no'))
+            print("Include all Maven archives?: %s" %
+                  (info['maven_include_all'] and 'yes' or 'no'))
         if 'extra' in info:
             print("Tag options:")
             for key in sorted(info['extra'].keys()):
@@ -4788,7 +4872,8 @@ def anon_handle_taginfo(goptions, session, args):
                 if event:
                     print("  %s (%s)" % (target['name'], target['build_tag_name']))
                 else:
-                    print("  %s (%s, %s)" % (target['name'], target['build_tag_name'], repos[target['build_tag']]))
+                    print("  %s (%s, %s)" %
+                          (target['name'], target['build_tag_name'], repos[target['build_tag']]))
         if build_targets:
             print("This tag is a buildroot for one or more targets")
             if not event:
@@ -4817,8 +4902,10 @@ def handle_add_tag(goptions, session, args):
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--parent", help=_("Specify parent"))
     parser.add_option("--arches", help=_("Specify arches"))
-    parser.add_option("--maven-support", action="store_true", help=_("Enable creation of Maven repos for this tag"))
-    parser.add_option("--include-all", action="store_true", help=_("Include all packages in this tag when generating Maven repos"))
+    parser.add_option("--maven-support", action="store_true",
+                      help=_("Enable creation of Maven repos for this tag"))
+    parser.add_option("--include-all", action="store_true",
+                      help=_("Include all packages in this tag when generating Maven repos"))
     parser.add_option("-x", "--extra", action="append", default=[], metavar="key=value",
                       help=_("Set tag extra option"))
     (options, args) = parser.parse_args(args)
@@ -4856,10 +4943,15 @@ def handle_edit_tag(goptions, session, args):
     parser.add_option("--lock", action="store_true", help=_("Lock the tag"))
     parser.add_option("--unlock", action="store_true", help=_("Unlock the tag"))
     parser.add_option("--rename", help=_("Rename the tag"))
-    parser.add_option("--maven-support", action="store_true", help=_("Enable creation of Maven repos for this tag"))
-    parser.add_option("--no-maven-support", action="store_true", help=_("Disable creation of Maven repos for this tag"))
-    parser.add_option("--include-all", action="store_true", help=_("Include all packages in this tag when generating Maven repos"))
-    parser.add_option("--no-include-all", action="store_true", help=_("Do not include all packages in this tag when generating Maven repos"))
+    parser.add_option("--maven-support", action="store_true",
+                      help=_("Enable creation of Maven repos for this tag"))
+    parser.add_option("--no-maven-support", action="store_true",
+                      help=_("Disable creation of Maven repos for this tag"))
+    parser.add_option("--include-all", action="store_true",
+                      help=_("Include all packages in this tag when generating Maven repos"))
+    parser.add_option("--no-include-all", action="store_true",
+                      help=_("Do not include all packages in this tag when generating Maven "
+                             "repos"))
     parser.add_option("-x", "--extra", action="append", default=[], metavar="key=value",
                       help=_("Set tag extra option"))
     parser.add_option("-r", "--remove-extra", action="append", default=[], metavar="key",
@@ -4947,7 +5039,8 @@ def handle_lock_tag(goptions, session, args):
                 print(_("Tag %s: %s permission already required") % (tag['name'], perm))
                 continue
             elif options.test:
-                print(_("Would have set permission requirement %s for tag %s") % (perm, tag['name']))
+                print(_("Would have set permission requirement %s for tag %s") %
+                      (perm, tag['name']))
                 continue
             session.editTag2(tag['id'], perm=perm_id)
 
@@ -5008,7 +5101,8 @@ def handle_add_tag_inheritance(goptions, session, args):
     (options, args) = parser.parse_args(args)
 
     if len(args) != 2:
-        parser.error(_("This command takes exctly two argument: a tag name or ID and that tag's new parent name or ID"))
+        parser.error(_("This command takes exctly two argument: a tag name or ID and that tag's "
+                       "new parent name or ID"))
 
     activate_session(session, goptions)
 
@@ -5026,12 +5120,14 @@ def handle_add_tag_inheritance(goptions, session, args):
     samePriority = [datum for datum in inheritanceData if datum['priority'] == priority]
 
     if sameParents and not options.force:
-        print(_("Error: You are attempting to add %s as %s's parent even though it already is %s's parent.")
+        print(_("Error: You are attempting to add %s as %s's parent even though it already is "
+                "%s's parent.")
               % (parent['name'], tag['name'], tag['name']))
         print(_("Please use --force if this is what you really want to do."))
         return
     if samePriority:
-        print(_("Error: There is already an active inheritance with that priority on %s, please specify a different priority with --priority." % tag['name']))
+        print(_("Error: There is already an active inheritance with that priority on %s, "
+                "please specify a different priority with --priority." % tag['name']))
         return
 
     new_data = {}
@@ -5064,7 +5160,8 @@ def handle_edit_tag_inheritance(goptions, session, args):
         parser.error(_("This command takes at least one argument: a tag name or ID"))
 
     if len(args) > 3:
-        parser.error(_("This command takes at most three argument: a tag name or ID, a parent tag name or ID, and a priority"))
+        parser.error(_("This command takes at most three argument: a tag name or ID, "
+                       "a parent tag name or ID, and a priority"))
 
     activate_session(session, goptions)
 
@@ -5107,7 +5204,8 @@ def handle_edit_tag_inheritance(goptions, session, args):
     inheritanceData = session.getInheritanceData(tag['id'])
     samePriority = [datum for datum in inheritanceData if datum['priority'] == options.priority]
     if samePriority:
-        print(_("Error: There is already an active inheritance with that priority on %s, please specify a different priority with --priority.") % tag['name'])
+        print(_("Error: There is already an active inheritance with that priority on %s, "
+                "please specify a different priority with --priority.") % tag['name'])
         return 1
 
     new_data = data.copy()
@@ -5144,7 +5242,8 @@ def handle_remove_tag_inheritance(goptions, session, args):
         parser.error(_("This command takes at least one argument: a tag name or ID"))
 
     if len(args) > 3:
-        parser.error(_("This command takes at most three argument: a tag name or ID, a parent tag name or ID, and a priority"))
+        parser.error(_("This command takes at most three argument: a tag name or ID, a parent tag "
+                       "name or ID, and a priority"))
 
     activate_session(session, goptions)
 
@@ -5203,7 +5302,8 @@ def anon_handle_show_groups(goptions, session, args):
     parser.add_option("-x", "--expand", action="store_true", default=False,
                       help=_("Expand groups in comps format"))
     parser.add_option("--spec", action="store_true", help=_("Print build spec"))
-    parser.add_option("--show-blocked", action="store_true", dest="incl_blocked", help=_("Show blocked packages"))
+    parser.add_option("--show-blocked", action="store_true", dest="incl_blocked",
+                      help=_("Show blocked packages"))
     (options, args) = parser.parse_args(args)
     if len(args) != 1:
         parser.error(_("Incorrect number of arguments"))
@@ -5232,9 +5332,11 @@ def anon_handle_list_external_repos(goptions, session, args):
     parser.add_option("--id", type="int", help=_("Select by id"))
     parser.add_option("--tag", help=_("Select by tag"))
     parser.add_option("--used", action='store_true', help=_("List which tags use the repo(s)"))
-    parser.add_option("--inherit", action='store_true', help=_("Follow tag inheritance when selecting by tag"))
+    parser.add_option("--inherit", action='store_true',
+                      help=_("Follow tag inheritance when selecting by tag"))
     parser.add_option("--event", type='int', metavar="EVENT#", help=_("Query at event"))
-    parser.add_option("--ts", type='int', metavar="TIMESTAMP", help=_("Query at last event before timestamp"))
+    parser.add_option("--ts", type='int', metavar="TIMESTAMP",
+                      help=_("Query at last event before timestamp"))
     parser.add_option("--repo", type='int', metavar="REPO#",
                       help=_("Query at event corresponding to (nonexternal) repo"))
     parser.add_option("--quiet", action="store_true", default=goptions.quiet,
@@ -5413,7 +5515,8 @@ def handle_remove_external_repo(goptions, session, args):
     if delete:
         # removing entirely
         if current_tags and not options.force:
-            print(_("Error: external repo %s used by tag(s): %s") % (repo, ', '.join(current_tags)))
+            print(_("Error: external repo %s used by tag(s): %s") %
+                  (repo, ', '.join(current_tags)))
             print(_("Use --force to remove anyway"))
             return 1
         session.deleteExternalRepo(args[0])
@@ -5431,8 +5534,8 @@ def handle_spin_livecd(options, session, args):
     """[build] Create a live CD image given a kickstart file"""
 
     # Usage & option parsing.
-    usage = _("usage: %prog spin-livecd [options] <name> <version> <target>" +
-              " <arch> <kickstart-file>")
+    usage = _("usage: %prog spin-livecd [options] <name> <version> <target> <arch> "
+              "<kickstart-file>")
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--wait", action="store_true",
                       help=_("Wait on the livecd creation, even if running in the background"))
@@ -5449,8 +5552,8 @@ def handle_spin_livecd(options, session, args):
     parser.add_option("--scratch", action="store_true",
                       help=_("Create a scratch LiveCD image"))
     parser.add_option("--repo", action="append",
-                      help=_("Specify a repo that will override the repo used to install " +
-                             "RPMs in the LiveCD. May be used multiple times. The " +
+                      help=_("Specify a repo that will override the repo used to install "
+                             "RPMs in the LiveCD. May be used multiple times. The "
                              "build tag repo associated with the target is the default."))
     parser.add_option("--release", help=_("Forcibly set the release field"))
     parser.add_option("--volid", help=_("Set the volume id"))
@@ -5463,8 +5566,8 @@ def handle_spin_livecd(options, session, args):
     # Make sure the target and kickstart is specified.
     print('spin-livecd is deprecated and will be replaced with spin-livemedia')
     if len(args) != 5:
-        parser.error(_("Five arguments are required: a name, a version, an" +
-                       " architecture, a build target, and a relative path to" +
+        parser.error(_("Five arguments are required: a name, a version, an"
+                       " architecture, a build target, and a relative path to"
                        " a kickstart file."))
     if task_options.volid is not None and len(task_options.volid) > 32:
         parser.error(_('Volume ID has a maximum length of 32 characters'))
@@ -5476,8 +5579,8 @@ def handle_spin_livemedia(options, session, args):
     """[build] Create a livemedia image given a kickstart file"""
 
     # Usage & option parsing.
-    usage = _("usage: %prog spin-livemedia [options] <name> <version> <target>" +
-              " <arch> <kickstart-file>")
+    usage = _("usage: %prog spin-livemedia [options] <name> <version> <target> <arch> "
+              "<kickstart-file>")
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--wait", action="store_true",
                       help=_("Wait on the livemedia creation, even if running in the background"))
@@ -5496,8 +5599,8 @@ def handle_spin_livemedia(options, session, args):
     parser.add_option("--scratch", action="store_true",
                       help=_("Create a scratch LiveMedia image"))
     parser.add_option("--repo", action="append",
-                      help=_("Specify a repo that will override the repo used to install " +
-                             "RPMs in the LiveMedia. May be used multiple times. The " +
+                      help=_("Specify a repo that will override the repo used to install "
+                             "RPMs in the LiveMedia. May be used multiple times. The "
                              "build tag repo associated with the target is the default."))
     parser.add_option("--release", help=_("Forcibly set the release field"))
     parser.add_option("--volid", help=_("Set the volume id"))
@@ -5507,7 +5610,8 @@ def handle_spin_livemedia(options, session, args):
                       help=_("Do not attempt to tag package"))
     parser.add_option("--can-fail", action="store", dest="optional_arches",
                       metavar="ARCH1,ARCH2,...", default="",
-                      help=_("List of archs which are not blocking for build (separated by commas."))
+                      help=_("List of archs which are not blocking for build "
+                             "(separated by commas."))
     parser.add_option('--lorax_dir', metavar='DIR',
                       help=_('The relative path to the lorax templates '
                              'directory within the checkout of "lorax_url".'))
@@ -5519,9 +5623,9 @@ def handle_spin_livemedia(options, session, args):
 
     # Make sure the target and kickstart is specified.
     if len(args) != 5:
-        parser.error(_("Five arguments are required: a name, a version, a" +
-                       " build target, an architecture, and a relative path to" +
-                       " a kickstart file."))
+        parser.error(_("Five arguments are required: a name, a version, a "
+                       "build target, an architecture, and a relative path to "
+                       "a kickstart file."))
     if task_options.lorax_url is not None and task_options.lorax_dir is None:
         parser.error(_('The "--lorax_url" option requires that "--lorax_dir" '
                        'also be used.'))
@@ -5536,8 +5640,8 @@ def handle_spin_appliance(options, session, args):
     """[build] Create an appliance given a kickstart file"""
 
     # Usage & option parsing
-    usage = _("usage: %prog spin-appliance [options] <name> <version> " +
-              "<target> <arch> <kickstart-file>")
+    usage = _("usage: %prog spin-appliance [options] <name> <version> <target> <arch> "
+              "<kickstart-file>")
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--wait", action="store_true",
                       help=_("Wait on the appliance creation, even if running in the background"))
@@ -5554,8 +5658,8 @@ def handle_spin_appliance(options, session, args):
     parser.add_option("--scratch", action="store_true",
                       help=_("Create a scratch appliance"))
     parser.add_option("--repo", action="append",
-                      help=_("Specify a repo that will override the repo used to install " +
-                             "RPMs in the appliance. May be used multiple times. The " +
+                      help=_("Specify a repo that will override the repo used to install "
+                             "RPMs in the appliance. May be used multiple times. The "
                              "build tag repo associated with the target is the default."))
     parser.add_option("--release", help=_("Forcibly set the release field"))
     parser.add_option("--specfile", metavar="URL",
@@ -5563,13 +5667,13 @@ def handle_spin_appliance(options, session, args):
     parser.add_option("--skip-tag", action="store_true",
                       help=_("Do not attempt to tag package"))
     parser.add_option("--vmem", metavar="VMEM", default=None,
-                      help=_("Set the amount of virtual memory in the appliance in MB, " +
+                      help=_("Set the amount of virtual memory in the appliance in MB, "
                              "default is 512"))
     parser.add_option("--vcpu", metavar="VCPU", default=None,
-                      help=_("Set the number of virtual cpus in the appliance, " +
+                      help=_("Set the number of virtual cpus in the appliance, "
                              "default is 1"))
     parser.add_option("--format", metavar="DISK_FORMAT", default='raw',
-                      help=_("Disk format, default is raw. Other options are qcow, " +
+                      help=_("Disk format, default is raw. Other options are qcow, "
                              "qcow2, and vmx."))
 
     (task_options, args) = parser.parse_args(args)
@@ -5577,20 +5681,20 @@ def handle_spin_appliance(options, session, args):
     # Make sure the target and kickstart is specified.
     print('spin-appliance is deprecated and will be replaced with image-build')
     if len(args) != 5:
-        parser.error(_("Five arguments are required: a name, a version, " +
-                       "an architecture, a build target, and a relative path" +
-                       " to a kickstart file."))
+        parser.error(_("Five arguments are required: a name, a version, "
+                       "an architecture, a build target, and a relative path "
+                       "to a kickstart file."))
     return _build_image(options, task_options, session, args, 'appliance')
 
 
 def handle_image_build_indirection(options, session, args):
     """[build] Create a disk image using other disk images via the Indirection plugin"""
-    usage = _("usage: %prog image-build-indirection [base_image] " +
+    usage = _("usage: %prog image-build-indirection [base_image] "
               "[utility_image] [indirection_build_template]")
     usage += _("\n       %prog image-build --config <FILE>\n")
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--config",
-                      help=_("Use a configuration file to define image-build options " +
+                      help=_("Use a configuration file to define image-build options "
                              "instead of command line options (they will be ignored)."))
     parser.add_option("--background", action="store_true",
                       help=_("Run the image creation task at a lower priority"))
@@ -5615,11 +5719,14 @@ def handle_image_build_indirection(options, session, args):
     parser.add_option("--utility-image-build",
                       help=_("NVR or build ID of the utility image to be used"))
     parser.add_option("--indirection-template",
-                      help=_("Name of the local file, or SCM file containing the template used to drive the indirection plugin"))
+                      help=_("Name of the local file, or SCM file containing the template used to "
+                             "drive the indirection plugin"))
     parser.add_option("--indirection-template-url",
-                      help=_("SCM URL containing the template used to drive the indirection plugin"))
+                      help=_("SCM URL containing the template used to drive the indirection "
+                             "plugin"))
     parser.add_option("--results-loc",
-                      help=_("Relative path inside the working space image where the results should be extracted from"))
+                      help=_("Relative path inside the working space image where the results "
+                             "should be extracted from"))
     parser.add_option("--scratch", action="store_true",
                       help=_("Create a scratch image"))
     parser.add_option("--wait", action="store_true",
@@ -5646,8 +5753,9 @@ def _build_image_indirection(options, task_opts, session, args):
         raise koji.GenericError(_("You must specify either a base-image task or build ID/NVR"))
 
     required_opts = ['name', 'version', 'arch', 'target', 'indirection_template', 'results_loc']
-    optional_opts = ['indirection_template_url', 'scratch', 'utility_image_task', 'utility_image_build',
-                     'base_image_task', 'base_image_build', 'release', 'skip_tag']
+    optional_opts = ['indirection_template_url', 'scratch', 'utility_image_task',
+                     'utility_image_build', 'base_image_task', 'base_image_build', 'release',
+                     'skip_tag']
 
     missing = []
     for opt in required_opts:
@@ -5655,7 +5763,8 @@ def _build_image_indirection(options, task_opts, session, args):
             missing.append(opt)
 
     if len(missing) > 0:
-        print("Missing the following required options: %s" % ' '.join(['--%s' % o.replace('_', '-') for o in missing]))
+        print("Missing the following required options: %s" %
+              ' '.join(['--%s' % o.replace('_', '-') for o in missing]))
         raise koji.GenericError(_("Missing required options specified above"))
 
     activate_session(session, options)
@@ -5690,7 +5799,8 @@ def _build_image_indirection(options, task_opts, session, args):
     if not task_opts.indirection_template_url:
         if not task_opts.scratch:
             # only scratch builds can omit indirection_template_url
-            raise koji.GenericError(_("Non-scratch builds must provide a URL for the indirection template"))
+            raise koji.GenericError(
+                _("Non-scratch builds must provide a URL for the indirection template"))
         templatefile = task_opts.indirection_template
         serverdir = unique_path('cli-image-indirection')
         session.uploadWrapper(templatefile, serverdir, callback=callback)
@@ -5726,29 +5836,29 @@ def handle_image_build(options, session, args):
                'vsphere-ova', 'vagrant-virtualbox', 'vagrant-libvirt',
                'vagrant-vmware-fusion', 'vagrant-hyperv', 'docker', 'raw-xz',
                'liveimg-squashfs', 'tar-gz')
-    usage = _("usage: %prog image-build [options] <name> <version> " +
+    usage = _("usage: %prog image-build [options] <name> <version> "
               "<target> <install-tree-url> <arch> [<arch> ...]")
     usage += _("\n       %prog image-build --config <FILE>\n")
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--background", action="store_true",
                       help=_("Run the image creation task at a lower priority"))
     parser.add_option("--config",
-                      help=_("Use a configuration file to define image-build options " +
+                      help=_("Use a configuration file to define image-build options "
                              "instead of command line options (they will be ignored)."))
     parser.add_option("--disk-size", default=10,
                       help=_("Set the disk device size in gigabytes"))
     parser.add_option("--distro",
-                      help=_("specify the RPM based distribution the image will be based " +
-                             "on with the format RHEL-X.Y, CentOS-X.Y, SL-X.Y, or Fedora-NN. " +
-                             "The packages for the Distro you choose must have been built " +
+                      help=_("specify the RPM based distribution the image will be based "
+                             "on with the format RHEL-X.Y, CentOS-X.Y, SL-X.Y, or Fedora-NN. "
+                             "The packages for the Distro you choose must have been built "
                              "in this system."))
     parser.add_option("--format", default=[], action="append",
-                      help=_("Convert results to one or more formats " +
-                             "(%s), this option may be used " % ', '.join(formats) +
-                             "multiple times. By default, specifying this option will " +
-                             "omit the raw disk image (which is 10G in size) from the " +
-                             "build results. If you really want it included with converted " +
-                             "images, pass in 'raw' as an option."))
+                      help=_("Convert results to one or more formats "
+                             "(%s), this option may be used "
+                             "multiple times. By default, specifying this option will "
+                             "omit the raw disk image (which is 10G in size) from the "
+                             "build results. If you really want it included with converted "
+                             "images, pass in 'raw' as an option.") % ', '.join(formats))
     parser.add_option("--kickstart", help=_("Path to a local kickstart file"))
     parser.add_option("--ksurl", metavar="SCMURL",
                       help=_("The URL to the SCM containing the kickstart file"))
@@ -5759,17 +5869,17 @@ def handle_image_build(options, session, args):
     parser.add_option("--nowait", action="store_false", dest="wait",
                       help=_("Don't wait on image creation"))
     parser.add_option("--ova-option", action="append",
-                      help=_("Override a value in the OVA description XML. Provide a value " +
+                      help=_("Override a value in the OVA description XML. Provide a value "
                              "in a name=value format, such as 'ovf_memory_mb=6144'"))
     parser.add_option("--factory-parameter", nargs=2, action="append",
-                      help=_("Pass a parameter to Image Factory. The results are highly specific " +
-                             "to the image format being created. This is a two argument parameter " +
+                      help=_("Pass a parameter to Image Factory. The results are highly specific "
+                             "to the image format being created. This is a two argument parameter "
                              "that can be specified an arbitrary number of times. For example: "
                              "--factory-parameter docker_cmd '[ \"/bin/echo Hello World\" ]'"))
     parser.add_option("--release", help=_("Forcibly set the release field"))
     parser.add_option("--repo", action="append",
-                      help=_("Specify a repo that will override the repo used to install " +
-                             "RPMs in the image. May be used multiple times. The " +
+                      help=_("Specify a repo that will override the repo used to install "
+                             "RPMs in the image. May be used multiple times. The "
                              "build tag repo associated with the target is the default."))
     parser.add_option("--scratch", action="store_true",
                       help=_("Create a scratch image"))
@@ -5777,7 +5887,8 @@ def handle_image_build(options, session, args):
                       help=_("Do not attempt to tag package"))
     parser.add_option("--can-fail", action="store", dest="optional_arches",
                       metavar="ARCH1,ARCH2,...", default="",
-                      help=_("List of archs which are not blocking for build (separated by commas."))
+                      help=_("List of archs which are not blocking for build "
+                             "(separated by commas."))
     parser.add_option("--specfile", metavar="URL",
                       help=_("SCM URL to spec file fragment to use to generate wrapper RPMs"))
     parser.add_option("--wait", action="store_true",
@@ -5826,14 +5937,14 @@ def handle_image_build(options, session, args):
 
     else:
         if len(args) < 5:
-            parser.error(_("At least five arguments are required: a name, " +
-                           "a version, a build target, a URL to an " +
+            parser.error(_("At least five arguments are required: a name, "
+                           "a version, a build target, a URL to an "
                            "install tree, and 1 or more architectures."))
     if not task_options.ksurl and not task_options.kickstart:
         parser.error(_('You must specify --kickstart'))
     if not task_options.distro:
         parser.error(
-            _("You must specify --distro. Examples: Fedora-16, RHEL-6.4, " +
+            _("You must specify --distro. Examples: Fedora-16, RHEL-6.4, "
               "SL-6.4 or CentOS-6.4"))
     return _build_image_oz(options, task_options, session, args)
 
@@ -5994,17 +6105,17 @@ def handle_win_build(options, session, args):
     usage = _("usage: %prog win-build [options] <target> <URL> <VM>")
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--winspec", metavar="URL",
-                      help=_("SCM URL to retrieve the build descriptor from. " +
-                             "If not specified, the winspec must be in the root directory " +
+                      help=_("SCM URL to retrieve the build descriptor from. "
+                             "If not specified, the winspec must be in the root directory "
                              "of the source repository."))
     parser.add_option("--patches", metavar="URL",
-                      help=_("SCM URL of a directory containing patches to apply " +
+                      help=_("SCM URL of a directory containing patches to apply "
                              "to the sources before building"))
     parser.add_option("--cpus", type="int",
-                      help=_("Number of cpus to allocate to the build VM " +
+                      help=_("Number of cpus to allocate to the build VM "
                              "(requires admin access)"))
     parser.add_option("--mem", type="int",
-                      help=_("Amount of memory (in megabytes) to allocate to the build VM " +
+                      help=_("Amount of memory (in megabytes) to allocate to the build VM "
                              "(requires admin access)"))
     parser.add_option("--static-mac", action="store_true",
                       help=_("Retain the original MAC address when cloning the VM"))
@@ -6025,7 +6136,8 @@ def handle_win_build(options, session, args):
                       help=_("Do not print the task information"), default=options.quiet)
     (build_opts, args) = parser.parse_args(args)
     if len(args) != 3:
-        parser.error(_("Exactly three arguments (a build target, a SCM URL, and a VM name) are required"))
+        parser.error(
+            _("Exactly three arguments (a build target, a SCM URL, and a VM name) are required"))
     activate_session(session, options)
     target = args[0]
     if target.lower() == "none" and build_opts.repo_id:
@@ -6121,10 +6233,12 @@ def handle_cancel(goptions, session, args):
 
 def handle_set_task_priority(goptions, session, args):
     "[admin] Set task priority"
-    usage = _("usage: %prog set-task-priority [options] --priority=<priority> <task_id> [<task_id> ...]")
+    usage = _("usage: %prog set-task-priority [options] --priority=<priority> <task_id> "
+              "[<task_id> ...]")
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--priority", type="int", help=_("New priority"))
-    parser.add_option("--recurse", action="store_true", default=False, help=_("Change priority of child tasks as well"))
+    parser.add_option("--recurse", action="store_true", default=False,
+                      help=_("Change priority of child tasks as well"))
     (options, args) = parser.parse_args(args)
     if len(args) == 0:
         parser.error(_("You must specify at least one task id"))
@@ -6213,7 +6327,8 @@ def handle_set_pkg_owner_global(goptions, session, args):
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--verbose", action='store_true', help=_("List changes"))
     parser.add_option("--test", action='store_true', help=_("Test mode"))
-    parser.add_option("--old-user", "--from", action="store", help=_("Only change ownership for packages belonging to this user"))
+    parser.add_option("--old-user", "--from", action="store",
+                      help=_("Only change ownership for packages belonging to this user"))
     (options, args) = parser.parse_args(args)
     if options.old_user:
         if len(args) < 1:
@@ -6256,11 +6371,13 @@ def handle_set_pkg_owner_global(goptions, session, args):
         else:
             if options.test:
                 print("Would have changed owner for %s in tag %s: %s -> %s"
-                      % (entry['package_name'], entry['tag_name'], entry['owner_name'], user['name']))
+                      % (entry['package_name'], entry['tag_name'], entry['owner_name'],
+                         user['name']))
                 continue
             if options.verbose:
                 print("Changing owner for %s in tag %s: %s -> %s"
-                      % (entry['package_name'], entry['tag_name'], entry['owner_name'], user['name']))
+                      % (entry['package_name'], entry['tag_name'], entry['owner_name'],
+                         user['name']))
             session.packageListSetOwner(entry['tag_id'], entry['package_name'], user['id'])
 
 
@@ -6311,8 +6428,9 @@ def anon_handle_watch_logs(goptions, session, args):
     usage = _("usage: %prog watch-logs [options] <task id> [<task id> ...]")
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--log", help=_("Watch only a specific log"))
-    parser.add_option("--mine", action="store_true", help=_("Watch logs for "
-                                                            "all your tasks, task_id arguments are forbidden in this case."))
+    parser.add_option("--mine", action="store_true",
+                      help=_("Watch logs for all your tasks, task_id arguments are forbidden in "
+                             "this case."))
     parser.add_option("--follow", action="store_true", help=_("Follow spawned child tasks"))
     (options, args) = parser.parse_args(args)
     activate_session(session, goptions)
@@ -6376,7 +6494,9 @@ def handle_tag_build(opts, session, args):
     parser.add_option("--nowait", action="store_true", help=_("Do not wait on task"))
     (options, args) = parser.parse_args(args)
     if len(args) < 2:
-        parser.error(_("This command takes at least two arguments: a tag name/ID and one or more package n-v-r's"))
+        parser.error(
+            _("This command takes at least two arguments: a tag name/ID and one or more package "
+              "n-v-r's"))
     activate_session(session, opts)
     tasks = []
     for pkg in args[1:]:
@@ -6398,13 +6518,18 @@ def handle_move_build(opts, session, args):
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--force", action="store_true", help=_("force operation"))
     parser.add_option("--nowait", action="store_true", help=_("do not wait on tasks"))
-    parser.add_option("--all", action="store_true", help=_("move all instances of a package, <pkg>'s are package names"))
+    parser.add_option("--all", action="store_true",
+                      help=_("move all instances of a package, <pkg>'s are package names"))
     (options, args) = parser.parse_args(args)
     if len(args) < 3:
         if options.all:
-            parser.error(_("This command, with --all, takes at least three arguments: two tags and one or more package names"))
+            parser.error(
+                _("This command, with --all, takes at least three arguments: two tags and one or "
+                  "more package names"))
         else:
-            parser.error(_("This command takes at least three arguments: two tags and one or more package n-v-r's"))
+            parser.error(
+                _("This command takes at least three arguments: two tags and one or more package "
+                  "n-v-r's"))
     activate_session(session, opts)
     tasks = []
     builds = []
@@ -6442,8 +6567,10 @@ def handle_untag_build(goptions, session, args):
     "[bind] Remove a tag from one or more builds"
     usage = _("usage: %prog untag-build [options] <tag> <pkg> [<pkg> ...]")
     parser = OptionParser(usage=get_usage_str(usage))
-    parser.add_option("--all", action="store_true", help=_("untag all versions of the package in this tag"))
-    parser.add_option("--non-latest", action="store_true", help=_("untag all versions of the package in this tag except the latest"))
+    parser.add_option("--all", action="store_true",
+                      help=_("untag all versions of the package in this tag"))
+    parser.add_option("--non-latest", action="store_true",
+                      help=_("untag all versions of the package in this tag except the latest"))
     parser.add_option("-n", "--test", action="store_true", help=_("test mode"))
     parser.add_option("-v", "--verbose", action="store_true", help=_("print details"))
     parser.add_option("--force", action="store_true", help=_("force operation"))
@@ -6452,7 +6579,9 @@ def handle_untag_build(goptions, session, args):
         if len(args) < 1:
             parser.error(_("Please specify a tag"))
     elif len(args) < 2:
-        parser.error(_("This command takes at least two arguments: a tag name/ID and one or more package n-v-r's"))
+        parser.error(
+            _("This command takes at least two arguments: a tag name/ID and one or more package "
+              "n-v-r's"))
     activate_session(session, goptions)
     tag = session.getTag(args[0])
     if not tag:
@@ -6526,8 +6655,11 @@ def anon_handle_download_build(options, session, args):
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--arch", "-a", dest="arches", metavar="ARCH", action="append", default=[],
                       help=_("Only download packages for this arch (may be used multiple times)"))
-    parser.add_option("--type", help=_("Download archives of the given type, rather than rpms (maven, win, or image)"))
-    parser.add_option("--latestfrom", dest="latestfrom", help=_("Download the latest build from this tag"))
+    parser.add_option("--type",
+                      help=_("Download archives of the given type, rather than rpms "
+                             "(maven, win, or image)"))
+    parser.add_option("--latestfrom", dest="latestfrom",
+                      help=_("Download the latest build from this tag"))
     parser.add_option("--debuginfo", action="store_true", help=_("Also download -debuginfo rpms"))
     parser.add_option("--task-id", action="store_true", help=_("Interperet id as a task id"))
     parser.add_option("--rpm", action="store_true", help=_("Download the given rpm"))
@@ -6562,7 +6694,8 @@ def anon_handle_download_build(options, session, args):
     if suboptions.latestfrom:
         # We want the latest build, not a specific build
         try:
-            builds = session.listTagged(suboptions.latestfrom, latest=True, package=build, type=suboptions.type)
+            builds = session.listTagged(suboptions.latestfrom, latest=True, package=build,
+                                        type=suboptions.type)
         except koji.GenericError as data:
             print("Error finding latest build: %s" % data)
             return 1
@@ -6630,7 +6763,8 @@ def anon_handle_download_build(options, session, args):
             rpms = session.listRPMs(buildID=info['id'], arches=arches)
         if not rpms:
             if arches:
-                print("No %s packages available for %s" % (" or ".join(arches), koji.buildLabel(info)))
+                print("No %s packages available for %s" %
+                      (" or ".join(arches), koji.buildLabel(info)))
             else:
                 print("No packages available for %s" % koji.buildLabel(info))
             return 1
@@ -6706,7 +6840,8 @@ def anon_handle_download_logs(options, session, args):
             offset = 0
         try:
             while contents:
-                contents = session.downloadTaskOutput(task_id, filename, offset=offset, size=blocksize, volume=volume)
+                contents = session.downloadTaskOutput(task_id, filename, offset=offset,
+                                                      size=blocksize, volume=volume)
                 offset += len(contents)
                 if contents:
                     fd.write(contents)
@@ -6774,7 +6909,8 @@ def anon_handle_download_task(options, session, args):
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--arch", dest="arches", metavar="ARCH", action="append", default=[],
                       help=_("Only download packages for this arch (may be used multiple times)"))
-    parser.add_option("--logs", dest="logs", action="store_true", default=False, help=_("Also download build logs"))
+    parser.add_option("--logs", dest="logs", action="store_true", default=False,
+                      help=_("Also download build logs"))
     parser.add_option("--topurl", metavar="URL", default=options.topurl,
                       help=_("URL under which Koji files are accessible"))
     parser.add_option("--noprogress", action="store_true",
@@ -6854,7 +6990,8 @@ def anon_handle_download_task(options, session, args):
         if '..' in filename:
             error(_('Invalid file name: %s') % filename)
         url = '%s/%s/%s' % (pathinfo.work(volume), pathinfo.taskrelpath(task["id"]), filename)
-        download_file(url, new_filename, suboptions.quiet, suboptions.noprogress, len(downloads), number)
+        download_file(url, new_filename, suboptions.quiet, suboptions.noprogress, len(downloads),
+                      number)
 
 
 def anon_handle_wait_repo(options, session, args):
@@ -6862,10 +6999,16 @@ def anon_handle_wait_repo(options, session, args):
     usage = _("usage: %prog wait-repo [options] <tag>")
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--build", metavar="NVR", dest="builds", action="append", default=[],
-                      help=_("Check that the given build is in the newly-generated repo (may be used multiple times)"))
-    parser.add_option("--target", action="store_true", help=_("Interpret the argument as a build target name"))
-    parser.add_option("--timeout", type="int", help=_("Amount of time to wait (in minutes) before giving up (default: 120)"), default=120)
-    parser.add_option("--quiet", action="store_true", help=_("Suppress output, success or failure will be indicated by the return value only"), default=options.quiet)
+                      help=_("Check that the given build is in the newly-generated repo "
+                             "(may be used multiple times)"))
+    parser.add_option("--target", action="store_true",
+                      help=_("Interpret the argument as a build target name"))
+    parser.add_option("--timeout", type="int", default=120,
+                      help=_("Amount of time to wait (in minutes) before giving up "
+                             "(default: 120)"))
+    parser.add_option("--quiet", action="store_true", default=options.quiet,
+                      help=_("Suppress output, success or failure will be indicated by the return "
+                             "value only"))
     (suboptions, args) = parser.parse_args(args)
 
     start = time.time()
@@ -6906,24 +7049,30 @@ def anon_handle_wait_repo(options, session, args):
         else:
             present_nvr = [x["nvr"] for x in data][0]
             if present_nvr != "%s-%s-%s" % (nvr["name"], nvr["version"], nvr["release"]):
-                print("Warning: nvr %s-%s-%s is not current in tag %s\n  latest build in %s is %s" % (nvr["name"], nvr["version"], nvr["release"], tag, tag, present_nvr))
+                print(
+                    "Warning: nvr %s-%s-%s is not current in tag %s\n  latest build in %s is %s" %
+                    (nvr["name"], nvr["version"], nvr["release"], tag, tag, present_nvr))
 
     last_repo = None
     repo = session.getRepo(tag_id)
 
     while True:
         if builds and repo and repo != last_repo:
-            if koji.util.checkForBuilds(session, tag_id, builds, repo['create_event'], latest=True):
+            if koji.util.checkForBuilds(session, tag_id, builds, repo['create_event'],
+                                        latest=True):
                 if not suboptions.quiet:
-                    print("Successfully waited %s for %s to appear in the %s repo" % (koji.util.duration(start), koji.util.printList(suboptions.builds), tag))
+                    print("Successfully waited %s for %s to appear in the %s repo" %
+                          (koji.util.duration(start), koji.util.printList(suboptions.builds), tag))
                 return
 
         if (time.time() - start) >= (suboptions.timeout * 60.0):
             if not suboptions.quiet:
                 if builds:
-                    print("Unsuccessfully waited %s for %s to appear in the %s repo" % (koji.util.duration(start), koji.util.printList(suboptions.builds), tag))
+                    print("Unsuccessfully waited %s for %s to appear in the %s repo" %
+                          (koji.util.duration(start), koji.util.printList(suboptions.builds), tag))
                 else:
-                    print("Unsuccessfully waited %s for a new %s repo" % (koji.util.duration(start), tag))
+                    print("Unsuccessfully waited %s for a new %s repo" %
+                          (koji.util.duration(start), tag))
             return 1
 
         time.sleep(options.poll_interval)
@@ -6933,7 +7082,8 @@ def anon_handle_wait_repo(options, session, args):
         if not builds:
             if repo != last_repo:
                 if not suboptions.quiet:
-                    print("Successfully waited %s for a new %s repo" % (koji.util.duration(start), tag))
+                    print("Successfully waited %s for a new %s repo" %
+                          (koji.util.duration(start), tag))
                 return
 
 
@@ -6941,11 +7091,14 @@ def handle_regen_repo(options, session, args):
     "[admin] Force a repo to be regenerated"
     usage = _("usage: %prog regen-repo [options] <tag>")
     parser = OptionParser(usage=get_usage_str(usage))
-    parser.add_option("--target", action="store_true", help=_("Interpret the argument as a build target name"))
+    parser.add_option("--target", action="store_true",
+                      help=_("Interpret the argument as a build target name"))
     parser.add_option("--nowait", action="store_true", help=_("Don't wait on for regen to finish"))
     parser.add_option("--debuginfo", action="store_true", help=_("Include debuginfo rpms in repo"))
-    parser.add_option("--source", "--src", action="store_true", help=_("Include source rpms in each of repos"))
-    parser.add_option("--separate-source", "--separate-src", action="store_true", help=_("Include source rpms in separate src repo"))
+    parser.add_option("--source", "--src", action="store_true",
+                      help=_("Include source rpms in each of repos"))
+    parser.add_option("--separate-source", "--separate-src", action="store_true",
+                      help=_("Include source rpms in separate src repo"))
     (suboptions, args) = parser.parse_args(args)
     if len(args) == 0:
         parser.error(_("A tag name must be specified"))
@@ -7006,8 +7159,8 @@ def handle_dist_repo(options, session, args):
                       help=_('For RPMs not signed with a desired key, fall back to the '
                              'primary copy'))
     parser.add_option("-a", "--arch", action='append', default=[],
-                      help=_("Indicate an architecture to consider. The default is all " +
-                             "architectures associated with the given tag. This option may " +
+                      help=_("Indicate an architecture to consider. The default is all "
+                             "architectures associated with the given tag. This option may "
                              "be specified multiple times."))
     parser.add_option("--with-src", action='store_true', help='Also generate a src repo')
     parser.add_option("--split-debuginfo", action='store_true', default=False,
@@ -7035,7 +7188,8 @@ def handle_dist_repo(options, session, args):
     parser.add_option('--zck', action='store_true', default=False,
                       help=_('Generate zchunk files as well as the standard repodata'))
     parser.add_option('--zck-dict-dir', action='store', default=None,
-                      help=_('Directory containing compression dictionaries for use by zchunk (on builder)'))
+                      help=_('Directory containing compression dictionaries for use by zchunk '
+                             '(on builder)'))
     task_opts, args = parser.parse_args(args)
     if len(args) < 1:
         parser.error(_('You must provide a tag to generate the repo from'))
@@ -7210,7 +7364,11 @@ def anon_handle_list_notifications(goptions, session, args):
         user_id = None
 
     mask = "%(id)6s %(tag)-25s %(package)-25s %(email)-20s %(success)-12s"
-    headers = {'id': 'ID', 'tag': 'Tag', 'package': 'Package', 'email': 'E-mail', 'success': 'Success-only'}
+    headers = {'id': 'ID',
+               'tag': 'Tag',
+               'package': 'Package',
+               'email': 'E-mail',
+               'success': 'Success-only'}
     head = mask % headers
     notifications = session.getBuildNotifications(user_id)
     if notifications:
@@ -7300,7 +7458,8 @@ def handle_add_notification(goptions, session, args):
 
 def handle_remove_notification(goptions, session, args):
     "[monitor] Remove user's notifications"
-    usage = _("usage: %prog remove-notification [options] <notification_id> [<notification_id> ...]")
+    usage = _("usage: %prog remove-notification [options] <notification_id> "
+              "[<notification_id> ...]")
     parser = OptionParser(usage=get_usage_str(usage))
     (options, args) = parser.parse_args(args)
 
@@ -7422,7 +7581,7 @@ def handle_block_notification(goptions, session, args):
         tag_id = None
 
     for block in session.getBuildNotificationBlocks(user_id):
-        if (block['package_id'] == package_id and block['tag_id'] == tag_id):
+        if block['package_id'] == package_id and block['tag_id'] == tag_id:
             parser.error('Notification already exists.')
 
     session.createNotificationBlock(user_id, package_id, tag_id)
@@ -7430,7 +7589,8 @@ def handle_block_notification(goptions, session, args):
 
 def handle_unblock_notification(goptions, session, args):
     "[monitor] Unblock user's notification"
-    usage = _("usage: %prog unblock-notification [options] <notification_id> [<notification_id> ...]")
+    usage = _("usage: %prog unblock-notification [options] <notification_id> "
+              "[<notification_id> ...]")
     parser = OptionParser(usage=get_usage_str(usage))
     (options, args) = parser.parse_args(args)
 

@@ -110,8 +110,9 @@ def fast_incremental_upload(session, fname, fd, path, retries, logger):
                 break
 
 
-def log_output(session, path, args, outfile, uploadpath, cwd=None, logerror=0, append=0, chroot=None, env=None):
-    """Run command with output redirected.  If chroot is not None, chroot to the directory specified
+def log_output(session, path, args, outfile, uploadpath, cwd=None, logerror=0, append=0,
+               chroot=None, env=None):
+    """Run command with output redirected. If chroot is not None, chroot to the directory specified
     before running the command."""
     pid = os.fork()
     fd = None
@@ -287,11 +288,13 @@ class SCM(object):
         elif len(userhost) > 2:
             raise koji.GenericError('Invalid username@hostname specified: %s' % netloc)
         if not netloc:
-            raise koji.GenericError('Unable to parse SCM URL: %s . Could not find the netloc element.' % self.url)
+            raise koji.GenericError(
+                'Unable to parse SCM URL: %s . Could not find the netloc element.' % self.url)
 
         # check for empty path before we apply normpath
         if not path:
-            raise koji.GenericError('Unable to parse SCM URL: %s . Could not find the path element.' % self.url)
+            raise koji.GenericError(
+                'Unable to parse SCM URL: %s . Could not find the path element.' % self.url)
 
         path = os.path.normpath(path)
 
@@ -306,14 +309,19 @@ class SCM(object):
             # any such url should have already been caught by is_scm_url
             raise koji.GenericError('Invalid SCM URL. Path should begin with /: %s) ')
 
-        # check for validity: params should be empty, query may be empty, everything else should be populated
+        # check for validity: params should be empty, query may be empty, everything else should be
+        # populated
         if params:
-            raise koji.GenericError('Unable to parse SCM URL: %s . Params element %s should be empty.' % (self.url, params))
+            raise koji.GenericError(
+                'Unable to parse SCM URL: %s . Params element %s should be empty.' %
+                (self.url, params))
         if not scheme:  # pragma: no cover
             # should not happen because of is_scm_url check earlier
-            raise koji.GenericError('Unable to parse SCM URL: %s . Could not find the scheme element.' % self.url)
+            raise koji.GenericError(
+                'Unable to parse SCM URL: %s . Could not find the scheme element.' % self.url)
         if not fragment:
-            raise koji.GenericError('Unable to parse SCM URL: %s . Could not find the fragment element.' % self.url)
+            raise koji.GenericError(
+                'Unable to parse SCM URL: %s . Could not find the fragment element.' % self.url)
 
         # return parsed values
         return (scheme, user, netloc, path, query, fragment)
@@ -356,7 +364,8 @@ class SCM(object):
         for allowed_scm in allowed.split():
             scm_tuple = allowed_scm.split(':')
             if len(scm_tuple) < 2:
-                self.logger.warn('Ignoring incorrectly formatted SCM host:repository: %s' % allowed_scm)
+                self.logger.warn('Ignoring incorrectly formatted SCM host:repository: %s' %
+                                 allowed_scm)
                 continue
             host_pat = scm_tuple[0]
             repo_pat = scm_tuple[1]
@@ -378,11 +387,13 @@ class SCM(object):
                     if scm_tuple[3]:
                         self.source_cmd = scm_tuple[3].split(',')
                     else:
-                        # there was nothing after the trailing :, so they don't want to run a source_cmd at all
+                        # there was nothing after the trailing :,
+                        # so they don't want to run a source_cmd at all
                         self.source_cmd = None
                 break
         if not is_allowed:
-            raise koji.BuildError('%s:%s is not in the list of allowed SCMs' % (self.host, self.repository))
+            raise koji.BuildError(
+                '%s:%s is not in the list of allowed SCMs' % (self.host, self.repository))
 
     def checkout(self, scmdir, session=None, uploadpath=None, logfile=None):
         """
@@ -416,16 +427,20 @@ class SCM(object):
                                           (self.scmtype, ' '.join(cmd), os.path.basename(logfile)))
 
         if self.scmtype == 'CVS':
-            pserver = ':pserver:%s@%s:%s' % ((self.user or 'anonymous'), self.host, self.repository)
-            module_checkout_cmd = ['cvs', '-d', pserver, 'checkout', '-r', self.revision, self.module]
+            pserver = ':pserver:%s@%s:%s' % ((self.user or 'anonymous'), self.host,
+                                             self.repository)
+            module_checkout_cmd = ['cvs', '-d', pserver, 'checkout', '-r', self.revision,
+                                   self.module]
             common_checkout_cmd = ['cvs', '-d', pserver, 'checkout', 'common']
 
         elif self.scmtype == 'CVS+SSH':
             if not self.user:
-                raise koji.BuildError('No user specified for repository access scheme: %s' % self.scheme)
+                raise koji.BuildError(
+                    'No user specified for repository access scheme: %s' % self.scheme)
 
             cvsserver = ':ext:%s@%s:%s' % (self.user, self.host, self.repository)
-            module_checkout_cmd = ['cvs', '-d', cvsserver, 'checkout', '-r', self.revision, self.module]
+            module_checkout_cmd = ['cvs', '-d', cvsserver, 'checkout', '-r', self.revision,
+                                   self.module]
             common_checkout_cmd = ['cvs', '-d', cvsserver, 'checkout', 'common']
             env = {'CVS_RSH': 'ssh'}
 
@@ -453,14 +468,16 @@ class SCM(object):
             update_checkout_cmd = ['git', 'reset', '--hard', self.revision]
             update_checkout_dir = sourcedir
 
-            # self.module may be empty, in which case the specfile should be in the top-level directory
+            # self.module may be empty, in which case the specfile should be in the top-level
+            # directory
             if self.module:
                 # Treat the module as a directory inside the git repository
                 sourcedir = '%s/%s' % (sourcedir, self.module)
 
         elif self.scmtype == 'GIT+SSH':
             if not self.user:
-                raise koji.BuildError('No user specified for repository access scheme: %s' % self.scheme)
+                raise koji.BuildError(
+                    'No user specified for repository access scheme: %s' % self.scheme)
             gitrepo = 'git+ssh://%s@%s%s' % (self.user, self.host, self.repository)
             commonrepo = os.path.dirname(gitrepo) + '/common'
             checkout_path = os.path.basename(self.repository)
@@ -481,7 +498,8 @@ class SCM(object):
             update_checkout_cmd = ['git', 'reset', '--hard', self.revision]
             update_checkout_dir = sourcedir
 
-            # self.module may be empty, in which case the specfile should be in the top-level directory
+            # self.module may be empty, in which case the specfile should be in the top-level
+            # directory
             if self.module:
                 # Treat the module as a directory inside the git repository
                 sourcedir = '%s/%s' % (sourcedir, self.module)
@@ -492,15 +510,18 @@ class SCM(object):
                 scheme = scheme.split('+')[1]
 
             svnserver = '%s%s%s' % (scheme, self.host, self.repository)
-            module_checkout_cmd = ['svn', 'checkout', '-r', self.revision, '%s/%s' % (svnserver, self.module), self.module]
+            module_checkout_cmd = ['svn', 'checkout', '-r', self.revision,
+                                   '%s/%s' % (svnserver, self.module), self.module]
             common_checkout_cmd = ['svn', 'checkout', '%s/common' % svnserver]
 
         elif self.scmtype == 'SVN+SSH':
             if not self.user:
-                raise koji.BuildError('No user specified for repository access scheme: %s' % self.scheme)
+                raise koji.BuildError(
+                    'No user specified for repository access scheme: %s' % self.scheme)
 
             svnserver = 'svn+ssh://%s@%s%s' % (self.user, self.host, self.repository)
-            module_checkout_cmd = ['svn', 'checkout', '-r', self.revision, '%s/%s' % (svnserver, self.module), self.module]
+            module_checkout_cmd = ['svn', 'checkout', '-r', self.revision,
+                                   '%s/%s' % (svnserver, self.module), self.module]
             common_checkout_cmd = ['svn', 'checkout', '%s/common' % svnserver]
 
         else:
@@ -513,8 +534,10 @@ class SCM(object):
             # Currently only required for GIT checkouts
             # Run the command in the directory the source was checked out into
             if self.scmtype.startswith('GIT') and globals().get('KOJIKAMID'):
-                _run(['git', 'config', 'core.autocrlf', 'true'], chdir=update_checkout_dir, fatal=True)
-                _run(['git', 'config', 'core.safecrlf', 'true'], chdir=update_checkout_dir, fatal=True)
+                _run(['git', 'config', 'core.autocrlf', 'true'],
+                     chdir=update_checkout_dir, fatal=True)
+                _run(['git', 'config', 'core.safecrlf', 'true'],
+                     chdir=update_checkout_dir, fatal=True)
             _run(update_checkout_cmd, chdir=update_checkout_dir, fatal=True)
 
         if self.use_common and not globals().get('KOJIKAMID'):
@@ -583,7 +606,8 @@ class TaskManager(object):
 
     def registerHandler(self, entry):
         """register and index task handler"""
-        if isinstance(entry, type(koji.tasks.BaseTaskHandler)) and issubclass(entry, koji.tasks.BaseTaskHandler):
+        if isinstance(entry, type(koji.tasks.BaseTaskHandler)) and \
+                issubclass(entry, koji.tasks.BaseTaskHandler):
             for method in entry.Methods:
                 self.handlers[method] = entry
 
@@ -638,7 +662,9 @@ class TaskManager(object):
                 # task not running - expire the buildroot
                 # TODO - consider recycling hooks here (with strong sanity checks)
                 self.logger.info("Expiring buildroot: %(id)i/%(tag_name)s/%(arch)s" % br)
-                self.logger.debug("Buildroot task: %r, Current tasks: %r" % (task_id, to_list(self.tasks.keys())))
+                self.logger.debug(
+                    "Buildroot task: %r, Current tasks: %r" %
+                    (task_id, to_list(self.tasks.keys())))
                 self.session.host.setBuildRootState(id, st_expired)
                 continue
         if nolocal:
@@ -678,7 +704,8 @@ class TaskManager(object):
                     if not task:
                         self.logger.warn("%s: invalid task %s" % (desc, br['task_id']))
                         continue
-                    if (task['state'] == koji.TASK_STATES['FAILED'] and age < self.options.failed_buildroot_lifetime):
+                    if task['state'] == koji.TASK_STATES['FAILED'] and \
+                            age < self.options.failed_buildroot_lifetime:
                         # XXX - this could be smarter
                         # keep buildroots for failed tasks around for a little while
                         self.logger.debug("Keeping failed buildroot: %s" % desc)
@@ -1004,7 +1031,9 @@ class TaskManager(object):
                 self.logger.info('%s (pid %i, taskID %i) is running' % (execname, pid, task_id))
             else:
                 if signaled:
-                    self.logger.info('%s (pid %i, taskID %i) was killed by signal %i' % (execname, pid, task_id, sig))
+                    self.logger.info(
+                        '%s (pid %i, taskID %i) was killed by signal %i' %
+                        (execname, pid, task_id, sig))
                 else:
                     self.logger.info('%s (pid %i, taskID %i) exited' % (execname, pid, task_id))
                 return True
@@ -1041,7 +1070,8 @@ class TaskManager(object):
             if not os.path.isfile(proc_path):
                 return None
             proc_file = open(proc_path)
-            procstats = [not field.isdigit() and field or int(field) for field in proc_file.read().split()]
+            procstats = [not field.isdigit() and field or int(field)
+                         for field in proc_file.read().split()]
             proc_file.close()
 
             cmd_path = '/proc/%i/cmdline' % pid
@@ -1084,9 +1114,9 @@ class TaskManager(object):
         while parents:
             for ppid in parents[:]:
                 for procstats in statsByPPID.get(ppid, []):
-                    # get the /proc entries with ppid as their parent, and append their pid to the list,
-                    # then recheck for their children
-                    # pid is the 0th field, ppid is the 3rd field
+                    # get the /proc entries with ppid as their parent, and append their pid to the
+                    # list, then recheck for their children pid is the 0th field, ppid is the 3rd
+                    # field
                     pids.append((procstats[0], procstats[1]))
                     parents.append(procstats[0])
                 parents.remove(ppid)
@@ -1154,7 +1184,8 @@ class TaskManager(object):
         availableMB = available // 1024 // 1024
         self.logger.debug("disk space available in '%s': %i MB", br_path, availableMB)
         if availableMB < self.options.minspace:
-            self.status = "Insufficient disk space at %s: %i MB, %i MB required" % (br_path, availableMB, self.options.minspace)
+            self.status = "Insufficient disk space at %s: %i MB, %i MB required" % \
+                          (br_path, availableMB, self.options.minspace)
             self.logger.warn(self.status)
             return False
         return True
@@ -1189,7 +1220,9 @@ class TaskManager(object):
             return False
         if self.task_load > self.hostdata['capacity']:
             self.status = "Over capacity"
-            self.logger.info("Task load (%.2f) exceeds capacity (%.2f)" % (self.task_load, self.hostdata['capacity']))
+            self.logger.info(
+                "Task load (%.2f) exceeds capacity (%.2f)" %
+                (self.task_load, self.hostdata['capacity']))
             return False
         if len(self.tasks) >= self.options.maxjobs:
             # This serves as a backup to the capacity check and prevents
@@ -1238,7 +1271,8 @@ class TaskManager(object):
                 self.logger.warn('Error during host check')
                 self.logger.warn(''.join(traceback.format_exception(*sys.exc_info())))
             if not valid_host:
-                self.logger.info('Skipping task %s (%s) due to host check', task['id'], task['method'])
+                self.logger.info(
+                    'Skipping task %s (%s) due to host check', task['id'], task['method'])
                 return False
         data = self.session.host.openTask(task['id'])
         if data is None:

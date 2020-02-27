@@ -65,7 +65,8 @@ def _initValues(environ, title='Build System Info', pageID='summary'):
     themeCache.clear()
     themeInfo.clear()
     themeInfo['name'] = environ['koji.options'].get('KojiTheme', None)
-    themeInfo['staticdir'] = environ['koji.options'].get('KojiStaticDir', '/usr/share/koji-web/static')
+    themeInfo['staticdir'] = environ['koji.options'].get('KojiStaticDir',
+                                                         '/usr/share/koji-web/static')
 
     environ['koji.values'] = values
 
@@ -227,9 +228,11 @@ def sortImage(template, sortKey, orderVar='order'):
     """
     orderVal = template.getVar(orderVar)
     if orderVal == sortKey:
-        return '<img src="%s" class="sort" alt="ascending sort"/>' % themePath("images/gray-triangle-up.gif")
+        return '<img src="%s" class="sort" alt="ascending sort"/>' % \
+               themePath("images/gray-triangle-up.gif")
     elif orderVal == '-' + sortKey:
-        return '<img src="%s" class="sort" alt="descending sort"/>' % themePath("images/gray-triangle-down.gif")
+        return '<img src="%s" class="sort" alt="descending sort"/>' % \
+               themePath("images/gray-triangle-down.gif")
     else:
         return ''
 
@@ -283,7 +286,8 @@ def sortByKeyFuncNoneGreatest(key):
     return internal_key
 
 
-def paginateList(values, data, start, dataName, prefix=None, order=None, noneGreatest=False, pageSize=50):
+def paginateList(values, data, start, dataName, prefix=None, order=None, noneGreatest=False,
+                 pageSize=50):
     """
     Slice the 'data' list into one page worth.  Start at offset
     'start' and limit the total number of pages to pageSize
@@ -317,8 +321,9 @@ def paginateList(values, data, start, dataName, prefix=None, order=None, noneGre
 
 def paginateMethod(server, values, methodName, args=None, kw=None,
                    start=None, dataName=None, prefix=None, order=None, pageSize=50):
-    """Paginate the results of the method with the given name when called with the given args and kws.
-    The method must support the queryOpts keyword parameter, and pagination is done in the database."""
+    """Paginate the results of the method with the given name when called with the given args and
+    kws. The method must support the queryOpts keyword parameter, and pagination is done in the
+    database."""
     if args is None:
         args = []
     if kw is None:
@@ -346,10 +351,10 @@ def paginateMethod(server, values, methodName, args=None, kw=None,
 
 def paginateResults(server, values, methodName, args=None, kw=None,
                     start=None, dataName=None, prefix=None, order=None, pageSize=50):
-    """Paginate the results of the method with the given name when called with the given args and kws.
-    This method should only be used when then method does not support the queryOpts command (because
-    the logic used to generate the result list prevents filtering/ordering from being done in the database).
-    The method must return a list of maps."""
+    """Paginate the results of the method with the given name when called with the given args and
+    kws. This method should only be used when then method does not support the queryOpts command
+    (because the logic used to generate the result list prevents filtering/ordering from being done
+    in the database). The method must return a list of maps."""
     if args is None:
         args = []
     if kw is None:
@@ -390,7 +395,8 @@ def _populateValues(values, dataName, prefix, data, totalRows, start, count, pag
     totalPages = int(totalRows // pageSize)
     if totalRows % pageSize > 0:
         totalPages += 1
-    pages = [page for page in range(0, totalPages) if (abs(page - currentPage) < 100 or ((page + 1) % 100 == 0))]
+    pages = [page for page in range(0, totalPages)
+             if (abs(page - currentPage) < 100 or ((page + 1) % 100 == 0))]
     values[(prefix and prefix + 'Pages') or 'pages'] = pages
 
 

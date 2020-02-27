@@ -269,9 +269,11 @@ class DaemonXMLRPCServer(six.moves.xmlrpc_server.SimpleXMLRPCServer):
 
     def __init__(self, addr, port):
         if sys.version_info[:2] <= (2, 4):
-            six.moves.xmlrpc_server.SimpleXMLRPCServer.__init__(self, (addr, port), logRequests=False)
+            six.moves.xmlrpc_server.SimpleXMLRPCServer.__init__(self, (addr, port),
+                                                                logRequests=False)
         else:
-            six.moves.xmlrpc_server.SimpleXMLRPCServer.__init__(self, (addr, port), logRequests=False,
+            six.moves.xmlrpc_server.SimpleXMLRPCServer.__init__(self, (addr, port),
+                                                                logRequests=False,
                                                                 allow_none=True)
         self.logger = logging.getLogger('koji.vm.DaemonXMLRPCServer')
         self.socket.settimeout(5)
@@ -307,7 +309,8 @@ class DaemonXMLRPCServer(six.moves.xmlrpc_server.SimpleXMLRPCServer):
                 else:
                     response = self._dispatch(method, params)
                 response = (response,)
-                response = six.moves.xmlrpc_client.dumps(response, methodresponse=1, allow_none=True)
+                response = six.moves.xmlrpc_client.dumps(response,
+                                                         methodresponse=1, allow_none=True)
             except six.moves.xmlrpc_client.Fault as fault:
                 response = six.moves.xmlrpc_client.dumps(fault)
             except BaseException:
@@ -369,7 +372,9 @@ class WinBuildTask(MultiPlatformTask):
 
         task_opts = koji.util.dslice(opts, ['timeout', 'cpus', 'mem', 'static_mac'], strict=False)
         task_id = self.session.host.subtask(method='vmExec',
-                                            arglist=[name, [source_url, build_tag['name'], subopts], task_opts],
+                                            arglist=[name,
+                                                     [source_url, build_tag['name'], subopts],
+                                                     task_opts],
                                             label=name[:255],
                                             parent=self.id)
         results = self.wait(task_id)[task_id]
@@ -379,7 +384,8 @@ class WinBuildTask(MultiPlatformTask):
         if not opts.get('scratch'):
             build_info = koji.util.dslice(results, ['name', 'version', 'release', 'epoch'])
             build_info['package_name'] = build_info['name']
-            pkg_cfg = self.session.getPackageConfig(dest_tag['id'], build_info['name'], event=event_id)
+            pkg_cfg = self.session.getPackageConfig(dest_tag['id'], build_info['name'],
+                                                    event=event_id)
             if not opts.get('skip_tag'):
                 # Make sure package is on the list for this tag
                 if pkg_cfg is None:
@@ -397,8 +403,8 @@ class WinBuildTask(MultiPlatformTask):
             rpm_results = None
             spec_url = opts.get('specfile')
             if spec_url:
-                rpm_results = self.buildWrapperRPM(spec_url, task_id, target_info, build_info, repo_id,
-                                                   channel='default')
+                rpm_results = self.buildWrapperRPM(spec_url, task_id, target_info, build_info,
+                                                   repo_id, channel='default')
 
             if opts.get('scratch'):
                 self.session.host.moveWinBuildToScratch(self.id, results, rpm_results)
@@ -436,8 +442,8 @@ class VMExecTask(BaseTaskHandler):
 
     def __init__(self, *args, **kw):
         super(VMExecTask, self).__init__(*args, **kw)
-        self.task_manager = six.moves.xmlrpc_client.ServerProxy('http://%s:%s/' % (self.options.privaddr, self.options.portbase),
-                                                                allow_none=True)
+        self.task_manager = six.moves.xmlrpc_client.ServerProxy(
+            'http://%s:%s/' % (self.options.privaddr, self.options.portbase), allow_none=True)
         self.port = None
         self.server = None
         self.task_info = None
@@ -451,13 +457,16 @@ class VMExecTask(BaseTaskHandler):
     def mkqcow2(self, clone_name, source_disk, disk_num):
         new_name = clone_name + '-disk-' + str(disk_num) + self.QCOW2_EXT
         new_path = os.path.join(self.options.imagedir, new_name)
-        cmd = ['/usr/bin/qemu-img', 'create', '-f', 'qcow2', '-o', 'backing_file=%s' % source_disk, new_path]
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, close_fds=True)
+        cmd = ['/usr/bin/qemu-img', 'create', '-f', 'qcow2', '-o', 'backing_file=%s' % source_disk,
+               new_path]
+        proc = subprocess.Popen(cmd,
+                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, close_fds=True)
         output, dummy = proc.communicate()
         ret = proc.wait()
         if ret:
-            raise koji.BuildError('unable to create qcow2 image, "%s" returned %s; output was: %s' %
-                                  (' '.join(cmd), ret, output))
+            raise koji.BuildError(
+                'unable to create qcow2 image, "%s" returned %s; output was: %s' %
+                (' '.join(cmd), ret, output))
         vm_user = pwd.getpwnam(self.options.vmuser)
         os.chown(new_path, vm_user.pw_uid, vm_user.pw_gid)
         return new_path
@@ -708,14 +717,17 @@ class VMExecTask(BaseTaskHandler):
                 hdr = koji.get_rpm_header(localpath)
                 payloadhash = koji.hex_string(koji.get_header_field(hdr, 'sigmd5'))
                 if fileinfo['payloadhash'] != payloadhash:
-                    raise koji.BuildError("Downloaded rpm %s doesn't match checksum (expected: %s, got %s)" % (
-                        os.path.basename(fileinfo['localpath']),
-                        fileinfo['payloadhash'], payloadhash))
+                    raise koji.BuildError(
+                        "Downloaded rpm %s doesn't match checksum (expected: %s, got %s)" %
+                        (os.path.basename(fileinfo['localpath']),
+                         fileinfo['payloadhash'],
+                         payloadhash))
                 if not koji.util.check_sigmd5(localpath):
                     raise koji.BuildError("Downloaded rpm %s doesn't match sigmd5" %
                                           os.path.basename(fileinfo['localpath']))
             else:
-                self.verifyChecksum(localpath, fileinfo['checksum'], koji.CHECKSUM_TYPES[fileinfo['checksum_type']])
+                self.verifyChecksum(localpath, fileinfo['checksum'],
+                                    koji.CHECKSUM_TYPES[fileinfo['checksum_type']])
 
         return open(localpath, 'r')
 
@@ -796,8 +808,9 @@ class VMExecTask(BaseTaskHandler):
         if sum.hexdigest() == checksum:
             return True
         else:
-            raise koji.BuildError('%s checksum validation failed for %s, %s (computed) != %s (provided)' %
-                                  (algo, local_path, sum.hexdigest(), checksum))
+            raise koji.BuildError(
+                '%s checksum validation failed for %s, %s (computed) != %s (provided)' %
+                (algo, local_path, sum.hexdigest(), checksum))
 
     def closeTask(self, output):
         self.output = output
@@ -879,8 +892,9 @@ class VMExecTask(BaseTaskHandler):
                 if mins > timeout:
                     vm.destroy()
                     self.server.server_close()
-                    raise koji.BuildError('Task did not complete after %.2f minutes, VM %s has been destroyed' %
-                                          (mins, clone_name))
+                    raise koji.BuildError(
+                        'Task did not complete after %.2f minutes, VM %s has been destroyed' %
+                        (mins, clone_name))
             else:
                 vm.destroy()
                 self.server.server_close()
@@ -913,7 +927,9 @@ class VMTaskManager(TaskManager):
             if macaddr in self.macaddrs:
                 raise koji.PreBuildError('duplicate MAC address: %s' % macaddr)
             self.macaddrs[macaddr] = (vm_name, task_id, port)
-            self.logger.info('registered MAC address %s for VM %s (task ID %s, port %s)', macaddr, vm_name, task_id, port)
+            self.logger.info(
+                'registered MAC address %s for VM %s (task ID %s, port %s)',
+                macaddr, vm_name, task_id, port)
             return True
         finally:
             self.macaddr_lock.release()
@@ -964,7 +980,8 @@ class VMTaskManager(TaskManager):
         availableMB = available // 1024 // 1024
         self.logger.debug('disk space available in %s: %i MB', self.options.imagedir, availableMB)
         if availableMB < self.options.minspace:
-            self.status = 'Insufficient disk space: %i MB, %i MB required' % (availableMB, self.options.minspace)
+            self.status = 'Insufficient disk space: %i MB, %i MB required' % \
+                          (availableMB, self.options.minspace)
             self.logger.warn(self.status)
             return False
         return True

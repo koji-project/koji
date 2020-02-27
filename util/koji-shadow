@@ -145,13 +145,15 @@ def get_options():
     parser.add_option("--rules-ignorelist",
                       help=_("Rules: list of packages to ignore"))
     parser.add_option("--rules-excludelist",
-                      help=_("Rules: list of packages to are excluded using ExcludeArch or ExclusiveArch"))
+                      help=_("Rules: list of packages to are excluded using ExcludeArch or "
+                             "ExclusiveArch"))
     parser.add_option("--rules-includelist",
                       help=_("Rules: list of packages to always include"))
     parser.add_option("--rules-protectlist",
                       help=_("Rules: list of package names to never replace"))
     parser.add_option("--tag-build", action="store_true", default=False,
-                      help=_("tag successful builds into the tag we are building, default is to not tag"))
+                      help=_("tag successful builds into the tag we are building, default is to "
+                             "not tag"))
     parser.add_option("--logfile",
                       help=_("file where everything gets logged"))
     parser.add_option("--arches",
@@ -298,14 +300,16 @@ def activate_session(session):
 
         if os.path.isfile(options.auth_cert):
             # authenticate using SSL client cert
-            session.ssl_login(cert=options.auth_cert, serverca=options.serverca, proxyuser=options.runas)
+            session.ssl_login(cert=options.auth_cert, serverca=options.serverca,
+                              proxyuser=options.runas)
     elif options.user:
         # authenticate using user/password
         session.login()
     elif krbV:
         try:
             if options.keytab and options.principal:
-                session.krb_login(principal=options.principal, keytab=options.keytab, proxyuser=options.runas)
+                session.krb_login(principal=options.principal, keytab=options.keytab,
+                                  proxyuser=options.runas)
             else:
                 session.krb_login(proxyuser=options.runas)
         except krbV.Krb5Error as e:
@@ -537,12 +541,14 @@ class TrackedBuild(object):
                 # each buildroot had this as a base package
                 base.append(name)
         if len(tags) > 1:
-            log("Warning: found multiple buildroot tags for %s: %s" % (self.nvr, to_list(tags.keys())))
+            log("Warning: found multiple buildroot tags for %s: %s" %
+                (self.nvr, to_list(tags.keys())))
             counts = sorted([(n, tag) for tag, n in six.iteritems(tags)])
             tag = counts[-1][1]
         else:
             tag = to_list(tags.keys())[0]
-        # due bugs in used tools mainline koji instance could store empty buildroot infos for builds
+        # due bugs in used tools mainline koji instance could store empty buildroot infos for
+        # builds
         if len(builds) == 0:
             self.setState("noroot")
         self.deps = builds
@@ -655,7 +661,8 @@ class BuildTracker(object):
             return -1
 
     def newerBuild(self, build, tag):
-        # XXX:  secondary arches need a policy to say if we have newer build localy it will be the substitute
+        # XXX: secondary arches need a policy to say if we have newer build localy it will be the
+        # substitute
         localBuilds = session.listTagged(tag, inherit=True, package=str(build.name))
         newer = None
         parentevr = (str(build.epoch), build.version, build.release)
@@ -664,14 +671,16 @@ class BuildTracker(object):
             latestevr = (str(b['epoch']), b['version'], b['release'])
             newestRPM = self.rpmvercmp(parentevr, latestevr)
             if options.debug:
-                log("remote evr: %s  \nlocal evr: %s \nResult: %s" % (parentevr, latestevr, newestRPM))
+                log("remote evr: %s  \nlocal evr: %s \nResult: %s" %
+                    (parentevr, latestevr, newestRPM))
             if newestRPM == -1:
                 newer = b
             else:
                 break
         # the local is newer
         if newer is not None:
-            info = session.getBuild("%s-%s-%s" % (str(newer['name']), newer['version'], newer['release']))
+            info = session.getBuild("%s-%s-%s" %
+                                    (str(newer['name']), newer['version'], newer['release']))
             if info:
                 build = LocalBuild(info)
                 self.substitute_idx[parentnvr] = build
@@ -751,7 +760,8 @@ class BuildTracker(object):
                 if depth > 0:
                     log("%sDep replaced: %s->%s" % (head, build.nvr, replace))
                     return build
-            if options.prefer_new and (depth > 0) and (tag is not None) and not (build.state == "common"):
+            if options.prefer_new and (depth > 0) and (tag is not None) and \
+                    not (build.state == "common"):
                 latestBuild = self.newerBuild(build, tag)
                 if latestBuild is not None:
                     build.substitute = latestBuild.nvr
@@ -875,7 +885,8 @@ class BuildTracker(object):
             finally:
                 os.umask(old_umask)
         else:
-            # TODO - would be possible, using uploadFile directly, to upload without writing locally.
+            # TODO - would be possible, using uploadFile directly,
+            #        to upload without writing locally.
             # for now, though, just use uploadWrapper
             koji.ensuredir(options.workpath)
             dst = "%s/%s" % (options.workpath, fn)
@@ -1053,7 +1064,8 @@ class BuildTracker(object):
             session.groupListAdd(taginfo['id'], 'build', force=True)
             # using force in case group is blocked. This shouldn't be the case, but...
         for pkg_name in drop_pkgs:
-            # in principal, our tag should not have inheritance, so the remove call is the right thing
+            # in principal, our tag should not have inheritance,
+            # so the remove call is the right thing
             session.groupPackageListRemove(taginfo['id'], 'build', pkg_name)
         for pkg_name in add_pkgs:
             session.groupPackageListAdd(taginfo['id'], 'build', pkg_name)
@@ -1278,7 +1290,8 @@ def main(args):
             logfile = None
     if logfile is not None:
         log("logging to %s" % filename)
-        os.write(logfile, "\n\n========================================================================\n")
+        os.write(logfile,
+                 "\n\n========================================================================\n")
 
     if options.build:
         binfo = remote.getBuild(options.build, strict=True)

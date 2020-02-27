@@ -14,7 +14,8 @@ def handle_save_failed_tree(options, session, args):
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("-f", "--full", action="store_true", default=False,
-                      help=_("Download whole tree, if not specified, only builddir will be downloaded"))
+                      help=_("Download whole tree, if not specified, "
+                             "only builddir will be downloaded"))
     parser.add_option("-t", "--task", action="store_const", dest="mode",
                       const="task", default="task",
                       help=_("Treat ID as a task ID (the default)"))
@@ -69,4 +70,5 @@ def handle_save_failed_tree(options, session, args):
         return
     else:
         session.logout()
-        return watch_tasks(session, [task_id], quiet=opts.quiet, poll_interval=options.poll_interval)
+        return watch_tasks(session, [task_id],
+                           quiet=opts.quiet, poll_interval=options.poll_interval)

@@ -154,10 +154,14 @@ LEGACY_SIGNATURES = {
         [['tag', 'newer_than', 'nvrs'], None, None, (None, None)],
     ],
     'createLiveMedia': [
-        [['name', 'version', 'release', 'arch', 'target_info', 'build_tag', 'repo_info', 'ksfile', 'opts'], None, None, (None,)],
+        [['name', 'version', 'release', 'arch', 'target_info', 'build_tag', 'repo_info', 'ksfile',
+          'opts'],
+         None, None, (None,)],
     ],
     'createAppliance': [
-        [['name', 'version', 'release', 'arch', 'target_info', 'build_tag', 'repo_info', 'ksfile', 'opts'], None, None, (None,)],
+        [['name', 'version', 'release', 'arch', 'target_info', 'build_tag', 'repo_info', 'ksfile',
+          'opts'],
+         None, None, (None,)],
     ],
     'livecd': [
         [['name', 'version', 'arch', 'target', 'ksfile', 'opts'], None, None, (None,)],
@@ -190,7 +194,9 @@ LEGACY_SIGNATURES = {
         [['spec_url', 'build_target', 'build', 'task', 'opts'], None, None, (None,)],
     ],
     'createLiveCD': [
-        [['name', 'version', 'release', 'arch', 'target_info', 'build_tag', 'repo_info', 'ksfile', 'opts'], None, None, (None,)],
+        [['name', 'version', 'release', 'arch', 'target_info', 'build_tag', 'repo_info', 'ksfile',
+          'opts'],
+         None, None, (None,)],
     ],
     'appliance': [
         [['name', 'version', 'arch', 'target', 'ksfile', 'opts'], None, None, (None,)],
@@ -199,19 +205,25 @@ LEGACY_SIGNATURES = {
         [['name', 'version', 'arches', 'target', 'inst_tree', 'opts'], None, None, (None,)],
     ],
     'tagBuild': [
-        [['tag_id', 'build_id', 'force', 'fromtag', 'ignore_success'], None, None, (False, None, False)],
+        [['tag_id', 'build_id', 'force', 'fromtag', 'ignore_success'],
+         None, None, (False, None, False)],
     ],
     'chainmaven': [
         [['builds', 'target', 'opts'], None, None, (None,)],
     ],
     'newRepo': [
-        [['tag', 'event', 'src', 'debuginfo', 'separate_src'], None, None, (None, False, False, False)],
+        [['tag', 'event', 'src', 'debuginfo', 'separate_src'],
+         None, None, (None, False, False, False)],
     ],
     'createImage': [
-        [['name', 'version', 'release', 'arch', 'target_info', 'build_tag', 'repo_info', 'inst_tree', 'opts'], None, None, (None,)],
+        [['name', 'version', 'release', 'arch', 'target_info', 'build_tag', 'repo_info',
+          'inst_tree', 'opts'],
+         None, None, (None,)],
     ],
     'tagNotification': [
-        [['recipients', 'is_successful', 'tag_info', 'from_info', 'build_info', 'user_info', 'ignore_success', 'failure_msg'], None, None, (None, '')],
+        [['recipients', 'is_successful', 'tag_info', 'from_info', 'build_info', 'user_info',
+          'ignore_success', 'failure_msg'],
+         None, None, (None, '')],
     ],
     'buildArch': [
         [['pkg', 'root', 'arch', 'keep_srpm', 'opts'], None, None, (None,)],
@@ -253,7 +265,9 @@ LEGACY_SIGNATURES = {
         [['options'], None, None, (None,)],
     ],
     'runroot': [
-        [['root', 'arch', 'command', 'keep', 'packages', 'mounts', 'repo_id', 'skip_setarch', 'weight', 'upload_logs', 'new_chroot'], None, None, (False, [], [], None, False, None, None, False)],
+        [['root', 'arch', 'command', 'keep', 'packages', 'mounts', 'repo_id', 'skip_setarch',
+          'weight', 'upload_logs', 'new_chroot'],
+         None, None, (False, [], [], None, False, None, None, False)],
     ],
     'distRepo': [
         [['tag', 'repo_id', 'keys', 'task_opts'], None, None, None],
@@ -400,7 +414,9 @@ class BaseTaskHandler(object):
                                 self.session.getTaskResult(task)
                                 checked.add(task)
                             except (koji.GenericError, six.moves.xmlrpc_client.Fault):
-                                self.logger.info("task %s failed or was canceled, cancelling unfinished tasks" % task)
+                                self.logger.info(
+                                    "task %s failed or was canceled, cancelling unfinished tasks" %
+                                    task)
                                 self.session.cancelTaskChildren(self.id)
                                 # reraise the original error now, rather than waiting for
                                 # an error in taskWaitResults()
@@ -743,8 +759,10 @@ class RestartHostsTask(BaseTaskHandler):
         my_tasks = None
         for host in hosts:
             # note: currently task assignments bypass channel restrictions
-            task1 = self.subtask('restart', [host], assign=host['id'], label="restart %i" % host['id'])
-            task2 = self.subtask('restartVerify', [task1, host], assign=host['id'], label="sleep %i" % host['id'])
+            task1 = self.subtask('restart', [host],
+                                 assign=host['id'], label="restart %i" % host['id'])
+            task2 = self.subtask('restartVerify', [task1, host],
+                                 assign=host['id'], label="sleep %i" % host['id'])
             subtasks.append(task1)
             subtasks.append(task2)
             if host['id'] == this_host:
@@ -790,8 +808,10 @@ class DependantTask(BaseTaskHandler):
 
         subtasks = []
         for task in task_list:
-            # **((len(task)>2 and task[2]) or {}) expands task[2] into opts if it exists, allows for things like 'priority=15'
-            task_id = self.session.host.subtask(method=task[0], arglist=task[1], parent=self.id, **((len(task) > 2 and task[2]) or {}))
+            # **((len(task)>2 and task[2]) or {}) expands task[2] into opts if it exists, allows
+            # for things like 'priority=15'
+            task_id = self.session.host.subtask(method=task[0], arglist=task[1], parent=self.id,
+                                                **((len(task) > 2 and task[2]) or {}))
             if task_id:
                 subtasks.append(task_id)
         if subtasks:

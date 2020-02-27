@@ -54,7 +54,8 @@ def deprecated(message):
 
 
 def _changelogDate(cldate):
-    return time.strftime('%a %b %d %Y', time.strptime(koji.formatTime(cldate), '%Y-%m-%d %H:%M:%S'))
+    return time.strftime('%a %b %d %Y',
+                         time.strptime(koji.formatTime(cldate), '%Y-%m-%d %H:%M:%S'))
 
 
 def formatChangelog(entries):
@@ -813,7 +814,8 @@ def parse_maven_param(confs, chain=False, scratch=False, section=None):
         else:
             raise ValueError("Section %s does not exist in: %s" % (section, ', '.join(confs)))
     elif len(builds) > 1:
-        raise ValueError("Multiple sections in: %s, you must specify the section" % ', '.join(confs))
+        raise ValueError(
+            "Multiple sections in: %s, you must specify the section" % ', '.join(confs))
     return builds
 
 

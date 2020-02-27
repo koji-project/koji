@@ -1,6 +1,7 @@
 [flake8]
-select = I,C,F,E1,E2,E3,E4,E502,E7
+select = I,C,F,E
 ignore = E266,E731
+max_line_length = 99
 exclude =
     .git,
     __pycache__,

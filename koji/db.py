@@ -110,7 +110,8 @@ class CursorWrapper:
         try:
             return quote(operation, parameters)
         except Exception:
-            self.logger.exception('Unable to quote query:\n%s\nParameters: %s', operation, parameters)
+            self.logger.exception(
+                'Unable to quote query:\n%s\nParameters: %s', operation, parameters)
             return "INVALID QUERY"
 
     def preformat(self, sql, params):

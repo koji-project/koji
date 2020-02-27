@@ -96,7 +96,9 @@ class Dispatcher(object):
         ['LibPath', 'string', '/usr/share/koji-web/lib'],
 
         ['LogLevel', 'string', 'WARNING'],
-        ['LogFormat', 'string', '%(msecs)d [%(levelname)s] m=%(method)s u=%(user_name)s p=%(process)s r=%(remoteaddr)s %(name)s: %(message)s'],
+        ['LogFormat', 'string',
+         '%(msecs)d [%(levelname)s] m=%(method)s u=%(user_name)s p=%(process)s r=%(remoteaddr)s '
+         '%(name)s: %(message)s'],
 
         ['Tasks', 'list', []],
         ['ToplevelTasks', 'list', []],
@@ -227,7 +229,9 @@ class Dispatcher(object):
             raise URLNotFound
         # parse form args
         data = {}
-        fs = cgi.FieldStorage(fp=environ['wsgi.input'], environ=environ.copy(), keep_blank_values=True)
+        fs = cgi.FieldStorage(fp=environ['wsgi.input'],
+                              environ=environ.copy(),
+                              keep_blank_values=True)
         for field in fs.list:
             if field.filename:
                 val = field

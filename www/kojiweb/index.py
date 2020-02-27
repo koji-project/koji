@@ -154,9 +154,12 @@ def _assertLogin(environ):
                 raise koji.AuthError('could not login %s via SSL' % environ['koji.currentLogin'])
         elif options['WebPrincipal']:
             if not _krbLogin(environ, environ['koji.session'], environ['koji.currentLogin']):
-                raise koji.AuthError('could not login using principal: %s' % environ['koji.currentLogin'])
+                raise koji.AuthError(
+                    'could not login using principal: %s' % environ['koji.currentLogin'])
         else:
-            raise koji.AuthError('KojiWeb is incorrectly configured for authentication, contact the system administrator')
+            raise koji.AuthError(
+                'KojiWeb is incorrectly configured for authentication, '
+                'contact the system administrator')
 
         # verify a valid authToken was passed in to avoid CSRF
         authToken = environ['koji.form'].getfirst('a', '')
@@ -168,7 +171,8 @@ def _assertLogin(environ):
             # their authToken is likely expired
             # send them back to the page that brought them here so they
             # can re-click the link with a valid authToken
-            _redirectBack(environ, page=None, forceSSL=(_getBaseURL(environ).startswith('https://')))
+            _redirectBack(environ, page=None,
+                          forceSSL=(_getBaseURL(environ).startswith('https://')))
             assert False  # pragma: no cover
     else:
         _redirect(environ, 'login')
@@ -188,7 +192,8 @@ def _getServer(environ):
     if environ['koji.currentLogin']:
         environ['koji.currentUser'] = session.getUser(environ['koji.currentLogin'])
         if not environ['koji.currentUser']:
-            raise koji.AuthError('could not get user for principal: %s' % environ['koji.currentLogin'])
+            raise koji.AuthError(
+                'could not get user for principal: %s' % environ['koji.currentLogin'])
         _setUserCookie(environ, environ['koji.currentLogin'])
     else:
         environ['koji.currentUser'] = None
@@ -271,7 +276,9 @@ def login(environ, page=None):
     elif options['WebPrincipal']:
         principal = environ.get('REMOTE_USER')
         if not principal:
-            raise koji.AuthError('configuration error: mod_auth_gssapi should have performed authentication before presenting this page')
+            raise koji.AuthError(
+                'configuration error: mod_auth_gssapi should have performed authentication before '
+                'presenting this page')
 
         if not _krbLogin(environ, session, principal):
             raise koji.AuthError('could not login using principal: %s' % principal)
@@ -279,7 +286,9 @@ def login(environ, page=None):
         username = principal
         authlogger.info('Successful Kerberos authentication by %s', username)
     else:
-        raise koji.AuthError('KojiWeb is incorrectly configured for authentication, contact the system administrator')
+        raise koji.AuthError(
+            'KojiWeb is incorrectly configured for authentication, contact the system '
+            'administrator')
 
     _setUserCookie(environ, username)
     # To protect the session cookie, we must forceSSL
@@ -322,8 +331,10 @@ def index(environ, packageOrder='package_name', packageStart=None):
     values['order'] = '-id'
 
     if user:
-        kojiweb.util.paginateResults(server, values, 'listPackages', kw={'userID': user['id'], 'with_dups': True},
-                                     start=packageStart, dataName='packages', prefix='package', order=packageOrder, pageSize=10)
+        kojiweb.util.paginateResults(server, values, 'listPackages',
+                                     kw={'userID': user['id'], 'with_dups': True},
+                                     start=packageStart, dataName='packages', prefix='package',
+                                     order=packageOrder, pageSize=10)
 
         notifs = server.getBuildNotifications(user['id'])
         notifs.sort(key=lambda x: x['id'])
@@ -480,12 +491,16 @@ _TASKS = ['build',
           'livemedia',
           'createLiveMedia']
 # Tasks that can exist without a parent
-_TOPLEVEL_TASKS = ['build', 'buildNotification', 'chainbuild', 'maven', 'chainmaven', 'wrapperRPM', 'winbuild', 'newRepo', 'distRepo', 'tagBuild', 'tagNotification', 'waitrepo', 'livecd', 'appliance', 'image', 'livemedia']
+_TOPLEVEL_TASKS = ['build', 'buildNotification', 'chainbuild', 'maven', 'chainmaven', 'wrapperRPM',
+                   'winbuild', 'newRepo', 'distRepo', 'tagBuild', 'tagNotification', 'waitrepo',
+                   'livecd', 'appliance', 'image', 'livemedia']
 # Tasks that can have children
-_PARENT_TASKS = ['build', 'chainbuild', 'maven', 'chainmaven', 'winbuild', 'newRepo', 'distRepo', 'wrapperRPM', 'livecd', 'appliance', 'image', 'livemedia']
+_PARENT_TASKS = ['build', 'chainbuild', 'maven', 'chainmaven', 'winbuild', 'newRepo', 'distRepo',
+                 'wrapperRPM', 'livecd', 'appliance', 'image', 'livemedia']
 
 
-def tasks(environ, owner=None, state='active', view='tree', method='all', hostID=None, channelID=None, start=None, order='-id'):
+def tasks(environ, owner=None, state='active', view='tree', method='all', hostID=None,
+          channelID=None, start=None, order='-id'):
     values = _initValues(environ, 'Tasks', 'tasks')
     server = _getServer(environ)
 
@@ -539,7 +554,9 @@ def tasks(environ, owner=None, state='active', view='tree', method='all', hostID
         opts['parent'] = None
 
     if state == 'active':
-        opts['state'] = [koji.TASK_STATES['FREE'], koji.TASK_STATES['OPEN'], koji.TASK_STATES['ASSIGNED']]
+        opts['state'] = [koji.TASK_STATES['FREE'],
+                         koji.TASK_STATES['OPEN'],
+                         koji.TASK_STATES['ASSIGNED']]
     elif state == 'all':
         pass
     else:
@@ -830,7 +847,8 @@ def _chunk_file(server, environ, taskID, name, offset, size, volume):
         chunk_size = 1048576
         if remaining < chunk_size:
             chunk_size = remaining
-        content = server.downloadTaskOutput(taskID, name, offset=offset, size=chunk_size, volume=volume)
+        content = server.downloadTaskOutput(taskID, name,
+                                            offset=offset, size=chunk_size, volume=volume)
         if not content:
             break
         yield content
@@ -863,7 +881,8 @@ def tags(environ, start=None, order=None, childID=None):
 _PREFIX_CHARS = [chr(char) for char in list(range(48, 58)) + list(range(97, 123))]
 
 
-def packages(environ, tagID=None, userID=None, order='package_name', start=None, prefix=None, inherited='1'):
+def packages(environ, tagID=None, userID=None, order='package_name', start=None, prefix=None,
+             inherited='1'):
     values = _initValues(environ, 'Packages', 'packages')
     server = _getServer(environ)
     tag = None
@@ -890,7 +909,10 @@ def packages(environ, tagID=None, userID=None, order='package_name', start=None,
     values['inherited'] = inherited
 
     kojiweb.util.paginateMethod(server, values, 'listPackages',
-                                kw={'tagID': tagID, 'userID': userID, 'prefix': prefix, 'inherited': bool(inherited)},
+                                kw={'tagID': tagID,
+                                    'userID': userID,
+                                    'prefix': prefix,
+                                    'inherited': bool(inherited)},
                                 start=start, dataName='packages', prefix='package', order=order)
 
     values['chars'] = _PREFIX_CHARS
@@ -898,7 +920,8 @@ def packages(environ, tagID=None, userID=None, order='package_name', start=None,
     return _genHTML(environ, 'packages.chtml')
 
 
-def packageinfo(environ, packageID, tagOrder='name', tagStart=None, buildOrder='-completion_time', buildStart=None):
+def packageinfo(environ, packageID, tagOrder='name', tagStart=None, buildOrder='-completion_time',
+                buildStart=None):
     values = _initValues(environ, 'Package Info', 'packages')
     server = _getServer(environ)
 
@@ -916,12 +939,14 @@ def packageinfo(environ, packageID, tagOrder='name', tagStart=None, buildOrder='
     kojiweb.util.paginateMethod(server, values, 'listTags', kw={'package': package['id']},
                                 start=tagStart, dataName='tags', prefix='tag', order=tagOrder)
     kojiweb.util.paginateMethod(server, values, 'listBuilds', kw={'packageID': package['id']},
-                                start=buildStart, dataName='builds', prefix='build', order=buildOrder)
+                                start=buildStart, dataName='builds', prefix='build',
+                                order=buildOrder)
 
     return _genHTML(environ, 'packageinfo.chtml')
 
 
-def taginfo(environ, tagID, all='0', packageOrder='package_name', packageStart=None, buildOrder='-completion_time', buildStart=None, childID=None):
+def taginfo(environ, tagID, all='0', packageOrder='package_name', packageStart=None,
+            buildOrder='-completion_time', buildStart=None, childID=None):
     values = _initValues(environ, 'Tag Info', 'tags')
     server = _getServer(environ)
 
@@ -1115,7 +1140,9 @@ def tagparent(environ, tagID, parentID, action):
             elif len(inheritanceData) == 1:
                 values['inheritanceData'] = inheritanceData[0]
             else:
-                raise koji.GenericError('tag %i has tag %i listed as a parent more than once' % (tag['id'], parent['id']))
+                raise koji.GenericError(
+                    'tag %i has tag %i listed as a parent more than once' %
+                    (tag['id'], parent['id']))
 
             return _genHTML(environ, 'tagparent.chtml')
     elif action == 'remove':
@@ -1174,7 +1201,8 @@ def buildinfo(environ, buildID):
         for archive in archives:
             if btype == 'maven':
                 archive['display'] = archive['filename']
-                archive['dl_url'] = '/'.join([pathinfo.mavenbuild(build), pathinfo.mavenfile(archive)])
+                archive['dl_url'] = '/'.join([pathinfo.mavenbuild(build),
+                                              pathinfo.mavenfile(archive)])
             elif btype == 'win':
                 archive['display'] = pathinfo.winfile(archive)
                 archive['dl_url'] = '/'.join([pathinfo.winbuild(build), pathinfo.winfile(archive)])
@@ -1210,7 +1238,8 @@ def buildinfo(environ, buildID):
         # get the summary, description, and changelogs from the built srpm
         # if the build is not yet complete
         if build['state'] != koji.BUILD_STATES['COMPLETE']:
-            srpm_tasks = server.listTasks(opts={'parent': task['id'], 'method': 'buildSRPMFromSCM'})
+            srpm_tasks = server.listTasks(opts={'parent': task['id'],
+                                                'method': 'buildSRPMFromSCM'})
             if srpm_tasks:
                 srpm_task = srpm_tasks[0]
                 if srpm_task['state'] == koji.TASK_STATES['CLOSED']:
@@ -1220,12 +1249,14 @@ def buildinfo(environ, buildID):
                             srpm_path = output
                             break
                     if srpm_path:
-                        srpm_headers = server.getRPMHeaders(taskID=srpm_task['id'], filepath=srpm_path,
+                        srpm_headers = server.getRPMHeaders(taskID=srpm_task['id'],
+                                                            filepath=srpm_path,
                                                             headers=['summary', 'description'])
                         if srpm_headers:
                             values['summary'] = koji.fixEncoding(srpm_headers['summary'])
                             values['description'] = koji.fixEncoding(srpm_headers['description'])
-                        changelog = server.getChangelogEntries(taskID=srpm_task['id'], filepath=srpm_path)
+                        changelog = server.getChangelogEntries(taskID=srpm_task['id'],
+                                                               filepath=srpm_path)
                         if changelog:
                             values['changelog'] = changelog
     else:
@@ -1276,7 +1307,8 @@ def buildinfo(environ, buildID):
     return _genHTML(environ, 'buildinfo.chtml')
 
 
-def builds(environ, userID=None, tagID=None, packageID=None, state=None, order='-build_id', start=None, prefix=None, inherited='1', latest='1', type=None):
+def builds(environ, userID=None, tagID=None, packageID=None, state=None, order='-build_id',
+           start=None, prefix=None, inherited='1', latest='1', type=None):
     values = _initValues(environ, 'Builds', 'builds')
     server = _getServer(environ)
 
@@ -1344,15 +1376,20 @@ def builds(environ, userID=None, tagID=None, packageID=None, state=None, order='
 
     if tag:
         # don't need to consider 'state' here, since only completed builds would be tagged
-        kojiweb.util.paginateResults(server, values, 'listTagged', kw={'tag': tag['id'], 'package': (package and package['name'] or None),
-                                                                       'owner': (user and user['name'] or None),
-                                                                       'type': type,
-                                                                       'inherit': bool(inherited), 'latest': bool(latest), 'prefix': prefix},
+        kojiweb.util.paginateResults(server, values, 'listTagged',
+                                     kw={'tag': tag['id'],
+                                         'package': (package and package['name'] or None),
+                                         'owner': (user and user['name'] or None),
+                                         'type': type,
+                                         'inherit': bool(inherited), 'latest': bool(latest),
+                                         'prefix': prefix},
                                      start=start, dataName='builds', prefix='build', order=order)
     else:
-        kojiweb.util.paginateMethod(server, values, 'listBuilds', kw={'userID': (user and user['id'] or None), 'packageID': (package and package['id'] or None),
-                                                                      'type': type,
-                                                                      'state': state, 'prefix': prefix},
+        kojiweb.util.paginateMethod(server, values, 'listBuilds',
+                                    kw={'userID': (user and user['id'] or None),
+                                        'packageID': (package and package['id'] or None),
+                                        'type': type,
+                                        'state': state, 'prefix': prefix},
                                     start=start, dataName='builds', prefix='build', order=order)
 
     values['chars'] = _PREFIX_CHARS
@@ -1380,7 +1417,8 @@ def users(environ, order='name', start=None, prefix=None):
     return _genHTML(environ, 'users.chtml')
 
 
-def userinfo(environ, userID, packageOrder='package_name', packageStart=None, buildOrder='-completion_time', buildStart=None):
+def userinfo(environ, userID, packageOrder='package_name', packageStart=None,
+             buildOrder='-completion_time', buildStart=None):
     values = _initValues(environ, 'User Info', 'users')
     server = _getServer(environ)
 
@@ -1392,18 +1430,23 @@ def userinfo(environ, userID, packageOrder='package_name', packageStart=None, bu
 
     values['user'] = user
     values['userID'] = userID
-    values['taskCount'] = server.listTasks(opts={'owner': user['id'], 'parent': None}, queryOpts={'countOnly': True})
+    values['taskCount'] = server.listTasks(opts={'owner': user['id'], 'parent': None},
+                                           queryOpts={'countOnly': True})
 
-    kojiweb.util.paginateResults(server, values, 'listPackages', kw={'userID': user['id'], 'with_dups': True},
-                                 start=packageStart, dataName='packages', prefix='package', order=packageOrder, pageSize=10)
+    kojiweb.util.paginateResults(server, values, 'listPackages',
+                                 kw={'userID': user['id'], 'with_dups': True},
+                                 start=packageStart, dataName='packages', prefix='package',
+                                 order=packageOrder, pageSize=10)
 
     kojiweb.util.paginateMethod(server, values, 'listBuilds', kw={'userID': user['id']},
-                                start=buildStart, dataName='builds', prefix='build', order=buildOrder, pageSize=10)
+                                start=buildStart, dataName='builds', prefix='build',
+                                order=buildOrder, pageSize=10)
 
     return _genHTML(environ, 'userinfo.chtml')
 
 
-def rpminfo(environ, rpmID, fileOrder='name', fileStart=None, buildrootOrder='-id', buildrootStart=None):
+def rpminfo(environ, rpmID, fileOrder='name', fileStart=None, buildrootOrder='-id',
+            buildrootStart=None):
     values = _initValues(environ, 'RPM Info', 'builds')
     server = _getServer(environ)
 
@@ -1441,8 +1484,11 @@ def rpminfo(environ, rpmID, fileOrder='name', fileStart=None, buildrootOrder='-i
         values['summary'] = koji.fixEncoding(headers.get('summary'))
         values['description'] = koji.fixEncoding(headers.get('description'))
         values['license'] = koji.fixEncoding(headers.get('license'))
-    buildroots = kojiweb.util.paginateMethod(server, values, 'listBuildroots', kw={'rpmID': rpm['id']},
-                                             start=buildrootStart, dataName='buildroots', prefix='buildroot',
+    buildroots = kojiweb.util.paginateMethod(server, values, 'listBuildroots',
+                                             kw={'rpmID': rpm['id']},
+                                             start=buildrootStart,
+                                             dataName='buildroots',
+                                             prefix='buildroot',
                                              order=buildrootOrder)
 
     values['rpmID'] = rpmID
@@ -1457,7 +1503,8 @@ def rpminfo(environ, rpmID, fileOrder='name', fileStart=None, buildrootOrder='-i
     return _genHTML(environ, 'rpminfo.chtml')
 
 
-def archiveinfo(environ, archiveID, fileOrder='name', fileStart=None, buildrootOrder='-id', buildrootStart=None):
+def archiveinfo(environ, archiveID, fileOrder='name', fileStart=None, buildrootOrder='-id',
+                buildrootStart=None):
     values = _initValues(environ, 'Archive Info', 'builds')
     server = _getServer(environ)
 
@@ -1476,8 +1523,11 @@ def archiveinfo(environ, archiveID, fileOrder='name', fileStart=None, buildrootO
         builtInRoot = server.getBuildroot(archive['buildroot_id'])
     kojiweb.util.paginateMethod(server, values, 'listArchiveFiles', args=[archive['id']],
                                 start=fileStart, dataName='files', prefix='file', order=fileOrder)
-    buildroots = kojiweb.util.paginateMethod(server, values, 'listBuildroots', kw={'archiveID': archive['id']},
-                                             start=buildrootStart, dataName='buildroots', prefix='buildroot',
+    buildroots = kojiweb.util.paginateMethod(server, values, 'listBuildroots',
+                                             kw={'archiveID': archive['id']},
+                                             start=buildrootStart,
+                                             dataName='buildroots',
+                                             prefix='buildroot',
                                              order=buildrootOrder)
 
     values['title'] = archive['filename'] + ' | Archive Info'
@@ -1491,7 +1541,8 @@ def archiveinfo(environ, archiveID, fileOrder='name', fileStart=None, buildrootO
     values['builtInRoot'] = builtInRoot
     values['buildroots'] = buildroots
     values['show_rpm_components'] = server.listRPMs(imageID=archive['id'], queryOpts={'limit': 1})
-    values['show_archive_components'] = server.listArchives(imageID=archive['id'], queryOpts={'limit': 1})
+    values['show_archive_components'] = server.listArchives(imageID=archive['id'],
+                                                            queryOpts={'limit': 1})
 
     return _genHTML(environ, 'archiveinfo.chtml')
 
@@ -1604,7 +1655,8 @@ def hostinfo(environ, hostID=None, userID=None):
     channels = server.listChannels(host['id'])
     channels.sort(key=_sortbyname)
     buildroots = server.listBuildroots(hostID=host['id'],
-                                       state=[state[1] for state in koji.BR_STATES.items() if state[0] != 'EXPIRED'])
+                                       state=[state[1] for state in koji.BR_STATES.items()
+                                              if state[0] != 'EXPIRED'])
     buildroots.sort(key=lambda x: x['create_event_time'], reverse=True)
 
     values['host'] = host
@@ -1718,7 +1770,8 @@ def channelinfo(environ, channelID):
     return _genHTML(environ, 'channelinfo.chtml')
 
 
-def buildrootinfo(environ, buildrootID, builtStart=None, builtOrder=None, componentStart=None, componentOrder=None):
+def buildrootinfo(environ, buildrootID, builtStart=None, builtOrder=None, componentStart=None,
+                  componentOrder=None):
     values = _initValues(environ, 'Buildroot Info', 'hosts')
     server = _getServer(environ)
 
@@ -1807,11 +1860,15 @@ def archivelist(environ, type, buildrootID=None, imageID=None, start=None, order
             raise koji.GenericError('unknown buildroot ID: %i' % buildrootID)
 
         if type == 'component':
-            kojiweb.util.paginateMethod(server, values, 'listArchives', kw={'componentBuildrootID': buildroot['id']},
-                                        start=start, dataName='archives', prefix='archive', order=order)
+            kojiweb.util.paginateMethod(server, values, 'listArchives',
+                                        kw={'componentBuildrootID': buildroot['id']},
+                                        start=start, dataName='archives', prefix='archive',
+                                        order=order)
         elif type == 'built':
-            kojiweb.util.paginateMethod(server, values, 'listArchives', kw={'buildrootID': buildroot['id']},
-                                        start=start, dataName='archives', prefix='archive', order=order)
+            kojiweb.util.paginateMethod(server, values, 'listArchives',
+                                        kw={'buildrootID': buildroot['id']},
+                                        start=start, dataName='archives', prefix='archive',
+                                        order=order)
         else:
             raise koji.GenericError('unrecognized type of archivelist')
     elif imageID is not None:
@@ -1820,7 +1877,8 @@ def archivelist(environ, type, buildrootID=None, imageID=None, start=None, order
         # If/When future image types are supported, add elifs here if needed.
         if type == 'image':
             kojiweb.util.paginateMethod(server, values, 'listArchives', kw={'imageID': imageID},
-                                        start=start, dataName='archives', prefix='archive', order=order)
+                                        start=start, dataName='archives', prefix='archive',
+                                        order=order)
         else:
             raise koji.GenericError('unrecognized type of archivelist')
     else:
@@ -2155,9 +2213,12 @@ def buildsbystatus(environ, days='7'):
 
     server.multicall = True
     # use taskID=-1 to filter out builds with a null task_id (imported rather than built in koji)
-    server.listBuilds(completeAfter=dateAfter, state=koji.BUILD_STATES['COMPLETE'], taskID=-1, queryOpts={'countOnly': True})
-    server.listBuilds(completeAfter=dateAfter, state=koji.BUILD_STATES['FAILED'], taskID=-1, queryOpts={'countOnly': True})
-    server.listBuilds(completeAfter=dateAfter, state=koji.BUILD_STATES['CANCELED'], taskID=-1, queryOpts={'countOnly': True})
+    server.listBuilds(completeAfter=dateAfter, state=koji.BUILD_STATES['COMPLETE'], taskID=-1,
+                      queryOpts={'countOnly': True})
+    server.listBuilds(completeAfter=dateAfter, state=koji.BUILD_STATES['FAILED'], taskID=-1,
+                      queryOpts={'countOnly': True})
+    server.listBuilds(completeAfter=dateAfter, state=koji.BUILD_STATES['CANCELED'], taskID=-1,
+                      queryOpts={'countOnly': True})
     [[numSucceeded], [numFailed], [numCanceled]] = server.multiCall()
 
     values['numSucceeded'] = numSucceeded
@@ -2298,7 +2359,8 @@ def recentbuilds(environ, user=None, tag=None, package=None):
         packageObj = server.getPackage(package)
 
     if tagObj is not None:
-        builds = server.listTagged(tagObj['id'], inherit=True, package=(packageObj and packageObj['name'] or None),
+        builds = server.listTagged(tagObj['id'], inherit=True,
+                                   package=(packageObj and packageObj['name'] or None),
                                    owner=(userObj and userObj['name'] or None))
         builds.sort(key=kojiweb.util.sortByKeyFuncNoneGreatest('completion_time'), reverse=True)
         builds = builds[:20]
@@ -2408,7 +2470,8 @@ def search(environ, start=None, order=None):
         values['order'] = order
 
         results = kojiweb.util.paginateMethod(server, values, 'search', args=(terms, type, match),
-                                              start=start, dataName='results', prefix='result', order=order)
+                                              start=start, dataName='results', prefix='result',
+                                              order=order)
         if not start and len(results) == 1:
             # if we found exactly one result, skip the result list and redirect to the info page
             # (you're feeling lucky)

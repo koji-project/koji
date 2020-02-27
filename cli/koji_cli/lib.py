@@ -112,7 +112,8 @@ def ensure_connection(session):
     except requests.exceptions.ConnectionError:
         error(_("Error: Unable to connect to server"))
     if ret != koji.API_VERSION:
-        warn(_("WARNING: The server is at API version %d and the client is at %d" % (ret, koji.API_VERSION)))
+        warn(_("WARNING: The server is at API version %d and "
+               "the client is at %d" % (ret, koji.API_VERSION)))
 
 
 def print_task_headers():
@@ -194,7 +195,8 @@ class TaskWatcher(object):
             laststate = last['state']
             if laststate != state:
                 if not self.quiet:
-                    print("%s: %s -> %s" % (self.str(), self.display_state(last), self.display_state(self.info)))
+                    print("%s: %s -> %s" % (self.str(), self.display_state(last),
+                                            self.display_state(self.info)))
                 return True
             return False
         else:
@@ -277,9 +279,9 @@ def watch_tasks(session, tasklist, quiet=False, poll_interval=60, ki_handler=Non
                 tlist = ['%s: %s' % (t.str(), t.display_state(t.info))
                          for t in tasks.values() if not t.is_done()]
                 print(
-                    """Tasks still running. You can continue to watch with the '%s watch-task' command.
-Running Tasks:
-%s""" % (progname, '\n'.join(tlist)))
+                    "Tasks still running. You can continue to watch with the"
+                    " '%s watch-task' command.\n"
+                    "Running Tasks:\n%s" % (progname, '\n'.join(tlist)))
     sys.stdout.flush()
     rv = 0
     try:
@@ -302,7 +304,8 @@ Running Tasks:
                 for child in session.getTaskChildren(task_id):
                     child_id = child['id']
                     if child_id not in tasks.keys():
-                        tasks[child_id] = TaskWatcher(child_id, session, task.level + 1, quiet=quiet)
+                        tasks[child_id] = TaskWatcher(child_id, session, task.level + 1,
+                                                      quiet=quiet)
                         tasks[child_id].update()
                         # If we found new children, go through the list again,
                         # in case they have children also
@@ -370,7 +373,8 @@ def watch_logs(session, tasklist, opts, poll_interval):
                     if (log, volume) not in taskoffsets:
                         taskoffsets[(log, volume)] = 0
 
-                    contents = session.downloadTaskOutput(task_id, log, taskoffsets[(log, volume)], 16384, volume=volume)
+                    contents = session.downloadTaskOutput(task_id, log, taskoffsets[(log, volume)],
+                                                          16384, volume=volume)
                     taskoffsets[(log, volume)] += len(contents)
                     if contents:
                         currlog = "%d:%s:%s:" % (task_id, volume, log)
@@ -452,7 +456,9 @@ def _progress_callback(uploaded, total, piece, time, total_time):
             speed = _format_size(float(total) / float(total_time)) + "/sec"
 
     # write formated string and flush
-    sys.stdout.write("[% -36s] % 4s % 8s % 10s % 14s\r" % ('=' * (int(percent_done * 36)), percent_done_str, elapsed, data_done, speed))
+    sys.stdout.write("[% -36s] % 4s % 8s % 10s % 14s\r" % ('=' * (int(percent_done * 36)),
+                                                           percent_done_str, elapsed, data_done,
+                                                           speed))
     sys.stdout.flush()
 
 
@@ -520,7 +526,8 @@ def _download_progress(download_t, download_d):
         percent_done_str = "%3d%%" % (percent_done * 100)
     data_done = _format_size(download_d)
 
-    sys.stdout.write("[% -36s] % 4s % 10s\r" % ('=' * (int(percent_done * 36)), percent_done_str, data_done))
+    sys.stdout.write("[% -36s] % 4s % 10s\r" % ('=' * (int(percent_done * 36)), percent_done_str,
+                                                data_done))
     sys.stdout.flush()
 
 
@@ -560,13 +567,16 @@ def activate_session(session, options):
     elif options.authtype == "ssl" or os.path.isfile(options.cert) and options.authtype is None:
         # authenticate using SSL client cert
         session.ssl_login(options.cert, None, options.serverca, proxyuser=runas)
-    elif options.authtype == "password" or getattr(options, 'user', None) and options.authtype is None:
+    elif options.authtype == "password" \
+            or getattr(options, 'user', None) \
+            and options.authtype is None:
         # authenticate using user/password
         session.login()
     elif options.authtype == "kerberos" or has_krb_creds() and options.authtype is None:
         try:
             if getattr(options, 'keytab', None) and getattr(options, 'principal', None):
-                session.krb_login(principal=options.principal, keytab=options.keytab, proxyuser=runas)
+                session.krb_login(principal=options.principal, keytab=options.keytab,
+                                  proxyuser=runas)
             else:
                 session.krb_login(proxyuser=runas)
         except socket.error as e:

@@ -155,7 +155,9 @@ class HandlerRegistry(object):
             if x == 0 and func.__code__.co_varnames[x] == "self":
                 continue
             if func.__defaults__ and func.__code__.co_argcount - x <= len(func.__defaults__):
-                args.append((func.__code__.co_varnames[x], func.__defaults__[x - func.__code__.co_argcount + len(func.__defaults__)]))
+                args.append(
+                    (func.__code__.co_varnames[x],
+                     func.__defaults__[x - func.__code__.co_argcount + len(func.__defaults__)]))
             else:
                 args.append(func.__code__.co_varnames[x])
         return args
@@ -317,10 +319,11 @@ class ModXMLRPCRequestHandler(object):
 
         if self.logger.isEnabledFor(logging.INFO):
             rusage = resource.getrusage(resource.RUSAGE_SELF)
-            self.logger.info("Completed method %s for session %s (#%s): %f seconds, rss %s, stime %f",
-                             method, context.session.id, context.session.callnum,
-                             time.time() - start,
-                             rusage.ru_maxrss, rusage.ru_stime)
+            self.logger.info(
+                "Completed method %s for session %s (#%s): %f seconds, rss %s, stime %f",
+                method, context.session.id, context.session.callnum,
+                time.time() - start,
+                rusage.ru_maxrss, rusage.ru_stime)
 
         return ret
 
@@ -344,8 +347,11 @@ class ModXMLRPCRequestHandler(object):
                 faultCode = getattr(exc_type, 'faultCode', 1)
                 faultString = ', '.join(exc_value.args)
                 trace = traceback.format_exception(*sys.exc_info())
-                # traceback is not part of the multicall spec, but we include it for debugging purposes
-                results.append({'faultCode': faultCode, 'faultString': faultString, 'traceback': trace})
+                # traceback is not part of the multicall spec,
+                # but we include it for debugging purposes
+                results.append({'faultCode': faultCode,
+                                'faultString': faultString,
+                                'traceback': trace})
             else:
                 results.append([result])
 
@@ -438,7 +444,9 @@ def load_config(environ):
         ['VerbosePolicy', 'boolean', False],
 
         ['LogLevel', 'string', 'WARNING'],
-        ['LogFormat', 'string', '%(asctime)s [%(levelname)s] m=%(method)s u=%(user_name)s p=%(process)s r=%(remoteaddr)s %(name)s: %(message)s'],
+        ['LogFormat', 'string',
+         '%(asctime)s [%(levelname)s] m=%(method)s u=%(user_name)s p=%(process)s r=%(remoteaddr)s '
+         '%(name)s: %(message)s'],
 
         ['MissingPolicyOk', 'boolean', True],
         ['EnableMaven', 'boolean', False],
@@ -660,7 +668,8 @@ def load_scripts(environ):
 
 def get_memory_usage():
     pagesize = resource.getpagesize()
-    statm = [pagesize * int(y) // 1024 for y in "".join(open("/proc/self/statm").readlines()).strip().split()]
+    statm = [pagesize * int(y) // 1024
+             for y in "".join(open("/proc/self/statm").readlines()).strip().split()]
     size, res, shr, text, lib, data, dirty = statm
     return res - shr
 
@@ -713,7 +722,8 @@ def application(environ, start_response):
             ('Allow', 'POST'),
         ]
         start_response('405 Method Not Allowed', headers)
-        response = "Method Not Allowed\nThis is an XML-RPC server. Only POST requests are accepted."
+        response = "Method Not Allowed\n" \
+                   "This is an XML-RPC server. Only POST requests are accepted."
         if six.PY3:
             response = response.encode()
         headers = [
@@ -767,7 +777,11 @@ def application(environ, start_response):
                 paramstr = repr(getattr(context, 'params', 'UNKNOWN'))
                 if len(paramstr) > 120:
                     paramstr = paramstr[:117] + "..."
-                h.logger.warning("Memory usage of process %d grew from %d KiB to %d KiB (+%d KiB) processing request %s with args %s" % (os.getpid(), memory_usage_at_start, memory_usage_at_end, memory_usage_at_end - memory_usage_at_start, context.method, paramstr))
+                h.logger.warning(
+                    "Memory usage of process %d grew from %d KiB to %d KiB (+%d KiB) processing "
+                    "request %s with args %s" %
+                    (os.getpid(), memory_usage_at_start, memory_usage_at_end,
+                     memory_usage_at_end - memory_usage_at_start, context.method, paramstr))
             h.logger.debug("Returning %d bytes after %f seconds", len(response),
                            time.time() - start)
         finally:

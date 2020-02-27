@@ -183,17 +183,20 @@ class WindowsBuild(object):
     def checkout(self):
         """Checkout sources, winspec, and patches, and apply patches"""
         src_scm = SCM(self.source_url)  # noqa: F821
-        self.source_dir = src_scm.checkout(ensuredir(os.path.join(self.workdir, 'source')))  # noqa: F821
+        self.source_dir = src_scm.checkout(
+            ensuredir(os.path.join(self.workdir, 'source')))  # noqa: F821
         self.zipDir(self.source_dir, os.path.join(self.workdir, 'sources.zip'))
         if 'winspec' in self.task_opts:
             spec_scm = SCM(self.task_opts['winspec'])  # noqa: F821
-            self.spec_dir = spec_scm.checkout(ensuredir(os.path.join(self.workdir, 'spec')))  # noqa: F821
+            self.spec_dir = spec_scm.checkout(
+                ensuredir(os.path.join(self.workdir, 'spec')))  # noqa: F821
             self.zipDir(self.spec_dir, os.path.join(self.workdir, 'spec.zip'))
         else:
             self.spec_dir = self.source_dir
         if 'patches' in self.task_opts:
             patch_scm = SCM(self.task_opts['patches'])  # noqa: F821
-            self.patches_dir = patch_scm.checkout(ensuredir(os.path.join(self.workdir, 'patches')))  # noqa: F821
+            self.patches_dir = patch_scm.checkout(
+                ensuredir(os.path.join(self.workdir, 'patches')))  # noqa: F821
             self.zipDir(self.patches_dir, os.path.join(self.workdir, 'patches.zip'))
             self.applyPatches(self.source_dir, self.patches_dir)
         self.virusCheck(self.workdir)
@@ -207,7 +210,8 @@ class WindowsBuild(object):
             raise BuildError('no patches found at %s' % patchdir)  # noqa: F821
         patches.sort()
         for patch in patches:
-            cmd = ['/bin/patch', '--verbose', '-d', sourcedir, '-p1', '-i', os.path.join(patchdir, patch)]
+            cmd = ['/bin/patch', '--verbose', '-d', sourcedir, '-p1', '-i',
+                   os.path.join(patchdir, patch)]
             run(cmd, fatal=True)
 
     def loadConfig(self):
@@ -241,7 +245,8 @@ class WindowsBuild(object):
         # absolute paths, or without a path in which case it is searched for
         # on the PATH.
         if conf.has_option('building', 'preinstalled'):
-            self.preinstalled.extend([e.strip() for e in conf.get('building', 'preinstalled').split('\n') if e])
+            self.preinstalled.extend(
+                [e.strip() for e in conf.get('building', 'preinstalled').split('\n') if e])
 
         # buildrequires and provides are multi-valued (space-separated)
         for br in conf.get('building', 'buildrequires').split():
@@ -336,7 +341,8 @@ class WindowsBuild(object):
         with open(destpath, 'w') as destfile:
             offset = 0
             while True:
-                encoded = self.server.getFile(buildinfo, fileinfo, encode_int(offset), 1048576, brtype)
+                encoded = self.server.getFile(buildinfo, fileinfo, encode_int(offset), 1048576,
+                                              brtype)
                 if not encoded:
                     break
                 data = base64.b64decode(encoded)
@@ -349,9 +355,11 @@ class WindowsBuild(object):
         if 'checksum_type' in fileinfo:
             digest = checksum.hexdigest()
             if fileinfo['checksum'] != digest:
-                raise BuildError('checksum validation failed for %s, %s (computed) != %s (provided)' %  # noqa: F821
-                                 (destpath, digest, fileinfo['checksum']))
-            self.logger.info('Retrieved %s (%s bytes, %s: %s)', destpath, offset, checksum_type, digest)
+                raise BuildError(  # noqa: F821
+                    'checksum validation failed for %s, %s (computed) != %s (provided)' %
+                    (destpath, digest, fileinfo['checksum']))
+            self.logger.info(
+                'Retrieved %s (%s bytes, %s: %s)', destpath, offset, checksum_type, digest)
         else:
             self.logger.info('Retrieved %s (%s bytes)', destpath, offset)
 
@@ -409,7 +417,8 @@ class WindowsBuild(object):
 
     def cmdBuild(self):
         """Do the build: run the execute line(s) with cmd.exe"""
-        tmpfd, tmpname = tempfile.mkstemp(prefix='koji-tmp', suffix='.bat', dir='/cygdrive/c/Windows/Temp')
+        tmpfd, tmpname = tempfile.mkstemp(prefix='koji-tmp', suffix='.bat',
+                                          dir='/cygdrive/c/Windows/Temp')
         script = os.fdopen(tmpfd, 'w')
         for attr in ['source_dir', 'spec_dir', 'patches_dir']:
             val = getattr(self, attr)
@@ -630,7 +639,8 @@ def get_mgmt_server():
     # supported by python/cygwin/Windows
     task_port = server.getPort(macaddr)
     logger.debug('found task-specific port %s', task_port)
-    return six.moves.xmlrpc_client.ServerProxy('http://%s:%s/' % (gateway, task_port), allow_none=True)
+    return six.moves.xmlrpc_client.ServerProxy('http://%s:%s/' % (gateway, task_port),
+                                               allow_none=True)
 
 
 def get_options():
@@ -641,8 +651,10 @@ def get_options():
     """
     parser = OptionParser(usage=usage)
     parser.add_option('-d', '--debug', action='store_true', help='Log debug statements')
-    parser.add_option('-i', '--install', action='store_true', help='Install this daemon as a service', default=False)
-    parser.add_option('-u', '--uninstall', action='store_true', help='Uninstall this daemon if it was installed previously as a service', default=False)
+    parser.add_option('-i', '--install', action='store_true', default=False,
+                      help='Install this daemon as a service')
+    parser.add_option('-u', '--uninstall', action='store_true', default=False,
+                      help='Uninstall this daemon if it was installed previously as a service')
     (options, args) = parser.parse_args()
     return options
 

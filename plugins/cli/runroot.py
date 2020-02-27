@@ -22,8 +22,10 @@ def handle_runroot(options, session, args):
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.disable_interspersed_args()
-    parser.add_option("-p", "--package", action="append", default=[], help=_("make sure this package is in the chroot"))
-    parser.add_option("-m", "--mount", action="append", default=[], help=_("mount this directory read-write in the chroot"))
+    parser.add_option("-p", "--package", action="append", default=[],
+                      help=_("make sure this package is in the chroot"))
+    parser.add_option("-m", "--mount", action="append", default=[],
+                      help=_("mount this directory read-write in the chroot"))
     parser.add_option("--skip-setarch", action="store_true", default=False,
                       help=_("bypass normal setarch in the chroot"))
     parser.add_option("-w", "--weight", type='int', help=_("set task weight"))
@@ -39,7 +41,8 @@ def handle_runroot(options, session, args):
     parser.add_option("--repo-id", type="int", help=_("ID of the repo to use"))
     parser.add_option("--nowait", action="store_false", dest="wait",
                       default=True, help=_("Do not wait on task"))
-    parser.add_option("--watch", action="store_true", help=_("Watch task instead of printing runroot.log"))
+    parser.add_option("--watch", action="store_true",
+                      help=_("Watch task instead of printing runroot.log"))
     parser.add_option("--quiet", action="store_true", default=options.quiet,
                       help=_("Do not print the task information"))
 

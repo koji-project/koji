@@ -364,7 +364,8 @@ def ensure_connection(session):
     except requests.exceptions.ConnectionError:
         error(_("Error: Unable to connect to server"))
     if ret != koji.API_VERSION:
-        warn(_("WARNING: The server is at API version %d and the client is at %d" % (ret, koji.API_VERSION)))
+        warn(_("WARNING: The server is at API version %d and the client is at %d" %
+               (ret, koji.API_VERSION)))
 
 
 def has_krb_creds():
@@ -394,7 +395,8 @@ def activate_session(session):
     elif has_krb_creds() or (options.keytab and options.principal):
         try:
             if options.keytab and options.principal:
-                session.krb_login(principal=options.principal, keytab=options.keytab, proxyuser=options.runas)
+                session.krb_login(principal=options.principal, keytab=options.keytab,
+                                  proxyuser=options.runas)
             else:
                 session.krb_login(proxyuser=options.runas)
         except krbV.Krb5Error as e:
@@ -503,7 +505,8 @@ def handle_trash():
             continue
         if refs.get('archives'):
             if options.debug:
-                print("[%i/%i] Build has %i archive references: %s" % (i, N, len(refs['archives']), nvr))
+                print("[%i/%i] Build has %i archive references: %s" %
+                      (i, N, len(refs['archives']), nvr))
                 # pprint.pprint(refs['archives'])
             continue
         if refs.get('component_of'):
@@ -941,7 +944,8 @@ def handle_prune():
                     else:
                         print("Untagging build %s from %s" % (nvr, tagname))
                         try:
-                            session.untagBuildBypass(taginfo['id'], entry['build_id'], force=bypass)
+                            session.untagBuildBypass(taginfo['id'], entry['build_id'],
+                                                     force=bypass)
                             untagged.setdefault(nvr, {})[tagname] = 1
                         except (six.moves.xmlrpc_client.Fault, koji.GenericError) as e:
                             print("Warning: untag operation failed: %s" % e)

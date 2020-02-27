@@ -334,7 +334,8 @@ class Session(object):
 
         # Successfully authenticated via Kerberos, now log in
         if proxyuser:
-            proxyprincs = [princ.strip() for princ in context.opts.get('ProxyPrincipals', '').split(',')]
+            proxyprincs = [princ.strip()
+                           for princ in context.opts.get('ProxyPrincipals', '').split(',')]
             if cprinc.name in proxyprincs:
                 login_principal = proxyuser
             else:
@@ -408,12 +409,15 @@ class Session(object):
             authtype = koji.AUTHTYPE_GSSAPI
         else:
             if context.environ.get('SSL_CLIENT_VERIFY') != 'SUCCESS':
-                raise koji.AuthError('could not verify client: %s' % context.environ.get('SSL_CLIENT_VERIFY'))
+                raise koji.AuthError('could not verify client: %s' %
+                                     context.environ.get('SSL_CLIENT_VERIFY'))
 
             name_dn_component = context.opts.get('DNUsernameComponent', 'CN')
             username = context.environ.get('SSL_CLIENT_S_DN_%s' % name_dn_component)
             if not username:
-                raise koji.AuthError('unable to get user information (%s) from client certificate' % name_dn_component)
+                raise koji.AuthError(
+                    'unable to get user information (%s) from client certificate' %
+                    name_dn_component)
             client_dn = context.environ.get('SSL_CLIENT_S_DN')
             authtype = koji.AUTHTYPE_SSL
 
