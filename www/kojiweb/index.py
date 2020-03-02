@@ -714,7 +714,7 @@ def taskinfo(environ, taskID):
     if task['state'] in (koji.TASK_STATES['CLOSED'], koji.TASK_STATES['FAILED']):
         try:
             result = server.getTaskResult(task['id'])
-        except BaseException:
+        except Exception:
             excClass, exc = sys.exc_info()[:2]
             values['result'] = exc
             values['excClass'] = excClass
@@ -748,7 +748,7 @@ def taskinfo(environ, taskID):
 
     try:
         values['params_parsed'] = _genHTML(environ, 'taskinfo_params.chtml')
-    except BaseException:
+    except Exception:
         values['params_parsed'] = None
     return _genHTML(environ, 'taskinfo.chtml')
 
@@ -2458,7 +2458,7 @@ def search(environ, start=None, order=None):
         if match == 'regexp':
             try:
                 re.compile(terms)
-            except BaseException:
+            except Exception:
                 values['error'] = 'Invalid regular expression'
                 return _genHTML(environ, 'search.chtml')
 

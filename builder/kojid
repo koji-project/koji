@@ -167,7 +167,7 @@ def main(options, session):
             break
         except koji.RetryError:
             raise
-        except BaseException:
+        except Exception:
             # XXX - this is a little extreme
             # log the exception and continue
             logger.error(''.join(traceback.format_exception(*sys.exc_info())))
@@ -488,7 +488,7 @@ class BuildRoot(object):
                                 fd.close()
                             fd = open(fpath, 'rb')
                         logs[fname] = (fd, stat_info.st_ino, stat_info.st_size or size, fpath)
-                    except BaseException:
+                    except Exception:
                         self.logger.error("Error reading mock log: %s", fpath)
                         self.logger.error(''.join(traceback.format_exception(*sys.exc_info())))
                         continue
@@ -533,7 +533,7 @@ class BuildRoot(object):
                     os.setregid(gid, gid)
                     os.setreuid(uid, uid)
                 os.execvp(cmd[0], cmd)
-            except BaseException:
+            except Exception:
                 # diediedie
                 print("Failed to exec mock")
                 print(''.join(traceback.format_exception(*sys.exc_info())))
@@ -801,7 +801,7 @@ class BuildRoot(object):
             with koji.openRemoteFile(repomdpath, **opts) as fo:
                 try:
                     repodata = repoMDObject.RepoMD('ourrepo', fo)
-                except BaseException:
+                except Exception:
                     raise koji.BuildError("Unable to parse repomd.xml file for %s" %
                                           os.path.join(repodir, self.br_arch))
             data = repodata.getData('origin')
@@ -1061,7 +1061,7 @@ class BuildTask(BaseTaskHandler):
         except (SystemExit, ServerExit, KeyboardInterrupt):
             # we do not trap these
             raise
-        except BaseException:
+        except Exception:
             if not self.opts.get('scratch'):
                 # scratch builds do not get imported
                 self.session.host.failBuild(self.id, build_id)
@@ -1547,7 +1547,7 @@ class MavenTask(MultiPlatformTask):
         except (SystemExit, ServerExit, KeyboardInterrupt):
             # we do not trap these
             raise
-        except BaseException:
+        except Exception:
             if not self.opts.get('scratch'):
                 # scratch builds do not get imported
                 self.session.host.failBuild(self.id, self.build_id)
@@ -2067,7 +2067,7 @@ class WrapperRPMTask(BaseBuildTask):
             buildroot.build(srpm)
         except (SystemExit, ServerExit, KeyboardInterrupt):
             raise
-        except BaseException:
+        except Exception:
             if self.new_build_id:
                 self.session.host.failBuild(self.id, self.new_build_id)
                 raise
@@ -2111,7 +2111,7 @@ class WrapperRPMTask(BaseBuildTask):
                 self.uploadFile(os.path.join(resultdir, rpm_fn))
         except (SystemExit, ServerExit, KeyboardInterrupt):
             raise
-        except BaseException:
+        except Exception:
             if self.new_build_id:
                 self.session.host.failBuild(self.id, self.new_build_id)
                 raise
@@ -2140,7 +2140,7 @@ class WrapperRPMTask(BaseBuildTask):
                                                         {'noarch': rellogs})
                     except (SystemExit, ServerExit, KeyboardInterrupt):
                         raise
-                    except BaseException:
+                    except Exception:
                         self.session.host.failBuild(self.id, self.new_build_id)
                         raise
                     if not opts.get('skip_tag'):
@@ -2540,7 +2540,7 @@ class BuildBaseImageTask(BuildImageTask):
         except (SystemExit, ServerExit, KeyboardInterrupt):
             # we do not trap these
             raise
-        except BaseException:
+        except Exception:
             if not opts.get('scratch'):
                 # scratch builds do not get imported
                 if bld_info:
@@ -2631,7 +2631,7 @@ class BuildApplianceTask(BuildImageTask):
         except (SystemExit, ServerExit, KeyboardInterrupt):
             # we do not trap these
             raise
-        except BaseException:
+        except Exception:
             if not opts.get('scratch'):
                 # scratch builds do not get imported
                 if bld_info:
@@ -2718,7 +2718,7 @@ class BuildLiveCDTask(BuildImageTask):
         except (SystemExit, ServerExit, KeyboardInterrupt):
             # we do not trap these
             raise
-        except BaseException:
+        except Exception:
             if not opts.get('scratch'):
                 # scratch builds do not get imported
                 if bld_info:
@@ -2857,7 +2857,7 @@ class BuildLiveMediaTask(BuildImageTask):
         except (SystemExit, ServerExit, KeyboardInterrupt):
             # we do not trap these
             raise
-        except BaseException:
+        except Exception:
             if not opts.get('scratch'):
                 # scratch builds do not get imported
                 if bld_info:
@@ -4656,7 +4656,7 @@ class BuildIndirectionImageTask(OzImageTask):
             return self._do_indirection(opts, base_factory_image, utility_factory_image,
                                         indirection_template, tlog, ozlog, fhandler,
                                         bld_info, target_info, bd)
-        except BaseException:
+        except Exception:
             if not opts.get('scratch'):
                 # scratch builds do not get imported
                 if bld_info:
@@ -5129,7 +5129,7 @@ Build Info: %(weburl)s/buildinfo?buildID=%(build_id)i\r
         result = None
         try:
             result = self.session.getTaskResult(task_id)
-        except BaseException:
+        except Exception:
             excClass, result = sys.exc_info()[:2]
             if hasattr(result, 'faultString'):
                 result = result.faultString

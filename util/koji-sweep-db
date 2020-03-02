@@ -76,7 +76,7 @@ def clean_scratch_tasks(cursor, vacuum, test, age):
             if opts['scratch']:
                 cursor.execute("INSERT INTO temp_scratch_tasks VALUES (%s)", (task_id,))
                 ids.append(task_id)
-        except BaseException:
+        except Exception:
             continue
 
     parents = ids

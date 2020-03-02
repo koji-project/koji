@@ -139,7 +139,7 @@ def log_output(session, path, args, outfile, uploadpath, cwd=None, logerror=0, a
             if env:
                 environ.update(env)
             os.execvpe(path, args, environ)
-        except BaseException:
+        except Exception:
             msg = ''.join(traceback.format_exception(*sys.exc_info()))
             if fd:
                 try:
@@ -148,7 +148,7 @@ def log_output(session, path, args, outfile, uploadpath, cwd=None, logerror=0, a
                     else:
                         os.write(fd, msg)
                     os.close(fd)
-                except BaseException:
+                except Exception:
                     pass
             print(msg)
             os._exit(1)
@@ -167,7 +167,7 @@ def log_output(session, path, args, outfile, uploadpath, cwd=None, logerror=0, a
                 except IOError:
                     # will happen if the forked process has not created the logfile yet
                     continue
-                except BaseException:
+                except Exception:
                     print('Error reading log file: %s' % outfile)
                     print(''.join(traceback.format_exception(*sys.exc_info())))
 
@@ -1163,7 +1163,7 @@ class TaskManager(object):
             try:
                 self.session.logoutChild(session_id)
                 del self.subsessions[task_id]
-            except BaseException:
+            except Exception:
                 # not much we can do about it
                 pass
         if wait:
@@ -1266,7 +1266,7 @@ class TaskManager(object):
                 valid_host = handler.checkHost(self.hostdata)
             except (SystemExit, KeyboardInterrupt):
                 raise
-            except BaseException:
+            except Exception:
                 valid_host = False
                 self.logger.warn('Error during host check')
                 self.logger.warn(''.join(traceback.format_exception(*sys.exc_info())))
@@ -1350,7 +1350,7 @@ class TaskManager(object):
             # freeing this task will allow the pending restart to take effect
             self.session.host.freeTasks([handler.id])
             return
-        except BaseException:
+        except Exception:
             tb = ''.join(traceback.format_exception(*sys.exc_info()))
             self.logger.warn("TRACEBACK: %s" % tb)
             # report exception back to server

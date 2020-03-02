@@ -71,7 +71,7 @@ class Rpmdiff:
     except AttributeError:
         try:
             PREREQ_FLAG = rpm.RPMSENSE_PREREQ
-        except BaseException:
+        except Exception:
             # (proyvind): This seems ugly, but then again so does
             #            this whole check as well.
             PREREQ_FLAG = False

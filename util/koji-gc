@@ -451,7 +451,7 @@ Build: %%(name)s-%%(version)s-%%(release)s
                 s.login(options.smtp_user, options.smtp_pass)
             s.sendmail(msg['From'], msg['To'], msg.as_string())
             s.quit()
-        except BaseException:
+        except Exception:
             print("FAILED: Sending warning notice to %s" % msg['To'])
 
 
@@ -1010,7 +1010,7 @@ if __name__ == "__main__":
                 if options.exit_on_lock:
                     try:
                         session.logout()
-                    except BaseException:
+                    except Exception:
                         pass
                     sys.exit(1)
             os.close(lock_fd)
@@ -1041,7 +1041,7 @@ if __name__ == "__main__":
     #        print("%s: %s" % (exctype, value))
     try:
         session.logout()
-    except BaseException:
+    except Exception:
         pass
     if not options.skip_main:
         sys.exit(rv)

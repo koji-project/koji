@@ -241,7 +241,7 @@ def main(options, session):
             break
         except koji.RetryError:
             raise
-        except BaseException:
+        except Exception:
             # XXX - this is a little extreme
             # log the exception and continue
             logger.error('Error in main loop', exc_info=True)
@@ -295,7 +295,7 @@ class DaemonXMLRPCServer(six.moves.xmlrpc_server.SimpleXMLRPCServer):
                         self.close_request(conn)
             except socket.timeout:
                 pass
-            except BaseException:
+            except Exception:
                 self.logger.error('Error handling requests', exc_info=True)
 
     if sys.version_info[:2] <= (2, 4):
@@ -313,7 +313,7 @@ class DaemonXMLRPCServer(six.moves.xmlrpc_server.SimpleXMLRPCServer):
                                                          methodresponse=1, allow_none=True)
             except six.moves.xmlrpc_client.Fault as fault:
                 response = six.moves.xmlrpc_client.dumps(fault)
-            except BaseException:
+            except Exception:
                 # report exception back to server
                 response = six.moves.xmlrpc_client.dumps(
                     six.moves.xmlrpc_client.Fault(
@@ -415,7 +415,7 @@ class WinBuildTask(MultiPlatformTask):
         except (SystemExit, ServerExit, KeyboardInterrupt):
             # we do not trap these
             raise
-        except BaseException:
+        except Exception:
             if not opts.get('scratch'):
                 # scratch builds do not get imported
                 self.session.host.failBuild(self.id, build_id)
@@ -1056,7 +1056,7 @@ class VMTaskManager(TaskManager):
                 if os.path.isfile(disk):
                     os.unlink(disk)
                     self.logger.debug('Removed disk file %s for VM %s', disk, vm_name)
-            except BaseException:
+            except Exception:
                 self.logger.error('Error removing disk file %s for VM %s', disk, vm_name,
                                   exc_info=True)
                 return False

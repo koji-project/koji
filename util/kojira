@@ -410,7 +410,7 @@ class RepoManager(object):
             while True:
                 self.checkCurrentRepos()
                 time.sleep(self.options.sleeptime)
-        except BaseException:
+        except Exception:
             self.logger.exception('Error in currency checker thread')
             raise
         finally:
@@ -425,7 +425,7 @@ class RepoManager(object):
             while True:
                 self.regenRepos()
                 time.sleep(self.options.sleeptime)
-        except BaseException:
+        except Exception:
             self.logger.exception('Error in regen thread')
             raise
         finally:
@@ -856,7 +856,7 @@ def main(options, session):
         except SystemExit:
             logger.warn("Shutting down")
             break
-        except BaseException:
+        except Exception:
             # log the exception and continue
             logger.error(''.join(traceback.format_exception(*sys.exc_info())))
         try:
@@ -1005,7 +1005,7 @@ if __name__ == "__main__":
             try:
                 logfile = open(options.logfile, "w")
                 logfile.close()
-            except BaseException:
+            except Exception:
                 sys.stderr.write("Cannot create logfile: %s\n" % options.logfile)
                 sys.exit(1)
         if not os.access(options.logfile, os.W_OK):

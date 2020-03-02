@@ -199,7 +199,7 @@ def run_callbacks(cbtype, *args, **kws):
         cb_args, cb_kwargs = _fix_cb_args(func, args, kws, cache)
         try:
             func(cbtype, *cb_args, **cb_kwargs)
-        except BaseException:
+        except Exception:
             msg = 'Error running %s callback from %s' % (cbtype, func.__module__)
             if getattr(func, 'failure_is_an_option', False):
                 logging.getLogger('koji.plugin').warn(msg, exc_info=True)

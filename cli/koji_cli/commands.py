@@ -3056,7 +3056,7 @@ def anon_handle_list_builds(goptions, session, args):
             dt = dateutil.parser.parse(val)
             ts = time.mktime(dt.timetuple())
             setattr(options, opt, ts)
-        except BaseException:
+        except Exception:
             parser.error(_("Invalid time specification: %s") % val)
     if options.before:
         opts['completeBefore'] = getattr(options, 'before')
@@ -4450,7 +4450,7 @@ def anon_handle_list_history(goptions, session, args):
             dt = dateutil.parser.parse(val)
             ts = time.mktime(dt.timetuple())
             setattr(options, opt, ts)
-        except BaseException:
+        except Exception:
             parser.error(_("Invalid time specification: %s") % val)
     for opt in ('package', 'tag', 'build', 'editor', 'user', 'permission',
                 'cg', 'external_repo', 'build_target', 'group', 'before',

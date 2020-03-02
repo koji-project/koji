@@ -2672,7 +2672,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None, with_separa
             relpath = os.path.relpath(srcdir, dest_parent)
             try:
                 os.symlink(relpath, destlink)
-            except BaseException:
+            except Exception:
                 log_error('Error linking %s to %s' % (destlink, relpath))
         for artifact_dir, artifacts in six.iteritems(artifact_dirs):
             _write_maven_repo_metadata(artifact_dir, artifacts)
@@ -4989,7 +4989,7 @@ def list_task_output(taskID, stat=False, all_volumes=False, strict=False):
         # raise error if task doesn't exist
         try:
             Task(taskID).getInfo(strict=True)
-        except BaseException:
+        except Exception:
             raise koji.GenericError("Task doesn't exist")
 
     if stat or all_volumes:
@@ -7375,10 +7375,10 @@ def check_rpm_sig(an_rpm, sigkey, sighdr):
         ts.setVSFlags(0)  # full verify
         with open(temp, 'rb') as fo:
             hdr = ts.hdrFromFdno(fo.fileno())
-    except BaseException:
+    except Exception:
         try:
             os.unlink(temp)
-        except BaseException:
+        except Exception:
             pass
         raise
     raw_key = koji.get_header_field(hdr, 'siggpg')

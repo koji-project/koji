@@ -454,7 +454,7 @@ class TrackedBuild(object):
                     # XXX - Move SCM class out of kojid and use it to check for scm url
                     if src.startswith('cvs:'):
                         return src
-                except BaseException:
+                except Exception:
                     pass
         # otherwise fail
         return None
@@ -1286,7 +1286,7 @@ def main(args):
         filename = options.logfile
         try:
             logfile = os.open(filename, os.O_CREAT | os.O_RDWR | os.O_APPEND, 0o777)
-        except BaseException:
+        except Exception:
             logfile = None
     if logfile is not None:
         log("logging to %s" % filename)
@@ -1341,6 +1341,6 @@ if __name__ == "__main__":
     #        log ("%s: %s" % (exctype, value))
     try:
         session.logout()
-    except BaseException:
+    except Exception:
         pass
     sys.exit(rv)

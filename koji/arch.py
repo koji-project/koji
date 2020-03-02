@@ -238,7 +238,7 @@ def _try_read_cpuinfo():
         mounted). """
     try:
         return open("/proc/cpuinfo", "r")
-    except BaseException:
+    except Exception:
         return []
 
 
@@ -248,7 +248,7 @@ def _parse_auxv():
     # In case we can't open and read /proc/self/auxv, just return
     try:
         data = open("/proc/self/auxv", "rb").read()
-    except BaseException:
+    except Exception:
         return
 
     # Define values from /usr/include/elf.h
@@ -323,7 +323,7 @@ def getCanonPPCArch(arch):
     try:
         if platform.startswith("power") and int(platform[5:].rstrip('+')) >= 7:
             return "ppc64p7"
-    except BaseException:
+    except Exception:
         pass
 
     if machine is None:
@@ -388,7 +388,7 @@ def getCanonArch(skipRpmPlatform=0):
             f.close()
             (arch, vendor, opersys) = line.split("-", 2)
             return arch
-        except BaseException:
+        except Exception:
             pass
 
     arch = os.uname()[4]
