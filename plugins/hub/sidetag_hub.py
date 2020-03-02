@@ -18,6 +18,7 @@ from kojihub import (  # noqa: F402
     get_tag,
     get_user,
     nextval
+    _edit_tag,
 )
 
 CONFIG_FILE = "/etc/koji-hub/plugins/sidetag.conf"
@@ -169,6 +170,49 @@ def listSideTags(basetag=None, user=None, queryOpts=None):
     )
     return query.execute()
 
+
+@export
+def editSideTag(sidetag, debuginfo=None, block_pkgs=None, unblock_pkgs=None):
+    """Restricted ability to modify sidetags, parent tag must have:
+    sidetag_debuginfo_allowed: 1
+    sidetag_package_list_allowed: 1
+    in extra, if modifying functions should work. For blocking/unblocking
+    further policy must be compatible with these operations.
+
+    :param sidetag: sidetag id or name
+    :type sidetag: int or str
+    :param debuginfo: set or disable debuginfo repo generation
+    :type debuginfo: bool
+    :param block_pkgs: package names to be blocked in sidetag
+    :type block_pkgs: list of str
+    :param unblock_pkgs: package names to be unblocked in sidetag
+    :type unblock_pkgs: list of str
+    """
+
+    context.session.assertLogin()
+    user = get_user(context.session.user_id, strict=True)
+    tag = get_tag(sidetag, strict=True)
+
+    if not sidetag["extra"].get("sidetag"):
+        raise koji.GenericError("Not a sidetag: %(name)s" % sidetag)
+    if sidetag["extra"].get("sidetag_user_id") != user["id"]:
+        if not context.session.hasPerm("admin"):
+            raise koji.ActionNotAllowed("This is not your sidetag")
+
+    parent_id = getInheritanceData(sidetag)[0]['parent_id']
+    parent = get_tag(parent_id)
+
+    if debuginfo is not None and not parent['extra'].get('sidetag_debuginfo_allowed'):
+        raise koji.GenericError("Debuginfo setting is not allowed in parent tag.")
+    if (block_pkgs or unblock_pkgs) and not parent['extra'].get('sidetag_package_list_allowed'):
+        raise koji.GenericError("Package un/blocking is not allowed in parent tag.")
+
+    if debuginfo is not None:
+        _edit_tag(sidetag, extra={'with_debuginfo': bool(debuginfo)})
+    for pkg in block_pkgs:
+        pkglist_block(sidetag, pkg)
+    for pkg in unblock_pkgs:
+        pkglist_unblock(sidetag, pkg)
 
 def handle_sidetag_untag(cbtype, *args, **kws):
     """Remove a side tag when its last build is untagged

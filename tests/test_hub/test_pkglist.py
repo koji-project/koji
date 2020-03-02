@@ -58,7 +58,7 @@ class TestPkglistBlock(unittest.TestCase):
     @mock.patch('kojihub.lookup_package')
     def test_pkglist_unblock(self, lookup_package, get_tag, assert_policy,
             readPackageList, _pkglist_add, _pkglist_remove):
-        tag = {'id': 1, 'name': 'tag'}
+        tag = {'id': 1, 'name': 'tag', 'extra': {}}
         pkg = {'id': 2, 'name': 'package', 'owner_id': 3}
         get_tag.return_value = tag
         lookup_package.return_value = pkg
@@ -73,7 +73,7 @@ class TestPkglistBlock(unittest.TestCase):
         get_tag.assert_called_once_with('tag', strict=True)
         lookup_package.assert_called_once_with('pkg', strict=True)
         assert_policy.assert_called_once_with('package_list', {'tag': tag['id'],
-            'action': 'unblock', 'package': pkg['id'], 'force': False}, force=False)
+            'action': 'unblock', 'package': pkg['id'], 'force': False, 'extra': {}}, force=False)
         self.assertEqual(readPackageList.call_count, 2)
         readPackageList.assert_has_calls([
             mock.call(tag['id'], pkgID=pkg['id'], inherit=True),
@@ -96,7 +96,7 @@ class TestPkglistBlock(unittest.TestCase):
     def test_pkglist_unblock_inherited(self, lookup_package, get_tag, assert_policy,
             readPackageList, _pkglist_add, _pkglist_remove):
         tag_id, pkg_id, owner_id = 1, 2, 3
-        get_tag.return_value = {'id': tag_id, 'name': 'tag'}
+        get_tag.return_value = {'id': tag_id, 'name': 'tag', 'extra': {}}
         lookup_package.return_value = {'id': pkg_id, 'name': 'pkg'}
         readPackageList.return_value = {pkg_id: {
             'blocked': True,
@@ -109,7 +109,7 @@ class TestPkglistBlock(unittest.TestCase):
         get_tag.assert_called_once_with('tag', strict=True)
         lookup_package.assert_called_once_with('pkg', strict=True)
         assert_policy.assert_called_once_with('package_list', {'tag': tag_id,
-            'action': 'unblock', 'package': pkg_id, 'force': False}, force=False)
+            'action': 'unblock', 'package': pkg_id, 'force': False, 'extra': {}}, force=False)
         readPackageList.assert_called_once_with(tag_id, pkgID=pkg_id, inherit=True)
         _pkglist_add.assert_called_once_with(tag_id, pkg_id, owner_id, False, '')
         _pkglist_remove.assert_not_called()
@@ -123,7 +123,7 @@ class TestPkglistBlock(unittest.TestCase):
     def test_pkglist_unblock_not_present(self, lookup_package, get_tag, assert_policy,
             readPackageList, _pkglist_add, _pkglist_remove):
         tag_id, pkg_id = 1, 2
-        get_tag.return_value = {'id': tag_id, 'name': 'tag'}
+        get_tag.return_value = {'id': tag_id, 'name': 'tag', 'extra': {}}
         lookup_package.return_value = {'id': pkg_id, 'name': 'pkg'}
         readPackageList.return_value = {}
 
@@ -133,7 +133,7 @@ class TestPkglistBlock(unittest.TestCase):
         get_tag.assert_called_once_with('tag', strict=True)
         lookup_package.assert_called_once_with('pkg', strict=True)
         assert_policy.assert_called_once_with('package_list', {'tag': tag_id,
-            'action': 'unblock', 'package': pkg_id, 'force': False}, force=False)
+            'action': 'unblock', 'package': pkg_id, 'force': False, 'extra': {}}, force=False)
         readPackageList.assert_called_once_with(tag_id, pkgID=pkg_id, inherit=True)
         _pkglist_add.assert_not_called()
         _pkglist_remove.assert_not_called()
@@ -147,7 +147,7 @@ class TestPkglistBlock(unittest.TestCase):
     def test_pkglist_unblock_not_blocked(self, lookup_package, get_tag, assert_policy,
             readPackageList, _pkglist_add, _pkglist_remove):
         tag_id, pkg_id, owner_id = 1, 2, 3
-        get_tag.return_value = {'id': tag_id, 'name': 'tag'}
+        get_tag.return_value = {'id': tag_id, 'name': 'tag', 'extra': {}}
         lookup_package.return_value = {'id': pkg_id, 'name': 'pkg'}
         readPackageList.return_value = {pkg_id: {
             'blocked': False,
@@ -162,7 +162,7 @@ class TestPkglistBlock(unittest.TestCase):
         get_tag.assert_called_once_with('tag', strict=True)
         lookup_package.assert_called_once_with('pkg', strict=True)
         assert_policy.assert_called_once_with('package_list', {'tag': tag_id,
-            'action': 'unblock', 'package': pkg_id, 'force': False}, force=False)
+            'action': 'unblock', 'package': pkg_id, 'force': False, 'extra': {}}, force=False)
         readPackageList.assert_called_once_with(tag_id, pkgID=pkg_id, inherit=True)
         _pkglist_add.assert_not_called()
         _pkglist_remove.assert_not_called()
@@ -200,7 +200,7 @@ class TestPkglistBlock(unittest.TestCase):
         force=False
         update=False
         policy=True
-        tag = {'id': 1, 'name': 'tag'}
+        tag = {'id': 1, 'name': 'tag', 'extra': {}}
         pkg = {'id': 2, 'name': 'pkg', 'owner_id': 3}
         users = [
             {'id': 3, 'name': 'user'},
@@ -224,7 +224,7 @@ class TestPkglistBlock(unittest.TestCase):
             mock.call(112233),
         ])
         assert_policy.assert_called_once_with('package_list', {'tag': tag['id'],
-            'action': 'add', 'package': pkg['name'], 'force': False}, force=False)
+            'action': 'add', 'package': pkg['name'], 'force': False, 'extra': {}}, force=False)
         self.assertEqual(self.run_callbacks.call_count, 2)
         self.run_callbacks.assert_has_calls([
             mock.call('prePackageListChange', action='add', tag=tag,
@@ -313,7 +313,7 @@ class TestPkglistBlock(unittest.TestCase):
         force=False
         update=False
         policy=True
-        tag = {'id': 1, 'name': 'tag'}
+        tag = {'id': 1, 'name': 'tag', 'extra': {}}
         pkg = {'id': 2, 'name': 'pkg', 'owner_id': 3}
         users = [
             {'id': 3, 'name': 'user'},
@@ -341,7 +341,7 @@ class TestPkglistBlock(unittest.TestCase):
             mock.call(112233),
         ])
         assert_policy.assert_called_once_with('package_list', {'tag': tag['id'],
-            'action': 'add', 'package': pkg['name'], 'force': False}, force=False)
+            'action': 'add', 'package': pkg['name'], 'force': False, 'extra': {}}, force=False)
         self.assertEqual(self.run_callbacks.call_count, 2)
         self.run_callbacks.assert_has_calls([
             mock.call('prePackageListChange', action='add', tag=tag,
@@ -370,7 +370,7 @@ class TestPkglistBlock(unittest.TestCase):
         force=False
         update=False
         policy=True
-        tag = {'id': 1, 'name': 'tag'}
+        tag = {'id': 1, 'name': 'tag', 'extra': {}}
         pkg = {'id': 2, 'name': 'pkg', 'owner_id': 3}
         users = [
             {'id': 3, 'name': 'user',},
@@ -398,7 +398,7 @@ class TestPkglistBlock(unittest.TestCase):
             mock.call(112233),
         ])
         assert_policy.assert_called_once_with('package_list', {'tag': tag['id'],
-            'action': 'add', 'package': pkg['name'], 'force': False}, force=False)
+            'action': 'add', 'package': pkg['name'], 'force': False, 'extra': {}}, force=False)
         self.run_callbacks.assert_called_once_with(
                 'prePackageListChange', action='add', tag=tag,
                 package=pkg, owner=user['id'], block=block,
@@ -420,7 +420,7 @@ class TestPkglistBlock(unittest.TestCase):
         force=True
         update=False
         policy=True
-        tag = {'id': 1, 'name': 'tag'}
+        tag = {'id': 1, 'name': 'tag', 'extra': {}}
         pkg = {'id': 2, 'name': 'pkg', 'owner_id': 3}
         users = [
             {'id': 3, 'name': 'user',},

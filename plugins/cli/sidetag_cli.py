@@ -93,3 +93,29 @@ def handle_list_sidetags(options, session, args):
 
     for tag in session.listSideTags(basetag=opts.basetag, user=user):
         print(tag["name"])
+
+
+@export_cli
+def handle_edit_sidetag(options, session, args):
+    "Edit sidetag"
+    usage = _("usage: %(prog)s edit-sidetag [options]")
+    usage += _("\n(Specify the --help global option for a list of other help options)")
+    parser = ArgumentParser(usage=usage)
+    parser.add_argument("sidetag", help="name of sidetag")
+    parser.add_argument("--debuginfo", action="store_true", default=None,
+                        help=_("Generate debuginfo repository"))
+    parser.add_argument("--no-debuginfo", action="store_false", dest="debuginfo")
+    parser.add_argument("-b", "--block", action="append", help="block package")
+    parser.add_argument("-u", "--unblock", action="append", help="unblock package")
+
+    opts = parser.parse_args(args)
+
+    activate_session(session, options)
+
+    kwargs = {
+        'block_pkgs': opts.block,
+        'unblock_pkgs': opts.unblock,
+    }
+    if opts.debuginfo is not None:
+        kwargs['debuginfo'] = opts.debuginfo
+    session.editSideTag(opts.sidetag, **kwargs)
