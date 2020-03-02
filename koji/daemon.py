@@ -139,7 +139,7 @@ def log_output(session, path, args, outfile, uploadpath, cwd=None, logerror=0, a
             if env:
                 environ.update(env)
             os.execvpe(path, args, environ)
-        except Exception:
+        except BaseException:
             msg = ''.join(traceback.format_exception(*sys.exc_info()))
             if fd:
                 try:

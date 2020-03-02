@@ -322,7 +322,7 @@ class RepoManager(object):
             try:
                 rmtree(path)
                 status = 0
-            except Exception:
+            except BaseException:
                 logger.error(''.join(traceback.format_exception(*sys.exc_info())))
                 logging.shutdown()
         finally:

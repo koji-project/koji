@@ -533,7 +533,7 @@ class BuildRoot(object):
                     os.setregid(gid, gid)
                     os.setreuid(uid, uid)
                 os.execvp(cmd[0], cmd)
-            except Exception:
+            except BaseException:
                 # diediedie
                 print("Failed to exec mock")
                 print(''.join(traceback.format_exception(*sys.exc_info())))
