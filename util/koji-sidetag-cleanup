@@ -53,20 +53,17 @@ def get_options():
                       help=_("show xmlrpc debug output"))
     parser.add_option("-t", "--test", action="store_true",
                       help=_("test mode, no tag is deleted"))
-
-    parser.add_option("--no-empty", action="store_false", dest="clean_empty",
-                     default=True, help=_("don't run emptiness check"))
-    parser.add_option("--empty-delay", action="store", metavar="DAYS",
-                     default=1, type=int,
+    parser.add_option("--no-empty", action="store_false", dest="clean_empty", default=True,
+                      help=_("don't run emptiness check"))
+    parser.add_option("--empty-delay", action="store", metavar="DAYS", default=1, type=int,
                       help=_("delete empty tags older than DAYS"))
-    parser.add_option("--no-old", action="store_false", dest="clean_old",
-                     default=True, help=_("don't run old check"))
-    parser.add_option("--old-delay", action="store", metavar="DAYS",
-                     default=30, type=int,
+    parser.add_option("--no-old", action="store_false", dest="clean_old", default=True,
+                      help=_("don't run old check"))
+    parser.add_option("--old-delay", action="store", metavar="DAYS", default=30, type=int,
                       help=_("delete older tags than timestamp"))
     parser.add_option("--ignore-tags", metavar="PATTERN", action="append",
                       help=_("Ignore tags matching PATTERN when pruning"))
-    #parse once to get the config file
+    # parse once to get the config file
     (options, args) = parser.parse_args()
 
     defaults = parser.get_default_values()
@@ -115,7 +112,7 @@ def get_options():
                     setattr(defaults, name, config.getboolean(*alias))
                 else:
                     setattr(defaults, name, config.get(*alias))
-    #parse again with defaults
+    # parse again with defaults
     (options, args) = parser.parse_args(values=defaults)
     options.config = config
 
@@ -139,25 +136,29 @@ def ensure_connection(session):
     except xmlrpc.client.ProtocolError:
         error(_("Unable to connect to server"))
     if ret != koji.API_VERSION:
-        warn(_("The server is at API version %d and the client is at %d" % (ret, koji.API_VERSION)))
+        warn(_("The server is at API version %d and the client is at %d" %
+               (ret, koji.API_VERSION)))
 
 
 def activate_session(session):
     """Test and login the session is applicable"""
     global options
     if options.noauth:
-        #skip authentication
+        # skip authentication
         pass
     elif options.cert is not None and os.path.isfile(options.cert):
         # authenticate using SSL client cert
         session.ssl_login(options.cert, None, options.serverca, proxyuser=options.runas)
     elif options.user:
-        #authenticate using user/password
+        # authenticate using user/password
         session.login()
     elif options.keytab and options.principal:
         try:
             if options.keytab and options.principal:
-                session.gssapi_login(principal=options.principal, keytab=options.keytab, proxyuser=options.runas)
+                session.gssapi_login(
+                    principal=options.principal,
+                    keytab=options.keytab,
+                    proxyuser=options.runas)
             else:
                 session.gssapi_login(proxyuser=options.runas)
         except Exception as e:
@@ -250,11 +251,13 @@ def clean_old(tags):
     delete_tags(deleted)
     return passed
 
+
 def main(args):
     activate_session(session)
     sidetags = get_all()
     sidetags = clean_empty(sidetags)
     sidetags = clean_old(sidetags)
+
 
 if __name__ == "__main__":
     options, args = get_options()

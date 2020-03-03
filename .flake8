@@ -27,6 +27,7 @@ filename =
     ./util/koji-gc,
     ./util/koji-shadow,
     ./util/koji-sweep-db,
+    ./util/koji-sidetag-cleanup,
     ./vm/kojivmd
 
 application_import_names = koji,koji_cli,kojihub,kojiweb,__main__
