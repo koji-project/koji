@@ -642,6 +642,9 @@ Install the ``koji-hub`` package along with mod_ssl::
 Required Configuration
 ----------------------
 
+We provide example configs for all services, so look for ``httpd.conf``, ``hub.conf``,
+``kojiweb.conf`` and ``web.conf`` in source repo or related rpms.
+
 /etc/httpd/conf/httpd.conf
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -684,16 +687,15 @@ options should point to where the certificates are located on the hub.
 
 ::
 
-    SSLCertificateFile /etc/pki/koji/certs/kojihub.crt
-    SSLCertificateKeyFile /etc/pki/koji/private/kojihub.key
-    SSLCertificateChainFile /etc/pki/koji/koji_ca_cert.crt
-    SSLCACertificateFile /etc/pki/koji/koji_ca_cert.crt
-    SSLVerifyClient require
-    SSLVerifyDepth  10
-    # Python is currently not fully TLSv1.3 compatible and
-    #  older TLS versions are no longer advised
-    #  https://bugs.python.org/issue34670
-    SSLProtocol TLSv1.2
+    <Location /kojihub/ssllogin>
+        SSLCertificateFile /etc/pki/koji/certs/kojihub.crt
+        SSLCertificateKeyFile /etc/pki/koji/private/kojihub.key
+        SSLCertificateChainFile /etc/pki/koji/koji_ca_cert.crt
+        SSLCACertificateFile /etc/pki/koji/koji_ca_cert.crt
+        SSLVerifyClient require
+        SSLVerifyDepth  10
+        SSLOptions +StdEnvVars
+    </Location>
 
 /etc/koji-hub/hub.conf
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -899,8 +901,11 @@ If you are using SSL you will need to add the needed SSL options for apache.
 
 ::
 
-    SSLVerifyClient require
-    SSLVerifyDepth  10
+    <Location /koji/login>
+        SSLVerifyClient require
+        SSLVerifyDepth  10
+        SSLOptions +StdEnvVars
+    </Location>
 
 /etc/kojiweb/web.conf
 ^^^^^^^^^^^^^^^^^^^^^
