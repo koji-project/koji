@@ -5484,22 +5484,48 @@ def handle_add_external_repo(goptions, session, args):
 
 def handle_edit_external_repo(goptions, session, args):
     "[admin] Edit data for an external repo"
-    usage = _("usage: %prog edit-external-repo <name>")
+    usage = _("usage: %prog edit-external-repo [options] <name>")
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--url", help=_("Change the url"))
     parser.add_option("--name", help=_("Change the name"))
+    parser.add_option("-t", "--tag", metavar="TAG",
+                      help=_("Edit the repo properties for the tag."))
+    parser.add_option("-p", "--priority", metavar="PRIORITY", type='int',
+                      help=_("Edit the priority of the repo for the tag specified by --tag."))
+    parser.add_option("-m", "--mode", metavar="MODE",
+                      help=_("Edit the merge mode of the repo for the tag specified by --tag. "
+                             "Options: %s.") % ", ".join(koji.REPO_MERGE_MODES))
     (options, args) = parser.parse_args(args)
     if len(args) != 1:
         parser.error(_("Incorrect number of arguments"))
-    opts = {}
+    repo_opts = {}
     if options.url:
-        opts['url'] = options.url
+        repo_opts['url'] = options.url
     if options.name:
-        opts['name'] = options.name
-    if not opts:
+        repo_opts['name'] = options.name
+    tag_repo_opts = {}
+    if options.tag:
+        if options.priority is not None:
+            tag_repo_opts['priority'] = options.priority
+        if options.mode:
+            tag_repo_opts['merge_mode'] = options.mode
+        if not tag_repo_opts:
+            parser.error(_("At least, one of priority and merge mode should be specified"))
+        tag_repo_opts['tag_info'] = options.tag
+        tag_repo_opts['repo_info'] = args[0]
+    else:
+        for k in ('priority', 'mode'):
+            if getattr(options, k) is not None:
+                parser.error(_("If %s is specified, --tag must be specified as well") % k)
+
+    if not (repo_opts or tag_repo_opts):
         parser.error(_("No changes specified"))
+
     activate_session(session, goptions)
-    session.editExternalRepo(args[0], **opts)
+    if repo_opts:
+        session.editExternalRepo(args[0], **repo_opts)
+    if tag_repo_opts:
+        session.editTagExternalRepo(**tag_repo_opts)
 
 
 def handle_remove_external_repo(goptions, session, args):
