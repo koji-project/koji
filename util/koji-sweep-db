@@ -36,8 +36,8 @@ def clean_reservations(cursor, vacuum, test, age):
 
 
 def clean_notification_tasks(cursor, vacuum, test, age):
-    q = " FROM task WHERE method = 'build' AND completion_time < NOW() - '%s days'::interval" % \
-        int(age)
+    q = " FROM task WHERE method = 'tagNotification' AND" + \
+        " completion_time < NOW() - '%s days'::interval" % int(age)
     if options.verbose:
         cursor.execute("SELECT COUNT(*) " + q)
         rows = cursor.fetchall()[0][0]
