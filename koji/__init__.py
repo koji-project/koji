@@ -75,7 +75,7 @@ try:
     from OpenSSL.SSL import Error as SSL_Error
 except Exception:  # pragma: no cover
     # the hub imports koji, and sometimes this import fails there
-    # see: https://cryptography.io/en/latest/faq/#starting-cryptography-using-mod-wsgi-produces-an-internalerror-during-a-call-in-register-osrandom-engine
+    # see: https://cryptography.io/en/latest/faq/#starting-cryptography-using-mod-wsgi-produces-an-internalerror-during-a-call-in-register-osrandom-engine  # noqa: E501
     # unfortunately the workaround at the above link does not always work, so
     # we ignore it here
     pass
@@ -91,11 +91,13 @@ except ImportError:
 
 PROFILE_MODULES = {}  # {module_name: module_instance}
 
+
 def _(args):
     """Stub function for translation"""
     return args  # pragma: no cover
 
 ## Constants ##
+
 
 RPM_HEADER_MAGIC = six.b('\x8e\xad\xe8')
 RPM_TAG_HEADERSIGNATURES = 62
@@ -108,14 +110,14 @@ RPM_FILEDIGESTALGO_IDS = {
     # Taken from RFC 4880
     # A missing algo ID means md5
     None: 'MD5',
-    1:    'MD5',
-    2:    'SHA1',
-    3:    'RIPEMD160',
-    8:    'SHA256',
-    9:    'SHA384',
-    10:   'SHA512',
-    11:   'SHA224'
-    }
+    1: 'MD5',
+    2: 'SHA1',
+    3: 'RIPEMD160',
+    8: 'SHA256',
+    9: 'SHA384',
+    10: 'SHA512',
+    11: 'SHA224'
+}
 
 # rpm 4.12 introduces optional deps, but they can also be backported in some
 # rpm installations. So, we need to check their real support, not only rpm
@@ -128,7 +130,8 @@ for h in (
         'RECOMMENDNAME', 'RECOMMENDVERSION', 'RECOMMENDFLAGS'):
     SUPPORTED_OPT_DEP_HDRS[h] = hasattr(rpm, 'RPMTAG_%s' % h)
 
-## BEGIN kojikamid dup
+# BEGIN kojikamid dup #
+
 
 class Enum(dict):
     """A simple class to track our enumerated constants
@@ -167,7 +170,7 @@ class Enum(dict):
 
     # deprecated
     getvalue = _notImplemented
-    #read-only
+    # read-only
     __setitem__ = _notImplemented
     __delitem__ = _notImplemented
     clear = _notImplemented
@@ -176,7 +179,8 @@ class Enum(dict):
     update = _notImplemented
     setdefault = _notImplemented
 
-## END kojikamid dup
+# END kojikamid dup #
+
 
 API_VERSION = 1
 
@@ -215,7 +219,7 @@ AUTHTYPE_KERB = 1
 AUTHTYPE_SSL = 2
 AUTHTYPE_GSSAPI = 3
 
-#dependency types
+# dependency types
 DEP_REQUIRE = 0
 DEP_PROVIDE = 1
 DEP_OBSOLETE = 2
@@ -225,7 +229,7 @@ DEP_ENHANCE = 5
 DEP_SUPPLEMENT = 6
 DEP_RECOMMEND = 7
 
-#dependency flags
+# dependency flags
 RPMSENSE_LESS = 2
 RPMSENSE_GREATER = 4
 RPMSENSE_EQUAL = 8
@@ -266,7 +270,7 @@ TAG_UPDATE_TYPES = Enum((
     'MANUAL',
 ))
 
-## BEGIN kojikamid dup
+# BEGIN kojikamid dup #
 
 CHECKSUM_TYPES = Enum((
     'md5',
@@ -274,9 +278,9 @@ CHECKSUM_TYPES = Enum((
     'sha256',
 ))
 
-## END kojikamid dup
+# END kojikamid dup #
 
-#PARAMETERS
+# PARAMETERS
 BASEDIR = '/mnt/koji'
 # default task priority
 PRIO_DEFAULT = 20
@@ -285,115 +289,140 @@ PRIO_DEFAULT = 20
 DEFAULT_REQUEST_TIMEOUT = 60 * 60 * 12
 DEFAULT_AUTH_TIMEOUT = 60
 
-## BEGIN kojikamid dup
+# BEGIN kojikamid dup #
 
-#Exceptions
-PythonImportError = ImportError # will be masked by koji's one
+# Exceptions
+PythonImportError = ImportError  # will be masked by koji's one
+
 
 class GenericError(Exception):
     """Base class for our custom exceptions"""
     faultCode = 1000
     fromFault = False
+
     def __str__(self):
         try:
             return str(self.args[0]['args'][0])
-        except:
+        except Exception:
             try:
                 return str(self.args[0])
-            except:
+            except Exception:
                 return str(self.__dict__)
-## END kojikamid dup
+# END kojikamid dup #
+
 
 class LockError(GenericError):
     """Raised when there is a lock conflict"""
     faultCode = 1001
 
+
 class AuthError(GenericError):
     """Raised when there is an error in authentication"""
     faultCode = 1002
+
 
 class TagError(GenericError):
     """Raised when a tagging operation fails"""
     faultCode = 1003
 
+
 class ActionNotAllowed(GenericError):
     """Raised when the session does not have permission to take some action"""
     faultCode = 1004
 
-## BEGIN kojikamid dup
+# BEGIN kojikamid dup #
+
 
 class BuildError(GenericError):
     """Raised when a build fails"""
     faultCode = 1005
-## END kojikamid dup
+# END kojikamid dup #
+
 
 class AuthLockError(AuthError):
     """Raised when a lock prevents authentication"""
     faultCode = 1006
 
+
 class AuthExpired(AuthError):
     """Raised when a session has expired"""
     faultCode = 1007
+
 
 class SequenceError(AuthError):
     """Raised when requests are received out of sequence"""
     faultCode = 1008
 
+
 class RetryError(AuthError):
     """Raised when a request is received twice and cannot be rerun"""
     faultCode = 1009
+
 
 class PreBuildError(BuildError):
     """Raised when a build fails during pre-checks"""
     faultCode = 1010
 
+
 class PostBuildError(BuildError):
     """Raised when a build fails during post-checks"""
     faultCode = 1011
+
 
 class BuildrootError(BuildError):
     """Raised when there is an error with the buildroot"""
     faultCode = 1012
 
+
 class FunctionDeprecated(GenericError):
     """Raised by a deprecated function"""
     faultCode = 1013
+
 
 class ServerOffline(GenericError):
     """Raised when the server is offline"""
     faultCode = 1014
 
+
 class LiveCDError(GenericError):
     """Raised when LiveCD Image creation fails"""
     faultCode = 1015
+
 
 class PluginError(GenericError):
     """Raised when there is an error with a plugin"""
     faultCode = 1016
 
+
 class CallbackError(PluginError):
     """Raised when there is an error executing a callback"""
     faultCode = 1017
+
 
 class ApplianceError(GenericError):
     """Raised when Appliance Image creation fails"""
     faultCode = 1018
 
+
 class ParameterError(GenericError):
     """Raised when an rpc call receives incorrect arguments"""
     faultCode = 1019
+
 
 class ImportError(GenericError):
     """Raised when an import fails"""
     faultCode = 1020
 
+
 class ConfigurationError(GenericError):
     """Raised when load of koji configuration fails"""
     faultCode = 1021
 
+
 class LiveMediaError(GenericError):
     """Raised when LiveMedia Image creation fails"""
     faultCode = 1022
+
 
 class MultiCallInProgress(object):
     """
@@ -403,7 +432,7 @@ class MultiCallInProgress(object):
     pass
 
 
-#A function to get create an exception from a fault
+# A function to get create an exception from a fault
 def convertFault(fault):
     """Convert a fault to the corresponding Exception type, if possible"""
     code = getattr(fault, 'faultCode', None)
@@ -415,8 +444,9 @@ def convertFault(fault):
             ret = v(fault.faultString)
             ret.fromFault = True
             return ret
-    #otherwise...
+    # otherwise...
     return fault
+
 
 def listFaults():
     """Return a list of faults
@@ -440,7 +470,8 @@ def listFaults():
     ret.sort(key=lambda x: x['faultCode'])
     return ret
 
-#functions for encoding/decoding optional arguments
+# functions for encoding/decoding optional arguments
+
 
 def encode_args(*args, **opts):
     """The function encodes optional arguments as regular arguments.
@@ -452,6 +483,7 @@ def encode_args(*args, **opts):
         opts['__starstar'] = True
         args = args + (opts,)
     return args
+
 
 def decode_args(*args):
     """Decodes optional arguments from a flat argument list
@@ -468,6 +500,7 @@ def decode_args(*args):
             args = args[:-1]
     return args, opts
 
+
 def decode_args2(args, names, strict=True):
     "An alternate form of decode_args, returns a dictionary"
     args, opts = decode_args(*args)
@@ -477,14 +510,16 @@ def decode_args2(args, names, strict=True):
     ret.update(opts)
     return ret
 
+
 def decode_int(n):
     """If n is not an integer, attempt to convert it"""
     if isinstance(n, six.integer_types):
         return n
-    #else
+    # else
     return int(n)
 
-#commonly used functions
+# commonly used functions
+
 
 def safe_xmlrpc_loads(s):
     """Load xmlrpc data from a string, but catch faults"""
@@ -493,7 +528,7 @@ def safe_xmlrpc_loads(s):
     except Fault as f:
         return f
 
-## BEGIN kojikamid dup
+# BEGIN kojikamid dup #
 
 
 def ensuredir(directory):
@@ -521,14 +556,15 @@ def ensuredir(directory):
         # note: if head is blank, then we've reached the top of a relative path
         try:
             os.mkdir(directory)
-        except OSError as e:
+        except OSError:
             # do not thrown when dir already exists (could happen in a race)
             if not os.path.isdir(directory):
                 # something else must have gone wrong
                 raise
     return directory
 
-## END kojikamid dup
+# END kojikamid dup #
+
 
 def daemonize():
     """Detach and run in background"""
@@ -537,12 +573,12 @@ def daemonize():
         os._exit(0)
     os.setsid()
     signal.signal(signal.SIGHUP, signal.SIG_IGN)
-    #fork again
+    # fork again
     pid = os.fork()
     if pid:
         os._exit(0)
     os.chdir("/")
-    #redirect stdin/stdout/sterr
+    # redirect stdin/stdout/sterr
     fd0 = os.open('/dev/null', os.O_RDONLY)
     fd1 = os.open('/dev/null', os.O_RDWR)
     fd2 = os.open('/dev/null', os.O_RDWR)
@@ -553,6 +589,7 @@ def daemonize():
     os.close(fd1)
     os.close(fd2)
 
+
 def multibyte(data):
     """Convert a list of bytes to an integer (network byte order)"""
     sum = 0
@@ -560,6 +597,7 @@ def multibyte(data):
     for i in range(n):
         sum += data[i] << (8 * (n - i - 1))
     return sum
+
 
 def find_rpm_sighdr(path):
     """Finds the offset and length of the signature header."""
@@ -569,6 +607,7 @@ def find_rpm_sighdr(path):
     sig_start = 96
     sigsize = rpm_hdr_size(path, sig_start)
     return (sig_start, sigsize)
+
 
 def rpm_hdr_size(f, ofs=None):
     """Returns the length (in bytes) of the rpm header
@@ -580,7 +619,7 @@ def rpm_hdr_size(f, ofs=None):
         fo = open(f, 'rb')
     else:
         fo = f
-    if ofs != None:
+    if ofs is not None:
         fo.seek(ofs, 0)
     magic = fo.read(3)
     if magic != RPM_HEADER_MAGIC:
@@ -597,7 +636,7 @@ def rpm_hdr_size(f, ofs=None):
     il = multibyte(data[0:4])
     dl = multibyte(data[4:8])
 
-    #this is what the section data says the size should be
+    # this is what the section data says the size should be
     hdrsize = 8 + 16 * il + dl
 
     # hdrsize rounded up to nearest 8 bytes
@@ -624,7 +663,7 @@ class RawHeader(object):
         self._index()
 
     def version(self):
-        #fourth byte is the version
+        # fourth byte is the version
         return _ord(self.header[3])
 
     def _index(self):
@@ -635,38 +674,39 @@ class RawHeader(object):
         il = multibyte(data[:4])
         dl = multibyte(data[4:8])
 
-        #read the index (starts at offset 16)
+        # read the index (starts at offset 16)
         index = {}
         for i in range(il):
             entry = []
             for j in range(4):
-                ofs = 16 + i*16 + j*4
-                data = [_ord(x) for x in self.header[ofs:ofs+4]]
+                ofs = 16 + i * 16 + j * 4
+                data = [_ord(x) for x in self.header[ofs:ofs + 4]]
                 entry.append(multibyte(data))
-            #print("Tag: %d, Type: %d, Offset: %x, Count: %d" % tuple(entry))
+
+            # print("Tag: %d, Type: %d, Offset: %x, Count: %d" % tuple(entry))
             index[entry[0]] = entry
         self.datalen = dl
         self.index = index
 
     def dump(self):
         print("HEADER DUMP:")
-        #calculate start of store
+        # calculate start of store
         il = len(self.index)
         store = 16 + il * 16
-        #print("start is: %d" % start)
-        #print("index length: %d" % il)
+        # print("start is: %d" % start)
+        # print("index length: %d" % il)
         print("Store at offset %d (%0x)" % (store, store))
-        #sort entries by offset, dtype
-        #also rearrange: tag, dtype, offset, count -> offset, dtype, tag, count
+        # sort entries by offset, dtype
+        # also rearrange: tag, dtype, offset, count -> offset, dtype, tag, count
         order = sorted([(x[2], x[1], x[0], x[3]) for x in six.itervalues(self.index)])
         next = store
-        #map some rpmtag codes
+        # map some rpmtag codes
         tags = {}
         for name, code in six.iteritems(rpm.__dict__):
             if name.startswith('RPMTAG_') and isinstance(code, int):
                 tags[code] = name[7:].lower()
         for entry in order:
-            #tag, dtype, offset, count = entry
+            # tag, dtype, offset, count = entry
             offset, dtype, tag, count = entry
             pos = store + offset
             if next is not None:
@@ -676,23 +716,23 @@ class RawHeader(object):
                     print("Data: %r" % self.header[next:pos])
                 elif pos < next:
                     print("** OVERLAPPING entries")
-            print("Tag: %d [%s], Type: %d, Offset: %x, Count: %d" \
-                    % (tag, tags.get(tag, '?'), dtype, offset, count))
+            print("Tag: %d [%s], Type: %d, Offset: %x, Count: %d"
+                  % (tag, tags.get(tag, '?'), dtype, offset, count))
             if dtype == 0:
-                #null
+                # null
                 print("[NULL entry]")
                 next = pos
             elif dtype == 1:
-                #char
+                # char
                 for i in range(count):
                     print("Char: %r" % self.header[pos])
                     pos += 1
                 next = pos
             elif dtype >= 2 and dtype <= 5:
-                #integer
+                # integer
                 n = 1 << (dtype - 2)
                 for i in range(count):
-                    data = [_ord(x) for x in self.header[pos:pos+n]]
+                    data = [_ord(x) for x in self.header[pos:pos + n]]
                     print("%r" % data)
                     num = multibyte(data)
                     print("Int(%d): %d" % (n, num))
@@ -701,23 +741,23 @@ class RawHeader(object):
             elif dtype == 6:
                 # string (null terminated)
                 end = self.header.find(six.b('\0'), pos)
-                print("String(%d): %r" % (end-pos, self.header[pos:end]))
+                print("String(%d): %r" % (end - pos, self.header[pos:end]))
                 next = end + 1
             elif dtype == 7:
-                print("Data: %s" % hex_string(self.header[pos:pos+count]))
-                next = pos+count
+                print("Data: %s" % hex_string(self.header[pos:pos + count]))
+                next = pos + count
             elif dtype == 8:
                 # string array
                 for i in range(count):
                     end = self.header.find(six.b('\0'), pos)
-                    print("String(%d): %r" % (end-pos, self.header[pos:end]))
+                    print("String(%d): %r" % (end - pos, self.header[pos:end]))
                     pos = end + 1
                 next = pos
             elif dtype == 9:
                 # unicode string array
                 for i in range(count):
                     end = self.header.find(six.b('\0'), pos)
-                    print("i18n(%d): %r" % (end-pos, self.header[pos:end]))
+                    print("i18n(%d): %r" % (end - pos, self.header[pos:end]))
                     pos = end + 1
                 next = pos
             else:
@@ -738,24 +778,24 @@ class RawHeader(object):
         return self._getitem(dtype, offset, count)
 
     def _getitem(self, dtype, offset, count):
-        #calculate start of store
+        # calculate start of store
         il = len(self.index)
         store = 16 + il * 16
         pos = store + offset
         if dtype >= 2 and dtype <= 5:
             n = 1 << (dtype - 2)
             # n-byte integer
-            data = [_ord(x) for x in self.header[pos:pos+n]]
+            data = [_ord(x) for x in self.header[pos:pos + n]]
             return multibyte(data)
         elif dtype == 6:
             # string (null terminated)
             end = self.header.find('\0', pos)
             return self.header[pos:end]
         elif dtype == 7:
-            #raw data
-            return self.header[pos:pos+count]
+            # raw data
+            return self.header[pos:pos + count]
         else:
-            #XXX - not all valid data types are handled
+            # XXX - not all valid data types are handled
             raise GenericError("Unable to read header data type: %x" % dtype)
 
     def get(self, key, default=None):
@@ -775,6 +815,7 @@ def rip_rpm_sighdr(src):
     fo.close()
     return sighdr
 
+
 def rip_rpm_hdr(src):
     """Rip the main header out of an rpm"""
     (start, size) = find_rpm_sighdr(src)
@@ -786,12 +827,14 @@ def rip_rpm_hdr(src):
     fo.close()
     return hdr
 
+
 def _ord(s):
     # in python2 it is char/str, while in py3 it is already int/bytes
     if isinstance(s, int):
         return s
     else:
         return ord(s)
+
 
 def __parse_packet_header(pgp_packet):
     """Parse pgp_packet header, return tag type and the rest of pgp_packet"""
@@ -805,7 +848,7 @@ def __parse_packet_header(pgp_packet):
             offset = 1
             length = len(pgp_packet) - offset
         else:
-            (fmt, offset) = {0:('>B', 2), 1:('>H', 3), 2:('>I', 5)}[len_type]
+            (fmt, offset) = {0: ('>B', 2), 1: ('>H', 3), 2: ('>I', 5)}[len_type]
             length = struct.unpack(fmt, pgp_packet[1:offset])[0]
     else:
         tag = byte0 & 0x3F
@@ -827,6 +870,7 @@ def __parse_packet_header(pgp_packet):
         raise ValueError('Invalid OpenPGP packet length')
     return (tag, pgp_packet[offset:])
 
+
 def __subpacket_key_ids(subs):
     """Parse v4 signature subpackets and return a list of issuer key IDs"""
     res = []
@@ -842,9 +886,10 @@ def __subpacket_key_ids(subs):
             length = struct.unpack('>I', subs[1:5])[0]
             off = 5
         if _ord(subs[off]) == 16:
-            res.append(subs[off+1 : off+length])
-        subs = subs[off+length:]
+            res.append(subs[off + 1: off + length])
+        subs = subs[off + length:]
     return res
+
 
 def get_sigpacket_key_id(sigpacket):
     """Return ID of the key used to create sigpacket as a hexadecimal string"""
@@ -857,9 +902,9 @@ def get_sigpacket_key_id(sigpacket):
         sub_len = struct.unpack('>H', sigpacket[4:6])[0]
         off = 6 + sub_len
         key_ids = __subpacket_key_ids(sigpacket[6:off])
-        sub_len = struct.unpack('>H', sigpacket[off : off+2])[0]
+        sub_len = struct.unpack('>H', sigpacket[off: off + 2])[0]
         off += 2
-        key_ids += __subpacket_key_ids(sigpacket[off : off+sub_len])
+        key_ids += __subpacket_key_ids(sigpacket[off: off + sub_len])
         if len(key_ids) != 1:
             raise NotImplementedError(
                 'Unexpected number of key IDs: %s' % len(key_ids))
@@ -868,6 +913,7 @@ def get_sigpacket_key_id(sigpacket):
         raise NotImplementedError(
             'Unknown PGP signature packet version %s' % _ord(sigpacket[0]))
     return hex_string(key_id)
+
 
 def get_sighdr_key(sighdr):
     """Parse the sighdr and return the sigkey"""
@@ -879,6 +925,7 @@ def get_sighdr_key(sighdr):
         return None
     else:
         return get_sigpacket_key_id(sig)
+
 
 def splice_rpm_sighdr(sighdr, src, dst=None, bufsize=8192):
     """Write a copy of an rpm with signature header spliced in"""
@@ -900,13 +947,14 @@ def splice_rpm_sighdr(sighdr, src, dst=None, bufsize=8192):
     dst_fo.close()
     return dst
 
+
 def get_rpm_header(f, ts=None):
     """Return the rpm header."""
     if rpm is None:
         raise GenericError("rpm's python bindings are not installed")
     if ts is None:
         ts = rpm.TransactionSet()
-        ts.setVSFlags(rpm._RPMVSF_NOSIGNATURES|rpm._RPMVSF_NODIGESTS)
+        ts.setVSFlags(rpm._RPMVSF_NOSIGNATURES | rpm._RPMVSF_NODIGESTS)
     if isinstance(f, six.string_types):
         fo = open(f, "rb")
     else:
@@ -940,11 +988,9 @@ def get_header_field(hdr, name, src_arch=False):
     if not SUPPORTED_OPT_DEP_HDRS.get(name, True):
         return []
 
-    if (src_arch and name == "ARCH"
-                and get_header_field(hdr, "sourcepackage")):
+    if src_arch and name == "ARCH" and get_header_field(hdr, "sourcepackage"):
         # return "src" or "nosrc" arch instead of build arch for src packages
-        if (get_header_field(hdr, "nosource")
-                    or get_header_field(hdr, "nopatch")):
+        if get_header_field(hdr, "nosource") or get_header_field(hdr, "nopatch"):
             return "nosrc"
         return "src"
 
@@ -997,6 +1043,7 @@ def get_header_fields(X, fields, src_arch=False):
         ret[f] = get_header_field(hdr, f, src_arch=src_arch)
     return ret
 
+
 def parse_NVR(nvr):
     """split N-V-R into dictionary of data"""
     ret = {}
@@ -1006,8 +1053,8 @@ def parse_NVR(nvr):
     p1 = nvr.rfind("-", 0, p2)
     if p1 == -1 or p1 == p2 - 1:
         raise GenericError("invalid format: %s" % nvr)
-    ret['release'] = nvr[p2+1:]
-    ret['version'] = nvr[p1+1:p2]
+    ret['release'] = nvr[p2 + 1:]
+    ret['version'] = nvr[p1 + 1:p2]
     ret['name'] = nvr[:p1]
     epochIndex = ret['name'].find(':')
     if epochIndex == -1:
@@ -1016,6 +1063,7 @@ def parse_NVR(nvr):
         ret['epoch'] = ret['name'][:epochIndex]
         ret['name'] = ret['name'][epochIndex + 1:]
     return ret
+
 
 def parse_NVRA(nvra):
     """split N-V-R.A.rpm into dictionary of data
@@ -1030,7 +1078,7 @@ def parse_NVRA(nvra):
     p3 = nvra.rfind(".")
     if p3 == -1 or p3 == len(nvra) - 1:
         raise GenericError("invalid format: %s" % nvra)
-    arch = nvra[p3+1:]
+    arch = nvra[p3 + 1:]
     ret = parse_NVR(nvra[:p3])
     ret['arch'] = arch
     if arch == 'src':
@@ -1059,6 +1107,7 @@ def check_NVR(nvr, strict=False):
             raise
         else:
             return False
+
 
 def _check_NVR(nvr):
     if isinstance(nvr, six.string_types):
@@ -1091,7 +1140,7 @@ def check_NVRA(nvra, strict=False):
 
 def _check_NVRA(nvra):
     if isinstance(nvra, six.string_types):
-            nvra = parse_NVRA(nvra)
+        nvra = parse_NVRA(nvra)
     if '-' in nvra['version']:
         raise GenericError('The "-" character not allowed in version field')
     if '-' in nvra['release']:
@@ -1106,9 +1155,10 @@ def is_debuginfo(name):
     return (name.endswith('-debuginfo') or name.endswith('-debugsource') or
             '-debuginfo-' in name)
 
+
 def canonArch(arch):
     """Given an arch, return the "canonical" arch"""
-    #XXX - this could stand to be smarter, and we should probably
+    # XXX - this could stand to be smarter, and we should probably
     #   have some other related arch-mangling functions.
     if fnmatch(arch, 'i?86') or arch == 'athlon':
         return 'i386'
@@ -1130,6 +1180,7 @@ def canonArch(arch):
         return 'arm'
     else:
         return arch
+
 
 def parse_arches(arches, to_list=False, strict=False, allow_none=False):
     """Normalize user input for a list of arches.
@@ -1194,7 +1245,9 @@ class POMHandler(xml.sax.handler.ContentHandler):
         self.tag_content = None
         self.values.clear()
 
+
 ENTITY_RE = re.compile(r'&[A-Za-z0-9]+;')
+
 
 def parse_pom(path=None, contents=None):
     """
@@ -1215,7 +1268,8 @@ def parse_pom(path=None, contents=None):
         fd.close()
 
     if not contents:
-        raise GenericError('either a path to a pom file or the contents of a pom file must be specified')
+        raise GenericError(
+            'either a path to a pom file or the contents of a pom file must be specified')
 
     # A common problem is non-UTF8 characters in XML files, so we'll convert the string first
 
@@ -1232,8 +1286,10 @@ def parse_pom(path=None, contents=None):
 
     for field in fields:
         if field not in util.to_list(values.keys()):
-            raise GenericError('could not extract %s from POM: %s' % (field, (path or '<contents>')))
+            raise GenericError('could not extract %s from POM: %s' %
+                               (field, (path or '<contents>')))
     return values
+
 
 def pom_to_maven_info(pominfo):
     """
@@ -1249,6 +1305,7 @@ def pom_to_maven_info(pominfo):
                  'version': pominfo['version']}
     return maveninfo
 
+
 def maven_info_to_nvr(maveninfo):
     """
     Convert the maveninfo to NVR-compatible format.
@@ -1263,12 +1320,14 @@ def maven_info_to_nvr(maveninfo):
     nvr['package_name'] = nvr['name']
     return nvr
 
+
 def mavenLabel(maveninfo):
     """
     Return a user-friendly label for the given maveninfo.  maveninfo is
     a dict as returned by kojihub:getMavenBuild().
     """
     return '%(group_id)s-%(artifact_id)s-%(version)s' % maveninfo
+
 
 def hex_string(s):
     """Converts a string to a string of hex digits"""
@@ -1280,13 +1339,13 @@ def make_groups_spec(grplist, name='buildsys-build', buildgroup=None):
     if buildgroup is None:
         buildgroup = name
     data = [
-"""#
+        """#
 # This specfile represents buildgroups for mock
 # Autogenerated by the build system
 #
 Summary: The base set of packages for a mock chroot\n""",
-"""Name: %s\n""" % name,
-"""Version: 1
+        """Name: %s\n""" % name,
+        """Version: 1
 Release: 1
 License: GPL
 Group: Development/Build Tools
@@ -1295,12 +1354,12 @@ BuildArch: noarch
 
 #package requirements
 """]
-    #add a requires entry for all the packages in buildgroup, and in
-    #groups required by buildgroup
+    # add a requires entry for all the packages in buildgroup, and in
+    # groups required by buildgroup
     need = [buildgroup]
     seen_grp = {}
     seen_pkg = {}
-    #index groups
+    # index groups
     groups = dict([(g['name'], g) for g in grplist])
     for group_name in need:
         if group_name in seen_grp:
@@ -1338,6 +1397,7 @@ This is a meta-package that requires a defined group of packages
 """)
     return ''.join(data)
 
+
 def generate_comps(groups, expand_groups=False):
     """Generate comps content from groups data"""
     def boolean_text(x):
@@ -1346,7 +1406,7 @@ def generate_comps(groups, expand_groups=False):
         else:
             return "false"
     data = [
-"""<?xml version="1.0"?>
+        """<?xml version="1.0"?>
 <!DOCTYPE comps PUBLIC "-//Red Hat, Inc.//DTD Comps info//EN" "comps.dtd">
 
 <!-- Auto-generated by the build system -->
@@ -1363,7 +1423,7 @@ def generate_comps(groups, expand_groups=False):
         default = boolean_text(g['is_default'])
         uservisible = boolean_text(g['uservisible'])
         data.append(
-"""  <group>
+            """  <group>
     <id>%(group_id)s</id>
     <name>%(name)s</name>
     <description>%(description)s</description>
@@ -1372,18 +1432,18 @@ def generate_comps(groups, expand_groups=False):
 """ % locals())
         if g['biarchonly']:
             data.append(
-"""    <biarchonly>%s</biarchonly>
+                """    <biarchonly>%s</biarchonly>
 """ % boolean_text(True))
 
-        #print grouplist, if any
+        # print grouplist, if any
         if g['grouplist'] and not expand_groups:
             data.append(
-"""    <grouplist>
+                """    <grouplist>
 """)
             grouplist = list(g['grouplist'])
             grouplist.sort(key=lambda x: x['name'])
             for x in grouplist:
-                #['req_id','type','is_metapkg','name']
+                # ['req_id','type','is_metapkg','name']
                 name = x['name']
                 thetype = x['type']
                 tag = "groupreq"
@@ -1391,19 +1451,19 @@ def generate_comps(groups, expand_groups=False):
                     tag = "metapkg"
                 if thetype:
                     data.append(
-"""      <%(tag)s type="%(thetype)s">%(name)s</%(tag)s>
+                        """      <%(tag)s type="%(thetype)s">%(name)s</%(tag)s>
 """ % locals())
                 else:
                     data.append(
-"""      <%(tag)s>%(name)s</%(tag)s>
+                        """      <%(tag)s>%(name)s</%(tag)s>
 """ % locals())
             data.append(
-"""    </grouplist>
+                """    </grouplist>
 """)
 
-        #print packagelist, if any
+        # print packagelist, if any
         def package_entry(pkg):
-            #p['package_id','type','basearchonly','requires','name']
+            # p['package_id','type','basearchonly','requires','name']
             name = pkg['package']
             opts = 'type="%s"' % pkg['type']
             if pkg['basearchonly']:
@@ -1413,20 +1473,20 @@ def generate_comps(groups, expand_groups=False):
             return "<packagereq %(opts)s>%(name)s</packagereq>" % locals()
 
         data.append(
-"""    <packagelist>
+            """    <packagelist>
 """)
         if g['packagelist']:
             packagelist = list(g['packagelist'])
             packagelist.sort(key=lambda x: x['package'])
             for p in packagelist:
                 data.append(
-"""      %s
+                    """      %s
 """ % package_entry(p))
             # also include expanded list, if needed
         if expand_groups and g['grouplist']:
-            #add a requires entry for all packages in groups required by buildgroup
+            # add a requires entry for all packages in groups required by buildgroup
             need = [req['name'] for req in g['grouplist']]
-            seen_grp = {g['name'] : 1}
+            seen_grp = {g['name']: 1}
             seen_pkg = {}
             for p in g['packagelist']:
                 seen_pkg[p['package']] = 1
@@ -1437,11 +1497,11 @@ def generate_comps(groups, expand_groups=False):
                 group = group_idx.get(group_name)
                 if group is None:
                     data.append(
-"""      <!-- MISSING GROUP: %s -->
+                        """      <!-- MISSING GROUP: %s -->
 """ % group_name)
                     continue
                 data.append(
-"""      <!-- Expanding Group: %s -->
+                    """      <!-- Expanding Group: %s -->
 """ % group_name)
                 pkglist = list(group['packagelist'])
                 pkglist.sort(key=lambda x: x['package'])
@@ -1450,7 +1510,7 @@ def generate_comps(groups, expand_groups=False):
                     if pkg_name in seen_pkg:
                         continue
                     data.append(
-"""      %s
+                        """      %s
 """ % package_entry(pkg))
                 for req in group['grouplist']:
                     req_name = req['name']
@@ -1458,13 +1518,13 @@ def generate_comps(groups, expand_groups=False):
                         continue
                     need.append(req_name)
         data.append(
-"""    </packagelist>
+            """    </packagelist>
 """)
         data.append(
-"""  </group>
+            """  </group>
 """)
     data.append(
-"""</comps>
+        """</comps>
 """)
     return ''.join(data)
 
@@ -1484,12 +1544,12 @@ def genMockConfig(name, arch, managed=False, repoid=None, tag_name=None, **opts)
             raise GenericError("please provide a repo and tag")
         topurls = opts.get('topurls')
         if not topurls:
-            #cli command still passes plain topurl
+            # cli command still passes plain topurl
             topurl = opts.get('topurl')
             if topurl:
                 topurls = [topurl]
         if topurls:
-            #XXX - PathInfo isn't quite right for this, but it will do for now
+            # XXX - PathInfo isn't quite right for this, but it will do for now
             pathinfos = [PathInfo(topdir=_u) for _u in topurls]
             urls = ["%s/%s" % (_p.repo(repoid, tag_name), arch) for _p in pathinfos]
         else:
@@ -1502,9 +1562,9 @@ def genMockConfig(name, arch, managed=False, repoid=None, tag_name=None, **opts)
     # rely on the mock defaults being correct
     # and only includes changes from the defaults here
     config_opts = {
-        'root' : name,
-        'basedir' : mockdir,
-        'target_arch' : opts.get('target_arch', arch),
+        'root': name,
+        'basedir': mockdir,
+        'target_arch': opts.get('target_arch', arch),
         'chroothome': '/builddir',
         # Use the group data rather than a generated rpm
         'chroot_setup_cmd': 'groupinstall %s' % opts.get('install_group', 'build'),
@@ -1539,7 +1599,7 @@ def genMockConfig(name, arch, managed=False, repoid=None, tag_name=None, **opts)
     if mavenrc:
         files['etc/mavenrc'] = mavenrc
 
-    #generate yum.conf
+    # generate yum.conf
     yc_parts = ["[main]\n"]
     # HTTP proxy for yum
     if opts.get('yum_proxy'):
@@ -1577,9 +1637,9 @@ name=build
     }
 
     macros = {
-        '%_rpmfilename' : '%%{NAME}-%%{VERSION}-%%{RELEASE}.%%{ARCH}.rpm',
-        '%vendor' : opts.get('vendor', 'Koji'),
-        '%packager' : opts.get('packager', 'Koji'),
+        '%_rpmfilename': '%%{NAME}-%%{VERSION}-%%{RELEASE}.%%{ARCH}.rpm',
+        '%vendor': opts.get('vendor', 'Koji'),
+        '%packager': opts.get('packager', 'Koji'),
         '%distribution': opts.get('distribution', 'Unknown')
     }
 
@@ -1589,7 +1649,8 @@ name=build
     # The following macro values cannot be overridden by tag options
     macros['%_topdir'] = '%s/build' % config_opts['chroothome']
     macros['%_host_cpu'] = opts.get('target_arch', arch)
-    macros['%_host'] = '%s-%s' % (opts.get('target_arch', arch), opts.get('mockhost', 'koji-linux-gnu'))
+    macros['%_host'] = '%s-%s' % (opts.get('target_arch', arch),
+                                  opts.get('mockhost', 'koji-linux-gnu'))
 
     parts = ["""# Auto-generated by the Koji build system
 """]
@@ -1621,7 +1682,9 @@ name=build
     if bind_opts:
         for key in bind_opts.keys():
             for mnt_src, mnt_dest in six.iteritems(bind_opts.get(key)):
-                parts.append("config_opts['plugin_conf']['bind_mount_opts'][%r].append((%r, %r))\n" % (key, mnt_src, mnt_dest))
+                parts.append(
+                    "config_opts['plugin_conf']['bind_mount_opts'][%r].append((%r, %r))\n" %
+                    (key, mnt_src, mnt_dest))
         parts.append("\n")
 
     for key in sorted(macros):
@@ -1634,11 +1697,14 @@ name=build
 
     return ''.join(parts)
 
+
 def get_sequence_value(cursor, sequence):
     cursor.execute("""SELECT nextval(%(sequence)s)""", locals())
     return cursor.fetchone()[0]
 
 # From Python Cookbook 2nd Edition, Recipe 8.6
+
+
 def format_exc_plus():
     """ Format the usual traceback information, followed by a listing of
         all the local variables in each frame.
@@ -1664,9 +1730,10 @@ def format_exc_plus():
             # COULD cause any exception, so we MUST catch any...:
             try:
                 rv += "%s\n" % value
-            except:
+            except Exception:
                 rv += "<ERROR WHILE PRINTING VALUE>\n"
     return rv
+
 
 def openRemoteFile(relpath, topurl=None, topdir=None, tempdir=None):
     """Open a file on the main server (read-only)
@@ -1713,12 +1780,12 @@ def _check_rpm_file(fo):
     try:
         hdr = ts.hdrFromFdno(fo.fileno())
     except rpm.error as ex:
-        raise GenericError("rpm's header can't be extracted: %s (rpm error: %s)" % \
+        raise GenericError("rpm's header can't be extracted: %s (rpm error: %s)" %
                            (fo.name, ', '.join(ex.args)))
     try:
         rpm.TransactionSet().hdrCheck(hdr.unload())
     except rpm.error as ex:
-        raise GenericError("rpm's header can't be checked: %s (rpm error: %s)" % \
+        raise GenericError("rpm's header can't be checked: %s (rpm error: %s)" %
                            (fo.name, ', '.join(ex.args)))
     fo.seek(0)
 
@@ -1746,18 +1813,18 @@ def config_directory_contents(dir_name, strict=False):
 
 def read_config(profile_name, user_config=None):
     config_defaults = {
-        'server' : 'http://localhost/kojihub',
-        'weburl' : 'http://localhost/koji',
-        'topurl' : None,
-        'pkgurl' : None,
-        'topdir' : '/mnt/koji',
-        'max_retries' : None,
+        'server': 'http://localhost/kojihub',
+        'weburl': 'http://localhost/koji',
+        'topurl': None,
+        'pkgurl': None,
+        'topdir': '/mnt/koji',
+        'max_retries': None,
         'retry_interval': None,
-        'anon_retry' : None,
-        'offline_retry' : None,
-        'offline_retry_interval' : None,
-        'timeout' : DEFAULT_REQUEST_TIMEOUT,
-        'auth_timeout' : DEFAULT_AUTH_TIMEOUT,
+        'anon_retry': None,
+        'offline_retry': None,
+        'offline_retry_interval': None,
+        'timeout': DEFAULT_REQUEST_TIMEOUT,
+        'auth_timeout': DEFAULT_AUTH_TIMEOUT,
         'use_fast_upload': False,
         'upload_blocksize': 1048576,
         'poll_interval': 6,
@@ -1780,7 +1847,7 @@ def read_config(profile_name, user_config=None):
 
     result = config_defaults.copy()
 
-    #note: later config files override earlier ones
+    # note: later config files override earlier ones
 
     # /etc/koji.conf.d
     configs = ['/etc/koji.conf.d']
@@ -1807,9 +1874,9 @@ def read_config(profile_name, user_config=None):
         got_conf = True
         result['profile'] = profile_name
         for name, value in config.items(profile_name):
-            #note the config_defaults dictionary also serves to indicate which
-            #options *can* be set via the config file. Such options should
-            #not have a default value set in the option parser.
+            # note the config_defaults dictionary also serves to indicate which
+            # options *can* be set via the config file. Such options should
+            # not have a default value set in the option parser.
             if name in result:
                 if name in ('anon_retry', 'offline_retry',
                             'use_fast_upload', 'krb_rdns', 'debug',
@@ -1822,7 +1889,8 @@ def read_config(profile_name, user_config=None):
                     try:
                         result[name] = int(value)
                     except ValueError:
-                        raise ConfigurationError("value for %s config option must be a valid integer" % name)
+                        raise ConfigurationError(
+                            "value for %s config option must be a valid integer" % name)
                 else:
                     result[name] = value
 
@@ -1835,7 +1903,7 @@ def read_config(profile_name, user_config=None):
     cert_defaults = {
         'cert': '~/.koji/client.crt',
         'serverca': '~/.koji/serverca.crt',
-        }
+    }
     for name in cert_defaults:
         if result.get(name) is None:
             fn = os.path.expanduser(cert_defaults[name])
@@ -1966,7 +2034,8 @@ def read_config_files(config_files, raw=False):
 
 class PathInfo(object):
     # ASCII numbers and upper- and lower-case letter for use in tmpdir()
-    ASCII_CHARS = [chr(i) for i in list(range(48, 58)) + list(range(65, 91)) + list(range(97, 123))]
+    ASCII_CHARS = [chr(i)
+                   for i in list(range(48, 58)) + list(range(65, 91)) + list(range(97, 123))]
 
     def __init__(self, topdir=None):
         self._topdir = topdir
@@ -1984,15 +2053,17 @@ class PathInfo(object):
     def volumedir(self, volume):
         if volume == 'DEFAULT' or volume is None:
             return self.topdir
-        #else
+        # else
         return self.topdir + ("/vol/%s" % volume)
 
     def build(self, build):
         """Return the directory where a build belongs"""
-        return self.volumedir(build.get('volume_name')) + ("/packages/%(name)s/%(version)s/%(release)s" % build)
+        return self.volumedir(build.get('volume_name')) + \
+            ("/packages/%(name)s/%(version)s/%(release)s" % build)
 
     def mavenbuild(self, build):
-        """Return the directory where the Maven build exists in the global store (/mnt/koji/packages)"""
+        """Return the directory where the Maven build exists in the global store
+           (/mnt/koji/packages)"""
         return self.build(build) + '/maven'
 
     def mavenrepo(self, maveninfo):
@@ -2073,7 +2144,8 @@ class PathInfo(object):
         """Return a path to a unique directory under work()/tmp/"""
         tmp = None
         while tmp is None or os.path.exists(tmp):
-            tmp = self.work(volume) + '/tmp/' + ''.join([random.choice(self.ASCII_CHARS) for dummy in '123456'])
+            tmp = self.work(volume) + '/tmp/' + ''.join([random.choice(self.ASCII_CHARS)
+                                                         for dummy in '123456'])
         return tmp
 
     def scratch(self):
@@ -2083,6 +2155,7 @@ class PathInfo(object):
     def task(self, task_id, volume=None):
         """Return the output directory for the task with the given id"""
         return self.work(volume=volume) + '/' + self.taskrelpath(task_id)
+
 
 pathinfo = PathInfo()
 
@@ -2097,9 +2170,9 @@ def is_requests_cert_error(e):
     # are way more ugly.
     errstr = str(e)
     if ('Permission denied' in errstr or  # certificate not readable
-        'certificate revoked' in errstr or
-        'certificate expired' in errstr or
-        'certificate verify failed' in errstr):
+            'certificate revoked' in errstr or
+            'certificate expired' in errstr or
+            'certificate verify failed' in errstr):
         return True
 
     return False
@@ -2108,7 +2181,7 @@ def is_requests_cert_error(e):
 def is_cert_error(e):
     """Determine if an OpenSSL error is due to a bad cert"""
 
-    if SSL_Error is None:  #pragma: no cover
+    if SSL_Error is None:  # pragma: no cover
         # import failed, so we can't determine
         raise Exception("OpenSSL library did not load")
     if not isinstance(e, SSL_Error):
@@ -2141,7 +2214,7 @@ def is_cert_error(e):
                     'certificate expired' in ssl_reason):
                 return True
 
-    #otherwise
+    # otherwise
     return False
 
 
@@ -2200,7 +2273,7 @@ class VirtualMethod(object):
                 self.__session._apidoc = dict(
                     [(f["name"], f) for f in self.__func("_listapi", [], {})]
                 )
-            except:
+            except Exception:
                 self.__session._apidoc = {}
 
         funcdoc = self.__session._apidoc.get(self.__name)
@@ -2258,7 +2331,7 @@ class ClientSession(object):
 
     def __init__(self, baseurl, opts=None, sinfo=None):
         assert baseurl, "baseurl argument must not be empty"
-        if opts == None:
+        if opts is None:
             opts = {}
         else:
             opts = opts.copy()
@@ -2357,13 +2430,13 @@ class ClientSession(object):
         if not ctx:
             ctx = krbV.default_context()
 
-        if ccache != None:
+        if ccache is not None:
             ccache = krbV.CCache(name=ccache, context=ctx)
         else:
             ccache = ctx.default_ccache()
 
-        if principal != None:
-            if keytab != None:
+        if principal is not None:
+            if keytab is not None:
                 cprinc = krbV.Principal(name=principal, context=ctx)
                 keytab = krbV.Keytab(name=keytab, context=ctx)
                 ccache.init(cprinc)
@@ -2472,8 +2545,8 @@ class ClientSession(object):
             if principal:
                 if re.match(r'0[.][1-8]\b', requests_kerberos.__version__):
                     raise PythonImportError(
-                            'python-requests-kerberos >= 0.9.0 required for '
-                            'keytab auth'
+                        'python-requests-kerberos >= 0.9.0 required for '
+                        'keytab auth'
                     )
                 else:
                     kwargs['principal'] = principal
@@ -2553,7 +2626,7 @@ class ClientSession(object):
             handler, headers, request = self._prepCall('logout', ())
             self._sendCall(handler, headers, request)
         except AuthExpired:
-            #this can happen when an exclusive session is forced
+            # this can happen when an exclusive session is forced
             pass
         self.setSession(None)
 
@@ -2578,15 +2651,15 @@ class ClientSession(object):
             return
         self.setSession(None)
 
-    #we've had some trouble with this method causing strange problems
-    #(like infinite recursion). Possibly triggered by initialization failure,
-    #and possibly due to some interaction with __getattr__.
-    #Re-enabling with a small improvement
+    # we've had some trouble with this method causing strange problems
+    # (like infinite recursion). Possibly triggered by initialization failure,
+    # and possibly due to some interaction with __getattr__.
+    # Re-enabling with a small improvement
     def __del__(self):
         if self.__dict__:
             try:
                 self.logout()
-            except:
+            except Exception:
                 pass
 
     def callMethod(self, name, *args, **opts):
@@ -2594,7 +2667,7 @@ class ClientSession(object):
         return self._callMethod(name, args, opts)
 
     def _prepCall(self, name, args, kwargs=None):
-        #pass named opts in a way the server can understand
+        # pass named opts in a way the server can understand
         if kwargs is None:
             kwargs = {}
         if name == 'rawUpload':
@@ -2713,27 +2786,28 @@ class ClientSession(object):
                 self.retries += 1
                 try:
                     return self._sendCall(handler, headers, request)
-                #basically, we want to retry on most errors, with a few exceptions
+                # basically, we want to retry on most errors, with a few exceptions
                 #  - faults (this means the call completed and failed)
                 #  - SystemExit, KeyboardInterrupt
-                # note that, for logged-in sessions the server should tell us (via a RetryError fault)
-                # if the call cannot be retried. For non-logged-in sessions, all calls should be read-only
-                # and hence retryable.
+                # note that, for logged-in sessions the server should tell us (via a RetryError
+                # fault) if the call cannot be retried. For non-logged-in sessions, all calls
+                # should be read-only and hence retryable.
                 except Fault as fault:
-                    #try to convert the fault to a known exception
+                    # try to convert the fault to a known exception
                     err = convertFault(fault)
                     if isinstance(err, ServerOffline):
                         if self.opts.get('offline_retry', False):
                             secs = self.opts.get('offline_retry_interval', interval)
                             self.logger.debug("Server offline. Retrying in %i seconds", secs)
                             time.sleep(secs)
-                            #reset try count - this isn't a typical error, this is a running server
-                            #correctly reporting an outage
+                            # reset try count - this isn't a typical error, this is a running
+                            # server correctly reporting an outage
                             tries = 0
                             continue
                     raise err
                 except (SystemExit, KeyboardInterrupt):
-                    #(depending on the python version, these may or may not be subclasses of Exception)
+                    # (depending on the python version, these may or may not be subclasses of
+                    # Exception)
                     raise
                 except Exception as e:
                     tb_str = ''.join(traceback.format_exception(*sys.exc_info()))
@@ -2744,8 +2818,9 @@ class ClientSession(object):
                         raise
 
                     if not self.logged_in:
-                        #in the past, non-logged-in sessions did not retry. For compatibility purposes
-                        #this behavior is governed by the anon_retry opt.
+                        # in the past, non-logged-in sessions did not retry.
+                        # For compatibility purposes this behavior is governed by the anon_retry
+                        # opt.
                         if not self.opts.get('anon_retry', False):
                             raise
 
@@ -2754,14 +2829,15 @@ class ClientSession(object):
 
                     if tries > max_retries:
                         raise
-                    #otherwise keep retrying
+                    # otherwise keep retrying
                     if self.logger.isEnabledFor(logging.DEBUG):
                         self.logger.debug(tb_str)
-                    self.logger.info("Try #%s for call %s (%s) failed: %s", tries, self.callnum, name, e)
+                    self.logger.info("Try #%s for call %s (%s) failed: %s",
+                                     tries, self.callnum, name, e)
                 if tries > 1:
                     # first retry is immediate, after that we honor retry_interval
                     time.sleep(interval)
-            #not reached
+            # not reached
 
     def multiCall(self, strict=False, batch=None):
         """Execute a prepared multicall
@@ -2799,7 +2875,8 @@ class ClientSession(object):
         transaction.
         """
         if not self.multicall:
-            raise GenericError('ClientSession.multicall must be set to True before calling multiCall()')
+            raise GenericError(
+                'ClientSession.multicall must be set to True before calling multiCall()')
         self.multicall = False
         if len(self._calls) == 0:
             return []
@@ -2816,7 +2893,7 @@ class ClientSession(object):
         else:
             ret = self._callMethod('multiCall', (calls,), {})
         if strict:
-            #check for faults and raise first one
+            # check for faults and raise first one
             for entry in ret:
                 if isinstance(entry, dict):
                     fault = Fault(entry['faultCode'], entry['faultString'])
@@ -2825,13 +2902,14 @@ class ClientSession(object):
         return ret
 
     def __getattr__(self, name):
-        #if name[:1] == '_':
+        # if name[:1] == '_':
         #    raise AttributeError("no attribute %r" % name)
         if name == '_apidoc':
             return self.__dict__['_apidoc']
         return VirtualMethod(self._callMethod, name, self)
 
-    def fastUpload(self, localfile, path, name=None, callback=None, blocksize=None, overwrite=False, volume=None):
+    def fastUpload(self, localfile, path, name=None, callback=None, blocksize=None,
+                   overwrite=False, volume=None):
         if blocksize is None:
             blocksize = self.opts.get('upload_blocksize', 1048576)
 
@@ -2865,10 +2943,11 @@ class ClientSession(object):
             hexdigest = util.adler32_constructor(chunk).hexdigest()
             full_chksum.update(chunk)
             if result['size'] != len(chunk):
-                raise GenericError("server returned wrong chunk size: %s != %s" % (result['size'], len(chunk)))
+                raise GenericError("server returned wrong chunk size: %s != %s" %
+                                   (result['size'], len(chunk)))
             if result['hexdigest'] != hexdigest:
-                raise GenericError('upload checksum failed: %s != %s' \
-                        % (result['hexdigest'], hexdigest))
+                raise GenericError('upload checksum failed: %s != %s'
+                                   % (result['hexdigest'], hexdigest))
             ofs += len(chunk)
             now = time.time()
             t1 = max(now - lap, 0.00001)
@@ -2887,14 +2966,16 @@ class ClientSession(object):
         if result is None:
             raise GenericError("File upload failed: %s/%s" % (path, name))
         if int(result['size']) != ofs:
-            raise GenericError("Uploaded file is wrong length: %s/%s, %s != %s" \
-                    % (path, name, result['size'], ofs))
+            raise GenericError("Uploaded file is wrong length: %s/%s, %s != %s"
+                               % (path, name, result['size'], ofs))
         if problems and result['hexdigest'] != full_chksum.hexdigest():
-            raise GenericError("Uploaded file has wrong checksum: %s/%s, %s != %s" \
-                    % (path, name, result['hexdigest'], full_chksum.hexdigest()))
-        self.logger.debug("Fast upload: %s complete. %i bytes in %.1f seconds", localfile, size, t2)
+            raise GenericError("Uploaded file has wrong checksum: %s/%s, %s != %s"
+                               % (path, name, result['hexdigest'], full_chksum.hexdigest()))
+        self.logger.debug("Fast upload: %s complete. %i bytes in %.1f seconds",
+                          localfile, size, t2)
 
-    def _prepUpload(self, chunk, offset, path, name, verify="adler32", overwrite=False, volume=None):
+    def _prepUpload(self, chunk, offset, path, name, verify="adler32", overwrite=False,
+                    volume=None):
         """prep a rawUpload call"""
         if not self.logged_in:
             raise ActionNotAllowed("you must be logged in to upload")
@@ -2924,7 +3005,8 @@ class ClientSession(object):
             request = chunk
         return handler, headers, request
 
-    def uploadWrapper(self, localfile, path, name=None, callback=None, blocksize=None, overwrite=True, volume=None):
+    def uploadWrapper(self, localfile, path, name=None, callback=None, blocksize=None,
+                      overwrite=True, volume=None):
         """upload a file in chunks using the uploadFile call"""
         if blocksize is None:
             blocksize = self.opts.get('upload_blocksize', 1048576)
@@ -2953,7 +3035,7 @@ class ClientSession(object):
         start = time.time()
         # XXX - stick in a config or something
         retries = 3
-        fo = open(localfile, "rb")  #specify bufsize?
+        fo = open(localfile, "rb")  # specify bufsize?
         totalsize = os.path.getsize(localfile)
         ofs = 0
         md5sum = hashlib.md5()
@@ -2979,14 +3061,15 @@ class ClientSession(object):
             tries = 0
             while True:
                 if debug:
-                    self.logger.debug("uploadFile(%r,%r,%r,%r,%r,...)" %(path, name, sz, digest, offset))
+                    self.logger.debug("uploadFile(%r,%r,%r,%r,%r,...)" %
+                                      (path, name, sz, digest, offset))
                 if self.callMethod('uploadFile', path, name, sz, digest, offset, data, **volopts):
                     break
                 if tries <= retries:
                     tries += 1
                     continue
                 else:
-                    raise GenericError("Error uploading file %s, offset %d" %(path, offset))
+                    raise GenericError("Error uploading file %s, offset %d" % (path, offset))
             if size == 0:
                 break
             ofs += size
@@ -2998,9 +3081,11 @@ class ClientSession(object):
             if t2 <= 0:
                 t2 = 1
             if debug:
-                self.logger.debug("Uploaded %d bytes in %f seconds (%f kbytes/sec)" % (size, t1, size / t1 / 1024.0))
+                self.logger.debug("Uploaded %d bytes in %f seconds (%f kbytes/sec)" %
+                                  (size, t1, size / t1 / 1024.0))
             if debug:
-                self.logger.debug("Total: %d bytes in %f seconds (%f kbytes/sec)" % (ofs, t2, ofs / t2 / 1024.0))
+                self.logger.debug("Total: %d bytes in %f seconds (%f kbytes/sec)" %
+                                  (ofs, t2, ofs / t2 / 1024.0))
             if callback:
                 callback(ofs, totalsize, size, t1, t2)
         fo.close()
@@ -3124,9 +3209,9 @@ class MultiCallSession(object):
         self._calls = []
         if batch:
             self._session.logger.debug(
-                    "MultiCall with batch size %i, calls/groups(%i/%i)",
-                    batch, len(calls), round(len(calls) // batch))
-            batches = [calls[i:i+batch] for i in range(0, len(calls), batch)]
+                "MultiCall with batch size %i, calls/groups(%i/%i)",
+                batch, len(calls), round(len(calls) // batch))
+            batches = [calls[i:i + batch] for i in range(0, len(calls), batch)]
         else:
             batches = [calls]
         results = []
@@ -3170,6 +3255,7 @@ class DBHandler(logging.Handler):
     A handler class which writes logging records, appropriately formatted,
     to a database.
     """
+
     def __init__(self, cnx, table, mapping=None):
         """
         Initialize the handler.
@@ -3207,18 +3293,19 @@ class DBHandler(logging.Handler):
                 columns.append(key)
                 values.append("%%(%s)s" % key)
                 data[key] = value % record.__dict__
-                #values.append(_quote(value % record.__dict__))
+                # values.append(_quote(value % record.__dict__))
             columns = ",".join(columns)
             values = ",".join(values)
             command = "INSERT INTO %s (%s) VALUES (%s)" % (self.table, columns, values)
-            #note we're letting cursor.execute do the escaping
+            # note we're letting cursor.execute do the escaping
             cursor.execute(command, data)
             cursor.close()
-            #self.cnx.commit()
-            #XXX - committing here is most likely wrong, but we need to set commit_pending or something
-            #      ...and this is really the wrong place for that
-        except:
+            # self.cnx.commit()
+            # XXX - committing here is most likely wrong, but we need to set commit_pending or
+            #       something...and this is really the wrong place for that
+        except Exception:
             self.handleError(record)
+
 
 def formatTime(value):
     """Format a timestamp so it looks nicer"""
@@ -3236,6 +3323,7 @@ def formatTime(value):
         else:
             return value
 
+
 def formatTimeLong(value):
     """Format a timestamp to a more human-reable format, i.e.:
     Sat, 07 Sep 2002 00:00:01 GMT
@@ -3247,10 +3335,11 @@ def formatTimeLong(value):
         localtime = time.mktime(time.strptime(formatTime(value), '%Y-%m-%d %H:%M:%S'))
         return time.strftime('%a, %d %b %Y %H:%M:%S %Z', time.localtime(localtime))
 
+
 def buildLabel(buildInfo, showEpoch=False):
     """Format buildInfo (dict) into a descriptive label."""
     epoch = buildInfo.get('epoch')
-    if showEpoch and epoch != None:
+    if showEpoch and epoch is not None:
         epochStr = '%i:' % epoch
     else:
         epochStr = ''
@@ -3260,6 +3349,7 @@ def buildLabel(buildInfo, showEpoch=False):
     return '%s%s-%s-%s' % (epochStr, name,
                            buildInfo.get('version'),
                            buildInfo.get('release'))
+
 
 def _module_info(url):
     module_info = ''
@@ -3279,11 +3369,13 @@ def _module_info(url):
     else:
         return '%s:%s' % (repo_info, rev_info)
 
+
 def taskLabel(taskInfo):
     try:
         return _taskLabel(taskInfo)
     except Exception:
         return "malformed task"
+
 
 def _taskLabel(taskInfo):
     """Format taskInfo (dict) into a descriptive label."""
@@ -3328,7 +3420,7 @@ def _taskLabel(taskInfo):
                 extra = build_target['name']
     elif method == 'winbuild':
         if 'request' in taskInfo:
-            #vm = taskInfo['request'][0]
+            # vm = taskInfo['request'][0]
             url = taskInfo['request'][1]
             target = taskInfo['request'][2]
             module_info = _module_info(url)
@@ -3389,7 +3481,7 @@ def _taskLabel(taskInfo):
             else:
                 kickstart = os.path.basename(stuff[7])
             extra = '%s, %s-%s-%s, %s, %s' % (stuff[4]['name'], stuff[0],
-                stuff[1], stuff[2], kickstart, stuff[3])
+                                              stuff[1], stuff[2], kickstart, stuff[3])
     elif method == 'restart':
         if 'request' in taskInfo:
             host = taskInfo['request'][0]
@@ -3404,10 +3496,13 @@ def _taskLabel(taskInfo):
     else:
         return '%s (%s)' % (method, arch)
 
+
 CONTROL_CHARS = [chr(i) for i in range(32)]
 NONPRINTABLE_CHARS = ''.join([c for c in CONTROL_CHARS if c not in '\r\n\t'])
 if six.PY3:
     NONPRINTABLE_CHARS_TABLE = dict.fromkeys(map(ord, NONPRINTABLE_CHARS), None)
+
+
 def removeNonprintable(value):
     # expects raw-encoded string, not unicode
     if six.PY2:
@@ -3458,7 +3553,7 @@ def fix_encoding(value, fallback='iso8859-15', remove_nonprintable=False):
 
     # play encoding tricks for py2 strings
     if six.PY2:
-        if isinstance(value, unicode):
+        if isinstance(value, unicode):  # noqa: F821
             # just convert it to a utf8-encoded str
             value = value.encode('utf8')
         elif isinstance(value, str):
@@ -3501,15 +3596,19 @@ def add_file_logger(logger, fn):
         return
     if not os.access(fn, os.W_OK):
         return
-    handler = logging.handlers.RotatingFileHandler(fn, maxBytes=1024*1024*10, backupCount=5)
+    handler = logging.handlers.RotatingFileHandler(fn, maxBytes=1024 * 1024 * 10, backupCount=5)
     handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s'))
     logging.getLogger(logger).addHandler(handler)
 
+
 def add_stderr_logger(logger):
     handler = logging.StreamHandler()
-    handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] {%(process)d} %(name)s:%(lineno)d %(message)s'))
+    handler.setFormatter(
+        logging.Formatter(
+            '%(asctime)s [%(levelname)s] {%(process)d} %(name)s:%(lineno)d %(message)s'))
     handler.setLevel(logging.DEBUG)
     logging.getLogger(logger).addHandler(handler)
+
 
 def add_sys_logger(logger):
     # For remote logging;
@@ -3520,6 +3619,7 @@ def add_sys_logger(logger):
     handler.setFormatter(logging.Formatter('%(name)s: %(message)s'))
     handler.setLevel(logging.INFO)
     logging.getLogger(logger).addHandler(handler)
+
 
 def add_mail_logger(logger, addr):
     """Adding e-mail logger
@@ -3534,12 +3634,14 @@ def add_mail_logger(logger, addr):
         return
     addresses = addr.split(',')
     handler = logging.handlers.SMTPHandler("localhost",
-                                           "%s@%s" % (pwd.getpwuid(os.getuid())[0], socket.getfqdn()),
+                                           "%s@%s" % (pwd.getpwuid(os.getuid())[0],
+                                                      socket.getfqdn()),
                                            addresses,
                                            "%s: error notice" % socket.getfqdn())
     handler.setFormatter(logging.Formatter('%(pathname)s:%(lineno)d [%(levelname)s] %(message)s'))
     handler.setLevel(logging.ERROR)
     logging.getLogger(logger).addHandler(handler)
+
 
 def remove_log_handler(logger, handler):
     logging.getLogger(logger).removeHandler(handler)

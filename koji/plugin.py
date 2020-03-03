@@ -34,35 +34,36 @@ from koji.util import encode_datetime_recurse
 # the available callback hooks and a list
 # of functions to be called for each event
 callbacks = {
-    'prePackageListChange':   [],
-    'postPackageListChange':  [],
-    'preTaskStateChange':     [],
-    'postTaskStateChange':    [],
-    'preBuildStateChange':    [],
-    'postBuildStateChange':   [],
-    'preImport':              [],
-    'postImport':             [],
-    'preRPMSign':             [],
-    'postRPMSign':            [],
-    'preTag':                 [],
-    'postTag':                [],
-    'preUntag':               [],
-    'postUntag':              [],
-    'preRepoInit':            [],
-    'postRepoInit':           [],
-    'preRepoDone':            [],
-    'postRepoDone':           [],
-    'preCommit':              [],
-    'postCommit':             [],
-    'preSCMCheckout':         [],
-    'postSCMCheckout':        [],
-    }
+    'prePackageListChange': [],
+    'postPackageListChange': [],
+    'preTaskStateChange': [],
+    'postTaskStateChange': [],
+    'preBuildStateChange': [],
+    'postBuildStateChange': [],
+    'preImport': [],
+    'postImport': [],
+    'preRPMSign': [],
+    'postRPMSign': [],
+    'preTag': [],
+    'postTag': [],
+    'preUntag': [],
+    'postUntag': [],
+    'preRepoInit': [],
+    'postRepoInit': [],
+    'preRepoDone': [],
+    'postRepoDone': [],
+    'preCommit': [],
+    'postCommit': [],
+    'preSCMCheckout': [],
+    'postSCMCheckout': [],
+}
+
 
 class PluginTracker(object):
 
     def __init__(self, path=None, prefix='_koji_plugin__'):
         self.searchpath = path
-        #prefix should not have a '.' in it, this can cause problems.
+        # prefix should not have a '.' in it, this can cause problems.
         self.prefix = prefix
         self.plugins = {}
 
@@ -71,9 +72,9 @@ class PluginTracker(object):
             return self.plugins[name]
         mod_name = name
         if self.prefix:
-            #mod_name determines how the module is named in sys.modules
-            #Using a prefix helps prevent overlap with other modules
-            #(no '.' -- it causes problems)
+            # mod_name determines how the module is named in sys.modules
+            # Using a prefix helps prevent overlap with other modules
+            # (no '.' -- it causes problems)
             mod_name = self.prefix + name
         if mod_name in sys.modules and not reload:
             raise koji.PluginError('module name conflict: %s' % mod_name)
@@ -113,6 +114,7 @@ def export(f):
     setattr(f, 'exported', True)
     return f
 
+
 def export_cli(f):
     """a decorator that marks a function as exported for CLI
 
@@ -121,6 +123,7 @@ def export_cli(f):
     """
     setattr(f, 'exported_cli', True)
     return f
+
 
 def export_as(alias):
     """returns a decorator that marks a function as exported and gives it an alias
@@ -132,6 +135,7 @@ def export_as(alias):
         setattr(f, 'export_alias', alias)
         return f
     return dec
+
 
 def export_in(module, alias=None):
     """returns a decorator that marks a function as exported with a module prepended
@@ -150,6 +154,7 @@ def export_in(module, alias=None):
         return f
     return dec
 
+
 def callback(*cbtypes):
     """A decorator that indicates a function is a callback.
     cbtypes is a list of callback types to register for.  Valid
@@ -161,6 +166,7 @@ def callback(*cbtypes):
         setattr(f, 'callbacks', cbtypes)
         return f
     return dec
+
 
 def ignore_error(f):
     """a decorator that marks a callback as ok to fail
@@ -178,7 +184,7 @@ def convert_datetime(f):
 
 
 def register_callback(cbtype, func):
-    if not cbtype in callbacks:
+    if cbtype not in callbacks:
         raise koji.PluginError('"%s" is not a valid callback type' % cbtype)
     if not callable(func):
         raise koji.PluginError('%s is not callable' % getattr(func, '__name__', 'function'))
@@ -186,14 +192,14 @@ def register_callback(cbtype, func):
 
 
 def run_callbacks(cbtype, *args, **kws):
-    if not cbtype in callbacks:
+    if cbtype not in callbacks:
         raise koji.PluginError('"%s" is not a valid callback type' % cbtype)
     cache = {}
     for func in callbacks[cbtype]:
         cb_args, cb_kwargs = _fix_cb_args(func, args, kws, cache)
         try:
             func(cbtype, *cb_args, **cb_kwargs)
-        except:
+        except Exception:
             msg = 'Error running %s callback from %s' % (cbtype, func.__module__)
             if getattr(func, 'failure_is_an_option', False):
                 logging.getLogger('koji.plugin').warn(msg, exc_info=True)

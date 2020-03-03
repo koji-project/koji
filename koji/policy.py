@@ -31,7 +31,7 @@ from koji.util import to_list
 class BaseSimpleTest(object):
     """Abstract base class for simple tests"""
 
-    #Provide the name of the test
+    # Provide the name of the test
     name = None
 
     def __init__(self, str):
@@ -50,24 +50,26 @@ class BaseSimpleTest(object):
 
 class TrueTest(BaseSimpleTest):
     name = 'true'
+
     def run(self, data):
         return True
 
 
 class FalseTest(BaseSimpleTest):
     name = 'false'
+
     def run(self, data):
         return False
 
 
 class AllTest(TrueTest):
     name = 'all'
-    #alias for true
+    # alias for true
 
 
 class NoneTest(FalseTest):
     name = 'none'
-    #alias for false
+    # alias for false
 
 
 class HasTest(BaseSimpleTest):
@@ -97,6 +99,7 @@ class BoolTest(BaseSimpleTest):
     """
     name = 'bool'
     field = None
+
     def run(self, data):
         args = self.str.split()[1:]
         if self.field is None:
@@ -121,6 +124,7 @@ class MatchTest(BaseSimpleTest):
     """
     name = 'match'
     field = None
+
     def run(self, data):
         args = self.str.split()[1:]
         if self.field is None:
@@ -171,7 +175,7 @@ class CompareTest(BaseSimpleTest):
         '>=': lambda a, b: a >= b,
         '=': lambda a, b: a == b,
         '!=': lambda a, b: a != b,
-        }
+    }
 
     def __init__(self, str):
         """Read the test parameters from string"""
@@ -233,11 +237,11 @@ class SimpleRuleSet(object):
         for line in lines:
             rule = self.parse_line(line)
             if rule is None:
-                #blank/etc
+                # blank/etc
                 continue
             tests, negate, action = rule
             if action == '{':
-                #nested rules
+                # nested rules
                 child = []
                 cursor.append([tests, negate, child])
                 stack.append(cursor)
@@ -275,11 +279,11 @@ class SimpleRuleSet(object):
         """
         line = line.split('#', 1)[0].strip()
         if not line:
-            #blank or all comment
+            # blank or all comment
             return None
         if line == '}':
             return None, False, '}'
-            #?? allow }} ??
+            # ?? allow }} ??
         negate = False
         pos = line.rfind('::')
         if pos == -1:
@@ -288,7 +292,7 @@ class SimpleRuleSet(object):
                 raise Exception("bad policy line: %s" % line)
             negate = True
         tests = line[:pos]
-        action = line[pos+2:]
+        action = line[pos + 2:]
         tests = [self.get_test_handler(x) for x in tests.split('&&')]
         action = action.strip()
         # just return action = { for nested rules
@@ -328,7 +332,7 @@ class SimpleRuleSet(object):
                 if not check:
                     break
             else:
-                #all tests in current rule passed
+                # all tests in current rule passed
                 value = True
             if negate:
                 value = not value
@@ -393,11 +397,11 @@ def findSimpleTests(namespace):
             if isinstance(value, type(BaseSimpleTest)) and issubclass(value, BaseSimpleTest):
                 name = getattr(value, 'name', None)
                 if not name:
-                    #use the class name
+                    # use the class name
                     name = key
-                    #but trim 'Test' from the end
+                    # but trim 'Test' from the end
                     if name.endswith('Test') and len(name) > 4:
                         name = name[:-4]
                 ret.setdefault(name, value)
-                #...so first test wins in case of name overlap
+                # ...so first test wins in case of name overlap
     return ret

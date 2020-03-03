@@ -50,7 +50,7 @@ def register_plugin(plugin):
     """
     for v in six.itervalues(vars(plugin)):
         if isinstance(v, six.class_types):
-            #skip classes
+            # skip classes
             continue
         if callable(v):
             if getattr(v, 'exported_cli', False):
@@ -104,7 +104,7 @@ def get_options():
     common_commands = ['build', 'help', 'download-build',
                        'latest-build', 'search', 'list-targets']
     usage = _("%%prog [global-options] command [command-options-and-arguments]"
-                "\n\nCommon commands: %s" % ', '.join(sorted(common_commands)))
+              "\n\nCommon commands: %s" % ', '.join(sorted(common_commands)))
     parser = OptionParser(usage=usage)
     parser.disable_interspersed_args()
     progname = os.path.basename(sys.argv[0]) or 'koji'
@@ -129,7 +129,8 @@ def get_options():
                       help=_("do not authenticate"))
     parser.add_option("--force-auth", action="store_true", default=False,
                       help=_("authenticate even for read-only operations"))
-    parser.add_option("--authtype", help=_("force use of a type of authentication, options: noauth, ssl, password, or kerberos"))
+    parser.add_option("--authtype", help=_("force use of a type of authentication, options: "
+                                           "noauth, ssl, password, or kerberos"))
     parser.add_option("-d", "--debug", action="store_true",
                       help=_("show debug output"))
     parser.add_option("--debug-xmlrpc", action="store_true",
@@ -144,8 +145,9 @@ def get_options():
     parser.add_option("--topurl", help=_("url for Koji file access"))
     parser.add_option("--pkgurl", help=SUPPRESS_HELP)
     parser.add_option("--plugin-paths", metavar='PATHS',
-            help=_("specify additional plugin paths (colon separated)"))
-    parser.add_option("--help-commands", action="store_true", default=False, help=_("list commands"))
+                      help=_("specify additional plugin paths (colon separated)"))
+    parser.add_option("--help-commands", action="store_true", default=False,
+                      help=_("list commands"))
     (options, args) = parser.parse_args()
 
     # load local config
@@ -166,12 +168,12 @@ def get_options():
         value = os.path.expanduser(getattr(options, name))
         setattr(options, name, value)
 
-    #honor topdir
+    # honor topdir
     if options.topdir:
         koji.BASEDIR = options.topdir
         koji.pathinfo.topdir = options.topdir
 
-    #pkgurl is obsolete
+    # pkgurl is obsolete
     if options.pkgurl:
         if options.topurl:
             warn("Warning: the pkgurl option is obsolete")
@@ -193,9 +195,9 @@ def get_options():
         return options, '_list_commands', [0, '']
 
     aliases = {
-        'cancel-task' : 'cancel',
-        'cxl' : 'cancel',
-        'list-commands' : 'help',
+        'cancel-task': 'cancel',
+        'cxl': 'cancel',
+        'list-commands': 'help',
         'move-pkg': 'move-build',
         'move': 'move-build',
         'latest-pkg': 'latest-build',
@@ -252,7 +254,7 @@ def fix_pyver(options, logger):
     pyver = getattr(options, 'pyver', None)
     if not pyver:
         return
-    if pyver not in [2,3]:
+    if pyver not in [2, 3]:
         logger.warning('Invalid python version requested: %s', pyver)
     if sys.version_info[0] == pyver:
         return
@@ -278,20 +280,20 @@ def list_commands(categories_chosen=None):
         categories_chosen = list(categories_chosen)
     categories_chosen.sort()
     handlers = []
-    for name,value in globals().items():
+    for name, value in globals().items():
         if name.startswith('handle_'):
-            alias = name.replace('handle_','')
-            alias = alias.replace('_','-')
-            handlers.append((alias,value))
+            alias = name.replace('handle_', '')
+            alias = alias.replace('_', '-')
+            handlers.append((alias, value))
         elif name.startswith('anon_handle_'):
-            alias = name.replace('anon_handle_','')
-            alias = alias.replace('_','-')
-            handlers.append((alias,value))
+            alias = name.replace('anon_handle_', '')
+            alias = alias.replace('_', '-')
+            handlers.append((alias, value))
     handlers.sort()
     print(_("Available commands:"))
     for category in categories_chosen:
         print(_("\n%s:" % categories[category]))
-        for alias,handler in handlers:
+        for alias, handler in handlers:
             desc = handler.__doc__ or ''
             if desc.startswith('[%s] ' % category):
                 desc = desc[len('[%s] ' % category):]
@@ -335,7 +337,7 @@ if __name__ == "__main__":
             rv = 0
     except (KeyboardInterrupt, SystemExit):
         rv = 1
-    except:
+    except Exception:
         if options.debug:
             raise
         else:
@@ -344,6 +346,6 @@ if __name__ == "__main__":
             logger.error("%s: %s" % (exctype.__name__, value))
     try:
         session.logout()
-    except:
+    except Exception:
         pass
     sys.exit(rv)

@@ -9,8 +9,8 @@ from argparse import ArgumentParser
 
 import koji
 from koji.plugin import export_cli
-from koji_cli.lib import _, activate_session
 from koji_cli.commands import anon_handle_wait_repo
+from koji_cli.lib import _, activate_session
 
 
 @export_cli
@@ -40,7 +40,7 @@ def handle_add_sidetag(options, session, args):
         parser.error(_("Policy violation"))
 
     if not opts.quiet:
-        print (tag["name"])
+        print(tag["name"])
 
     if opts.wait:
         args = ["--target", tag["name"]]
@@ -88,4 +88,4 @@ def handle_list_sidetags(options, session, args):
         user = opts.user
 
     for tag in session.listSideTags(basetag=opts.basetag, user=user):
-        print (tag["name"])
+        print(tag["name"])

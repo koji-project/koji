@@ -54,22 +54,26 @@ MANAGER_PORT = 7000
 
 KOJIKAMID = True
 
-## INSERT kojikamid dup
+# INSERT kojikamid dup #
+
 
 class fakemodule(object):
     pass
 
-#make parts of the above insert accessible as koji.X
+
+# make parts of the above insert accessible as koji.X
 koji = fakemodule()
-koji.GenericError = GenericError
-koji.BuildError = BuildError
+koji.GenericError = GenericError  # noqa: F821
+koji.BuildError = BuildError  # noqa: F821
+
 
 def encode_int(n):
     """If n is too large for a 32bit signed, convert it to a string"""
     if n <= 2147483647:
         return n
-    #else
+    # else
     return str(n)
+
 
 class WindowsBuild(object):
 
@@ -88,9 +92,9 @@ class WindowsBuild(object):
         else:
             self.task_opts = {}
         self.workdir = '/tmp/build'
-        ensuredir(self.workdir)
+        ensuredir(self.workdir)  # noqa: F821
         self.buildreq_dir = os.path.join(self.workdir, 'buildreqs')
-        ensuredir(self.buildreq_dir)
+        ensuredir(self.buildreq_dir)  # noqa: F821
         self.source_dir = None
         self.spec_dir = None
         self.patches_dir = None
@@ -148,20 +152,20 @@ class WindowsBuild(object):
                 else:
                     self.logger.info('file %s exists', entry)
         if errors:
-            raise BuildError('error validating build environment: %s' % \
-                  ', '.join(errors))
+            raise BuildError('error validating build environment: %s' %  # noqa: F821
+                             ', '.join(errors))
 
     def updateClam(self):
         """update ClamAV virus definitions"""
         ret, output = run(['/bin/freshclam', '--quiet'])
         if ret:
-            raise BuildError('could not update ClamAV database: %s' % output)
+            raise BuildError('could not update ClamAV database: %s' % output)  # noqa: F821
 
     def checkEnv(self):
         """make the environment is fit for building in"""
         for tool in ['/bin/freshclam', '/bin/clamscan', '/bin/patch']:
             if not os.path.isfile(tool):
-                raise BuildError('%s is missing from the build environment' % tool)
+                raise BuildError('%s is missing from the build environment' % tool)  # noqa: F821
 
     def zipDir(self, rootdir, filename):
         rootbase = os.path.basename(rootdir)
@@ -178,41 +182,45 @@ class WindowsBuild(object):
 
     def checkout(self):
         """Checkout sources, winspec, and patches, and apply patches"""
-        src_scm = SCM(self.source_url)
-        self.source_dir = src_scm.checkout(ensuredir(os.path.join(self.workdir, 'source')))
+        src_scm = SCM(self.source_url)  # noqa: F821
+        self.source_dir = src_scm.checkout(
+            ensuredir(os.path.join(self.workdir, 'source')))  # noqa: F821
         self.zipDir(self.source_dir, os.path.join(self.workdir, 'sources.zip'))
         if 'winspec' in self.task_opts:
-            spec_scm = SCM(self.task_opts['winspec'])
-            self.spec_dir = spec_scm.checkout(ensuredir(os.path.join(self.workdir, 'spec')))
+            spec_scm = SCM(self.task_opts['winspec'])  # noqa: F821
+            self.spec_dir = spec_scm.checkout(
+                ensuredir(os.path.join(self.workdir, 'spec')))  # noqa: F821
             self.zipDir(self.spec_dir, os.path.join(self.workdir, 'spec.zip'))
         else:
             self.spec_dir = self.source_dir
         if 'patches' in self.task_opts:
-            patch_scm = SCM(self.task_opts['patches'])
-            self.patches_dir = patch_scm.checkout(ensuredir(os.path.join(self.workdir, 'patches')))
+            patch_scm = SCM(self.task_opts['patches'])  # noqa: F821
+            self.patches_dir = patch_scm.checkout(
+                ensuredir(os.path.join(self.workdir, 'patches')))  # noqa: F821
             self.zipDir(self.patches_dir, os.path.join(self.workdir, 'patches.zip'))
             self.applyPatches(self.source_dir, self.patches_dir)
         self.virusCheck(self.workdir)
 
     def applyPatches(self, sourcedir, patchdir):
         """Apply patches in patchdir to files in sourcedir)"""
-        patches = [patch for patch in os.listdir(patchdir) if \
-                   os.path.isfile(os.path.join(patchdir, patch)) and \
+        patches = [patch for patch in os.listdir(patchdir) if
+                   os.path.isfile(os.path.join(patchdir, patch)) and
                    patch.endswith('.patch')]
         if not patches:
-            raise BuildError('no patches found at %s' % patchdir)
+            raise BuildError('no patches found at %s' % patchdir)  # noqa: F821
         patches.sort()
         for patch in patches:
-            cmd = ['/bin/patch', '--verbose', '-d', sourcedir, '-p1', '-i', os.path.join(patchdir, patch)]
+            cmd = ['/bin/patch', '--verbose', '-d', sourcedir, '-p1', '-i',
+                   os.path.join(patchdir, patch)]
             run(cmd, fatal=True)
 
     def loadConfig(self):
         """Load build configuration from the spec file."""
         specfiles = [spec for spec in os.listdir(self.spec_dir) if spec.endswith('.ini')]
         if len(specfiles) == 0:
-            raise BuildError('No .ini file found')
+            raise BuildError('No .ini file found')  # noqa: F821
         elif len(specfiles) > 1:
-            raise BuildError('Multiple .ini files found')
+            raise BuildError('Multiple .ini files found')  # noqa: F821
 
         if six.PY2:
             conf = SafeConfigParser()
@@ -237,7 +245,8 @@ class WindowsBuild(object):
         # absolute paths, or without a path in which case it is searched for
         # on the PATH.
         if conf.has_option('building', 'preinstalled'):
-            self.preinstalled.extend([e.strip() for e in conf.get('building', 'preinstalled').split('\n') if e])
+            self.preinstalled.extend(
+                [e.strip() for e in conf.get('building', 'preinstalled').split('\n') if e])
 
         # buildrequires and provides are multi-valued (space-separated)
         for br in conf.get('building', 'buildrequires').split():
@@ -306,7 +315,7 @@ class WindowsBuild(object):
         """Create the buildroot object on the hub."""
         repo_id = self.task_opts.get('repo_id')
         if not repo_id:
-            raise BuildError('repo_id must be specified')
+            raise BuildError('repo_id must be specified')  # noqa: F821
         self.buildroot_id = self.server.initBuildroot(repo_id, self.platform)
 
     def expireBuildroot(self):
@@ -316,9 +325,9 @@ class WindowsBuild(object):
     def fetchFile(self, basedir, buildinfo, fileinfo, brtype):
         """Download the file from buildreq, at filepath, into the basedir"""
         destpath = os.path.join(basedir, fileinfo['localpath'])
-        ensuredir(os.path.dirname(destpath))
+        ensuredir(os.path.dirname(destpath))  # noqa: F821
         if 'checksum_type' in fileinfo:
-            checksum_type = CHECKSUM_TYPES[fileinfo['checksum_type']]
+            checksum_type = CHECKSUM_TYPES[fileinfo['checksum_type']]  # noqa: F821
             if checksum_type == 'sha1':
                 checksum = hashlib.sha1()
             elif checksum_type == 'sha256':
@@ -326,13 +335,14 @@ class WindowsBuild(object):
             elif checksum_type == 'md5':
                 checksum = hashlib.md5()
             else:
-                raise BuildError('Unknown checksum type %s for %s' % (
+                raise BuildError('Unknown checksum type %s for %s' % (  # noqa: F821
                         checksum_type,
                         os.path.basename(fileinfo['localpath'])))
         with open(destpath, 'w') as destfile:
             offset = 0
             while True:
-                encoded = self.server.getFile(buildinfo, fileinfo, encode_int(offset), 1048576, brtype)
+                encoded = self.server.getFile(buildinfo, fileinfo, encode_int(offset), 1048576,
+                                              brtype)
                 if not encoded:
                     break
                 data = base64.b64decode(encoded)
@@ -345,9 +355,11 @@ class WindowsBuild(object):
         if 'checksum_type' in fileinfo:
             digest = checksum.hexdigest()
             if fileinfo['checksum'] != digest:
-                raise BuildError('checksum validation failed for %s, %s (computed) != %s (provided)' % \
-                                 (destpath, digest, fileinfo['checksum']))
-            self.logger.info('Retrieved %s (%s bytes, %s: %s)', destpath, offset, checksum_type, digest)
+                raise BuildError(  # noqa: F821
+                    'checksum validation failed for %s, %s (computed) != %s (provided)' %
+                    (destpath, digest, fileinfo['checksum']))
+            self.logger.info(
+                'Retrieved %s (%s bytes, %s: %s)', destpath, offset, checksum_type, digest)
         else:
             self.logger.info('Retrieved %s (%s bytes)', destpath, offset)
 
@@ -361,7 +373,7 @@ class WindowsBuild(object):
             buildinfo = self.server.getLatestBuild(self.build_tag, buildreq,
                                                    self.task_opts.get('repo_id'))
             br_dir = os.path.join(self.buildreq_dir, buildreq, brtype)
-            ensuredir(br_dir)
+            ensuredir(br_dir)  # noqa: F821
             brinfo['dir'] = br_dir
             brfiles = []
             brinfo['files'] = brfiles
@@ -405,7 +417,8 @@ class WindowsBuild(object):
 
     def cmdBuild(self):
         """Do the build: run the execute line(s) with cmd.exe"""
-        tmpfd, tmpname = tempfile.mkstemp(prefix='koji-tmp', suffix='.bat', dir='/cygdrive/c/Windows/Temp')
+        tmpfd, tmpname = tempfile.mkstemp(prefix='koji-tmp', suffix='.bat',
+                                          dir='/cygdrive/c/Windows/Temp')
         script = os.fdopen(tmpfd, 'w')
         for attr in ['source_dir', 'spec_dir', 'patches_dir']:
             val = getattr(self, attr)
@@ -438,7 +451,7 @@ class WindowsBuild(object):
         cmd = ['cmd.exe', '/C', 'C:\\Windows\\Temp\\' + os.path.basename(tmpname)]
         ret, output = run(cmd, chdir=self.source_dir)
         if ret:
-            raise BuildError('build command failed, see build.log for details')
+            raise BuildError('build command failed, see build.log for details')  # noqa: F821
 
     def bashBuild(self):
         """Do the build: run the execute line(s) with bash"""
@@ -470,7 +483,7 @@ class WindowsBuild(object):
         cmd = ['/bin/bash', '-e', '-x', tmpname]
         ret, output = run(cmd, chdir=self.source_dir)
         if ret:
-            raise BuildError('build command failed, see build.log for details')
+            raise BuildError('build command failed, see build.log for details')  # noqa: F821
 
     def checkBuild(self):
         """Verify that the build completed successfully."""
@@ -497,13 +510,13 @@ class WindowsBuild(object):
                     errors.append('file %s does not exist' % entry)
         self.virusCheck(self.workdir)
         if errors:
-            raise BuildError('error validating build output: %s' % \
+            raise BuildError('error validating build output: %s' %  # noqa: F821
                   ', '.join(errors))
 
     def virusCheck(self, path):
         """ensure a path is virus free with ClamAV. path should be absolute"""
         if not path.startswith('/'):
-            raise BuildError('Invalid path to scan for viruses: ' + path)
+            raise BuildError('Invalid path to scan for viruses: ' + path)  # noqa: F821
         run(['/bin/clamscan', '--quiet', '--recursive', path], fatal=True)
 
     def gatherResults(self):
@@ -528,6 +541,7 @@ class WindowsBuild(object):
         self.checkBuild()
         self.expireBuildroot()
         return self.gatherResults()
+
 
 def run(cmd, chdir=None, fatal=False, log=True):
     global logfd
@@ -555,8 +569,9 @@ def run(cmd, chdir=None, fatal=False, log=True):
             msg += ', see %s for details' % (os.path.basename(logfd.name))
         else:
             msg += ', output: %s' % output
-        raise BuildError(msg)
+        raise BuildError(msg)  # noqa: F821
     return ret, output
+
 
 def find_net_info():
     """
@@ -586,6 +601,7 @@ def find_net_info():
         gateway = None
     return macaddr, gateway
 
+
 def upload_file(server, prefix, path):
     """upload a single file to the vmd"""
     logger = logging.getLogger('koji.vm')
@@ -606,6 +622,7 @@ def upload_file(server, prefix, path):
     server.verifyChecksum(path, digest, 'md5')
     logger.info('Uploaded %s (%s bytes, md5: %s)', destpath, offset, digest)
 
+
 def get_mgmt_server():
     """Get a ServerProxy object we can use to retrieve task info"""
     logger = logging.getLogger('koji.vm')
@@ -617,12 +634,14 @@ def get_mgmt_server():
     logger.debug('found MAC address %s, connecting to %s:%s',
                  macaddr, gateway, MANAGER_PORT)
     server = six.moves.xmlrpc_client.ServerProxy('http://%s:%s/' %
-                                   (gateway, MANAGER_PORT), allow_none=True)
+                                                 (gateway, MANAGER_PORT), allow_none=True)
     # we would set a timeout on the socket here, but that is apparently not
     # supported by python/cygwin/Windows
     task_port = server.getPort(macaddr)
     logger.debug('found task-specific port %s', task_port)
-    return six.moves.xmlrpc_client.ServerProxy('http://%s:%s/' % (gateway, task_port), allow_none=True)
+    return six.moves.xmlrpc_client.ServerProxy('http://%s:%s/' % (gateway, task_port),
+                                               allow_none=True)
+
 
 def get_options():
     """handle usage and parse options"""
@@ -632,10 +651,13 @@ def get_options():
     """
     parser = OptionParser(usage=usage)
     parser.add_option('-d', '--debug', action='store_true', help='Log debug statements')
-    parser.add_option('-i', '--install', action='store_true', help='Install this daemon as a service', default=False)
-    parser.add_option('-u', '--uninstall', action='store_true', help='Uninstall this daemon if it was installed previously as a service', default=False)
+    parser.add_option('-i', '--install', action='store_true', default=False,
+                      help='Install this daemon as a service')
+    parser.add_option('-u', '--uninstall', action='store_true', default=False,
+                      help='Uninstall this daemon if it was installed previously as a service')
     (options, args) = parser.parse_args()
     return options
+
 
 def setup_logging(opts):
     global logfile, logfd
@@ -651,10 +673,12 @@ def setup_logging(opts):
     logger.addHandler(handler)
     return handler
 
+
 def log_local(msg):
     tb = ''.join(traceback.format_exception(*sys.exc_info()))
     sys.stderr.write('%s: %s\n' % (time.ctime(), msg))
     sys.stderr.write(tb)
+
 
 def stream_logs(server, handler, builds):
     """Stream logs incrementally to the server.
@@ -675,7 +699,7 @@ def stream_logs(server, handler, builds):
                     try:
                         fd = open(log, 'r')
                         logs[log] = (relpath, fd)
-                    except:
+                    except Exception:
                         log_local('Error opening %s' % log)
                         continue
                 else:
@@ -689,9 +713,10 @@ def stream_logs(server, handler, builds):
                 del contents
                 try:
                     server.uploadDirect(relpath, offset, size, digest, data)
-                except:
+                except Exception:
                     log_local('error uploading %s' % relpath)
         time.sleep(1)
+
 
 def fail(server, handler):
     """do the right thing when a build fails"""
@@ -704,20 +729,21 @@ def fail(server, handler):
             logfd.flush()
             upload_file(server, os.path.dirname(logfile),
                         os.path.basename(logfile))
-        except:
+        except Exception:
             log_local('error calling upload_file()')
         while True:
             try:
                 # this is the very last thing we do, keep trying as long as we can
                 server.failTask(tb)
                 break
-            except:
+            except Exception:
                 log_local('error calling server.failTask()')
     sys.exit(1)
 
 
 logfile = '/tmp/build.log'
 logfd = None
+
 
 def main():
     prog = os.path.basename(sys.argv[0])
@@ -780,7 +806,7 @@ def main():
         results['logs'].append(os.path.basename(logfile))
 
         server.closeTask(results)
-    except:
+    except Exception:
         fail(server, handler)
     sys.exit(0)
 

@@ -19,8 +19,10 @@
 # Authors:
 #       Mike McLean <mikem@redhat.com>
 
+
 class ServerError(Exception):
     """Base class for our server-side-only exceptions"""
+
 
 class ServerRedirect(ServerError):
     """Used to handle redirects"""

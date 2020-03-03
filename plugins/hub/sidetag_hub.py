@@ -3,26 +3,25 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 import sys
 
-from koji.context import context
-from koji.plugin import export, callback
 import koji
+from koji.context import context
+from koji.plugin import callback, export
+sys.path.insert(0, "/usr/share/koji-hub/")
+from kojihub import (  # noqa: F402
+    QueryProcessor,
+    _create_build_target,
+    _create_tag,
+    _delete_build_target,
+    _delete_tag,
+    assert_policy,
+    get_build_target,
+    get_tag,
+    get_user,
+    nextval
+)
 
 CONFIG_FILE = "/etc/koji-hub/plugins/sidetag.conf"
 CONFIG = None
-
-sys.path.insert(0, "/usr/share/koji-hub/")
-from kojihub import (
-    assert_policy,
-    get_tag,
-    get_user,
-    get_build_target,
-    _create_tag,
-    _create_build_target,
-    _delete_tag,
-    _delete_build_target,
-    QueryProcessor,
-    nextval,
-)
 
 
 @export

@@ -52,8 +52,7 @@ class ExtendedMarshaller(xmlrpc_client.Marshaller):
 
 
 if six.PY2:
-    ExtendedMarshaller.dispatch[long] = ExtendedMarshaller.dump_int
-
+    ExtendedMarshaller.dispatch[long] = ExtendedMarshaller.dump_int  # noqa: F821
 
 
 def dumps(params, methodname=None, methodresponse=None, encoding=None,
@@ -100,7 +99,7 @@ def dumps(params, methodname=None, methodresponse=None, encoding=None,
             "<methodName>", methodname, "</methodName>\n",
             data,
             "</methodCall>\n"
-            )
+        )
     elif methodresponse:
         # a method response, or a fault structure
         parts = (
@@ -108,7 +107,7 @@ def dumps(params, methodname=None, methodresponse=None, encoding=None,
             "<methodResponse>\n",
             data,
             "</methodResponse>\n"
-            )
+        )
     else:
         return data  # return as is
     return ''.join(parts)

@@ -10,14 +10,14 @@ import rpm
 _ppc64_native_is_best = True
 
 # dict mapping arch -> ( multicompat, best personality, biarch personality )
-multilibArches = { "x86_64":  ( "athlon", "x86_64", "athlon" ),
-                   "sparc64v": ( "sparcv9v", "sparcv9v", "sparc64v" ),
-                   "sparc64": ( "sparcv9", "sparcv9", "sparc64" ),
-                   "ppc64":   ( "ppc", "ppc", "ppc64" ),
-                   "s390x":   ( "s390", "s390x", "s390" ),
-                   }
+multilibArches = {"x86_64": ("athlon", "x86_64", "athlon"),
+                  "sparc64v": ("sparcv9v", "sparcv9v", "sparc64v"),
+                  "sparc64": ("sparcv9", "sparcv9", "sparc64"),
+                  "ppc64": ("ppc", "ppc", "ppc64"),
+                  "s390x": ("s390", "s390x", "s390"),
+                  }
 if _ppc64_native_is_best:
-    multilibArches["ppc64"] = ( "ppc", "ppc64", "ppc64" )
+    multilibArches["ppc64"] = ("ppc", "ppc64", "ppc64")
 
 arches = {
     # ia32
@@ -33,8 +33,8 @@ arches = {
     "amd64": "x86_64",
     "ia32e": "x86_64",
 
-    #ppc64le
-    "ppc64le":  "noarch",
+    # ppc64le
+    "ppc64le": "noarch",
 
     # ppc
     "ppc64p7": "ppc64",
@@ -56,16 +56,16 @@ arches = {
     "sparc": "noarch",
 
     # alpha
-    "alphaev7":   "alphaev68",
-    "alphaev68":  "alphaev67",
-    "alphaev67":  "alphaev6",
-    "alphaev6":   "alphapca56",
+    "alphaev7": "alphaev68",
+    "alphaev68": "alphaev67",
+    "alphaev67": "alphaev6",
+    "alphaev6": "alphapca56",
     "alphapca56": "alphaev56",
-    "alphaev56":  "alphaev5",
-    "alphaev5":   "alphaev45",
-    "alphaev45":  "alphaev4",
-    "alphaev4":   "alpha",
-    "alpha":      "noarch",
+    "alphaev56": "alphaev5",
+    "alphaev5": "alphaev45",
+    "alphaev45": "alphaev4",
+    "alphaev4": "alpha",
+    "alpha": "noarch",
 
     # arm
     "armv7l": "armv6l",
@@ -73,7 +73,7 @@ arches = {
     "armv5tejl": "armv5tel",
     "armv5tel": "noarch",
 
-    #arm hardware floating point
+    # arm hardware floating point
     "armv7hnl": "armv7hl",
     "armv7hl": "armv6hl",
     "armv6hl": "noarch",
@@ -86,16 +86,17 @@ arches = {
     "sh4": "noarch",
     "sh3": "noarch",
 
-    #itanium
+    # itanium
     "ia64": "noarch",
-    }
+}
 
 #  Will contain information parsed from /proc/self/auxv via _parse_auxv().
 # Should move into rpm really.
 _aux_vector = {
     "platform": "",
     "hwcap": 0,
-    }
+}
+
 
 def legitMultiArchesInSameLib(arch=None):
     # this is completely crackrock - if anyone has a better way I
@@ -124,7 +125,7 @@ def canCoinstall(arch1, arch2):
     # if both are a multlibarch then we can't coinstall  (x86_64, ia32e)
     # if both are not multilibarches then we can't coinstall (i386, i686)
 
-    if 'noarch' in [arch1, arch2]: # noarch can never coinstall
+    if 'noarch' in [arch1, arch2]:  # noarch can never coinstall
         return False
 
     if isMultiLibArch(arch=arch1) == isMultiLibArch(arch=arch2):
@@ -135,6 +136,8 @@ def canCoinstall(arch1, arch2):
     return False
 
 # this computes the difference between myarch and targetarch
+
+
 def archDifference(myarch, targetarch):
     if myarch == targetarch:
         return 1
@@ -145,15 +148,17 @@ def archDifference(myarch, targetarch):
         return 0
     return 0
 
+
 def score(arch):
     return archDifference(canonArch, arch)
+
 
 def isMultiLibArch(arch=None):
     """returns true if arch is a multilib arch, false if not"""
     if arch is None:
         arch = canonArch
 
-    if arch not in arches: # or we could check if it is noarch
+    if arch not in arches:  # or we could check if it is noarch
         return 0
 
     if arch in multilibArches:
@@ -163,6 +168,7 @@ def isMultiLibArch(arch=None):
         return 1
 
     return 0
+
 
 def getBestArchFromList(archlist, myarch=None):
     """
@@ -176,12 +182,10 @@ def getBestArchFromList(archlist, myarch=None):
     if myarch is None:
         myarch = canonArch
 
-    mybestarch = getBestArch(myarch)
-
     bestarch = getBestArch(myarch)
     if bestarch != myarch:
         bestarchchoice = getBestArchFromList(archlist, bestarch)
-        if bestarchchoice != None and bestarchchoice != "noarch":
+        if bestarchchoice is not None and bestarchchoice != "noarch":
             return bestarchchoice
 
     thisarch = archlist[0]
@@ -221,20 +225,22 @@ def getArchList(thisarch=None):
     # hack hack hack
     # sparc64v is also sparc64 compat
     if archlist[0] == "sparc64v":
-        archlist.insert(1,"sparc64")
+        archlist.insert(1, "sparc64")
 
     # if we're a weirdo arch - add noarch on there.
     if len(archlist) == 1 and archlist[0] == thisarch:
         archlist.append('noarch')
     return archlist
 
+
 def _try_read_cpuinfo():
     """ Try to read /proc/cpuinfo ... if we can't ignore errors (ie. proc not
         mounted). """
     try:
         return open("/proc/cpuinfo", "r")
-    except:
+    except Exception:
         return []
+
 
 def _parse_auxv():
     """ Read /proc/self/auxv and parse it into global dict for easier access
@@ -242,7 +248,7 @@ def _parse_auxv():
     # In case we can't open and read /proc/self/auxv, just return
     try:
         data = open("/proc/self/auxv", "rb").read()
-    except:
+    except Exception:
         return
 
     # Define values from /usr/include/elf.h
@@ -261,6 +267,7 @@ def _parse_auxv():
         if at_type == AT_HWCAP:
             _aux_vector["hwcap"] = at_val
         offset = offset + fmtlen
+
 
 def getCanonX86Arch(arch):
     #
@@ -287,6 +294,7 @@ def getCanonX86Arch(arch):
 
     return arch
 
+
 def getCanonARMArch(arch):
     # the %{_target_arch} macro in rpm will let us know the abi we are using
     target = rpm.expandMacro('%{_target_cpu}')
@@ -295,6 +303,7 @@ def getCanonARMArch(arch):
     if target.startswith('armv7h'):
         return target
     return arch
+
 
 def getCanonPPCArch(arch):
     # FIXME: should I do better handling for mac, etc?
@@ -314,7 +323,7 @@ def getCanonPPCArch(arch):
     try:
         if platform.startswith("power") and int(platform[5:].rstrip('+')) >= 7:
             return "ppc64p7"
-    except:
+    except Exception:
         pass
 
     if machine is None:
@@ -325,6 +334,7 @@ def getCanonPPCArch(arch):
     if machine.find("iSeries") != -1:
         return "ppc64iseries"
     return arch
+
 
 def getCanonSPARCArch(arch):
     # Deal with sun4v, sun4u, sun4m cases
@@ -350,6 +360,7 @@ def getCanonSPARCArch(arch):
         return "sparcv8"
     return arch
 
+
 def getCanonX86_64Arch(arch):
     if arch != "x86_64":
         return arch
@@ -368,7 +379,8 @@ def getCanonX86_64Arch(arch):
         return "ia32e"
     return arch
 
-def getCanonArch(skipRpmPlatform = 0):
+
+def getCanonArch(skipRpmPlatform=0):
     if not skipRpmPlatform and os.access("/etc/rpm/platform", os.R_OK):
         try:
             f = open("/etc/rpm/platform", "r")
@@ -376,7 +388,7 @@ def getCanonArch(skipRpmPlatform = 0):
             f.close()
             (arch, vendor, opersys) = line.split("-", 2)
             return arch
-        except:
+        except Exception:
             pass
 
     arch = os.uname()[4]
@@ -397,19 +409,24 @@ def getCanonArch(skipRpmPlatform = 0):
 
     return arch
 
+
 canonArch = getCanonArch()
 
 # this gets you the "compat" arch of a biarch pair
-def getMultiArchInfo(arch = canonArch):
+
+
+def getMultiArchInfo(arch=canonArch):
     if arch in multilibArches:
         return multilibArches[arch]
     if arch in arches and arches[arch] != "noarch":
-        return getMultiArchInfo(arch = arches[arch])
+        return getMultiArchInfo(arch=arches[arch])
     return None
 
 # get the best usual userspace arch for the arch we're on.  this is
 # our arch unless we're on an arch that uses the secondary as its
 # userspace (eg ppc64, sparc64)
+
+
 def getBestArch(myarch=None):
     if myarch:
         arch = myarch
@@ -424,6 +441,7 @@ def getBestArch(myarch=None):
 
     return arch
 
+
 def getBaseArch(myarch=None):
     """returns 'base' arch for myarch, if specified, or canonArch if not.
        base arch is the arch before noarch in the arches dict if myarch is not
@@ -432,7 +450,7 @@ def getBaseArch(myarch=None):
     if not myarch:
         myarch = canonArch
 
-    if myarch not in arches: # this is dumb, but <shrug>
+    if myarch not in arches:  # this is dumb, but <shrug>
         return myarch
 
     if myarch.startswith("sparc64"):
@@ -469,6 +487,7 @@ def getBaseArch(myarch=None):
 class ArchStorage(object):
     """class for keeping track of what arch we have set and doing various
        permutations based on it"""
+
     def __init__(self):
         self.canonarch = None
         self.basearch = None
@@ -487,7 +506,7 @@ class ArchStorage(object):
         self.basearch = getBaseArch(myarch=self.canonarch)
         self.archlist = getArchList(thisarch=self.canonarch)
 
-        if not archlist_includes_compat_arch: # - do we bother including i686 and below on x86_64
+        if not archlist_includes_compat_arch:  # - do we bother including i686 and below on x86_64
             limit_archlist = []
             for a in self.archlist:
                 if isMultiLibArch(a) or a == 'noarch':
@@ -497,7 +516,7 @@ class ArchStorage(object):
         self.bestarch = getBestArch(myarch=self.canonarch)
         self.compatarches = getMultiArchInfo(arch=self.canonarch)
         self.multilib = isMultiLibArch(arch=self.canonarch)
-        self.legit_multi_arches = legitMultiArchesInSameLib(arch = self.canonarch)
+        self.legit_multi_arches = legitMultiArchesInSameLib(arch=self.canonarch)
 
     def get_best_arch_from_list(self, archlist, fromarch=None):
         if not fromarch:

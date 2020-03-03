@@ -48,8 +48,14 @@ import koji
 import koji.util
 from koji.daemon import SCM, TaskManager
 # TaskHandlers are required to be imported, do not remove them
-from koji.tasks import (BaseTaskHandler, MultiPlatformTask, RestartTask,  # noqa: F401
-                        RestartVerifyTask, ServerExit, ServerRestart)
+from koji.tasks import (  # noqa: F401
+    BaseTaskHandler,
+    MultiPlatformTask,
+    RestartTask,
+    RestartVerifyTask,
+    ServerExit,
+    ServerRestart
+)
 
 try:
     import krbV
@@ -62,6 +68,8 @@ def libvirt_callback(ignore, err):
     if err[3] != libvirt.VIR_ERR_ERROR:
         # Don't log libvirt errors: global error handler will do that
         logging.warn("Non-error from libvirt: '%s'", err[2])
+
+
 libvirt.registerErrorHandler(f=libvirt_callback, ctx=None)
 
 
@@ -92,7 +100,7 @@ def get_options():
     parser.add_option("--maxjobs", type='int', help="Specify maxjobs")
     parser.add_option("--sleeptime", type='int', help="Specify the polling interval")
     parser.add_option("--admin-emails", type='str', action="store", metavar="EMAILS",
-                       help="Comma-separated addresses to send error notices to.")
+                      help="Comma-separated addresses to send error notices to.")
     parser.add_option("--workdir", help="Specify workdir")
     parser.add_option("--pluginpath", help="Specify plugin search path")
     parser.add_option("--plugin", action="append", help="Load specified plugin")
@@ -101,7 +109,7 @@ def get_options():
 
     if args:
         parser.error("incorrect number of arguments")
-        #not reached
+        # not reached
         assert False  # pragma: no cover
 
     # load local config
@@ -176,7 +184,7 @@ def get_options():
             if os.path.exists(fn):
                 setattr(options, name, fn)
 
-    #make sure workdir exists
+    # make sure workdir exists
     if not os.path.exists(options.workdir):
         koji.ensuredir(options.workdir)
 
@@ -185,6 +193,7 @@ def get_options():
 
     return options
 
+
 def quit(msg=None, code=1):
     if msg:
         logging.getLogger("koji.vm").error(msg)
@@ -192,24 +201,27 @@ def quit(msg=None, code=1):
         sys.stderr.flush()
     sys.exit(code)
 
+
 def main(options, session):
     logger = logging.getLogger("koji.vm")
     logger.info('Starting up')
     tm = VMTaskManager(options, session)
     tm.findHandlers(globals())
     if options.plugin:
-        #load plugins
+        # load plugins
         pt = koji.plugin.PluginTracker(path=options.pluginpath.split(':'))
         for name in options.plugin:
             logger.info('Loading plugin: %s', name)
             tm.scanPlugin(pt.load(name))
+
     def shutdown(*args):
         raise SystemExit
+
     def restart(*args):
         logger.warn("Initiating graceful restart")
         tm.restart_pending = True
-    signal.signal(signal.SIGTERM,shutdown)
-    signal.signal(signal.SIGUSR1,restart)
+    signal.signal(signal.SIGTERM, shutdown)
+    signal.signal(signal.SIGUSR1, restart)
     taken = False
     tm.cleanupAllVMs()
     while True:
@@ -218,7 +230,7 @@ def main(options, session):
             tm.updateTasks()
             taken = tm.getNextTask()
             tm.cleanupExpiredVMs()
-        except (SystemExit,ServerExit,KeyboardInterrupt):
+        except (SystemExit, ServerExit, KeyboardInterrupt):
             logger.warn("Exiting")
             break
         except ServerRestart:
@@ -229,7 +241,7 @@ def main(options, session):
             break
         except koji.RetryError:
             raise
-        except:
+        except Exception:
             # XXX - this is a little extreme
             # log the exception and continue
             logger.error('Error in main loop', exc_info=True)
@@ -239,7 +251,7 @@ def main(options, session):
                 # The load-balancing code in getNextTask() will prevent a single builder
                 # from getting overloaded.
                 time.sleep(options.sleeptime)
-        except (SystemExit,KeyboardInterrupt):
+        except (SystemExit, KeyboardInterrupt):
             logger.warn("Exiting")
             break
     logger.warn("Shutting down, please wait...")
@@ -257,10 +269,12 @@ class DaemonXMLRPCServer(six.moves.xmlrpc_server.SimpleXMLRPCServer):
 
     def __init__(self, addr, port):
         if sys.version_info[:2] <= (2, 4):
-            six.moves.xmlrpc_server.SimpleXMLRPCServer.__init__(self, (addr, port), logRequests=False)
+            six.moves.xmlrpc_server.SimpleXMLRPCServer.__init__(self, (addr, port),
+                                                                logRequests=False)
         else:
-            six.moves.xmlrpc_server.SimpleXMLRPCServer.__init__(self, (addr, port), logRequests=False,
-                                                           allow_none=True)
+            six.moves.xmlrpc_server.SimpleXMLRPCServer.__init__(self, (addr, port),
+                                                                logRequests=False,
+                                                                allow_none=True)
         self.logger = logging.getLogger('koji.vm.DaemonXMLRPCServer')
         self.socket.settimeout(5)
         self.active = True
@@ -281,13 +295,13 @@ class DaemonXMLRPCServer(six.moves.xmlrpc_server.SimpleXMLRPCServer):
                         self.close_request(conn)
             except socket.timeout:
                 pass
-            except:
+            except Exception:
                 self.logger.error('Error handling requests', exc_info=True)
 
     if sys.version_info[:2] <= (2, 4):
         # Copy and paste from SimpleXMLRPCServer, with the addition of passing
         # allow_none=True to xmlrpclib.dumps()
-        def _marshaled_dispatch(self, data, dispatch_method = None):
+        def _marshaled_dispatch(self, data, dispatch_method=None):
             params, method = six.moves.xmlrpc_client.loads(data)
             try:
                 if dispatch_method is not None:
@@ -295,14 +309,17 @@ class DaemonXMLRPCServer(six.moves.xmlrpc_server.SimpleXMLRPCServer):
                 else:
                     response = self._dispatch(method, params)
                 response = (response,)
-                response = six.moves.xmlrpc_client.dumps(response, methodresponse=1, allow_none=True)
+                response = six.moves.xmlrpc_client.dumps(response,
+                                                         methodresponse=1, allow_none=True)
             except six.moves.xmlrpc_client.Fault as fault:
                 response = six.moves.xmlrpc_client.dumps(fault)
-            except:
+            except Exception:
                 # report exception back to server
                 response = six.moves.xmlrpc_client.dumps(
-                    six.moves.xmlrpc_client.Fault(1, "%s:%s" % (sys.exc_type, sys.exc_value))
-                    )
+                    six.moves.xmlrpc_client.Fault(
+                        1, "%s:%s" %
+                        (sys.exc_info()[0], sys.exc_info()[1]))
+                )
             return response
 
 
@@ -338,13 +355,13 @@ class WinBuildTask(MultiPlatformTask):
             if not repo_info:
                 raise koji.BuildError('invalid repo ID: %s' % repo_id)
             policy_data = {
-                'user_id' : task_info['owner'],
-                'source' : source_url,
-                'task_id' : self.id,
-                'build_tag' : build_tag['id'],
-                'skip_tag' : bool(opts.get('skip_tag')),
+                'user_id': task_info['owner'],
+                'source': source_url,
+                'task_id': self.id,
+                'build_tag': build_tag['id'],
+                'skip_tag': bool(opts.get('skip_tag')),
                 'target': target_info['id']
-                }
+            }
             if not opts.get('skip_tag'):
                 policy_data['tag'] = dest_tag['id']
             self.session.host.assertPolicy('build_from_repo_id', policy_data)
@@ -357,7 +374,9 @@ class WinBuildTask(MultiPlatformTask):
 
         task_opts = koji.util.dslice(opts, ['timeout', 'cpus', 'mem', 'static_mac'], strict=False)
         task_id = self.session.host.subtask(method='vmExec',
-                                            arglist=[name, [source_url, build_tag['name'], subopts], task_opts],
+                                            arglist=[name,
+                                                     [source_url, build_tag['name'], subopts],
+                                                     task_opts],
                                             label=name[:255],
                                             parent=self.id)
         results = self.wait(task_id)[task_id]
@@ -367,15 +386,16 @@ class WinBuildTask(MultiPlatformTask):
         if not opts.get('scratch'):
             build_info = koji.util.dslice(results, ['name', 'version', 'release', 'epoch'])
             build_info['package_name'] = build_info['name']
-            pkg_cfg = self.session.getPackageConfig(dest_tag['id'], build_info['name'], event=event_id)
+            pkg_cfg = self.session.getPackageConfig(dest_tag['id'], build_info['name'],
+                                                    event=event_id)
             if not opts.get('skip_tag'):
                 # Make sure package is on the list for this tag
                 if pkg_cfg is None:
-                    raise koji.BuildError("package %s not in list for tag %s" \
-                            % (build_info['name'], dest_tag['name']))
+                    raise koji.BuildError("package %s not in list for tag %s"
+                                          % (build_info['name'], dest_tag['name']))
                 elif pkg_cfg['blocked']:
-                    raise koji.BuildError("package %s is blocked for tag %s" \
-                            % (build_info['name'], dest_tag['name']))
+                    raise koji.BuildError("package %s is blocked for tag %s"
+                                          % (build_info['name'], dest_tag['name']))
 
             build_info = self.session.host.initWinBuild(self.id, build_info,
                                                         koji.util.dslice(results, ['platform']))
@@ -385,8 +405,8 @@ class WinBuildTask(MultiPlatformTask):
             rpm_results = None
             spec_url = opts.get('specfile')
             if spec_url:
-                rpm_results = self.buildWrapperRPM(spec_url, task_id, target_info, build_info, repo_id,
-                                                   channel='default')
+                rpm_results = self.buildWrapperRPM(spec_url, task_id, target_info, build_info,
+                                                   repo_id, channel='default')
 
             if opts.get('scratch'):
                 self.session.host.moveWinBuildToScratch(self.id, results, rpm_results)
@@ -395,7 +415,7 @@ class WinBuildTask(MultiPlatformTask):
         except (SystemExit, ServerExit, KeyboardInterrupt):
             # we do not trap these
             raise
-        except:
+        except Exception:
             if not opts.get('scratch'):
                 # scratch builds do not get imported
                 self.session.host.failBuild(self.id, build_id)
@@ -410,6 +430,7 @@ class WinBuildTask(MultiPlatformTask):
                                                     parent=self.id)
             self.wait(tag_task_id)
 
+
 class VMExecTask(BaseTaskHandler):
     """
     Handles the startup, state-tracking, and shutdown of a VM
@@ -423,8 +444,8 @@ class VMExecTask(BaseTaskHandler):
 
     def __init__(self, *args, **kw):
         super(VMExecTask, self).__init__(*args, **kw)
-        self.task_manager = six.moves.xmlrpc_client.ServerProxy('http://%s:%s/' % (self.options.privaddr, self.options.portbase),
-                                                  allow_none=True)
+        self.task_manager = six.moves.xmlrpc_client.ServerProxy(
+            'http://%s:%s/' % (self.options.privaddr, self.options.portbase), allow_none=True)
         self.port = None
         self.server = None
         self.task_info = None
@@ -438,13 +459,16 @@ class VMExecTask(BaseTaskHandler):
     def mkqcow2(self, clone_name, source_disk, disk_num):
         new_name = clone_name + '-disk-' + str(disk_num) + self.QCOW2_EXT
         new_path = os.path.join(self.options.imagedir, new_name)
-        cmd = ['/usr/bin/qemu-img', 'create', '-f', 'qcow2', '-o', 'backing_file=%s' % source_disk, new_path]
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, close_fds=True)
+        cmd = ['/usr/bin/qemu-img', 'create', '-f', 'qcow2', '-o', 'backing_file=%s' % source_disk,
+               new_path]
+        proc = subprocess.Popen(cmd,
+                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, close_fds=True)
         output, dummy = proc.communicate()
         ret = proc.wait()
         if ret:
-            raise koji.BuildError('unable to create qcow2 image, "%s" returned %s; output was: %s' % \
-                  (' '.join(cmd), ret, output))
+            raise koji.BuildError(
+                'unable to create qcow2 image, "%s" returned %s; output was: %s' %
+                (' '.join(cmd), ret, output))
         vm_user = pwd.getpwnam(self.options.vmuser)
         os.chown(new_path, vm_user.pw_uid, vm_user.pw_gid)
         return new_path
@@ -674,13 +698,13 @@ class VMExecTask(BaseTaskHandler):
             remote_pi = koji.PathInfo(self.options.topurl)
             if type == 'rpm':
                 remote_url = remote_pi.build(buildinfo) + '/' + \
-                             fileinfo['localpath']
+                    fileinfo['localpath']
             elif type == 'maven':
                 remote_url = remote_pi.mavenbuild(buildinfo) + '/' + \
-                             fileinfo['localpath']
+                    fileinfo['localpath']
             elif type == 'win':
                 remote_url = remote_pi.winbuild(buildinfo) + '/' + \
-                             fileinfo['localpath']
+                    fileinfo['localpath']
             else:
                 raise koji.BuildError('unsupported file type: %s' % type)
             koji.ensuredir(os.path.dirname(localpath))
@@ -695,14 +719,17 @@ class VMExecTask(BaseTaskHandler):
                 hdr = koji.get_rpm_header(localpath)
                 payloadhash = koji.hex_string(koji.get_header_field(hdr, 'sigmd5'))
                 if fileinfo['payloadhash'] != payloadhash:
-                    raise koji.BuildError("Downloaded rpm %s doesn't match checksum (expected: %s, got %s)" % (
-                        os.path.basename(fileinfo['localpath']),
-                        fileinfo['payloadhash'], payloadhash))
+                    raise koji.BuildError(
+                        "Downloaded rpm %s doesn't match checksum (expected: %s, got %s)" %
+                        (os.path.basename(fileinfo['localpath']),
+                         fileinfo['payloadhash'],
+                         payloadhash))
                 if not koji.util.check_sigmd5(localpath):
-                    raise koji.BuildError("Downloaded rpm %s doesn't match sigmd5" % \
-                        os.path.basename(fileinfo['localpath']))
+                    raise koji.BuildError("Downloaded rpm %s doesn't match sigmd5" %
+                                          os.path.basename(fileinfo['localpath']))
             else:
-                self.verifyChecksum(localpath, fileinfo['checksum'], koji.CHECKSUM_TYPES[fileinfo['checksum_type']])
+                self.verifyChecksum(localpath, fileinfo['checksum'],
+                                    koji.CHECKSUM_TYPES[fileinfo['checksum_type']])
 
         return open(localpath, 'r')
 
@@ -739,8 +766,8 @@ class VMExecTask(BaseTaskHandler):
                 raise koji.BuildError('% does not exist' % local_path)
             size = os.path.getsize(local_path)
             if offset != size:
-                raise koji.BuildError('cannot write to %s at offset %s, size is %s' % \
-                      (local_path, offset, size))
+                raise koji.BuildError('cannot write to %s at offset %s, size is %s' %
+                                      (local_path, offset, size))
             fobj = open(local_path, 'r+')
             fobj.seek(offset)
         data = base64.b64decode(contents)
@@ -783,8 +810,9 @@ class VMExecTask(BaseTaskHandler):
         if sum.hexdigest() == checksum:
             return True
         else:
-            raise koji.BuildError('%s checksum validation failed for %s, %s (computed) != %s (provided)' % \
-                  (algo, local_path, sum.hexdigest(), checksum))
+            raise koji.BuildError(
+                '%s checksum validation failed for %s, %s (computed) != %s (provided)' %
+                (algo, local_path, sum.hexdigest(), checksum))
 
     def closeTask(self, output):
         self.output = output
@@ -834,7 +862,7 @@ class VMExecTask(BaseTaskHandler):
 
         conn = libvirt.open(None)
         clone_name = self.clone(conn, name, opts)
-        self.logger.debug('Cloned VM %s to %s',name, clone_name)
+        self.logger.debug('Cloned VM %s to %s', name, clone_name)
         try:
             vm = conn.lookupByName(clone_name)
             macaddr = self.macAddr(vm)
@@ -848,8 +876,8 @@ class VMExecTask(BaseTaskHandler):
             self.logger.info('Started VM %s', clone_name)
         except libvirt.libvirtError as e:
             self.logger.error('error starting VM %s', clone_name, exc_info=True)
-            raise koji.PreBuildError('error starting VM %s, error was: %s' % \
-                  (clone_name, e))
+            raise koji.PreBuildError('error starting VM %s, error was: %s' %
+                                     (clone_name, e))
 
         start = time.time()
         while True:
@@ -866,8 +894,9 @@ class VMExecTask(BaseTaskHandler):
                 if mins > timeout:
                     vm.destroy()
                     self.server.server_close()
-                    raise koji.BuildError('Task did not complete after %.2f minutes, VM %s has been destroyed' % \
-                          (mins, clone_name))
+                    raise koji.BuildError(
+                        'Task did not complete after %.2f minutes, VM %s has been destroyed' %
+                        (mins, clone_name))
             else:
                 vm.destroy()
                 self.server.server_close()
@@ -876,6 +905,7 @@ class VMExecTask(BaseTaskHandler):
                     return self.output
                 else:
                     raise koji.BuildError(self.output)
+
 
 class VMTaskManager(TaskManager):
     def __init__(self, options, session):
@@ -899,7 +929,9 @@ class VMTaskManager(TaskManager):
             if macaddr in self.macaddrs:
                 raise koji.PreBuildError('duplicate MAC address: %s' % macaddr)
             self.macaddrs[macaddr] = (vm_name, task_id, port)
-            self.logger.info('registered MAC address %s for VM %s (task ID %s, port %s)', macaddr, vm_name, task_id, port)
+            self.logger.info(
+                'registered MAC address %s for VM %s (task ID %s, port %s)',
+                macaddr, vm_name, task_id, port)
             return True
         finally:
             self.macaddr_lock.release()
@@ -935,7 +967,7 @@ class VMTaskManager(TaskManager):
         for node in nodelist:
             disk = node.prop('file')
             if os.path.basename(disk).startswith(VMExecTask.CLONE_PREFIX) and \
-                   disk.endswith(VMExecTask.QCOW2_EXT):
+                    disk.endswith(VMExecTask.QCOW2_EXT):
                 disks.append(disk)
         ctx.xpathFreeContext()
         doc.freeDoc()
@@ -950,7 +982,8 @@ class VMTaskManager(TaskManager):
         availableMB = available // 1024 // 1024
         self.logger.debug('disk space available in %s: %i MB', self.options.imagedir, availableMB)
         if availableMB < self.options.minspace:
-            self.status = 'Insufficient disk space: %i MB, %i MB required' % (availableMB, self.options.minspace)
+            self.status = 'Insufficient disk space: %i MB, %i MB required' % \
+                          (availableMB, self.options.minspace)
             self.logger.warn(self.status)
             return False
         return True
@@ -995,7 +1028,7 @@ class VMTaskManager(TaskManager):
             task_info = self.session.getTaskInfo(task['id'], request=True)
             vm_name = task_info['request'][0]
             try:
-                vm = self.libvirt_conn.lookupByName(vm_name)
+                self.libvirt_conn.lookupByName(vm_name)
             except libvirt.libvirtError:
                 # if this builder does not have the requested VM,
                 # we can't handle the task
@@ -1023,7 +1056,7 @@ class VMTaskManager(TaskManager):
                 if os.path.isfile(disk):
                     os.unlink(disk)
                     self.logger.debug('Removed disk file %s for VM %s', disk, vm_name)
-            except:
+            except Exception:
                 self.logger.error('Error removing disk file %s for VM %s', disk, vm_name,
                                   exc_info=True)
                 return False
@@ -1040,7 +1073,7 @@ class VMTaskManager(TaskManager):
         """
         vms = self.libvirt_conn.listDefinedDomains() + self.libvirt_conn.listDomainsID()
         for vm_name in vms:
-            if type(vm_name) == int:
+            if isinstance(vm_name, int):
                 vm_name = self.libvirt_conn.lookupByID(vm_name).name()
             if vm_name.startswith(VMExecTask.CLONE_PREFIX):
                 self.cleanupVM(vm_name)
@@ -1084,7 +1117,7 @@ class VMTaskManager(TaskManager):
 
 if __name__ == "__main__":
     koji.add_file_logger("koji", "/var/log/kojivmd.log")
-    #note we're setting logging params for all of koji*
+    # note we're setting logging params for all of koji*
     options = get_options()
     if options.debug:
         logging.getLogger("koji").setLevel(logging.DEBUG)
@@ -1097,7 +1130,7 @@ if __name__ == "__main__":
     if options.admin_emails:
         koji.add_mail_logger("koji", options.admin_emails)
 
-    #start a session and login
+    # start a session and login
     session_opts = koji.grab_session_options(options)
     session = koji.ClientSession(options.server, session_opts)
     if options.cert and os.path.isfile(options.cert):
@@ -1131,14 +1164,14 @@ if __name__ == "__main__":
             quit("Could not connect to Kerberos authentication service: '%s'" % e.args[1])
     else:
         quit("No username/password supplied and Kerberos missing or not configured")
-    #make session exclusive
+    # make session exclusive
     try:
         session.exclusiveSession(force=options.force_lock)
     except koji.AuthLockError:
         quit("Error: Unable to get lock. Trying using --force-lock")
     if not session.logged_in:
         quit("Error: Unknown login error")
-    #make sure it works
+    # make sure it works
     try:
         ret = session.echo("OK")
     except requests.exceptions.ConnectionError:
@@ -1148,7 +1181,7 @@ if __name__ == "__main__":
 
     # run main
     if options.daemon:
-        #detach
+        # detach
         koji.daemonize()
         main(options, session)
     elif not options.skip_main:

@@ -614,8 +614,8 @@ Here are some guidelines on producing preferable pull requests.
      - ``tests/test_cli/*``
 
 - Check, that unit tests are not broken. Simply run ``make test`` in main
-  directory of your branch. For python3 compatible-code we have also ``make
-  test3`` target.
+  directory of your branch to check both python2/3 compatible-code. Or you can
+  also use ``make test2`` or ``make test3`` target for each of them.
 
 Note that the core development team for Koji is small, so it may take a few
 days for someone to reply to your request.
@@ -657,3 +657,14 @@ on Koji.
 Unit tests are run automatically for any commit in master branch. We use
 Fedora's jenkins instance for that. Details are given here: :doc:`Unit tests
 in Fedora's Jenkins <configuring_jenkins>`.
+
+Code Style
+==========
+
+We are using ``flake8`` to check the code style. Please refer to ``.flake8`` to
+find the PEP8 and extra rules we are following/ignoring.
+
+You will need to install the packages below to run the check.
+
+ * ``python-flake8``
+ * ``python-flake8-import-order``

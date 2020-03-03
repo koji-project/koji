@@ -42,11 +42,15 @@ from koji.server import ServerRedirect
 from koji.util import to_list
 from kojiweb.util import _genHTML, _getValidTokens, _initValues
 
-# Convenience definition of a commonly-used sort function
-_sortbyname = lambda x: x['name']
 
-#loggers
+# Convenience definition of a commonly-used sort function
+def _sortbyname(x):
+    return x['name']
+
+
+# loggers
 authlogger = logging.getLogger('koji.auth')
+
 
 def _setUserCookie(environ, user):
     options = environ['koji.options']
@@ -62,7 +66,7 @@ def _setUserCookie(environ, user):
     value = "%s:%s" % (shasum.hexdigest(), value)
     cookies = six.moves.http_cookies.SimpleCookie()
     cookies['user'] = value
-    c = cookies['user']  #morsel instance
+    c = cookies['user']  # morsel instance
     c['secure'] = True
     c['path'] = os.path.dirname(environ['SCRIPT_NAME'])
     # the Cookie module treats integer expire times as relative seconds
@@ -72,14 +76,16 @@ def _setUserCookie(environ, user):
     environ['koji.headers'].append(['Set-Cookie', out])
     environ['koji.headers'].append(['Cache-Control', 'no-cache="set-cookie"'])
 
+
 def _clearUserCookie(environ):
     cookies = six.moves.http_cookies.SimpleCookie()
     cookies['user'] = ''
-    c = cookies['user']  #morsel instance
+    c = cookies['user']  # morsel instance
     c['path'] = os.path.dirname(environ['SCRIPT_NAME'])
     c['expires'] = 0
     out = c.OutputString()
     environ['koji.headers'].append(['Set-Cookie', out])
+
 
 def _getUserCookie(environ):
     options = environ['koji.options']
@@ -118,6 +124,7 @@ def _getUserCookie(environ):
     # Otherwise, cookie is valid and current
     return user
 
+
 def _krbLogin(environ, session, principal):
     options = environ['koji.options']
     wprinc = options['WebPrincipal']
@@ -126,6 +133,7 @@ def _krbLogin(environ, session, principal):
     return session.krb_login(principal=wprinc, keytab=keytab,
                              ccache=ccache, proxyuser=principal)
 
+
 def _sslLogin(environ, session, username):
     options = environ['koji.options']
     client_cert = options['WebCert']
@@ -133,6 +141,7 @@ def _sslLogin(environ, session, username):
 
     return session.ssl_login(client_cert, None, server_ca,
                              proxyuser=username)
+
 
 def _assertLogin(environ):
     session = environ['koji.session']
@@ -145,9 +154,12 @@ def _assertLogin(environ):
                 raise koji.AuthError('could not login %s via SSL' % environ['koji.currentLogin'])
         elif options['WebPrincipal']:
             if not _krbLogin(environ, environ['koji.session'], environ['koji.currentLogin']):
-                raise koji.AuthError('could not login using principal: %s' % environ['koji.currentLogin'])
+                raise koji.AuthError(
+                    'could not login using principal: %s' % environ['koji.currentLogin'])
         else:
-            raise koji.AuthError('KojiWeb is incorrectly configured for authentication, contact the system administrator')
+            raise koji.AuthError(
+                'KojiWeb is incorrectly configured for authentication, '
+                'contact the system administrator')
 
         # verify a valid authToken was passed in to avoid CSRF
         authToken = environ['koji.form'].getfirst('a', '')
@@ -159,11 +171,13 @@ def _assertLogin(environ):
             # their authToken is likely expired
             # send them back to the page that brought them here so they
             # can re-click the link with a valid authToken
-            _redirectBack(environ, page=None, forceSSL=(_getBaseURL(environ).startswith('https://')))
+            _redirectBack(environ, page=None,
+                          forceSSL=(_getBaseURL(environ).startswith('https://')))
             assert False  # pragma: no cover
     else:
         _redirect(environ, 'login')
         assert False  # pragma: no cover
+
 
 def _getServer(environ):
     opts = environ['koji.options']
@@ -178,7 +192,8 @@ def _getServer(environ):
     if environ['koji.currentLogin']:
         environ['koji.currentUser'] = session.getUser(environ['koji.currentLogin'])
         if not environ['koji.currentUser']:
-            raise koji.AuthError('could not get user for principal: %s' % environ['koji.currentLogin'])
+            raise koji.AuthError(
+                'could not get user for principal: %s' % environ['koji.currentLogin'])
         _setUserCookie(environ, environ['koji.currentLogin'])
     else:
         environ['koji.currentUser'] = None
@@ -186,22 +201,26 @@ def _getServer(environ):
     environ['koji.session'] = session
     return session
 
+
 def _construct_url(environ, page):
     port = environ['SERVER_PORT']
     host = environ['SERVER_NAME']
     url_scheme = environ['wsgi.url_scheme']
     if (url_scheme == 'https' and port == '443') or \
-        (url_scheme == 'http' and port == '80'):
+            (url_scheme == 'http' and port == '80'):
         return "%s://%s%s" % (url_scheme, host, page)
     return "%s://%s:%s%s" % (url_scheme, host, port, page)
+
 
 def _getBaseURL(environ):
     base = environ['SCRIPT_NAME']
     return _construct_url(environ, base)
 
+
 def _redirect(environ, location):
     environ['koji.redirect'] = location
     raise ServerRedirect
+
 
 def _redirectBack(environ, page, forceSSL):
     if page:
@@ -226,6 +245,7 @@ def _redirectBack(environ, page, forceSSL):
 
     # and redirect to the page
     _redirect(environ, page)
+
 
 def login(environ, page=None):
     session = _getServer(environ)
@@ -256,7 +276,9 @@ def login(environ, page=None):
     elif options['WebPrincipal']:
         principal = environ.get('REMOTE_USER')
         if not principal:
-            raise koji.AuthError('configuration error: mod_auth_gssapi should have performed authentication before presenting this page')
+            raise koji.AuthError(
+                'configuration error: mod_auth_gssapi should have performed authentication before '
+                'presenting this page')
 
         if not _krbLogin(environ, session, principal):
             raise koji.AuthError('could not login using principal: %s' % principal)
@@ -264,11 +286,14 @@ def login(environ, page=None):
         username = principal
         authlogger.info('Successful Kerberos authentication by %s', username)
     else:
-        raise koji.AuthError('KojiWeb is incorrectly configured for authentication, contact the system administrator')
+        raise koji.AuthError(
+            'KojiWeb is incorrectly configured for authentication, contact the system '
+            'administrator')
 
     _setUserCookie(environ, username)
     # To protect the session cookie, we must forceSSL
     _redirectBack(environ, page, forceSSL=True)
+
 
 def logout(environ, page=None):
     user = _getUserCookie(environ)
@@ -277,6 +302,7 @@ def logout(environ, page=None):
         authlogger.info('Logout by %s', user)
 
     _redirectBack(environ, page, forceSSL=False)
+
 
 def index(environ, packageOrder='package_name', packageStart=None):
     values = _initValues(environ)
@@ -305,8 +331,10 @@ def index(environ, packageOrder='package_name', packageStart=None):
     values['order'] = '-id'
 
     if user:
-        kojiweb.util.paginateResults(server, values, 'listPackages', kw={'userID': user['id'], 'with_dups': True},
-                                     start=packageStart, dataName='packages', prefix='package', order=packageOrder, pageSize=10)
+        kojiweb.util.paginateResults(server, values, 'listPackages',
+                                     kw={'userID': user['id'], 'with_dups': True},
+                                     start=packageStart, dataName='packages', prefix='package',
+                                     order=packageOrder, pageSize=10)
 
         notifs = server.getBuildNotifications(user['id'])
         notifs.sort(key=lambda x: x['id'])
@@ -326,13 +354,14 @@ def index(environ, packageOrder='package_name', packageStart=None):
 
     return _genHTML(environ, 'index.chtml')
 
+
 def notificationedit(environ, notificationID):
     server = _getServer(environ)
     _assertLogin(environ)
 
     notificationID = int(notificationID)
     notification = server.getBuildNotification(notificationID)
-    if notification == None:
+    if notification is None:
         raise koji.GenericError('no notification with ID: %i' % notificationID)
 
     form = environ['koji.form']
@@ -370,6 +399,7 @@ def notificationedit(environ, notificationID):
         values['tags'] = tags
 
         return _genHTML(environ, 'notificationedit.chtml')
+
 
 def notificationcreate(environ):
     server = _getServer(environ)
@@ -415,6 +445,7 @@ def notificationcreate(environ):
 
         return _genHTML(environ, 'notificationedit.chtml')
 
+
 def notificationdelete(environ, notificationID):
     server = _getServer(environ)
     _assertLogin(environ)
@@ -427,6 +458,7 @@ def notificationdelete(environ, notificationID):
     server.deleteNotification(notification['id'])
 
     _redirect(environ, 'index')
+
 
 # All Tasks
 _TASKS = ['build',
@@ -459,11 +491,16 @@ _TASKS = ['build',
           'livemedia',
           'createLiveMedia']
 # Tasks that can exist without a parent
-_TOPLEVEL_TASKS = ['build', 'buildNotification', 'chainbuild', 'maven', 'chainmaven', 'wrapperRPM', 'winbuild', 'newRepo', 'distRepo', 'tagBuild', 'tagNotification', 'waitrepo', 'livecd', 'appliance', 'image', 'livemedia']
+_TOPLEVEL_TASKS = ['build', 'buildNotification', 'chainbuild', 'maven', 'chainmaven', 'wrapperRPM',
+                   'winbuild', 'newRepo', 'distRepo', 'tagBuild', 'tagNotification', 'waitrepo',
+                   'livecd', 'appliance', 'image', 'livemedia']
 # Tasks that can have children
-_PARENT_TASKS = ['build', 'chainbuild', 'maven', 'chainmaven', 'winbuild', 'newRepo', 'distRepo', 'wrapperRPM', 'livecd', 'appliance', 'image', 'livemedia']
+_PARENT_TASKS = ['build', 'chainbuild', 'maven', 'chainmaven', 'winbuild', 'newRepo', 'distRepo',
+                 'wrapperRPM', 'livecd', 'appliance', 'image', 'livemedia']
 
-def tasks(environ, owner=None, state='active', view='tree', method='all', hostID=None, channelID=None, start=None, order='-id'):
+
+def tasks(environ, owner=None, state='active', view='tree', method='all', hostID=None,
+          channelID=None, start=None, order='-id'):
     values = _initValues(environ, 'Tasks', 'tasks')
     server = _getServer(environ)
 
@@ -517,7 +554,9 @@ def tasks(environ, owner=None, state='active', view='tree', method='all', hostID
         opts['parent'] = None
 
     if state == 'active':
-        opts['state'] = [koji.TASK_STATES['FREE'], koji.TASK_STATES['OPEN'], koji.TASK_STATES['ASSIGNED']]
+        opts['state'] = [koji.TASK_STATES['FREE'],
+                         koji.TASK_STATES['OPEN'],
+                         koji.TASK_STATES['ASSIGNED']]
     elif state == 'all':
         pass
     else:
@@ -565,6 +604,7 @@ def tasks(environ, owner=None, state='active', view='tree', method='all', hostID
             task['descendents'] = descendents
 
     return _genHTML(environ, 'tasks.chtml')
+
 
 def taskinfo(environ, taskID):
     server = _getServer(environ)
@@ -615,7 +655,7 @@ def taskinfo(environ, taskID):
     values['estCompletion'] = None
     if taskBuild and taskBuild['state'] == koji.BUILD_STATES['BUILDING']:
         avgDuration = server.getAverageBuildDuration(taskBuild['package_id'])
-        if avgDuration != None:
+        if avgDuration is not None:
             avgDelta = datetime.timedelta(seconds=avgDuration)
             startTime = datetime.datetime.fromtimestamp(taskBuild['creation_ts'])
             values['estCompletion'] = startTime + avgDelta
@@ -674,7 +714,7 @@ def taskinfo(environ, taskID):
     if task['state'] in (koji.TASK_STATES['CLOSED'], koji.TASK_STATES['FAILED']):
         try:
             result = server.getTaskResult(task['id'])
-        except:
+        except Exception:
             excClass, exc = sys.exc_info()[:2]
             values['result'] = exc
             values['excClass'] = excClass
@@ -683,7 +723,7 @@ def taskinfo(environ, taskID):
             values['excClass'] = None
             if task['method'] == 'buildContainer' and 'koji_builds' in result:
                 values['taskBuilds'] = [
-                        server.getBuild(int(buildID)) for buildID in result['koji_builds']]
+                    server.getBuild(int(buildID)) for buildID in result['koji_builds']]
     else:
         values['result'] = None
         values['excClass'] = None
@@ -697,7 +737,7 @@ def taskinfo(environ, taskID):
     pathinfo = koji.PathInfo(topdir=topurl)
     values['pathinfo'] = pathinfo
 
-    paths = [] # (volume, relpath) tuples
+    paths = []  # (volume, relpath) tuples
     for relname, volumes in six.iteritems(server.listTaskOutput(task['id'], all_volumes=True)):
         paths += [(volume, relname) for volume in volumes]
     values['output'] = sorted(paths, key=_sortByExtAndName)
@@ -708,9 +748,10 @@ def taskinfo(environ, taskID):
 
     try:
         values['params_parsed'] = _genHTML(environ, 'taskinfo_params.chtml')
-    except:
+    except Exception:
         values['params_parsed'] = None
     return _genHTML(environ, 'taskinfo.chtml')
+
 
 def taskstatus(environ, taskID):
     server = _getServer(environ)
@@ -726,6 +767,7 @@ def taskstatus(environ, taskID):
             output += '%s:%s:%s\n' % (volume, filename, file_stats['st_size'])
     return output
 
+
 def resubmittask(environ, taskID):
     server = _getServer(environ)
     _assertLogin(environ)
@@ -733,6 +775,7 @@ def resubmittask(environ, taskID):
     taskID = int(taskID)
     newTaskID = server.resubmitTask(taskID)
     _redirect(environ, 'taskinfo?taskID=%i' % newTaskID)
+
 
 def canceltask(environ, taskID):
     server = _getServer(environ)
@@ -742,10 +785,12 @@ def canceltask(environ, taskID):
     server.cancelTask(taskID)
     _redirect(environ, 'taskinfo?taskID=%i' % taskID)
 
+
 def _sortByExtAndName(item):
     """Sort filename tuples key function, first by extension, and then by name."""
     kRoot, kExt = os.path.splitext(os.path.basename(item[1]))
     return (kExt, kRoot)
+
 
 def getfile(environ, taskID, name, volume='DEFAULT', offset=None, size=None):
     server = _getServer(environ)
@@ -790,7 +835,7 @@ def getfile(environ, taskID, name, volume='DEFAULT', offset=None, size=None):
         if size > (file_size - offset):
             size = file_size - offset
 
-    #environ['koji.headers'].append(['Content-Length', str(size)])
+    # environ['koji.headers'].append(['Content-Length', str(size)])
     return _chunk_file(server, environ, taskID, name, offset, size, volume)
 
 
@@ -802,7 +847,8 @@ def _chunk_file(server, environ, taskID, name, offset, size, volume):
         chunk_size = 1048576
         if remaining < chunk_size:
             chunk_size = remaining
-        content = server.downloadTaskOutput(taskID, name, offset=offset, size=chunk_size, volume=volume)
+        content = server.downloadTaskOutput(taskID, name,
+                                            offset=offset, size=chunk_size, volume=volume)
         if not content:
             break
         yield content
@@ -810,16 +856,17 @@ def _chunk_file(server, environ, taskID, name, offset, size, volume):
         offset += content_length
         remaining -= content_length
 
+
 def tags(environ, start=None, order=None, childID=None):
     values = _initValues(environ, 'Tags', 'tags')
     server = _getServer(environ)
 
-    if order == None:
+    if order is None:
         order = 'name'
     values['order'] = order
 
     kojiweb.util.paginateMethod(server, values, 'listTags', kw=None,
-                                 start=start, dataName='tags', prefix='tag', order=order)
+                                start=start, dataName='tags', prefix='tag', order=order)
 
     if environ['koji.currentUser']:
         values['perms'] = server.getUserPerms(environ['koji.currentUser']['id'])
@@ -830,20 +877,23 @@ def tags(environ, start=None, order=None, childID=None):
 
     return _genHTML(environ, 'tags.chtml')
 
+
 _PREFIX_CHARS = [chr(char) for char in list(range(48, 58)) + list(range(97, 123))]
 
-def packages(environ, tagID=None, userID=None, order='package_name', start=None, prefix=None, inherited='1'):
+
+def packages(environ, tagID=None, userID=None, order='package_name', start=None, prefix=None,
+             inherited='1'):
     values = _initValues(environ, 'Packages', 'packages')
     server = _getServer(environ)
     tag = None
-    if tagID != None:
+    if tagID is not None:
         if tagID.isdigit():
             tagID = int(tagID)
         tag = server.getTag(tagID, strict=True)
     values['tagID'] = tagID
     values['tag'] = tag
     user = None
-    if userID != None:
+    if userID is not None:
         if userID.isdigit():
             userID = int(userID)
         user = server.getUser(userID, strict=True)
@@ -859,21 +909,26 @@ def packages(environ, tagID=None, userID=None, order='package_name', start=None,
     values['inherited'] = inherited
 
     kojiweb.util.paginateMethod(server, values, 'listPackages',
-                                    kw={'tagID': tagID, 'userID': userID, 'prefix': prefix, 'inherited': bool(inherited)},
-                                    start=start, dataName='packages', prefix='package', order=order)
+                                kw={'tagID': tagID,
+                                    'userID': userID,
+                                    'prefix': prefix,
+                                    'inherited': bool(inherited)},
+                                start=start, dataName='packages', prefix='package', order=order)
 
     values['chars'] = _PREFIX_CHARS
 
     return _genHTML(environ, 'packages.chtml')
 
-def packageinfo(environ, packageID, tagOrder='name', tagStart=None, buildOrder='-completion_time', buildStart=None):
+
+def packageinfo(environ, packageID, tagOrder='name', tagStart=None, buildOrder='-completion_time',
+                buildStart=None):
     values = _initValues(environ, 'Package Info', 'packages')
     server = _getServer(environ)
 
     if packageID.isdigit():
         packageID = int(packageID)
     package = server.getPackage(packageID)
-    if package == None:
+    if package is None:
         raise koji.GenericError('invalid package ID: %s' % packageID)
 
     values['title'] = package['name'] + ' | Package Info'
@@ -884,11 +939,14 @@ def packageinfo(environ, packageID, tagOrder='name', tagStart=None, buildOrder='
     kojiweb.util.paginateMethod(server, values, 'listTags', kw={'package': package['id']},
                                 start=tagStart, dataName='tags', prefix='tag', order=tagOrder)
     kojiweb.util.paginateMethod(server, values, 'listBuilds', kw={'packageID': package['id']},
-                                start=buildStart, dataName='builds', prefix='build', order=buildOrder)
+                                start=buildStart, dataName='builds', prefix='build',
+                                order=buildOrder)
 
     return _genHTML(environ, 'packageinfo.chtml')
 
-def taginfo(environ, tagID, all='0', packageOrder='package_name', packageStart=None, buildOrder='-completion_time', buildStart=None, childID=None):
+
+def taginfo(environ, tagID, all='0', packageOrder='package_name', packageStart=None,
+            buildOrder='-completion_time', buildStart=None, childID=None):
     values = _initValues(environ, 'Tag Info', 'tags')
     server = _getServer(environ)
 
@@ -929,7 +987,7 @@ def taginfo(environ, tagID, all='0', packageOrder='package_name', packageStart=N
     values['external_repos'] = server.getExternalRepoList(tag['id'])
 
     child = None
-    if childID != None:
+    if childID is not None:
         child = server.getTag(int(childID), strict=True)
     values['child'] = child
 
@@ -942,6 +1000,7 @@ def taginfo(environ, tagID, all='0', packageOrder='package_name', packageStart=N
     values['allPerms'] = allPerms
 
     return _genHTML(environ, 'taginfo.chtml')
+
 
 def tagcreate(environ):
     server = _getServer(environ)
@@ -978,6 +1037,7 @@ def tagcreate(environ):
 
         return _genHTML(environ, 'tagedit.chtml')
 
+
 def tagedit(environ, tagID):
     server = _getServer(environ)
     _assertLogin(environ)
@@ -986,7 +1046,7 @@ def tagedit(environ, tagID):
 
     tagID = int(tagID)
     tag = server.getTag(tagID)
-    if tag == None:
+    if tag is None:
         raise koji.GenericError('no tag with ID: %i' % tagID)
 
     form = environ['koji.form']
@@ -1020,18 +1080,20 @@ def tagedit(environ, tagID):
 
         return _genHTML(environ, 'tagedit.chtml')
 
+
 def tagdelete(environ, tagID):
     server = _getServer(environ)
     _assertLogin(environ)
 
     tagID = int(tagID)
     tag = server.getTag(tagID)
-    if tag == None:
+    if tag is None:
         raise koji.GenericError('no tag with ID: %i' % tagID)
 
     server.deleteTag(tag['id'])
 
     _redirect(environ, 'tags')
+
 
 def tagparent(environ, tagID, parentID, action):
     server = _getServer(environ)
@@ -1071,14 +1133,16 @@ def tagparent(environ, tagID, parentID, action):
                 if datum['priority'] > maxPriority:
                     maxPriority = datum['priority']
             values['maxPriority'] = maxPriority
-            inheritanceData = [datum for datum in  inheritanceData \
+            inheritanceData = [datum for datum in inheritanceData
                                if datum['parent_id'] == parent['id']]
             if len(inheritanceData) == 0:
                 values['inheritanceData'] = None
             elif len(inheritanceData) == 1:
                 values['inheritanceData'] = inheritanceData[0]
             else:
-                raise koji.GenericError('tag %i has tag %i listed as a parent more than once' % (tag['id'], parent['id']))
+                raise koji.GenericError(
+                    'tag %i has tag %i listed as a parent more than once' %
+                    (tag['id'], parent['id']))
 
             return _genHTML(environ, 'tagparent.chtml')
     elif action == 'remove':
@@ -1096,6 +1160,7 @@ def tagparent(environ, tagID, parentID, action):
 
     _redirect(environ, 'taginfo?tagID=%i' % tag['id'])
 
+
 def externalrepoinfo(environ, extrepoID):
     values = _initValues(environ, 'External Repo Info', 'tags')
     server = _getServer(environ)
@@ -1110,6 +1175,7 @@ def externalrepoinfo(environ, extrepoID):
     values['repoTags'] = repoTags
 
     return _genHTML(environ, 'externalrepoinfo.chtml')
+
 
 def buildinfo(environ, buildID):
     values = _initValues(environ, 'Build Info', 'builds')
@@ -1135,7 +1201,8 @@ def buildinfo(environ, buildID):
         for archive in archives:
             if btype == 'maven':
                 archive['display'] = archive['filename']
-                archive['dl_url'] = '/'.join([pathinfo.mavenbuild(build), pathinfo.mavenfile(archive)])
+                archive['dl_url'] = '/'.join([pathinfo.mavenbuild(build),
+                                              pathinfo.mavenfile(archive)])
             elif btype == 'win':
                 archive['display'] = pathinfo.winfile(archive)
                 archive['dl_url'] = '/'.join([pathinfo.winbuild(build), pathinfo.winfile(archive)])
@@ -1171,7 +1238,8 @@ def buildinfo(environ, buildID):
         # get the summary, description, and changelogs from the built srpm
         # if the build is not yet complete
         if build['state'] != koji.BUILD_STATES['COMPLETE']:
-            srpm_tasks = server.listTasks(opts={'parent': task['id'], 'method': 'buildSRPMFromSCM'})
+            srpm_tasks = server.listTasks(opts={'parent': task['id'],
+                                                'method': 'buildSRPMFromSCM'})
             if srpm_tasks:
                 srpm_task = srpm_tasks[0]
                 if srpm_task['state'] == koji.TASK_STATES['CLOSED']:
@@ -1181,12 +1249,14 @@ def buildinfo(environ, buildID):
                             srpm_path = output
                             break
                     if srpm_path:
-                        srpm_headers = server.getRPMHeaders(taskID=srpm_task['id'], filepath=srpm_path,
+                        srpm_headers = server.getRPMHeaders(taskID=srpm_task['id'],
+                                                            filepath=srpm_path,
                                                             headers=['summary', 'description'])
                         if srpm_headers:
                             values['summary'] = koji.fixEncoding(srpm_headers['summary'])
                             values['description'] = koji.fixEncoding(srpm_headers['description'])
-                        changelog = server.getChangelogEntries(taskID=srpm_task['id'], filepath=srpm_path)
+                        changelog = server.getChangelogEntries(taskID=srpm_task['id'],
+                                                               filepath=srpm_path)
                         if changelog:
                             values['changelog'] = changelog
     else:
@@ -1226,7 +1296,7 @@ def buildinfo(environ, buildID):
             values['start_time'] = task['start_time']
     if build['state'] == koji.BUILD_STATES['BUILDING']:
         avgDuration = server.getAverageBuildDuration(build['package_id'])
-        if avgDuration != None:
+        if avgDuration is not None:
             avgDelta = datetime.timedelta(seconds=avgDuration)
             startTime = datetime.datetime.fromtimestamp(build['creation_ts'])
             values['estCompletion'] = startTime + avgDelta
@@ -1236,7 +1306,9 @@ def buildinfo(environ, buildID):
     values['pathinfo'] = pathinfo
     return _genHTML(environ, 'buildinfo.chtml')
 
-def builds(environ, userID=None, tagID=None, packageID=None, state=None, order='-build_id', start=None, prefix=None, inherited='1', latest='1', type=None):
+
+def builds(environ, userID=None, tagID=None, packageID=None, state=None, order='-build_id',
+           start=None, prefix=None, inherited='1', latest='1', type=None):
     values = _initValues(environ, 'Builds', 'builds')
     server = _getServer(environ)
 
@@ -1271,7 +1343,7 @@ def builds(environ, userID=None, tagID=None, packageID=None, state=None, order='
 
     if state == 'all':
         state = None
-    elif state != None:
+    elif state is not None:
         state = int(state)
     values['state'] = state
 
@@ -1304,20 +1376,26 @@ def builds(environ, userID=None, tagID=None, packageID=None, state=None, order='
 
     if tag:
         # don't need to consider 'state' here, since only completed builds would be tagged
-        kojiweb.util.paginateResults(server, values, 'listTagged', kw={'tag': tag['id'], 'package': (package and package['name'] or None),
-                                                                       'owner': (user and user['name'] or None),
-                                                                       'type': type,
-                                                                       'inherit': bool(inherited), 'latest': bool(latest), 'prefix': prefix},
+        kojiweb.util.paginateResults(server, values, 'listTagged',
+                                     kw={'tag': tag['id'],
+                                         'package': (package and package['name'] or None),
+                                         'owner': (user and user['name'] or None),
+                                         'type': type,
+                                         'inherit': bool(inherited), 'latest': bool(latest),
+                                         'prefix': prefix},
                                      start=start, dataName='builds', prefix='build', order=order)
     else:
-        kojiweb.util.paginateMethod(server, values, 'listBuilds', kw={'userID': (user and user['id'] or None), 'packageID': (package and package['id'] or None),
-                                                                      'type': type,
-                                                                      'state': state, 'prefix': prefix},
+        kojiweb.util.paginateMethod(server, values, 'listBuilds',
+                                    kw={'userID': (user and user['id'] or None),
+                                        'packageID': (package and package['id'] or None),
+                                        'type': type,
+                                        'state': state, 'prefix': prefix},
                                     start=start, dataName='builds', prefix='build', order=order)
 
     values['chars'] = _PREFIX_CHARS
 
     return _genHTML(environ, 'builds.chtml')
+
 
 def users(environ, order='name', start=None, prefix=None):
     values = _initValues(environ, 'Users', 'users')
@@ -1338,7 +1416,9 @@ def users(environ, order='name', start=None, prefix=None):
 
     return _genHTML(environ, 'users.chtml')
 
-def userinfo(environ, userID, packageOrder='package_name', packageStart=None, buildOrder='-completion_time', buildStart=None):
+
+def userinfo(environ, userID, packageOrder='package_name', packageStart=None,
+             buildOrder='-completion_time', buildStart=None):
     values = _initValues(environ, 'User Info', 'users')
     server = _getServer(environ)
 
@@ -1350,17 +1430,23 @@ def userinfo(environ, userID, packageOrder='package_name', packageStart=None, bu
 
     values['user'] = user
     values['userID'] = userID
-    values['taskCount'] = server.listTasks(opts={'owner': user['id'], 'parent': None}, queryOpts={'countOnly': True})
+    values['taskCount'] = server.listTasks(opts={'owner': user['id'], 'parent': None},
+                                           queryOpts={'countOnly': True})
 
-    kojiweb.util.paginateResults(server, values, 'listPackages', kw={'userID': user['id'], 'with_dups': True},
-                                 start=packageStart, dataName='packages', prefix='package', order=packageOrder, pageSize=10)
+    kojiweb.util.paginateResults(server, values, 'listPackages',
+                                 kw={'userID': user['id'], 'with_dups': True},
+                                 start=packageStart, dataName='packages', prefix='package',
+                                 order=packageOrder, pageSize=10)
 
     kojiweb.util.paginateMethod(server, values, 'listBuilds', kw={'userID': user['id']},
-                                start=buildStart, dataName='builds', prefix='build', order=buildOrder, pageSize=10)
+                                start=buildStart, dataName='builds', prefix='build',
+                                order=buildOrder, pageSize=10)
 
     return _genHTML(environ, 'userinfo.chtml')
 
-def rpminfo(environ, rpmID, fileOrder='name', fileStart=None, buildrootOrder='-id', buildrootStart=None):
+
+def rpminfo(environ, rpmID, fileOrder='name', fileStart=None, buildrootOrder='-id',
+            buildrootStart=None):
     values = _initValues(environ, 'RPM Info', 'builds')
     server = _getServer(environ)
 
@@ -1369,15 +1455,15 @@ def rpminfo(environ, rpmID, fileOrder='name', fileStart=None, buildrootOrder='-i
 
     values['title'] = '%(name)s-%%s%(version)s-%(release)s.%(arch)s.rpm' % rpm + ' | RPM Info'
     epochStr = ''
-    if rpm['epoch'] != None:
+    if rpm['epoch'] is not None:
         epochStr = '%s:' % rpm['epoch']
     values['title'] = values['title'] % epochStr
 
     build = None
-    if rpm['build_id'] != None:
+    if rpm['build_id'] is not None:
         build = server.getBuild(rpm['build_id'])
     builtInRoot = None
-    if rpm['buildroot_id'] != None:
+    if rpm['buildroot_id'] is not None:
         builtInRoot = server.getBuildroot(rpm['buildroot_id'])
     if rpm['external_repo_id'] == 0:
         dep_names = {
@@ -1398,8 +1484,11 @@ def rpminfo(environ, rpmID, fileOrder='name', fileStart=None, buildrootOrder='-i
         values['summary'] = koji.fixEncoding(headers.get('summary'))
         values['description'] = koji.fixEncoding(headers.get('description'))
         values['license'] = koji.fixEncoding(headers.get('license'))
-    buildroots = kojiweb.util.paginateMethod(server, values, 'listBuildroots', kw={'rpmID': rpm['id']},
-                                             start=buildrootStart, dataName='buildroots', prefix='buildroot',
+    buildroots = kojiweb.util.paginateMethod(server, values, 'listBuildroots',
+                                             kw={'rpmID': rpm['id']},
+                                             start=buildrootStart,
+                                             dataName='buildroots',
+                                             prefix='buildroot',
                                              order=buildrootOrder)
 
     values['rpmID'] = rpmID
@@ -1413,7 +1502,9 @@ def rpminfo(environ, rpmID, fileOrder='name', fileStart=None, buildrootOrder='-i
 
     return _genHTML(environ, 'rpminfo.chtml')
 
-def archiveinfo(environ, archiveID, fileOrder='name', fileStart=None, buildrootOrder='-id', buildrootStart=None):
+
+def archiveinfo(environ, archiveID, fileOrder='name', fileStart=None, buildrootOrder='-id',
+                buildrootStart=None):
     values = _initValues(environ, 'Archive Info', 'builds')
     server = _getServer(environ)
 
@@ -1428,12 +1519,15 @@ def archiveinfo(environ, archiveID, fileOrder='name', fileStart=None, buildrootO
     if 'relpath' in archive:
         wininfo = True
     builtInRoot = None
-    if archive['buildroot_id'] != None:
+    if archive['buildroot_id'] is not None:
         builtInRoot = server.getBuildroot(archive['buildroot_id'])
     kojiweb.util.paginateMethod(server, values, 'listArchiveFiles', args=[archive['id']],
                                 start=fileStart, dataName='files', prefix='file', order=fileOrder)
-    buildroots = kojiweb.util.paginateMethod(server, values, 'listBuildroots', kw={'archiveID': archive['id']},
-                                             start=buildrootStart, dataName='buildroots', prefix='buildroot',
+    buildroots = kojiweb.util.paginateMethod(server, values, 'listBuildroots',
+                                             kw={'archiveID': archive['id']},
+                                             start=buildrootStart,
+                                             dataName='buildroots',
+                                             prefix='buildroot',
                                              order=buildrootOrder)
 
     values['title'] = archive['filename'] + ' | Archive Info'
@@ -1446,10 +1540,12 @@ def archiveinfo(environ, archiveID, fileOrder='name', fileStart=None, buildrootO
     values['wininfo'] = wininfo
     values['builtInRoot'] = builtInRoot
     values['buildroots'] = buildroots
-    values['show_rpm_components'] = server.listRPMs(imageID=archive['id'], queryOpts={'limit':1})
-    values['show_archive_components'] = server.listArchives(imageID=archive['id'], queryOpts={'limit':1})
+    values['show_rpm_components'] = server.listRPMs(imageID=archive['id'], queryOpts={'limit': 1})
+    values['show_archive_components'] = server.listArchives(imageID=archive['id'],
+                                                            queryOpts={'limit': 1})
 
     return _genHTML(environ, 'archiveinfo.chtml')
+
 
 def fileinfo(environ, filename, rpmID=None, archiveID=None):
     values = _initValues(environ, 'File Info', 'builds')
@@ -1485,13 +1581,14 @@ def fileinfo(environ, filename, rpmID=None, archiveID=None):
 
     return _genHTML(environ, 'fileinfo.chtml')
 
+
 def cancelbuild(environ, buildID):
     server = _getServer(environ)
     _assertLogin(environ)
 
     buildID = int(buildID)
     build = server.getBuild(buildID)
-    if build == None:
+    if build is None:
         raise koji.GenericError('unknown build ID: %i' % buildID)
 
     result = server.cancelBuild(build['id'])
@@ -1499,6 +1596,7 @@ def cancelbuild(environ, buildID):
         raise koji.GenericError('unable to cancel build')
 
     _redirect(environ, 'buildinfo?buildID=%i' % build['id'])
+
 
 def hosts(environ, state='enabled', start=None, order='name'):
     values = _initValues(environ, 'Hosts', 'hosts')
@@ -1530,6 +1628,7 @@ def hosts(environ, state='enabled', start=None, order='name'):
 
     return _genHTML(environ, 'hosts.chtml')
 
+
 def hostinfo(environ, hostID=None, userID=None):
     values = _initValues(environ, 'Host Info', 'hosts')
     server = _getServer(environ)
@@ -1538,7 +1637,7 @@ def hostinfo(environ, hostID=None, userID=None):
         if hostID.isdigit():
             hostID = int(hostID)
         host = server.getHost(hostID)
-        if host == None:
+        if host is None:
             raise koji.GenericError('invalid host ID: %s' % hostID)
     elif userID:
         userID = int(userID)
@@ -1546,7 +1645,7 @@ def hostinfo(environ, hostID=None, userID=None):
         host = None
         if hosts:
             host = hosts[0]
-        if host == None:
+        if host is None:
             raise koji.GenericError('invalid host ID: %s' % userID)
     else:
         raise koji.GenericError('hostID or userID must be provided')
@@ -1556,7 +1655,8 @@ def hostinfo(environ, hostID=None, userID=None):
     channels = server.listChannels(host['id'])
     channels.sort(key=_sortbyname)
     buildroots = server.listBuildroots(hostID=host['id'],
-                                       state=[state[1] for state in koji.BR_STATES.items() if state[0] != 'EXPIRED'])
+                                       state=[state[1] for state in koji.BR_STATES.items()
+                                              if state[0] != 'EXPIRED'])
     buildroots.sort(key=lambda x: x['create_event_time'], reverse=True)
 
     values['host'] = host
@@ -1570,13 +1670,14 @@ def hostinfo(environ, hostID=None, userID=None):
 
     return _genHTML(environ, 'hostinfo.chtml')
 
+
 def hostedit(environ, hostID):
     server = _getServer(environ)
     _assertLogin(environ)
 
     hostID = int(hostID)
     host = server.getHost(hostID)
-    if host == None:
+    if host is None:
         raise koji.GenericError('no host with ID: %i' % hostID)
 
     form = environ['koji.form']
@@ -1619,6 +1720,7 @@ def hostedit(environ, hostID):
 
         return _genHTML(environ, 'hostedit.chtml')
 
+
 def disablehost(environ, hostID):
     server = _getServer(environ)
     _assertLogin(environ)
@@ -1628,6 +1730,7 @@ def disablehost(environ, hostID):
     server.disableHost(host['name'])
 
     _redirect(environ, 'hostinfo?hostID=%i' % host['id'])
+
 
 def enablehost(environ, hostID):
     server = _getServer(environ)
@@ -1639,21 +1742,22 @@ def enablehost(environ, hostID):
 
     _redirect(environ, 'hostinfo?hostID=%i' % host['id'])
 
+
 def channelinfo(environ, channelID):
     values = _initValues(environ, 'Channel Info', 'hosts')
     server = _getServer(environ)
 
     channelID = int(channelID)
     channel = server.getChannel(channelID)
-    if channel == None:
+    if channel is None:
         raise koji.GenericError('invalid channel ID: %i' % channelID)
 
     values['title'] = channel['name'] + ' | Channel Info'
 
     states = [koji.TASK_STATES[s] for s in ('FREE', 'OPEN', 'ASSIGNED')]
     values['taskCount'] = \
-            server.listTasks(opts={'channel_id': channelID, 'state': states},
-                             queryOpts={'countOnly': True})
+        server.listTasks(opts={'channel_id': channelID, 'state': states},
+                         queryOpts={'countOnly': True})
 
     hosts = server.listHosts(channelID=channelID)
     hosts.sort(key=_sortbyname)
@@ -1665,14 +1769,16 @@ def channelinfo(environ, channelID):
 
     return _genHTML(environ, 'channelinfo.chtml')
 
-def buildrootinfo(environ, buildrootID, builtStart=None, builtOrder=None, componentStart=None, componentOrder=None):
+
+def buildrootinfo(environ, buildrootID, builtStart=None, builtOrder=None, componentStart=None,
+                  componentOrder=None):
     values = _initValues(environ, 'Buildroot Info', 'hosts')
     server = _getServer(environ)
 
     buildrootID = int(buildrootID)
     buildroot = server.getBuildroot(buildrootID)
 
-    if buildroot == None:
+    if buildroot is None:
         raise koji.GenericError('unknown buildroot ID: %i' % buildrootID)
 
     elif buildroot['br_type'] == koji.BR_TYPES['STANDARD']:
@@ -1688,6 +1794,7 @@ def buildrootinfo(environ, buildrootID, builtStart=None, builtOrder=None, compon
 
     return _genHTML(environ, template)
 
+
 def rpmlist(environ, type, buildrootID=None, imageID=None, start=None, order='nvr'):
     """
     rpmlist requires a buildrootID OR an imageID to be passed in. From one
@@ -1698,11 +1805,11 @@ def rpmlist(environ, type, buildrootID=None, imageID=None, start=None, order='nv
     values = _initValues(environ, 'RPM List', 'hosts')
     server = _getServer(environ)
 
-    if buildrootID != None:
+    if buildrootID is not None:
         buildrootID = int(buildrootID)
         buildroot = server.getBuildroot(buildrootID)
         values['buildroot'] = buildroot
-        if buildroot == None:
+        if buildroot is None:
             raise koji.GenericError('unknown buildroot ID: %i' % buildrootID)
 
         if type == 'component':
@@ -1718,13 +1825,13 @@ def rpmlist(environ, type, buildrootID=None, imageID=None, start=None, order='nv
         else:
             raise koji.GenericError('unrecognized type of rpmlist')
 
-    elif imageID != None:
+    elif imageID is not None:
         imageID = int(imageID)
         values['image'] = server.getArchive(imageID)
         # If/When future image types are supported, add elifs here if needed.
         if type == 'image':
             kojiweb.util.paginateMethod(server, values, 'listRPMs',
-                                        kw={'imageID': imageID}, \
+                                        kw={'imageID': imageID},
                                         start=start, dataName='rpms',
                                         prefix='rpm', order=order)
         else:
@@ -1739,6 +1846,7 @@ def rpmlist(environ, type, buildrootID=None, imageID=None, start=None, order='nv
 
     return _genHTML(environ, 'rpmlist.chtml')
 
+
 def archivelist(environ, type, buildrootID=None, imageID=None, start=None, order='filename'):
     values = _initValues(environ, 'Archive List', 'hosts')
     server = _getServer(environ)
@@ -1748,15 +1856,19 @@ def archivelist(environ, type, buildrootID=None, imageID=None, start=None, order
         buildroot = server.getBuildroot(buildrootID)
         values['buildroot'] = buildroot
 
-        if buildroot == None:
+        if buildroot is None:
             raise koji.GenericError('unknown buildroot ID: %i' % buildrootID)
 
         if type == 'component':
-            kojiweb.util.paginateMethod(server, values, 'listArchives', kw={'componentBuildrootID': buildroot['id']},
-                                        start=start, dataName='archives', prefix='archive', order=order)
+            kojiweb.util.paginateMethod(server, values, 'listArchives',
+                                        kw={'componentBuildrootID': buildroot['id']},
+                                        start=start, dataName='archives', prefix='archive',
+                                        order=order)
         elif type == 'built':
-            kojiweb.util.paginateMethod(server, values, 'listArchives', kw={'buildrootID': buildroot['id']},
-                                    start=start, dataName='archives', prefix='archive', order=order)
+            kojiweb.util.paginateMethod(server, values, 'listArchives',
+                                        kw={'buildrootID': buildroot['id']},
+                                        start=start, dataName='archives', prefix='archive',
+                                        order=order)
         else:
             raise koji.GenericError('unrecognized type of archivelist')
     elif imageID is not None:
@@ -1765,7 +1877,8 @@ def archivelist(environ, type, buildrootID=None, imageID=None, start=None, order
         # If/When future image types are supported, add elifs here if needed.
         if type == 'image':
             kojiweb.util.paginateMethod(server, values, 'listArchives', kw={'imageID': imageID},
-                                        start=start, dataName='archives', prefix='archive', order=order)
+                                        start=start, dataName='archives', prefix='archive',
+                                        order=order)
         else:
             raise koji.GenericError('unrecognized type of archivelist')
     else:
@@ -1776,6 +1889,7 @@ def archivelist(environ, type, buildrootID=None, imageID=None, start=None, order
     values['order'] = order
 
     return _genHTML(environ, 'archivelist.chtml')
+
 
 def buildtargets(environ, start=None, order='name'):
     values = _initValues(environ, 'Build Targets', 'buildtargets')
@@ -1792,18 +1906,19 @@ def buildtargets(environ, start=None, order='name'):
 
     return _genHTML(environ, 'buildtargets.chtml')
 
+
 def buildtargetinfo(environ, targetID=None, name=None):
     values = _initValues(environ, 'Build Target Info', 'buildtargets')
     server = _getServer(environ)
 
     target = None
-    if targetID != None:
+    if targetID is not None:
         targetID = int(targetID)
         target = server.getBuildTarget(targetID)
-    elif name != None:
+    elif name is not None:
         target = server.getBuildTarget(name)
 
-    if target == None:
+    if target is None:
         raise koji.GenericError('invalid build target: %s' % (targetID or name))
 
     values['title'] = target['name'] + ' | Build Target Info'
@@ -1821,6 +1936,7 @@ def buildtargetinfo(environ, targetID=None, name=None):
 
     return _genHTML(environ, 'buildtargetinfo.chtml')
 
+
 def buildtargetedit(environ, targetID):
     server = _getServer(environ)
     _assertLogin(environ)
@@ -1828,7 +1944,7 @@ def buildtargetedit(environ, targetID):
     targetID = int(targetID)
 
     target = server.getBuildTarget(targetID)
-    if target == None:
+    if target is None:
         raise koji.GenericError('invalid build target: %s' % targetID)
 
     form = environ['koji.form']
@@ -1837,12 +1953,12 @@ def buildtargetedit(environ, targetID):
         name = form.getfirst('name')
         buildTagID = int(form.getfirst('buildTag'))
         buildTag = server.getTag(buildTagID)
-        if buildTag == None:
+        if buildTag is None:
             raise koji.GenericError('invalid tag ID: %i' % buildTagID)
 
         destTagID = int(form.getfirst('destTag'))
         destTag = server.getTag(destTagID)
-        if destTag == None:
+        if destTag is None:
             raise koji.GenericError('invalid tag ID: %i' % destTagID)
 
         server.editBuildTarget(target['id'], name, buildTag['id'], destTag['id'])
@@ -1859,6 +1975,7 @@ def buildtargetedit(environ, targetID):
         values['tags'] = tags
 
         return _genHTML(environ, 'buildtargetedit.chtml')
+
 
 def buildtargetcreate(environ):
     server = _getServer(environ)
@@ -1877,7 +1994,7 @@ def buildtargetcreate(environ):
         server.createBuildTarget(name, buildTagID, destTagID)
         target = server.getBuildTarget(name)
 
-        if target == None:
+        if target is None:
             raise koji.GenericError('error creating build target "%s"' % name)
 
         _redirect(environ, 'buildtargetinfo?targetID=%i' % target['id'])
@@ -1894,6 +2011,7 @@ def buildtargetcreate(environ):
 
         return _genHTML(environ, 'buildtargetedit.chtml')
 
+
 def buildtargetdelete(environ, targetID):
     server = _getServer(environ)
     _assertLogin(environ)
@@ -1901,17 +2019,19 @@ def buildtargetdelete(environ, targetID):
     targetID = int(targetID)
 
     target = server.getBuildTarget(targetID)
-    if target == None:
+    if target is None:
         raise koji.GenericError('invalid build target: %i' % targetID)
 
     server.deleteBuildTarget(target['id'])
 
     _redirect(environ, 'buildtargets')
 
+
 def reports(environ):
     _getServer(environ)
     _initValues(environ, 'Reports', 'reports')
     return _genHTML(environ, 'reports.chtml')
+
 
 def buildsbyuser(environ, start=None, order='-builds'):
     values = _initValues(environ, 'Builds by User', 'reports')
@@ -1939,6 +2059,7 @@ def buildsbyuser(environ, start=None, order='-builds'):
     kojiweb.util.paginateList(values, users, start, 'userBuilds', 'userBuild', order)
 
     return _genHTML(environ, 'buildsbyuser.chtml')
+
 
 def rpmsbyhost(environ, start=None, order=None, hostArch=None, rpmArch=None):
     values = _initValues(environ, 'RPMs by Host', 'reports')
@@ -1969,7 +2090,7 @@ def rpmsbyhost(environ, start=None, order=None, hostArch=None, rpmArch=None):
     values['rpmArch'] = rpmArch
     values['rpmArchList'] = hostArchList + ['noarch', 'src']
 
-    if order == None:
+    if order is None:
         order = '-rpms'
     values['order'] = order
 
@@ -1980,6 +2101,7 @@ def rpmsbyhost(environ, start=None, order=None, hostArch=None, rpmArch=None):
     kojiweb.util.paginateList(values, hosts, start, 'hosts', 'host', order)
 
     return _genHTML(environ, 'rpmsbyhost.chtml')
+
 
 def packagesbyuser(environ, start=None, order=None):
     values = _initValues(environ, 'Packages by User', 'reports')
@@ -1998,7 +2120,7 @@ def packagesbyuser(environ, start=None, order=None):
         if numPackages > maxPackages:
             maxPackages = numPackages
 
-    if order == None:
+    if order is None:
         order = '-packages'
     values['order'] = order
 
@@ -2009,6 +2131,7 @@ def packagesbyuser(environ, start=None, order=None):
     kojiweb.util.paginateList(values, users, start, 'users', 'user', order)
 
     return _genHTML(environ, 'packagesbyuser.chtml')
+
 
 def tasksbyhost(environ, start=None, order='-tasks', hostArch=None):
     values = _initValues(environ, 'Tasks by Host', 'reports')
@@ -2046,6 +2169,7 @@ def tasksbyhost(environ, start=None, order='-tasks', hostArch=None):
 
     return _genHTML(environ, 'tasksbyhost.chtml')
 
+
 def tasksbyuser(environ, start=None, order='-tasks'):
     values = _initValues(environ, 'Tasks by User', 'reports')
     server = _getServer(environ)
@@ -2074,6 +2198,7 @@ def tasksbyuser(environ, start=None, order='-tasks'):
 
     return _genHTML(environ, 'tasksbyuser.chtml')
 
+
 def buildsbystatus(environ, days='7'):
     values = _initValues(environ, 'Builds by Status', 'reports')
     server = _getServer(environ)
@@ -2088,9 +2213,12 @@ def buildsbystatus(environ, days='7'):
 
     server.multicall = True
     # use taskID=-1 to filter out builds with a null task_id (imported rather than built in koji)
-    server.listBuilds(completeAfter=dateAfter, state=koji.BUILD_STATES['COMPLETE'], taskID=-1, queryOpts={'countOnly': True})
-    server.listBuilds(completeAfter=dateAfter, state=koji.BUILD_STATES['FAILED'], taskID=-1, queryOpts={'countOnly': True})
-    server.listBuilds(completeAfter=dateAfter, state=koji.BUILD_STATES['CANCELED'], taskID=-1, queryOpts={'countOnly': True})
+    server.listBuilds(completeAfter=dateAfter, state=koji.BUILD_STATES['COMPLETE'], taskID=-1,
+                      queryOpts={'countOnly': True})
+    server.listBuilds(completeAfter=dateAfter, state=koji.BUILD_STATES['FAILED'], taskID=-1,
+                      queryOpts={'countOnly': True})
+    server.listBuilds(completeAfter=dateAfter, state=koji.BUILD_STATES['CANCELED'], taskID=-1,
+                      queryOpts={'countOnly': True})
     [[numSucceeded], [numFailed], [numCanceled]] = server.multiCall()
 
     values['numSucceeded'] = numSucceeded
@@ -2108,6 +2236,7 @@ def buildsbystatus(environ, days='7'):
     values['increment'] = graphWidth / maxBuilds
 
     return _genHTML(environ, 'buildsbystatus.chtml')
+
 
 def buildsbytarget(environ, days='7', start=None, order='-builds'):
     values = _initValues(environ, 'Builds by Target', 'reports')
@@ -2148,11 +2277,13 @@ def buildsbytarget(environ, days='7', start=None, order='-builds'):
 
     return _genHTML(environ, 'buildsbytarget.chtml')
 
+
 def _filter_hosts_by_arch(hosts, arch):
     if arch == '__all__':
         return hosts
     else:
         return [h for h in hosts if arch in h['arches'].split()]
+
 
 def clusterhealth(environ, arch='__all__'):
     values = _initValues(environ, 'Cluster health', 'reports')
@@ -2204,18 +2335,19 @@ def clusterhealth(environ, arch='__all__'):
     values['channels'] = sorted(channels, key=lambda x: x['name'])
     return _genHTML(environ, 'clusterhealth.chtml')
 
+
 def recentbuilds(environ, user=None, tag=None, package=None):
     values = _initValues(environ, 'Recent Build RSS')
     server = _getServer(environ)
 
     tagObj = None
-    if tag != None:
+    if tag is not None:
         if tag.isdigit():
             tag = int(tag)
         tagObj = server.getTag(tag)
 
     userObj = None
-    if user != None:
+    if user is not None:
         if user.isdigit():
             user = int(user)
         userObj = server.getUser(user)
@@ -2226,8 +2358,9 @@ def recentbuilds(environ, user=None, tag=None, package=None):
             package = int(package)
         packageObj = server.getPackage(package)
 
-    if tagObj != None:
-        builds = server.listTagged(tagObj['id'], inherit=True, package=(packageObj and packageObj['name'] or None),
+    if tagObj is not None:
+        builds = server.listTagged(tagObj['id'], inherit=True,
+                                   package=(packageObj and packageObj['name'] or None),
                                    owner=(userObj and userObj['name'] or None))
         builds.sort(key=kojiweb.util.sortByKeyFuncNoneGreatest('completion_time'), reverse=True)
         builds = builds[:20]
@@ -2273,6 +2406,7 @@ def recentbuilds(environ, user=None, tag=None, package=None):
     environ['koji.headers'].append(['Content-Type', 'text/xml'])
     return _genHTML(environ, 'recentbuilds.chtml')
 
+
 _infoURLs = {'package': 'packageinfo?packageID=%(id)i',
              'build': 'buildinfo?buildID=%(id)i',
              'tag': 'taginfo?tagID=%(id)i',
@@ -2299,6 +2433,7 @@ _DEFAULT_SEARCH_ORDER = {
     # any type not listed will default to 'name'
 }
 
+
 def search(environ, start=None, order=None):
     values = _initValues(environ, 'Search', 'search')
     server = _getServer(environ)
@@ -2323,7 +2458,7 @@ def search(environ, start=None, order=None):
         if match == 'regexp':
             try:
                 re.compile(terms)
-            except:
+            except Exception:
                 values['error'] = 'Invalid regular expression'
                 return _genHTML(environ, 'search.chtml')
 
@@ -2335,7 +2470,8 @@ def search(environ, start=None, order=None):
         values['order'] = order
 
         results = kojiweb.util.paginateMethod(server, values, 'search', args=(terms, type, match),
-                                              start=start, dataName='results', prefix='result', order=order)
+                                              start=start, dataName='results', prefix='result',
+                                              order=order)
         if not start and len(results) == 1:
             # if we found exactly one result, skip the result list and redirect to the info page
             # (you're feeling lucky)

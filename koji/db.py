@@ -55,6 +55,7 @@ _DBopts = None
 # but play it safe anyway.
 _DBconn = context.ThreadLocal()
 
+
 class DBWrapper:
     def __init__(self, cnx):
         self.cnx = cnx
@@ -75,8 +76,8 @@ class DBWrapper:
         if not self.cnx:
             raise Exception('connection is closed')
         self.cnx.cursor().execute('ROLLBACK')
-        #We do this rather than cnx.rollback to avoid opening a new transaction
-        #If our connection gets recycled cnx.rollback will be called then.
+        # We do this rather than cnx.rollback to avoid opening a new transaction
+        # If our connection gets recycled cnx.rollback will be called then.
         self.cnx = None
 
 
@@ -104,11 +105,13 @@ class CursorWrapper:
         if hasattr(self.cursor, "mogrify"):
             quote = self.cursor.mogrify
         else:
-            quote = lambda a, b: a % b
+            def quote(a, b):
+                return a % b
         try:
             return quote(operation, parameters)
         except Exception:
-            self.logger.exception('Unable to quote query:\n%s\nParameters: %s', operation, parameters)
+            self.logger.exception(
+                'Unable to quote query:\n%s\nParameters: %s', operation, parameters)
             return "INVALID QUERY"
 
     def preformat(self, sql, params):
@@ -151,12 +154,15 @@ def provideDBopts(**opts):
     if _DBopts is None:
         _DBopts = dict([i for i in opts.items() if i[1] is not None])
 
+
 def setDBopts(**opts):
     global _DBopts
     _DBopts = opts
 
+
 def getDBopts():
     return _DBopts
+
 
 def connect():
     logger = logging.getLogger('koji.db')
@@ -177,7 +183,7 @@ def connect():
             return DBWrapper(conn)
         except psycopg2.Error:
             del _DBconn.conn
-    #create a fresh connection
+    # create a fresh connection
     opts = _DBopts
     if opts is None:
         opts = {}

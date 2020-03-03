@@ -51,9 +51,10 @@ def scan_mounts(topdir):
                 logger.warning('Found deleted mountpoint: %s' % path)
             mplist.append(path)
     fo.close()
-    #reverse sort so deeper dirs come first
+    # reverse sort so deeper dirs come first
     mplist.sort(reverse=True)
     return mplist
+
 
 def umount_all(topdir):
     "Unmount every mount under topdir"
@@ -64,10 +65,11 @@ def umount_all(topdir):
         rv = os.spawnvp(os.P_WAIT, cmd[0], cmd)
         if rv != 0:
             raise koji.GenericError('umount failed (exit code %r) for %s' % (rv, path))
-    #check mounts again
+    # check mounts again
     remain = scan_mounts(topdir)
     if remain:
         raise koji.GenericError("Unmounting incomplete: %r" % remain)
+
 
 def safe_rmtree(path, unmount=False, strict=True):
     logger = logging.getLogger("koji.build")
@@ -77,7 +79,7 @@ def safe_rmtree(path, unmount=False, strict=True):
         logger.debug("Removing: %s" % path)
         try:
             os.remove(path)
-        except:
+        except Exception:
             if strict:
                 raise
             else:
@@ -103,6 +105,7 @@ class ServerExit(Exception):
     """Raised to shutdown the server"""
     pass
 
+
 class ServerRestart(Exception):
     """Raised to restart the server"""
     pass
@@ -115,8 +118,7 @@ def parse_task_params(method, params):
     """
 
     # check for new style
-    if (len(params) == 1 and isinstance(params[0], dict)
-                and '__method__' in params[0]):
+    if len(params) == 1 and isinstance(params[0], dict) and '__method__' in params[0]:
         ret = params[0].copy()
         del ret['__method__']
         return ret
@@ -144,121 +146,135 @@ def parse_task_params(method, params):
 LEGACY_SIGNATURES = {
     # key is method name, value is list of possible signatures
     # signatures are like getargspec -- args, varargs, keywords, defaults
-    'chainbuild' : [
+    'chainbuild': [
         [['srcs', 'target', 'opts'], None, None, (None,)],
     ],
-    'waitrepo' : [
+    'waitrepo': [
         [['tag', 'newer_than', 'nvrs'], None, None, (None, None)],
     ],
-    'createLiveMedia' : [
-        [['name', 'version', 'release', 'arch', 'target_info', 'build_tag', 'repo_info', 'ksfile', 'opts'], None, None, (None,)],
+    'createLiveMedia': [
+        [['name', 'version', 'release', 'arch', 'target_info', 'build_tag', 'repo_info', 'ksfile',
+          'opts'],
+         None, None, (None,)],
     ],
-    'createAppliance' : [
-        [['name', 'version', 'release', 'arch', 'target_info', 'build_tag', 'repo_info', 'ksfile', 'opts'], None, None, (None,)],
+    'createAppliance': [
+        [['name', 'version', 'release', 'arch', 'target_info', 'build_tag', 'repo_info', 'ksfile',
+          'opts'],
+         None, None, (None,)],
     ],
-    'livecd' : [
+    'livecd': [
         [['name', 'version', 'arch', 'target', 'ksfile', 'opts'], None, None, (None,)],
     ],
-    'buildNotification' : [
+    'buildNotification': [
         [['recipients', 'build', 'target', 'weburl'], None, None, None],
     ],
-    'buildMaven' : [
+    'buildMaven': [
         [['url', 'build_tag', 'opts'], None, None, (None,)],
     ],
-    'build' : [
+    'build': [
         [['src', 'target', 'opts'], None, None, (None,)],
     ],
-    'buildSRPMFromSCM' : [
+    'buildSRPMFromSCM': [
         [['url', 'build_tag', 'opts'], None, None, (None,)],
     ],
-    'rebuildSRPM' : [
+    'rebuildSRPM': [
         [['srpm', 'build_tag', 'opts'], None, None, (None,)],
     ],
-    'createrepo' : [
+    'createrepo': [
         [['repo_id', 'arch', 'oldrepo'], None, None, None],
     ],
-    'livemedia' : [
+    'livemedia': [
         [['name', 'version', 'arches', 'target', 'ksfile', 'opts'], None, None, (None,)],
     ],
-    'indirectionimage' : [
+    'indirectionimage': [
         [['opts'], None, None, None],
     ],
-    'wrapperRPM' : [
+    'wrapperRPM': [
         [['spec_url', 'build_target', 'build', 'task', 'opts'], None, None, (None,)],
     ],
-    'createLiveCD' : [
-        [['name', 'version', 'release', 'arch', 'target_info', 'build_tag', 'repo_info', 'ksfile', 'opts'], None, None, (None,)],
+    'createLiveCD': [
+        [['name', 'version', 'release', 'arch', 'target_info', 'build_tag', 'repo_info', 'ksfile',
+          'opts'],
+         None, None, (None,)],
     ],
-    'appliance' : [
+    'appliance': [
         [['name', 'version', 'arch', 'target', 'ksfile', 'opts'], None, None, (None,)],
     ],
-    'image' : [
+    'image': [
         [['name', 'version', 'arches', 'target', 'inst_tree', 'opts'], None, None, (None,)],
     ],
-    'tagBuild' : [
-        [['tag_id', 'build_id', 'force', 'fromtag', 'ignore_success'], None, None, (False, None, False)],
+    'tagBuild': [
+        [['tag_id', 'build_id', 'force', 'fromtag', 'ignore_success'],
+         None, None, (False, None, False)],
     ],
-    'chainmaven' : [
+    'chainmaven': [
         [['builds', 'target', 'opts'], None, None, (None,)],
     ],
-    'newRepo' : [
-        [['tag', 'event', 'src', 'debuginfo', 'separate_src'], None, None, (None, False, False, False)],
+    'newRepo': [
+        [['tag', 'event', 'src', 'debuginfo', 'separate_src'],
+         None, None, (None, False, False, False)],
     ],
-    'createImage' : [
-        [['name', 'version', 'release', 'arch', 'target_info', 'build_tag', 'repo_info', 'inst_tree', 'opts'], None, None, (None,)],
+    'createImage': [
+        [['name', 'version', 'release', 'arch', 'target_info', 'build_tag', 'repo_info',
+          'inst_tree', 'opts'],
+         None, None, (None,)],
     ],
-    'tagNotification' : [
-        [['recipients', 'is_successful', 'tag_info', 'from_info', 'build_info', 'user_info', 'ignore_success', 'failure_msg'], None, None, (None, '')],
+    'tagNotification': [
+        [['recipients', 'is_successful', 'tag_info', 'from_info', 'build_info', 'user_info',
+          'ignore_success', 'failure_msg'],
+         None, None, (None, '')],
     ],
-    'buildArch' : [
+    'buildArch': [
         [['pkg', 'root', 'arch', 'keep_srpm', 'opts'], None, None, (None,)],
     ],
-    'maven' : [
+    'maven': [
         [['url', 'target', 'opts'], None, None, (None,)],
     ],
-    'waittest' : [
+    'waittest': [
         [['count', 'seconds'], None, None, (10,)],
     ],
-    'default' : [
+    'default': [
         [[], 'args', 'opts', None],
     ],
-    'shutdown' : [
+    'shutdown': [
         [[], None, None, None],
     ],
-    'restartVerify' : [
+    'restartVerify': [
         [['task_id', 'host'], None, None, None],
     ],
-    'someMethod' : [
+    'someMethod': [
         [[], 'args', None, None],
     ],
-    'restart' : [
+    'restart': [
         [['host'], None, None, None],
     ],
-    'fork' : [
+    'fork': [
         [['n', 'm'], None, None, (5, 37)],
     ],
-    'sleep' : [
+    'sleep': [
         [['n'], None, None, None],
     ],
-    'dependantTask' : [
+    'dependantTask': [
         [['wait_list', 'task_list'], None, None, None],
     ],
-    'subtask' : [
+    'subtask': [
         [['n'], None, None, (4,)],
     ],
-    'restartHosts' : [
+    'restartHosts': [
         [['options'], None, None, (None,)],
     ],
-    'runroot' : [
-        [['root', 'arch', 'command', 'keep', 'packages', 'mounts', 'repo_id', 'skip_setarch', 'weight', 'upload_logs', 'new_chroot'], None, None, (False, [], [], None, False, None, None, False)],
+    'runroot': [
+        [['root', 'arch', 'command', 'keep', 'packages', 'mounts', 'repo_id', 'skip_setarch',
+          'weight', 'upload_logs', 'new_chroot'],
+         None, None, (False, [], [], None, False, None, None, False)],
     ],
-    'distRepo' : [
+    'distRepo': [
         [['tag', 'repo_id', 'keys', 'task_opts'], None, None, None],
     ],
-    'createdistrepo' : [
+    'createdistrepo': [
         [['tag', 'repo_id', 'arch', 'keys', 'opts'], None, None, None],
     ],
-    'saveFailedTree' : [
+    'saveFailedTree': [
         [['buildrootID', 'full'], None, None, (False,)],
     ],
 }
@@ -278,7 +294,7 @@ class BaseTaskHandler(object):
     Foreground = False
 
     def __init__(self, id, method, params, session, options, workdir=None):
-        self.id = id   #task id
+        self.id = id  # task id
         if method not in self.Methods:
             raise koji.GenericError('method "%s" is not supported' % method)
         self.method = method
@@ -340,10 +356,10 @@ class BaseTaskHandler(object):
         if self.workdir is None:
             return
         safe_rmtree(self.workdir, unmount=False, strict=True)
-        #os.spawnvp(os.P_WAIT, 'rm', ['rm', '-rf', self.workdir])
+        # os.spawnvp(os.P_WAIT, 'rm', ['rm', '-rf', self.workdir])
 
     def wait(self, subtasks=None, all=False, failany=False, canfail=None,
-                timeout=None):
+             timeout=None):
         """Wait on subtasks
 
         subtasks is a list of integers (or an integer). If more than one subtask
@@ -385,7 +401,7 @@ class BaseTaskHandler(object):
         while True:
             finished, unfinished = self.session.host.taskWait(self.id)
             if len(unfinished) == 0:
-                #all done
+                # all done
                 break
             elif len(finished) > 0:
                 if all:
@@ -397,7 +413,9 @@ class BaseTaskHandler(object):
                                 self.session.getTaskResult(task)
                                 checked.add(task)
                             except (koji.GenericError, six.moves.xmlrpc_client.Fault):
-                                self.logger.info("task %s failed or was canceled, cancelling unfinished tasks" % task)
+                                self.logger.info(
+                                    "task %s failed or was canceled, cancelling unfinished tasks" %
+                                    task)
                                 self.session.cancelTaskChildren(self.id)
                                 # reraise the original error now, rather than waiting for
                                 # an error in taskWaitResults()
@@ -417,7 +435,7 @@ class BaseTaskHandler(object):
                     self.logger.info('Subtasks timed out')
                     self.session.cancelTaskChildren(self.id)
                     raise koji.GenericError('Subtasks timed out after %.1f '
-                                'seconds' % duration)
+                                            'seconds' % duration)
             else:
                 # signal handler set by TaskManager.forkTask
                 self.logger.debug("Pausing...")
@@ -429,8 +447,7 @@ class BaseTaskHandler(object):
         if all:
             finished = subtasks
         return dict(self.session.host.taskWaitResults(self.id, finished,
-                                                    canfail=canfail))
-
+                                                      canfail=canfail))
 
     def getUploadDir(self):
         return koji.pathinfo.taskrelpath(self.id)
@@ -561,7 +578,7 @@ class BaseTaskHandler(object):
             repo_info = self.session.getRepo(tag)
             taginfo = self.session.getTag(tag, strict=True)
             if not repo_info:
-                #make sure there is a target
+                # make sure there is a target
                 targets = self.session.getBuildTargets(buildTagID=taginfo['id'])
                 if not targets:
                     raise koji.BuildError('no repo (and no target) for tag %s' % taginfo['name'])
@@ -579,7 +596,6 @@ class BaseTaskHandler(object):
             repo_info = self.wait(task_id)[task_id]
         return repo_info
 
-
     def run_callbacks(self, plugin, *args, **kwargs):
         if 'taskinfo' not in kwargs:
             try:
@@ -595,6 +611,7 @@ class BaseTaskHandler(object):
 class FakeTask(BaseTaskHandler):
     Methods = ['someMethod']
     Foreground = True
+
     def handler(self, *args):
         self.logger.info("This is a fake task.  Args: " + str(args))
         return 42
@@ -603,16 +620,20 @@ class FakeTask(BaseTaskHandler):
 class SleepTask(BaseTaskHandler):
     Methods = ['sleep']
     _taskWeight = 0.25
+
     def handler(self, n):
         self.logger.info("Sleeping for %s seconds" % n)
         time.sleep(n)
         self.logger.info("Finished sleeping")
 
+
 class ForkTask(BaseTaskHandler):
     Methods = ['fork']
+
     def handler(self, n=5, m=37):
         for i in range(n):
             os.spawnvp(os.P_NOWAIT, 'sleep', ['sleep', str(m)])
+
 
 class WaitTestTask(BaseTaskHandler):
     """
@@ -624,6 +645,7 @@ class WaitTestTask(BaseTaskHandler):
     """
     Methods = ['waittest']
     _taskWeight = 0.1
+
     def handler(self, count, seconds=10):
         tasks = []
         for i in range(count):
@@ -638,10 +660,11 @@ class WaitTestTask(BaseTaskHandler):
 class SubtaskTask(BaseTaskHandler):
     Methods = ['subtask']
     _taskWeight = 0.1
+
     def handler(self, n=4):
         if n > 0:
             task_id = self.session.host.subtask(method='subtask',
-                                                arglist=[n-1],
+                                                arglist=[n - 1],
                                                 label='foo',
                                                 parent=self.id)
             self.wait(task_id)
@@ -657,6 +680,7 @@ class DefaultTask(BaseTaskHandler):
     """Used when no matching method is found"""
     Methods = ['default']
     _taskWeight = 0.1
+
     def handler(self, *args, **opts):
         raise koji.GenericError("Invalid method: %s" % self.method)
 
@@ -665,8 +689,9 @@ class ShutdownTask(BaseTaskHandler):
     Methods = ['shutdown']
     _taskWeight = 0.0
     Foreground = True
+
     def handler(self):
-        #note: this is a foreground task
+        # note: this is a foreground task
         raise ServerExit
 
 
@@ -676,8 +701,9 @@ class RestartTask(BaseTaskHandler):
     Methods = ['restart']
     _taskWeight = 0.1
     Foreground = True
+
     def handler(self, host):
-        #note: this is a foreground task
+        # note: this is a foreground task
         if host['id'] != self.session.host.getID():
             raise koji.GenericError("Host mismatch")
         self.manager.restart_pending = True
@@ -690,8 +716,9 @@ class RestartVerifyTask(BaseTaskHandler):
     Methods = ['restartVerify']
     _taskWeight = 0.1
     Foreground = True
+
     def handler(self, task_id, host):
-        #note: this is a foreground task
+        # note: this is a foreground task
         tinfo = self.session.getTaskInfo(task_id)
         state = koji.TASK_STATES[tinfo['state']]
         if state != 'CLOSED':
@@ -708,6 +735,7 @@ class RestartHostsTask(BaseTaskHandler):
 
     Methods = ['restartHosts']
     _taskWeight = 0.1
+
     def handler(self, options=None):
         if options is None:
             options = {}
@@ -715,14 +743,14 @@ class RestartHostsTask(BaseTaskHandler):
         hostquery = {'enabled': True}
         if 'channel' in options:
             chan = self.session.getChannel(options['channel'], strict=True)
-            hostquery['channelID']= chan['id']
+            hostquery['channelID'] = chan['id']
         if 'arches' in options:
             hostquery['arches'] = options['arches']
         hosts = self.session.listHosts(**hostquery)
         if not hosts:
             raise koji.GenericError("No matching hosts")
 
-        timeout = options.get('timeout', 3600*24)
+        timeout = options.get('timeout', 3600 * 24)
 
         # fire off the subtasks
         this_host = self.session.host.getID()
@@ -730,8 +758,10 @@ class RestartHostsTask(BaseTaskHandler):
         my_tasks = None
         for host in hosts:
             # note: currently task assignments bypass channel restrictions
-            task1 = self.subtask('restart', [host], assign=host['id'], label="restart %i" % host['id'])
-            task2 = self.subtask('restartVerify', [task1, host], assign=host['id'], label="sleep %i" % host['id'])
+            task1 = self.subtask('restart', [host],
+                                 assign=host['id'], label="restart %i" % host['id'])
+            task2 = self.subtask('restartVerify', [task1, host],
+                                 assign=host['id'], label="sleep %i" % host['id'])
             subtasks.append(task1)
             subtasks.append(task2)
             if host['id'] == this_host:
@@ -754,7 +784,7 @@ class RestartHostsTask(BaseTaskHandler):
 class DependantTask(BaseTaskHandler):
 
     Methods = ['dependantTask']
-    #mostly just waiting on other tasks
+    # mostly just waiting on other tasks
     _taskWeight = 0.2
 
     def handler(self, wait_list, task_list):
@@ -777,12 +807,15 @@ class DependantTask(BaseTaskHandler):
 
         subtasks = []
         for task in task_list:
-            # **((len(task)>2 and task[2]) or {}) expands task[2] into opts if it exists, allows for things like 'priority=15'
-            task_id = self.session.host.subtask(method=task[0], arglist=task[1], parent=self.id, **((len(task) > 2 and task[2]) or {}))
+            # **((len(task)>2 and task[2]) or {}) expands task[2] into opts if it exists, allows
+            # for things like 'priority=15'
+            task_id = self.session.host.subtask(method=task[0], arglist=task[1], parent=self.id,
+                                                **((len(task) > 2 and task[2]) or {}))
             if task_id:
                 subtasks.append(task_id)
         if subtasks:
             self.wait(subtasks, all=True)
+
 
 class MultiPlatformTask(BaseTaskHandler):
     def buildWrapperRPM(self, spec_url, build_task_id, build_target, build, repo_id, **opts):

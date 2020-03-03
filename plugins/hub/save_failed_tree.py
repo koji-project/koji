@@ -3,12 +3,10 @@ from __future__ import absolute_import
 import sys
 
 import koji
-sys.path.insert(0, '/usr/share/koji-hub/')
-import kojihub
 from koji.context import context
 from koji.plugin import export
-
-
+sys.path.insert(0, '/usr/share/koji-hub/')
+import kojihub  # noqa: F402
 
 __all__ = ('saveFailedTree',)
 
@@ -40,10 +38,12 @@ def saveFailedTree(buildrootID, full=False, **opts):
     taskID = brinfo['task_id']
     task_info = kojihub.Task(taskID).getInfo()
     if task_info['state'] != koji.TASK_STATES['FAILED']:
-        raise koji.PreBuildError("Task %s has not failed. Only failed tasks can upload their buildroots." % taskID)
+        raise koji.PreBuildError(
+            "Task %s has not failed. Only failed tasks can upload their buildroots." % taskID)
     elif allowed_methods != '*' and task_info['method'] not in allowed_methods:
-        raise koji.PreBuildError("Only %s tasks can upload their buildroots (Task %s is %s)." % \
-               (', '.join(allowed_methods), task_info['id'], task_info['method']))
+        raise koji.PreBuildError(
+            "Only %s tasks can upload their buildroots (Task %s is %s)." %
+            (', '.join(allowed_methods), task_info['id'], task_info['method']))
     elif task_info["owner"] != context.session.user_id and not context.session.hasPerm('admin'):
         raise koji.ActionNotAllowed("Only owner of failed task or 'admin' can run this task.")
     elif not kojihub.get_host(task_info['host_id'])['enabled']:

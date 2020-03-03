@@ -34,22 +34,22 @@ greetings = ('hello', 'hi', 'yo', "what's up", "g'day", 'back to work',
              'hallo',
              'ciao',
              'hola',
-            u'olá',
-            u'dobrý den',
-            u'zdravstvuite',
-            u'góðan daginn',
+             u'olá',
+             u'dobrý den',
+             u'zdravstvuite',
+             u'góðan daginn',
              'hej',
              'tervehdys',
-            u'grüezi',
-            u'céad míle fáilte',
-            u'hylô',
-            u'bună ziua',
-            u'jó napot',
+             u'grüezi',
+             u'céad míle fáilte',
+             u'hylô',
+             u'bună ziua',
+             u'jó napot',
              'dobre dan',
-            u'你好',
-            u'こんにちは',
-            u'नमस्कार',
-            u'안녕하세요')
+             u'你好',
+             u'こんにちは',
+             u'नमस्कार',
+             u'안녕하세요')
 
 ARGMAP = {'None': None,
           'True': True,
@@ -72,26 +72,26 @@ def arg_filter(arg):
         pass
     if arg in ARGMAP:
         return ARGMAP[arg]
-    #handle lists/dicts?
+    # handle lists/dicts?
     return arg
 
 
 categories = {
-    'admin' : 'admin commands',
-    'build' : 'build commands',
-    'search' : 'search commands',
-    'download' : 'download commands',
-    'monitor'  : 'monitor commands',
-    'info' : 'info commands',
-    'bind' : 'bind commands',
-    'misc' : 'miscellaneous commands',
+    'admin': 'admin commands',
+    'build': 'build commands',
+    'search': 'search commands',
+    'download': 'download commands',
+    'monitor': 'monitor commands',
+    'info': 'info commands',
+    'bind': 'bind commands',
+    'misc': 'miscellaneous commands',
 }
 
 
 def get_epilog_str(progname=None):
     if progname is None:
         progname = os.path.basename(sys.argv[0]) or 'koji'
-    categories_ordered=', '.join(sorted(['all'] + to_list(categories.keys())))
+    categories_ordered = ', '.join(sorted(['all'] + to_list(categories.keys())))
     epilog_str = '''
 Try "%(progname)s --help" for help about global options
 Try "%(progname)s help" to get all available commands
@@ -105,13 +105,15 @@ Available categories are: %(categories)s
 def get_usage_str(usage):
     return usage + _("\n(Specify the --help global option for a list of other help options)")
 
+
 def ensure_connection(session):
     try:
         ret = session.getAPIVersion()
     except requests.exceptions.ConnectionError:
         error(_("Error: Unable to connect to server"))
     if ret != koji.API_VERSION:
-        warn(_("WARNING: The server is at API version %d and the client is at %d" % (ret, koji.API_VERSION)))
+        warn(_("WARNING: The server is at API version %d and "
+               "the client is at %d" % (ret, koji.API_VERSION)))
 
 
 def print_task_headers():
@@ -119,36 +121,36 @@ def print_task_headers():
     print("ID       Pri  Owner                State    Arch       Name")
 
 
-def print_task(task,depth=0):
+def print_task(task, depth=0):
     """Print a task"""
     task = task.copy()
-    task['state'] = koji.TASK_STATES.get(task['state'],'BADSTATE')
+    task['state'] = koji.TASK_STATES.get(task['state'], 'BADSTATE')
     fmt = "%(id)-8s %(priority)-4s %(owner_name)-20s %(state)-8s %(arch)-10s "
     if depth:
-        indent = "  "*(depth-1) + " +"
+        indent = "  " * (depth - 1) + " +"
     else:
         indent = ''
     label = koji.taskLabel(task)
     print(''.join([fmt % task, indent, label]))
 
 
-def print_task_recurse(task,depth=0):
+def print_task_recurse(task, depth=0):
     """Print a task and its children"""
-    print_task(task,depth)
-    for child in task.get('children',()):
-        print_task_recurse(child,depth+1)
+    print_task(task, depth)
+    for child in task.get('children', ()):
+        print_task_recurse(child, depth + 1)
 
 
 class TaskWatcher(object):
 
-    def __init__(self,task_id,session,level=0,quiet=False):
+    def __init__(self, task_id, session, level=0, quiet=False):
         self.id = task_id
         self.session = session
         self.info = None
         self.level = level
         self.quiet = quiet
 
-    #XXX - a bunch of this stuff needs to adapt to different tasks
+    # XXX - a bunch of this stuff needs to adapt to different tasks
 
     def str(self):
         if self.info:
@@ -167,7 +169,7 @@ class TaskWatcher(object):
         error = None
         try:
             self.session.getTaskResult(self.id)
-        except (six.moves.xmlrpc_client.Fault,koji.GenericError) as e:
+        except (six.moves.xmlrpc_client.Fault, koji.GenericError) as e:
             error = e
         if error is None:
             # print("%s: complete" % self.str())
@@ -189,11 +191,12 @@ class TaskWatcher(object):
             sys.exit(1)
         state = self.info['state']
         if last:
-            #compare and note status changes
+            # compare and note status changes
             laststate = last['state']
             if laststate != state:
                 if not self.quiet:
-                    print("%s: %s -> %s" % (self.str(), self.display_state(last), self.display_state(self.info)))
+                    print("%s: %s -> %s" % (self.str(), self.display_state(last),
+                                            self.display_state(self.info)))
                 return True
             return False
         else:
@@ -206,7 +209,7 @@ class TaskWatcher(object):
         if self.info is None:
             return False
         state = koji.TASK_STATES[self.info['state']]
-        return (state in ['CLOSED','CANCELED','FAILED'])
+        return (state in ['CLOSED', 'CANCELED', 'FAILED'])
 
     def is_success(self):
         if self.info is None:
@@ -276,9 +279,9 @@ def watch_tasks(session, tasklist, quiet=False, poll_interval=60, ki_handler=Non
                 tlist = ['%s: %s' % (t.str(), t.display_state(t.info))
                          for t in tasks.values() if not t.is_done()]
                 print(
-"""Tasks still running. You can continue to watch with the '%s watch-task' command.
-Running Tasks:
-%s""" % (progname, '\n'.join(tlist)))
+                    "Tasks still running. You can continue to watch with the"
+                    " '%s watch-task' command.\n"
+                    "Running Tasks:\n%s" % (progname, '\n'.join(tlist)))
     sys.stdout.flush()
     rv = 0
     try:
@@ -300,8 +303,9 @@ Running Tasks:
                         rv = 1
                 for child in session.getTaskChildren(task_id):
                     child_id = child['id']
-                    if not child_id in tasks.keys():
-                        tasks[child_id] = TaskWatcher(child_id, session, task.level + 1, quiet=quiet)
+                    if child_id not in tasks.keys():
+                        tasks[child_id] = TaskWatcher(child_id, session, task.level + 1,
+                                                      quiet=quiet)
                         tasks[child_id].update()
                         # If we found new children, go through the list again,
                         # in case they have children also
@@ -339,7 +343,7 @@ def watch_logs(session, tasklist, opts, poll_interval):
             print("No such task id: %i" % taskId)
             sys.exit(1)
         state = koji.TASK_STATES[info['state']]
-        return (state in ['CLOSED','CANCELED','FAILED'])
+        return (state in ['CLOSED', 'CANCELED', 'FAILED'])
 
     offsets = {}
     for task_id in tasklist:
@@ -369,7 +373,8 @@ def watch_logs(session, tasklist, opts, poll_interval):
                     if (log, volume) not in taskoffsets:
                         taskoffsets[(log, volume)] = 0
 
-                    contents = session.downloadTaskOutput(task_id, log, taskoffsets[(log, volume)], 16384, volume=volume)
+                    contents = session.downloadTaskOutput(task_id, log, taskoffsets[(log, volume)],
+                                                          16384, volume=volume)
                     taskoffsets[(log, volume)] += len(contents)
                     if contents:
                         currlog = "%d:%s:%s:" % (task_id, volume, log)
@@ -379,7 +384,6 @@ def watch_logs(session, tasklist, opts, poll_interval):
                             sys.stdout.write("==> %s <==\n" % currlog)
                             lastlog = currlog
                         bytes_to_stdout(contents)
-
 
             if opts.follow:
                 for child in session.getTaskChildren(task_id):
@@ -414,7 +418,7 @@ def unique_path(prefix):
     # For some reason repr(time.time()) includes 4 or 5
     # more digits of precision than str(time.time())
     return '%s/%r.%s' % (prefix, time.time(),
-                      ''.join([random.choice(string.ascii_letters) for i in range(8)]))
+                         ''.join([random.choice(string.ascii_letters) for i in range(8)]))
 
 
 def _format_size(size):
@@ -422,7 +426,7 @@ def _format_size(size):
         return "%0.2f GiB" % (size / 1073741824.0)
     if (size / 1048576 >= 1):
         return "%0.2f MiB" % (size / 1048576.0)
-    if (size / 1024 >=1):
+    if (size / 1024 >= 1):
         return "%0.2f KiB" % (size / 1024.0)
     return "%0.2f B" % (size)
 
@@ -439,7 +443,7 @@ def _progress_callback(uploaded, total, piece, time, total_time):
     if total == 0:
         percent_done = 0.0
     else:
-        percent_done = float(uploaded)/float(total)
+        percent_done = float(uploaded) / float(total)
     percent_done_str = "%02d%%" % (percent_done * 100)
     data_done = _format_size(uploaded)
     elapsed = _format_secs(total_time)
@@ -447,12 +451,14 @@ def _progress_callback(uploaded, total, piece, time, total_time):
     speed = "- B/sec"
     if (time):
         if (uploaded != total):
-            speed = _format_size(float(piece)/float(time)) + "/sec"
+            speed = _format_size(float(piece) / float(time)) + "/sec"
         else:
-            speed = _format_size(float(total)/float(total_time)) + "/sec"
+            speed = _format_size(float(total) / float(total_time)) + "/sec"
 
     # write formated string and flush
-    sys.stdout.write("[% -36s] % 4s % 8s % 10s % 14s\r" % ('='*(int(percent_done*36)), percent_done_str, elapsed, data_done, speed))
+    sys.stdout.write("[% -36s] % 4s % 8s % 10s % 14s\r" % ('=' * (int(percent_done * 36)),
+                                                           percent_done_str, elapsed, data_done,
+                                                           speed))
     sys.stdout.flush()
 
 
@@ -498,14 +504,14 @@ def download_file(url, relpath, quiet=False, noprogress=False, size=None, num=No
         response.raise_for_status()
         length = int(response.headers.get('content-length') or 0)
         with open(relpath, 'wb') as f:
-            l = 0
+            pos = 0
             for chunk in response.iter_content(chunk_size=65536):
-                l += len(chunk)
+                pos += len(chunk)
                 f.write(chunk)
                 if not (quiet or noprogress):
-                    _download_progress(length, l)
+                    _download_progress(length, pos)
             if not length and not (quiet or noprogress):
-                _download_progress(l, l)
+                _download_progress(pos, pos)
 
     if not (quiet or noprogress):
         print('')
@@ -520,7 +526,8 @@ def _download_progress(download_t, download_d):
         percent_done_str = "%3d%%" % (percent_done * 100)
     data_done = _format_size(download_d)
 
-    sys.stdout.write("[% -36s] % 4s % 10s\r" % ('=' * (int(percent_done * 36)), percent_done_str, data_done))
+    sys.stdout.write("[% -36s] % 4s % 10s\r" % ('=' * (int(percent_done * 36)), percent_done_str,
+                                                data_done))
     sys.stdout.flush()
 
 
@@ -555,18 +562,21 @@ def activate_session(session, options):
     noauth = options.authtype == "noauth" or getattr(options, 'noauth', False)
     runas = getattr(options, 'runas', None)
     if noauth:
-        #skip authentication
+        # skip authentication
         pass
     elif options.authtype == "ssl" or os.path.isfile(options.cert) and options.authtype is None:
         # authenticate using SSL client cert
         session.ssl_login(options.cert, None, options.serverca, proxyuser=runas)
-    elif options.authtype == "password" or getattr(options, 'user', None) and options.authtype is None:
+    elif options.authtype == "password" \
+            or getattr(options, 'user', None) \
+            and options.authtype is None:
         # authenticate using user/password
         session.login()
     elif options.authtype == "kerberos" or has_krb_creds() and options.authtype is None:
         try:
             if getattr(options, 'keytab', None) and getattr(options, 'principal', None):
-                session.krb_login(principal=options.principal, keytab=options.keytab, proxyuser=runas)
+                session.krb_login(principal=options.principal, keytab=options.keytab,
+                                  proxyuser=runas)
             else:
                 session.krb_login(proxyuser=runas)
         except socket.error as e:
@@ -587,8 +597,8 @@ def _list_tasks(options, session):
     "Retrieve a list of tasks"
 
     callopts = {
-        'state' : [koji.TASK_STATES[s] for s in ('FREE', 'OPEN', 'ASSIGNED')],
-        'decode' : True,
+        'state': [koji.TASK_STATES[s] for s in ('FREE', 'OPEN', 'ASSIGNED')],
+        'decode': True,
     }
 
     if getattr(options, 'mine', False):
@@ -622,16 +632,16 @@ def _list_tasks(options, session):
             sys.exit(1)
         callopts['host_id'] = host['id']
 
-    qopts = {'order' : 'priority,create_time'}
+    qopts = {'order': 'priority,create_time'}
     tasklist = session.listTasks(callopts, qopts)
     tasks = dict([(x['id'], x) for x in tasklist])
 
-    #thread the tasks
+    # thread the tasks
     for t in tasklist:
         if t['parent'] is not None:
             parent = tasks.get(t['parent'])
             if parent:
-                parent.setdefault('children',[])
+                parent.setdefault('children', [])
                 parent['children'].append(t)
                 t['sub'] = True
 
@@ -641,7 +651,7 @@ def _list_tasks(options, session):
 def format_inheritance_flags(parent):
     """Return a human readable string of inheritance flags"""
     flags = ''
-    for code,expr in (
+    for code, expr in (
             ('M', parent['maxdepth'] is not None),
             ('F', parent['pkg_filter']),
             ('I', parent['intransitive']),

@@ -79,7 +79,7 @@ class Session(object):
         self._perms = None
         self._groups = None
         self._host_id = ''
-        #get session data from request
+        # get session data from request
         if args is None:
             environ = getattr(context, 'environ', {})
             args = environ.get('QUERY_STRING', '')
@@ -95,9 +95,9 @@ class Session(object):
             raise koji.AuthError('%s not specified in session args' % field)
         try:
             callnum = args['callnum'][0]
-        except:
+        except Exception:
             callnum = None
-        #lookup the session
+        # lookup the session
         c = context.cnx.cursor()
         fields = {
             'authtype': 'authtype',
@@ -110,7 +110,7 @@ class Session(object):
             'EXTRACT(EPOCH FROM start_time)': 'start_ts',
             'EXTRACT(EPOCH FROM update_time)': 'update_ts',
             'user_id': 'user_id',
-            }
+        }
         # sort for stability (unittests)
         fields, aliases = zip(*sorted(fields.items(), key=lambda x: x[1]))
         q = """
@@ -125,10 +125,10 @@ class Session(object):
         if not row:
             raise koji.AuthError('Invalid session or bad credentials')
         session_data = dict(zip(aliases, row))
-        #check for expiration
+        # check for expiration
         if session_data['expired']:
             raise koji.AuthExpired('session "%i" has expired' % id)
-        #check for callnum sanity
+        # check for callnum sanity
         if callnum is not None:
             try:
                 callnum = int(callnum)
@@ -137,25 +137,25 @@ class Session(object):
             lastcall = session_data['callnum']
             if lastcall is not None:
                 if lastcall > callnum:
-                    raise koji.SequenceError("%d > %d (session %d)" \
-                            % (lastcall, callnum, id))
+                    raise koji.SequenceError("%d > %d (session %d)"
+                                             % (lastcall, callnum, id))
                 elif lastcall == callnum:
-                    #Some explanation:
-                    #This function is one of the few that performs its own commit.
-                    #However, our storage of the current callnum is /after/ that
-                    #commit. This means the the current callnum only gets committed if
-                    #a commit happens afterward.
-                    #We only schedule a commit for dml operations, so if we find the
-                    #callnum in the db then a previous attempt succeeded but failed to
-                    #return. Data was changed, so we cannot simply try the call again.
+                    # Some explanation:
+                    # This function is one of the few that performs its own commit.
+                    # However, our storage of the current callnum is /after/ that
+                    # commit. This means the the current callnum only gets committed if
+                    # a commit happens afterward.
+                    # We only schedule a commit for dml operations, so if we find the
+                    # callnum in the db then a previous attempt succeeded but failed to
+                    # return. Data was changed, so we cannot simply try the call again.
                     method = getattr(context, 'method', 'UNKNOWN')
                     if method not in RetryWhitelist:
                         raise koji.RetryError(
-                            "unable to retry call %d (method %s) for session %d" \
+                            "unable to retry call %d (method %s) for session %d"
                             % (callnum, method, id))
 
         # read user data
-        #historical note:
+        # historical note:
         # we used to get a row lock here as an attempt to maintain sanity of exclusive
         # sessions, but it was an imperfect approach and the lock could cause some
         # performance issues.
@@ -166,25 +166,25 @@ class Session(object):
 
         if user_data['status'] != koji.USER_STATUS['NORMAL']:
             raise koji.AuthError('logins by %s are not allowed' % user_data['name'])
-        #check for exclusive sessions
+        # check for exclusive sessions
         if session_data['exclusive']:
-            #we are the exclusive session for this user
+            # we are the exclusive session for this user
             self.exclusive = True
         else:
-            #see if an exclusive session exists
+            # see if an exclusive session exists
             q = """SELECT id FROM sessions WHERE user_id=%(user_id)s
             AND "exclusive" = TRUE AND expired = FALSE"""
-            #should not return multiple rows (unique constraint)
+            # should not return multiple rows (unique constraint)
             c.execute(q, session_data)
             row = c.fetchone()
             if row:
                 (excl_id,) = row
                 if excl_id == session_data['master']:
-                    #(note excl_id cannot be None)
-                    #our master session has the lock
+                    # (note excl_id cannot be None)
+                    # our master session has the lock
                     self.exclusive = True
                 else:
-                    #a session unrelated to us has the lock
+                    # a session unrelated to us has the lock
                     self.lockerror = "User locked by another session"
                     # we don't enforce here, but rely on the dispatcher to enforce
                     # if appropriate (otherwise it would be impossible to steal
@@ -193,11 +193,11 @@ class Session(object):
         # update timestamp
         q = """UPDATE sessions SET update_time=NOW() WHERE id = %(id)i"""
         c.execute(q, locals())
-        #save update time
+        # save update time
         context.cnx.commit()
 
-        #update callnum (this is deliberately after the commit)
-        #see earlier note near RetryError
+        # update callnum (this is deliberately after the commit)
+        # see earlier note near RetryError
         if callnum is not None:
             q = """UPDATE sessions SET callnum=%(callnum)i WHERE id = %(id)i"""
             c.execute(q, locals())
@@ -218,7 +218,7 @@ class Session(object):
         # grab perm and groups data on the fly
         if name == 'perms':
             if self._perms is None:
-                #in a dict for quicker lookup
+                # in a dict for quicker lookup
                 self._perms = dict([[name, 1] for name in get_user_perms(self.user_id)])
             return self._perms
         elif name == 'groups':
@@ -254,7 +254,7 @@ class Session(object):
             return override
         else:
             hostip = context.environ['REMOTE_ADDR']
-            #XXX - REMOTE_ADDR not promised by wsgi spec
+            # XXX - REMOTE_ADDR not promised by wsgi spec
             if hostip == '127.0.0.1':
                 hostip = socket.gethostbyname(socket.gethostname())
             return hostip
@@ -294,7 +294,7 @@ class Session(object):
 
         self.checkLoginAllowed(user_id)
 
-        #create session and return
+        # create session and return
         sinfo = self.createSession(user_id, hostip, koji.AUTHTYPE_NORMAL)
         session_id = sinfo['session-id']
         context.cnx.commit()
@@ -321,7 +321,7 @@ class Session(object):
         srvkt = krbV.Keytab(name=context.opts.get('AuthKeytab'), context=ctx)
 
         ac = krbV.AuthContext(context=ctx)
-        ac.flags = krbV.KRB5_AUTH_CONTEXT_DO_SEQUENCE|krbV.KRB5_AUTH_CONTEXT_DO_TIME
+        ac.flags = krbV.KRB5_AUTH_CONTEXT_DO_SEQUENCE | krbV.KRB5_AUTH_CONTEXT_DO_TIME
         conninfo = self.getConnInfo()
         ac.addrs = conninfo
 
@@ -334,12 +334,13 @@ class Session(object):
 
         # Successfully authenticated via Kerberos, now log in
         if proxyuser:
-            proxyprincs = [princ.strip() for princ in context.opts.get('ProxyPrincipals', '').split(',')]
+            proxyprincs = [princ.strip()
+                           for princ in context.opts.get('ProxyPrincipals', '').split(',')]
             if cprinc.name in proxyprincs:
                 login_principal = proxyuser
             else:
                 raise koji.AuthError(
-                      'Kerberos principal %s is not authorized to log in other users' % cprinc.name)
+                    'Kerberos principal %s is not authorized to log in other users' % cprinc.name)
         else:
             login_principal = cprinc.name
 
@@ -386,7 +387,7 @@ class Session(object):
         # so get the local ip via a different method
         local_ip = socket.gethostbyname(context.environ['SERVER_NAME'])
         remote_ip = context.environ['REMOTE_ADDR']
-        #XXX - REMOTE_ADDR not promised by wsgi spec
+        # XXX - REMOTE_ADDR not promised by wsgi spec
 
         # it appears that calling setports() with *any* value results in authentication
         # failing with "Incorrect net address", so return 0 (which prevents
@@ -408,12 +409,15 @@ class Session(object):
             authtype = koji.AUTHTYPE_GSSAPI
         else:
             if context.environ.get('SSL_CLIENT_VERIFY') != 'SUCCESS':
-                raise koji.AuthError('could not verify client: %s' % context.environ.get('SSL_CLIENT_VERIFY'))
+                raise koji.AuthError('could not verify client: %s' %
+                                     context.environ.get('SSL_CLIENT_VERIFY'))
 
             name_dn_component = context.opts.get('DNUsernameComponent', 'CN')
             username = context.environ.get('SSL_CLIENT_S_DN_%s' % name_dn_component)
             if not username:
-                raise koji.AuthError('unable to get user information (%s) from client certificate' % name_dn_component)
+                raise koji.AuthError(
+                    'unable to get user information (%s) from client certificate' %
+                    name_dn_component)
             client_dn = context.environ.get('SSL_CLIENT_S_DN')
             authtype = koji.AUTHTYPE_SSL
 
@@ -466,11 +470,11 @@ class Session(object):
         if self.master is not None:
             raise koji.GenericError("subsessions cannot become exclusive")
         if self.exclusive:
-            #shouldn't happen
+            # shouldn't happen
             raise koji.GenericError("session is already exclusive")
         user_id = self.user_id
         session_id = self.id
-        #acquire a row lock on the user entry
+        # acquire a row lock on the user entry
         q = """SELECT id FROM users WHERE id=%(user_id)s FOR UPDATE"""
         c.execute(q, locals())
         # check that no other sessions for this user are exclusive
@@ -481,13 +485,13 @@ class Session(object):
         row = c.fetchone()
         if row:
             if force:
-                #expire the previous exclusive session and try again
+                # expire the previous exclusive session and try again
                 (excl_id,) = row
                 q = """UPDATE sessions SET expired=TRUE,"exclusive"=NULL WHERE id=%(excl_id)s"""
                 c.execute(q, locals())
             else:
                 raise koji.AuthLockError("Cannot get exclusive session")
-        #mark this session exclusive
+        # mark this session exclusive
         q = """UPDATE sessions SET "exclusive"=TRUE WHERE id=%(session_id)s"""
         c.execute(q, locals())
         context.cnx.commit()
@@ -503,12 +507,12 @@ class Session(object):
     def logout(self):
         """expire a login session"""
         if not self.logged_in:
-            #XXX raise an error?
+            # XXX raise an error?
             raise koji.AuthError("Not logged in")
         update = """UPDATE sessions
         SET expired=TRUE,exclusive=NULL
         WHERE id = %(id)i OR master = %(id)i"""
-        #note we expire subsessions as well
+        # note we expire subsessions as well
         c = context.cnx.cursor()
         c.execute(update, {'id': self.id})
         context.cnx.commit()
@@ -517,7 +521,7 @@ class Session(object):
     def logoutChild(self, session_id):
         """expire a subsession"""
         if not self.logged_in:
-            #XXX raise an error?
+            # XXX raise an error?
             raise koji.AuthError("Not logged in")
         update = """UPDATE sessions
         SET expired=TRUE,exclusive=NULL
@@ -537,8 +541,8 @@ class Session(object):
 
         # generate a random key
         alnum = string.ascii_letters + string.digits
-        key = "%s-%s" %(user_id,
-                ''.join([random.choice(alnum) for x in range(1, 20)]))
+        key = "%s-%s" % (user_id,
+                         ''.join([random.choice(alnum) for x in range(1, 20)]))
         # use sha? sha.new(phrase).hexdigest()
 
         # get a session id
@@ -546,8 +550,7 @@ class Session(object):
         c.execute(q, {})
         (session_id,) = c.fetchone()
 
-
-        #add session id to database
+        # add session id to database
         q = """
         INSERT INTO sessions (id, user_id, key, hostip, authtype, master)
         VALUES (%(session_id)i, %(user_id)i, %(key)s, %(hostip)s, %(authtype)i, %(master)s)
@@ -555,8 +558,8 @@ class Session(object):
         c.execute(q, locals())
         context.cnx.commit()
 
-        #return session info
-        return {'session-id' : session_id, 'session-key' : key}
+        # return session info
+        return {'session-id': session_id, 'session-key': key}
 
     def subsession(self):
         "Create a subsession"
@@ -566,7 +569,7 @@ class Session(object):
         if master is None:
             master = self.id
         return self.createSession(self.user_id, self.hostip, self.authtype,
-                    master=master)
+                                  master=master)
 
     def getPerms(self):
         if not self.logged_in:
@@ -589,7 +592,7 @@ class Session(object):
     def hasGroup(self, group_id):
         if not self.logged_in:
             return False
-        #groups indexed by id
+        # groups indexed by id
         return group_id in self.groups
 
     def isUser(self, user_id):
@@ -607,7 +610,7 @@ class Session(object):
             return None
         c = context.cnx.cursor()
         q = """SELECT id FROM host WHERE user_id = %(uid)d"""
-        c.execute(q, {'uid' : self.user_id})
+        c.execute(q, {'uid': self.user_id})
         r = c.fetchone()
         c.close()
         if r:
@@ -616,7 +619,7 @@ class Session(object):
             return None
 
     def getHostId(self):
-        #for compatibility
+        # for compatibility
         return self.host_id
 
     def getUserId(self, username):
@@ -799,14 +802,16 @@ def get_user_groups(user_id):
     c.execute(q, locals())
     return dict(c.fetchall())
 
+
 def get_user_perms(user_id):
     c = context.cnx.cursor()
     q = """SELECT name
     FROM user_perms JOIN permissions ON perm_id = permissions.id
     WHERE active = TRUE AND user_id=%(user_id)s"""
     c.execute(q, locals())
-    #return a list of permissions by name
+    # return a list of permissions by name
     return [row[0] for row in c.fetchall()]
+
 
 def get_user_data(user_id):
     c = context.cnx.cursor()
@@ -818,27 +823,35 @@ def get_user_data(user_id):
         return None
     return dict(zip(fields, row))
 
+
 def login(*args, **opts):
     return context.session.login(*args, **opts)
+
 
 def krbLogin(*args, **opts):
     return context.session.krbLogin(*args, **opts)
 
+
 def sslLogin(*args, **opts):
     return context.session.sslLogin(*args, **opts)
+
 
 def logout():
     return context.session.logout()
 
+
 def subsession():
     return context.session.subsession()
+
 
 def logoutChild(session_id):
     return context.session.logoutChild(session_id)
 
+
 def exclusiveSession(*args, **opts):
     """Make this session exclusive"""
     return context.session.makeExclusive(*args, **opts)
+
 
 def sharedSession():
     """Drop out of exclusive mode"""

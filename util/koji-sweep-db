@@ -36,7 +36,8 @@ def clean_reservations(cursor, vacuum, test, age):
 
 
 def clean_notification_tasks(cursor, vacuum, test, age):
-    q = " FROM task WHERE method = 'build' AND completion_time < NOW() - '%s days'::interval" % int(age)
+    q = " FROM task WHERE method = 'build' AND completion_time < NOW() - '%s days'::interval" % \
+        int(age)
     if options.verbose:
         cursor.execute("SELECT COUNT(*) " + q)
         rows = cursor.fetchall()[0][0]
@@ -75,7 +76,7 @@ def clean_scratch_tasks(cursor, vacuum, test, age):
             if opts['scratch']:
                 cursor.execute("INSERT INTO temp_scratch_tasks VALUES (%s)", (task_id,))
                 ids.append(task_id)
-        except:
+        except Exception:
             continue
 
     parents = ids
@@ -95,7 +96,8 @@ def clean_scratch_tasks(cursor, vacuum, test, age):
         return
 
     # delete standard buildroots
-    cursor.execute("DELETE FROM standard_buildroot WHERE task_id IN (SELECT task_id FROM temp_scratch_tasks)")
+    cursor.execute(
+        "DELETE FROM standard_buildroot WHERE task_id IN (SELECT task_id FROM temp_scratch_tasks)")
 
     # delete tasks finally
     cursor.execute("DELETE FROM task WHERE id IN (SELECT task_id FROM temp_scratch_tasks)")
@@ -106,7 +108,8 @@ def clean_scratch_tasks(cursor, vacuum, test, age):
 
 
 def clean_buildroots(cursor, vacuum, test):
-    q = " FROM buildroot WHERE cg_id IS NULL AND id NOT IN (SELECT buildroot_id FROM standard_buildroot)"
+    q = " FROM buildroot " \
+        "WHERE cg_id IS NULL AND id NOT IN (SELECT buildroot_id FROM standard_buildroot)"
 
     if options.verbose:
         cursor.execute("SELECT COUNT(*) " + q)
@@ -169,7 +172,7 @@ if __name__ == "__main__":
     config.read(options.conf)
 
     cfgmap = [
-        #option, type, default
+        # option, type, default
         ['DBName', 'string', None],
         ['DBUser', 'string', None],
         ['DBHost', 'string', None],
@@ -193,7 +196,6 @@ if __name__ == "__main__":
     if opts['DBHost'] is None:
         opts['DBHost'] = opts['DBhost']
 
-
     koji.db.provideDBopts(database=opts["DBName"],
                           user=opts["DBUser"],
                           password=opts.get("DBPass", None),
@@ -207,7 +209,8 @@ if __name__ == "__main__":
     clean_sessions(cursor, options.vacuum, options.test, options.sessions_age)
     clean_reservations(cursor, options.vacuum, options.test, options.reservations_age)
     if options.tag_notifications:
-        clean_notification_tasks(cursor, options.vacuum, options.test, age=options.tag_notifications_age)
+        clean_notification_tasks(cursor, options.vacuum, options.test,
+                                 age=options.tag_notifications_age)
     if options.scratch:
         clean_scratch_tasks(cursor, options.vacuum, options.test, age=options.scratch_age)
     if options.buildroots:

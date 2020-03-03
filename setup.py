@@ -16,9 +16,9 @@ def get_install_requires():
         'requests',
         'requests-kerberos',
         'six',
-        #'libcomps',
-        #'rpm-py-installer', # it is optional feature
-        #'rpm',
+        # 'libcomps',
+        # 'rpm-py-installer', # it is optional feature
+        # 'rpm',
     ]
     if sys.version_info[0] < 3:
         # optional auth library for older hubs
@@ -33,6 +33,7 @@ def get_install_requires():
 
     return requires
 
+
 setup(
     name="koji",
     version="1.20.0",
@@ -41,8 +42,8 @@ setup(
                  " interface."),
     license="LGPLv2 and GPLv2+",
     url="http://pagure.io/koji/",
-    author = 'Koji developers',
-    author_email = 'koji-devel@lists.fedorahosted.org',
+    author='Koji developers',
+    author_email='koji-devel@lists.fedorahosted.org',
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Environment :: Console",
@@ -62,9 +63,9 @@ setup(
         'koji_cli_plugins': 'plugins/cli',
     },
     # doesn't make sense, as we have only example config
-    #data_files=[
-    #    ('/etc', ['cli/koji.conf']),
-    #],
+    # data_files=[
+    #     ('/etc', ['cli/koji.conf']),
+    # ],
     scripts=[
         'cli/koji',
         'util/koji-gc',

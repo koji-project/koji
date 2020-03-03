@@ -251,7 +251,7 @@ Options:
   --quiet         Do not print the header information
   --paths         Show the file paths
   --sigs          Show signatures
-  --type=TYPE     Show builds of the given type only.  Currently supported
+  --type=TYPE     Show builds of the given type only. Currently supported
                   types: maven, win, image
   --event=EVENT#  query at event
   --ts=TIMESTAMP  query at last event before timestamp

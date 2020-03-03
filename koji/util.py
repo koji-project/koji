@@ -52,8 +52,10 @@ def deprecated(message):
         warnings.simplefilter('always', DeprecationWarning)
         warnings.warn(message, DeprecationWarning)
 
+
 def _changelogDate(cldate):
-    return time.strftime('%a %b %d %Y', time.strptime(koji.formatTime(cldate), '%Y-%m-%d %H:%M:%S'))
+    return time.strftime('%a %b %d %Y',
+                         time.strptime(koji.formatTime(cldate), '%Y-%m-%d %H:%M:%S'))
 
 
 def formatChangelog(entries):
@@ -65,9 +67,10 @@ def formatChangelog(entries):
 %s
 
 """ % (_changelogDate(entry['date']),
-       koji._fix_print(entry['author']),
-       koji._fix_print(entry['text']))
+            koji._fix_print(entry['author']),
+            koji._fix_print(entry['text']))
     return result
+
 
 DATE_RE = re.compile(r'(\d+)-(\d+)-(\d+)')
 TIME_RE = re.compile(r'(\d+):(\d+):(\d+)')
@@ -92,7 +95,7 @@ def parseTime(val):
     if result:
         time = [int(r) for r in result.groups()]
     return calendar.timegm(
-            datetime.datetime(*(date + time)).timetuple())
+        datetime.datetime(*(date + time)).timetuple())
 
 
 def checkForBuilds(session, tag, builds, event, latest=False):
@@ -189,7 +192,7 @@ def dslice(dict_, keys, strict=True):
     ret = {}
     for key in keys:
         if strict or key in dict_:
-            #for strict we skip the has_key check and let the dict generate the KeyError
+            # for strict we skip the has_key check and let the dict generate the KeyError
             ret[key] = dict_[key]
     return ret
 
@@ -291,7 +294,7 @@ def apply_argspec(argspec, args, kwargs=None):
     for n, arg in enumerate(f_args):
         if arg not in data:
             raise koji.ParameterError('missing required argument %r (#%i)'
-                                        % (arg, n))
+                                      % (arg, n))
     return data
 
 
@@ -498,7 +501,6 @@ def move_and_symlink(src, dst, relative=True, create_dir=False):
     os.symlink(dst, src)
 
 
-
 def joinpath(path, *paths):
     """A wrapper around os.path.join that limits directory traversal"""
 
@@ -532,8 +534,8 @@ def eventFromOpts(session, opts):
     if repo:
         rinfo = session.repoInfo(repo)
         if rinfo:
-            return {'id' : rinfo['create_event'],
-                    'ts' : rinfo['create_ts']}
+            return {'id': rinfo['create_event'],
+                    'ts': rinfo['create_ts']}
     return None
 
 
@@ -639,13 +641,13 @@ def setup_rlimits(opts, logger=None):
 
 class adler32_constructor(object):
 
-    #mimicing the hashlib constructors
+    # mimicing the hashlib constructors
     def __init__(self, arg=''):
         if six.PY3 and isinstance(arg, str):
             arg = bytes(arg, 'utf-8')
         self._value = adler32(arg) & 0xffffffff
-        #the bitwise and works around a bug in some versions of python
-        #see: https://bugs.python.org/issue1202
+        # the bitwise and works around a bug in some versions of python
+        # see: https://bugs.python.org/issue1202
 
     def update(self, arg):
         if six.PY3 and isinstance(arg, str):
@@ -664,7 +666,7 @@ class adler32_constructor(object):
         return dup
 
     digest_size = 4
-    block_size = 1      #I think
+    block_size = 1  # I think
 
 
 def tsort(parts):
@@ -696,7 +698,7 @@ class MavenConfigOptAdapter(object):
     """
     MULTILINE = ['properties', 'envs']
     MULTIVALUE = ['goals', 'profiles', 'packages',
-                   'jvm_options', 'maven_options', 'buildrequires']
+                  'jvm_options', 'maven_options', 'buildrequires']
 
     def __init__(self, conf, section):
         self._conf = conf
@@ -812,7 +814,8 @@ def parse_maven_param(confs, chain=False, scratch=False, section=None):
         else:
             raise ValueError("Section %s does not exist in: %s" % (section, ', '.join(confs)))
     elif len(builds) > 1:
-        raise ValueError("Multiple sections in: %s, you must specify the section" % ', '.join(confs))
+        raise ValueError(
+            "Multiple sections in: %s, you must specify the section" % ', '.join(confs))
     return builds
 
 

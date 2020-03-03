@@ -14,13 +14,14 @@ def handle_save_failed_tree(options, session, args):
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.add_option("-f", "--full", action="store_true", default=False,
-            help=_("Download whole tree, if not specified, only builddir will be downloaded"))
+                      help=_("Download whole tree, if not specified, "
+                             "only builddir will be downloaded"))
     parser.add_option("-t", "--task", action="store_const", dest="mode",
-            const="task", default="task",
-            help=_("Treat ID as a task ID (the default)"))
+                      const="task", default="task",
+                      help=_("Treat ID as a task ID (the default)"))
     parser.add_option("-r", "--buildroot", action="store_const", dest="mode",
-            const="buildroot",
-            help=_("Treat ID as a buildroot ID"))
+                      const="buildroot",
+                      help=_("Treat ID as a buildroot ID"))
     parser.add_option("--quiet", action="store_true", default=options.quiet,
                       help=_("Do not print the task information"))
     parser.add_option("--nowait", action="store_true",
@@ -63,10 +64,11 @@ def handle_save_failed_tree(options, session, args):
     if not opts.quiet:
         print(_("Created task %s for buildroot %s") % (task_id, br_id))
         print("Task info: %s/taskinfo?taskID=%s"
-                % (options.weburl, task_id))
+              % (options.weburl, task_id))
 
     if opts.nowait:
         return
     else:
         session.logout()
-        return watch_tasks(session, [task_id], quiet=opts.quiet, poll_interval=options.poll_interval)
+        return watch_tasks(session, [task_id],
+                           quiet=opts.quiet, poll_interval=options.poll_interval)

@@ -6,8 +6,13 @@ from optparse import OptionParser
 
 import koji
 from koji.plugin import export_cli
-from koji_cli.lib import (_, activate_session, bytes_to_stdout,
-                          list_task_output_all_volumes, watch_tasks)
+from koji_cli.lib import (
+    _,
+    activate_session,
+    bytes_to_stdout,
+    list_task_output_all_volumes,
+    watch_tasks
+)
 
 
 @export_cli
@@ -17,24 +22,27 @@ def handle_runroot(options, session, args):
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = OptionParser(usage=usage)
     parser.disable_interspersed_args()
-    parser.add_option("-p", "--package", action="append", default=[], help=_("make sure this package is in the chroot"))
-    parser.add_option("-m", "--mount", action="append", default=[], help=_("mount this directory read-write in the chroot"))
+    parser.add_option("-p", "--package", action="append", default=[],
+                      help=_("make sure this package is in the chroot"))
+    parser.add_option("-m", "--mount", action="append", default=[],
+                      help=_("mount this directory read-write in the chroot"))
     parser.add_option("--skip-setarch", action="store_true", default=False,
-            help=_("bypass normal setarch in the chroot"))
+                      help=_("bypass normal setarch in the chroot"))
     parser.add_option("-w", "--weight", type='int', help=_("set task weight"))
     parser.add_option("--channel-override", help=_("use a non-standard channel"))
     parser.add_option("--task-id", action="store_true", default=False,
-            help=_("Print the ID of the runroot task"))
+                      help=_("Print the ID of the runroot task"))
     parser.add_option("--use-shell", action="store_true", default=False,
-            help=_("Run command through a shell, otherwise uses exec"))
+                      help=_("Run command through a shell, otherwise uses exec"))
     parser.add_option("--new-chroot", action="store_true", default=None,
-            help=_("Run command with the --new-chroot (systemd-nspawn) option to mock"))
+                      help=_("Run command with the --new-chroot (systemd-nspawn) option to mock"))
     parser.add_option("--old-chroot", action="store_false", default=None, dest='new_chroot',
-            help=_("Run command with the --old-chroot (systemd-nspawn) option to mock"))
+                      help=_("Run command with the --old-chroot (systemd-nspawn) option to mock"))
     parser.add_option("--repo-id", type="int", help=_("ID of the repo to use"))
     parser.add_option("--nowait", action="store_false", dest="wait",
-            default=True, help=_("Do not wait on task"))
-    parser.add_option("--watch", action="store_true", help=_("Watch task instead of printing runroot.log"))
+                      default=True, help=_("Do not wait on task"))
+    parser.add_option("--watch", action="store_true",
+                      help=_("Watch task instead of printing runroot.log"))
     parser.add_option("--quiet", action="store_true", default=options.quiet,
                       help=_("Do not print the task information"))
 
@@ -53,12 +61,12 @@ def handle_runroot(options, session, args):
     else:
         command = args[2:]
     try:
-        kwargs = { 'channel':       opts.channel_override,
-                   'packages':      opts.package,
-                   'mounts':        opts.mount,
-                   'repo_id':       opts.repo_id,
-                   'skip_setarch':  opts.skip_setarch,
-                   'weight':        opts.weight }
+        kwargs = {'channel': opts.channel_override,
+                  'packages': opts.package,
+                  'mounts': opts.mount,
+                  'repo_id': opts.repo_id,
+                  'skip_setarch': opts.skip_setarch,
+                  'weight': opts.weight}
         # Only pass this kwarg if it is true - this prevents confusing older
         # builders with a different function signature
         if opts.new_chroot is not None:

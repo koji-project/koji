@@ -47,24 +47,26 @@ EXPAND_ARCHES = {
     'alpha': ['alphaev4', 'alphaev45', 'alphaev5', 'alphaev56',
               'alphapca56', 'alphaev6', 'alphaev67', 'alphaev68', 'alphaev7'],
     'armhfp': ['armv7hl', 'armv7hnl', 'armv6hl', 'armv6hnl'],
-    'arm': ['armv5tel', 'armv5tejl', 'armv6l','armv7l'],
+    'arm': ['armv5tel', 'armv5tejl', 'armv6l', 'armv7l'],
     'sh4': ['sh4a']
-    }
+}
 
 MULTILIB_ARCHES = {
     'x86_64': 'i386',
     'ppc64': 'ppc',
     's390x': 's390'
-    }
+}
+
 
 def parse_args(args):
     """Parse our opts/args"""
     usage = """
-    mergerepos: take 2 or more repositories and merge their metadata into a new repo using Koji semantics
+    mergerepos: take 2 or more repositories and merge their metadata into a new
+                repo using Koji semantics
 
     mergerepos --repo=url --repo=url --outputdir=/some/path"""
 
-    parser = OptionParser(version = "mergerepos 0.1", usage=usage)
+    parser = OptionParser(version="mergerepos 0.1", usage=usage)
     # query options
     parser.add_option("-r", "--repo", dest="repos", default=[], action="append",
                       help="repo url")
@@ -73,7 +75,8 @@ def parse_args(args):
     parser.add_option("-a", "--arch", dest="arches", default=[], action="append",
                       help="List of arches to include in the repo")
     parser.add_option("-b", "--blocked", default=None,
-                      help="A file containing a list of srpm names to exclude from the merged repo")
+                      help="A file containing a list of srpm names to exclude "
+                           "from the merged repo")
     parser.add_option("--mode", default='koji', help="Select the merge mode")
     parser.add_option("-o", "--outputdir", default=None,
                       help="Location to create the repository")
@@ -99,7 +102,7 @@ def parse_args(args):
                 opts.arches.extend(EXPAND_ARCHES[multilib_arch])
 
     # always include noarch
-    if not 'noarch' in opts.arches:
+    if 'noarch' not in opts.arches:
         opts.arches.append('noarch')
 
     if not opts.outputdir:
@@ -158,13 +161,13 @@ class RepoMerge(object):
         # in the repolist
         count = 0
         for r in self.repolist:
-            count +=1
+            count += 1
             rid = 'repo%s' % count
             sys.stderr.write('Adding repo: %s\n' % r)
             n = self.yumbase.add_enable_repo(rid, baseurls=[r])
             n._merge_rank = count
 
-        #setup our sacks
+        # setup our sacks
         self.yumbase._getSacks(archlist=self.archlist)
 
         self.sort_and_filter()
@@ -174,18 +177,18 @@ class RepoMerge(object):
         For each package object, check if the srpm name has ever been seen before.
         If is has not, keep the package.  If it has, check if the srpm name was first seen
         in the same repo as the current package.  If so, keep the package from the srpm with the
-        highest NVR.  If not, keep the packages from the first srpm we found, and delete packages from
-        all other srpms.
+        highest NVR.  If not, keep the packages from the first srpm we found, and delete packages
+        from all other srpms.
 
         Packages with matching NVRs in multiple repos will be taken from the first repo.
 
         If the srpm name appears in the blocked package list, any packages generated from the srpm
         will be deleted from the package sack as well.
 
-        This method will also generate a file called "pkgorigins" and add it to the repo metadata.  This
-        is a tab-separated map of package E:N-V-R.A to repo URL (as specified on the command-line).  This
-        allows a package to be tracked back to its origin, even if the location field in the repodata does
-        not match the original repo location.
+        This method will also generate a file called "pkgorigins" and add it to the repo metadata.
+        This is a tab-separated map of package E:N-V-R.A to repo URL (as specified on the
+        command-line). This allows a package to be tracked back to its origin, even if the location
+        field in the repodata does not match the original repo location.
         """
 
         if self.mode == 'simple':
@@ -205,9 +208,10 @@ class RepoMerge(object):
                 if reponum == 0 and not pkg.basepath:
                     # this is the first repo (i.e. the koji repo) and appears
                     # to be using relative urls
-                    #XXX - kind of a hack, but yum leaves us little choice
-                    #force the pkg object to report a relative location
-                    loc = """<location href="%s"/>\n""" % yum.misc.to_xml(pkg.remote_path, attrib=True)
+                    # XXX - kind of a hack, but yum leaves us little choice
+                    # force the pkg object to report a relative location
+                    loc = """<location href="%s"/>\n""" % yum.misc.to_xml(pkg.remote_path,
+                                                                          attrib=True)
                     pkg._return_remote_location = make_const_func(loc)
                 if pkg.sourcerpm in seen_srpms:
                     # we're just looking at sourcerpms this pass and we've
@@ -221,13 +225,13 @@ class RepoMerge(object):
                         # We found a rpm built from an srpm with the same name in a previous repo.
                         # The previous repo takes precedence, so ignore the srpm found here.
                         sys.stderr.write('Package %s already provided by repo %s'
-                                ' (at %s in repo %s)\n'
-                                % (srpm_name, other_repoid, str(pkg), pkg.repoid))
+                                         ' (at %s in repo %s)\n'
+                                         % (srpm_name, other_repoid, str(pkg), pkg.repoid))
                         continue
                     else:
                         # We're in the same repo, so compare srpm NVRs
                         other_srpm_name, other_ver, other_rel, other_epoch, other_arch = \
-                                         rpmUtils.miscutils.splitFilename(other_srpm)
+                            rpmUtils.miscutils.splitFilename(other_srpm)
                         cmp = rpmUtils.miscutils.compareEVR((epoch, ver, rel),
                                                             (other_epoch, other_ver, other_rel))
                         if cmp > 0:
@@ -235,13 +239,13 @@ class RepoMerge(object):
                             # existing srpm in the dict, so update the dict
                             include_srpms[srpm_name] = (pkg.sourcerpm, pkg.repoid)
                             sys.stderr.write('Replacing older source nvr: '
-                                    '%s > %s\n' % (pkg.sourcerpm, other_srpm))
+                                             '%s > %s\n' % (pkg.sourcerpm, other_srpm))
                         elif cmp < 0:
                             sys.stderr.write('Ignoring older source nvr: '
-                                    '%s < %s\n' % (pkg.sourcerpm, other_srpm))
+                                             '%s < %s\n' % (pkg.sourcerpm, other_srpm))
                         # otherwise same, so we already have it
                 elif srpm_name in self.blocked:
-                    sys.stderr.write('Ignoring blocked package: %s\n\n' % \
+                    sys.stderr.write('Ignoring blocked package: %s\n\n' %
                                      pkg.sourcerpm)
                     continue
                 else:
@@ -260,14 +264,14 @@ class RepoMerge(object):
                     sys.stderr.write('Duplicate rpm: %s\n' % pkg_nvra)
                 elif incl_srpm is None:
                     sys.stderr.write('Excluding %s (%s is blocked)\n'
-                            % (pkg_nvra, srpm_name))
+                                     % (pkg_nvra, srpm_name))
                     repo.sack.delPackage(pkg)
                 elif incl_srpm == pkg.sourcerpm:
                     origins.write('%s\t%s\n' % (pkg_nvra, repo.urls[0]))
                     seen_rpms[pkg_nvra] = 1
                 else:
                     sys.stderr.write('Excluding %s (wrong srpm version '
-                            '%s != %s)\n' % (pkg_nvra, pkg.sourcerpm, incl_srpm))
+                                     '%s != %s)\n' % (pkg_nvra, pkg.sourcerpm, incl_srpm))
                     repo.sack.delPackage(pkg)
 
         origins.close()
@@ -296,9 +300,10 @@ class RepoMerge(object):
                 if reponum == 0 and not pkg.basepath:
                     # this is the first repo (i.e. the koji repo) and appears
                     # to be using relative urls
-                    #XXX - kind of a hack, but yum leaves us little choice
-                    #force the pkg object to report a relative location
-                    loc = """<location href="%s"/>\n""" % yum.misc.to_xml(pkg.remote_path, attrib=True)
+                    # XXX - kind of a hack, but yum leaves us little choice
+                    # force the pkg object to report a relative location
+                    loc = """<location href="%s"/>\n""" % yum.misc.to_xml(pkg.remote_path,
+                                                                          attrib=True)
                     pkg._return_remote_location = make_const_func(loc)
 
         pkgorigins = os.path.join(self.yumbase.conf.cachedir, 'pkgorigins')
@@ -337,6 +342,7 @@ class RepoMerge(object):
         mdgen.doRepoMetadata()
         mdgen.doFinalMove()
 
+
 def main(args):
     """main"""
     opts = parse_args(args)
@@ -357,6 +363,7 @@ def main(args):
         merge.write_metadata()
     finally:
         merge.close()
+
 
 if __name__ == "__main__":
     main(sys.argv[1:])

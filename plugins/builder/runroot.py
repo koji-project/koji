@@ -47,17 +47,18 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
                 options.append(o)
         rel_path = path[len(mount_data['mountpoint']):]
         rel_path = rel_path[1:] if rel_path.startswith('/') else rel_path
-        res = (os.path.join(mount_data['path'], rel_path), path, mount_data['fstype'], ','.join(options))
+        res = (os.path.join(mount_data['path'], rel_path), path, mount_data['fstype'],
+               ','.join(options))
         return res
 
     def _read_config(self):
         cp = koji.read_config_files(CONFIG_FILE)
         self.config = {
-           'default_mounts': [],
-           'safe_roots': [],
-           'path_subs': [],
-           'paths': [],
-           'internal_dev_setup': None,
+            'default_mounts': [],
+            'safe_roots': [],
+            'path_subs': [],
+            'paths': [],
+            'internal_dev_setup': None,
         }
 
         # main options
@@ -82,7 +83,7 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
 
         # path section are in form 'path%d' while order is important as some
         # paths can be mounted inside other mountpoints
-        path_sections = [p for p in cp.sections() if re.match('path\d+', p)]
+        path_sections = [p for p in cp.sections() if re.match(r'path\d+', p)]
         for section_name in sorted(path_sections, key=lambda x: int(x[4:])):
             try:
                 self.config['paths'].append({
@@ -94,11 +95,15 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
             except six.moves.configparser.NoOptionError:
                 raise koji.GenericError("bad config: missing options in %s section" % section_name)
 
-        for path in self.config['default_mounts'] + self.config['safe_roots'] + [x[0] for x in self.config['path_subs']]:
+        for path in self.config['default_mounts'] + self.config['safe_roots'] + \
+                [x[0] for x in self.config['path_subs']]:
             if not path.startswith('/'):
-                raise koji.GenericError("bad config: all paths (default_mounts, safe_roots, path_subs) needs to be absolute: %s" % path)
+                raise koji.GenericError(
+                    "bad config: all paths (default_mounts, safe_roots, path_subs) needs to be "
+                    "absolute: %s" % path)
 
-    def handler(self, root, arch, command, keep=False, packages=[], mounts=[], repo_id=None, skip_setarch=False, weight=None, upload_logs=None, new_chroot=None):
+    def handler(self, root, arch, command, keep=False, packages=[], mounts=[], repo_id=None,
+                skip_setarch=False, weight=None, upload_logs=None, new_chroot=None):
         """Create a buildroot and run a command (as root) inside of it
 
         Command may be a string or a list.
@@ -118,9 +123,10 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
         if weight is not None:
             weight = max(weight, 0.5)
             self.session.host.setTaskWeight(self.id, weight)
-        #noarch is funny
+
+        # noarch is funny
         if arch == "noarch":
-            #we need a buildroot arch. Pick one that:
+            # we need a buildroot arch. Pick one that:
             #  a) this host can handle
             #  b) the build tag can support
             #  c) is canonical
@@ -130,46 +136,50 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
             tag_arches = self.session.getBuildConfig(root)['arches']
             if not tag_arches:
                 raise koji.BuildError("No arch list for tag: %s" % root)
-            #index canonical host arches
+            # index canonical host arches
             host_arches = set([koji.canonArch(a) for a in host_arches.split()])
-            #pick the first suitable match from tag's archlist
+            # pick the first suitable match from tag's archlist
             for br_arch in tag_arches.split():
                 br_arch = koji.canonArch(br_arch)
                 if br_arch in host_arches:
-                    #we're done
+                    # we're done
                     break
             else:
-                #no overlap
-                raise koji.BuildError("host does not match tag arches: %s (%s)" % (root, tag_arches))
+                # no overlap
+                raise koji.BuildError(
+                    "host does not match tag arches: %s (%s)" % (root, tag_arches))
         else:
             br_arch = arch
         if repo_id:
             repo_info = self.session.repoInfo(repo_id, strict=True)
             if repo_info['tag_name'] != root:
-                raise koji.BuildError("build tag (%s) does not match repo tag (%s)" % (root, repo_info['tag_name']))
+                raise koji.BuildError(
+                    "build tag (%s) does not match repo tag (%s)" % (root, repo_info['tag_name']))
             if repo_info['state'] not in (koji.REPO_STATES['READY'], koji.REPO_STATES['EXPIRED']):
-                raise koji.BuildError("repos in the %s state may not be used by runroot" % koji.REPO_STATES[repo_info['state']])
+                raise koji.BuildError(
+                    "repos in the %s state may not be used by runroot" %
+                    koji.REPO_STATES[repo_info['state']])
         else:
             repo_info = self.session.getRepo(root)
         if not repo_info:
-            #wait for it
+            # wait for it
             task_id = self.session.host.subtask(method='waitrepo',
-                                           arglist=[root, None, None],
-                                           parent=self.id)
+                                                arglist=[root, None, None],
+                                                parent=self.id)
             repo_info = self.wait(task_id)[task_id]
         broot = BuildRoot(self.session, self.options, root, br_arch, self.id,
-                repo_id=repo_info['id'], setup_dns=True,
-                internal_dev_setup=self.config['internal_dev_setup'])
+                          repo_id=repo_info['id'], setup_dns=True,
+                          internal_dev_setup=self.config['internal_dev_setup'])
         broot.workdir = self.workdir
         broot.init()
         rootdir = broot.rootdir()
-        #workaround for rpm oddness
+        # workaround for rpm oddness
         os.system('rm -f "%s"/var/lib/rpm/__db.*' % rootdir)
-        #update buildroot state (so that updateBuildRootList() will work)
+        # update buildroot state (so that updateBuildRootList() will work)
         self.session.host.setBuildRootState(broot.id, 'BUILDING')
         try:
             if packages:
-                #pkglog = '%s/%s' % (broot.resultdir(), 'packages.log')
+                # pkglog = '%s/%s' % (broot.resultdir(), 'packages.log')
                 pkgcmd = ['--install'] + packages
                 status = broot.mock(pkgcmd)
                 self.session.host.updateBuildRootList(broot.id, broot.getPackageList())
@@ -179,26 +189,30 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
             if isinstance(command, str):
                 cmdstr = command
             else:
-                #we were passed an arglist
-                #we still have to run this through the shell (for redirection)
-                #but we can preserve the list structure precisely with careful escaping
+                # we were passed an arglist
+                # we still have to run this through the shell (for redirection)
+                # but we can preserve the list structure precisely with careful escaping
                 cmdstr = ' '.join(["'%s'" % arg.replace("'", r"'\''") for arg in command])
             # A nasty hack to put command output into its own file until mock can be
             # patched to do something more reasonable than stuff everything into build.log
-            cmdargs = ['/bin/sh', '-c', "{ %s; } < /dev/null 2>&1 | /usr/bin/tee /builddir/runroot.log; exit ${PIPESTATUS[0]}" % cmdstr]
+            cmdargs = ['/bin/sh', '-c',
+                       "{ %s; } < /dev/null 2>&1 | /usr/bin/tee /builddir/runroot.log; exit "
+                       "${PIPESTATUS[0]}" % cmdstr]
 
             # always mount /mnt/redhat (read-only)
             # always mount /mnt/iso (read-only)
             # also need /dev bind mount
-            self.do_mounts(rootdir, [self._get_path_params(x) for x in self.config['default_mounts']])
+            self.do_mounts(rootdir,
+                           [self._get_path_params(x) for x in self.config['default_mounts']])
             self.do_extra_mounts(rootdir, mounts)
             mock_cmd = ['chroot']
             if new_chroot:
                 mock_cmd.append('--new-chroot')
-            elif new_chroot is False: # None -> no option added
+            elif new_chroot is False:  # None -> no option added
                 mock_cmd.append('--old-chroot')
             if skip_setarch:
-                #we can't really skip it, but we can set it to the current one instead of of the chroot one
+                # we can't really skip it, but we can set it to the current one instead of of the
+                # chroot one
                 myarch = platform.uname()[5]
                 mock_cmd.extend(['--arch', myarch])
             mock_cmd.append('--')
@@ -235,9 +249,9 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
                 if mount.startswith(safe_root):
                     break
             else:
-                #no match
+                # no match
                 raise koji.GenericError("read-write mount point is not safe: %s" % mount)
-            #normpath should have removed any .. dirs, but just in case...
+            # normpath should have removed any .. dirs, but just in case...
             if mount.find('/../') != -1:
                 raise koji.GenericError("read-write mount point is not safe: %s" % mount)
 
@@ -266,7 +280,7 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
                 else:
                     opts = opts.split(',')
                 if 'bind' in opts:
-                    #make sure dir exists
+                    # make sure dir exists
                     if not os.path.isdir(dev):
                         error = koji.GenericError("No such directory or mount: %s" % dev)
                         break
@@ -278,10 +292,11 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
                 cmd = ['mount', '-t', type, '-o', opts, dev, mpoint]
                 self.logger.info("Mount command: %r" % cmd)
                 koji.ensuredir(mpoint)
-                status = log_output(self.session, cmd[0], cmd, logfile, uploadpath, logerror=True, append=True)
+                status = log_output(self.session, cmd[0], cmd, logfile, uploadpath,
+                                    logerror=True, append=True)
                 if not isSuccess(status):
-                    error = koji.GenericError("Unable to mount %s: %s" \
-                            % (mpoint, parseStatus(status, cmd)))
+                    error = koji.GenericError("Unable to mount %s: %s"
+                                              % (mpoint, parseStatus(status, cmd)))
                     break
                 fslog.write("%s\n" % mpoint)
                 fslog.flush()
@@ -297,7 +312,7 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
             with open(fn, 'r') as fslog:
                 for line in fslog.readlines():
                     mounts.add(line.strip())
-        #also, check /proc/mounts just in case
+        # also, check /proc/mounts just in case
         mounts |= set(scan_mounts(rootdir))
         mounts = sorted(mounts)
         # deeper directories first
@@ -305,7 +320,8 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
         failed = []
         self.logger.info("Unmounting (runroot): %s" % mounts)
         for dir in mounts:
-            proc = subprocess.Popen(["umount", "-l", dir], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            proc = subprocess.Popen(["umount", "-l", dir],
+                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             if proc.wait() != 0:
                 output = proc.stdout.read()
                 output += proc.stderr.read()
