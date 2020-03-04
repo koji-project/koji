@@ -6717,7 +6717,7 @@ def handle_untag_build(goptions, session, args):
             for pkg in pkgs:
                 tagged.append(m.listTagged(args[0], package=pkg))
         # flatten
-        tagged = list(itertools.chain([t.result[0] for t in tagged]))
+        tagged = list(itertools.chain(*[t.result for t in tagged]))
         idx = dict([(b['nvr'], b) for b in tagged])
 
         # check exact builds
