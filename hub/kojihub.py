@@ -7939,7 +7939,7 @@ def build_references(build_id, limit=None, lazy=False):
                  FROM buildroot_listing
                  WHERE rpm_id IN %(rpm_ids)s
                )"""
-        event_id = _fetchSingle(q, {'rpm_ids': build_rpm_ids}) or 0
+        event_id = (_fetchSingle(q, {'rpm_ids': build_rpm_ids}) or (0,))[0] or 0
     if build_archive_ids:
         q = """SELECT MAX(create_event)
                FROM standard_buildroot
@@ -7948,7 +7948,7 @@ def build_references(build_id, limit=None, lazy=False):
                  FROM buildroot_archives
                  WHERE archive_id IN %(archive_ids)s
                )"""
-        event_id2 = _fetchSingle(q, {'archive_ids': build_archive_ids}) or 0
+        event_id2 = (_fetchSingle(q, {'archive_ids': build_archive_ids}) or (0,))[0] or 0
         event_id = max(event_id, event_id2)
     if event_id:
         q = """SELECT EXTRACT(EPOCH FROM get_event_time(%(event_id)i))"""
