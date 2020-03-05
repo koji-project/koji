@@ -395,6 +395,15 @@ environment follows:
   `--old-chroot` option is appended to any mock call. If it is not set,
   mock's default behavior is used.
 
+You may also specify per-tag environment variables for mock to use.
+For example, to set the CC environment variable to clang, you could
+do:
+
+::
+
+    koji edit-tag dnf-fedora-tag -x rpm.env.CC=clang
+
+
 Using Koji to control tasks
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
