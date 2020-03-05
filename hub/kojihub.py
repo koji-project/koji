@@ -12353,9 +12353,12 @@ class RootExports(object):
         """Execute the XML-RPC method with the given name and count the results.
         A method return value of None will return O, a return value of type "list", "tuple", or
         "dict" will return len(value), and a return value of any other type will return 1. An
-        invalid methodName will raise an AttributeError, and invalid arguments will raise a
-        TypeError."""
-        result = getattr(self, methodName)(*args, **kw)
+        invalid methodName will raise GenericError."""
+        try:
+            method = getattr(self, methodName)
+        except AttributeError:
+            raise koji.GenericError("method %s doesn't exist" % methodName)
+        result = method(*args, **kw)
         if result is None:
             return 0
         elif isinstance(result, (list, tuple, dict)):
@@ -12413,7 +12416,11 @@ class RootExports(object):
         """
         filterOpts = kw.pop('filterOpts', {})
 
-        results = getattr(self, methodName)(*args, **kw)
+        try:
+            method = getattr(self, methodName)
+        except AttributeError:
+            raise koji.GenericError("method %s doesn't exist" % methodName)
+        results = method(*args, **kw)
         if results is None:
             return 0, None
         elif isinstance(results, list):
