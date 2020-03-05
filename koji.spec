@@ -724,7 +724,7 @@ fi
 %endif
 
 %changelog
-* Fri Feb 21 2020 Tomas Kopecek <tkopecek at redhat.com> - 1.20.1-1
+* Thu Mar  5 2020 Tomas Kopecek <tkopecek at redhat.com> - 1.20.1-1
 - PR#1995: hub: improve search() API documentation
 - PR#1993: Always use stream=True when iterating over a request
 - PR#1982: ensure that all keys in distrepo are lowered
@@ -743,6 +743,7 @@ fi
 - PR#2020: move needed functions
 - PR#1946: fix usage message for add-pkg
 - PR#1947: fix help message for list-groups
+- PR#2060: build_references: fix the type of event_id used by max
 
 * Mon Jan 20 2020 Tomas Kopecek <tkopecek at redhat.com> - 1.20.0-1
 - PR#1908: koji 1.20 release
