@@ -12353,9 +12353,12 @@ class RootExports(object):
         """Execute the XML-RPC method with the given name and count the results.
         A method return value of None will return O, a return value of type "list", "tuple", or
         "dict" will return len(value), and a return value of any other type will return 1. An
-        invalid methodName will raise an AttributeError, and invalid arguments will raise a
-        TypeError."""
-        result = getattr(self, methodName)(*args, **kw)
+        invalid methodName will raise GenericError."""
+        try:
+            method = getattr(self, methodName)
+        except AttributeError:
+            raise koji.GenericError("method %s doesn't exist" % methodName)
+        result = method(*args, **kw)
         if result is None:
             return 0
         elif isinstance(result, (list, tuple, dict)):
@@ -12377,7 +12380,7 @@ class RootExports(object):
     def filterResults(self, methodName, *args, **kw):
         """Execute the XML-RPC method with the given name and filter the results
         based on the options specified in the keywork option "filterOpts".  The method
-        must return a list of maps.  Any other return type will result in a TypeError.
+        must return a list of maps.  Any other return type will result in a GenericError.
         Currently supported options are:
         - offset: the number of elements to trim off the front of the list
         - limit: the maximum number of results to return
@@ -12396,7 +12399,7 @@ class RootExports(object):
         Execute the XML-RPC method with the given name and filter the results
         based on the options specified in the keywork option "filterOpts".
         The method must return a list of maps.  Any other return type will
-        result in a TypeError.
+        result in a GenericError.
 
         Args:
         offset: the number of elements to trim off the front of the list
@@ -12413,7 +12416,11 @@ class RootExports(object):
         """
         filterOpts = kw.pop('filterOpts', {})
 
-        results = getattr(self, methodName)(*args, **kw)
+        try:
+            method = getattr(self, methodName)
+        except AttributeError:
+            raise koji.GenericError("method %s doesn't exist" % methodName)
+        results = method(*args, **kw)
         if results is None:
             return 0, None
         elif isinstance(results, list):
@@ -12422,7 +12429,7 @@ class RootExports(object):
             _count = 1
 
         if not isinstance(results, list):
-            raise TypeError('%s() did not return a list' % methodName)
+            raise koji.GenericError('%s() did not return a list' % methodName)
 
         order = filterOpts.get('order')
         if order:
