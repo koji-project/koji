@@ -105,17 +105,12 @@ def handle_edit_sidetag(options, session, args):
     parser.add_argument("--debuginfo", action="store_true", default=None,
                         help=_("Generate debuginfo repository"))
     parser.add_argument("--no-debuginfo", action="store_false", dest="debuginfo")
-    parser.add_argument("-b", "--block", action="append", help="block package")
-    parser.add_argument("-u", "--unblock", action="append", help="unblock package")
 
     opts = parser.parse_args(args)
 
+    if opts.debuginfo is None:
+        parser.error("--debuginfo or --no-debuginfo must be specified")
+
     activate_session(session, options)
 
-    kwargs = {
-        'block_pkgs': opts.block,
-        'unblock_pkgs': opts.unblock,
-    }
-    if opts.debuginfo is not None:
-        kwargs['debuginfo'] = opts.debuginfo
-    session.editSideTag(opts.sidetag, **kwargs)
+    session.editSideTag(opts.sidetag, debuginfo=opts.debuginfo)

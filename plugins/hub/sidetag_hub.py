@@ -172,10 +172,9 @@ def listSideTags(basetag=None, user=None, queryOpts=None):
 
 
 @export
-def editSideTag(sidetag, debuginfo=None, block_pkgs=None, unblock_pkgs=None):
+def editSideTag(sidetag, debuginfo=None):
     """Restricted ability to modify sidetags, parent tag must have:
     sidetag_debuginfo_allowed: 1
-    sidetag_package_list_allowed: 1
     in extra, if modifying functions should work. For blocking/unblocking
     further policy must be compatible with these operations.
 
@@ -183,10 +182,6 @@ def editSideTag(sidetag, debuginfo=None, block_pkgs=None, unblock_pkgs=None):
     :type sidetag: int or str
     :param debuginfo: set or disable debuginfo repo generation
     :type debuginfo: bool
-    :param block_pkgs: package names to be blocked in sidetag
-    :type block_pkgs: list of str
-    :param unblock_pkgs: package names to be unblocked in sidetag
-    :type unblock_pkgs: list of str
     """
 
     context.session.assertLogin()
@@ -204,15 +199,10 @@ def editSideTag(sidetag, debuginfo=None, block_pkgs=None, unblock_pkgs=None):
 
     if debuginfo is not None and not parent['extra'].get('sidetag_debuginfo_allowed'):
         raise koji.GenericError("Debuginfo setting is not allowed in parent tag.")
-    if (block_pkgs or unblock_pkgs) and not parent['extra'].get('sidetag_package_list_allowed'):
-        raise koji.GenericError("Package un/blocking is not allowed in parent tag.")
 
     if debuginfo is not None:
         _edit_tag(sidetag, extra={'with_debuginfo': bool(debuginfo)})
-    for pkg in block_pkgs:
-        pkglist_block(sidetag, pkg)
-    for pkg in unblock_pkgs:
-        pkglist_unblock(sidetag, pkg)
+
 
 def handle_sidetag_untag(cbtype, *args, **kws):
     """Remove a side tag when its last build is untagged
