@@ -4,6 +4,7 @@
 import sys
 
 import koji
+import koji.policy
 from koji.context import context
 from koji.plugin import callback, export
 sys.path.insert(0, "/usr/share/koji-hub/")
@@ -13,16 +14,29 @@ from kojihub import (  # noqa: F402
     _create_tag,
     _delete_build_target,
     _delete_tag,
+    _edit_tag,
     assert_policy,
     get_build_target,
+    getInheritanceData,
     get_tag,
     get_user,
-    nextval
-    _edit_tag,
+    nextval,
+    policy_get_user
 )
 
 CONFIG_FILE = "/etc/koji-hub/plugins/sidetag.conf"
 CONFIG = None
+
+
+class SidetagOwner(koji.policy.MatchTest):
+    """Checks, if user is a real owner of sidetag"""
+    name = 'is_sidetag_owner'
+
+    def run(self, data):
+        user = policy_get_user(data)
+        tag = get_tag(data['tag'])
+        return (tag['extra'].get('sidetag') and
+                tag['extra'].get('sidetag_user_id') == user['id'])
 
 
 @export
@@ -186,7 +200,7 @@ def editSideTag(sidetag, debuginfo=None):
 
     context.session.assertLogin()
     user = get_user(context.session.user_id, strict=True)
-    tag = get_tag(sidetag, strict=True)
+    sidetag = get_tag(sidetag, strict=True)
 
     if not sidetag["extra"].get("sidetag"):
         raise koji.GenericError("Not a sidetag: %(name)s" % sidetag)
