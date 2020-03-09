@@ -28,7 +28,16 @@ CONFIG_FILE = "/etc/koji-hub/plugins/sidetag.conf"
 CONFIG = None
 
 
-class SidetagOwner(koji.policy.MatchTest):
+class SidetagTest(koji.policy.MatchTest):
+    """Checks, if tag is a sidetag"""
+    name = 'is_sidetag'
+
+    def run(self, data):
+        tag = get_tag(data['tag'])
+        return bool(tag['extra'].get('sidetag'))
+
+
+class SidetagOwnerTest(koji.policy.MatchTest):
     """Checks, if user is a real owner of sidetag"""
     name = 'is_sidetag_owner'
 
