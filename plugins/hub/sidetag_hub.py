@@ -28,13 +28,29 @@ CONFIG_FILE = "/etc/koji-hub/plugins/sidetag.conf"
 CONFIG = None
 
 
+def is_sidetag(taginfo, raise_error=False):
+    """Check, that given tag is sidetag"""
+    result = bool(taginfo['extra'].get('sidetag'))
+    if not result and raise_error:
+        raise koji.GenericError("Not a sidetag: %(name)s" % taginfo)
+
+
+def is_sidetag_owner(taginfo, user, raise_error=False):
+    """Check, that given user is owner of the sidetag"""
+    result = (taginfo['extra'].get('sidetag') and
+              taginfo['extra'].get('sidetag_user_id') == user['id'])
+    if not result and raise_error:
+        raise koji.ActionNotAllowed("This is not your sidetag")
+
+
+# Policy tests
 class SidetagTest(koji.policy.MatchTest):
     """Checks, if tag is a sidetag"""
     name = 'is_sidetag'
 
     def run(self, data):
         tag = get_tag(data['tag'])
-        return bool(tag['extra'].get('sidetag'))
+        return is_sidetag(tag)
 
 
 class SidetagOwnerTest(koji.policy.MatchTest):
@@ -44,10 +60,10 @@ class SidetagOwnerTest(koji.policy.MatchTest):
     def run(self, data):
         user = policy_get_user(data)
         tag = get_tag(data['tag'])
-        return (tag['extra'].get('sidetag') and
-                tag['extra'].get('sidetag_user_id') == user['id'])
+        return is_sidetag_owner(tag, user)
 
 
+# API calls
 @export
 def createSideTag(basetag, debuginfo=False):
     """Create a side tag.
@@ -118,11 +134,9 @@ def removeSideTag(sidetag):
     sidetag = get_tag(sidetag, strict=True)
 
     # sanity/access
-    if not sidetag["extra"].get("sidetag"):
-        raise koji.GenericError("Not a sidetag: %(name)s" % sidetag)
-    if sidetag["extra"].get("sidetag_user_id") != user["id"]:
-        if not context.session.hasPerm("admin"):
-            raise koji.ActionNotAllowed("This is not your sidetag")
+    is_sidetag(sidetag, raise_error=True)
+    is_sidetag_owner(sidetag, user, raise_error=True)
+
     _remove_sidetag(sidetag)
 
 
@@ -211,11 +225,9 @@ def editSideTag(sidetag, debuginfo=None):
     user = get_user(context.session.user_id, strict=True)
     sidetag = get_tag(sidetag, strict=True)
 
-    if not sidetag["extra"].get("sidetag"):
-        raise koji.GenericError("Not a sidetag: %(name)s" % sidetag)
-    if sidetag["extra"].get("sidetag_user_id") != user["id"]:
-        if not context.session.hasPerm("admin"):
-            raise koji.ActionNotAllowed("This is not your sidetag")
+    # sanity/access
+    is_sidetag(sidetag, raise_error=True)
+    is_sidetag_owner(sidetag, user, raise_error=True)
 
     parent_id = getInheritanceData(sidetag)[0]['parent_id']
     parent = get_tag(parent_id)
@@ -241,8 +253,7 @@ def handle_sidetag_untag(cbtype, *args, **kws):
     if not tag:
         # also shouldn't happen, but just in case
         return
-    if not tag["extra"].get("sidetag"):
-        # not a side tag
+    if not is_sidetag(tag):
         return
     # is the tag now empty?
     query = QueryProcessor(

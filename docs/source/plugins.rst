@@ -93,6 +93,14 @@ Example for `/etc/koji-hub/hub.conf`:
         # forbid everything else
         all :: deny
 
+    package_list =
+        # allow blocking for owners in their sidetags
+        match action block && is_sidetag_owner :: allow
+        all :: deny
+
+There are two special policy tests `is_sidetag` and `is_sidetag_owner` with
+expectable behaviour.
+
 Now Sidetag Koji plugin should be installed.  To verify that, run
 `koji list-api` command -- it should now display `createSideTag`
 as one of available API calls.
