@@ -11,6 +11,7 @@ import random
 import re
 import stat
 import sys
+import textwrap
 import time
 import traceback
 from collections import OrderedDict, defaultdict
@@ -454,7 +455,20 @@ def handle_remove_pkg(goptions, session, args):
 
 def handle_build(options, session, args):
     "[build] Build a package from source"
-    usage = _("usage: %prog build [options] <target> <srpm path or scm url>")
+
+    usage = _("""\
+        usage: %prog build [options] <target> <srpm path or scm url>
+
+        First option is build target (don't confuse it with destination
+        tag (where build ends) or buildroot (from where dependencies
+        are installed).
+
+        List of all available targets can be acquired by "
+        'koji list-targets'. For further info about how tags, targets "
+        and buildroot interact, check the "
+        https://docs.pagure.org/koji/HOWTO/#package-organization""")
+
+    usage = textwrap.dedent(usage)
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--skip-tag", action="store_true",
                       help=_("Do not attempt to tag package"))
@@ -2334,8 +2348,15 @@ def handle_revoke_cg_access(goptions, session, args):
 
 
 def anon_handle_latest_build(goptions, session, args):
-    "[info] Print the latest builds for a tag"
-    usage = _("usage: %prog latest-build [options] <tag> <package> [<package> ...]")
+    """[info] Print the latest builds for a tag"""
+    usage = _("""\
+        usage: %prog latest-build [options] <tag> <package> [<package> ...]
+
+        Note, that <tag> needn't be same as build target. If you've wanted to
+        see what was the latest build in given buildroot, check '%prog
+        list-targets --name=<target>' to find name of the buildroot's tag""")
+
+    usage = textwrap.dedent(usage)
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--arch", help=_("List all of the latest packages for this arch"))
     parser.add_option("--all", action="store_true",
