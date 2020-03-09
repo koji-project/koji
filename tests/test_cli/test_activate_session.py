@@ -34,6 +34,7 @@ class TestActivateSession(unittest.TestCase):
         session.login.assert_not_called()
         session.ssl_login.assert_not_called()
         session.krb_login.assert_not_called()
+        session.gssapi_login.assert_not_called()
 
     def test_activate_session_ssl(self):
         session = mock.MagicMock()
@@ -48,6 +49,7 @@ class TestActivateSession(unittest.TestCase):
                     proxyuser=None)
         session.login.assert_not_called()
         session.krb_login.assert_not_called()
+        session.gssapi_login.assert_not_called()
 
     def test_activate_session_ssl_implicit(self):
         session = mock.MagicMock()
@@ -63,6 +65,7 @@ class TestActivateSession(unittest.TestCase):
                     proxyuser=None)
         session.login.assert_not_called()
         session.krb_login.assert_not_called()
+        session.gssapi_login.assert_not_called()
 
     def test_activate_session_pw(self):
         session = mock.MagicMock()
@@ -72,6 +75,7 @@ class TestActivateSession(unittest.TestCase):
         session.login.assert_called_once_with()
         session.ssl_login.assert_not_called()
         session.krb_login.assert_not_called()
+        session.gssapi_login.assert_not_called()
 
     def test_activate_session_pw_implicit(self):
         session = mock.MagicMock()
@@ -82,6 +86,7 @@ class TestActivateSession(unittest.TestCase):
         session.login.assert_called_once_with()
         session.ssl_login.assert_not_called()
         session.krb_login.assert_not_called()
+        session.gssapi_login.assert_not_called()
 
     def test_activate_session_krb(self):
         session = mock.MagicMock()
@@ -91,7 +96,8 @@ class TestActivateSession(unittest.TestCase):
         activate_session(session, options)
         session.login.assert_not_called()
         session.ssl_login.assert_not_called()
-        session.krb_login.assert_called_once_with(proxyuser=None)
+        session.krb_login.assert_not_called()
+        session.gssapi_login.assert_called_once_with(proxyuser=None)
 
     def test_activate_session_krb_implicit(self):
         session = mock.MagicMock()
@@ -102,7 +108,8 @@ class TestActivateSession(unittest.TestCase):
         activate_session(session, options)
         session.login.assert_not_called()
         session.ssl_login.assert_not_called()
-        session.krb_login.assert_called_once_with(proxyuser=None)
+        session.krb_login.assert_not_called()
+        session.gssapi_login.assert_called_once_with(proxyuser=None)
 
     def test_activate_session_krb_keytab(self):
         session = mock.MagicMock()
@@ -112,7 +119,8 @@ class TestActivateSession(unittest.TestCase):
         activate_session(session, options)
         session.login.assert_not_called()
         session.ssl_login.assert_not_called()
-        session.krb_login.assert_called_once_with(principal='PRINCIPAL',
+        session.krb_login.assert_not_called()
+        session.gssapi_login.assert_called_once_with(principal='PRINCIPAL',
                     keytab='KEYTAB', proxyuser=None)
 
     def test_activate_session_no_method(self):
@@ -124,4 +132,5 @@ class TestActivateSession(unittest.TestCase):
         session.login.assert_not_called()
         session.ssl_login.assert_not_called()
         session.krb_login.assert_not_called()
+        session.gssapi_login.assert_not_called()
         self.error.assert_called_once()
