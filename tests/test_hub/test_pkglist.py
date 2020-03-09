@@ -58,7 +58,7 @@ class TestPkglistBlock(unittest.TestCase):
     @mock.patch('kojihub.lookup_package')
     def test_pkglist_unblock(self, lookup_package, get_tag, assert_policy,
             readPackageList, _pkglist_add, _pkglist_remove):
-        tag = {'id': 1, 'name': 'tag', 'extra': {}}
+        tag = {'id': 1, 'name': 'tag'}
         pkg = {'id': 2, 'name': 'package', 'owner_id': 3}
         get_tag.return_value = tag
         lookup_package.return_value = pkg
@@ -96,7 +96,7 @@ class TestPkglistBlock(unittest.TestCase):
     def test_pkglist_unblock_inherited(self, lookup_package, get_tag, assert_policy,
             readPackageList, _pkglist_add, _pkglist_remove):
         tag_id, pkg_id, owner_id = 1, 2, 3
-        get_tag.return_value = {'id': tag_id, 'name': 'tag', 'extra': {}}
+        get_tag.return_value = {'id': tag_id, 'name': 'tag'}
         lookup_package.return_value = {'id': pkg_id, 'name': 'pkg'}
         readPackageList.return_value = {pkg_id: {
             'blocked': True,
@@ -123,7 +123,7 @@ class TestPkglistBlock(unittest.TestCase):
     def test_pkglist_unblock_not_present(self, lookup_package, get_tag, assert_policy,
             readPackageList, _pkglist_add, _pkglist_remove):
         tag_id, pkg_id = 1, 2
-        get_tag.return_value = {'id': tag_id, 'name': 'tag', 'extra': {}}
+        get_tag.return_value = {'id': tag_id, 'name': 'tag'}
         lookup_package.return_value = {'id': pkg_id, 'name': 'pkg'}
         readPackageList.return_value = {}
 
@@ -147,7 +147,7 @@ class TestPkglistBlock(unittest.TestCase):
     def test_pkglist_unblock_not_blocked(self, lookup_package, get_tag, assert_policy,
             readPackageList, _pkglist_add, _pkglist_remove):
         tag_id, pkg_id, owner_id = 1, 2, 3
-        get_tag.return_value = {'id': tag_id, 'name': 'tag', 'extra': {}}
+        get_tag.return_value = {'id': tag_id, 'name': 'tag'}
         lookup_package.return_value = {'id': pkg_id, 'name': 'pkg'}
         readPackageList.return_value = {pkg_id: {
             'blocked': False,
@@ -200,7 +200,7 @@ class TestPkglistBlock(unittest.TestCase):
         force=False
         update=False
         policy=True
-        tag = {'id': 1, 'name': 'tag', 'extra': {}}
+        tag = {'id': 1, 'name': 'tag'}
         pkg = {'id': 2, 'name': 'pkg', 'owner_id': 3}
         users = [
             {'id': 3, 'name': 'user'},
@@ -313,7 +313,7 @@ class TestPkglistBlock(unittest.TestCase):
         force=False
         update=False
         policy=True
-        tag = {'id': 1, 'name': 'tag', 'extra': {}}
+        tag = {'id': 1, 'name': 'tag'}
         pkg = {'id': 2, 'name': 'pkg', 'owner_id': 3}
         users = [
             {'id': 3, 'name': 'user'},
@@ -370,7 +370,7 @@ class TestPkglistBlock(unittest.TestCase):
         force=False
         update=False
         policy=True
-        tag = {'id': 1, 'name': 'tag', 'extra': {}}
+        tag = {'id': 1, 'name': 'tag'}
         pkg = {'id': 2, 'name': 'pkg', 'owner_id': 3}
         users = [
             {'id': 3, 'name': 'user',},
@@ -420,7 +420,7 @@ class TestPkglistBlock(unittest.TestCase):
         force=True
         update=False
         policy=True
-        tag = {'id': 1, 'name': 'tag', 'extra': {}}
+        tag = {'id': 1, 'name': 'tag'}
         pkg = {'id': 2, 'name': 'pkg', 'owner_id': 3}
         users = [
             {'id': 3, 'name': 'user',},

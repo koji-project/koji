@@ -990,8 +990,7 @@ def _direct_pkglist_add(taginfo, pkginfo, owner, block, extra_arches, force,
         action = 'block'
     if policy:
         context.session.assertLogin()
-        policy_data = {'tag': tag_id, 'action': action, 'package': pkginfo,
-                       'force' : force, 'extra': tag['extra']}
+        policy_data = {'tag': tag_id, 'action': action, 'package': pkginfo, 'force': force}
         # don't check policy for admins using force
         if not (force and context.session.hasPerm('admin')):
             assert_policy('package_list', policy_data)
@@ -1071,8 +1070,7 @@ def _direct_pkglist_remove(taginfo, pkginfo, force=False, policy=False):
     pkg = lookup_package(pkginfo, strict=True)
     if policy:
         context.session.assertLogin()
-        policy_data = {'tag': tag['id'], 'action': 'remove', 'package': pkg['id'],
-                       'force' : force, 'extra': tag['extra']}
+        policy_data = {'tag': tag['id'], 'action': 'remove', 'package': pkg['id'], 'force': force}
         # don't check policy for admins using force
         assert_policy('package_list', policy_data, force=force)
 
@@ -1104,8 +1102,7 @@ def pkglist_unblock(taginfo, pkginfo, force=False):
     tag = get_tag(taginfo, strict=True)
     pkg = lookup_package(pkginfo, strict=True)
     context.session.assertLogin()
-    policy_data = {'tag': tag['id'], 'action': 'unblock', 'package': pkg['id'],
-                   'force' : force, 'extra': tag['extra']}
+    policy_data = {'tag': tag['id'], 'action': 'unblock', 'package': pkg['id'], 'force': force}
     # don't check policy for admins using force
     assert_policy('package_list', policy_data, force=force)
     user = get_user(context.session.user_id)
