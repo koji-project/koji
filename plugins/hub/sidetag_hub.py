@@ -209,9 +209,10 @@ def listSideTags(basetag=None, user=None, queryOpts=None):
 
 
 @export
-def editSideTag(sidetag, debuginfo=None):
+def editSideTag(sidetag, debuginfo=None, rpm_macros=None, remove_rpm_macros=None):
     """Restricted ability to modify sidetags, parent tag must have:
     sidetag_debuginfo_allowed: 1
+    sidetag_rpm_macros_allowed: 1
     in extra, if modifying functions should work. For blocking/unblocking
     further policy must be compatible with these operations.
 
@@ -219,6 +220,10 @@ def editSideTag(sidetag, debuginfo=None):
     :type sidetag: int or str
     :param debuginfo: set or disable debuginfo repo generation
     :type debuginfo: bool
+    :param rpm_macros: add/update rpms macros in extra
+    :type rpm_macros: dict
+    :param remove_rpm_macros: remove rpm macros from extra
+    :type remove_rpm_macros: list of str
     """
 
     context.session.assertLogin()
@@ -235,8 +240,19 @@ def editSideTag(sidetag, debuginfo=None):
     if debuginfo is not None and not parent['extra'].get('sidetag_debuginfo_allowed'):
         raise koji.GenericError("Debuginfo setting is not allowed in parent tag.")
 
+    if ((rpm_macros is not None or remove_rpm_macros is not None)
+        and not parent['extra'].get('sidetag_rpm_macros_allowed')):
+        raise koji.GenericError("RPM macros change is not allowed in parent tag.")
+
+    kwargs = {'extra': {}}
     if debuginfo is not None:
-        _edit_tag(sidetag, extra={'with_debuginfo': bool(debuginfo)})
+        kwargs['extra']['with_debuginfo'] = bool(debuginfo)
+    for macro, value in rpm_macros.items():
+        kwargs['extra']['rpm.macro.%s' % macro] = value
+    if remove_rpm_macros:
+        kwargs['remove_extra'] = ['rpm.macro.%s' % m for m in remove_rpm_macros]
+
+    _edit_tag(sidetag, **kwargs)
 
 
 def handle_sidetag_untag(cbtype, *args, **kws):

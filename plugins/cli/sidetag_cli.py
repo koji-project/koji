@@ -105,12 +105,31 @@ def handle_edit_sidetag(options, session, args):
     parser.add_argument("--debuginfo", action="store_true", default=None,
                         help=_("Generate debuginfo repository"))
     parser.add_argument("--no-debuginfo", action="store_false", dest="debuginfo")
+    parser.add_argument("--rpm-macro", action="append", default=[], metavar="key=value",
+                        help=_("Set tag-specific rpm macros"))
+    parser.add_argument("--remove-rpm-macro", action="append", default=[], metavar="key",
+                        help=_("Remove rpm macros"))
 
     opts = parser.parse_args(args)
 
-    if opts.debuginfo is None:
-        parser.error("--debuginfo or --no-debuginfo must be specified")
+    if opts.debuginfo is None and not opts.add_rpm_macro and not opts.remove_rpm_macros:
+        parser.error("At least one option needs to be specified")
 
     activate_session(session, options)
 
-    session.editSideTag(opts.sidetag, debuginfo=opts.debuginfo)
+    kwargs = {}
+    if opts.debuginfo is not None:
+        kwargs['debuginfo'] = opts.debuginfo
+
+    if options.add_rpm_macro:
+        rpm_macros = {]
+        for xopt in opts.add_rpm_macro:
+            key, value = xopt.split('=', 1)
+            value = arg_filter(value)
+            rpm_macros[key] = value
+        kwargs['rpm_macros'] = rpm_macros
+
+    if opts.remove_rpm_macros:
+        kwargs['remove_rpm_macros'] = opts.remove_rpm_macros
+
+    session.editSideTag(opts.sidetag, **kwargs)
