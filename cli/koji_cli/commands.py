@@ -3252,11 +3252,11 @@ def anon_handle_buildinfo(goptions, session, args):
                     rpm['sigs'] = mc.queryRPMSigs(rpm['id'])
             print("RPMs:")
             for rpm in rpms:
-                l = os.path.join(koji.pathinfo.build(info), koji.pathinfo.rpm(rpm))
+                line = os.path.join(koji.pathinfo.build(info), koji.pathinfo.rpm(rpm))
                 keys = ', '.join(sorted([x['sigkey'] for x in rpm['sigs'].result if x['sigkey']]))
                 if keys:
-                    l += '\tSignatures: %s' % keys
-                print(l)
+                    line += '\tSignatures: %s' % keys
+                print(line)
         if options.changelog:
             changelog = session.getChangelogEntries(info['id'])
             if changelog:
