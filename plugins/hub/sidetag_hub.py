@@ -17,7 +17,7 @@ from kojihub import (  # noqa: F402
     _edit_tag,
     assert_policy,
     get_build_target,
-    getInheritanceData,
+    readInheritanceData,
     get_tag,
     get_user,
     nextval,
@@ -234,25 +234,26 @@ def editSideTag(sidetag, debuginfo=None, rpm_macros=None, remove_rpm_macros=None
     is_sidetag(sidetag, raise_error=True)
     is_sidetag_owner(sidetag, user, raise_error=True)
 
-    parent_id = getInheritanceData(sidetag)[0]['parent_id']
+    parent_id = readInheritanceData(sidetag['id'])[0]['parent_id']
     parent = get_tag(parent_id)
 
     if debuginfo is not None and not parent['extra'].get('sidetag_debuginfo_allowed'):
         raise koji.GenericError("Debuginfo setting is not allowed in parent tag.")
 
-    if ((rpm_macros is not None or remove_rpm_macros is not None)
-        and not parent['extra'].get('sidetag_rpm_macros_allowed')):
+    if (rpm_macros is not None or remove_rpm_macros is not None) \
+            and not parent['extra'].get('sidetag_rpm_macros_allowed'):
         raise koji.GenericError("RPM macros change is not allowed in parent tag.")
 
     kwargs = {'extra': {}}
     if debuginfo is not None:
         kwargs['extra']['with_debuginfo'] = bool(debuginfo)
-    for macro, value in rpm_macros.items():
-        kwargs['extra']['rpm.macro.%s' % macro] = value
-    if remove_rpm_macros:
+    if rpm_macros is not None:
+        for macro, value in rpm_macros.items():
+            kwargs['extra']['rpm.macro.%s' % macro] = value
+    if remove_rpm_macros is not None:
         kwargs['remove_extra'] = ['rpm.macro.%s' % m for m in remove_rpm_macros]
 
-    _edit_tag(sidetag, **kwargs)
+    _edit_tag(sidetag['id'], **kwargs)
 
 
 def handle_sidetag_untag(cbtype, *args, **kws):

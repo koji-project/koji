@@ -10,7 +10,7 @@ from argparse import ArgumentParser
 import koji
 from koji.plugin import export_cli
 from koji_cli.commands import anon_handle_wait_repo
-from koji_cli.lib import _, activate_session
+from koji_cli.lib import _, activate_session, arg_filter
 
 
 @export_cli
@@ -106,13 +106,13 @@ def handle_edit_sidetag(options, session, args):
                         help=_("Generate debuginfo repository"))
     parser.add_argument("--no-debuginfo", action="store_false", dest="debuginfo")
     parser.add_argument("--rpm-macro", action="append", default=[], metavar="key=value",
-                        help=_("Set tag-specific rpm macros"))
+                        dest="rpm_macros", help=_("Set tag-specific rpm macros"))
     parser.add_argument("--remove-rpm-macro", action="append", default=[], metavar="key",
-                        help=_("Remove rpm macros"))
+                        dest="remove_rpm_macros", help=_("Remove rpm macros"))
 
     opts = parser.parse_args(args)
 
-    if opts.debuginfo is None and not opts.add_rpm_macro and not opts.remove_rpm_macros:
+    if opts.debuginfo is None and not opts.rpm_macros and not opts.remove_rpm_macros:
         parser.error("At least one option needs to be specified")
 
     activate_session(session, options)
@@ -121,9 +121,9 @@ def handle_edit_sidetag(options, session, args):
     if opts.debuginfo is not None:
         kwargs['debuginfo'] = opts.debuginfo
 
-    if options.add_rpm_macro:
-        rpm_macros = {]
-        for xopt in opts.add_rpm_macro:
+    if opts.rpm_macros:
+        rpm_macros = {}
+        for xopt in opts.rpm_macros:
             key, value = xopt.split('=', 1)
             value = arg_filter(value)
             rpm_macros[key] = value
