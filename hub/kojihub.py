@@ -5323,15 +5323,48 @@ def query_buildroots(hostID=None, tagID=None, state=None, rpmID=None, archiveID=
             clauses.append('standard_buildroot.state IN %(state)s')
         else:
             clauses.append('standard_buildroot.state = %(state)i')
+
+    # following filters can dramatically limit overall query size
+    # run separate queries for picking smallest candidate set
+    candidate_buildroot_ids = set()
     if rpmID is not None:
         joins.insert(0, 'buildroot_listing ON buildroot.id = buildroot_listing.buildroot_id')
         fields.append(('buildroot_listing.is_update', 'is_update'))
         clauses.append('buildroot_listing.rpm_id = %(rpmID)i')
+        query = QueryProcessor(columns=['buildroot_id'], tables=['buildroot_listing'],
+                               clauses=['rpm_id = %(rpmID)i'], opts={'asList': True},
+                               values=locals())
+        result = query.execute()
+        if candidate_buildroot_ids:
+            candidate_buildroot_ids = candidate_buildroot_ids.intersection(set(result))
+        else:
+            candidate_buildroot_ids = set(result)
+
     if archiveID is not None:
         joins.append('buildroot_archives ON buildroot.id = buildroot_archives.buildroot_id')
         clauses.append('buildroot_archives.archive_id = %(archiveID)i')
+        query = QueryProcessor(columns=['buildroot_id'], tables=['buildroot_archives'],
+                               clauses=['archive_id = %(archiveID)i'], opts={'asList': True},
+                               values=locals())
+        result = query.execute()
+        if candidate_buildroot_ids:
+            candidate_buildroot_ids = candidate_buildroot_ids.intersection(set(result))
+        else:
+            candidate_buildroot_ids |= set(result)
     if taskID is not None:
         clauses.append('standard_buildroot.task_id = %(taskID)i')
+        query = QueryProcessor(columns=['buildroot_id'], tables=['standard_buildroot'],
+                               clauses=['task_id = %(taskID)i'], opts={'asList': True},
+                               values=locals())
+        result = query.execute()
+        if candidate_buildroot_ids:
+            candidate_buildroot_ids = candidate_buildroot_ids.intersection(set(result))
+        else:
+            candidate_buildroot_ids |= set(result)
+
+    if candidate_buildroot_ids:
+        candidate_buildroot_ids = list(candidate_buildroot_ids)
+        clauses.append('buildroot.id IN %(candidate_buildroot_ids)s')
 
     query = QueryProcessor(columns=[f[0] for f in fields], aliases=[f[1] for f in fields],
                            tables=tables, joins=joins, clauses=clauses, values=locals(),
