@@ -5341,7 +5341,7 @@ def query_buildroots(hostID=None, tagID=None, state=None, rpmID=None, archiveID=
             candidate_buildroot_ids = set(result)
 
     if archiveID is not None:
-        joins.append('buildroot_archives ON buildroot.id = buildroot_archives.buildroot_id')
+        joins.insert(0, 'buildroot_archives ON buildroot.id = buildroot_archives.buildroot_id')
         clauses.append('buildroot_archives.archive_id = %(archiveID)i')
         query = QueryProcessor(columns=['buildroot_id'], tables=['buildroot_archives'],
                                clauses=['archive_id = %(archiveID)i'], opts={'asList': True},
