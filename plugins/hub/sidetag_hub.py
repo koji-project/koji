@@ -32,7 +32,7 @@ def createSideTag(basetag, debuginfo=False):
     :type basetag: str or int
 
     :param debuginfo: should buildroot repos contain debuginfo?
-    :tybe debuginfo: bool
+    :type debuginfo: bool
     """
 
     # Any logged-in user is able to request creation of side tags,
