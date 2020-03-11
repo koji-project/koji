@@ -12180,7 +12180,7 @@ class RootExports(object):
             if fmt:
                 krb_principal = fmt % hostname
         # builder user can already exist, if host tried to log in before adding into db
-        user = get_user(userInfo={'name': hostname, 'krb_principals': [krb_principal]})
+        user = get_user(userInfo={'name': hostname, 'krb_principal': krb_principal})
         if user:
             if user['usertype'] != koji.USERTYPES['HOST']:
                 if force and user['usertype'] == koji.USERTYPES['NORMAL']:
