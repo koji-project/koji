@@ -2583,7 +2583,7 @@ class ClientSession(object):
             raise AuthError('No certification provided')
         if not os.access(cert, os.R_OK):
             raise AuthError("Certificate %s doesn't exist or is not accessible" % cert)
-        if serverca is not None and not os.access(serverca, os.R_OK):
+        if serverca and not os.access(serverca, os.R_OK):
             raise AuthError("Server CA %s doesn't exist or is not accessible" % serverca)
         # FIXME: ca is not useful here and therefore ignored, can be removed
         # when API is changed
