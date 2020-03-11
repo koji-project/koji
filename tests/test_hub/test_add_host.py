@@ -94,7 +94,7 @@ class TestAddHost(unittest.TestCase):
         _dml.assert_not_called()
         get_user.assert_called_once_with(userInfo={
             'name': 'hostname',
-            'krb_principals': ['-hostname-']})
+            'krb_principal': '-hostname-'})
         get_host.assert_called_once_with('hostname')
         _singleValue.assert_called_once()
         self.assertEqual(len(self.inserts), 0)
@@ -117,7 +117,7 @@ class TestAddHost(unittest.TestCase):
         _dml.assert_called_once()
         get_user.assert_called_once_with(userInfo={
             'name': 'hostname',
-            'krb_principals': ['-hostname-']})
+            'krb_principal': '-hostname-'})
         get_host.assert_called_once_with('hostname')
         _singleValue.assert_called()
         self.assertEqual(len(self.inserts), 2)
@@ -146,7 +146,7 @@ class TestAddHost(unittest.TestCase):
         _dml.assert_not_called()
         get_user.assert_called_once_with(userInfo={
             'name': 'hostname',
-            'krb_principals': ['-hostname-']})
+            'krb_principal': '-hostname-'})
         get_host.assert_called_once_with('hostname')
         _singleValue.assert_called()
         self.assertEqual(len(self.inserts), 0)
