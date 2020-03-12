@@ -11829,7 +11829,13 @@ class RootExports(object):
 
     def distRepo(self, tag, keys, **task_opts):
         """Create a dist-repo task. returns task id"""
-        context.session.assertPerm('dist-repo')
+        if not context.session.hasPerm('dist-repo') and not context.session.hasPerm('admin'):
+            policy_data = {
+                'tag': tag,
+                'keys': keys,
+            }
+            assert_policy('dist_repo', policy_data)
+
         repo_id, event_id = dist_repo_init(tag, keys, task_opts)
         task_opts['event'] = event_id
         # cancel potentially running distRepos
