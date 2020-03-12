@@ -1,6 +1,7 @@
 # coding=utf-8
 from __future__ import absolute_import, division
 
+import hashlib
 import optparse
 import os
 import random
@@ -487,8 +488,20 @@ def linked_upload(localfile, path, name=None):
         os.umask(old_umask)
 
 
-def download_file(url, relpath, quiet=False, noprogress=False, size=None, num=None):
-    """Download files from remote"""
+def download_file(url, relpath, quiet=False, noprogress=False, size=None,
+                  num=None, filesize=None):
+    """Download files from remote
+
+    :param str url: URL to be downloaded
+    :param str relpath: where to save it
+    :param bool quiet: no/verbose
+    :param bool noprogress: print progress bar
+    :param int size: total number of files being downloaded (printed in verbose
+                     mode)
+    :param int num: download index (printed in verbose mode)
+    :param int filesize: expected file size, used for appending to file, no
+                         other checks are performed, caller is responsible for
+                         checking, that resulting file is valid."""
 
     if '/' in relpath:
         koji.ensuredir(os.path.dirname(relpath))
@@ -498,46 +511,142 @@ def download_file(url, relpath, quiet=False, noprogress=False, size=None, num=No
         else:
             print(_("Downloading: %s") % relpath)
 
-    f = open(relpath, 'ab')
+    pos = 0
     headers = {}
-    pos = f.tell()
-    if pos:
-        headers['Range'] = ('bytes=%d-' % pos)
+    if filesize:
+        # append the file
+        f = open(relpath, 'ab')
+        pos = f.tell()
+        if pos:
+            if filesize == pos:
+                if not quiet:
+                    print(_("File %s already downloaded, skipping" % relpath))
+                return
+            if not quiet:
+                print(_("Appending to existing file %s" % relpath))
+            headers['Range'] = ('bytes=%d-' % pos)
+    else:
+        # rewrite
+        f = open(relpath, 'wb')
 
     # closing needs to be used for requests < 2.18.0
     with closing(requests.get(url, headers=headers, stream=True)) as response:
-        if (response.status_code == 200): # full content provided?
+        if response.status_code == 200:  # full content provided?
+            # rewrite in such case
             f.close()
             f = open(relpath, 'wb')
-        elif not (response.status_code == 416 and pos): # error?
-            response.raise_for_status()
-        length = int(response.headers.get('content-length') or 0)
-
-            pos = 0
-        for chunk in response.iter_content(chunk_size=65536):
-                pos += len(chunk)
+        response.raise_for_status()
+        length = filesize or int(response.headers.get('content-length') or 0)
+        for chunk in response.iter_content(chunk_size=1024**2):
+            pos += len(chunk)
             f.write(chunk)
             if not (quiet or noprogress):
-                    _download_progress(length, pos)
+                _download_progress(length, pos, filesize)
         if not length and not (quiet or noprogress):
-                _download_progress(pos, pos)
+            _download_progress(pos, pos, filesize)
     f.close()
 
     if not (quiet or noprogress):
         print('')
 
 
-def _download_progress(download_t, download_d):
+def download_rpm(build, rpm, topurl, sigkey=None, quiet=False, noprogress=False):
+    "Wrapper around download_file, do additional checks for rpm files"
+    pi = koji.PathInfo(topdir=topurl)
+    if sigkey:
+        fname = pi.signed(rpm, sigkey)
+    else:
+        fname = pi.rpm(rpm)
+    url = os.path.join(pi.build(build), fname)
+    path = os.path.basename(fname)
+
+    download_file(url, path, quiet=quiet, noprogress=noprogress, filesize=rpm['size'])
+
+    # size
+    size = os.path.getsize(path)
+    if size != rpm['size']:
+        os.unlink(path)
+        error("Downloaded rpm %s size %d does not match db size %d, deleting" %
+              (path, size, rpm['size']))
+
+    # basic sanity
+    try:
+        koji.check_rpm_file(path)
+    except koji.GenericError as ex:
+        os.unlink(path)
+        warn(str(ex))
+        error("Downloaded rpm %s is not valid rpm file, deleting" % path)
+
+    # payload hash
+    sigmd5 = koji.get_header_fields(path, ['sigmd5'])['sigmd5']
+    if rpm['payloadhash'] != koji.hex_string(sigmd5):
+        os.unlink(path)
+        error("Downloaded rpm %s doesn't match db, deleting" % path)
+
+
+def download_archive(build, archive, topurl, quiet=False, noprogress=False):
+    "Wrapper around download_file, do additional checks for archive files"
+
+    pi = koji.PathInfo(topdir=topurl)
+    if archive['btype'] == 'maven':
+        url = os.path.join(pi.mavenbuild(build), pi.mavenfile(archive))
+        path = pi.mavenfile(archive)
+    elif archive['btype'] == 'win':
+        url = os.path.join(pi.winbuild(build), pi.winfile(archive))
+        path = pi.winfile(archive)
+    elif archive['btype'] == 'image':
+        url = os.path.join(pi.imagebuild(build), archive['filename'])
+        path = archive['filename']
+    else:
+        # TODO: cover module/operator-manifests/remote-sources
+        # can't happen
+        assert False  # pragma: no cover
+
+    download_file(url, path, quiet=quiet, noprogress=noprogress, filesize=archive['size'])
+
+    # check size
+    if os.path.getsize(path) != archive['size']:
+        os.unlink(path)
+        error("Downloaded rpm %s size does not match db size, deleting" % path)
+
+    # check checksum/checksum_type
+    if archive['checksum_type'] == koji.CHECKSUM_TYPES['md5']:
+        hash = hashlib.md5()
+    elif archive['checksum_type'] == koji.CHECKSUM_TYPES['sha1']:
+        hash = hashlib.sha1()
+    elif archive['checksum_type'] == koji.CHECKSUM_TYPES['sha256']:
+        hash = hashlib.sha256()
+    else:
+        # shouldn't happen
+        error("Unknown checksum type: %s" % archive['checksum_type'])
+    with open(path, "rb") as f:
+        while True:
+            chunk = f.read(1024**2)
+            hash.update(chunk)
+            if not chunk:
+                break
+    if hash.hexdigest() != archive['checksum']:
+        os.unlink(path)
+        error("Downloaded archive %s doesn't match checksum, deleting" % path)
+
+
+def _download_progress(download_t, download_d, size=None):
     if download_t == 0:
         percent_done = 0.0
         percent_done_str = "???%"
     else:
         percent_done = float(download_d) / float(download_t)
         percent_done_str = "%3d%%" % (percent_done * 100)
+    if size:
+        data_all = _format_size(size)
     data_done = _format_size(download_d)
 
+    if size:
+        data_size = "%s / %s" % (data_done, data_all)
+    else:
+        data_size = data_done
     sys.stdout.write("[% -36s] % 4s % 10s\r" % ('=' * (int(percent_done * 36)), percent_done_str,
-                                                data_done))
+                                                data_size))
     sys.stdout.flush()
 
 

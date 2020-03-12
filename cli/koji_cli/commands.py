@@ -30,7 +30,9 @@ from koji_cli.lib import (
     _running_in_bg,
     activate_session,
     arg_filter,
+    download_archive,
     download_file,
+    download_rpm,
     error,
     format_inheritance_flags,
     get_usage_str,
@@ -6720,14 +6722,12 @@ def anon_handle_download_build(options, session, args):
 
     if build.isdigit():
         if suboptions.latestfrom:
-            print("--latestfrom not compatible with build IDs, specify a package name.")
-            return 1
+            error("--latestfrom not compatible with build IDs, specify a package name.")
         build = int(build)
         if suboptions.task_id:
             builds = session.listBuilds(taskID=build)
             if not builds:
-                print("No associated builds for task %s" % build)
-                return 1
+                error("No associated builds for task %s" % build)
             build = builds[0]['build_id']
 
     if suboptions.latestfrom:
@@ -6736,17 +6736,14 @@ def anon_handle_download_build(options, session, args):
             builds = session.listTagged(suboptions.latestfrom, latest=True, package=build,
                                         type=suboptions.type)
         except koji.GenericError as data:
-            print("Error finding latest build: %s" % data)
-            return 1
+            error("Error finding latest build: %s" % data)
         if not builds:
-            print("%s has no builds of %s" % (suboptions.latestfrom, build))
-            return 1
+            error("%s has no builds of %s" % (suboptions.latestfrom, build))
         info = builds[0]
     elif suboptions.rpm:
         rpminfo = session.getRPM(build)
         if rpminfo is None:
-            print("No such rpm: %s" % build)
-            return 1
+            error("No such rpm: %s" % build)
         info = session.getBuild(rpminfo['build_id'])
     else:
         # if we're given an rpm name without --rpm, download the containing build
@@ -6759,66 +6756,43 @@ def anon_handle_download_build(options, session, args):
         info = session.getBuild(build)
 
     if info is None:
-        print("No such build: %s" % build)
-        return 1
+        error("No such build: %s" % build)
 
     if not suboptions.topurl:
-        print("You must specify --topurl to download files")
-        return 1
-    pathinfo = koji.PathInfo(topdir=suboptions.topurl)
+        error("You must specify --topurl to download files")
 
-    urls = []
+    archives = []
+    rpms = []
     if suboptions.type:
         archives = session.listArchives(buildID=info['id'], type=suboptions.type)
         if not archives:
-            print("No %s archives available for %s" % (suboptions.type, koji.buildLabel(info)))
-            return 1
-        if suboptions.type == 'maven':
-            for archive in archives:
-                url = pathinfo.mavenbuild(info) + '/' + pathinfo.mavenfile(archive)
-                urls.append((url, pathinfo.mavenfile(archive)))
-        elif suboptions.type == 'win':
-            for archive in archives:
-                url = pathinfo.winbuild(info) + '/' + pathinfo.winfile(archive)
-                urls.append((url, pathinfo.winfile(archive)))
-        elif suboptions.type == 'image':
-            if not suboptions.topurl:
-                print("You must specify --topurl to download images")
-                return 1
-            pi = koji.PathInfo(topdir=suboptions.topurl)
-            for archive in archives:
-                url = '%s/%s' % (pi.imagebuild(info), archive['filename'])
-                urls.append((url, archive['filename']))
-        else:
-            # can't happen
-            assert False  # pragma: no cover
+            error("No %s archives available for %s" % (suboptions.type, koji.buildLabel(info)))
     else:
         arches = suboptions.arches
         if len(arches) == 0:
             arches = None
         if suboptions.rpm:
-            rpms = [rpminfo]
+            all_rpms = [rpminfo]
         else:
-            rpms = session.listRPMs(buildID=info['id'], arches=arches)
-        if not rpms:
+            all_rpms = session.listRPMs(buildID=info['id'], arches=arches)
+        if not all_rpms:
             if arches:
-                print("No %s packages available for %s" %
+                error("No %s packages available for %s" %
                       (" or ".join(arches), koji.buildLabel(info)))
             else:
-                print("No packages available for %s" % koji.buildLabel(info))
-            return 1
-        for rpm in rpms:
+                error("No packages available for %s" % koji.buildLabel(info))
+        for rpm in all_rpms:
             if not suboptions.debuginfo and koji.is_debuginfo(rpm['name']):
                 continue
-            if suboptions.key:
-                fname = pathinfo.signed(rpm, suboptions.key)
-            else:
-                fname = pathinfo.rpm(rpm)
-            url = pathinfo.build(info) + '/' + fname
-            urls.append((url, os.path.basename(fname)))
+            rpms.append(rpm)
 
-    for url, relpath in urls:
-        download_file(url, relpath, suboptions.quiet, suboptions.noprogress)
+    # run the download
+    for rpm in rpms:
+        download_rpm(info, rpm, suboptions.topurl, sigkey=suboptions.key,
+                     quiet=suboptions.quiet, noprogress=suboptions.noprogress)
+    for archive in archives:
+        download_archive(info, archive, suboptions.topurl,
+                         quiet=suboptions.quiet, noprogress=suboptions.noprogress)
 
 
 def anon_handle_download_logs(options, session, args):
@@ -7029,8 +7003,8 @@ def anon_handle_download_task(options, session, args):
         if '..' in filename:
             error(_('Invalid file name: %s') % filename)
         url = '%s/%s/%s' % (pathinfo.work(volume), pathinfo.taskrelpath(task["id"]), filename)
-        download_file(url, new_filename, suboptions.quiet, suboptions.noprogress, len(downloads),
-                      number)
+        download_file(url, new_filename, quiet=suboptions.quiet, noprogress=suboptions.noprogress,
+                      size=len(downloads), num=number)
 
 
 def anon_handle_wait_repo(options, session, args):

@@ -36,7 +36,8 @@ class TestDownloadTask(unittest.TestCase):
             url = pattern % (subpath, k)
             if target.endswith('.log') and arch is not None:
                 target = "%s.%s.log" % (target.rstrip(".log"), arch)
-            calls.append(call(url, target, None, None, total, i + 1))
+            calls.append(call(url, target, quiet=None, noprogress=None,
+                size=total, num=i + 1))
         return calls
 
     def setUp(self):
@@ -162,11 +163,11 @@ class TestDownloadTask(unittest.TestCase):
             call(self.session, 44444)])
         self.assertListEqual(self.download_file.mock_calls, [
             call('https://topurl/work/tasks/3333/33333/somerpm.x86_64.rpm',
-                 'somerpm.x86_64.rpm', None, None, 3, 1),
+                 'somerpm.x86_64.rpm', quiet=None, noprogress=None, size=3, num=1),
             call('https://topurl/vol/vol2/work/tasks/3333/33333/somerpm.x86_64.rpm',
-                 'vol2/somerpm.x86_64.rpm', None, None, 3, 2),
+                 'vol2/somerpm.x86_64.rpm', quiet=None, noprogress=None, size=3, num=2),
             call('https://topurl/vol/vol3/work/tasks/4444/44444/somerpm.noarch.rpm',
-                 'vol3/somerpm.noarch.rpm', None, None, 3, 3)])
+                 'vol3/somerpm.noarch.rpm', quiet=None, noprogress=None, size=3, num=3)])
         self.assertIsNone(rv)
 
     def test_handle_download_task_log(self):
