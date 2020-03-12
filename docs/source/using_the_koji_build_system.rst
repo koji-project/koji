@@ -37,6 +37,10 @@ available. You will need to have a valid authentication token to use
 many features. However, many of the read-only commands will work without
 authentication.
 
+If you run into any problems with Fedora's instance of koji, `here
+<https://fedoraproject.org/wiki/Join_the_package_collection_maintainers#Install_the_developer_client_tools>`__
+is actual documentation for installing and using developer client tools.
+
 Alternatively, koji CLI is now also available via:
 
   * `Project releases tarballs <https://pagure.io/koji/releases>`__
@@ -49,71 +53,6 @@ Alternatively, koji CLI is now also available via:
     ``koji`` library.
   * Actual development version via Pagure's git: ``git clone
     https://pagure.io/koji.git``
-
-Fedora Account System (FAS2) Setup
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-In order to interface with the koji server, maintainers will need to run
-
-::
-
-    /usr/bin/fedora-packager-setup
-
-Each user on a system will need to run fedora-packager-setup if they
-wish to use Koji to build Fedora packages. Each user has their own
-certificates that authenticate them.
-
-.. raw:: mediawiki
-
-   {{admon/tip|Plague users rejoice!|For existing users of plague (the old build system that preceded Koji), <code>fedora-packager-setup</code> will use your existing certificates.  If you did not have plague before, it will get the server CA certs and tell you where to get your user cert.}}
-
-Fedora Certificates
-'''''''''''''''''''
-
-Koji uses three certificates:
-
-``~/.fedora.cert`` (specific to the Fedora Maintainer) : This cert is
-generated from running ``fedora-cert -n``. It should have been generated
-when you became maintainer. You may need to refresh it when it expires
-by running ``fedora-cert -n`` again. You can check if it has expired
-with ``fedora-cert -v``.
-
-the following are downloaded automatically by fedora-packager-setup and
-don't need to be manually setup
-
-``~/.fedora-upload-ca.cert`` (The certificate for the Certificate
-Authority used to sign the user keys.) : It can be manually downloaded
-from
-`here <https://admin.fedoraproject.org/accounts/fedora-upload-ca.cert>`__
-or ``fedora-packager-setup or fedora-cert -n`` should fetch it. using
-the CLI is preferred.
-``~/.fedora-server-ca.cert`` (The certificate for the Certificate
-Authority used to sign the build system's server keys.) : It can be
-downloaded manually from
-`here <https://admin.fedoraproject.org/accounts/fedora-server-ca.cert>`__
-or ``fedora-packager-setup`` should fetch it. This certificate may also
-be needed to let `https koji <https://koji.fedroraproject.org>`__ URLs
-resolve without untrusted-CA warnings.
-
-.. warning::
-
-   If you're using RHEL6, an incompatibility
-   between RHEL6's openssl and nss causes certificates downloaded from fas to
-   fail to work with some fedpkg tools.
-   `Bug 631000 rhel6
-   openssl creates PKCS#8 encoded PEM RSA private key files, nss can't read
-   them <https://bugzilla.redhat.com/show_bug.cgi?id=631000>`_.  The cert can be made compatible using this command:
-   `openssl x509 -in ~/.fedora.cert -text; echo; openssl rsa -in
-   ~/.fedora.cert) > fedora.cert.new`
-
-.. warning::
-
-   You can also have problem in Fedora/RHEL if you are going to use GSSAPI
-   authentication. These distributions have changed default `rdns=false` in
-   /etc/krb5.conf. If you encounter
-   `requests_kerberos.exceptions.MutualAuthenticationError: Unable to
-   authenticate <Response [200]>` error, maybe you are hitting this problem.
-   `More info in pagure issue <https://pagure.io/koji/issue/288>`_.
 
 Koji Config
 ^^^^^^^^^^^
