@@ -26,7 +26,7 @@ Contents
     defining_hub_policies
     external_repo_server_bootstrap
     image_build
-    windows
+    winbuild
     tag_inheritance
     misc
     release_notes/release_notes

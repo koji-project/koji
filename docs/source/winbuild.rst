@@ -4,6 +4,10 @@ Building for Windows
 
 Koji provides a fairly basic mechanism to perform builds for Windows.
 
+.. toctree::
+   :hidden:
+
+   win_spec_example
 
 Introduction
 ============
@@ -73,7 +77,7 @@ This is the file that controls the build process, and is modeled very loosely
 on RPM's spec files. The Windows spec file is in .ini format.
 
 It's probably easiest to start by looking at this
-`example <http://git.engineering.redhat.com/git/users/mikeb/test-builds.git/tree/qpid-cpp-win-new/qpid-cpp-win.ini>`__
+:doc:`example <win_spec_example>`
 spec file.
 
 All values in the [naming] section must be defined.
