@@ -683,7 +683,8 @@ class TaskManager(object):
             # index
             missed_br = dict([(row['id'], row) for row in missed_br])
             tasks = dict([(row['id'], row) for row in self.session.getTaskInfo(tasks)])
-            for id in local_only:
+            # go from +- oldest
+            for id in sorted(local_only):
                 # Cleaning options
                 #   - wait til later
                 #   - "soft" clean (leaving empty root/ dir)
@@ -708,8 +709,13 @@ class TaskManager(object):
                             age < self.options.failed_buildroot_lifetime:
                         # XXX - this could be smarter
                         # keep buildroots for failed tasks around for a little while
-                        self.logger.debug("Keeping failed buildroot: %s" % desc)
-                        continue
+                        fs_stat = os.statvfs(self.options.mockdir)
+                        available = fs_stat.f_bavail * fs_stat.f_bsize
+                        availableMB = available // 1024 // 1024
+                        if availableMB > self.options.minspace:
+                            # we can leave it in place, otherwise delete it
+                            self.logger.debug("Keeping failed buildroot: %s" % desc)
+                            continue
                 topdir = data['dir']
                 rootdir = None
                 if topdir:
