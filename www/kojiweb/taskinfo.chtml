@@ -1,4 +1,5 @@
 #import koji
+#import koji.util as kojiutil
 #from kojiweb import util
 #from six.moves.urllib.parse import quote
 #import datetime
@@ -97,7 +98,7 @@
     #set $end_ts = $task.completion_ts
     #end if
     #if not $end_ts
-    #set $end_ts = datetime.datetime.utcnow().timestamp()
+    #set $end_ts = $kojiutil.parseTime($kojiutil.encode_datetime(datetime.datetime.utcnow()))
     #end if
     <tr>
       <th title="From task's creation">Total time</th>
