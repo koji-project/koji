@@ -199,6 +199,8 @@ Options:
   -h, --help            show this help message and exit
   --skip-tag            Do not attempt to tag package
   --scratch             Perform a scratch build
+  --rebuild-srpm        Force rebuilding SRPM for scratch build only
+  --no-rebuild-srpm     Force not to rebuild srpm for scratch build only
   --wait                Wait on the build, even if running in the background
   --nowait              Don't wait on build
   --wait-repo           Wait for the actual buildroot repo of given target
