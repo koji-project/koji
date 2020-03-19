@@ -7,12 +7,12 @@ BEGIN WORK;
 -- in the event that the system clock rolls back, event_ids will retain proper sequencing
 CREATE TABLE events (
 	id SERIAL NOT NULL PRIMARY KEY,
-	time TIMESTAMP NOT NULL DEFAULT NOW()
+	time TIMESTAMP NOT NULL DEFAULT clock_timestamp()
 ) WITHOUT OIDS;
 
 -- A function that creates an event and returns the id, used as DEFAULT value for versioned tables
 CREATE FUNCTION get_event() RETURNS INTEGER AS '
-	INSERT INTO events (time) VALUES (''now'');
+	INSERT INTO events (time) VALUES (clock_timestamp());
 	SELECT currval(''events_id_seq'')::INTEGER;
 ' LANGUAGE SQL;
 
