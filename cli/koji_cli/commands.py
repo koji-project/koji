@@ -458,6 +458,10 @@ def handle_build(options, session, args):
                       help=_("Do not attempt to tag package"))
     parser.add_option("--scratch", action="store_true",
                       help=_("Perform a scratch build"))
+    parser.add_option("--rebuild-srpm", action="store_true", dest="rebuild_srpm",
+                      help=_("Force rebuilding SRPM for scratch build only"))
+    parser.add_option("--no-rebuild-srpm", action="store_false", dest="rebuild_srpm",
+                      help=_("Force not to rebuild srpm for scratch build only"))
     parser.add_option("--wait", action="store_true",
                       help=_("Wait on the build, even if running in the background"))
     parser.add_option("--nowait", action="store_false", dest="wait",
@@ -480,6 +484,8 @@ def handle_build(options, session, args):
     if len(args) != 2:
         parser.error(_("Exactly two arguments (a build target and a SCM URL or srpm file) are "
                        "required"))
+    if build_opts.rebuild_srpm is not None and not build_opts.scratch:
+        parser.error(_("--no-/rebuild-srpm is only allowed for --scratch builds"))
     if build_opts.arch_override and not build_opts.scratch:
         parser.error(_("--arch_override is only allowed for --scratch builds"))
     activate_session(session, options)
@@ -500,7 +506,8 @@ def handle_build(options, session, args):
     opts = {}
     if build_opts.arch_override:
         opts['arch_override'] = koji.parse_arches(build_opts.arch_override)
-    for key in ('skip_tag', 'scratch', 'repo_id', 'fail_fast', 'wait_repo', 'wait_builds'):
+    for key in ('skip_tag', 'scratch', 'repo_id', 'fail_fast', 'wait_repo', 'wait_builds',
+                'rebuild_srpm'):
         val = getattr(build_opts, key)
         if val is not None:
             opts[key] = val

@@ -1071,14 +1071,30 @@ class BuildTask(BaseTaskHandler):
             self.tagBuild(build_id, dest_tag)
 
     def getSRPM(self, src, build_tag, repo_id):
-        """Get srpm from src"""
+        """
+        Get srpm from src - it can fetch SCM and build SRPM from there or
+        alternatively get downloaded SRPM (and rebuild it if needed).
+
+        Buildroot has extra.rebuild_srpm field with default value of True. For
+        scratch builds we allow overriding by user, for regular builds only
+        buildtag's option can affect it.
+
+        :param str src:
+           SCM url or filename
+        :param str|dict build_tag:
+           build tag used for re/building srpm
+        :param int repo_id:
+           repo id to be used
+        """
         if isinstance(src, str):
             if SCM.is_scm_url(src):
                 return self.getSRPMFromSCM(src, build_tag, repo_id)
             else:
                 buildconfig = self.session.getBuildConfig(build_tag, event=self.event_id)
-                if buildconfig['extra'].get('rebuild_srpm', True):
-                    # default is to always rebuild
+                rebuild = buildconfig['extra'].get('rebuild_srpm', True)
+                if self.opts.get('scratch') and self.opts.get('rebuild_srpm') is not None:
+                    rebuild = self.opts.get('rebuild_srpm')
+                if rebuild:
                     return self.getSRPMFromSRPM(src, build_tag, repo_id)
                 else:
                     return src
