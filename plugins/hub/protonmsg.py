@@ -145,6 +145,7 @@ def _strip_extra(buildinfo):
         extra_limit = CONFIG.getint('message', 'extra_limit')
         extra_size = len(json_serialize(buildinfo.get('extra', {})))
         if extra_limit and extra_size > extra_limit:
+            buildinfo = buildinfo.copy()
             del buildinfo['extra']
     return buildinfo
 
