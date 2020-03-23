@@ -994,8 +994,9 @@ def _direct_pkglist_add(taginfo, pkginfo, owner, block, extra_arches, force,
         if not (force and context.session.hasPerm('admin')):
             assert_policy('package_list', policy_data)
         else:
+            pkg_name = pkg and pkg['name'] or pkginfo
             logger.info("Package list add %s/%s policy overriden by %s" % (
-                tag['name'], pkg['name'], context.session.user_data['name']))
+                tag['name'], pkg_name, context.session.user_data['name']))
     if not pkg:
         pkg = lookup_package(pkginfo, create=True)
     # validate arches before running callbacks
