@@ -4900,7 +4900,8 @@ def anon_handle_taginfo(goptions, session, args):
         if external_repos:
             print("External repos:")
             for rinfo in external_repos:
-                print("  %(priority)3i %(external_repo_name)s (%(url)s)" % rinfo)
+                print("  %(priority)3i %(external_repo_name)s "
+                      "(%(url)s, merge mode: %(merge_mode)s)" % rinfo)
         print("Inheritance:")
         for parent in session.getInheritanceData(info['id'], **event_opts):
             parent['flags'] = format_inheritance_flags(parent)

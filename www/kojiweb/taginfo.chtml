@@ -102,7 +102,7 @@
       <th>External&nbsp;repos</th>
       <td>
 	#for $external_repo in $external_repos
-	<a href="externalrepoinfo?extrepoID=$external_repo.external_repo_id">$external_repo.external_repo_name</a>
+	<a href="externalrepoinfo?extrepoID=$external_repo.external_repo_id">$external_repo.external_repo_name</a> [$external_repo.merge_mode]
 	#if $external_repo.tag_id != $tag.id
 	<span class="smaller">(inherited from <a href="taginfo?tagID=$external_repo.tag_id">$external_repo.tag_name</a>)</span>
 	#end if
