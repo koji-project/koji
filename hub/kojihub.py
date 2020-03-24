@@ -12175,10 +12175,6 @@ class RootExports(object):
             raise koji.GenericError('host already exists: %s' % hostname)
         q = """SELECT id FROM channels WHERE name = 'default'"""
         default_channel = _singleValue(q)
-        if krb_principal is None:
-            fmt = context.opts.get('HostPrincipalFormat')
-            if fmt:
-                krb_principal = fmt % hostname
         # builder user can already exist, if host tried to log in before adding into db
         userinfo = {'name': hostname}
         if krb_principal:
@@ -12198,6 +12194,10 @@ class RootExports(object):
                         'user %s already exists and it is not a host' % hostname)
             userID = user['id']
         else:
+            if krb_principal is None:
+                fmt = context.opts.get('HostPrincipalFormat')
+                if fmt:
+                    krb_principal = fmt % hostname
             userID = context.session.createUser(hostname, usertype=koji.USERTYPES['HOST'],
                                                 krb_principal=krb_principal)
         # host entry
