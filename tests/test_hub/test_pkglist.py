@@ -28,6 +28,7 @@ class TestPkglistBlock(unittest.TestCase):
         # start with "assert"
         self.context.session.assertLogin = mock.MagicMock()
         self.context.session.user_id = 112233
+        self.context.session.user_data = {'name': 'username'}
         self.run_callbacks = mock.patch('koji.plugin.run_callbacks').start()
 
     def tearDown(self):
