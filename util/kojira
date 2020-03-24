@@ -378,23 +378,16 @@ class RepoManager(object):
         url = repodata['url']
         if url not in self.external_repos:
             self.external_repos[url] = 0
-            arches = [None]  # placeholder for repos without $arch bit
+            arches = []  # placeholder for repos without $arch bit
             try:
                 arches = self.session.getTag(tag)['arches'].split()
             except AttributeError:
                 pass
             for arch in arches:
-                if arch is None and '$arch' not in url:
-                    arch_url = url
-                elif arch and '$arch' in url:
+                if '$arch' in url:
                     arch_url = url.replace('$arch', arch)
                 else:
-                    # None placeholder, but $arch is part of url, it makes no
-                    # sense to check this one
-                    self.logger.warning(
-                        'Weird external repo without $arch in url: %(tag_name)s - %(url)s' %
-                        repodata)
-                    continue
+                    arch_url = url
                 arch_url = os.path.join(arch_url, 'repodata/repomd.xml')
                 self.logger.debug('Checking external url: %s' % arch_url)
                 try:
