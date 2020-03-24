@@ -691,6 +691,7 @@ class TaskManager(object):
                 #   - full removal
                 data = local_br[id]
                 br = missed_br.get(id)
+                lack_of_space = False
                 if not br:
                     self.logger.warn("%(name)s: not in db" % data)
                     continue
@@ -716,6 +717,8 @@ class TaskManager(object):
                             # we can leave it in place, otherwise delete it
                             self.logger.debug("Keeping failed buildroot: %s" % desc)
                             continue
+                        else:
+                            lack_of_space = True
                 topdir = data['dir']
                 rootdir = None
                 if topdir:
@@ -735,7 +738,7 @@ class TaskManager(object):
                 # can lead to a world of hurt.
                 # We remove the rootdir contents but leave the rootdir unless it
                 # is really old
-                if age > 3600 * 24:
+                if age > 3600 * 24 or lack_of_space:
                     # dir untouched for a day
                     self.logger.info("Removing buildroot: %s" % desc)
                     if topdir and safe_rmtree(topdir, unmount=True, strict=False) != 0:
