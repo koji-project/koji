@@ -691,7 +691,6 @@ class TaskManager(object):
                 #   - full removal
                 data = local_br[id]
                 br = missed_br.get(id)
-                lack_of_space = False
                 if not br:
                     self.logger.warn("%(name)s: not in db" % data)
                     continue
@@ -710,15 +709,10 @@ class TaskManager(object):
                             age < self.options.failed_buildroot_lifetime:
                         # XXX - this could be smarter
                         # keep buildroots for failed tasks around for a little while
-                        fs_stat = os.statvfs(self.options.mockdir)
-                        available = fs_stat.f_bavail * fs_stat.f_bsize
-                        availableMB = available // 1024 // 1024
-                        if availableMB > self.options.minspace:
+                        if self.checkSpace():
                             # we can leave it in place, otherwise delete it
                             self.logger.debug("Keeping failed buildroot: %s" % desc)
                             continue
-                        else:
-                            lack_of_space = True
                 topdir = data['dir']
                 rootdir = None
                 if topdir:
@@ -738,7 +732,7 @@ class TaskManager(object):
                 # can lead to a world of hurt.
                 # We remove the rootdir contents but leave the rootdir unless it
                 # is really old
-                if age > 3600 * 24 or lack_of_space:
+                if age > 3600 * 24:
                     # dir untouched for a day
                     self.logger.info("Removing buildroot: %s" % desc)
                     if topdir and safe_rmtree(topdir, unmount=True, strict=False) != 0:
@@ -748,7 +742,7 @@ class TaskManager(object):
                         os.unlink(data['cfg'])
                     except OSError as e:
                         self.logger.warn("%s: can't remove config: %s" % (desc, e))
-                elif age > 120:
+                elif age > 120 or not self.checkSpace():
                     if rootdir:
                         try:
                             flist = os.listdir(rootdir)
