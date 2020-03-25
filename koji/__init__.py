@@ -2684,13 +2684,10 @@ class ClientSession(object):
             handler = self.baseurl
         request = dumps(args, name, allow_none=1)
         if six.PY3:
-            try:
-                request.encode('latin-1')
-            except UnicodeEncodeError:
-                # if string is not converted to UTF, requests will raise an error
-                # on identical check before sending data
-                # py3 string throws UnicodeEncodeError
-                request = request.encode('utf-8')
+            # For python2, dumps() without encoding specified means return a str
+            # encoded as UTF-8. For python3 it means "return a str with an appropriate
+            # xml declaration for encoding as UTF-8".
+            request = request.encode('utf-8')
         headers = [
             # connection class handles Host
             ('User-Agent', 'koji/1'),
