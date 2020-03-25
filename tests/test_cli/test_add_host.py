@@ -8,6 +8,7 @@ try:
 except ImportError:
     import unittest
 
+import koji
 from koji_cli.commands import handle_add_host
 
 class TestAddHost(unittest.TestCase):
@@ -24,7 +25,7 @@ class TestAddHost(unittest.TestCase):
         krb_principal = '--krb-principal=krb'
         arguments = [host] + arches
         arguments.append(krb_principal)
-        kwargs = {'krb_principal': 'krb'}
+        kwargs = {'krb_principal': 'krb', 'force': False}
         options = mock.MagicMock()
 
         # Mock out the xmlrpc server
@@ -69,12 +70,12 @@ class TestAddHost(unittest.TestCase):
         # Finally, assert that things were called as we expected.
         activate_session_mock.assert_called_once_with(session, options)
         session.getHost.assert_called_once_with(host)
-        session.addHost.assert_called_once_with(host, arches)
+        session.addHost.assert_called_once_with(host, arches, force=False)
         self.assertNotEqual(rv, 1)
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_add_host_dupl(self, activate_session_mock, stdout):
+    def test_handle_add_host_dupl(self, activate_session_mock, stderr):
         host = 'host'
         host_id = 1
         arches = ['arch1', 'arch2']
@@ -89,15 +90,15 @@ class TestAddHost(unittest.TestCase):
         # Run it and check immediate output
         # args: host, arch1, arch2, --krb-principal=krb
         # expected: failed, host already exists
-        rv = handle_add_host(options, session, arguments)
-        actual = stdout.getvalue()
+        with self.assertRaises(SystemExit):
+            handle_add_host(options, session, arguments)
+        actual = stderr.getvalue()
         expected = 'host is already in the database\n'
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
         activate_session_mock.assert_called_once_with(session, options)
         session.getHost.assert_called_once_with(host)
         session.addHost.assert_not_called()
-        self.assertEqual(rv, 1)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)
@@ -141,18 +142,19 @@ class TestAddHost(unittest.TestCase):
         krb_principal = '--krb-principal=krb'
         arguments = [host] + arches
         arguments.append(krb_principal)
-        kwargs = {'krb_principal': 'krb'}
+        kwargs = {'krb_principal': 'krb', 'force': False}
         options = mock.MagicMock()
 
         # Mock out the xmlrpc server
         session = mock.MagicMock()
 
         session.getHost.return_value = None
-        session.addHost.return_value = None
+        session.addHost.side_effect = koji.GenericError
         # Run it and check immediate output
         # args: host, arch1, arch2, --krb-principal=krb
         # expected: failed
-        handle_add_host(options, session, arguments)
+        with self.assertRaises(koji.GenericError):
+            handle_add_host(options, session, arguments)
         actual = stdout.getvalue()
         expected = ''
         self.assertMultiLineEqual(actual, expected)
