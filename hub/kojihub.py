@@ -3357,7 +3357,7 @@ def get_tag(tagInfo, strict=False, event=None):
         if strict:
             raise koji.GenericError("Invalid tagInfo: %r" % tagInfo)
         return None
-    result['extra'] = get_tag_extra(result)
+    result['extra'] = get_tag_extra(result, event)
     return result
 
 
