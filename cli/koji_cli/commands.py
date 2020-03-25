@@ -2101,6 +2101,8 @@ def handle_list_signed(goptions, session, args):
     rpm_idx = {}
     if options.key:
         qopts['sigkey'] = options.key
+
+    sigs = []
     if options.rpm:
         rpm_info = options.rpm
         try:
@@ -2112,7 +2114,7 @@ def handle_list_signed(goptions, session, args):
         if rinfo.get('external_repo_id'):
             parser.error(_("External rpm: %(name)s-%(version)s-%(release)s.%(arch)s@"
                            "%(external_repo_name)s") % rinfo)
-        qopts['rpm_id'] = rinfo['id']
+        sigs += session.queryRPMSigs(rpm_id=rinfo['id'], **qopts)
     if options.build:
         build = options.build
         try:
@@ -2121,13 +2123,10 @@ def handle_list_signed(goptions, session, args):
             pass
         binfo = session.getBuild(build, strict=True)
         build_idx[binfo['id']] = binfo
-        sigs = []
         rpms = session.listRPMs(buildID=binfo['id'])
         for rinfo in rpms:
             rpm_idx[rinfo['id']] = rinfo
             sigs += session.queryRPMSigs(rpm_id=rinfo['id'], **qopts)
-    else:
-        sigs = session.queryRPMSigs(**qopts)
     if options.tag:
         tag = options.tag
         try:
@@ -2138,9 +2137,16 @@ def handle_list_signed(goptions, session, args):
         tagged = {}
         for binfo in builds:
             build_idx.setdefault(binfo['id'], binfo)
-        for rinfo in rpms:
-            rpm_idx.setdefault(rinfo['id'], rinfo)
-            tagged[rinfo['id']] = 1
+        results = []
+        # use batched multicall as there could be potentially a lot of results
+        # so we don't exhaust server resources
+        with session.multicall(batch=5000) as m:
+            for rinfo in rpms:
+                rpm_idx.setdefault(rinfo['id'], rinfo)
+                tagged[rinfo['id']] = 1
+                results.append(m.queryRPMSigs(rpm_id=rinfo['id']), **qopts)
+        sigs += [x.result[0] for x in results]
+
     # Now figure out which sig entries actually have live copies
     for sig in sigs:
         rpm_id = sig['rpm_id']
