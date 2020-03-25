@@ -92,9 +92,7 @@ class TestAddHost(unittest.TestCase):
         with self.assertRaises(koji.GenericError):
             self.exports.addHost('hostname', ['i386', 'x86_64'])
         _dml.assert_not_called()
-        get_user.assert_called_once_with(userInfo={
-            'name': 'hostname',
-            'krb_principal': '-hostname-'})
+        get_user.assert_called_once_with(userInfo={'name': 'hostname'})
         get_host.assert_called_once_with('hostname')
         _singleValue.assert_called_once()
         self.assertEqual(len(self.inserts), 0)
@@ -115,9 +113,7 @@ class TestAddHost(unittest.TestCase):
         self.exports.addHost('hostname', ['i386', 'x86_64'], force=True)
 
         _dml.assert_called_once()
-        get_user.assert_called_once_with(userInfo={
-            'name': 'hostname',
-            'krb_principal': '-hostname-'})
+        get_user.assert_called_once_with(userInfo={'name': 'hostname'})
         get_host.assert_called_once_with('hostname')
         _singleValue.assert_called()
         self.assertEqual(len(self.inserts), 2)
@@ -144,9 +140,7 @@ class TestAddHost(unittest.TestCase):
             self.exports.addHost('hostname', ['i386', 'x86_64'], force=True)
 
         _dml.assert_not_called()
-        get_user.assert_called_once_with(userInfo={
-            'name': 'hostname',
-            'krb_principal': '-hostname-'})
+        get_user.assert_called_once_with(userInfo={'name': 'hostname'})
         get_host.assert_called_once_with('hostname')
         _singleValue.assert_called()
         self.assertEqual(len(self.inserts), 0)
