@@ -13,4 +13,8 @@ CREATE OR REPLACE FUNCTION get_event() RETURNS INTEGER AS '
     SELECT currval(''events_id_seq'')::INTEGER;
 ' LANGUAGE SQL;
 
+-- merge_mode can not be null
+UPDATE tag_external_repos SET merge_mode = 'koji' WHERE merge_mode is NULL;
+ALTER TABLE tag_external_repos ALTER COLUMN merge_mode SET NOT NULL;
+
 COMMIT;

@@ -3678,6 +3678,9 @@ def add_external_repo_to_tag(tag_info, repo_info, priority, merge_mode='koji'):
 
     context.session.assertPerm('tag')
 
+    # sanity check for None value, which may happen if DB schema isn't updated to 1.21+
+    if merge_mode is None:
+        merge_mode = 'koji'
     if merge_mode not in koji.REPO_MERGE_MODES:
         raise koji.GenericError('Invalid merge mode: %s' % merge_mode)
 
@@ -3721,9 +3724,12 @@ def remove_external_repo_from_tag(tag_info, repo_info):
     update.execute()
 
 
-def edit_tag_external_repo(tag_info, repo_info, priority):
+def edit_tag_external_repo(tag_info, repo_info, priority=None, merge_mode=None):
     """Edit a tag<->external repo association
-    This allows you to update the priority without removing/adding the repo."""
+    This allows you to update the priority and merge_mode without removing/adding the repo.
+
+    Note that None value of priority and merge_mode means no change on it
+    """
 
     context.session.assertPerm('tag')
 
@@ -3738,9 +3744,20 @@ def edit_tag_external_repo(tag_info, repo_info, priority):
                                 (repo['name'], tag['name']))
     tag_repo = tag_repos[0]
 
-    if priority != tag_repo['priority']:
+    data = {}
+    for k in ('priority', 'merge_mode'):
+        val = locals().get(k)
+        # None value means no change
+        if val is not None and val != tag_repo[k]:
+            data[k] = val
+    if not data:
+        return False
+    else:
+        for k in ('priority', 'merge_mode'):
+            data.setdefault(k, tag_repo[k])
         remove_external_repo_from_tag(tag_id, repo_id)
-        add_external_repo_to_tag(tag_id, repo_id, priority)
+        add_external_repo_to_tag(tag_id, repo_id, **data)
+        return True
 
 
 def get_tag_external_repos(tag_info=None, repo_info=None, event=None):
