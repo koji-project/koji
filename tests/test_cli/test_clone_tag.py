@@ -816,22 +816,34 @@ List of changes:
                                        call.multiCall(batch=1000),
                                        call.tagBuildBypass('dst-tag', {
                                            'owner_name': 'b_owner',
+                                           'nvr': 'pkg1-1.0-1',
+                                           'package_name': 'pkg1', 'state': 1,
+                                           'tag_name': 'src-tag',
+                                           'name': 'pkg1'}, force=None, notify=False),
+                                       call.tagBuildBypass('dst-tag', {
+                                           'owner_name': 'b_owner',
                                            'nvr': 'pkg1-0.1-1',
                                            'package_name': 'pkg1', 'state': 1,
                                            'tag_name': 'src-tag',
-                                           'name': 'pkg1'}, force=None),
+                                           'name': 'pkg1'}, force=None, notify=False),
                                        call.tagBuildBypass('dst-tag', {
                                            'owner_name': 'b_owner',
                                            'nvr': 'pkg1-1.0-2',
                                            'package_name': 'pkg1', 'state': 1,
                                            'tag_name': 'src-tag',
-                                           'name': 'pkg1'}, force=None),
+                                           'name': 'pkg1'}, force=None, notify=False),
                                        call.tagBuildBypass('dst-tag', {
                                            'owner_name': 'b_owner',
                                            'nvr': 'pkg1-1.1-2',
                                            'package_name': 'pkg1', 'state': 1,
                                            'tag_name': 'src-tag',
-                                           'name': 'pkg1'}, force=None),
+                                           'name': 'pkg1'}, force=None, notify=False),
+                                       call.tagBuildBypass('dst-tag', {
+                                           'owner_name': 'b_owner',
+                                           'nvr': 'pkg2-1.0-1',
+                                           'package_name': 'pkg2', 'state': 2,
+                                           'tag_name': 'src-tag-p',
+                                           'name': 'pkg2'}, force=None, notify=False),
                                        call.multiCall(batch=1000),
                                        call.multiCall(batch=1000),
                                        call.groupPackageListAdd('dst-tag',
@@ -860,9 +872,11 @@ List of changes:
 
     Action  From/To Package              Build(s)                                 State      Owner      From Tag
     ------- ---------------------------- ---------------------------------------- ---------- ---------- ----------
+    [add]   pkg1                         pkg1-1.0-1                               COMPLETE   b_owner    src-tag
     [add]   pkg1                         pkg1-0.1-1                               COMPLETE   b_owner    src-tag
     [add]   pkg1                         pkg1-1.0-2                               COMPLETE   b_owner    src-tag
     [add]   pkg1                         pkg1-1.1-2                               COMPLETE   b_owner    src-tag
+    [add]   pkg2                         pkg2-1.0-1                               DELETED    b_owner    src-tag-p
 
     Action  Package                      Group
     ------- ---------------------------- ----------------------------
@@ -890,9 +904,7 @@ Options:
   --inherit-builds  Include all builds inherited into the source tag into the
                     dest tag
   --ts=TIMESTAMP    Clone tag at last event before specific timestamp
-  --no-delete       Don't delete any existing content in dest tag. Note, that
-                    you can end with older latest builds in dest than in src,
-                    if they are already tagged.
+  --no-delete       Don't delete any existing content in dest tag.
   --event=EVENT     Clone tag at a specific event
   --repo=REPO       Clone tag at a specific repo event
   -v, --verbose     show changes

@@ -3378,10 +3378,8 @@ def handle_clone_tag(goptions, session, args):
     parser.add_option('--ts', type='int', metavar="TIMESTAMP",
                       help=_('Clone tag at last event before specific timestamp'))
     parser.add_option('--no-delete', action='store_false', dest="delete",
-            default=True,
-            help=_("Don't delete any existing content in dest tag. "
-                   "Note, that you can end with older latest builds in dest "
-                   "than in src, if they are already tagged."))
+                      default=True,
+                      help=_("Don't delete any existing content in dest tag."))
     parser.add_option('--event', type='int',
                       help=_('Clone tag at a specific event'))
     parser.add_option('--repo', type='int',
@@ -3596,6 +3594,8 @@ def handle_clone_tag(goptions, session, args):
                     # remove it for next pass so we stay aligned with outer
                     # loop
                     del dstblds[nvr]
+                    if not options.delete:
+                        ablds.append(srcbld)
                 else:
                     ablds.append(srcbld)
             baddlist.extend(ablds)
