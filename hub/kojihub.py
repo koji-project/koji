@@ -5334,11 +5334,8 @@ def query_buildroots(hostID=None, tagID=None, state=None, rpmID=None, archiveID=
         query = QueryProcessor(columns=['buildroot_id'], tables=['buildroot_listing'],
                                clauses=['rpm_id = %(rpmID)i'], opts={'asList': True},
                                values=locals())
-        result = query.execute()
-        if candidate_buildroot_ids:
-            candidate_buildroot_ids = candidate_buildroot_ids.intersection(set(result))
-        else:
-            candidate_buildroot_ids = set(result)
+        result = set(query.execute())
+        candidate_buildroot_ids = result
 
     if archiveID is not None:
         joins.insert(0, 'buildroot_archives ON buildroot.id = buildroot_archives.buildroot_id')
@@ -5346,21 +5343,22 @@ def query_buildroots(hostID=None, tagID=None, state=None, rpmID=None, archiveID=
         query = QueryProcessor(columns=['buildroot_id'], tables=['buildroot_archives'],
                                clauses=['archive_id = %(archiveID)i'], opts={'asList': True},
                                values=locals())
-        result = query.execute()
+        result = set(query.execute())
         if candidate_buildroot_ids:
-            candidate_buildroot_ids = candidate_buildroot_ids.intersection(set(result))
+            candidate_buildroot_ids &= result
         else:
-            candidate_buildroot_ids |= set(result)
+            candidate_buildroot_ids = result
+
     if taskID is not None:
         clauses.append('standard_buildroot.task_id = %(taskID)i')
         query = QueryProcessor(columns=['buildroot_id'], tables=['standard_buildroot'],
                                clauses=['task_id = %(taskID)i'], opts={'asList': True},
                                values=locals())
-        result = query.execute()
+        result = set(query.execute())
         if candidate_buildroot_ids:
-            candidate_buildroot_ids = candidate_buildroot_ids.intersection(set(result))
+            candidate_buildroot_ids &= result
         else:
-            candidate_buildroot_ids |= set(result)
+            candidate_buildroot_ids = result
 
     if candidate_buildroot_ids:
         candidate_buildroot_ids = list(candidate_buildroot_ids)
