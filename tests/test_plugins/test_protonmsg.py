@@ -12,9 +12,27 @@ from koji.context import context
 from six.moves.configparser import ConfigParser, SafeConfigParser
 
 class TestProtonMsg(unittest.TestCase):
+    def setUp(self):
+        self.conf = tempfile.NamedTemporaryFile()
+        self.conf.write(six.b("""[broker]
+urls = amqps://broker1.example.com:5671 amqps://broker2.example.com:5671
+cert = /etc/koji-hub/plugins/client.pem
+cacert = /etc/koji-hub/plugins/ca.pem
+topic_prefix = koji
+connect_timeout = 10
+send_timeout = 60
+
+[message]
+extra_limit = 2048
+"""))
+        self.conf.flush()
+        protonmsg.CONFIG_FILE = self.conf.name
+        protonmsg.CONFIG = None
+
     def tearDown(self):
         if hasattr(context, 'protonmsg_msgs'):
             del context.protonmsg_msgs
+        del self.conf
 
     def assertMsg(self, topic, body=None, **kws):
         self.assertTrue(hasattr(context, 'protonmsg_msgs'))
@@ -191,18 +209,6 @@ class TestProtonMsg(unittest.TestCase):
     @patch('logging.getLogger')
     def test_send_queued_msgs_fail(self, getLogger, Container):
         context.protonmsg_msgs = [('test.topic', {'testheader': 1}, 'test body')]
-        conf = tempfile.NamedTemporaryFile()
-        conf.write(six.b("""[broker]
-urls = amqps://broker1.example.com:5671 amqps://broker2.example.com:5671
-cert = /etc/koji-hub/plugins/client.pem
-cacert = /etc/koji-hub/plugins/ca.pem
-topic_prefix = koji
-connect_timeout = 10
-send_timeout = 60
-"""))
-        conf.flush()
-        protonmsg.CONFIG_FILE = conf.name
-        protonmsg.CONFIG = None
         protonmsg.send_queued_msgs('postCommit')
         log = getLogger.return_value
         self.assertEqual(log.debug.call_count, 2)
@@ -215,18 +221,6 @@ send_timeout = 60
     @patch('logging.getLogger')
     def test_send_queued_msgs_success(self, getLogger, Container):
         context.protonmsg_msgs = [('test.topic', {'testheader': 1}, 'test body')]
-        conf = tempfile.NamedTemporaryFile()
-        conf.write(six.b("""[broker]
-urls = amqps://broker1.example.com:5671 amqps://broker2.example.com:5671
-cert = /etc/koji-hub/plugins/client.pem
-cacert = /etc/koji-hub/plugins/ca.pem
-topic_prefix = koji
-connect_timeout = 10
-send_timeout = 60
-"""))
-        conf.flush()
-        protonmsg.CONFIG_FILE = conf.name
-        protonmsg.CONFIG = None
         def clear_msgs():
             del context.protonmsg_msgs[:]
         Container.return_value.run.side_effect = clear_msgs
