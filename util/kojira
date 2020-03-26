@@ -750,7 +750,7 @@ class RepoManager(object):
         debuginfo_pat = self.options.debuginfo_tags.split()
         src_pat = self.options.source_tags.split()
         separate_src_pat = self.options.separate_source_tags.split()
-        order = sorted(self.needed_tags.values(), key=lambda t: t['score'])
+        order = sorted(self.needed_tags.values(), key=lambda t: t['score'], reverse=True)
         for tag in order:
             if running_tasks >= self.options.max_repo_tasks:
                 self.logger.info("Maximum number of repo tasks reached")
