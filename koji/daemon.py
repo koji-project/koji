@@ -742,7 +742,7 @@ class TaskManager(object):
                         os.unlink(data['cfg'])
                     except OSError as e:
                         self.logger.warn("%s: can't remove config: %s" % (desc, e))
-                elif age > 120 or not self.checkSpace():
+                elif age > 120:
                     if rootdir:
                         try:
                             flist = os.listdir(rootdir)
