@@ -28,6 +28,7 @@ extra_limit = 2048
         self.conf.flush()
         protonmsg.CONFIG_FILE = self.conf.name
         protonmsg.CONFIG = None
+        protonmsg.LOG = MagicMock()
 
     def tearDown(self):
         if hasattr(context, 'protonmsg_msgs'):
@@ -206,11 +207,11 @@ extra_limit = 2048
         self.assertEqual(Container.call_count, 0)
 
     @patch('protonmsg.Container')
-    @patch('logging.getLogger')
-    def test_send_queued_msgs_fail(self, getLogger, Container):
+    def test_send_queued_msgs_fail(self, Container):
         context.protonmsg_msgs = [('test.topic', {'testheader': 1}, 'test body')]
         protonmsg.send_queued_msgs('postCommit')
-        log = getLogger.return_value
+
+        log = protonmsg.LOG
         self.assertEqual(log.debug.call_count, 2)
         for args in log.debug.call_args_list:
             self.assertTrue(args[0][0].startswith('could not send'))
@@ -218,21 +219,19 @@ extra_limit = 2048
         self.assertTrue(log.error.call_args[0][0].startswith('could not send'))
 
     @patch('protonmsg.Container')
-    @patch('logging.getLogger')
-    def test_send_queued_msgs_success(self, getLogger, Container):
+    def test_send_queued_msgs_success(self, Container):
         context.protonmsg_msgs = [('test.topic', {'testheader': 1}, 'test body')]
         def clear_msgs():
             del context.protonmsg_msgs[:]
         Container.return_value.run.side_effect = clear_msgs
         protonmsg.send_queued_msgs('postCommit')
-        log = getLogger.return_value
+        log = protonmsg.LOG
         self.assertEqual(log.debug.call_count, 1)
         self.assertTrue(log.debug.args[0][0].startswith('all msgs sent'))
         self.assertEqual(log.error.call_count, 0)
 
     @patch('protonmsg.Container')
-    @patch('logging.getLogger')
-    def test_send_queued_msgs_test_mode(self, getLogger, Container):
+    def test_send_queued_msgs_test_mode(self, Container):
         context.protonmsg_msgs = [('test.topic', {'testheader': 1}, 'test body')]
         conf = tempfile.NamedTemporaryFile()
         conf.write(six.b("""[broker]
@@ -252,7 +251,7 @@ test_mode = on
         Container.return_value.run.side_effect = clear_msgs
         protonmsg.send_queued_msgs('postCommit')
         Container.assert_not_called()
-        log = getLogger.return_value
+        log = protonmsg.LOG
         self.assertEqual(log.debug.call_count, len(context.protonmsg_msgs) + 1)
         self.assertTrue(log.debug.args[0][0].startswith('all msgs sent'))
         self.assertEqual(log.error.call_count, 0)

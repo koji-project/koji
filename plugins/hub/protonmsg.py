@@ -23,6 +23,7 @@ CONFIG_FILE = '/etc/koji-hub/plugins/protonmsg.conf'
 CONFIG = None
 LOG = logging.getLogger('koji.plugin.protonmsg')
 
+
 class TimeoutHandler(MessagingHandler):
     def __init__(self, url, msgs, conf, *args, **kws):
         super(TimeoutHandler, self).__init__(*args, **kws)
@@ -145,7 +146,8 @@ def _strip_extra(buildinfo):
         extra_limit = CONFIG.getint('message', 'extra_limit')
         extra_size = len(json.dumps(buildinfo.get('extra', {}), default=json_serialize))
         if extra_limit and extra_size > extra_limit:
-            LOG.debug("Dropping 'extra' from build %s (length: %d > %d)" % (buildinfo['nvr'], extra_size, extra_limit))
+            LOG.debug("Dropping 'extra' from build %s (length: %d > %d)" %
+                      (buildinfo['nvr'], extra_size, extra_limit))
             buildinfo = buildinfo.copy()
             del buildinfo['extra']
     return buildinfo
