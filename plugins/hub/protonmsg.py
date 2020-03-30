@@ -143,7 +143,7 @@ def _strip_extra(buildinfo):
         CONFIG = koji.read_config_files([(CONFIG_FILE, True)])
     if CONFIG.has_option('message', 'extra_limit'):
         extra_limit = CONFIG.getint('message', 'extra_limit')
-        extra_size = len(json_serialize(buildinfo.get('extra', {})))
+        extra_size = len(json.dumps(buildinfo.get('extra', {}), default=json_serialize))
         if extra_limit and extra_size > extra_limit:
             buildinfo = buildinfo.copy()
             del buildinfo['extra']
