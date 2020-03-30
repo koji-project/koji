@@ -21,6 +21,7 @@ from koji.plugin import callback, convert_datetime, ignore_error
 
 CONFIG_FILE = '/etc/koji-hub/plugins/protonmsg.conf'
 CONFIG = None
+LOG = logging.getLogger('koji.plugin.protonmsg')
 
 
 class TimeoutHandler(MessagingHandler):
@@ -143,8 +144,10 @@ def _strip_extra(buildinfo):
         CONFIG = koji.read_config_files([(CONFIG_FILE, True)])
     if CONFIG.has_option('message', 'extra_limit'):
         extra_limit = CONFIG.getint('message', 'extra_limit')
-        extra_size = len(json_serialize(buildinfo.get('extra', {})))
+        extra_size = len(json.dumps(buildinfo.get('extra', {}), default=json_serialize))
         if extra_limit and extra_size > extra_limit:
+            LOG.debug("Dropping 'extra' from build %s (length: %d > %d)" %
+                      (buildinfo['nvr'], extra_size, extra_limit))
             buildinfo = buildinfo.copy()
             del buildinfo['extra']
     return buildinfo
@@ -154,8 +157,7 @@ def json_serialize(o):
     """JSON helper to encode otherwise unserializable data types"""
     if isinstance(o, set):
         return list(o)
-    log = logging.getLogger('koji.plugin.protonmsg')
-    log.error("Not JSON serializable data: %s" % repr(o))
+    LOG.error("Not JSON serializable data: %s" % repr(o))
     return {"error": "Can't serialize", "type": str(type(o))}
 
 
@@ -300,7 +302,6 @@ def send_queued_msgs(cbtype, *args, **kws):
     msgs = getattr(context, 'protonmsg_msgs', None)
     if not msgs:
         return
-    log = logging.getLogger('koji.plugin.protonmsg')
     global CONFIG
     if not CONFIG:
         CONFIG = koji.read_config_files([(CONFIG_FILE, True)])
@@ -309,19 +310,19 @@ def send_queued_msgs(cbtype, *args, **kws):
     if CONFIG.has_option('broker', 'test_mode'):
         test_mode = CONFIG.getboolean('broker', 'test_mode')
     if test_mode:
-        log.debug('test mode: skipping send to urls: %r', urls)
+        LOG.debug('test mode: skipping send to urls: %r', urls)
         for msg in msgs:
-            log.debug('test mode: skipped msg: %r', msg)
+            LOG.debug('test mode: skipped msg: %r', msg)
         return
     random.shuffle(urls)
     for url in urls:
         container = Container(TimeoutHandler(url, msgs, CONFIG))
         container.run()
         if msgs:
-            log.debug('could not send to %s, %s messages remaining',
+            LOG.debug('could not send to %s, %s messages remaining',
                       url, len(msgs))
         else:
-            log.debug('all messages sent to %s successfully', url)
+            LOG.debug('all messages sent to %s successfully', url)
             break
     else:
-        log.error('could not send messages to any destinations')
+        LOG.error('could not send messages to any destinations')
