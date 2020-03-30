@@ -36,6 +36,7 @@ from six.moves import range
 from six.moves.xmlrpc_client import ProtocolError
 
 import koji
+import koji.tasks
 
 
 class NoSuchException(Exception):
@@ -545,13 +546,14 @@ def taskScratchClass(task_object):
     """
     method = task_object['method']
     request = task_object['request']
-    if method == 'build' and len(request) >= 3:
-        # Each task method has its own signature for what gets put in the
-        # request list.  Builds should have an `opts` dict at index 2.
-        # See www/kojiweb/taskinfo.chtml for the grimoire.
-        opts = request[2]
-        if opts.get('scratch'):
-            return "scratch"
+    if method == 'build':
+        try:
+            opts = koji.tasks.parse_task_params(method, request)
+            if opts.get('scratch'):
+                return "scratch"
+        except Exception:
+            # not a build or broken task
+            pass
     return ""
 
 
