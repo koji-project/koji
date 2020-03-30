@@ -6843,11 +6843,12 @@ def merge_scratch(task_id):
         task_info = task.getInfo(request=True)
     except koji.GenericError:
         raise koji.ImportError('invalid task: %s' % task_id)
+    task_params = koji.tasks.parse_task_params(task_info['method'], task_info['request'])
     if task_info['state'] != koji.TASK_STATES['CLOSED']:
         raise koji.ImportError('task %s did not complete successfully' % task_id)
     if task_info['method'] != 'build':
         raise koji.ImportError('task %s is not a build task' % task_id)
-    if len(task_info['request']) < 3 or not task_info['request'][2].get('scratch'):
+    if not task_params.get('scratch'):
         raise koji.ImportError('task %s is not a scratch build' % task_id)
 
     # sanity check the task, and extract data required for import
@@ -6908,7 +6909,6 @@ def merge_scratch(task_id):
 
     # Compare SCM URLs only if build from an SCM
     build_task_info = Task(build['task_id']).getInfo(request=True)
-    task_params = koji.tasks.parse_task_params(task_info['method'], task_info['request'])
     build_task_params = koji.tasks.parse_task_params(build_task_info['method'],
                                                      build_task_info['request'])
     if 'src' in task_params and SCM.is_scm_url(task_params['src']):
