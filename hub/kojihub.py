@@ -60,6 +60,7 @@ import koji.rpmdiff
 import koji.tasks
 import koji.xmlrpcplus
 from koji.context import context
+from koji.daemon import SCM
 from koji.util import (
     base64encode,
     decode_bytes,
@@ -6842,11 +6843,12 @@ def merge_scratch(task_id):
         task_info = task.getInfo(request=True)
     except koji.GenericError:
         raise koji.ImportError('invalid task: %s' % task_id)
+    task_params = koji.tasks.parse_task_params(task_info['method'], task_info['request'])
     if task_info['state'] != koji.TASK_STATES['CLOSED']:
         raise koji.ImportError('task %s did not complete successfully' % task_id)
     if task_info['method'] != 'build':
         raise koji.ImportError('task %s is not a build task' % task_id)
-    if len(task_info['request']) < 3 or not task_info['request'][2].get('scratch'):
+    if not task_params.get('scratch'):
         raise koji.ImportError('task %s is not a scratch build' % task_id)
 
     # sanity check the task, and extract data required for import
@@ -6901,15 +6903,19 @@ def merge_scratch(task_id):
         raise koji.ImportError('%s did not complete successfully' % build['nvr'])
     if not build['task_id']:
         raise koji.ImportError('no task for %s' % build['nvr'])
-    build_task_info = Task(build['task_id']).getInfo(request=True)
     # Intentionally skip checking the build task state.
     # There are cases where the build can be valid even though the task has failed,
     # e.g. tagging failures.
 
-    # compare the task and build and make sure they are compatible with importing
-    if task_info['request'][0] != build_task_info['request'][0]:
-        raise koji.ImportError('SCM URLs for the task and build do not match: %s, %s' %
-                               (task_info['request'][0], build_task_info['request'][0]))
+    # Compare SCM URLs only if build from an SCM
+    build_task_info = Task(build['task_id']).getInfo(request=True)
+    build_task_params = koji.tasks.parse_task_params(build_task_info['method'],
+                                                     build_task_info['request'])
+    if 'src' in task_params and SCM.is_scm_url(task_params['src']):
+        # compare the task and build and make sure they are compatible with importing
+        if task_params['src'] != build_task_params['src']:
+            raise koji.ImportError('SCM URLs for the task and build do not match: %s, %s' %
+                                   (task_params['src'], build_task_params['src']))
     build_arches = set()
     for rpminfo in list_rpms(buildID=build['id']):
         if rpminfo['arch'] == 'src':
