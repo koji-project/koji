@@ -30,12 +30,16 @@ def handle_add_sidetag(options, session, args):
     parser.add_argument(
         "-w", "--wait", action="store_true", help=_("Wait until repo is ready.")
     )
+    parser.add_argument(
+        "--debuginfo", action="store_true", help=_("Buildroot repo will contain debuginfos")
+    )
+
     opts = parser.parse_args(args)
 
     activate_session(session, options)
 
     try:
-        tag = session.createSideTag(opts.basetag)
+        tag = session.createSideTag(opts.basetag, debuginfo=opts.debuginfo)
     except koji.ActionNotAllowed:
         parser.error(_("Policy violation"))
 
