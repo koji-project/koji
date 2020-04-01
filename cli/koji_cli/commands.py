@@ -459,13 +459,12 @@ def handle_build(options, session, args):
     usage = _("""\
         usage: %prog build [options] <target> <srpm path or scm url>
 
-        First option is build target (don't confuse it with destination
-        tag (where build ends) or buildroot (from where dependencies
-        are installed).
+        The first option is the build target, not to be confused with the destination
+        tag (where the build eventually lands) or build tag (where the buildroot
+        contents are pulled from).
 
-        List of all available targets can be acquired by "
-        'koji list-targets'. For further info about how tags, targets "
-        and buildroot interact, check the "
+        You can list all available build targets using the 'koji list-targets' command.
+        More detail can be found in the documentation.
         https://docs.pagure.org/koji/HOWTO/#package-organization""")
 
     usage = textwrap.dedent(usage)
