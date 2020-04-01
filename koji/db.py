@@ -189,6 +189,7 @@ def connect():
         opts = {}
     try:
         conn = psycopg2.connect(**opts)
+        conn.set_client_encoding('UTF8')
     except Exception:
         logger.error(''.join(traceback.format_exception(*sys.exc_info())))
         raise
