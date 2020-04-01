@@ -491,7 +491,7 @@ sed -i 's|#!/usr/bin/python2|#!/usr/bin/python3|' $RPM_BUILD_ROOT/usr/bin/koji
 # handle extra byte compilation
 extra_dirs='
     %{_prefix}/lib/koji-builder-plugins
-    %{_prefix}/koji-hub-plugins
+    %{_prefix}/lib/koji-hub-plugins
     %{_datadir}/koji-hub
     %{_datadir}/koji-web/lib/kojiweb
     %{_datadir}/koji-web/scripts'
