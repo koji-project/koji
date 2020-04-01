@@ -25,13 +25,13 @@ The first option is the build target, not to be confused with the destination
 tag (where the build eventually lands) or build tag (where the buildroot
 contents are pulled from).
 
-You can list all available build targets using the 'koji list-targets' command.
+You can list all available build targets using the '%s list-targets' command.
 More detail can be found in the documentation.
 https://docs.pagure.org/koji/HOWTO/#package-organization
 (Specify the --help global option for a list of other help options)
 
 %s: error: {message}
-""" % (self.progname, self.progname)
+""" % (self.progname, self.progname, self.progname)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
@@ -204,7 +204,7 @@ The first option is the build target, not to be confused with the destination
 tag (where the build eventually lands) or build tag (where the buildroot
 contents are pulled from).
 
-You can list all available build targets using the 'koji list-targets' command.
+You can list all available build targets using the '%s list-targets' command.
 More detail can be found in the documentation.
 https://docs.pagure.org/koji/HOWTO/#package-organization
 (Specify the --help global option for a list of other help options)
@@ -227,7 +227,7 @@ Options:
   --repo-id=REPO_ID     Use a specific repo
   --noprogress          Do not display progress of the upload
   --background          Run the build at a lower priority
-""" % progname
+""" % (progname, progname)
         expected_stderr = ''
         self.assertMultiLineEqual(actual_stdout, expected_stdout)
         self.assertMultiLineEqual(actual_stderr, expected_stderr)

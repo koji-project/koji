@@ -463,7 +463,7 @@ def handle_build(options, session, args):
         tag (where the build eventually lands) or build tag (where the buildroot
         contents are pulled from).
 
-        You can list all available build targets using the 'koji list-targets' command.
+        You can list all available build targets using the '%prog list-targets' command.
         More detail can be found in the documentation.
         https://docs.pagure.org/koji/HOWTO/#package-organization""")
 
@@ -2351,9 +2351,13 @@ def anon_handle_latest_build(goptions, session, args):
     usage = _("""\
         usage: %prog latest-build [options] <tag> <package> [<package> ...]
 
-        Note, that <tag> needn't be same as build target. If you've wanted to
-        see what was the latest build in given buildroot, check '%prog
-        list-targets --name=<target>' to find name of the buildroot's tag""")
+        The first option should be the name of a tag, not the name of a build target.
+        If you want to know the latest build in buildroots for a given build target,
+        then you should use the name of the build tag for that target. You can find
+        this value by running '%prog list-targets --name=<target>'
+
+        More information on tags and build targets can be found in the documentation.
+        https://docs.pagure.org/koji/HOWTO/#package-organization""")
 
     usage = textwrap.dedent(usage)
     parser = OptionParser(usage=get_usage_str(usage))
