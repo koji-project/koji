@@ -6527,7 +6527,7 @@ if __name__ == "__main__":
         except socket.error as e:
             quit("Could not connect to Kerberos authentication service: '%s'" % e.args[1])
     else:
-        quit("No username/password supplied and Kerberos missing or not configured")
+        quit("No username/password/certificate supplied and Kerberos missing or not configured")
     # make session exclusive
     try:
         session.exclusiveSession(force=options.force_lock)
