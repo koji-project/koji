@@ -11,6 +11,7 @@ import random
 import re
 import stat
 import sys
+import textwrap
 import time
 import traceback
 from collections import OrderedDict, defaultdict
@@ -454,7 +455,19 @@ def handle_remove_pkg(goptions, session, args):
 
 def handle_build(options, session, args):
     "[build] Build a package from source"
-    usage = _("usage: %prog build [options] <target> <srpm path or scm url>")
+
+    usage = _("""\
+        usage: %prog build [options] <target> <srpm path or scm url>
+
+        The first option is the build target, not to be confused with the destination
+        tag (where the build eventually lands) or build tag (where the buildroot
+        contents are pulled from).
+
+        You can list all available build targets using the '%prog list-targets' command.
+        More detail can be found in the documentation.
+        https://docs.pagure.org/koji/HOWTO/#package-organization""")
+
+    usage = textwrap.dedent(usage)
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--skip-tag", action="store_true",
                       help=_("Do not attempt to tag package"))
@@ -2334,8 +2347,19 @@ def handle_revoke_cg_access(goptions, session, args):
 
 
 def anon_handle_latest_build(goptions, session, args):
-    "[info] Print the latest builds for a tag"
-    usage = _("usage: %prog latest-build [options] <tag> <package> [<package> ...]")
+    """[info] Print the latest builds for a tag"""
+    usage = _("""\
+        usage: %prog latest-build [options] <tag> <package> [<package> ...]
+
+        The first option should be the name of a tag, not the name of a build target.
+        If you want to know the latest build in buildroots for a given build target,
+        then you should use the name of the build tag for that target. You can find
+        this value by running '%prog list-targets --name=<target>'
+
+        More information on tags and build targets can be found in the documentation.
+        https://docs.pagure.org/koji/HOWTO/#package-organization""")
+
+    usage = textwrap.dedent(usage)
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--arch", help=_("List all of the latest packages for this arch"))
     parser.add_option("--all", action="store_true",

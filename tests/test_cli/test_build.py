@@ -3,14 +3,11 @@ import mock
 import os
 import six
 import sys
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
 
 from koji_cli.commands import handle_build, _progress_callback
+from . import utils
 
-class TestBuild(unittest.TestCase):
+class TestBuild(utils.CliTestCase):
     # Show long diffs in error output...
     maxDiff = None
 
@@ -22,6 +19,19 @@ class TestBuild(unittest.TestCase):
         self.options.poll_interval = 0
         # Mock out the xmlrpc server
         self.session = mock.MagicMock()
+        self.error_format = """Usage: %s build [options] <target> <srpm path or scm url>
+
+The first option is the build target, not to be confused with the destination
+tag (where the build eventually lands) or build tag (where the buildroot
+contents are pulled from).
+
+You can list all available build targets using the '%s list-targets' command.
+More detail can be found in the documentation.
+https://docs.pagure.org/koji/HOWTO/#package-organization
+(Specify the --help global option for a list of other help options)
+
+%s: error: {message}
+""" % (self.progname, self.progname, self.progname)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
@@ -147,11 +157,7 @@ Task info: weburl/taskinfo?taskID=1
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = ''
-        expected_stderr = """Usage: %s build [options] <target> <srpm path or scm url>
-(Specify the --help global option for a list of other help options)
-
-%s: error: Exactly two arguments (a build target and a SCM URL or srpm file) are required
-""" % (progname, progname)
+        expected_stderr = self.format_error_message("Exactly two arguments (a build target and a SCM URL or srpm file) are required")
         self.assertMultiLineEqual(actual_stdout, expected_stdout)
         self.assertMultiLineEqual(actual_stderr, expected_stderr)
 
@@ -193,6 +199,14 @@ Task info: weburl/taskinfo?taskID=1
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = """Usage: %s build [options] <target> <srpm path or scm url>
+
+The first option is the build target, not to be confused with the destination
+tag (where the build eventually lands) or build tag (where the buildroot
+contents are pulled from).
+
+You can list all available build targets using the '%s list-targets' command.
+More detail can be found in the documentation.
+https://docs.pagure.org/koji/HOWTO/#package-organization
 (Specify the --help global option for a list of other help options)
 
 Options:
@@ -213,7 +227,7 @@ Options:
   --repo-id=REPO_ID     Use a specific repo
   --noprogress          Do not display progress of the upload
   --background          Run the build at a lower priority
-""" % progname
+""" % (progname, progname)
         expected_stderr = ''
         self.assertMultiLineEqual(actual_stdout, expected_stdout)
         self.assertMultiLineEqual(actual_stderr, expected_stderr)
@@ -259,11 +273,7 @@ Options:
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = ''
-        expected_stderr = """Usage: %s build [options] <target> <srpm path or scm url>
-(Specify the --help global option for a list of other help options)
-
-%s: error: --arch_override is only allowed for --scratch builds
-""" % (progname, progname)
+        expected_stderr = self.format_error_message("--arch_override is only allowed for --scratch builds")
         self.assertMultiLineEqual(actual_stdout, expected_stdout)
         self.assertMultiLineEqual(actual_stderr, expected_stderr)
 
@@ -354,11 +364,7 @@ Task info: weburl/taskinfo?taskID=1
         with self.assertRaises(SystemExit) as cm:
             handle_build(self.options, self.session, args)
         actual = stderr.getvalue()
-        expected = """Usage: %s build [options] <target> <srpm path or scm url>
-(Specify the --help global option for a list of other help options)
-
-%s: error: Unknown build target: target
-""" % (progname, progname)
+        expected = self.format_error_message( "Unknown build target: target")
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
         activate_session_mock.assert_called_once_with(self.session, self.options)
@@ -405,11 +411,7 @@ Task info: weburl/taskinfo?taskID=1
         with self.assertRaises(SystemExit) as cm:
             handle_build(self.options, self.session, args)
         actual = stderr.getvalue()
-        expected = """Usage: %s build [options] <target> <srpm path or scm url>
-(Specify the --help global option for a list of other help options)
-
-%s: error: Unknown destination tag: dest_tag_name
-""" % (progname, progname)
+        expected = self.format_error_message("Unknown destination tag: dest_tag_name")
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
         activate_session_mock.assert_called_once_with(self.session, self.options)
@@ -456,11 +458,7 @@ Task info: weburl/taskinfo?taskID=1
         with self.assertRaises(SystemExit) as cm:
             handle_build(self.options, self.session, args)
         actual = stderr.getvalue()
-        expected = """Usage: %s build [options] <target> <srpm path or scm url>
-(Specify the --help global option for a list of other help options)
-
-%s: error: Destination tag dest_tag_name is locked
-""" % (progname, progname)
+        expected = self.format_error_message("Destination tag dest_tag_name is locked")
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
         activate_session_mock.assert_called_once_with(self.session, self.options)
