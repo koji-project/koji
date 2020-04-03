@@ -3592,11 +3592,19 @@ def get_external_repos(info=None, url=None, event=None, queryOpts=None):
 
 
 def get_external_repo(info, strict=False, event=None):
-    """Get information about a single external repo.
-    info can either be a string (name) or an integer (id).
-    Returns a map containing the id, name, and url of the
-    repo.  If strict is True and no external repo has the
-    given name or id, raise an error."""
+    """
+    Get information about a single external repository.
+
+    :param info: a string (name) or an integer (id).
+    :param bool strict: If True, raise an error if we found no matching
+                        repository. If False, simply return None if we found
+                        no matching repository. If unspecified, the default
+                        value is False.
+    :param int event: The event ID at which to search. If unspecified, the
+                      default behavior is to search for the "active" repo
+                      settings.
+    :returns: a map containing the id, name, and url of the repository.
+    """
     repos = get_external_repos(info, event=event)
     if repos:
         return repos[0]
