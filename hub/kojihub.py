@@ -3923,15 +3923,28 @@ def get_user(userInfo=None, strict=False, krb_princs=True):
 def edit_user(userInfo, name=None, krb_principal_mappings=None):
     """Edit information for an existing user.
 
-    userInfo specifies the user to edit
-    fields changes are provided as keyword arguments:
-        name: rename the user
-        krb_principal_mappings: change user's kerberos principal, it is a list
-                                contains krb_principal pair(s)
-                                - old: krb_principal to modify, None and ''
-                                       indicates adding a new krb_principal
-                                - new: new value of krb_principal, None and ''
-                                       indicates removing the old krb_principal
+    Use this method to rename a user, or to add/remove/modify Kerberos
+    principal(s) for this account.
+
+    Example krb_principal_mappings values:
+
+    To add a new Kerberos principal to a user account:
+      [{'old': None, 'new': 'myuser@NEW.EXAMPLE.COM'}]
+
+    To remove an old Kerberos principal from a user account:
+      [{'old': 'myuser@OLD.EXAMPLE.COM', 'new': None}]
+
+    To modify a user's old Kerberos principal to a new one:
+      [{'old': 'myuser@OLD.EXAMPLE.NET', 'new': 'myuser@NEW.EXAMPLE.NET'}]
+
+    :param userInfo: username (str) or ID (int)
+    :param str name: new name for this user account
+    :param list krb_principal_mappings: List of changes to make for this
+                                        user's Kerberos principal. Each change
+                                        is a dict of "old" and "new"
+                                        Kerberos principals.
+    :raises: GenericError if the user does not exist, or if there were
+             problems in the krb_principal_mappings.
     """
 
     context.session.assertPerm('admin')
