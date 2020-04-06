@@ -850,9 +850,12 @@ class RepoManager(object):
         order = sorted(self.needed_tags.values(), key=lambda t: t['score'], reverse=True)
         for tag in order:
             if running_tasks >= self.options.max_repo_tasks:
+                self.logger.debug("Running tasks (%s): %s" % list(running_tasks))
                 self.logger.info("Maximum number of repo tasks reached")
                 return
             elif len(self.tasks) + len(self.other_tasks) >= self.options.repo_tasks_limit:
+                self.logger.debug("Tracked tasks (%s): %s" % list(self.tasks))
+                self.logger.debug("Untracked tasks (%s): %s" % list(self.other_tasks))
                 self.logger.info("Repo task limit reached")
                 return
             tagname = tag['taginfo']['name']
