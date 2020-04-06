@@ -6834,7 +6834,7 @@ def merge_scratch(task_id):
         raise koji.ImportError('task %s did not complete successfully' % task_id)
     if task_info['method'] != 'build':
         raise koji.ImportError('task %s is not a build task' % task_id)
-    if not task_params.get('scratch'):
+    if not task_params.get('opts', {}).get('scratch'):
         raise koji.ImportError('task %s is not a scratch build' % task_id)
 
     # sanity check the task, and extract data required for import
