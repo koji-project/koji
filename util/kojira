@@ -1011,7 +1011,7 @@ def get_options():
                 'server': None,
                 'logfile': '/var/log/kojira.log',
                 'principal': None,
-                'keytab': None,
+                'keytab': '/etc/kojira/kojira.keytab',
                 'ccache': '/var/tmp/kojira.ccache',
                 'krbservice': 'host',
                 'krb_rdns': True,
