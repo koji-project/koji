@@ -3567,15 +3567,16 @@ def handle_clone_tag(goptions, session, args):
             dstblds = dstbldsbypkg[pkg]
             ablds = []
             dblds = []
-            # firstly, remove builds from dst tag
-            removed_nvrs = set(dstblds.keys()) - set(srcblds.keys())
-            dnvrs = []
-            for (dstnvr, dstbld) in six.iteritems(dstblds):
-                if dstnvr in removed_nvrs:
-                    dnvrs.append(dstnvr)
-                    dblds.append(dstbld)
-            for dnvr in dnvrs:
-                del dstblds[dnvr]
+            if options.delete:
+                # firstly, remove builds from dst tag
+                removed_nvrs = set(dstblds.keys()) - set(srcblds.keys())
+                dnvrs = []
+                for (dstnvr, dstbld) in six.iteritems(dstblds):
+                    if dstnvr in removed_nvrs:
+                        dnvrs.append(dstnvr)
+                        dblds.append(dstbld)
+                for dnvr in dnvrs:
+                    del dstblds[dnvr]
             # secondly, add builds from src tag and adjust the order
             for (nvr, srcbld) in six.iteritems(srcblds):
                 found = False
@@ -3594,14 +3595,19 @@ def handle_clone_tag(goptions, session, args):
                     # remove it for next pass so we stay aligned with outer
                     # loop
                     del dstblds[nvr]
-                    if not options.delete:
-                        ablds.append(srcbld)
                 else:
                     ablds.append(srcbld)
             baddlist.extend(ablds)
             bdellist.extend(dblds)
         baddlist.sort(key=lambda x: x['package_name'])
         bdellist.sort(key=lambda x: x['package_name'])
+
+        if not options.delete:
+            # even in such case we need to delete out of order builds
+            # to be retagged correctly later
+            add_ids = [x['id'] for x in baddlist]
+            bdellist = [x for x in bdellist if x['id'] in add_ids]
+
         gaddlist = []  # list containing new groups to be added from src tag
         for (grpname, group) in six.iteritems(srcgroups):
             if grpname not in dstgroups:
@@ -3649,28 +3655,27 @@ def handle_clone_tag(goptions, session, args):
         if not options.test:
             session.multiCall(batch=options.batch)
         # DEL builds. To keep the order we should untag builds at first
-        if options.delete:
-            if not options.test:
-                session.multicall = True
-            for build in bdellist:
-                # don't delete an inherited build.
-                if build['tag_name'] == dsttag['name']:
-                    # add missing 'name' field
-                    build['name'] = build['package_name']
-                    chgbldlist.append(('[del]',
-                                       build['package_name'],
-                                       build['nvr'],
-                                       koji.BUILD_STATES[build['state']],
-                                       build['owner_name'],
-                                       build['tag_name']))
-                    # go on del builds from new tag.
-                    if not options.test:
-                        session.untagBuildBypass(dsttag['name'],
-                                                 build,
-                                                 force=options.force,
-                                                 notify=options.notify)
-            if not options.test:
-                session.multiCall(batch=options.batch)
+        if not options.test:
+            session.multicall = True
+        for build in bdellist:
+            # don't delete an inherited build.
+            if build['tag_name'] == dsttag['name']:
+                # add missing 'name' field
+                build['name'] = build['package_name']
+                chgbldlist.append(('[del]',
+                                   build['package_name'],
+                                   build['nvr'],
+                                   koji.BUILD_STATES[build['state']],
+                                   build['owner_name'],
+                                   build['tag_name']))
+                # go on del builds from new tag.
+                if not options.test:
+                    session.untagBuildBypass(dsttag['name'],
+                                             build,
+                                             force=options.force,
+                                             notify=options.notify)
+        if not options.test:
+            session.multiCall(batch=options.batch)
         # ADD builds.
         if not options.test:
             session.multicall = True

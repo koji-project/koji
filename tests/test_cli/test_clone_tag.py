@@ -623,160 +623,39 @@ List of changes:
 """)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    def test_handle_clone_tag_existing_dsttag_add(self, stdout):
+    def test_handle_clone_tag_existing_dsttag_nodelete(self, stdout):
         args = ['src-tag', 'dst-tag', '--all', '-v', '--no-delete']
         self.session.multiCall.return_value = []
         self.session.listPackages.side_effect = [[{'package_id': 1,
-                                                   'package_name': 'pkg1',
+                                                   'package_name': 'pkg',
                                                    'blocked': False,
                                                    'owner_name': 'userA',
                                                    'tag_name': 'src-tag',
                                                    'extra_arches': None},
-                                                  {'package_id': 2,
-                                                   'package_name': 'pkg2',
-                                                   'blocked': True,
-                                                   'owner_name': 'userB',
-                                                   'tag_name': 'src-tag-p',
-                                                   'extra_arches': 'arch3 arch4'},
-                                                  {'package_id': 3,
-                                                   'package_name': 'apkg',
-                                                   'blocked': False,
-                                                   'owner_name': 'userA',
-                                                   'tag_name': 'src-tag-p',
-                                                   'extra_arches': 'arch4'}],
-                                                 [{'package_id': 1,
-                                                   'package_name': 'pkg1',
-                                                   'blocked': False,
-                                                   'owner_name': 'userA',
-                                                   'tag_name': 'src-tag',
-                                                   'extra_arches': None},
-                                                  {'package_id': 3,
-                                                   'package_name': 'apkg',
-                                                   'blocked': False,
-                                                   'owner_name': 'userA',
-                                                   'tag_name': 'src-tag-p',
-                                                   'extra_arches': 'arch4'},
-                                                  {'package_id': 4,
-                                                   'package_name': 'bpkg',
-                                                   'blocked': False,
-                                                   'owner_name': 'userC',
-                                                   'tag_name': 'src-tag',
-                                                   'extra_arches': 'arch4'},
-                                                  {'package_id': 5,
-                                                   'package_name': 'cpkg',
-                                                   'blocked': True,
-                                                   'owner_name': 'userC',
-                                                   'tag_name': 'src-tag-p',
-                                                   'extra_arches': 'arch4'},
-                                                  {'package_id': 6,
-                                                   'package_name': 'dpkg',
-                                                   'blocked': True,
-                                                   'owner_name': 'userC',
-                                                   'tag_name': 'src-tag',
-                                                   'extra_arches': 'arch4'}
-                                                  ]]
-        self.session.listTagged.side_effect = [[{'package_name': 'pkg1',
-                                                 'nvr': 'pkg1-1.1-2',
+                                                  ],
+                                                  []]
+        self.session.listTagged.side_effect = [[{'id': 1,
+                                                 'package_name': 'pkg',
+                                                 'nvr': 'pkg-1.0-23',
                                                  'state': 1,
                                                  'owner_name': 'b_owner',
                                                  'tag_name': 'src-tag'},
-                                                {'package_name': 'pkg1',
-                                                 'nvr': 'pkg1-1.0-2',
+                                                {'id': 2,
+                                                 'package_name': 'pkg',
+                                                 'nvr': 'pkg-1.0-21',
                                                  'state': 1,
                                                  'owner_name': 'b_owner',
                                                  'tag_name': 'src-tag'},
-                                                {'package_name': 'pkg1',
-                                                 'nvr': 'pkg1-0.1-1',
+                                                {'id': 3,
+                                                 'package_name': 'pkg',
+                                                 'nvr': 'pkg-0.1-1',
                                                  'state': 1,
                                                  'owner_name': 'b_owner',
                                                  'tag_name': 'src-tag'},
-                                                {'package_name': 'pkg1',
-                                                 'nvr': 'pkg1-1.0-1',
-                                                 'state': 1,
-                                                 'owner_name': 'b_owner',
-                                                 'tag_name': 'src-tag'},
-                                                {'package_name': 'pkg2',
-                                                 'nvr': 'pkg2-1.0-1',
-                                                 'state': 2,
-                                                 'owner_name': 'b_owner',
-                                                 'tag_name': 'src-tag-p'}
                                                 ],
-                                               [{'package_name': 'pkg1',
-                                                 'nvr': 'pkg1-2.1-2',
-                                                 'state': 1,
-                                                 'owner_name': 'b_owner',
-                                                 'tag_name': 'dst-tag'},
-                                                {'package_name': 'pkg1',
-                                                 'nvr': 'pkg1-1.0-1',
-                                                 'state': 1,
-                                                 'owner_name': 'b_owner',
-                                                 'tag_name': 'dst-tag'},
-                                                {'package_name': 'pkg1',
-                                                 'nvr': 'pkg1-0.1-1',
-                                                 'state': 1,
-                                                 'owner_name': 'b_owner',
-                                                 'tag_name': 'dst-tag'},
-                                                {'package_name': 'pkg2',
-                                                 'nvr': 'pkg2-1.0-1',
-                                                 'state': 2,
-                                                 'owner_name': 'b_owner',
-                                                 'tag_name': 'dst-tag'},
-                                                {'package_name': 'pkg3',
-                                                 'nvr': 'pkg3-1.0-1',
-                                                 'state': 1,
-                                                 'owner_name': 'b_owner',
-                                                 'tag_name': 'dst-tag'}
-                                                ]]
-        self.session.getTagGroups.side_effect = [[{'name': 'group1',
-                                                   'tag_id': 1,
-                                                   'packagelist': [
-                                                       {'package': 'pkg1',
-                                                        'blocked': False},
-                                                       {'package': 'pkg2',
-                                                        'blocked': False},
-                                                       {'package': 'pkg3',
-                                                        'blocked': False},
-                                                       {'package': 'pkg4',
-                                                        'blocked': False}
-                                                   ]},
-                                                  {'name': 'group2',
-                                                   'tag_id': 1,
-                                                   'packagelist': [
-                                                       {'package': 'apkg',
-                                                        'blocked': False},
-                                                       {'package': 'bpkg',
-                                                        'blocked': False}]
-                                                   }],
-                                                 [{'name': 'group1',
-                                                   'tag_id': 2,
-                                                   'packagelist': [
-                                                       {'package': 'pkg1',
-                                                        'blocked': False},
-                                                       {'package': 'pkg5',
-                                                        'blocked': False}
-                                                   ]},
-                                                  {'name': 'group2',
-                                                   'tag_id': 3,
-                                                   'packagelist': [
-                                                       {'package': 'apkg',
-                                                        'blocked': False},
-                                                       {'package': 'cpkg',
-                                                        'blocked': False}]},
-                                                  {'name': 'group3',
-                                                   'tag_id': 2,
-                                                   'packagelist': [
-                                                       {'package': 'cpkg',
-                                                        'blocked': False},
-                                                       {'package': 'dpkg',
-                                                        'blocked': False}]},
-                                                  {'name': 'group4',
-                                                   'tag_id': 3,
-                                                   'packagelist': [
-                                                       {'package': 'epkg',
-                                                        'blocked': False},
-                                                       {'package': 'fpkg',
-                                                        'blocked': False}]}
-                                                  ]]
+                                               [],
+                                               ]
+        self.session.getTagGroups.return_value = []
         self.session.getTag.side_effect = [{'id': 1,
                                             'name': 'src-tag',
                                             'arches': 'arch1 arch2',
@@ -793,99 +672,175 @@ List of changes:
                                             'locked': False}]
         handle_clone_tag(self.options, self.session, args)
         self.activate_session.assert_called_once()
-        self.session.assert_has_calls([call.hasPerm('admin'),
-                                       call.getTag('src-tag'),
-                                       call.getTag('dst-tag'),
-                                       call.listPackages(event=None,
-                                                         inherited=True,
-                                                         tagID=1),
-                                       call.listPackages(inherited=True,
-                                                         tagID=2),
-                                       call.listTagged(1, event=None,
-                                                       inherit=None,
-                                                       latest=None),
-                                       call.listTagged(2, inherit=False,
-                                                       latest=False),
-                                       call.getTagGroups('src-tag',
-                                                         event=None),
-                                       call.getTagGroups('dst-tag'),
-                                       call.packageListAdd('dst-tag', 'pkg2',
-                                                           block=True,
-                                                           extra_arches='arch3 arch4',
-                                                           owner='userB'),
-                                       call.multiCall(batch=1000),
-                                       call.tagBuildBypass('dst-tag', {
-                                           'owner_name': 'b_owner',
-                                           'nvr': 'pkg1-1.0-1',
-                                           'package_name': 'pkg1', 'state': 1,
-                                           'tag_name': 'src-tag',
-                                           'name': 'pkg1'}, force=None, notify=False),
-                                       call.tagBuildBypass('dst-tag', {
-                                           'owner_name': 'b_owner',
-                                           'nvr': 'pkg1-0.1-1',
-                                           'package_name': 'pkg1', 'state': 1,
-                                           'tag_name': 'src-tag',
-                                           'name': 'pkg1'}, force=None, notify=False),
-                                       call.tagBuildBypass('dst-tag', {
-                                           'owner_name': 'b_owner',
-                                           'nvr': 'pkg1-1.0-2',
-                                           'package_name': 'pkg1', 'state': 1,
-                                           'tag_name': 'src-tag',
-                                           'name': 'pkg1'}, force=None, notify=False),
-                                       call.tagBuildBypass('dst-tag', {
-                                           'owner_name': 'b_owner',
-                                           'nvr': 'pkg1-1.1-2',
-                                           'package_name': 'pkg1', 'state': 1,
-                                           'tag_name': 'src-tag',
-                                           'name': 'pkg1'}, force=None, notify=False),
-                                       call.tagBuildBypass('dst-tag', {
-                                           'owner_name': 'b_owner',
-                                           'nvr': 'pkg2-1.0-1',
-                                           'package_name': 'pkg2', 'state': 2,
-                                           'tag_name': 'src-tag-p',
-                                           'name': 'pkg2'}, force=None, notify=False),
-                                       call.multiCall(batch=1000),
-                                       call.multiCall(batch=1000),
-                                       call.groupPackageListAdd('dst-tag',
-                                                                'group1',
-                                                                'pkg2',
-                                                                force=None),
-                                       call.groupPackageListAdd('dst-tag',
-                                                                'group1',
-                                                                'pkg3',
-                                                                force=None),
-                                       call.groupPackageListAdd('dst-tag',
-                                                                'group1',
-                                                                'pkg4',
-                                                                force=None),
-                                       call.groupPackageListAdd('dst-tag',
-                                                                'group2',
-                                                                'bpkg',
-                                                                force=None),
-                                       call.multiCall(batch=1000)])
         self.assert_console_message(stdout, """
 List of changes:
 
     Action  Package                      Blocked    Owner      From Tag
     ------- ---------------------------- ---------- ---------- ----------
-    [add]   pkg2                         True       userB      src-tag-p
+    [add]   pkg                          False      userA      src-tag
 
     Action  From/To Package              Build(s)                                 State      Owner      From Tag
     ------- ---------------------------- ---------------------------------------- ---------- ---------- ----------
-    [add]   pkg1                         pkg1-1.0-1                               COMPLETE   b_owner    src-tag
-    [add]   pkg1                         pkg1-0.1-1                               COMPLETE   b_owner    src-tag
-    [add]   pkg1                         pkg1-1.0-2                               COMPLETE   b_owner    src-tag
-    [add]   pkg1                         pkg1-1.1-2                               COMPLETE   b_owner    src-tag
-    [add]   pkg2                         pkg2-1.0-1                               DELETED    b_owner    src-tag-p
+    [add]   pkg                          pkg-0.1-1                                COMPLETE   b_owner    src-tag
+    [add]   pkg                          pkg-1.0-21                               COMPLETE   b_owner    src-tag
+    [add]   pkg                          pkg-1.0-23                               COMPLETE   b_owner    src-tag
 
     Action  Package                      Group
     ------- ---------------------------- ----------------------------
-    [new]   pkg2                         group1
-    [new]   pkg3                         group1
-    [new]   pkg4                         group1
-    [new]   bpkg                         group2
 """)
 
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    def test_handle_clone_tag_existing_dsttag_nodelete_1(self, stdout):
+        args = ['src-tag', 'dst-tag', '--all', '-v', '--no-delete']
+        self.session.multiCall.return_value = []
+        self.session.listPackages.side_effect = [[{'package_id': 1,
+                                                   'package_name': 'pkg',
+                                                   'blocked': False,
+                                                   'owner_name': 'userA',
+                                                   'tag_name': 'src-tag',
+                                                   'extra_arches': None},
+                                                  ],
+                                                  []]
+        self.session.listTagged.side_effect = [[{'package_name': 'pkg',
+                                                 'nvr': 'pkg-1.0-23',
+                                                 'state': 1,
+                                                 'owner_name': 'b_owner',
+                                                 'tag_name': 'src-tag'},
+                                                {'package_name': 'pkg',
+                                                 'nvr': 'pkg-1.0-21',
+                                                 'state': 1,
+                                                 'owner_name': 'b_owner',
+                                                 'tag_name': 'src-tag'},
+                                                {'package_name': 'pkg',
+                                                 'nvr': 'pkg-0.1-1',
+                                                 'state': 1,
+                                                 'owner_name': 'b_owner',
+                                                 'tag_name': 'src-tag'},
+                                                ],
+                                                [{'package_name': 'pkg',
+                                                 'nvr': 'pkg-1.0-23',
+                                                 'state': 1,
+                                                 'owner_name': 'b_owner',
+                                                 'tag_name': 'src-tag'},
+                                                {'package_name': 'pkg',
+                                                 'nvr': 'pkg-1.0-21',
+                                                 'state': 1,
+                                                 'owner_name': 'b_owner',
+                                                 'tag_name': 'src-tag'},
+                                                {'package_name': 'pkg',
+                                                 'nvr': 'pkg-0.1-1',
+                                                 'state': 1,
+                                                 'owner_name': 'b_owner',
+                                                 'tag_name': 'src-tag'},
+                                                ]
+                                               ]
+        self.session.getTagGroups.return_value = []
+        self.session.getTag.side_effect = [{'id': 1,
+                                            'name': 'src-tag',
+                                            'arches': 'arch1 arch2',
+                                            'perm_id': 1,
+                                            'maven_support': False,
+                                            'maven_include_all': True,
+                                            'locked': False},
+                                           {'id': 2,
+                                            'name': 'dst-tag',
+                                            'arches': 'arch1 arch2',
+                                            'perm_id': 1,
+                                            'maven_support': False,
+                                            'maven_include_all': True,
+                                            'locked': False}]
+        handle_clone_tag(self.options, self.session, args)
+        self.activate_session.assert_called_once()
+        self.assert_console_message(stdout, """
+List of changes:
+
+    Action  Package                      Blocked    Owner      From Tag
+    ------- ---------------------------- ---------- ---------- ----------
+    [add]   pkg                          False      userA      src-tag
+
+    Action  From/To Package              Build(s)                                 State      Owner      From Tag
+    ------- ---------------------------- ---------------------------------------- ---------- ---------- ----------
+
+    Action  Package                      Group
+    ------- ---------------------------- ----------------------------
+""")
+
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    def test_handle_clone_tag_existing_dsttag_nodelete_2(self, stdout):
+        args = ['src-tag', 'dst-tag', '--all', '-v', '--no-delete']
+        self.session.multiCall.return_value = []
+        self.session.listPackages.side_effect = [[{'package_id': 1,
+                                                   'package_name': 'pkg',
+                                                   'blocked': False,
+                                                   'owner_name': 'userA',
+                                                   'tag_name': 'src-tag',
+                                                   'extra_arches': None},
+                                                  ],
+                                                  []]
+        self.session.listTagged.side_effect = [[{'id': 1,
+                                                 'package_name': 'pkg',
+                                                 'nvr': 'pkg-1.0-23',
+                                                 'state': 1,
+                                                 'owner_name': 'b_owner',
+                                                 'tag_name': 'src-tag'},
+                                                {'id': 2,
+                                                 'package_name': 'pkg',
+                                                 'nvr': 'pkg-1.0-21',
+                                                 'state': 1,
+                                                 'owner_name': 'b_owner',
+                                                 'tag_name': 'src-tag'},
+                                                {'id': 3,
+                                                 'package_name': 'pkg',
+                                                 'nvr': 'pkg-0.1-1',
+                                                 'state': 1,
+                                                 'owner_name': 'b_owner',
+                                                 'tag_name': 'src-tag'},
+                                                ],
+                                                [{'id': 2,
+                                                  'package_name': 'pkg',
+                                                  'nvr': 'pkg-1.0-21',
+                                                  'state': 1,
+                                                  'owner_name': 'b_owner',
+                                                  'tag_name': 'src-tag'},
+                                                 {'id': 3,
+                                                  'package_name': 'pkg',
+                                                  'nvr': 'pkg-0.1-1',
+                                                  'state': 1,
+                                                  'owner_name': 'b_owner',
+                                                  'tag_name': 'src-tag'},
+                                                 ]
+                                               ]
+        self.session.getTagGroups.return_value = []
+        self.session.getTag.side_effect = [{'id': 1,
+                                            'name': 'src-tag',
+                                            'arches': 'arch1 arch2',
+                                            'perm_id': 1,
+                                            'maven_support': False,
+                                            'maven_include_all': True,
+                                            'locked': False},
+                                           {'id': 2,
+                                            'name': 'dst-tag',
+                                            'arches': 'arch1 arch2',
+                                            'perm_id': 1,
+                                            'maven_support': False,
+                                            'maven_include_all': True,
+                                            'locked': False}]
+        handle_clone_tag(self.options, self.session, args)
+        self.activate_session.assert_called_once()
+        self.assert_console_message(stdout, """
+List of changes:
+
+    Action  Package                      Blocked    Owner      From Tag
+    ------- ---------------------------- ---------- ---------- ----------
+    [add]   pkg                          False      userA      src-tag
+
+    Action  From/To Package              Build(s)                                 State      Owner      From Tag
+    ------- ---------------------------- ---------------------------------------- ---------- ---------- ----------
+    [add]   pkg                          pkg-1.0-23                               COMPLETE   b_owner    src-tag
+
+    Action  Package                      Group
+    ------- ---------------------------- ----------------------------
+""")
     def test_handle_clone_tag_help(self):
         self.assert_help(
             handle_clone_tag,
