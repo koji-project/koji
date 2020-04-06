@@ -146,7 +146,7 @@ def main(options, session):
         raise SystemExit
 
     def restart(*args):
-        logger.warn("Initiating graceful restart")
+        logger.warning("Initiating graceful restart")
         tm.restart_pending = True
     signal.signal(signal.SIGTERM, shutdown)
     signal.signal(signal.SIGUSR1, restart)
@@ -157,10 +157,10 @@ def main(options, session):
             tm.updateTasks()
             taken = tm.getNextTask()
         except (SystemExit, ServerExit, KeyboardInterrupt):
-            logger.warn("Exiting")
+            logger.warning("Exiting")
             break
         except ServerRestart:
-            logger.warn("Restarting")
+            logger.warning("Restarting")
             os.execv(sys.argv[0], sys.argv)
         except koji.AuthExpired:
             logger.error('Session expired')
@@ -178,9 +178,9 @@ def main(options, session):
                 # from getting overloaded.
                 time.sleep(options.sleeptime)
         except (SystemExit, KeyboardInterrupt):
-            logger.warn("Exiting")
+            logger.warning("Exiting")
             break
-    logger.warn("Shutting down, please wait...")
+    logger.warning("Shutting down, please wait...")
     tm.shutdown()
     session.logout()
     sys.exit(0)
@@ -1340,7 +1340,7 @@ class BuildArchTask(BaseBuildTask):
         if not avg:
             return
         if avg < 0:
-            self.logger.warn("Negative average build duration for %s: %s", name, avg)
+            self.logger.warning("Negative average build duration for %s: %s", name, avg)
             return
         # increase the task weight by 0.75 for every hour of build duration
         adj = avg / 4800.0
@@ -5454,7 +5454,7 @@ class CreaterepoTask(BaseTaskHandler):
             oldpath = self.pathinfo.repo(oldrepo['id'], oldrepo['tag_name'])
             olddatadir = '%s/%s/repodata' % (oldpath, arch)
             if not os.path.isdir(olddatadir):
-                self.logger.warn("old repodata is missing: %s" % olddatadir)
+                self.logger.warning("old repodata is missing: %s" % olddatadir)
             else:
                 shutil.copytree(olddatadir, self.datadir)
                 oldorigins = os.path.join(self.datadir, 'pkgorigins.gz')
@@ -5754,7 +5754,7 @@ class createDistRepoTask(BaseTaskHandler):
             cmd.extend(['-g', groupdata])
         if pkglist and oldrepodata and self.options.createrepo_update:
             if not os.path.isdir(oldrepodata):
-                self.logger.warn("old repodata is missing: %s" % oldrepodata)
+                self.logger.warning("old repodata is missing: %s" % oldrepodata)
             else:
                 datadir = os.path.join(repodir, 'repodata')
                 shutil.copytree(oldrepodata, datadir)

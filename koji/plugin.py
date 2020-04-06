@@ -202,7 +202,7 @@ def run_callbacks(cbtype, *args, **kws):
         except Exception:
             msg = 'Error running %s callback from %s' % (cbtype, func.__module__)
             if getattr(func, 'failure_is_an_option', False):
-                logging.getLogger('koji.plugin').warn(msg, exc_info=True)
+                logging.getLogger('koji.plugin').warning(msg, exc_info=True)
             else:
                 tb = ''.join(traceback.format_exception(*sys.exc_info()))
                 raise koji.CallbackError('%s:\n%s' % (msg, tb))

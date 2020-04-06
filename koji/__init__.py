@@ -2478,7 +2478,7 @@ class ClientSession(object):
         sinfo = dict(zip(['session-id', 'session-key'], sinfo_str.split()))
 
         if not sinfo:
-            self.logger.warn('No session info received')
+            self.logger.warning('No session info received')
             return False
         self.setSession(sinfo)
 

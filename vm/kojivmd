@@ -67,7 +67,7 @@ except ImportError:  # pragma: no cover
 def libvirt_callback(ignore, err):
     if err[3] != libvirt.VIR_ERR_ERROR:
         # Don't log libvirt errors: global error handler will do that
-        logging.warn("Non-error from libvirt: '%s'", err[2])
+        logging.warning("Non-error from libvirt: '%s'", err[2])
 
 
 libvirt.registerErrorHandler(f=libvirt_callback, ctx=None)
@@ -218,7 +218,7 @@ def main(options, session):
         raise SystemExit
 
     def restart(*args):
-        logger.warn("Initiating graceful restart")
+        logger.warning("Initiating graceful restart")
         tm.restart_pending = True
     signal.signal(signal.SIGTERM, shutdown)
     signal.signal(signal.SIGUSR1, restart)
@@ -231,10 +231,10 @@ def main(options, session):
             taken = tm.getNextTask()
             tm.cleanupExpiredVMs()
         except (SystemExit, ServerExit, KeyboardInterrupt):
-            logger.warn("Exiting")
+            logger.warning("Exiting")
             break
         except ServerRestart:
-            logger.warn("Restarting")
+            logger.warning("Restarting")
             os.execv(sys.argv[0], sys.argv)
         except koji.AuthExpired:
             logger.error('Session expired')
@@ -252,9 +252,9 @@ def main(options, session):
                 # from getting overloaded.
                 time.sleep(options.sleeptime)
         except (SystemExit, KeyboardInterrupt):
-            logger.warn("Exiting")
+            logger.warning("Exiting")
             break
-    logger.warn("Shutting down, please wait...")
+    logger.warning("Shutting down, please wait...")
     tm.shutdown()
     session.logout()
     sys.exit(0)
@@ -884,7 +884,7 @@ class VMExecTask(BaseTaskHandler):
             time.sleep(15)
             info = vm.info()
             if info[0] in (libvirt.VIR_DOMAIN_CRASHED, libvirt.VIR_DOMAIN_SHUTOFF):
-                self.logger.warn('VM %s crashed', clone_name)
+                self.logger.warning('VM %s crashed', clone_name)
                 self.server.server_close()
                 raise koji.BuildError('VM %s crashed' % clone_name)
             if self.success is None:
@@ -984,7 +984,7 @@ class VMTaskManager(TaskManager):
         if availableMB < self.options.minspace:
             self.status = 'Insufficient disk space: %i MB, %i MB required' % \
                           (availableMB, self.options.minspace)
-            self.logger.warn(self.status)
+            self.logger.warning(self.status)
             return False
         return True
 
@@ -1005,7 +1005,7 @@ class VMTaskManager(TaskManager):
         if avail_mem < min_mem:
             self.status = 'Insufficient memory: %sk allocated, %sk available, %sk required' % \
                           (vm_mem, avail_mem, min_mem)
-            self.logger.warn(self.status)
+            self.logger.warning(self.status)
             return False
         return True
 
@@ -1044,7 +1044,7 @@ class VMTaskManager(TaskManager):
             vm = self.libvirt_conn.lookupByName(vm_name)
         except libvirt.libvirtError:
             # if we can't find the VM by name, it has probably been cleaned up manually
-            self.logger.warn("Can't find %s, assuming it has already been cleaned up", vm_name)
+            self.logger.warning("Can't find %s, assuming it has already been cleaned up", vm_name)
             return True
         info = vm.info()
         if info[0] not in (libvirt.VIR_DOMAIN_SHUTOFF, libvirt.VIR_DOMAIN_CRASHED):

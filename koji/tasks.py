@@ -83,7 +83,7 @@ def safe_rmtree(path, unmount=False, strict=True):
             if strict:
                 raise
             else:
-                logger.warn("Error removing: %s", exc_info=True)
+                logger.warning("Error removing: %s", exc_info=True)
                 return 1
         return 0
     if not os.path.exists(path):
@@ -94,7 +94,7 @@ def safe_rmtree(path, unmount=False, strict=True):
     try:
         koji.util.rmtree(path)
     except Exception:
-        logger.warn('file removal failed for %s' % path)
+        logger.warning('file removal failed for %s' % path)
         if strict:
             raise
         return 1

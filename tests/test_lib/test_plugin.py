@@ -140,7 +140,7 @@ class TestCallbacks(unittest.TestCase):
         self.assertEqual(len(self.callbacks), 1)
         self.assertEqual(self.callbacks[0], [cbtype, args, kwargs])
         getLogger.assert_called_once()
-        getLogger.return_value.warn.assert_called_once()
+        getLogger.return_value.warning.assert_called_once()
 
     def test_datetime_callback(self):
         dt1 = datetime.datetime.now()

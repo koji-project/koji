@@ -364,8 +364,8 @@ class SCM(object):
         for allowed_scm in allowed.split():
             scm_tuple = allowed_scm.split(':')
             if len(scm_tuple) < 2:
-                self.logger.warn('Ignoring incorrectly formatted SCM host:repository: %s' %
-                                 allowed_scm)
+                self.logger.warning('Ignoring incorrectly formatted SCM host:repository: %s' %
+                                    allowed_scm)
                 continue
             host_pat = scm_tuple[0]
             repo_pat = scm_tuple[1]
@@ -656,7 +656,8 @@ class TaskManager(object):
             if task_id is None:
                 # not associated with a task
                 # this makes no sense now, but may in the future
-                self.logger.warn("Expiring taskless buildroot: %(id)i/%(tag_name)s/%(arch)s" % br)
+                self.logger.warning("Expiring taskless buildroot: %(id)i/%(tag_name)s/%(arch)s" %
+                                    br)
                 self.session.host.setBuildRootState(id, st_expired)
             elif task_id not in self.tasks:
                 # task not running - expire the buildroot
@@ -692,18 +693,18 @@ class TaskManager(object):
                 data = local_br[id]
                 br = missed_br.get(id)
                 if not br:
-                    self.logger.warn("%(name)s: not in db" % data)
+                    self.logger.warning("%(name)s: not in db" % data)
                     continue
                 desc = "%(id)i/%(tag_name)s/%(arch)s" % br
                 if not br['retire_ts']:
-                    self.logger.warn("%s: no retire timestamp" % desc)
+                    self.logger.warning("%s: no retire timestamp" % desc)
                     continue
                 age = time.time() - br['retire_ts']
                 self.logger.debug("Expired/stray buildroot: %s" % desc)
                 if br and br['task_id']:
                     task = tasks.get(br['task_id'])
                     if not task:
-                        self.logger.warn("%s: invalid task %s" % (desc, br['task_id']))
+                        self.logger.warning("%s: invalid task %s" % (desc, br['task_id']))
                         continue
                     if task['state'] == koji.TASK_STATES['FAILED'] and \
                             age < self.options.failed_buildroot_lifetime:
@@ -723,7 +724,7 @@ class TaskManager(object):
                         if e.errno == errno.ENOENT:
                             rootdir = None
                         else:
-                            self.logger.warn("%s: %s" % (desc, e))
+                            self.logger.warning("%s: %s" % (desc, e))
                             continue
                     else:
                         age = min(age, time.time() - st.st_mtime)
@@ -741,13 +742,13 @@ class TaskManager(object):
                     try:
                         os.unlink(data['cfg'])
                     except OSError as e:
-                        self.logger.warn("%s: can't remove config: %s" % (desc, e))
+                        self.logger.warning("%s: can't remove config: %s" % (desc, e))
                 elif age > 120:
                     if rootdir:
                         try:
                             flist = os.listdir(rootdir)
                         except OSError as e:
-                            self.logger.warn("%s: can't list rootdir: %s" % (desc, e))
+                            self.logger.warning("%s: can't list rootdir: %s" % (desc, e))
                             continue
                         if flist:
                             self.logger.info("%s: clearing rootdir" % desc)
@@ -916,7 +917,7 @@ class TaskManager(object):
             # note: tasks are in priority order
             self.logger.debug("task: %r" % task)
             if task['method'] not in self.handlers:
-                self.logger.warn("Skipping task %(id)i, no handler for method %(method)s", task)
+                self.logger.warning("Skipping task %(id)i, no handler for method %(method)s", task)
                 continue
             if task['id'] in self.tasks:
                 # we were running this task, but it apparently has been
@@ -1042,8 +1043,8 @@ class TaskManager(object):
                 return True
 
             if t >= timeout:
-                self.logger.warn('Failed to kill %s (pid %i, taskID %i) with signal %i' %
-                                 (execname, pid, task_id, sig))
+                self.logger.warning('Failed to kill %s (pid %i, taskID %i) with signal %i' %
+                                    (execname, pid, task_id, sig))
                 return False
 
             try:
@@ -1189,7 +1190,7 @@ class TaskManager(object):
         if availableMB < self.options.minspace:
             self.status = "Insufficient disk space at %s: %i MB, %i MB required" % \
                           (br_path, availableMB, self.options.minspace)
-            self.logger.warn(self.status)
+            self.logger.warning(self.status)
             return False
         return True
 
@@ -1260,7 +1261,7 @@ class TaskManager(object):
             raise koji.GenericError("No handler found for method '%s'" % method)
         task_info = self.session.getTaskInfo(task['id'], request=True)
         if task_info.get('request') is None:
-            self.logger.warn("Task '%s' has no request" % task['id'])
+            self.logger.warning("Task '%s' has no request" % task['id'])
             return False
         params = task_info['request']
         handler = handlerClass(task_info['id'], method, params, self.session, self.options)
@@ -1271,15 +1272,15 @@ class TaskManager(object):
                 raise
             except Exception:
                 valid_host = False
-                self.logger.warn('Error during host check')
-                self.logger.warn(''.join(traceback.format_exception(*sys.exc_info())))
+                self.logger.warning('Error during host check')
+                self.logger.warning(''.join(traceback.format_exception(*sys.exc_info())))
             if not valid_host:
                 self.logger.info(
                     'Skipping task %s (%s) due to host check', task['id'], task['method'])
                 return False
         data = self.session.host.openTask(task['id'])
         if data is None:
-            self.logger.warn("Could not open")
+            self.logger.warning("Could not open")
             return False
         task_id = data['id']
         self.tasks[task_id] = data
@@ -1289,11 +1290,11 @@ class TaskManager(object):
         except koji.ActionNotAllowed:
             info2 = self.session.getTaskInfo(task['id'])
             if info2['host_id'] != self.host_id:
-                self.logger.warn("Task %i was reassigned", task_id)
+                self.logger.warning("Task %i was reassigned", task_id)
                 return False
             state = koji.TASK_STATES[info2['state']]
             if state != 'OPEN':
-                self.logger.warn("Task %i changed is %s", task_id, state)
+                self.logger.warning("Task %i changed is %s", task_id, state)
                 return False
             # otherwise...
             raise
@@ -1345,7 +1346,7 @@ class TaskManager(object):
         except koji.xmlrpcplus.Fault as fault:
             response = koji.xmlrpcplus.dumps(fault)
             tb = ''.join(traceback.format_exception(*sys.exc_info())).replace(r"\n", "\n")
-            self.logger.warn("FAULT:\n%s" % tb)
+            self.logger.warning("FAULT:\n%s" % tb)
         except (SystemExit, koji.tasks.ServerExit, KeyboardInterrupt):
             # we do not trap these
             raise
@@ -1355,7 +1356,7 @@ class TaskManager(object):
             return
         except Exception:
             tb = ''.join(traceback.format_exception(*sys.exc_info()))
-            self.logger.warn("TRACEBACK: %s" % tb)
+            self.logger.warning("TRACEBACK: %s" % tb)
             # report exception back to server
             e_class, e = sys.exc_info()[:2]
             faultCode = getattr(e_class, 'faultCode', 1)
