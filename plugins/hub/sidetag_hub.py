@@ -163,6 +163,8 @@ def listSideTags(basetag=None, user=None, queryOpts=None):
     :param queryOpts: additional query options
                       {countOnly, order, offset, limit}
     :type queryOpts: dict
+
+    :returns: list of dicts: id, name, user_id, user_name
     """
     # te1.sidetag
     # te2.user_id
@@ -176,17 +178,20 @@ def listSideTags(basetag=None, user=None, queryOpts=None):
     else:
         basetag_id = None
 
-    joins = ["LEFT JOIN tag_extra AS te1 ON tag.id = te1.tag_id"]
-    clauses = ["te1.active IS TRUE", "te1.key = 'sidetag'", "te1.value = 'true'"]
+    joins = [
+        "LEFT JOIN tag_extra AS te1 ON tag.id = te1.tag_id",
+        "LEFT JOIN tag_extra AS te2 ON tag.id = te2.tag_id",
+        "LEFT JOIN users ON CAST(te2.value AS INTEGER) = users.id",
+    ]
+    clauses = [
+        "te1.active IS TRUE",
+        "te1.key = 'sidetag'",
+        "te1.value = 'true'",
+        "te2.active IS TRUE",
+        "te2.key = 'sidetag_user_id'"
+    ]
     if user_id:
-        joins.append("LEFT JOIN tag_extra AS te2 ON tag.id = te2.tag_id")
-        clauses.extend(
-            [
-                "te2.active IS TRUE",
-                "te2.key = 'sidetag_user_id'",
-                "te2.value = %(user_id)s",
-            ]
-        )
+        clauses.append("te2.value = %(user_id)s")
     if basetag_id:
         joins.append("LEFT JOIN tag_inheritance ON tag.id = tag_inheritance.tag_id")
         clauses.extend(
@@ -199,8 +204,8 @@ def listSideTags(basetag=None, user=None, queryOpts=None):
     query = QueryProcessor(
         tables=["tag"],
         clauses=clauses,
-        columns=["tag.id", "tag.name"],
-        aliases=["id", "name"],
+        columns=["tag.id", "tag.name", "te2.value", "users.name"],
+        aliases=["id", "name", "user_id", "user_name"],
         joins=joins,
         values={"basetag_id": basetag_id, "user_id": user_id},
         opts=queryOpts,
