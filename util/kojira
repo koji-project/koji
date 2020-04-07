@@ -710,11 +710,6 @@ class RepoManager(object):
             self.setTagScore(entry)
 
     def updateRepos(self):
-        self.checkTasks()
-        self.logger.debug("Current tasks: %r" % self.tasks)
-        if self.other_tasks:
-            self.logger.debug("Found %i untracked newRepo tasks",
-                              len(self.other_tasks))
         self.logger.debug("Updating repos")
 
         self.readCurrentRepos()
@@ -872,6 +867,12 @@ class RepoManager(object):
 
     def regenRepos(self):
         """Trigger newRepo tasks for needed tags"""
+
+        self.checkTasks()
+        self.logger.debug("Current tasks: %r" % self.tasks)
+        if self.other_tasks:
+            self.logger.debug("Found %i untracked newRepo tasks",
+                              len(self.other_tasks))
 
         # first note currently running tasks
         running_tasks = 0
