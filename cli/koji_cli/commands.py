@@ -3529,6 +3529,8 @@ def handle_clone_tag(goptions, session, args):
                                             inherited=True):
                 dstpkgs[pkg['package_name']] = pkg
         if options.builds:
+            # listTagged orders builds latest-first
+            # so reversing that gives us oldest-first
             for build in reversed(session.listTagged(srctag['id'],
                                                      event=event.get('id'),
                                                      inherit=options.inherit_builds,
@@ -3560,9 +3562,11 @@ def handle_clone_tag(goptions, session, args):
         pdellist.sort(key=lambda x: x['package_name'])
         baddlist = []  # list containing new builds to be added from src tag
         bdellist = []  # list containing new builds to be removed from dst tag
+        # remove builds for packages that are absent from src tag
         for (pkg, dstblds) in six.iteritems(dstbldsbypkg):
             if pkg not in srcbldsbypkg:
                 bdellist.extend(dstblds.values())
+        # add and/or remove builds from dst to match src contents and order
         for (pkg, srcblds) in six.iteritems(srcbldsbypkg):
             dstblds = dstbldsbypkg[pkg]
             ablds = []
@@ -3581,6 +3585,9 @@ def handle_clone_tag(goptions, session, args):
             for (nvr, srcbld) in six.iteritems(srcblds):
                 found = False
                 out_of_order = []
+                # note that dstblds is trimmed as we go, so we are only
+                # considering the tail corresponding to where we are at
+                # in the srcblds loop
                 for (dstnvr, dstbld) in six.iteritems(dstblds):
                     if nvr == dstnvr:
                         found = True
@@ -3596,6 +3603,7 @@ def handle_clone_tag(goptions, session, args):
                     # loop
                     del dstblds[nvr]
                 else:
+                    # missing from dst, so we need to add it
                     ablds.append(srcbld)
             baddlist.extend(ablds)
             bdellist.extend(dblds)
