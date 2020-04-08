@@ -3571,18 +3571,31 @@ def handle_clone_tag(goptions, session, args):
             dstblds = dstbldsbypkg[pkg]
             ablds = []
             dblds = []
+            # firstly, deal with extra builds in dst
+            removed_nvrs = set(dstblds.keys()) - set(srcblds.keys())
+            bld_order = srcblds.copy()
             if options.delete:
-                # firstly, remove builds from dst tag
-                removed_nvrs = set(dstblds.keys()) - set(srcblds.keys())
+                # mark the extra builds for deletion
                 dnvrs = []
                 for (dstnvr, dstbld) in six.iteritems(dstblds):
                     if dstnvr in removed_nvrs:
                         dnvrs.append(dstnvr)
                         dblds.append(dstbld)
+                # we also remove them from dstblds now so that they do not
+                # interfere with the order comparison below
                 for dnvr in dnvrs:
                     del dstblds[dnvr]
+            else:
+                # in the no-delete case, the extra builds should be forced
+                # to last in the tag
+                bld_order = OrderedDict()
+                for (dstnvr, dstbld) in six.iteritems(dstblds):
+                    if dstnvr in removed_nvrs:
+                        bld_order[dstnvr] = dstbld
+                for (nvr, srcbld) in six.iteritems(srcblds):
+                    bld_order[nvr] = srcbld
             # secondly, add builds from src tag and adjust the order
-            for (nvr, srcbld) in six.iteritems(srcblds):
+            for (nvr, srcbld) in six.iteritems(bld_order):
                 found = False
                 out_of_order = []
                 # note that dstblds is trimmed as we go, so we are only
