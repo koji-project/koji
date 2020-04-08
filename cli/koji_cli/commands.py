@@ -3562,10 +3562,11 @@ def handle_clone_tag(goptions, session, args):
         pdellist.sort(key=lambda x: x['package_name'])
         baddlist = []  # list containing new builds to be added from src tag
         bdellist = []  # list containing new builds to be removed from dst tag
-        # remove builds for packages that are absent from src tag
-        for (pkg, dstblds) in six.iteritems(dstbldsbypkg):
-            if pkg not in srcbldsbypkg:
-                bdellist.extend(dstblds.values())
+        if options.delete:
+            # remove builds for packages that are absent from src tag
+            for (pkg, dstblds) in six.iteritems(dstbldsbypkg):
+                if pkg not in srcbldsbypkg:
+                    bdellist.extend(dstblds.values())
         # add and/or remove builds from dst to match src contents and order
         for (pkg, srcblds) in six.iteritems(srcbldsbypkg):
             dstblds = dstbldsbypkg[pkg]
@@ -3622,12 +3623,6 @@ def handle_clone_tag(goptions, session, args):
             bdellist.extend(dblds)
         baddlist.sort(key=lambda x: x['package_name'])
         bdellist.sort(key=lambda x: x['package_name'])
-
-        if not options.delete:
-            # even in such case we need to delete out of order builds
-            # to be retagged correctly later
-            add_ids = [x['id'] for x in baddlist]
-            bdellist = [x for x in bdellist if x['id'] in add_ids]
 
         gaddlist = []  # list containing new groups to be added from src tag
         for (grpname, group) in six.iteritems(srcgroups):
