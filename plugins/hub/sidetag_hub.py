@@ -4,6 +4,7 @@
 import sys
 
 import koji
+import koji.policy
 from koji.context import context
 from koji.plugin import callback, export
 sys.path.insert(0, "/usr/share/koji-hub/")
@@ -13,17 +14,56 @@ from kojihub import (  # noqa: F402
     _create_tag,
     _delete_build_target,
     _delete_tag,
+    _edit_tag,
     assert_policy,
     get_build_target,
+    readInheritanceData,
     get_tag,
     get_user,
-    nextval
+    nextval,
+    policy_get_user
 )
 
 CONFIG_FILE = "/etc/koji-hub/plugins/sidetag.conf"
 CONFIG = None
 
 
+def is_sidetag(taginfo, raise_error=False):
+    """Check, that given tag is sidetag"""
+    result = bool(taginfo['extra'].get('sidetag'))
+    if not result and raise_error:
+        raise koji.GenericError("Not a sidetag: %(name)s" % taginfo)
+
+
+def is_sidetag_owner(taginfo, user, raise_error=False):
+    """Check, that given user is owner of the sidetag"""
+    result = (taginfo['extra'].get('sidetag') and
+              taginfo['extra'].get('sidetag_user_id') == user['id'])
+    if not result and raise_error:
+        raise koji.ActionNotAllowed("This is not your sidetag")
+
+
+# Policy tests
+class SidetagTest(koji.policy.MatchTest):
+    """Checks, if tag is a sidetag"""
+    name = 'is_sidetag'
+
+    def run(self, data):
+        tag = get_tag(data['tag'])
+        return is_sidetag(tag)
+
+
+class SidetagOwnerTest(koji.policy.MatchTest):
+    """Checks, if user is a real owner of sidetag"""
+    name = 'is_sidetag_owner'
+
+    def run(self, data):
+        user = policy_get_user(data)
+        tag = get_tag(data['tag'])
+        return is_sidetag_owner(tag, user)
+
+
+# API calls
 @export
 def createSideTag(basetag, debuginfo=False):
     """Create a side tag.
@@ -94,11 +134,9 @@ def removeSideTag(sidetag):
     sidetag = get_tag(sidetag, strict=True)
 
     # sanity/access
-    if not sidetag["extra"].get("sidetag"):
-        raise koji.GenericError("Not a sidetag: %(name)s" % sidetag)
-    if sidetag["extra"].get("sidetag_user_id") != user["id"]:
-        if not context.session.hasPerm("admin"):
-            raise koji.ActionNotAllowed("This is not your sidetag")
+    is_sidetag(sidetag, raise_error=True)
+    is_sidetag_owner(sidetag, user, raise_error=True)
+
     _remove_sidetag(sidetag)
 
 
@@ -170,6 +208,54 @@ def listSideTags(basetag=None, user=None, queryOpts=None):
     return query.execute()
 
 
+@export
+def editSideTag(sidetag, debuginfo=None, rpm_macros=None, remove_rpm_macros=None):
+    """Restricted ability to modify sidetags, parent tag must have:
+    sidetag_debuginfo_allowed: 1
+    sidetag_rpm_macros_allowed: 1
+    in extra, if modifying functions should work. For blocking/unblocking
+    further policy must be compatible with these operations.
+
+    :param sidetag: sidetag id or name
+    :type sidetag: int or str
+    :param debuginfo: set or disable debuginfo repo generation
+    :type debuginfo: bool
+    :param rpm_macros: add/update rpms macros in extra
+    :type rpm_macros: dict
+    :param remove_rpm_macros: remove rpm macros from extra
+    :type remove_rpm_macros: list of str
+    """
+
+    context.session.assertLogin()
+    user = get_user(context.session.user_id, strict=True)
+    sidetag = get_tag(sidetag, strict=True)
+
+    # sanity/access
+    is_sidetag(sidetag, raise_error=True)
+    is_sidetag_owner(sidetag, user, raise_error=True)
+
+    parent_id = readInheritanceData(sidetag['id'])[0]['parent_id']
+    parent = get_tag(parent_id)
+
+    if debuginfo is not None and not parent['extra'].get('sidetag_debuginfo_allowed'):
+        raise koji.GenericError("Debuginfo setting is not allowed in parent tag.")
+
+    if (rpm_macros is not None or remove_rpm_macros is not None) \
+            and not parent['extra'].get('sidetag_rpm_macros_allowed'):
+        raise koji.GenericError("RPM macros change is not allowed in parent tag.")
+
+    kwargs = {'extra': {}}
+    if debuginfo is not None:
+        kwargs['extra']['with_debuginfo'] = bool(debuginfo)
+    if rpm_macros is not None:
+        for macro, value in rpm_macros.items():
+            kwargs['extra']['rpm.macro.%s' % macro] = value
+    if remove_rpm_macros is not None:
+        kwargs['remove_extra'] = ['rpm.macro.%s' % m for m in remove_rpm_macros]
+
+    _edit_tag(sidetag['id'], **kwargs)
+
+
 def handle_sidetag_untag(cbtype, *args, **kws):
     """Remove a side tag when its last build is untagged
 
@@ -184,8 +270,7 @@ def handle_sidetag_untag(cbtype, *args, **kws):
     if not tag:
         # also shouldn't happen, but just in case
         return
-    if not tag["extra"].get("sidetag"):
-        # not a side tag
+    if not is_sidetag(tag):
         return
     # is the tag now empty?
     query = QueryProcessor(
