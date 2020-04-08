@@ -991,9 +991,7 @@ def _direct_pkglist_add(taginfo, pkginfo, owner, block, extra_arches, force,
     if policy:
         context.session.assertLogin()
         policy_data = {'tag': tag_id, 'action': action, 'package': pkginfo, 'force': force}
-        # don't check policy for admins using force
-        if not (force and context.session.hasPerm('admin')):
-            assert_policy('package_list', policy_data)
+        assert_policy('package_list', policy_data, force=force)
     if not pkg:
         pkg = lookup_package(pkginfo, create=True)
     # validate arches before running callbacks
