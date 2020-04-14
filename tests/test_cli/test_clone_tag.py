@@ -668,16 +668,16 @@ List of changes:
         self.assert_console_message(stdout, """
 List of changes:
 
-    Action  Package                      Blocked    Owner      From Tag
+    Action  Package                      Blocked    Owner      From Tag  
     ------- ---------------------------- ---------- ---------- ----------
 
-    Action  From/To Package              Build(s)                                 State      Owner      From Tag
+    Action  From/To Package              Build(s)                                 State      Owner      From Tag  
     ------- ---------------------------- ---------------------------------------- ---------- ---------- ----------
-    [add]   pkg                          pkg-0.1-1                                COMPLETE   b_owner    src-tag
-    [add]   pkg                          pkg-1.0-21                               COMPLETE   b_owner    src-tag
-    [add]   pkg                          pkg-1.0-23                               COMPLETE   b_owner    src-tag
+    [add]   pkg                          pkg-0.1-1                                COMPLETE   b_owner    src-tag   
+    [add]   pkg                          pkg-1.0-21                               COMPLETE   b_owner    src-tag   
+    [add]   pkg                          pkg-1.0-23                               COMPLETE   b_owner    src-tag   
 
-    Action  Package                      Group
+    Action  Package                      Group                       
     ------- ---------------------------- ----------------------------
 """)
 
@@ -745,15 +745,15 @@ List of changes:
         self.assert_console_message(stdout, """
 List of changes:
 
-    Action  Package                      Blocked    Owner      From Tag
+    Action  Package                      Blocked    Owner      From Tag  
     ------- ---------------------------- ---------- ---------- ----------
 
-    Action  From/To Package              Build(s)                                 State      Owner      From Tag
+    Action  From/To Package              Build(s)                                 State      Owner      From Tag  
     ------- ---------------------------- ---------------------------------------- ---------- ---------- ----------
-    [add]   pkg                          pkg-1.0-21                               COMPLETE   b_owner    src-tag
-    [add]   pkg                          pkg-1.0-23                               COMPLETE   b_owner    src-tag
+    [add]   pkg                          pkg-1.0-21                               COMPLETE   b_owner    src-tag   
+    [add]   pkg                          pkg-1.0-23                               COMPLETE   b_owner    src-tag   
 
-    Action  Package                      Group
+    Action  Package                      Group                       
     ------- ---------------------------- ----------------------------
 """)
 
@@ -815,14 +815,14 @@ List of changes:
         self.assert_console_message(stdout, """
 List of changes:
 
-    Action  Package                      Blocked    Owner      From Tag
+    Action  Package                      Blocked    Owner      From Tag  
     ------- ---------------------------- ---------- ---------- ----------
 
-    Action  From/To Package              Build(s)                                 State      Owner      From Tag
+    Action  From/To Package              Build(s)                                 State      Owner      From Tag  
     ------- ---------------------------- ---------------------------------------- ---------- ---------- ----------
-    [add]   pkg                          pkg-1.0-23                               COMPLETE   b_owner    src-tag
+    [add]   pkg                          pkg-1.0-23                               COMPLETE   b_owner    src-tag   
 
-    Action  Package                      Group
+    Action  Package                      Group                       
     ------- ---------------------------- ----------------------------
 """)
     def test_handle_clone_tag_help(self):
