@@ -642,6 +642,9 @@ Install the ``koji-hub`` package along with mod_ssl::
 Required Configuration
 ----------------------
 
+We provide example configs for all services, so look for ``httpd.conf``, ``hub.conf``,
+``kojiweb.conf`` and ``web.conf`` in source repo or related rpms.
+
 /etc/httpd/conf/httpd.conf
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -676,11 +679,30 @@ The koji-hub package provides this configuration file. You will need to modify
 it based on your authentication type. Instructions are contained within the
 file and should be simple to follow.
 
+For example, if you are using SSL authentication, you will want to uncomment
+the section that looks like this:
+
+::
+
+    # uncomment this to enable authentication via SSL client certificates
+    # <Location /kojihub/ssllogin>
+    #         SSLVerifyClient require
+    #         SSLVerifyDepth  10
+    #         SSLOptions +StdEnvVars
+    # </Location>
+
+
 /etc/httpd/conf.d/ssl.conf
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-If using SSL you will also need to add the needed SSL options for apache. These
-options should point to where the certificates are located on the hub.
+If you are configuring your server for httpd (and you really should), then your
+``SSLCertificate*`` directives will generally live in the main ``ssl.conf`` file.
+This part is mostly independent of Koji.
+It's something you would do for any httpd instance.
+
+The part that matters to Koji is this --
+if you are using SSL authentication, then the CA certificate you configure
+here should be the same one that you use to issue user certificates.
 
 ::
 
@@ -688,12 +710,7 @@ options should point to where the certificates are located on the hub.
     SSLCertificateKeyFile /etc/pki/koji/private/kojihub.key
     SSLCertificateChainFile /etc/pki/koji/koji_ca_cert.crt
     SSLCACertificateFile /etc/pki/koji/koji_ca_cert.crt
-    SSLVerifyClient require
-    SSLVerifyDepth  10
-    # Python is currently not fully TLSv1.3 compatible and
-    #  older TLS versions are no longer advised
-    #  https://bugs.python.org/issue34670
-    SSLProtocol TLSv1.2
+
 
 /etc/koji-hub/hub.conf
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -892,15 +909,37 @@ The koji-web package provides this configuration file. You will need to modify
 it based on your authentication type. Instructions are contained within the
 file and should be simple to follow.
 
-/etc/httpd/conf.d/ssl.conf
-^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-If you are using SSL you will need to add the needed SSL options for apache.
+For example, if you are using SSL authentication, you would want to uncomment
+the section that looks like this:
 
 ::
 
-    SSLVerifyClient require
-    SSLVerifyDepth  10
+    # uncomment this to enable authentication via SSL client certificates
+    # <Location /koji/login>
+    #     SSLVerifyClient require
+    #     SSLVerifyDepth  10
+    #     SSLOptions +StdEnvVars
+    # </Location>
+
+
+/etc/httpd/conf.d/ssl.conf
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Similarly to the hub configuration, if you are using https (as you should),
+then you will need to configure your certificates.
+This is something you might do for any httpd instance and is mostly independent
+of Koji
+
+If you are using SSL authentication, then the CA certificate you configure
+here should be the same one that you use to issue user certificates.
+
+::
+
+    SSLCertificateFile /etc/pki/koji/certs/kojihub.crt
+    SSLCertificateKeyFile /etc/pki/koji/private/kojihub.key
+    SSLCertificateChainFile /etc/pki/koji/koji_ca_cert.crt
+    SSLCACertificateFile /etc/pki/koji/koji_ca_cert.crt
+
 
 /etc/kojiweb/web.conf
 ^^^^^^^^^^^^^^^^^^^^^
