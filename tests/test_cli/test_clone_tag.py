@@ -622,6 +622,209 @@ List of changes:
     [blk]   cpkg                         group2                      
 """)
 
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    def test_handle_clone_tag_existing_dsttag_nodelete(self, stdout):
+        args = ['src-tag', 'dst-tag', '--all', '-v', '--no-delete']
+        self.session.multiCall.return_value = []
+        self.session.listPackages.return_value = []
+        self.session.listTagged.side_effect = [[{'id': 1,
+                                                 'package_name': 'pkg',
+                                                 'nvr': 'pkg-1.0-23',
+                                                 'state': 1,
+                                                 'owner_name': 'b_owner',
+                                                 'tag_name': 'src-tag'},
+                                                {'id': 2,
+                                                 'package_name': 'pkg',
+                                                 'nvr': 'pkg-1.0-21',
+                                                 'state': 1,
+                                                 'owner_name': 'b_owner',
+                                                 'tag_name': 'src-tag'},
+                                                {'id': 3,
+                                                 'package_name': 'pkg',
+                                                 'nvr': 'pkg-0.1-1',
+                                                 'state': 1,
+                                                 'owner_name': 'b_owner',
+                                                 'tag_name': 'src-tag'},
+                                                ],
+                                               [],
+                                               ]
+        self.session.getTagGroups.return_value = []
+        self.session.getTag.side_effect = [{'id': 1,
+                                            'name': 'src-tag',
+                                            'arches': 'arch1 arch2',
+                                            'perm_id': 1,
+                                            'maven_support': False,
+                                            'maven_include_all': True,
+                                            'locked': False},
+                                           {'id': 2,
+                                            'name': 'dst-tag',
+                                            'arches': 'arch1 arch2',
+                                            'perm_id': 1,
+                                            'maven_support': False,
+                                            'maven_include_all': True,
+                                            'locked': False}]
+        handle_clone_tag(self.options, self.session, args)
+        self.activate_session.assert_called_once()
+        self.assert_console_message(stdout, """
+List of changes:
+
+    Action  Package                      Blocked    Owner      From Tag
+    ------- ---------------------------- ---------- ---------- ----------
+
+    Action  From/To Package              Build(s)                                 State      Owner      From Tag
+    ------- ---------------------------- ---------------------------------------- ---------- ---------- ----------
+    [add]   pkg                          pkg-0.1-1                                COMPLETE   b_owner    src-tag
+    [add]   pkg                          pkg-1.0-21                               COMPLETE   b_owner    src-tag
+    [add]   pkg                          pkg-1.0-23                               COMPLETE   b_owner    src-tag
+
+    Action  Package                      Group
+    ------- ---------------------------- ----------------------------
+""")
+
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    def test_handle_clone_tag_existing_dsttag_nodelete_1(self, stdout):
+        args = ['src-tag', 'dst-tag', '--all', '-v', '--no-delete']
+        self.session.multiCall.return_value = []
+        self.session.listPackages.return_value = []
+        self.session.listTagged.side_effect = [[{'id': 1,
+                                                 'package_name': 'pkg',
+                                                 'nvr': 'pkg-1.0-23',
+                                                 'state': 1,
+                                                 'owner_name': 'b_owner',
+                                                 'tag_name': 'src-tag'},
+                                                {'id': 2,
+                                                 'package_name': 'pkg',
+                                                 'nvr': 'pkg-1.0-21',
+                                                 'state': 1,
+                                                 'owner_name': 'b_owner',
+                                                 'tag_name': 'src-tag'},
+                                                {'id': 3,
+                                                 'package_name': 'pkg',
+                                                 'nvr': 'pkg-0.1-1',
+                                                 'state': 1,
+                                                 'owner_name': 'b_owner',
+                                                 'tag_name': 'src-tag'},
+                                                ],
+                                                [{'id': 1,
+                                                  'package_name': 'pkg',
+                                                 'nvr': 'pkg-1.0-23',
+                                                 'state': 1,
+                                                 'owner_name': 'b_owner',
+                                                 'tag_name': 'src-tag'},
+                                                {'id': 3,
+                                                 'package_name': 'pkg',
+                                                 'nvr': 'pkg-0.1-1',
+                                                 'state': 1,
+                                                 'owner_name': 'b_owner',
+                                                 'tag_name': 'src-tag'},
+                                                {'id': 2,
+                                                 'package_name': 'pkg',
+                                                 'nvr': 'pkg-1.0-21',
+                                                 'state': 1,
+                                                 'owner_name': 'b_owner',
+                                                 'tag_name': 'src-tag'},
+                                                ]
+                                               ]
+        self.session.getTagGroups.return_value = []
+        self.session.getTag.side_effect = [{'id': 1,
+                                            'name': 'src-tag',
+                                            'arches': 'arch1 arch2',
+                                            'perm_id': 1,
+                                            'maven_support': False,
+                                            'maven_include_all': True,
+                                            'locked': False},
+                                           {'id': 2,
+                                            'name': 'dst-tag',
+                                            'arches': 'arch1 arch2',
+                                            'perm_id': 1,
+                                            'maven_support': False,
+                                            'maven_include_all': True,
+                                            'locked': False}]
+        handle_clone_tag(self.options, self.session, args)
+        self.activate_session.assert_called_once()
+        self.assert_console_message(stdout, """
+List of changes:
+
+    Action  Package                      Blocked    Owner      From Tag
+    ------- ---------------------------- ---------- ---------- ----------
+
+    Action  From/To Package              Build(s)                                 State      Owner      From Tag
+    ------- ---------------------------- ---------------------------------------- ---------- ---------- ----------
+    [add]   pkg                          pkg-1.0-21                               COMPLETE   b_owner    src-tag
+    [add]   pkg                          pkg-1.0-23                               COMPLETE   b_owner    src-tag
+
+    Action  Package                      Group
+    ------- ---------------------------- ----------------------------
+""")
+
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    def test_handle_clone_tag_existing_dsttag_nodelete_2(self, stdout):
+        args = ['src-tag', 'dst-tag', '--all', '-v', '--no-delete']
+        self.session.multiCall.return_value = []
+        self.session.listPackages.return_value = []
+        self.session.listTagged.side_effect = [[{'id': 1,
+                                                 'package_name': 'pkg',
+                                                 'nvr': 'pkg-1.0-23',
+                                                 'state': 1,
+                                                 'owner_name': 'b_owner',
+                                                 'tag_name': 'src-tag'},
+                                                {'id': 2,
+                                                 'package_name': 'pkg',
+                                                 'nvr': 'pkg-1.0-21',
+                                                 'state': 1,
+                                                 'owner_name': 'b_owner',
+                                                 'tag_name': 'src-tag'},
+                                                {'id': 3,
+                                                 'package_name': 'pkg',
+                                                 'nvr': 'pkg-0.1-1',
+                                                 'state': 1,
+                                                 'owner_name': 'b_owner',
+                                                 'tag_name': 'src-tag'},
+                                                ],
+                                                [{'id': 2,
+                                                  'package_name': 'pkg',
+                                                  'nvr': 'pkg-1.0-21',
+                                                  'state': 1,
+                                                  'owner_name': 'b_owner',
+                                                  'tag_name': 'src-tag'},
+                                                 {'id': 3,
+                                                  'package_name': 'pkg',
+                                                  'nvr': 'pkg-0.1-1',
+                                                  'state': 1,
+                                                  'owner_name': 'b_owner',
+                                                  'tag_name': 'src-tag'},
+                                                 ]
+                                               ]
+        self.session.getTagGroups.return_value = []
+        self.session.getTag.side_effect = [{'id': 1,
+                                            'name': 'src-tag',
+                                            'arches': 'arch1 arch2',
+                                            'perm_id': 1,
+                                            'maven_support': False,
+                                            'maven_include_all': True,
+                                            'locked': False},
+                                           {'id': 2,
+                                            'name': 'dst-tag',
+                                            'arches': 'arch1 arch2',
+                                            'perm_id': 1,
+                                            'maven_support': False,
+                                            'maven_include_all': True,
+                                            'locked': False}]
+        handle_clone_tag(self.options, self.session, args)
+        self.activate_session.assert_called_once()
+        self.assert_console_message(stdout, """
+List of changes:
+
+    Action  Package                      Blocked    Owner      From Tag
+    ------- ---------------------------- ---------- ---------- ----------
+
+    Action  From/To Package              Build(s)                                 State      Owner      From Tag
+    ------- ---------------------------- ---------------------------------------- ---------- ---------- ----------
+    [add]   pkg                          pkg-1.0-23                               COMPLETE   b_owner    src-tag
+
+    Action  Package                      Group
+    ------- ---------------------------- ----------------------------
+""")
     def test_handle_clone_tag_help(self):
         self.assert_help(
             handle_clone_tag,
@@ -640,6 +843,7 @@ Options:
   --inherit-builds  Include all builds inherited into the source tag into the
                     dest tag
   --ts=TIMESTAMP    Clone tag at last event before specific timestamp
+  --no-delete       Don't delete any existing content in dest tag.
   --event=EVENT     Clone tag at a specific event
   --repo=REPO       Clone tag at a specific repo event
   -v, --verbose     show changes
