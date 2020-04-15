@@ -9765,7 +9765,7 @@ def check_policy(name, data, default='deny', strict=False, force=False):
     if result != 'deny':
         reason = 'error in policy'
         logger.error("Invalid action in policy %s, rule: %s", name, lastrule)
-    if force and context.session.assertPerm('admin'):
+    if force and context.session.hasPerm('admin'):
         msg = "Policy %s overriden by force: %s" % (name, context.session.user_data["name"])
         if reason:
             msg += ": %s" % reason
