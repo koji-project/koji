@@ -30,11 +30,6 @@ import koji
 import koji.policy
 from koji.util import LazyDict, LazyValue, to_list
 
-try:
-    import krbV
-except ImportError:  # pragma: no cover
-    krbV = None
-
 
 def _(args):
     """Stub function for translation"""
@@ -368,18 +363,6 @@ def ensure_connection(session):
                (ret, koji.API_VERSION)))
 
 
-def has_krb_creds():
-    if krbV is None:
-        return False
-    try:
-        ctx = krbV.default_context()
-        ccache = ctx.default_ccache()
-        ccache.principal()
-        return True
-    except krbV.Krb5Error:
-        return False
-
-
 def activate_session(session):
     """Test and login the session is applicable"""
     global options
@@ -392,17 +375,9 @@ def activate_session(session):
     elif options.user:
         # authenticate using user/password
         session.login()
-    elif has_krb_creds() or (options.keytab and options.principal):
-        try:
-            if options.keytab and options.principal:
-                session.krb_login(principal=options.principal, keytab=options.keytab,
-                                  proxyuser=options.runas)
-            else:
-                session.krb_login(proxyuser=options.runas)
-        except krbV.Krb5Error as e:
-            error(_("Kerberos authentication failed: %s (%s)") % (e.args[1], e.args[0]))
-        except socket.error as e:
-            warn(_("Could not connect to Kerberos authentication service: '%s'") % e.args[1])
+    elif koji.krbV or koji.requests_kerberos:
+        session.krb_login(principal=options.principal, keytab=options.keytab,
+                          proxyuser=options.runas)
     if not options.noauth and not session.logged_in:
         error(_("Error: unable to log in, no authentication methods available"))
     ensure_connection(session)
