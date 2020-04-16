@@ -380,7 +380,7 @@ class RepoManager(object):
             self.external_repos[url] = 0
             arches = []  # placeholder for repos without $arch bit
             try:
-                arches = self.session.getTag(tag)['arches'].split()
+                arches = getTag(self.session, tag)['arches'].split()
             except AttributeError:
                 pass
             for arch in arches:
