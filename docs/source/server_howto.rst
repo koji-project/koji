@@ -722,7 +722,8 @@ It's something you would do for any httpd instance.
 
 The part that matters to Koji is this --
 if you are using SSL authentication, then the CA certificate you configure
-here should be the same one that you use to issue user certificates.
+in ``SSLCACertificateFile`` here should be the same one that you use to issue
+user certificates.
 
 ::
 
@@ -957,7 +958,8 @@ This is something you might do for any httpd instance and is mostly independent
 of Koji
 
 If you are using SSL authentication, then the CA certificate you configure
-here should be the same one that you use to issue user certificates.
+in ``SSLCACertificateFile`` here should be the same one that you use to issue
+user certificates.
 
 ::
 
