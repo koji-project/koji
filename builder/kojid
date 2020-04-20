@@ -300,6 +300,10 @@ class BuildRoot(object):
                 opts['tag_macros'][macro] = self.config['extra'][key]
             elif key.startswith('rpm.env.'):
                 opts['tag_envvars'][key[8:]] = self.config['extra'][key]
+        if 'mock.bootstrap_chroot' in self.config['extra']:
+            opts['bootstrap_chroot'] = bool(self.config['extra']['mock.bootstrap_chroot'])
+        opts['bootstrap_image'] = self.config['extra'].get('mock.bootstrap_image')
+
         output = koji.genMockConfig(self.name, self.br_arch, managed=True, **opts)
 
         # write config
@@ -548,13 +552,7 @@ class BuildRoot(object):
         return koji.pathinfo.taskrelpath(self.task_id)
 
     def init(self):
-        args = ['--init']
-
-        if 'mock.bootstrap_chroot' in self.config['extra']:
-            if self.config['extra']['mock.bootstrap_chroot']:
-                args.append('--bootstrap-chroot')
-
-        rv = self.mock(args)
+        rv = self.mock(['--init'])
 
         if rv:
             self.expire()

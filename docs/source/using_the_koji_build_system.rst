@@ -389,14 +389,44 @@ environment follows:
     koji edit-tag dnf-fedora-tag -x mock.package_manager=dnf
 
 
-* `mock.package_manager` - If this is set, it will override mock's default
-  package manager. Typically used with `yum` or `dnf` values.
-* `mock.new_chroot` - 0/1 value. If it is set, `--new-chroot` or
+* ``mock.package_manager`` - If this is set, it will override mock's default
+  package manager. Typically used with ``yum`` or ``dnf`` values.
+* ``mock.new_chroot`` - 0/1 value. If it is set, `--new-chroot` or
   `--old-chroot` option is appended to any mock call. If it is not set,
   mock's default behavior is used.
-* `mock.bootstrap_chroot` - 0/1 value. If it is set, `--bootstrap-chroot`
+* ``mock.bootstrap_chroot`` - 0/1 value. If it is set, ``--bootstrap-chroot``
   is appended to the mock init call.  This tells mock to build in two stages,
-  using chroot rpm for creating the build chroot
+  using chroot rpm for creating the build chroot. If it is not set, mock's
+  default behaviour is used. (Note, that it changed in mock `1.4.1
+  <https://github.com/rpm-software-management/mock/wiki/Feature-bootstrap>`_.
+  Note, that it is not turn on by default by koji, as it is often not needed and
+  it consumes additional resources (larger buildroot, downloading more data).
+* ``mock.bootstrap_image`` - set to name of image, which can builder's podman
+  download (e.g. ``fedora:32``). See mock's `doc
+  <https://github.com/rpm-software-management/mock/wiki/Feature-container-for-bootstrap>`_
+  before using this. You could need it, but do it with following
+  recommendations:
+
+  - you need to have builders with `podman <https://podman.io/>`_ installed and
+    working.
+
+  - use concrete hashes not potentially moving tags. Otherwise, you can get into
+    harder debugging and auditing.
+
+  - builders can consume space during time, no cleanup is made for podman's
+    image cache. So, you'll probably want to run something like ``podman rmi
+    `podman images -a --quiet``` periodically via cron or use some other
+    cache-cleaning mechanism. Even simple task will consume roughly three times
+    more space than without bootstrap image (downloaded image + exploded
+    boostrap dir + mock's buildroot itself)
+
+  - be sure, that your podman is configured properly and it downloads images
+    only from trusted sources. Note, that this setting effectivelly circumvents
+    network isolation *inside* buildroot, as outside DNS, etc. can be spoofed.
+
+  - this option will automatically turn ``mock.bootstrap_chroot`` (this is how
+    it is implemented in mock)
+
 
 You may also specify per-tag environment variables for mock to use.
 For example, to set the CC environment variable to clang, you could
