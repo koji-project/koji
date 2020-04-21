@@ -3764,14 +3764,27 @@ def get_tag_external_repos(tag_info=None, repo_info=None, event=None):
     """
     Get a list of tag<->external repo associations.
 
-    Returns a map containing the following fields:
-    tag_id
-    tag_name
-    external_repo_id
-    external_repo_name
-    url
-    merge_mode
-    priority
+    The list of associations is ordered by the priority field.
+
+    Each map containing the following fields:
+      tag_id
+      tag_name
+      external_repo_id
+      external_repo_name
+      url
+      merge_mode
+      priority
+
+    :param tag_info: Tag name or ID number. This field is optional. If you
+                     specify a value here, Koji will only return
+                     repo association information for this single tag.
+    :param repo_info: External repository name or ID number. This field is
+                      optional. If you specify a value here, Koji will only
+                      return tag association information for this single
+                      repository.
+    :param int event: The event ID at which to search. If unspecified, the
+                      default behavior is to search for the "active" tag and
+                      repo settings.
     """
     tables = ['tag_external_repos']
     joins = ['tag ON tag_external_repos.tag_id = tag.id',
