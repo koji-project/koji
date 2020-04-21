@@ -1313,11 +1313,19 @@ Authentication Configuration
 
 ::
 
-    ; For Kerberos authentication
-    ; the principal to connect with
-    principal=koji/kojira@EXAMPLE.COM
-    ; The location of the keytab for the principal above
-    keytab=/etc/kojira.keytab
+    ;configuration for Kerberos authentication
+
+    ;the kerberos principal to use
+    ;principal = kojira@EXAMPLE.COM
+
+    ;location of the keytab
+    ;keytab = /etc/kojira/kojira.keytab
+
+    ;the service name of the principal being used by the hub
+    ;krbservice = host
+
+    ;The realm of server principal. Using client's realm if not set
+    ;krb_server_realm = EXAMPLE.COM
 
 ``/etc/sysconfig/kojira``
     The local user kojira runs as needs to be able to read and write to
