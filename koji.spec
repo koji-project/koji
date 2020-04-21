@@ -81,7 +81,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.20.1
+Version: 1.21.0
 Release: %{release}%{?dist}
 License: LGPLv2 and GPLv2+
 # the included arch lib from yum's rpmUtils is GPLv2+
@@ -724,6 +724,87 @@ fi
 %endif
 
 %changelog
+* Tue Apr 14 2020 Tomas Kopecek <tkopecek at redhat.com> - 1.21-1
+- PR#2057: update docs on httpd configuration
+- PR#1385: Add --no-delete option to clone-tag
+- PR#2054: editSideTag API call
+- PR#2081: new policy for dist-repo
+- PR#2129: hub: document deleteExternalRepo arguments
+- PR#2128: hub: document getExternalRepo arguments
+- PR#2127: fix sanity check in merge_scratch
+- PR#2125: Set default keytab for kojira
+- PR#2071: Better help for build/latest-build
+- PR#516:  kojira monitors external repos changes
+- PR#2121: kojira: be tolerant of old with_src configuration option
+- PR#2105: always set utf8 pg client encoding
+- PR#2106: kojira: Allow using Kerberos without krbV
+- PR#2088: fix missing /lib/ in hub-plugins path
+- PR#2097: display merge mode for external repos
+- PR#2098: move admin force usage to assert_policy
+- PR#1990: allow debuginfo for sidetag repos
+- PR#2082: delete oldest failed buildroot, when there is no space
+- PR#2115: Correct json.dumps usage
+- PR#2113: don't break on invalid task
+- PR#2058: merge_scratch: Compare SCM URLs only if built from an SCM
+- PR#2074: Limit final query by prechecking buildroot ids
+- PR#2022: reverse score ordering for tags
+- PR#2056: fix table name
+- PR#2002: try to better guess mock's error log
+- PR#2080: koji download-build - consider resume downloads by default
+- PR#2042: add-host work even if host already tried to log in
+- PR#2051: hub: editTagExternalRepo is able to set merge_mode
+- PR#2040: koji.ClientSession: fix erroneous conversion to latin-1
+- PR#2089: propagate event to get_tag_extra
+- PR#2047: limit size of extra field in proton msgs
+- PR#2019: log --force usage by admins
+- PR#2083: allow to skip SRPM rebuild for scratch builds
+- PR#2068: use real time for events
+- PR#2078: Adapt older win-build docs
+- PR#2075: Don't use datetime timestamp() as it's not in Python 2
+- PR#2028: make xz options configurable
+- PR#2079: prune old docs about interaction with Fedora's koji
+- PR#2030: raise error on non-existing tag
+- PR#1749: rpm: remove references to EOL fedora versions
+- PR#1194: client: use default CA store during SSL auth if serverca is unset
+- PR#2073: trivial flake8 warning fix
+- PR#2048: use only gssapi_login in CLI
+- PR#2016: Add detail about known koji signatures to buildinfo
+- PR#2027: raise GenericError instead of TypeError in filterResults
+- PR#2009: CG: add and update buildinfo.extra.typeinfo if it doesn't exist
+- PR#2049: extending flake8 rules
+- PR#1891: Disable notifications from clone-tag by default
+- PR#2006: add missing koji-sidetag-cleanup script
+- PR#2025: Include livemedia builds in accepted wrapperRPM methods
+- PR#2045: insert path before import kojihub
+- PR#2034: update docs to current jenkins setup
+- PR#1987: Add doc string for virtual methods
+- PR#1916: replace xmlrpc_client exception with requests
+- PR#751:  xmlrpcplus: use parent Marshaller's implementations where possible
+- PR#2004: obsolete external sidetag plugin
+- PR#1992: deprecation of krb_login
+- PR#2001: remove usage of deprecated cgi.escape function
+- PR#1333: file locking for koji-gc
+- PR#692: Add smtp authentication support
+- PR#1956: Merge sidetag plugin
+- PR#478: Add _taskLabel entry for indirectionimage
+- PR#2000: hub: improve listBTypes() API documentation
+- PR#1058: Add 'target' policy
+- PR#938: Deprecating list-tag-history and tagHistory
+- PR#1971: remove outdated comment in schema file
+- PR#1986: fix test
+- PR#1984: Remove deprecated md5/sha1 constructors
+- PR#1059: Emit user in PackageListChange messages
+- PR#1945: check permission id in edit_tag
+- PR#1948: check package list existence before blocking
+- PR#1949: don't allow setTaskPriority on closed task
+- PR#1950: print warn to stderr instead of stdout
+- PR#1951: add strict to getChangelogEntries
+- PR#1975: update runs_here.rst: correcting usage of koji at CERN
+- PR#1934: remove unused option --with-src in kojira
+- PR#1911: hub: [newRepo] raise error when tag doesn't exist
+- PR#1886: cli: make list-signed accepting integer params
+- PR#1863: hub: remove debugFunction API
+
 * Thu Mar  5 2020 Tomas Kopecek <tkopecek at redhat.com> - 1.20.1-1
 - PR#1995: hub: improve search() API documentation
 - PR#1993: Always use stream=True when iterating over a request
