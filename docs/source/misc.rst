@@ -63,7 +63,7 @@ Koji accepts an SCM URI in this format:
 
 ::
 
-    koji build [tag] [scheme]://[user]@[hostname]/[path/to/repository]?[path/to/project]#[revision]
+    koji build [target] [scheme]://[user]@[hostname]/[path/to/repository]?[path/to/project]#[revision]
 
 Note the division between repository path and project path. During setup
 of kojid, the allowed\_scms parameter is configured in
