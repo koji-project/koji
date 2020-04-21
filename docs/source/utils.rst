@@ -86,8 +86,10 @@ especially in relation to throttling in creating ``newRepo`` tasks.
     generally doesn't need to be changed.
 
 ``check_external_repos = false``
-    Check also external repos, note, that you need to have your database set to
-    use UTC, as otherwise you can end with weird behaviour. For details see
+    If True, monitor external repos and trigger the appropriate Koji repo
+    regenerations when they change.
+    Note that you need to have your database set to use UTC, as otherwise
+    you can end with weird behaviour. For details see
     https://pagure.io/koji/issue/2159
 
 Garbage Collector
