@@ -1030,7 +1030,7 @@ def get_options():
                 'deleted_repo_lifetime': 7 * 24 * 3600,
                 # XXX should really be called expired_repo_lifetime
                 'dist_repo_lifetime': 7 * 24 * 3600,
-                'check_external_repos': True,
+                'check_external_repos': False,
                 'recent_tasks_lifetime': 600,
                 'sleeptime': 15,
                 'cert': None,
