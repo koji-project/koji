@@ -672,7 +672,8 @@ class RepoManager(object):
             with open(self.options.queue_file, "wt") as f:
                 fmt = "%-40s %7s %5s\n"
                 f.write(fmt % ("Tag", "Expired", "Score"))
-                for tag in sorted(self.needed_tags.values(), key=lambda t: t['score'], reverse=True):
+                for tag in sorted(self.needed_tags.values(), key=lambda t: t['score'],
+                                  reverse=True):
                     time_expired = time.time() - tag['expire_ts']
                     f.write(fmt % (tag['taginfo']['name'], int(time_expired), int(tag['score'])))
 
