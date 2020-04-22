@@ -152,8 +152,9 @@ Task info: weburl/taskinfo?taskID=1
         progname = os.path.basename(sys.argv[0]) or 'koji'
 
         # Run it and check immediate output
-        with self.assertRaises(SystemExit) as cm:
+        with self.assertRaises(SystemExit) as ex:
             handle_build(self.options, self.session, args)
+        self.assertExitCode(ex, 2)
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = ''
@@ -171,10 +172,6 @@ Task info: weburl/taskinfo?taskID=1
         self.session.build.assert_not_called()
         self.session.logout.assert_not_called()
         watch_tasks_mock.assert_not_called()
-        if isinstance(cm.exception, int):
-            self.assertEqual(cm.exception, 2)
-        else:
-            self.assertEqual(cm.exception.code, 2)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)
@@ -194,8 +191,9 @@ Task info: weburl/taskinfo?taskID=1
         progname = os.path.basename(sys.argv[0]) or 'koji'
 
         # Run it and check immediate output
-        with self.assertRaises(SystemExit) as cm:
+        with self.assertRaises(SystemExit) as ex:
             handle_build(self.options, self.session, args)
+        self.assertExitCode(ex, 0)
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = """Usage: %s build [options] <target> <srpm path or scm url>
@@ -242,10 +240,6 @@ Options:
         self.session.build.assert_not_called()
         self.session.logout.assert_not_called()
         watch_tasks_mock.assert_not_called()
-        if isinstance(cm.exception, int):
-            self.assertEqual(cm.exception, 0)
-        else:
-            self.assertEqual(cm.exception.code, 0)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)
@@ -268,8 +262,9 @@ Options:
         progname = os.path.basename(sys.argv[0]) or 'koji'
 
         # Run it and check immediate output
-        with self.assertRaises(SystemExit) as cm:
+        with self.assertRaises(SystemExit) as ex:
             handle_build(self.options, self.session, args)
+        self.assertExitCode(ex, 2)
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = ''
@@ -287,10 +282,6 @@ Options:
         self.session.build.assert_not_called()
         self.session.logout.assert_not_called()
         watch_tasks_mock.assert_not_called()
-        if isinstance(cm.exception, int):
-            self.assertEqual(cm.exception, 2)
-        else:
-            self.assertEqual(cm.exception.code, 2)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
@@ -361,8 +352,9 @@ Task info: weburl/taskinfo?taskID=1
         # Run it and check immediate output
         # args: target, http://scm
         # expected: failed, target not found
-        with self.assertRaises(SystemExit) as cm:
+        with self.assertRaises(SystemExit) as ex:
             handle_build(self.options, self.session, args)
+        self.assertExitCode(ex, 2)
         actual = stderr.getvalue()
         expected = self.format_error_message( "Unknown build target: target")
         self.assertMultiLineEqual(actual, expected)
@@ -376,10 +368,6 @@ Task info: weburl/taskinfo?taskID=1
         self.session.build.assert_not_called()
         self.session.logout.assert_not_called()
         watch_tasks_mock.assert_not_called()
-        if isinstance(cm.exception, int):
-            self.assertEqual(cm.exception, 2)
-        else:
-            self.assertEqual(cm.exception.code, 2)
 
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
@@ -408,8 +396,9 @@ Task info: weburl/taskinfo?taskID=1
         # Run it and check immediate output
         # args: target, http://scm
         # expected: failed, dest_tag not found
-        with self.assertRaises(SystemExit) as cm:
+        with self.assertRaises(SystemExit) as ex:
             handle_build(self.options, self.session, args)
+        self.assertExitCode(ex, 2)
         actual = stderr.getvalue()
         expected = self.format_error_message("Unknown destination tag: dest_tag_name")
         self.assertMultiLineEqual(actual, expected)
@@ -423,10 +412,6 @@ Task info: weburl/taskinfo?taskID=1
         self.session.build.assert_not_called()
         self.session.logout.assert_not_called()
         watch_tasks_mock.assert_not_called()
-        if isinstance(cm.exception, int):
-            self.assertEqual(cm.exception, 2)
-        else:
-            self.assertEqual(cm.exception.code, 2)
 
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
@@ -455,8 +440,9 @@ Task info: weburl/taskinfo?taskID=1
         # Run it and check immediate output
         # args: target, http://scm
         # expected: failed, dest_tag is locked
-        with self.assertRaises(SystemExit) as cm:
+        with self.assertRaises(SystemExit) as ex:
             handle_build(self.options, self.session, args)
+        self.assertExitCode(ex, 2)
         actual = stderr.getvalue()
         expected = self.format_error_message("Destination tag dest_tag_name is locked")
         self.assertMultiLineEqual(actual, expected)
@@ -470,10 +456,6 @@ Task info: weburl/taskinfo?taskID=1
         self.session.build.assert_not_called()
         self.session.logout.assert_not_called()
         watch_tasks_mock.assert_not_called()
-        if isinstance(cm.exception, int):
-            self.assertEqual(cm.exception, 2)
-        else:
-            self.assertEqual(cm.exception.code, 2)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
@@ -838,7 +820,3 @@ Task info: weburl/taskinfo?taskID=1
         self.session.logout.assert_not_called()
         watch_tasks_mock.assert_not_called()
         self.assertIsNone(rv)
-
-
-if __name__ == '__main__':
-    unittest.main()

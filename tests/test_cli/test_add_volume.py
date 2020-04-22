@@ -22,12 +22,14 @@ class TestAddVolume(utils.CliTestCase):
 %s: error: {message}
 """ % (self.progname, self.progname)
 
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
     def test_handle_add_volume(
             self,
             activate_session_mock,
-            stdout):
+            stdout,
+            stderr):
         """Test handle_add_volume function"""
         session = mock.MagicMock()
         options = mock.MagicMock()
@@ -49,8 +51,10 @@ class TestAddVolume(utils.CliTestCase):
         # Case 2. volume already exists
         expected = "Volume %s already exists" % vol_name + "\n"
         session.getVolume.return_value = vol_info
-        self.assertEqual(1, handle_add_volume(options, session, [vol_name]))
-        self.assert_console_message(stdout, expected)
+        with self.assertRaises(SystemExit) as ex:
+            handle_add_volume(options, session, [vol_name])
+        self.assertExitCode(ex, 1)
+        self.assert_console_message(stderr, expected)
         session.getVolume.assert_called_with(vol_name)
         activate_session_mock.assert_not_called()
 

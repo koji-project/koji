@@ -11,6 +11,7 @@ except ImportError:
     import unittest
 
 from koji_cli.commands import handle_maven_build
+from . import utils
 
 EMPTY_BUILD_OPTS = {
     'specfile': None,
@@ -32,7 +33,7 @@ EMPTY_BUILD_OPTS = {
     'inis': []}
 
 
-class TestMavenBuild(unittest.TestCase):
+class TestMavenBuild(utils.CliTestCase):
     # Show long diffs in error output...
     maxDiff = None
 
@@ -103,8 +104,9 @@ Task info: weburl/taskinfo?taskID=1
         progname = os.path.basename(sys.argv[0]) or 'koji'
 
         # Run it and check immediate output
-        with self.assertRaises(SystemExit) as cm:
+        with self.assertRaises(SystemExit) as ex:
             handle_maven_build(self.options, self.session, args)
+        self.assertExitCode(ex, 2)
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = ''
@@ -125,10 +127,6 @@ Task info: weburl/taskinfo?taskID=1
         self.session.mavenBuild.assert_not_called()
         self.session.logout.assert_not_called()
         watch_tasks_mock.assert_not_called()
-        if isinstance(cm.exception, int):
-            self.assertEqual(cm.exception, 2)
-        else:
-            self.assertEqual(cm.exception.code, 2)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)
@@ -146,8 +144,9 @@ Task info: weburl/taskinfo?taskID=1
         progname = os.path.basename(sys.argv[0]) or 'koji'
 
         # Run it and check immediate output
-        with self.assertRaises(SystemExit) as cm:
+        with self.assertRaises(SystemExit) as ex:
             handle_maven_build(self.options, self.session, args)
+        self.assertExitCode(ex, 2)
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = ''
@@ -168,10 +167,6 @@ Task info: weburl/taskinfo?taskID=1
         self.session.mavenBuild.assert_not_called()
         self.session.logout.assert_not_called()
         watch_tasks_mock.assert_not_called()
-        if isinstance(cm.exception, int):
-            self.assertEqual(cm.exception, 2)
-        else:
-            self.assertEqual(cm.exception.code, 2)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)
@@ -189,8 +184,9 @@ Task info: weburl/taskinfo?taskID=1
         progname = os.path.basename(sys.argv[0]) or 'koji'
 
         # Run it and check immediate output
-        with self.assertRaises(SystemExit) as cm:
+        with self.assertRaises(SystemExit) as ex:
             handle_maven_build(self.options, self.session, args)
+        self.assertExitCode(ex, 0)
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = """Usage: %s maven-build [options] <target> <URL>
@@ -239,10 +235,6 @@ Options:
         self.session.mavenBuild.assert_not_called()
         self.session.logout.assert_not_called()
         watch_tasks_mock.assert_not_called()
-        if isinstance(cm.exception, int):
-            self.assertEqual(cm.exception, 2)
-        else:
-            self.assertEqual(cm.exception.code, 0)
 
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
@@ -265,8 +257,9 @@ Options:
         # Run it and check immediate output
         # args: target http://scm
         # expected: failed, target not found
-        with self.assertRaises(SystemExit) as cm:
+        with self.assertRaises(SystemExit) as ex:
             handle_maven_build(self.options, self.session, args)
+        self.assertExitCode(ex, 2)
         actual = stderr.getvalue()
         expected = """Usage: %s maven-build [options] <target> <URL>
        %s maven-build --ini=CONFIG... [options] <target>
@@ -283,10 +276,6 @@ Options:
         self.session.mavenBuild.assert_not_called()
         self.session.logout.assert_not_called()
         watch_tasks_mock.assert_not_called()
-        if isinstance(cm.exception, int):
-            self.assertEqual(cm.exception, 2)
-        else:
-            self.assertEqual(cm.exception.code, 2)
 
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
@@ -313,8 +302,9 @@ Options:
         # Run it and check immediate output
         # args: target http://scm
         # expected: failed, dest_tag not found
-        with self.assertRaises(SystemExit) as cm:
+        with self.assertRaises(SystemExit) as ex:
             handle_maven_build(self.options, self.session, args)
+        self.assertExitCode(ex, 2)
         actual = stderr.getvalue()
         expected = """Usage: %s maven-build [options] <target> <URL>
        %s maven-build --ini=CONFIG... [options] <target>
@@ -331,10 +321,6 @@ Options:
         self.session.mavenBuild.assert_not_called()
         self.session.logout.assert_not_called()
         watch_tasks_mock.assert_not_called()
-        if isinstance(cm.exception, int):
-            self.assertEqual(cm.exception, 2)
-        else:
-            self.assertEqual(cm.exception.code, 2)
 
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
@@ -361,8 +347,9 @@ Options:
         # Run it and check immediate output
         # args: target http://scm
         # expected: failed, dest_tag is locked
-        with self.assertRaises(SystemExit) as cm:
+        with self.assertRaises(SystemExit) as ex:
             handle_maven_build(self.options, self.session, args)
+        self.assertExitCode(ex, 2)
         actual = stderr.getvalue()
         expected = """Usage: %s maven-build [options] <target> <URL>
        %s maven-build --ini=CONFIG... [options] <target>
@@ -379,10 +366,6 @@ Options:
         self.session.mavenBuild.assert_not_called()
         self.session.logout.assert_not_called()
         watch_tasks_mock.assert_not_called()
-        if isinstance(cm.exception, int):
-            self.assertEqual(cm.exception, 2)
-        else:
-            self.assertEqual(cm.exception.code, 2)
 
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('sys.stdout', new_callable=six.StringIO)
@@ -473,8 +456,9 @@ Task info: weburl/taskinfo?taskID=1
         # Run it and check immediate output
         # args: --ini=config1.ini --ini=config2.ini --section=section target
         # expected: failed, no type == 'maven' found
-        with self.assertRaises(SystemExit) as cm:
+        with self.assertRaises(SystemExit) as ex:
             handle_maven_build(self.options, self.session, args)
+        self.assertExitCode(ex, 2)
         actual = stderr.getvalue()
         expected = """Usage: %s maven-build [options] <target> <URL>
        %s maven-build --ini=CONFIG... [options] <target>
@@ -488,10 +472,6 @@ Task info: weburl/taskinfo?taskID=1
             build_opts.inis, scratch=scratch, section=section)
         maven_opts_mock.assert_not_called()
         self.session.mavenBuild.assert_not_called()
-        if isinstance(cm.exception, int):
-            self.assertEqual(cm.exception, 2)
-        else:
-            self.assertEqual(cm.exception.code, 2)
 
         stdout.seek(0)
         stdout.truncate()
@@ -504,8 +484,9 @@ Task info: weburl/taskinfo?taskID=1
         # Run it and check immediate output
         # args: --ini=config1.ini --ini=config2.ini --section=section target
         # expected: failed, ValueError raised when parsing .ini files
-        with self.assertRaises(SystemExit) as cm:
+        with self.assertRaises(SystemExit) as ex:
             handle_maven_build(self.options, self.session, args)
+        self.assertExitCode(ex, 2)
         actual = stderr.getvalue()
         expected = """Usage: %s maven-build [options] <target> <URL>
        %s maven-build --ini=CONFIG... [options] <target>
@@ -519,10 +500,6 @@ Task info: weburl/taskinfo?taskID=1
             build_opts.inis, scratch=scratch, section=section)
         maven_opts_mock.assert_not_called()
         self.session.mavenBuild.assert_not_called()
-        if isinstance(cm.exception, int):
-            self.assertEqual(cm.exception, 2)
-        else:
-            self.assertEqual(cm.exception.code, 2)
 
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
@@ -554,8 +531,9 @@ Task info: weburl/taskinfo?taskID=1
         # Run it and check immediate output
         # args: target badscm
         # expected: failed, scm is invalid
-        with self.assertRaises(SystemExit) as cm:
+        with self.assertRaises(SystemExit) as ex:
             handle_maven_build(self.options, self.session, args)
+        self.assertExitCode(ex, 2)
         actual = stderr.getvalue()
         expected = """Usage: %s maven-build [options] <target> <URL>
        %s maven-build --ini=CONFIG... [options] <target>
@@ -574,10 +552,6 @@ Task info: weburl/taskinfo?taskID=1
         self.session.mavenBuild.assert_not_called()
         self.session.logout.assert_not_called()
         watch_tasks_mock.assert_not_called()
-        if isinstance(cm.exception, int):
-            self.assertEqual(cm.exception, 2)
-        else:
-            self.assertEqual(cm.exception.code, 2)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')

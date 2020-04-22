@@ -47,19 +47,31 @@ class TestSetBuildVolume(utils.CliTestCase):
         # Case 2. wrong volume
         session.getVolume.return_value = {}
         expected = "No such volume: %s" % volume + "\n"
-        self.assertEqual(
-            1, handle_set_build_volume(options, session, [volume, build]))
-        self.assert_console_message(stdout, expected)
-        activate_session_mock.assert_not_called()
+        self.assert_system_exit(
+                handle_set_build_volume,
+                options,
+                session,
+                [volume, build],
+                exit_code=1,
+                stdout='',
+                stderr=expected,
+                activate_session=None)
 
         # Case 3. no build found
         session.getVolume.return_value = volinfo
         session.getBuild.return_value = {}
-        expected = "No such build: %s" % build + "\n"
-        expected += "No builds to move" + "\n"
-        self.assertEqual(
-            1, handle_set_build_volume(options, session, [volume, build]))
-        self.assert_console_message(stdout, expected)
+        stdout_exp = "No such build: %s" % build + "\n"
+        stderr_exp = "No builds to move" + "\n"
+        self.assert_system_exit(
+                handle_set_build_volume,
+                options,
+                session,
+                [volume, build],
+                exit_code=1,
+                stdout=stdout_exp,
+                stderr=stderr_exp,
+                activate_session=None)
+
 
         # Case 3. Build already in volume
         session.getBuild.side_effect = [
@@ -74,12 +86,19 @@ class TestSetBuildVolume(utils.CliTestCase):
             },
         ]
 
-        expected = "Build %s already on volume %s" % \
+        stdout_exp = "Build %s already on volume %s" % \
             (build, volinfo['name']) + "\n"
-        expected += "No builds to move" + "\n"
-        self.assertEqual(
-            1, handle_set_build_volume(options, session, [volume, build]))
-        self.assert_console_message(stdout, expected)
+        stderr_exp = "No builds to move" + "\n"
+        self.assert_system_exit(
+                handle_set_build_volume,
+                options,
+                session,
+                [volume, build],
+                exit_code=1,
+                stdout=stdout_exp,
+                stderr=stderr_exp,
+                activate_session=None)
+
 
         # Case 4. Change build volume
         build = "sed-4.4-1.fc26"

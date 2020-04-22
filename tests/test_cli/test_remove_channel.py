@@ -9,9 +9,10 @@ except ImportError:
     import unittest
 
 from koji_cli.commands import handle_remove_channel
+from . import utils
 
 
-class TestRemoveChannel(unittest.TestCase):
+class TestRemoveChannel(utils.CliTestCase):
 
     # Show long diffs in error output...
     maxDiff = None
@@ -67,10 +68,10 @@ class TestRemoveChannel(unittest.TestCase):
         session.removeChannel.assert_called_once_with(channel, force=True)
         self.assertNotEqual(rv, 1)
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
     def test_handle_remove_channel_no_channel(
-            self, activate_session_mock, stdout):
+            self, activate_session_mock, stderr):
         channel = 'channel'
         channel_info = None
         args = [channel]
@@ -83,15 +84,16 @@ class TestRemoveChannel(unittest.TestCase):
         # Run it and check immediate output
         # args: channel
         # expected: failed: no such channel
-        rv = handle_remove_channel(options, session, args)
-        actual = stdout.getvalue()
+        with self.assertRaises(SystemExit) as ex:
+            handle_remove_channel(options, session, args)
+        self.assertExitCode(ex, 1)
+        actual = stderr.getvalue()
         expected = 'No such channel: channel\n'
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
         activate_session_mock.assert_called_once_with(session, options)
         session.getChannel.assert_called_once_with(channel)
         session.removeChannel.assert_not_called()
-        self.assertEqual(rv, 1)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)
@@ -106,8 +108,9 @@ class TestRemoveChannel(unittest.TestCase):
         session = mock.MagicMock()
 
         # Run it and check immediate output
-        with self.assertRaises(SystemExit) as cm:
+        with self.assertRaises(SystemExit) as ex:
             handle_remove_channel(options, session, args)
+        self.assertExitCode(ex, 2)
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = ''
@@ -123,10 +126,6 @@ class TestRemoveChannel(unittest.TestCase):
         activate_session_mock.assert_not_called()
         session.getChannel.assert_not_called()
         session.removeChannel.assert_not_called()
-        if isinstance(cm.exception, int):
-            self.assertEqual(cm.exception, 2)
-        else:
-            self.assertEqual(cm.exception.code, 2)
 
 
 if __name__ == '__main__':

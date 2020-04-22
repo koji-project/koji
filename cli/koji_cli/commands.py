@@ -82,14 +82,12 @@ def handle_add_group(goptions, session, args):
 
     dsttag = session.getTag(tag)
     if not dsttag:
-        print("Unknown tag: %s" % tag)
-        return 1
+        error("Unknown tag: %s" % tag)
 
     groups = dict([(p['name'], p['group_id']) for p in session.getTagGroups(tag, inherit=False)])
     group_id = groups.get(group, None)
     if group_id is not None:
-        print("Group %s already exists for tag %s" % (group, tag))
-        return 1
+        error("Group %s already exists for tag %s" % (group, tag))
 
     session.groupListAdd(tag, group)
 
@@ -110,14 +108,12 @@ def handle_block_group(goptions, session, args):
 
     dsttag = session.getTag(tag)
     if not dsttag:
-        print("Unknown tag: %s" % tag)
-        return 1
+        error("Unknown tag: %s" % tag)
 
     groups = dict([(p['name'], p['group_id']) for p in session.getTagGroups(tag, inherit=False)])
     group_id = groups.get(group, None)
     if group_id is None:
-        print("Group %s doesn't exist within tag %s" % (group, tag))
-        return 1
+        error("Group %s doesn't exist within tag %s" % (group, tag))
 
     session.groupListBlock(tag, group)
 
@@ -234,15 +230,14 @@ def handle_edit_host(options, session, args):
     session.multicall = True
     for host in args:
         session.getHost(host)
-    error = False
+    error_hit = False
     for host, [info] in zip(args, session.multiCall(strict=True)):
         if not info:
-            print(_("Host %s does not exist") % host)
-            error = True
+            warn(_("Host %s does not exist") % host)
+            error_hit = True
 
-    if error:
-        print(_("No changes made, please correct the command line"))
-        return 1
+    if error_hit:
+        error(_("No changes made, please correct the command line"))
 
     session.multicall = True
     for host in args:
@@ -272,13 +267,11 @@ def handle_add_host_to_channel(goptions, session, args):
     if not options.new:
         channelinfo = session.getChannel(channel)
         if not channelinfo:
-            print("No such channel: %s" % channel)
-            return 1
+            error("No such channel: %s" % channel)
     host = args[0]
     hostinfo = session.getHost(host)
     if not hostinfo:
-        print("No such host: %s" % host)
-        return 1
+        error("No such host: %s" % host)
     kwargs = {}
     if options.new:
         kwargs['create'] = True
@@ -296,14 +289,12 @@ def handle_remove_host_from_channel(goptions, session, args):
     activate_session(session, goptions)
     hostinfo = session.getHost(host)
     if not hostinfo:
-        print("No such host: %s" % host)
-        return 1
+        error("No such host: %s" % host)
     hostchannels = [c['name'] for c in session.listChannels(hostinfo['id'])]
 
     channel = args[1]
     if channel not in hostchannels:
-        print("Host %s is not a member of channel %s" % (host, channel))
-        return 1
+        error("Host %s is not a member of channel %s" % (host, channel))
 
     session.removeHostFromChannel(host, channel)
 
@@ -319,8 +310,7 @@ def handle_remove_channel(goptions, session, args):
     activate_session(session, goptions)
     cinfo = session.getChannel(args[0])
     if not cinfo:
-        print("No such channel: %s" % args[0])
-        return 1
+        error("No such channel: %s" % args[0])
     session.removeChannel(args[0], force=options.force)
 
 
@@ -334,8 +324,7 @@ def handle_rename_channel(goptions, session, args):
     activate_session(session, goptions)
     cinfo = session.getChannel(args[0])
     if not cinfo:
-        print("No such channel: %s" % args[0])
-        return 1
+        error("No such channel: %s" % args[0])
     session.renameChannel(args[0], args[1])
 
 
@@ -352,8 +341,7 @@ def handle_add_pkg(goptions, session, args):
     if not options.owner:
         parser.error(_("Please specify an owner for the package(s)"))
     if not session.getUser(options.owner):
-        print("User %s does not exist" % options.owner)
-        return 1
+        error("User %s does not exist" % options.owner)
     activate_session(session, goptions)
     tag = args[0]
     opts = {}
@@ -398,18 +386,17 @@ def handle_block_pkg(goptions, session, args):
     # check if list of packages exists for that tag already
     dsttag = session.getTag(tag)
     if dsttag is None:
-        print("No such tag: %s" % tag)
-        return 1
+        error("No such tag: %s" % tag)
     pkglist = dict([(p['package_name'], p['package_id'])
                     for p in session.listPackages(tagID=dsttag['id'], inherited=True)])
     ret = 0
     for package in args[1:]:
         package_id = pkglist.get(package, None)
         if package_id is None:
-            print("Package %s doesn't exist in tag %s" % (package, tag))
+            warn("Package %s doesn't exist in tag %s" % (package, tag))
             ret = 1
     if ret:
-        return ret
+        error(code=ret)
     session.multicall = True
     for package in args[1:]:
         # force is not supported on older hub, so use it only explicitly
@@ -436,18 +423,17 @@ def handle_remove_pkg(goptions, session, args):
     # check if list of packages exists for that tag already
     dsttag = session.getTag(tag)
     if dsttag is None:
-        print("No such tag: %s" % tag)
-        return 1
+        error("No such tag: %s" % tag)
     pkglist = dict([(p['package_name'], p['package_id'])
                     for p in session.listPackages(tagID=dsttag['id'])])
     ret = 0
     for package in args[1:]:
         package_id = pkglist.get(package, None)
         if package_id is None:
-            print("Package %s is not in tag %s" % (package, tag))
+            warn("Package %s is not in tag %s" % (package, tag))
             ret = 1
     if ret:
-        return ret
+        error(code=ret)
     session.multicall = True
     for package in args[1:]:
         session.packageListRemove(tag, package, **opts)
@@ -584,11 +570,9 @@ def handle_chain_build(options, session, args):
     ancestors = session.getFullInheritance(build_target['build_tag'])
     if dest_tag['id'] not in [build_target['build_tag']] + \
             [ancestor['parent_id'] for ancestor in ancestors]:
-        print(_("Packages in destination tag %(dest_tag_name)s are not inherited by build tag "
-                "%(build_tag_name)s" % build_target))
-        print(_("Target %s is not usable for a chain-build" % build_target['name']))
-        return 1
-
+        warn(_("Packages in destination tag %(dest_tag_name)s are not inherited by build tag "
+               "%(build_tag_name)s" % build_target))
+        error(_("Target %s is not usable for a chain-build" % build_target['name']))
     sources = args[1:]
 
     src_list = []
@@ -608,8 +592,7 @@ def handle_chain_build(options, session, args):
             # quick check that it looks like a N-V-R
             build_level.append(src)
         else:
-            print(_('"%s" is not a SCM URL or package N-V-R' % src))
-            return 1
+            error(_('"%s" is not a SCM URL or package N-V-R' % src))
     if build_level:
         src_list.append(build_level)
 
@@ -980,8 +963,7 @@ def anon_handle_mock_config(goptions, session, args):
             parser.error(_("Task id must be an integer"))
         broots = session.listBuildroots(taskID=task_id)
         if not broots:
-            print(_("No buildroots for task %s (or no such task)") % options.task)
-            return 1
+            error(_("No buildroots for task %s (or no such task)") % options.task)
         if len(broots) > 1:
             print(_("Multiple buildroots found: %s" % [br['id'] for br in broots]))
         brootinfo = broots[-1]
@@ -995,29 +977,25 @@ def anon_handle_mock_config(goptions, session, args):
             options.name = "%s-task_%i" % (opts['tag_name'], task_id)
     elif options.tag:
         if not options.arch:
-            print(_("Please specify an arch"))
-            return 1
+            error(_("Please specify an arch"))
         tag = session.getTag(options.tag)
         if not tag:
             parser.error(_("Invalid tag: %s" % options.tag))
         arch = options.arch
         config = session.getBuildConfig(tag['id'])
         if not config:
-            print(_("Could not get config info for tag: %(name)s") % tag)
-            return 1
+            error(_("Could not get config info for tag: %(name)s") % tag)
         opts['tag_name'] = tag['name']
         if options.latest:
             opts['repoid'] = 'latest'
         else:
             repo = session.getRepo(config['id'])
             if not repo:
-                print(_("Could not get a repo for tag: %(name)s") % tag)
-                return 1
+                error(_("Could not get a repo for tag: %(name)s") % tag)
             opts['repoid'] = repo['id']
     elif options.target:
         if not options.arch:
-            print(_("Please specify an arch"))
-            return 1
+            error(_("Please specify an arch"))
         arch = options.arch
         target = session.getBuildTarget(options.target)
         if not target:
@@ -1028,8 +1006,7 @@ def anon_handle_mock_config(goptions, session, args):
         else:
             repo = session.getRepo(target['build_tag'])
             if not repo:
-                print(_("Could not get a repo for tag: %s") % opts['tag_name'])
-                return 1
+                error(_("Could not get a repo for tag: %s") % opts['tag_name'])
             opts['repoid'] = repo['id']
     else:
         parser.error(_("Please specify one of: --tag, --target, --task, --buildroot"))
@@ -1069,14 +1046,13 @@ def handle_disable_host(goptions, session, args):
     session.multicall = True
     for host in args:
         session.getHost(host)
-    error = False
+    error_hit = False
     for host, [id] in zip(args, session.multiCall(strict=True)):
         if not id:
             print("Host %s does not exist" % host)
-            error = True
-    if error:
-        print("No changes made. Please correct the command line.")
-        return 1
+            error_hit = True
+    if error_hit:
+        error("No changes made. Please correct the command line.")
     session.multicall = True
     for host in args:
         session.disableHost(host)
@@ -1099,14 +1075,13 @@ def handle_enable_host(goptions, session, args):
     session.multicall = True
     for host in args:
         session.getHost(host)
-    error = False
+    error_hit = False
     for host, [id] in zip(args, session.multiCall(strict=True)):
         if not id:
             print("Host %s does not exist" % host)
-            error = True
-    if error:
-        print("No changes made. Please correct the command line.")
-        return 1
+            error_hit = True
+    if error_hit:
+        error("No changes made. Please correct the command line.")
     session.multicall = True
     for host in args:
         session.enableHost(host)
@@ -1149,10 +1124,9 @@ def handle_restart_hosts(options, session, args):
         }
         others = session.listTasks(query)
         if others:
-            print('Found other restartHosts tasks running.')
-            print('Task ids: %r' % [t['id'] for t in others])
-            print('Use --force to run anyway')
-            return 1
+            warn('Found other restartHosts tasks running.')
+            warn('Task ids: %r' % [t['id'] for t in others])
+            error('Use --force to run anyway')
 
     callopts = {}
     if my_opts.channel:
@@ -1389,15 +1363,13 @@ def handle_import_comps(goptions, session, args):
     # check if the tag exists
     dsttag = session.getTag(args[1])
     if dsttag is None:
-        print("No such tag: %s" % args[1])
-        return 1
+        error("No such tag: %s" % args[1])
     if libcomps is not None:
         _import_comps(session, args[0], args[1], local_options)
     elif yumcomps is not None:
         _import_comps_alt(session, args[0], args[1], local_options)
     else:
-        print("comps module not available")
-        return 1
+        error("comps module not available")
 
 
 def _import_comps(session, filename, tag, options):
@@ -1933,8 +1905,7 @@ def handle_set_build_volume(goptions, session, args):
         parser.error(_("You must provide a volume and at least one build"))
     volinfo = session.getVolume(args[0])
     if not volinfo:
-        print("No such volume: %s" % args[0])
-        return 1
+        error("No such volume: %s" % args[0])
     activate_session(session, goptions)
     builds = []
     for nvr in args[1:]:
@@ -1946,8 +1917,7 @@ def handle_set_build_volume(goptions, session, args):
         else:
             builds.append(binfo)
     if not builds:
-        print("No builds to move")
-        return 1
+        error("No builds to move")
     for binfo in builds:
         session.changeBuildVolume(binfo['id'], volinfo['id'])
         if options.verbose:
@@ -1964,8 +1934,7 @@ def handle_add_volume(goptions, session, args):
     name = args[0]
     volinfo = session.getVolume(name)
     if volinfo:
-        print("Volume %s already exists" % name)
-        return 1
+        error("Volume %s already exists" % name)
     activate_session(session, goptions)
     volinfo = session.addVolume(name)
     print("Added volume %(name)s with id %(id)i" % volinfo)
@@ -1993,8 +1962,7 @@ def handle_list_permissions(goptions, session, args):
     if options.user:
         user = session.getUser(options.user)
         if not user:
-            print("User %s does not exist" % options.user)
-            return 1
+            error("User %s does not exist" % options.user)
         perms = session.getUserPerms(user['id'])
     elif options.mine:
         perms = session.getPerms()
@@ -2987,8 +2955,7 @@ def anon_handle_list_pkgs(goptions, session, args):
 
     data = session.listPackages(**opts)
     if not data:
-        print("(no matching packages)")
-        return 1
+        error("(no matching packages)")
     if not options.quiet:
         if allpkgs:
             print("Package")
@@ -3893,14 +3860,11 @@ def handle_add_target(goptions, session, args):
     chkbuildtag = session.getTag(build_tag)
     chkdesttag = session.getTag(dest_tag)
     if not chkbuildtag:
-        print("Build tag does not exist: %s" % build_tag)
-        return 1
+        error("Build tag does not exist: %s" % build_tag)
     if not chkbuildtag.get("arches", None):
-        print("Build tag has no arches: %s" % build_tag)
-        return 1
+        error("Build tag has no arches: %s" % build_tag)
     if not chkdesttag:
-        print("Destination tag does not exist: %s" % dest_tag)
-        return 1
+        error("Destination tag does not exist: %s" % dest_tag)
 
     session.createBuildTarget(name, build_tag, dest_tag)
 
@@ -3934,16 +3898,13 @@ def handle_edit_target(goptions, session, args):
         targetInfo['build_tag_name'] = options.build_tag
         chkbuildtag = session.getTag(options.build_tag)
         if not chkbuildtag:
-            print("Build tag does not exist: %s" % options.build_tag)
-            return 1
+            error("Build tag does not exist: %s" % options.build_tag)
         if not chkbuildtag.get("arches", None):
-            print("Build tag has no arches: %s" % options.build_tag)
-            return 1
+            error("Build tag has no arches: %s" % options.build_tag)
     if options.dest_tag:
         chkdesttag = session.getTag(options.dest_tag)
         if not chkdesttag:
-            print("Destination tag does not exist: %s" % options.dest_tag)
-            return 1
+            error("Destination tag does not exist: %s" % options.dest_tag)
         targetInfo['dest_tag_name'] = options.dest_tag
 
     session.editBuildTarget(targetInfo['orig_name'], targetInfo['name'],
@@ -3966,8 +3927,7 @@ def handle_remove_target(goptions, session, args):
     target = args[0]
     target_info = session.getBuildTarget(target)
     if not target_info:
-        print("Build target %s does not exist" % target)
-        return 1
+        error("Build target %s does not exist" % target)
 
     session.deleteBuildTarget(target_info['id'])
 
@@ -3988,8 +3948,7 @@ def handle_remove_tag(goptions, session, args):
     tag = args[0]
     tag_info = session.getTag(tag)
     if not tag_info:
-        print("Tag %s does not exist" % tag)
-        return 1
+        error("Tag %s does not exist" % tag)
 
     session.deleteTag(tag_info['id'])
 
@@ -5260,18 +5219,14 @@ def handle_edit_tag_inheritance(goptions, session, args):
         data = [datum for datum in data if datum['priority'] == priority]
 
     if len(data) == 0:
-        print(_("No inheritance link found to remove.  Please check your arguments"))
-        return 1
+        error(_("No inheritance link found to remove.  Please check your arguments"))
     elif len(data) > 1:
         print(_("Multiple matches for tag."))
         if not parent:
-            print(_("Please specify a parent on the command line."))
-            return 1
+            error(_("Please specify a parent on the command line."))
         if not priority:
-            print(_("Please specify a priority on the command line."))
-            return 1
-        print(_("Error: Key constraints may be broken.  Exiting."))
-        return 1
+            error(_("Please specify a priority on the command line."))
+        error(_("Error: Key constraints may be broken.  Exiting."))
 
     # len(data) == 1
     data = data[0]
@@ -5279,9 +5234,8 @@ def handle_edit_tag_inheritance(goptions, session, args):
     inheritanceData = session.getInheritanceData(tag['id'])
     samePriority = [datum for datum in inheritanceData if datum['priority'] == options.priority]
     if samePriority:
-        print(_("Error: There is already an active inheritance with that priority on %s, "
+        error(_("Error: There is already an active inheritance with that priority on %s, "
                 "please specify a different priority with --priority.") % tag['name'])
-        return 1
 
     new_data = data.copy()
     if options.priority is not None and options.priority.isdigit():
@@ -5292,8 +5246,7 @@ def handle_edit_tag_inheritance(goptions, session, args):
         elif options.maxdepth.lower() == "none":
             new_data['maxdepth'] = None
         else:
-            print(_("Invalid maxdepth: %s") % options.maxdepth)
-            return 1
+            error(_("Invalid maxdepth: %s") % options.maxdepth)
     if options.intransitive:
         new_data['intransitive'] = options.intransitive
     if options.noconfig:
@@ -5616,10 +5569,9 @@ def handle_remove_external_repo(goptions, session, args):
     if delete:
         # removing entirely
         if current_tags and not options.force:
-            print(_("Error: external repo %s used by tag(s): %s") %
-                  (repo, ', '.join(current_tags)))
-            print(_("Use --force to remove anyway"))
-            return 1
+            warn(_("Error: external repo %s used by tag(s): %s") %
+                 (repo, ', '.join(current_tags)))
+            error(_("Use --force to remove anyway"))
         session.deleteExternalRepo(args[0])
     else:
         for tag in tags:
@@ -6441,15 +6393,13 @@ def handle_set_pkg_owner_global(goptions, session, args):
     packages = args[1:]
     user = session.getUser(owner)
     if not user:
-        print("No such user: %s" % owner)
-        return 1
+        error("No such user: %s" % owner)
     opts = {'with_dups': True}
     old_user = None
     if options.old_user:
         old_user = session.getUser(options.old_user)
         if not old_user:
-            print("No such user: %s" % options.old_user)
-            return 1
+            error("No such user: %s" % options.old_user)
         opts['userID'] = old_user['id']
     to_change = []
     for package in packages:
@@ -6461,8 +6411,7 @@ def handle_set_pkg_owner_global(goptions, session, args):
     if not packages and options.old_user:
         entries = session.listPackages(**opts)
         if not entries:
-            print("No data for user %s" % old_user['name'])
-            return 1
+            error("No data for user %s" % old_user['name'])
         to_change.extend(entries)
     for entry in to_change:
         if user['id'] == entry['owner_id']:
@@ -6730,11 +6679,11 @@ def handle_untag_build(goptions, session, args):
                 # not in tag, see if it even exists
                 binfo = session.getBuild(nvr)
                 if not binfo:
-                    print(_("No such build: %s") % nvr)
+                    warn(_("No such build: %s") % nvr)
                 else:
-                    print(_("Build %s not in tag %s") % (nvr, tag['name']))
+                    warn(_("Build %s not in tag %s") % (nvr, tag['name']))
                 if not options.force:
-                    return 1
+                    error()
     builds.reverse()
     for binfo in builds:
         if options.test:
@@ -6791,7 +6740,7 @@ def anon_handle_download_build(options, session, args):
 
     if build.isdigit():
         if suboptions.latestfrom:
-            error("--latestfrom not compatible with build IDs, specify a package name.")
+            parser.error("--latestfrom not compatible with build IDs, specify a package name.")
         build = int(build)
         if suboptions.task_id:
             builds = session.listBuilds(taskID=build)
@@ -7115,13 +7064,13 @@ def anon_handle_wait_repo(options, session, args):
             parser.error(_("Invalid tag: %s") % tag)
         targets = session.getBuildTargets(buildTagID=tag_info['id'])
         if not targets:
-            print("%(name)s is not a build tag for any target" % tag_info)
+            warn("%(name)s is not a build tag for any target" % tag_info)
             targets = session.getBuildTargets(destTagID=tag_info['id'])
             if targets:
                 maybe = {}.fromkeys([t['build_tag_name'] for t in targets])
                 maybe = sorted(maybe.keys())
-                print("Suggested tags: %s" % ', '.join(maybe))
-            return 1
+                warn("Suggested tags: %s" % ', '.join(maybe))
+            error()
         tag_id = tag_info['id']
 
     for nvr in builds:
@@ -7150,12 +7099,12 @@ def anon_handle_wait_repo(options, session, args):
         if (time.time() - start) >= (suboptions.timeout * 60.0):
             if not suboptions.quiet:
                 if builds:
-                    print("Unsuccessfully waited %s for %s to appear in the %s repo" %
+                    error("Unsuccessfully waited %s for %s to appear in the %s repo" %
                           (koji.util.duration(start), koji.util.printList(suboptions.builds), tag))
                 else:
-                    print("Unsuccessfully waited %s for a new %s repo" %
+                    error("Unsuccessfully waited %s for a new %s repo" %
                           (koji.util.duration(start), tag))
-            return 1
+            error()
 
         time.sleep(options.poll_interval)
         last_repo = repo
@@ -7439,8 +7388,7 @@ def anon_handle_list_notifications(goptions, session, args):
     if options.user:
         user = session.getUser(options.user)
         if not user:
-            print("User %s does not exist" % options.user)
-            return 1
+            error("User %s does not exist" % options.user)
         user_id = user['id']
     else:
         user_id = None

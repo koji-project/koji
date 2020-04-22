@@ -22,12 +22,14 @@ class TestListPermissions(utils.CliTestCase):
 %s: error: {message}
 """ % (self.progname, self.progname)
 
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
     def test_handle_list_permissions(
             self,
             activate_session_mock,
-            stdout):
+            stdout,
+            stderr):
         """Test handle_list_permissions function"""
         session = mock.MagicMock()
         options = mock.MagicMock()
@@ -54,8 +56,10 @@ class TestListPermissions(utils.CliTestCase):
         # case 2. user does not exists
         expected = "User %s does not exist" % user + "\n"
         session.getUser.return_value = None
-        self.assertEqual(1, handle_list_permissions(options, session, ['--user', user]))
-        self.assert_console_message(stdout, expected)
+        with self.assertRaises(SystemExit) as ex:
+            handle_list_permissions(options, session, ['--user', user])
+        self.assertExitCode(ex, 1)
+        self.assert_console_message(stderr, expected)
 
         # case 3. List user permission
         perms = [p['name'] for p in all_perms[::1]]

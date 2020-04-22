@@ -48,6 +48,7 @@ class TestRestartHosts(utils.CliTestCase):
         watch_tasks_mock.assert_called_with(
             session, [self.task_id], quiet=None, poll_interval=3)
 
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.watch_tasks')
     @mock.patch('koji_cli.commands._running_in_bg')
@@ -57,7 +58,8 @@ class TestRestartHosts(utils.CliTestCase):
             activate_session_mock,
             running_in_bg_mock,
             watch_tasks_mock,
-            stdout):
+            stdout,
+            stderr):
         """Test %s function when there has other restart tasks exist""" % handle_restart_hosts.__name__
         options = mock.MagicMock()
         session = mock.MagicMock()
@@ -99,7 +101,9 @@ class TestRestartHosts(utils.CliTestCase):
         # has other restart tasks are running case
         session.listTasks.return_value = [{'id': 1}, {'id': 2}, {'id': 3}]
 
-        self.assertEqual(1, handle_restart_hosts(options, session, []))
+        with self.assertRaises(SystemExit) as ex:
+            handle_restart_hosts(options, session, [])
+        self.assertExitCode(ex, 1)
         activate_session_mock.assert_called_once()
 
         query_opt = {
@@ -115,7 +119,7 @@ class TestRestartHosts(utils.CliTestCase):
         expect += "Task ids: %r\n" % \
             [t['id'] for t in session.listTasks.return_value]
         expect += "Use --force to run anyway\n"
-        self.assert_console_message(stdout, expect)
+        self.assert_console_message(stderr, expect)
 
     @mock.patch('koji_cli.commands.watch_tasks')
     @mock.patch('koji_cli.commands._running_in_bg')

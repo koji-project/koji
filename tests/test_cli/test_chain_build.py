@@ -10,8 +10,9 @@ except ImportError:
     import unittest
 
 from koji_cli.commands import handle_chain_build
+from . import utils
 
-class TestChainBuild(unittest.TestCase):
+class TestChainBuild(utils.CliTestCase):
     # Show long diffs in error output...
     maxDiff = None
 
@@ -100,8 +101,9 @@ Task info: weburl/taskinfo?taskID=1
         progname = os.path.basename(sys.argv[0]) or 'koji'
 
         # Run it and check immediate output
-        with self.assertRaises(SystemExit) as cm:
+        with self.assertRaises(SystemExit) as ex:
             handle_chain_build(self.options, self.session, args)
+        self.assertExitCode(ex, 2)
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = ''
@@ -122,10 +124,6 @@ Task info: weburl/taskinfo?taskID=1
         self.session.chainBuild.assert_not_called()
         self.session.logout.assert_not_called()
         watch_tasks_mock.assert_not_called()
-        if isinstance(cm.exception, int):
-            self.assertEqual(cm.exception, 2)
-        else:
-            self.assertEqual(cm.exception.code, 2)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)
@@ -143,8 +141,9 @@ Task info: weburl/taskinfo?taskID=1
         progname = os.path.basename(sys.argv[0]) or 'koji'
 
         # Run it and check immediate output
-        with self.assertRaises(SystemExit) as cm:
+        with self.assertRaises(SystemExit) as ex:
             handle_chain_build(self.options, self.session, args)
+        self.assertExitCode(ex, 0)
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = """Usage: %s chain-build [options] <target> <URL> [<URL> [:] <URL> [:] <URL> ...]
@@ -169,10 +168,6 @@ Options:
         self.session.chainBuild.assert_not_called()
         self.session.logout.assert_not_called()
         watch_tasks_mock.assert_not_called()
-        if isinstance(cm.exception, int):
-            self.assertEqual(cm.exception, 0)
-        else:
-            self.assertEqual(cm.exception.code, 0)
 
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
@@ -203,8 +198,9 @@ Options:
         # Run it and check immediate output
         # args: target http://scm1 : http://scm2 http://scm3 n-v-r-1 : n-v-r-2 n-v-r-3
         # expected: failed, target not found
-        with self.assertRaises(SystemExit) as cm:
+        with self.assertRaises(SystemExit) as ex:
             handle_chain_build(self.options, self.session, args)
+        self.assertExitCode(ex, 2)
         actual = stderr.getvalue()
         expected = """Usage: %s chain-build [options] <target> <URL> [<URL> [:] <URL> [:] <URL> ...]
 (Specify the --help global option for a list of other help options)
@@ -221,10 +217,6 @@ Options:
         self.session.chainBuild.assert_not_called()
         self.session.logout.assert_not_called()
         watch_tasks_mock.assert_not_called()
-        if isinstance(cm.exception, int):
-            self.assertEqual(cm.exception, 2)
-        else:
-            self.assertEqual(cm.exception.code, 2)
 
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
@@ -265,8 +257,9 @@ Options:
         # Run it and check immediate output
         # args: target http://scm1 : http://scm2 http://scm3 n-v-r-1 : n-v-r-2 n-v-r-3
         # expected: failed, dest_tag is locked
-        with self.assertRaises(SystemExit) as cm:
+        with self.assertRaises(SystemExit) as ex:
             handle_chain_build(self.options, self.session, args)
+        self.assertExitCode(ex, 2)
         actual = stderr.getvalue()
         expected = """Usage: %s chain-build [options] <target> <URL> [<URL> [:] <URL> [:] <URL> ...]
 (Specify the --help global option for a list of other help options)
@@ -283,17 +276,13 @@ Options:
         self.session.chainBuild.assert_not_called()
         self.session.logout.assert_not_called()
         watch_tasks_mock.assert_not_called()
-        if isinstance(cm.exception, int):
-            self.assertEqual(cm.exception, 2)
-        else:
-            self.assertEqual(cm.exception.code, 2)
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
     @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
     @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
     def test_handle_build_dest_tag_not_inherited_by_build_tag(
-            self, watch_tasks_mock, running_in_bg_mock, activate_session_mock, stdout):
+            self, watch_tasks_mock, running_in_bg_mock, activate_session_mock, stderr):
         target = 'target'
         dest_tag = 'dest_tag'
         dest_tag_id = 2
@@ -324,8 +313,10 @@ Options:
         # Run it and check immediate output
         # args: target, target http://scm1 : http://scm2 http://scm3 n-v-r-1 : n-v-r-2 n-v-r-3
         # expected: failed, dest_tag is not in build_tag's inheritance
-        rv = handle_chain_build(self.options, self.session, args)
-        actual = stdout.getvalue()
+        with self.assertRaises(SystemExit) as ex:
+            handle_chain_build(self.options, self.session, args)
+        self.assertExitCode(ex, 1)
+        actual = stderr.getvalue()
         expected = """Packages in destination tag dest_tag are not inherited by build tag build_tag
 Target target is not usable for a chain-build
 """
@@ -339,7 +330,6 @@ Target target is not usable for a chain-build
         self.session.chainBuild.assert_not_called()
         self.session.logout.assert_not_called()
         watch_tasks_mock.assert_not_called()
-        self.assertEqual(rv, 1)
 
     @mock.patch('koji_cli.commands.activate_session')
     @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
@@ -375,12 +365,14 @@ Target target is not usable for a chain-build
         self.session.getBuildTarget.return_value = target_info
         self.session.getTag.return_value = dest_tag_info
         self.session.getFullInheritance.return_value = tag_tree
-        with mock.patch('sys.stdout', new_callable=six.StringIO) as stdout:
+        with mock.patch('sys.stderr', new_callable=six.StringIO) as stderr:
             # Run it and check immediate output
             # args: target badnvr : http://scm2 http://scm3 n-v-r-1 : n-v-r-2 n-v-r-3
             # expected: failed, src is neither scm nor good n-v-r
-            rv = handle_chain_build(self.options, self.session, args)
-            actual = stdout.getvalue()
+            with self.assertRaises(SystemExit) as ex:
+                handle_chain_build(self.options, self.session, args)
+            self.assertExitCode(ex, 1)
+            actual = stderr.getvalue()
             expected = '"badnvr" is not a SCM URL or package N-V-R\n'
             self.assertMultiLineEqual(actual, expected)
             # Finally, assert that things were called as we expected.
@@ -394,9 +386,8 @@ Target target is not usable for a chain-build
             running_in_bg_mock.assert_not_called()
             self.session.logout.assert_not_called()
             watch_tasks_mock.assert_not_called()
-            self.assertEqual(rv, 1)
 
-        with mock.patch('sys.stdout', new_callable=six.StringIO) as stdout:
+        with mock.patch('sys.stderr', new_callable=six.StringIO) as stderr:
             source_args = [
                 'path/n-v-r',
                 ':',
@@ -409,12 +400,14 @@ Target target is not usable for a chain-build
             args = [target] + source_args
             # args: target path/n-v-r : http://scm2 http://scm3 n-v-r-1 : n-v-r-2 n-v-r-3
             # expected: failed
-            handle_chain_build(self.options, self.session, args)
-            actual = stdout.getvalue()
+            with self.assertRaises(SystemExit) as ex:
+                handle_chain_build(self.options, self.session, args)
+            self.assertExitCode(ex, 1)
+            actual = stderr.getvalue()
             expected = '"path/n-v-r" is not a SCM URL or package N-V-R\n'
             self.assertMultiLineEqual(actual, expected)
 
-        with mock.patch('sys.stdout', new_callable=six.StringIO) as stdout:
+        with mock.patch('sys.stderr', new_callable=six.StringIO) as stderr:
             source_args = [
                 'badn-vr',
                 ':',
@@ -427,12 +420,14 @@ Target target is not usable for a chain-build
             args = [target] + source_args
             # args: target badn-vr : http://scm2 http://scm3 n-v-r-1 : n-v-r-2 n-v-r-3
             # expected: failed
-            handle_chain_build(self.options, self.session, args)
-            actual = stdout.getvalue()
+            with self.assertRaises(SystemExit) as ex:
+                handle_chain_build(self.options, self.session, args)
+            self.assertExitCode(ex, 1)
+            actual = stderr.getvalue()
             expected = '"badn-vr" is not a SCM URL or package N-V-R\n'
             self.assertMultiLineEqual(actual, expected)
 
-        with mock.patch('sys.stdout', new_callable=six.StringIO) as stdout:
+        with mock.patch('sys.stderr', new_callable=six.StringIO) as stderr:
             source_args = [
                 'badn-v-r.rpm',
                 ':',
@@ -445,8 +440,10 @@ Target target is not usable for a chain-build
             args = [target] + source_args
             # args: target badn-v-r.rpm : http://scm2 http://scm3 n-v-r-1 : n-v-r-2 n-v-r-3
             # expected: failed
-            handle_chain_build(self.options, self.session, args)
-            actual = stdout.getvalue()
+            with self.assertRaises(SystemExit) as ex:
+                handle_chain_build(self.options, self.session, args)
+            self.assertExitCode(ex, 1)
+            actual = stderr.getvalue()
             expected = '"badn-v-r.rpm" is not a SCM URL or package N-V-R\n'
             self.assertMultiLineEqual(actual, expected)
 
@@ -458,8 +455,9 @@ Target target is not usable for a chain-build
 
             # args: target http://scm
             # expected: failed, only one src found
-            with self.assertRaises(SystemExit) as cm:
+            with self.assertRaises(SystemExit) as ex:
                 handle_chain_build(self.options, self.session, args)
+            self.assertExitCode(ex, 2)
             actual = stderr.getvalue()
             expected = """Usage: %s chain-build [options] <target> <URL> [<URL> [:] <URL> [:] <URL> ...]
 (Specify the --help global option for a list of other help options)
@@ -468,10 +466,6 @@ Target target is not usable for a chain-build
 If there are no dependencies, use the build command instead
 """ % (progname, progname)
             self.assertMultiLineEqual(actual, expected)
-            if isinstance(cm.exception, int):
-                self.assertEqual(cm.exception, 2)
-            else:
-                self.assertEqual(cm.exception.code, 2)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')

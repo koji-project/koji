@@ -10,8 +10,9 @@ except ImportError:
     import unittest
 
 from koji_cli.commands import handle_add_host_to_channel
+from . import utils
 
-class TestAddHostToChannel(unittest.TestCase):
+class TestAddHostToChannel(utils.CliTestCase):
 
     # Show long diffs in error output...
     maxDiff = None
@@ -104,10 +105,10 @@ class TestAddHostToChannel(unittest.TestCase):
             host, channel, **kwargs)
         self.assertNotEqual(rv, 1)
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
     def test_handle_add_host_to_channel_no_channel(
-            self, activate_session_mock, stdout):
+            self, activate_session_mock, stderr):
         host = 'host'
         channel = 'channel'
         channel_info = None
@@ -121,8 +122,10 @@ class TestAddHostToChannel(unittest.TestCase):
         # Run it and check immediate output
         # args: host, channel
         # expected: failed, channel not found
-        rv = handle_add_host_to_channel(options, session, args)
-        actual = stdout.getvalue()
+        with self.assertRaises(SystemExit) as ex:
+            handle_add_host_to_channel(options, session, args)
+        self.assertExitCode(ex, 1)
+        actual = stderr.getvalue()
         expected = 'No such channel: channel\n'
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
@@ -130,12 +133,11 @@ class TestAddHostToChannel(unittest.TestCase):
         session.getChannel.assert_called_once_with(channel)
         session.getHost.assert_not_called()
         session.addHostToChannel.assert_not_called()
-        self.assertEqual(rv, 1)
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
     def test_handle_add_host_to_channel_no_host(
-            self, activate_session_mock, stdout):
+            self, activate_session_mock, stderr):
         host = 'host'
         host_info = None
         channel = 'channel'
@@ -151,8 +153,10 @@ class TestAddHostToChannel(unittest.TestCase):
         # Run it and check immediate output
         # args: host, channel
         # expected: success
-        rv = handle_add_host_to_channel(options, session, args)
-        actual = stdout.getvalue()
+        with self.assertRaises(SystemExit) as ex:
+            handle_add_host_to_channel(options, session, args)
+        self.assertExitCode(ex, 1)
+        actual = stderr.getvalue()
         expected = 'No such host: host\n'
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
@@ -160,7 +164,6 @@ class TestAddHostToChannel(unittest.TestCase):
         session.getChannel.assert_called_once_with(channel)
         session.getHost.assert_called_once_with(host)
         session.addHostToChannel.assert_not_called()
-        self.assertEqual(rv, 1)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)
@@ -177,8 +180,9 @@ class TestAddHostToChannel(unittest.TestCase):
         # Run it and check immediate output
         # args: _empty_
         # expected: failed, help msg shows
-        with self.assertRaises(SystemExit) as cm:
+        with self.assertRaises(SystemExit) as ex:
             handle_add_host_to_channel(options, session, args)
+        self.assertExitCode(ex, 2)
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = ''
@@ -196,10 +200,6 @@ class TestAddHostToChannel(unittest.TestCase):
         session.getChannel.assert_not_called()
         session.listChannels.assert_not_called()
         session.addHostToChannel.assert_not_called()
-        if isinstance(cm.exception, int):
-            self.assertEqual(cm.exception, 2)
-        else:
-            self.assertEqual(cm.exception.code, 2)
 
 
 if __name__ == '__main__':

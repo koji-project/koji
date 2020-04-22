@@ -3,15 +3,12 @@ import mock
 import os
 import six
 import sys
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
 
 import koji
 from koji_cli.commands import handle_add_host
+from . import utils
 
-class TestAddHost(unittest.TestCase):
+class TestAddHost(utils.CliTestCase):
 
     # Show long diffs in error output...
     maxDiff = None
@@ -90,8 +87,9 @@ class TestAddHost(unittest.TestCase):
         # Run it and check immediate output
         # args: host, arch1, arch2, --krb-principal=krb
         # expected: failed, host already exists
-        with self.assertRaises(SystemExit):
+        with self.assertRaises(SystemExit) as ex:
             handle_add_host(options, session, arguments)
+        self.assertExitCode(ex, 1)
         actual = stderr.getvalue()
         expected = 'host is already in the database\n'
         self.assertMultiLineEqual(actual, expected)
@@ -112,8 +110,9 @@ class TestAddHost(unittest.TestCase):
         session = mock.MagicMock()
 
         # Run it and check immediate output
-        with self.assertRaises(SystemExit) as cm:
+        with self.assertRaises(SystemExit) as ex:
             handle_add_host(options, session, arguments)
+        self.assertExitCode(ex, 2)
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = ''
@@ -129,14 +128,10 @@ class TestAddHost(unittest.TestCase):
         activate_session_mock.assert_not_called()
         session.hasHost.assert_not_called()
         session.addHost.assert_not_called()
-        if isinstance(cm.exception, int):
-            self.assertEqual(cm.exception, 2)
-        else:
-            self.assertEqual(cm.exception.code, 2)
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_add_host_failed(self, activate_session_mock, stdout):
+    def test_handle_add_host_failed(self, activate_session_mock, stderr):
         host = 'host'
         arches = ['arch1', 'arch2']
         krb_principal = '--krb-principal=krb'
@@ -153,16 +148,12 @@ class TestAddHost(unittest.TestCase):
         # Run it and check immediate output
         # args: host, arch1, arch2, --krb-principal=krb
         # expected: failed
-        with self.assertRaises(koji.GenericError):
+        with self.assertRaises(koji.GenericError) as ex:
             handle_add_host(options, session, arguments)
-        actual = stdout.getvalue()
+        actual = stderr.getvalue()
         expected = ''
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
         activate_session_mock.assert_called_once_with(session, options)
         session.getHost.assert_called_once_with(host)
         session.addHost.assert_called_once_with(host, arches, **kwargs)
-
-
-if __name__ == '__main__':
-    unittest.main()

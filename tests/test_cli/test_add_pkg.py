@@ -12,9 +12,10 @@ except ImportError:
 from mock import call
 
 from koji_cli.commands import handle_add_pkg
+from . import utils
 
 
-class TestAddPkg(unittest.TestCase):
+class TestAddPkg(utils.CliTestCase):
 
     # Show long diffs in error output...
     maxDiff = None
@@ -108,10 +109,10 @@ class TestAddPkg(unittest.TestCase):
                           call.multiCall(strict=True)])
         self.assertNotEqual(rv, 1)
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
     def test_handle_add_pkg_owner_no_exists(
-            self, activate_session_mock, stdout):
+            self, activate_session_mock, stderr):
         tag = 'tag'
         packages = ['package1', 'package2', 'package3']
         owner = 'owner'
@@ -131,15 +132,16 @@ class TestAddPkg(unittest.TestCase):
         # args: --owner, --extra-arches='arch1,arch2 arch3, arch4',
         #       tag, package1, package2, package3
         # expected: failed: owner does not exist
-        rv = handle_add_pkg(options, session, args)
-        actual = stdout.getvalue()
+        with self.assertRaises(SystemExit) as ex:
+            handle_add_pkg(options, session, args)
+        self.assertExitCode(ex, 1)
+        actual = stderr.getvalue()
         expected = 'User owner does not exist\n'
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
         activate_session_mock.assert_not_called()
         self.assertEqual(session.mock_calls,
                          [call.getUser(owner)])
-        self.assertEqual(rv, 1)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
@@ -165,8 +167,9 @@ class TestAddPkg(unittest.TestCase):
         # args: --owner, --extra-arches='arch1,arch2 arch3, arch4',
         #       tag, package1, package2, package3
         # expected: failed: tag does not exist
-        with self.assertRaises(SystemExit) as cm:
+        with self.assertRaises(SystemExit) as ex:
             handle_add_pkg(options, session, args)
+        self.assertExitCode(ex, 1)
         actual = stdout.getvalue()
         expected = 'No such tag: tag\n'
         self.assertMultiLineEqual(actual, expected)
@@ -175,10 +178,6 @@ class TestAddPkg(unittest.TestCase):
         self.assertEqual(session.mock_calls,
                          [call.getUser(owner),
                           call.getTag(tag)])
-        if isinstance(cm.exception, int):
-            self.assertEqual(cm.exception, 1)
-        else:
-            self.assertEqual(cm.exception.code, 1)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)
@@ -197,8 +196,9 @@ class TestAddPkg(unittest.TestCase):
         session = mock.MagicMock()
 
         # Run it and check immediate output
-        with self.assertRaises(SystemExit) as cm:
+        with self.assertRaises(SystemExit) as ex:
             handle_add_pkg(options, session, args)
+        self.assertExitCode(ex, 2)
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = ''
@@ -216,10 +216,6 @@ class TestAddPkg(unittest.TestCase):
         session.getTag.assert_not_called()
         session.listPackages.assert_not_called()
         session.packageListAdd.assert_not_called()
-        if isinstance(cm.exception, int):
-            self.assertEqual(cm.exception, 2)
-        else:
-            self.assertEqual(cm.exception.code, 2)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)
@@ -234,8 +230,9 @@ class TestAddPkg(unittest.TestCase):
         session = mock.MagicMock()
 
         # Run it and check immediate output
-        with self.assertRaises(SystemExit) as cm:
+        with self.assertRaises(SystemExit) as ex:
             handle_add_pkg(options, session, args)
+        self.assertExitCode(ex, 2)
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = ''
@@ -253,10 +250,6 @@ class TestAddPkg(unittest.TestCase):
         session.getTag.assert_not_called()
         session.listPackages.assert_not_called()
         session.packageListAdd.assert_not_called()
-        if isinstance(cm.exception, int):
-            self.assertEqual(cm.exception, 2)
-        else:
-            self.assertEqual(cm.exception.code, 2)
 
 
 if __name__ == '__main__':

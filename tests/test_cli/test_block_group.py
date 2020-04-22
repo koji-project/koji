@@ -18,9 +18,9 @@ class TestBlockGroup(utils.CliTestCase):
 %s: error: {message}
 """ % (self.progname, self.progname)
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_block_group_nonexistent_tag(self, activate_session_mock, stdout):
+    def test_handle_block_group_nonexistent_tag(self, activate_session_mock, stderr):
         tag = 'nonexistent-tag'
         group = 'group'
         arguments = [tag, group]
@@ -32,8 +32,10 @@ class TestBlockGroup(utils.CliTestCase):
         session.getTag.return_value = None
 
         # Run it and check immediate output
-        rv = handle_block_group(options, session, arguments)
-        actual = stdout.getvalue()
+        with self.assertRaises(SystemExit) as ex:
+            handle_block_group(options, session, arguments)
+        self.assertExitCode(ex, 1)
+        actual = stderr.getvalue()
         expected = 'Unknown tag: %s\n' % tag
         self.assertMultiLineEqual(actual, expected)
 
@@ -43,11 +45,10 @@ class TestBlockGroup(utils.CliTestCase):
         session.getTag.assert_called_once_with(tag)
         session.getTagGroups.assert_not_called()
         session.groupListBlock.assert_not_called()
-        self.assertEqual(rv, 1)
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_block_group_nonexistent_group(self, activate_session_mock, stdout):
+    def test_handle_block_group_nonexistent_group(self, activate_session_mock, stderr):
         tag = 'tag'
         group = 'group'
         arguments = [tag, group]
@@ -60,8 +61,10 @@ class TestBlockGroup(utils.CliTestCase):
         session.getTagGroups.return_value = []
 
         # Run it and check immediate output
-        rv = handle_block_group(options, session, arguments)
-        actual = stdout.getvalue()
+        with self.assertRaises(SystemExit) as ex:
+            handle_block_group(options, session, arguments)
+        self.assertExitCode(ex, 1)
+        actual = stderr.getvalue()
         expected = "Group %s doesn't exist within tag %s\n" % (group, tag)
         self.assertMultiLineEqual(actual, expected)
 
@@ -71,7 +74,6 @@ class TestBlockGroup(utils.CliTestCase):
         session.getTag.assert_called_once_with(tag)
         session.getTagGroups.assert_called_once_with(tag, inherit=False)
         session.groupListBlock.assert_not_called()
-        self.assertEqual(rv, 1)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')

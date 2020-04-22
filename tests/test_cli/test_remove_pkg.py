@@ -10,17 +10,17 @@ except ImportError:
 
 from mock import call
 
-
 from koji_cli.commands import handle_remove_pkg
+from . import utils
 
-class TestRemovePkg(unittest.TestCase):
+class TestRemovePkg(utils.CliTestCase):
 
     # Show long diffs in error output...
     maxDiff = None
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_remove_pkg(self, activate_session_mock, stdout):
+    def test_handle_remove_pkg(self, activate_session_mock, stderr):
         tag = 'tag'
         dsttag = {'name': tag, 'id': 1}
         package = 'package'
@@ -37,8 +37,8 @@ class TestRemovePkg(unittest.TestCase):
         # Run it and check immediate output
         # args: tag, package
         # expected: success
-        rv = handle_remove_pkg(options, session, args)
-        actual = stdout.getvalue()
+        handle_remove_pkg(options, session, args)
+        actual = stderr.getvalue()
         expected = ''
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
@@ -49,7 +49,6 @@ class TestRemovePkg(unittest.TestCase):
         session.packageListRemove.assert_called_once_with(
             tag, package, **kwargs)
         session.multiCall.assert_called_once_with(strict=True)
-        self.assertNotEqual(rv, 1)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
@@ -129,9 +128,9 @@ class TestRemovePkg(unittest.TestCase):
                             strict=True)])
         self.assertNotEqual(rv, 1)
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_remove_pkg_no_package(self, activate_session_mock, stdout):
+    def test_handle_remove_pkg_no_package(self, activate_session_mock, stderr):
         tag = 'tag'
         dsttag = {'name': tag, 'id': 1}
         packages = ['package1', 'package2', 'package3']
@@ -149,8 +148,10 @@ class TestRemovePkg(unittest.TestCase):
         # Run it and check immediate output
         # args: tag, package1, package2, package3
         # expected: failed: can not find package2 under tag
-        rv = handle_remove_pkg(options, session, args)
-        actual = stdout.getvalue()
+        with self.assertRaises(SystemExit) as ex:
+            handle_remove_pkg(options, session, args)
+        self.assertExitCode(ex, 1)
+        actual = stderr.getvalue()
         expected = 'Package package2 is not in tag tag\n'
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
@@ -160,12 +161,11 @@ class TestRemovePkg(unittest.TestCase):
             tagID=dsttag['id'])
         session.packageListRemove.assert_not_called()
         session.multiCall.assert_not_called()
-        self.assertEqual(rv, 1)
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
     def test_handle_remove_pkg_tag_no_exists(
-            self, activate_session_mock, stdout):
+            self, activate_session_mock, stderr):
         tag = 'tag'
         dsttag = None
         packages = ['package1', 'package2', 'package3']
@@ -179,8 +179,10 @@ class TestRemovePkg(unittest.TestCase):
         # Run it and check immediate output
         # args: tag, package1, package2, package3
         # expected: failed: tag does not exist
-        rv = handle_remove_pkg(options, session, args)
-        actual = stdout.getvalue()
+        with self.assertRaises(SystemExit) as ex:
+            handle_remove_pkg(options, session, args)
+        self.assertExitCode(ex, 1)
+        actual = stderr.getvalue()
         expected = 'No such tag: tag\n'
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
@@ -188,7 +190,6 @@ class TestRemovePkg(unittest.TestCase):
         session.getTag.assert_called_once_with(tag)
         session.listPackages.assert_not_called()
         session.packageListRemove.assert_not_called()
-        self.assertEqual(rv, 1)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)
@@ -204,8 +205,9 @@ class TestRemovePkg(unittest.TestCase):
         session = mock.MagicMock()
 
         # Run it and check immediate output
-        with self.assertRaises(SystemExit) as cm:
+        with self.assertRaises(SystemExit) as ex:
             handle_remove_pkg(options, session, args)
+        self.assertExitCode(ex, 2)
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
         expected_stdout = ''
@@ -222,10 +224,6 @@ class TestRemovePkg(unittest.TestCase):
         session.getTag.assert_not_called()
         session.listPackages.assert_not_called()
         session.packageListRemove.assert_not_called()
-        if isinstance(cm.exception, int):
-            self.assertEqual(cm.exception, 2)
-        else:
-            self.assertEqual(cm.exception.code, 2)
 
 
 if __name__ == '__main__':
