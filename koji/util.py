@@ -632,7 +632,7 @@ def setup_rlimits(opts, logger=None):
             continue
         if len(limits) == 1:
             limits.append(orig[1])
-        logger.warn('Setting resource limit: %s = %r', key, limits)
+        logger.warning('Setting resource limit: %s = %r', key, limits)
         try:
             resource.setrlimit(rcode, tuple(limits))
         except ValueError as e:

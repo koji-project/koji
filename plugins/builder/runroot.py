@@ -328,7 +328,7 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
                 failed.append("%s: %s" % (dir, output))
         if failed:
             msg = "Unable to unmount: %s" % ', '.join(failed)
-            self.logger.warn(msg)
+            self.logger.warning(msg)
             if fatal:
                 raise koji.GenericError(msg)
         else:

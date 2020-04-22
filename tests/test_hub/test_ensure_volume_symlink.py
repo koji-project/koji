@@ -54,7 +54,7 @@ class TestEnsureVolumeSymlink(unittest.TestCase):
         del self.buildinfo['volume_name']
         with mock.patch('kojihub.logger') as logger:
             kojihub.ensure_volume_symlink(self.buildinfo)
-            logger.warn.assert_called_once()
+            logger.warning.assert_called_once()
 
     def test_volume_symlink_create(self):
         basedir = self.pathinfo.build(self.buildinfo)  # default volume

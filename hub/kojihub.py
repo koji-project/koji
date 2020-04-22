@@ -5582,7 +5582,7 @@ def ensure_volume_symlink(binfo):
     # basic checks
     volname = binfo.get('volume_name')
     if volname is None:
-        logger.warn('buildinfo has no volume data, cannot create symlink')
+        logger.warning('buildinfo has no volume data, cannot create symlink')
         return
     if volname == 'DEFAULT':
         # nothing to do
@@ -5652,7 +5652,7 @@ def check_volume_policy(data, strict=False, default=None):
         logger.error('Invalid default volume: %s', default)
     if strict:
         raise koji.GenericError('No volume policy match')
-    logger.warn('No volume policy match')
+    logger.warning('No volume policy match')
     return None
 
 

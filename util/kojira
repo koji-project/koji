@@ -109,7 +109,7 @@ class ManagedRepo(object):
             return None
         fn = '%s/repo.json' % path
         if not os.path.exists(fn):
-            self.logger.warn('Repo info file missing: %s', fn)
+            self.logger.warning('Repo info file missing: %s', fn)
             return None
         with open(fn, 'r') as fp:
             return json.load(fp)
@@ -120,8 +120,8 @@ class ManagedRepo(object):
         if not tag_info:
             tag_info = getTag(self.session, self.tag_id, self.event_id)
         if not tag_info:
-            self.logger.warn('Could not get info for tag %i, referenced by repo %i' %
-                             (self.tag_id, self.repo_id))
+            self.logger.warning('Could not get info for tag %i, referenced by repo %i' %
+                                (self.tag_id, self.repo_id))
             return None
         tag_name = tag_info['name']
         if self.dist:
@@ -526,7 +526,7 @@ class RepoManager(object):
             self.logger.debug("%s doesn't exist, skipping", topdir)
             return
         if not os.path.isdir(topdir):
-            self.logger.warn("%s is not directory, skipping", topdir)
+            self.logger.warning("%s is not directory, skipping", topdir)
             return
         self.logger.debug("Scanning %s for repos", topdir)
         self.logger.debug('max age allowed: %s seconds', max_age)
@@ -577,7 +577,7 @@ class RepoManager(object):
                                 self.rmtree(repodir)
                     continue
                 if rinfo['tag_name'] != tag:
-                    self.logger.warn(
+                    self.logger.warning(
                         "Tag name mismatch (rename?): %s vs %s", tag, rinfo['tag_name'])
                     continue
                 if rinfo['state'] in (koji.REPO_DELETED, koji.REPO_PROBLEM):
@@ -938,13 +938,13 @@ def main(options, session):
                 logger.error("Regeneration thread died. Restarting it.")
                 regen_thread = start_regen_loop(session, repomgr)
         except KeyboardInterrupt:
-            logger.warn("User exit")
+            logger.warning("User exit")
             break
         except koji.AuthExpired:
-            logger.warn("Session expired")
+            logger.warning("Session expired")
             break
         except SystemExit:
-            logger.warn("Shutting down")
+            logger.warning("Shutting down")
             break
         except Exception:
             # log the exception and continue
@@ -952,7 +952,7 @@ def main(options, session):
         try:
             time.sleep(options.sleeptime)
         except KeyboardInterrupt:
-            logger.warn("User exit")
+            logger.warning("User exit")
             break
     try:
         repomgr.checkQueue()

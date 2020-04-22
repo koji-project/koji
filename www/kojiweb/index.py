@@ -95,7 +95,7 @@ def _getUserCookie(environ):
     value = cookies['user'].value
     parts = value.split(":", 1)
     if len(parts) != 2:
-        authlogger.warn('malformed user cookie: %s' % value)
+        authlogger.warning('malformed user cookie: %s' % value)
         return None
     sig, value = parts
     if not options['Secret'].value:
@@ -105,18 +105,18 @@ def _getUserCookie(environ):
         digest_string = digest_string.encode('utf-8')
     shasum = hashlib.sha1(digest_string)
     if shasum.hexdigest() != sig:
-        authlogger.warn('invalid user cookie: %s:%s', sig, value)
+        authlogger.warning('invalid user cookie: %s:%s', sig, value)
         return None
     parts = value.split(":", 1)
     if len(parts) != 2:
-        authlogger.warn('invalid signed user cookie: %s:%s', sig, value)
+        authlogger.warning('invalid signed user cookie: %s:%s', sig, value)
         # no embedded timestamp
         return None
     user, timestamp = parts
     try:
         timestamp = float(timestamp)
     except ValueError:
-        authlogger.warn('invalid time in signed user cookie: %s:%s', sig, value)
+        authlogger.warning('invalid time in signed user cookie: %s:%s', sig, value)
         return None
     if (time.time() - timestamp) > (int(options['LoginTimeout']) * 60 * 60):
         authlogger.info('expired user cookie: %s', value)
