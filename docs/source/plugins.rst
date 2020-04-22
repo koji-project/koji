@@ -84,7 +84,7 @@ Example for `/etc/koji-hub/hub.conf`:
 .. code-block:: ini
 
     PluginPath = /usr/lib/koji-hub-plugins
-    Plugins = sidetag
+    Plugins = sidetag_hub
 
     [policy]
     sidetag =
