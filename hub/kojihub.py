@@ -12539,7 +12539,11 @@ class RootExports(object):
             method = getattr(self, methodName)
         except AttributeError:
             raise koji.GenericError("method %s doesn't exist" % methodName)
-        results = method(*args, **kw)
+        try:
+            results = method(*args, **kw)
+        except Exception as ex:
+            raise koji.GenericError("method %s raised an exception (%s)" % (methodName, str(ex)))
+
         if results is None:
             return 0, None
         elif isinstance(results, list):
