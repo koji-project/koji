@@ -4439,7 +4439,8 @@ def anon_handle_list_history(goptions, session, args):
                       help=_("Only show entries modified by user"))
     parser.add_option("--user", help=_("Only show entries affecting a user"))
     parser.add_option("--permission", help=_("Only show entries relating to a given permission"))
-    parser.add_option("--cg", help=_("Only show entries relating to a given permission"))
+    parser.add_option("--cg",
+                      help=_("Only show entries relating to a given content generator"))
     parser.add_option("--external-repo", "--erepo",
                       help=_("Only show entries relating to a given external repo"))
     parser.add_option("--build-target", "--target",
