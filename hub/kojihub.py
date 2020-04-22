@@ -10451,7 +10451,14 @@ class RootExports(object):
         add_external_repo_to_tag(tag_info, repo_info, priority, merge_mode)
 
     def removeExternalRepoFromTag(self, tag_info, repo_info):
-        """Remove an external repo from a tag"""
+        """
+        Remove an external repo from a tag
+
+        :param tag_info: Tag name or ID number
+        :param repo_info: External repository name or ID number
+        :raises: GenericError if this external repo is not associated
+                 with this tag.
+        """
         # wrap the local method so we don't expose the event parameter
         remove_external_repo_from_tag(tag_info, repo_info)
 
