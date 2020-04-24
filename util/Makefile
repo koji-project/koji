@@ -32,6 +32,8 @@ _install:
 install-systemd: _install
 	mkdir -p $(DESTDIR)$(SYSTEMDSYSTEMUNITDIR)
 	install -p -m 644 kojira.service $(DESTDIR)$(SYSTEMDSYSTEMUNITDIR)
+	install -p -m 644 koji-gc.service $(DESTDIR)$(SYSTEMDSYSTEMUNITDIR)
+	install -p -m 644 koji-gc.timer $(DESTDIR)$(SYSTEMDSYSTEMUNITDIR)
 	install -p -m 644 koji-sweep-db.service $(DESTDIR)$(SYSTEMDSYSTEMUNITDIR)
 	install -p -m 644 koji-sweep-db.timer $(DESTDIR)$(SYSTEMDSYSTEMUNITDIR)
 
