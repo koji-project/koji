@@ -10459,7 +10459,15 @@ class RootExports(object):
 
     def addExternalRepoToTag(self, tag_info, repo_info, priority,
                              merge_mode='koji'):
-        """Add an external repo to a tag"""
+        """Add an external repo to a tag.
+
+        :param tag_info: Tag name or ID number
+        :param repo_info: External repository name or ID number
+        :param int priority: Priority of this repository for this tag
+        :param str merge_mode: This must be one of the values of the
+                               koji.REPO_MERGE_MODES set. If unspecified,
+                               the default is "koji".
+        """
         # wrap the local method so we don't expose the event parameter
         add_external_repo_to_tag(tag_info, repo_info, priority, merge_mode)
 
