@@ -11722,7 +11722,16 @@ class RootExports(object):
         update.execute()
 
     def createUser(self, username, status=None, krb_principal=None):
-        """Add a user to the database"""
+        """Add a user to the database
+
+        :param str username: The username for this Koji user.
+        :param int status: This must be one of the values of the
+                           koji.USER_STATUS enum. If unspecified,
+                           the default is koji.USER_STATUS['NORMAL'].
+        :param str krb_principal: a custom Kerberos principal, or None.
+        :raises: GenericError if the user or Kerberos principal already
+                 exists.
+        """
         context.session.assertPerm('admin')
         if get_user(username):
             raise koji.GenericError('user already exists: %s' % username)
