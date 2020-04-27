@@ -112,7 +112,12 @@
     </tr>
     #end if
     <tr>
-      <th>Repo&nbsp;created</th><td>#if $repo then $util.formatTimeRSS($repo.creation_time) else ''#</td>
+      <th>Repo&nbsp;created</th>
+      <td>
+      #if $repo
+        <a href="repoinfo?repoID=$repo.id">$util.formatTimeRSS($repo.creation_time)</a>
+      #end if
+      </td>
     </tr>
     <tr>
       <th>Packages</th>

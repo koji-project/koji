@@ -29,7 +29,7 @@
       <th>Retired</th><td>$util.formatTimeLong($buildroot.retire_event_time)</td>
     </tr>
     <tr>
-      <th>Repo ID</th><td>$buildroot.repo_id</td>
+      <th>Repo ID</th><td><a href="repoinfo?repoID=$buildroot.repo_id">$buildroot.repo_id</a></td>
     </tr>
     <tr>
       <th>Repo Tag</th><td><a href="taginfo?tagID=$buildroot.tag_id">$buildroot.tag_name</a></td>

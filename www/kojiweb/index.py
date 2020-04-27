@@ -2521,3 +2521,22 @@ def watchlogs(environ, taskID):
 </html>
 """ % values
     return html
+
+
+def repoinfo(environ, repoID):
+    values = _initValues(environ, 'Repo Info', 'tags')
+    server = _getServer(environ)
+
+    values['repo_id'] = repoID
+    repo_info = server.repoInfo(repoID, strict=False)
+    values['repo'] = repo_info
+    if repo_info:
+        topurl = environ['koji.options']['KojiFilesURL']
+        pathinfo = koji.PathInfo(topdir=topurl)
+        if repo_info['dist']:
+            values['url'] = pathinfo.distrepo(repo_info['id'], repo_info['tag_name'])
+        else:
+            values['url'] = pathinfo.repo(repo_info['id'], repo_info['tag_name'])
+        values['repo_json'] = os.path.join(pathinfo.repo(repo_info['id'], repo_info['tag_name']),
+                                           'repo.json')
+    return _genHTML(environ, 'repoinfo.chtml')

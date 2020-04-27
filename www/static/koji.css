@@ -387,7 +387,7 @@ tr.row-even td.tree span.treeLabel {
     background-color: #eee;
 }
 
-.taskfree {
+.taskfree, .repoinit {
     color: #30c;
 }
 
@@ -395,11 +395,11 @@ tr.row-even td.tree span.treeLabel {
     color: #f60;
 }
 
-.taskclosed {
+.taskclosed, .repoready {
     color: #0c0;
 }
 
-.taskcanceled {
+.taskcanceled, .repoexpired {
     color: #c90;
 }
 
@@ -407,7 +407,7 @@ tr.row-even td.tree span.treeLabel {
     color: #c0f;
 }
 
-.taskfailed {
+.taskfailed, .repodeleted, .repoproblem {
     color: #c00;
 }
 

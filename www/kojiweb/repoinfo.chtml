@@ -1,0 +1,26 @@
+#import koji
+#from kojiweb import util
+
+#include "includes/header.chtml"
+
+<h4>Information for repo $repo_id</h4>
+
+#if $repo
+<table>
+  <tr><th>ID</th><td>$repo.id</td><th></tr>
+  <tr><th>Tag</th><td><a href="taginfo?tagID=$repo.tag_id">$repo.tag_name</a></td></tr>
+  #set $state = $util.repoState($repo.state)
+  <tr><th>State</th><td class="repo$state">$state</td></tr>
+  <tr><th>Event</th><td>$repo.create_event ($util.formatTimeLong($repo.creation_time))</td></tr>
+  #if $repo.state != koji.REPO_STATES['DELETED']
+  <tr><th>URL</th><td><a href="$url">repodata</a></td></tr>
+  <tr><th>Repo json</th><td><a href="$repo_json">repo.json</a></td></tr>
+  #end if
+  <tr><th>Dist repo?</th><td class="$str($repo.dist).lower()">#if $repo.dist then 'yes' else 'no'#</td></tr>
+</table>
+#else
+Repo $repo_id not found.
+#end if
+
+
+#include "includes/footer.chtml"

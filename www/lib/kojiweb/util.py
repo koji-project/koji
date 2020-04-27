@@ -447,6 +447,11 @@ def repoStateName(stateID):
         return 'unknown'
 
 
+def repoState(stateID):
+    """Convert a numeric repo state into a readable name"""
+    return koji.REPO_STATES[stateID].lower()
+
+
 def taskState(stateID):
     """Convert a numeric task state into a readable name"""
     return koji.TASK_STATES[stateID].lower()
