@@ -1286,8 +1286,6 @@ Additional Notes
 * There should only be one instance of kojira running at any given time.
 * It is not recommended that kojira run on the builders, as builders only
   should require read-only access to ``/mnt/koji``.
-* Kojira may need to be restarted when new tags are added in order to detect
-  those tags correctly.
 
 Authentication Configuration
 ----------------------------
