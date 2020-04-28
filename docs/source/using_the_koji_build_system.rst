@@ -407,6 +407,9 @@ environment follows:
   before using this. You could need it, but do it with following
   recommendations:
 
+  - you need to explicitly allow builders to do that (``mock_boostrap_image =
+    True`` in ``kojid.conf``).
+
   - you need to have builders with `podman <https://podman.io/>`_ installed and
     working.
 

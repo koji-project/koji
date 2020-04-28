@@ -302,7 +302,10 @@ class BuildRoot(object):
                 opts['tag_envvars'][key[8:]] = self.config['extra'][key]
         if 'mock.bootstrap_chroot' in self.config['extra']:
             opts['bootstrap_chroot'] = bool(self.config['extra']['mock.bootstrap_chroot'])
-        opts['bootstrap_image'] = self.config['extra'].get('mock.bootstrap_image')
+
+        # it must be allowed in kojid.conf *and* in tag's extra info
+        opts['bootstrap_image'] = self.options.mock_boostrap_image and \
+            self.config['extra'].get('mock.bootstrap_image')
 
         output = koji.genMockConfig(self.name, self.br_arch, managed=True, **opts)
 
@@ -6400,6 +6403,7 @@ def get_options():
                 'use_createrepo_c': True,
                 'createrepo_skip_stat': True,
                 'createrepo_update': True,
+                'mock_boostrap_image': False,
                 'pkgurl': None,
                 'allowed_scms': '',
                 'scm_credentials_dir': None,
