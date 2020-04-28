@@ -9793,7 +9793,7 @@ def check_policy(name, data, default='deny', strict=False, force=False):
         logger.error("Invalid action in policy %s, rule: %s", name, lastrule)
     if force:
         user = policy_get_user(data)
-        if 'admin' in koji.auth.get_user_perms(user['id']):
+        if user and 'admin' in koji.auth.get_user_perms(user['id']):
             msg = "Policy %s overriden by force: %s" % (name, user["name"])
             if reason:
                 msg += ": %s" % reason
