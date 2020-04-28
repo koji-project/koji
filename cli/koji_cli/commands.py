@@ -2245,7 +2245,8 @@ def handle_grant_permission(goptions, session, args):
     "[admin] Grant a permission to a user"
     usage = _("usage: %prog grant-permission [--new] <permission> <user> [<user> ...]")
     parser = OptionParser(usage=get_usage_str(usage))
-    parser.add_option("--new", action="store_true", help=_("Create a new permission"))
+    parser.add_option("--new", action="store_true",
+                      help=_("Create this permission if the permission does not exist"))
     (options, args) = parser.parse_args(args)
     if len(args) < 2:
         parser.error(_("Please specify a permission and at least one user"))
