@@ -585,11 +585,9 @@ this you will need to know the ID of the user.
     koji=> insert into user_perms (user_id, perm_id, creator_id) values (<id of user inserted above>, 1, <id of user inserted above>);
 
 .. note::
-    If you do not know the ID of the admin user, you can get the ID by running the query:
+    If you do not know the ID of the admin user, you can get the ID by running the query::
 
-::
-
-    koji=> select * from users;
+      koji=> select * from users;
 
 You can't actually log in and perform any actions until kojihub is up and
 running in your web server.  In order to get to that point you still need to
