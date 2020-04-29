@@ -509,7 +509,7 @@ have any mechanism for this, we need to do it via some other mechanism. Default
 handling is done by cron, but can be substituted by anything else (Ansible
 tower, etc.)
 
-Script is by default installed on hub as `/usr/sbin/koji-sweepd-db`. On systemd
+Script is by default installed on hub as `/usr/sbin/koji-sweep-db`. On systemd
 systems it also has corresponding `koji-sweep-db` service and timer. Note, that
 timer is not enabled by default, so you need to run usual `systemctl` commands:
 
