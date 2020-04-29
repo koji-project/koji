@@ -77,7 +77,7 @@ class TestGrantPermission(utils.CliTestCase):
 
 Options:
   -h, --help  show this help message and exit
-  --new       Create a new permission
+  --new       Create this permission if the permission does not exist
 """ % self.progname)
 
 
