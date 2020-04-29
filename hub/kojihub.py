@@ -9760,7 +9760,7 @@ def check_policy(name, data, default='deny', strict=False, force=False):
         access: True if the policy result is allow, false otherwise
         reason: reason for the access
     If strict is True, will raise ActionNotAllowed if the action is not 'allow'
-    If force is True, policy will pass, but action will be logged
+    If force is True, policy will pass (under admin), but action will be logged
     """
     ruleset = context.policy.get(name)
     if not ruleset:
@@ -9791,12 +9791,14 @@ def check_policy(name, data, default='deny', strict=False, force=False):
     if result != 'deny':
         reason = 'error in policy'
         logger.error("Invalid action in policy %s, rule: %s", name, lastrule)
-    if force and context.session.hasPerm('admin'):
-        msg = "Policy %s overriden by force: %s" % (name, context.session.user_data["name"])
-        if reason:
-            msg += ": %s" % reason
-        logger.info(msg)
-        return True, "overriden by force"
+    if force:
+        user = policy_get_user(data)
+        if user and 'admin' in koji.auth.get_user_perms(user['id']):
+            msg = "Policy %s overriden by force: %s" % (name, user["name"])
+            if reason:
+                msg += ": %s" % reason
+            logger.info(msg)
+            return True, "overriden by force"
     if not strict:
         return False, reason
     err_str = "policy violation (%s)" % name
