@@ -457,6 +457,8 @@ Build: %%(name)s-%%(version)s-%%(release)s
 
 def main(args):
     activate_session(session)
+    if not session.getTag(options.trashcan_tag, strict=False):
+        error(_("Trashcan tag %s doesn't exist") % options.trashcan_tag)
     for x in options.action:
         globals()['handle_' + x]()
 
