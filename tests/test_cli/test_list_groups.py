@@ -34,8 +34,10 @@ class TestListGroups(utils.CliTestCase):
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
+    @mock.patch('koji_cli.commands.ensure_connection')
     def test_anon_handle_list_groups_argument_error(
             self,
+            ensure_connection_mock,
             activate_session_mock,
             stdout):
         """Test anon_handle_list_groups function"""
@@ -71,7 +73,8 @@ class TestListGroups(utils.CliTestCase):
         expected = "Querying at event %(id)i (%(timestr)s)" % event + "\n"
         self.__list_groups('build', ['--ts', '1234567'], expected)
 
-    def __list_groups(self, query_group, options, expected):
+    @mock.patch('koji_cli.commands.ensure_connection')
+    def __list_groups(self, query_group, options, expected, ensure_connection_mock):
         _list_tags = [
             {
                 'maven_support': False,

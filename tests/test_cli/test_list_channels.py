@@ -19,8 +19,8 @@ class TestListChannels(unittest.TestCase):
         self.args = []
 
     @mock.patch('sys.stdout', new_callable=StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_list_channels(self, activate_session_mock, stdout):
+    @mock.patch('koji_cli.commands.ensure_connection')
+    def test_list_channels(self, ensure_connection_mock, stdout):
         self.session.listChannels.return_value = [
             {'id': 1, 'name': 'default'},
             {'id': 2, 'name': 'test'},
@@ -47,4 +47,4 @@ default              3      1      0      1      6     22%
 test                 2      2      1      1      6     28%
 """
         self.assertMultiLineEqual(actual, expected)
-        activate_session_mock.assert_called_once_with(self.session, self.options)
+        ensure_connection_mock.assert_called_once_with(self.session)

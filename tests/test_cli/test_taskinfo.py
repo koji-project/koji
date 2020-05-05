@@ -596,8 +596,10 @@ class TestTaskInfo(utils.CliTestCase):
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
+    @mock.patch('koji_cli.commands.ensure_connection')
     def test_anon_handle_taskinfo(
             self,
+            ensure_connection_mock,
             activate_session_mock,
             stdout):
         """Test anon_handle_taskinfo function"""
