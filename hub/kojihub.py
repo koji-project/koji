@@ -11329,7 +11329,7 @@ class RootExports(object):
         :param list data: Inheritance rules to set for this child tag. This is
                           a list of rules (dicts) for parent tags and
                           priorities. If any rule dict in the list has a
-                          special "remove link": True key and value, Koji will
+                          special "delete link": True key and value, Koji will
                           remove this inheritance rule instead of adding it.
         :param bool clear: Wipe out all existing inheritance rules and only
                            apply the ones you submit here. If unspecified,
