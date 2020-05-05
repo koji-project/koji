@@ -19,8 +19,6 @@
 # Authors:
 #       Mike McLean <mikem@redhat.com>
 
-from __future__ import absolute_import
-
 import cgi
 import inspect
 import logging
@@ -28,8 +26,6 @@ import os.path
 import pprint
 import sys
 import traceback
-
-import six
 
 import koji
 import koji.util
@@ -352,11 +348,8 @@ class Dispatcher(object):
         return self._tobytes(result), headers
 
     def _tobytes(self, result):
-        if isinstance(result, six.string_types):
-            if six.PY2:
-                result = [result]
-            else:
-                result = [bytes(result, encoding='utf-8')]
+        if isinstance(result, str):
+            result = [bytes(result, encoding='utf-8')]
         return result
 
     def handle_request(self, environ, start_response):
@@ -405,7 +398,7 @@ class Dispatcher(object):
             else:
                 # last one wins
                 headers[key] = (name, value)
-        if isinstance(result, six.string_types):
+        if isinstance(result, str):
             headers.setdefault('content-length', ('Content-Length', str(len(result))))
         headers.setdefault('content-type', ('Content-Type', 'text/html'))
         headers = to_list(headers.values()) + extra

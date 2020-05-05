@@ -19,21 +19,17 @@
 # Authors:
 #       Mike Bonnet <mikeb@redhat.com>
 #       Mike McLean <mikem@redhat.com>
-from __future__ import absolute_import, division
-
 import datetime
 import hashlib
 import os
 import ssl
 import stat
+import xmlrpc.client
 # a bunch of exception classes that explainError needs
 from socket import error as socket_error
 from xml.parsers.expat import ExpatError
 
 import Cheetah.Template
-import six
-from six.moves import range
-from six.moves.xmlrpc_client import ProtocolError
 
 import koji
 import koji.tasks
@@ -105,7 +101,7 @@ class DecodeUTF8(Cheetah.Filters.Filter):
     def filter(self, *args, **kw):
         """Convert all strs to unicode objects"""
         result = super(DecodeUTF8, self).filter(*args, **kw)
-        if isinstance(result, six.text_type):
+        if isinstance(result, str):
             pass
         else:
             result = result.decode('utf-8', 'replace')
@@ -159,10 +155,7 @@ def _genHTML(environ, fileName):
         tmpl_class = Cheetah.Template.Template.compile(file=fileName)
         TEMPLATES[fileName] = tmpl_class
     tmpl_inst = tmpl_class(namespaces=[environ['koji.values']], filter=XHTMLFilter)
-    if six.PY2:
-        return tmpl_inst.respond().encode('utf-8', 'replace')
-    else:
-        return tmpl_inst.respond()
+    return tmpl_inst.respond()
 
 
 def _truncTime():
@@ -179,8 +172,7 @@ def _genToken(environ, tstamp=None):
     if tstamp is None:
         tstamp = _truncTime()
     value = user + str(tstamp) + environ['koji.options']['Secret'].value
-    if six.PY3:
-        value = value.encode('utf-8')
+    value = value.encode('utf-8')
     return hashlib.md5(value).hexdigest()[-8:]
 
 
@@ -667,7 +659,7 @@ a bug or a configuration issue."""
 The web interface is having difficulty communicating with the main \
 server. This most likely indicates a network issue."""
         level = 1
-    elif isinstance(error, (ProtocolError, ExpatError)):
+    elif isinstance(error, (xmlrpc.client.ProtocolError, ExpatError)):
         str = """\
 The main server returned an invalid response. This could be caused by \
 a network issue or load issues on the server."""

@@ -20,10 +20,9 @@
 #       Mike Bonnet <mikeb@redhat.com>
 #       Mike McLean <mikem@redhat.com>
 
-from __future__ import absolute_import, division
-
 import datetime
 import hashlib
+import http.cookies
 import logging
 import mimetypes
 import os
@@ -31,10 +30,6 @@ import os.path
 import re
 import sys
 import time
-
-import six
-import six.moves.http_cookies
-from six.moves import range
 
 import koji
 import kojiweb.util
@@ -60,11 +55,10 @@ def _setUserCookie(environ, user):
     if not options['Secret'].value:
         raise koji.AuthError('Unable to authenticate, server secret not configured')
     digest_string = value + options['Secret'].value
-    if six.PY3:
-        digest_string = digest_string.encode('utf-8')
+    digest_string = digest_string.encode('utf-8')
     shasum = hashlib.sha1(digest_string)
     value = "%s:%s" % (shasum.hexdigest(), value)
-    cookies = six.moves.http_cookies.SimpleCookie()
+    cookies = http.cookies.SimpleCookie()
     cookies['user'] = value
     c = cookies['user']  # morsel instance
     c['secure'] = True
@@ -78,7 +72,7 @@ def _setUserCookie(environ, user):
 
 
 def _clearUserCookie(environ):
-    cookies = six.moves.http_cookies.SimpleCookie()
+    cookies = http.cookies.SimpleCookie()
     cookies['user'] = ''
     c = cookies['user']  # morsel instance
     c['path'] = os.path.dirname(environ['SCRIPT_NAME'])
@@ -89,7 +83,7 @@ def _clearUserCookie(environ):
 
 def _getUserCookie(environ):
     options = environ['koji.options']
-    cookies = six.moves.http_cookies.SimpleCookie(environ.get('HTTP_COOKIE', ''))
+    cookies = http.cookies.SimpleCookie(environ.get('HTTP_COOKIE', ''))
     if 'user' not in cookies:
         return None
     value = cookies['user'].value
@@ -101,8 +95,7 @@ def _getUserCookie(environ):
     if not options['Secret'].value:
         raise koji.AuthError('Unable to authenticate, server secret not configured')
     digest_string = value + options['Secret'].value
-    if six.PY3:
-        digest_string = digest_string.encode('utf-8')
+    digest_string = digest_string.encode('utf-8')
     shasum = hashlib.sha1(digest_string)
     if shasum.hexdigest() != sig:
         authlogger.warning('invalid user cookie: %s:%s', sig, value)
@@ -738,7 +731,7 @@ def taskinfo(environ, taskID):
     values['pathinfo'] = pathinfo
 
     paths = []  # (volume, relpath) tuples
-    for relname, volumes in six.iteritems(server.listTaskOutput(task['id'], all_volumes=True)):
+    for relname, volumes in server.listTaskOutput(task['id'], all_volumes=True).items():
         paths += [(volume, relname) for volume in volumes]
     values['output'] = sorted(paths, key=_sortByExtAndName)
     if environ['koji.currentUser']:
@@ -762,8 +755,8 @@ def taskstatus(environ, taskID):
         return ''
     files = server.listTaskOutput(taskID, stat=True, all_volumes=True)
     output = '%i:%s\n' % (task['id'], koji.TASK_STATES[task['state']])
-    for filename, volumes_data in six.iteritems(files):
-        for volume, file_stats in six.iteritems(volumes_data):
+    for filename, volumes_data in files.items():
+        for volume, file_stats in volumes_data.items():
             output += '%s:%s:%s\n' % (volume, filename, file_stats['st_size'])
     return output
 

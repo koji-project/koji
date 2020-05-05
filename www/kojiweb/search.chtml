@@ -1,5 +1,5 @@
 #from kojiweb import util
-#from six.moves.urllib.parse import quote
+#from urllib.parse import quote
 
 #include "includes/header.chtml"
 

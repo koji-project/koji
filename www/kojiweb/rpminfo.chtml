@@ -2,7 +2,7 @@
 #from kojiweb import util
 #from pprint import pformat
 #import time
-#from six.moves.urllib.parse import quote
+#from urllib.parse import quote
 
 #attr _PASSTHROUGH = ['rpmID', 'fileOrder', 'fileStart', 'buildrootOrder', 'buildrootStart']
 

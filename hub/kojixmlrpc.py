@@ -18,8 +18,6 @@
 # Authors:
 #       Mike McLean <mikem@redhat.com>
 
-from __future__ import absolute_import, division
-
 import datetime
 import inspect
 import logging
@@ -30,9 +28,6 @@ import sys
 import threading
 import time
 import traceback
-
-import six
-from six.moves import range
 
 import koji
 import koji.auth
@@ -52,10 +47,7 @@ class Marshaller(ExtendedMarshaller):
     def dump_datetime(self, value, write):
         # For backwards compatibility, we return datetime objects as strings
         value = value.isoformat(' ')
-        if six.PY2:
-            self.dump_string(value, write)
-        else:
-            self.dump_unicode(value, write)
+        self.dump_unicode(value, write)
     dispatch[datetime.datetime] = dump_datetime
 
 
@@ -104,7 +96,7 @@ class HandlerRegistry(object):
 
         Handlers are functions marked with one of the decorators defined in koji.plugin
         """
-        for v in six.itervalues(vars(plugin)):
+        for v in vars(plugin).values():
             if isinstance(v, type):
                 # skip classes
                 continue
@@ -380,9 +372,7 @@ def offline_reply(start_response, msg=None):
         faultString = "server is offline"
     else:
         faultString = msg
-    response = dumps(Fault(faultCode, faultString))
-    if six.PY3:
-        response = response.encode()
+    response = dumps(Fault(faultCode, faultString)).encode()
     headers = [
         ('Content-Length', str(len(response))),
         ('Content-Type', "text/xml"),
@@ -497,7 +487,7 @@ def load_config(environ):
         opts['policy'] = dict(config.items('policy'))
     else:
         opts['policy'] = {}
-    for pname, text in six.iteritems(_default_policies):
+    for pname, text in _default_policies.items():
         opts['policy'].setdefault(pname, text)
     # use configured KojiDir
     if opts.get('KojiDir') is not None:
@@ -568,14 +558,14 @@ def get_policy(opts, plugins):
             continue
         alltests.append(koji.policy.findSimpleTests(vars(plugin)))
     policy = {}
-    for pname, text in six.iteritems(opts['policy']):
+    for pname, text in opts['policy'].items():
         # filter/merge tests
         merged = {}
         for tests in alltests:
             # tests can be limited to certain policies by setting a class variable
-            for name, test in six.iteritems(tests):
+            for name, test in tests.items():
                 if hasattr(test, 'policy'):
-                    if isinstance(test.policy, six.string_types):
+                    if isinstance(test.policy, str):
                         if pname != test.policy:
                             continue
                     elif pname not in test.policy:
@@ -730,8 +720,7 @@ def application(environ, start_response):
         start_response('405 Method Not Allowed', headers)
         response = "Method Not Allowed\n" \
                    "This is an XML-RPC server. Only POST requests are accepted."
-        if six.PY3:
-            response = response.encode()
+        response = response.encode()
         headers = [
             ('Content-Length', str(len(response))),
             ('Content-Type', "text/plain"),
@@ -761,8 +750,7 @@ def application(environ, start_response):
                 response = h._wrap_handler(h.handle_upload, environ)
             else:
                 response = h._wrap_handler(h.handle_rpc, environ)
-            if six.PY3:
-                response = response.encode()
+            response = response.encode()
             headers = [
                 ('Content-Length', str(len(response))),
                 ('Content-Type', "text/xml"),
