@@ -27,7 +27,7 @@ from six.moves import email_mime_text as MIMEText
 
 import koji
 import koji.policy
-from koji.util import LazyDict, LazyValue, to_list
+from koji.util import LazyDict, LazyValue, to_list, deprecated
 
 
 def _(args):
@@ -54,8 +54,7 @@ def get_options():
     parser.add_option("--network-hack", action="store_true", default=False,
                       help=optparse.SUPPRESS_HELP)  # no longer used
     parser.add_option("--cert", help=_("Client SSL certificate file for authentication"))
-    parser.add_option("--ca", default='',
-                      help=_("ignored"))  # FIXME: remove in next major release
+    parser.add_option("--ca", help=optparse.SUPPRESS_HELP)  # FIXME: remove in next major release
     parser.add_option("--serverca", help=_("CA cert file that issued the hub certificate"))
     parser.add_option("-n", "--test", action="store_true", default=False,
                       help=_("test mode"))
@@ -163,6 +162,9 @@ def get_options():
     # parse again with defaults
     (options, args) = parser.parse_args(values=defaults)
     options.config = config
+
+    if options.ca:
+        deprecated("--ca option is deprecated and will be removed in 1.24")
 
     # figure out actions
     actions = ('prune', 'trash', 'delete', 'salvage')

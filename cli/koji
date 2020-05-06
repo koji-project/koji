@@ -121,7 +121,7 @@ def get_options():
     parser.add_option("--principal", help=_("specify a Kerberos principal to use"))
     parser.add_option("--krbservice", help=_("specify the Kerberos service name for the hub"))
     parser.add_option("--cert", help=_("specify a SSL cert to use"), metavar="FILE")
-    parser.add_option("--ca", help=_("specify a SSL CA to use"), metavar="FILE")
+    parser.add_option("--ca", help=SUPPRESS_HELP, metavar="FILE")
     parser.add_option("--runas", help=_("run as the specified user (requires special privileges)"))
     parser.add_option("--user", help=_("specify user"))
     parser.add_option("--password", help=_("specify password"))
