@@ -46,14 +46,6 @@ def get_options():
                       help=_("use alternate configuration file"))
     parser.add_option("--keytab", help=_("specify a Kerberos keytab to use"))
     parser.add_option("--principal", help=_("specify a Kerberos principal to use"))
-    parser.add_option("--krbservice", default="host",
-                      help=_("the service name of the principal being used by the hub"))
-    parser.add_option("--krb-rdns", action="store_true", default=False,
-                      help=_("get reverse dns FQDN for krb target"))
-    parser.add_option("--krb-canon-host", action="store_true", default=False,
-                      help=_("get canonical hostname for krb target"))
-    parser.add_option("--krb-server-realm",
-                      help=_("the realm of server Kerberos principal"))
     parser.add_option("--runas", metavar="USER",
                       help=_("run as the specified user (requires special privileges)"))
     parser.add_option("--user", help=_("specify user"))
@@ -132,10 +124,6 @@ def get_options():
         # name, alias, type
         ['keytab', None, 'string'],
         ['principal', None, 'string'],
-        ['krbservice', None, 'string'],
-        ['krb_rdns', None, 'boolean'],
-        ['krb_canon_host', None, 'boolean'],
-        ['krb_server_realm', None, 'string'],
         ['runas', None, 'string'],
         ['user', None, 'string'],
         ['password', None, 'string'],
@@ -375,8 +363,8 @@ def activate_session(session):
     elif options.user:
         # authenticate using user/password
         session.login()
-    elif koji.krbV or koji.requests_kerberos:
-        session.krb_login(principal=options.principal, keytab=options.keytab,
+    elif koji.requests_kerberos:
+        session.gssapi_login(principal=options.principal, keytab=options.keytab,
                           proxyuser=options.runas)
     if not options.noauth and not session.logged_in:
         error(_("Error: unable to log in, no authentication methods available"))
