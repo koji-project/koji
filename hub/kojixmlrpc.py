@@ -230,6 +230,29 @@ class ModXMLRPCRequestHandler(object):
         parser.close()
         return unmarshaller.close(), unmarshaller.getmethodname()
 
+    def _log_exception(self):
+        e_class, e = sys.exc_info()[:2]
+        faultCode = getattr(e_class, 'faultCode', 1)
+        tb_type = context.opts.get('KojiTraceback', None)
+        tb_str = ''.join(traceback.format_exception(*sys.exc_info()))
+        if issubclass(e_class, koji.GenericError):
+            if context.opts.get('KojiDebug'):
+                if tb_type == "extended":
+                    faultString = koji.format_exc_plus()
+                else:
+                    faultString = tb_str
+            else:
+                faultString = str(e)
+        else:
+            if tb_type == "normal":
+                faultString = tb_str
+            elif tb_type == "extended":
+                faultString = koji.format_exc_plus()
+            else:
+                faultString = "%s: %s" % (e_class, e)
+        self.logger.warning(tb_str)
+        return faultCode, faultString
+
     def _wrap_handler(self, handler, environ):
         """Catch exceptions and encode response of handler"""
 
@@ -245,26 +268,7 @@ class ModXMLRPCRequestHandler(object):
         except Exception:
             self.traceback = True
             # report exception back to server
-            e_class, e = sys.exc_info()[:2]
-            faultCode = getattr(e_class, 'faultCode', 1)
-            tb_type = context.opts.get('KojiTraceback', None)
-            tb_str = ''.join(traceback.format_exception(*sys.exc_info()))
-            if issubclass(e_class, koji.GenericError):
-                if context.opts.get('KojiDebug'):
-                    if tb_type == "extended":
-                        faultString = koji.format_exc_plus()
-                    else:
-                        faultString = tb_str
-                else:
-                    faultString = str(e)
-            else:
-                if tb_type == "normal":
-                    faultString = tb_str
-                elif tb_type == "extended":
-                    faultString = koji.format_exc_plus()
-                else:
-                    faultString = "%s: %s" % (e_class, e)
-            self.logger.warning(tb_str)
+            faultCode, faultString = self._log_exception()
             response = dumps(Fault(faultCode, faultString), marshaller=Marshaller)
 
         return response
@@ -352,6 +356,7 @@ class ModXMLRPCRequestHandler(object):
                 results.append({'faultCode': faultCode,
                                 'faultString': faultString,
                                 'traceback': trace})
+                self._log_exception()
             else:
                 results.append([result])
 
