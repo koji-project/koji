@@ -333,6 +333,7 @@ def bytes_to_stdout(contents):
         sys.stdout.write(contents)
     else:
         sys.stdout.buffer.write(contents)
+        sys.stdout.buffer.flush()
 
 
 def watch_logs(session, tasklist, opts, poll_interval):
