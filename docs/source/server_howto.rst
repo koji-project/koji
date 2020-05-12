@@ -383,11 +383,16 @@ Install the ``postgresql-server`` package::
 Initialize PostgreSQL DB:
 -------------------------
 
-The following commands will initialize PostgreSQL and will start the database service
+Initialize PostgreSQL::
 
-::
-
+    # On RHEL 7:
     root@localhost$ postgresql-setup initdb
+
+    # Or RHEL 8 and Fedora:
+    root@localhost$ postgresql-setup --initdb --unit postgresql
+
+And start the database service::
+
     root@localhost$ systemctl enable postgresql --now
 
 Setup User Accounts:
