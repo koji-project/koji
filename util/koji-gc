@@ -15,7 +15,6 @@ import optparse
 import os
 import pprint
 import smtplib
-import socket  # for socket.error
 import sys
 import time
 from string import Template
@@ -365,7 +364,7 @@ def activate_session(session):
         session.login()
     elif koji.requests_kerberos:
         session.gssapi_login(principal=options.principal, keytab=options.keytab,
-                          proxyuser=options.runas)
+                             proxyuser=options.runas)
     if not options.noauth and not session.logged_in:
         error(_("Error: unable to log in, no authentication methods available"))
     ensure_connection(session)
