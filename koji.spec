@@ -439,7 +439,7 @@ koji-web is a web UI to the Koji system.
 %endif
 
 %prep
-%setup -q
+%autosetup -p1
 
 %build
 
