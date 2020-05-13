@@ -242,27 +242,6 @@ Kerberos Authentication
    keytab=/etc/kojid/kojid.keytab
       Location of the keytab.
 
-   krb_canon_host=False
-      Kerberos authentication requires correct hostnames. If this option is
-      specified, dns is used to get the correct hostname for the
-      server (i.e. resolve any CNAMEs). Note, this option will not function
-      unless ``python-dns`` is installed.
-      The ``krb_rdns`` option takes a different approach.
-
-   krb_principal=None
-      Explicit principal used for login. If it is not specified, it is
-      created via ``host_principal_format``.
-
-   krb_rdns=True
-      Kerberos authentication needs correct hostname. If this option is
-      specified, ``socket.getfqdn(host)`` is used to determine reverse DNS
-      records. Otherwise, ``host`` is used directly. Playing with this option
-      can help you in some firewalled setups. ``krb_canon_host`` takes
-      precedence over this option and takes a different approach.
-
-   krbservice=host
-      The service name of the principal being used by the hub.
-
 
 SSL Authentication
 ^^^^^^^^^^^^^^^^^^

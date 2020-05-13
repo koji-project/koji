@@ -33,8 +33,6 @@ def get_options():
     parser.add_option("-s", "--server", help=_("url of koji XMLRPC server"))
     parser.add_option("--keytab", help=_("specify a Kerberos keytab to use"))
     parser.add_option("--principal", help=_("specify a Kerberos principal to use"))
-    parser.add_option("--krbservice", default="host",
-                      help=_("the service name of the principal being used by the hub"))
     parser.add_option("--krb-rdns", action="store_true", default=False,
                       help=_("get reverse dns FQDN for krb target"))
     parser.add_option("--krb-canon-host", action="store_true", default=False,
@@ -88,9 +86,6 @@ def get_options():
             # name, alias, type
             ['keytab', None, 'string'],
             ['principal', None, 'string'],
-            ['krbservice', None, 'string'],
-            ['krb_rdns', None, 'boolean'],
-            ['krb_canon_host', None, 'boolean'],
             ['runas', None, 'string'],
             ['user', None, 'string'],
             ['password', None, 'string'],

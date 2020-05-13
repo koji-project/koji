@@ -57,11 +57,6 @@ from koji.tasks import (  # noqa: F401
     ServerRestart
 )
 
-try:
-    import krbV
-except ImportError:  # pragma: no cover
-    krbV = None
-
 
 # Register libvirt handler
 def libvirt_callback(ignore, err):
@@ -135,10 +130,6 @@ def get_options():
                 'host_principal_format': 'compile/%s@EXAMPLE.COM',
                 'keytab': '/etc/kojivmd/kojivmd.keytab',
                 'ccache': '/var/tmp/kojivmd.ccache',
-                'krbservice': 'host',
-                'krb_rdns': True,
-                'krb_canon_host': False,
-                'krb_server_realm': None,
                 'server': None,
                 'user': None,
                 'password': None,
@@ -160,8 +151,7 @@ def get_options():
                     defaults[name] = int(value)
                 except ValueError:
                     quit("value for %s option must be a valid integer" % name)
-            elif name in ['offline_retry', 'krb_rdns', 'krb_canon_host',
-                          'no_ssl_verify']:
+            elif name in ['offline_retry', 'no_ssl_verify']:
                 defaults[name] = config.getboolean('kojivmd', name)
             elif name in ['plugin', 'plugins']:
                 defaults['plugin'] = value.split()
@@ -1156,20 +1146,13 @@ if __name__ == "__main__":
             quit("Error: Unable to log in. Bad credentials?")
         except requests.exceptions.ConnectionError:
             quit("Error: Unable to connect to server %s" % (options.server))
-    elif krbV:
+    else:
         krb_principal = options.krb_principal
         if krb_principal is None:
             krb_principal = options.host_principal_format % socket.getfqdn()
-        try:
-            session.krb_login(principal=krb_principal,
-                              keytab=options.keytab,
-                              ccache=options.ccache)
-        except krbV.Krb5Error as e:
-            quit("Kerberos authentication failed: '%s' (%s)" % (e.args[1], e.args[0]))
-        except socket.error as e:
-            quit("Could not connect to Kerberos authentication service: '%s'" % e.args[1])
-    else:
-        quit("No username/password supplied and Kerberos missing or not configured")
+        session.gssapi_login(principal=krb_principal,
+                             keytab=options.keytab,
+                             ccache=options.ccache)
     # make session exclusive
     try:
         session.exclusiveSession(force=options.force_lock)

@@ -62,16 +62,6 @@ from six.moves import range, zip
 from koji.xmlrpcplus import Fault, dumps, getparser, loads, xmlrpc_client
 from . import util
 
-krbV = None
-try:
-    import krbV
-except ImportError:  # pragma: no cover
-    pass
-dns_resolver = None
-try:
-    import dns.resolver as dns_resolver
-except ImportError:  # pragma: no cover
-    pass
 SSL_Error = None
 try:
     from OpenSSL.SSL import Error as SSL_Error
@@ -1899,10 +1889,6 @@ def read_config(profile_name, user_config=None):
         'use_fast_upload': False,
         'upload_blocksize': 1048576,
         'poll_interval': 6,
-        'krbservice': 'host',
-        'krb_rdns': True,
-        'krb_canon_host': False,
-        'krb_server_realm': None,
         'principal': None,
         'keytab': None,
         'cert': None,
@@ -1949,9 +1935,8 @@ def read_config(profile_name, user_config=None):
             # options *can* be set via the config file. Such options should
             # not have a default value set in the option parser.
             if name in result:
-                if name in ('anon_retry', 'offline_retry',
-                            'use_fast_upload', 'krb_rdns', 'debug',
-                            'debug_xmlrpc', 'krb_canon_host'):
+                if name in ('anon_retry', 'offline_retry', 'use_fast_upload',
+                            'debug', 'debug_xmlrpc'):
                     result[name] = config.getboolean(profile_name, name)
                 elif name in ('max_retries', 'retry_interval',
                               'offline_retry_interval', 'poll_interval',
@@ -2371,7 +2356,6 @@ def grab_session_options(options):
     s_opts = (
         'user',
         'password',
-        'krbservice',
         'debug_xmlrpc',
         'debug',
         'max_retries',
@@ -2383,9 +2367,6 @@ def grab_session_options(options):
         'auth_timeout',
         'use_fast_upload',
         'upload_blocksize',
-        'krb_rdns',
-        'krb_canon_host',
-        'krb_server_realm',
         'no_ssl_verify',
         'serverca',
     )
@@ -2472,121 +2453,6 @@ class ClientSession(object):
         "Create a subsession"
         sinfo = self.callMethod('subsession')
         return type(self)(self.baseurl, self.opts, sinfo)
-
-    def krb_login(self, principal=None, keytab=None, ccache=None, proxyuser=None, ctx=None):
-        """Log in using Kerberos.  If principal is not None and keytab is
-        not None, then get credentials for the given principal from the given keytab.
-        If both are None, authenticate using existing local credentials (as obtained
-        from kinit).  ccache is the absolute path to use for the credential cache. If
-        not specified, the default ccache will be used.  If proxyuser is specified,
-        log in the given user instead of the user associated with the Kerberos
-        principal.  The principal must be in the "ProxyPrincipals" list on
-        the server side.  ctx is the Kerberos context to use, and should be unique
-        per thread.  If ctx is not specified, the default context is used."""
-
-        util.deprecated("Please use gssapi_login instead, krb_login will be removed in koji 1.22")
-        try:
-            # Silently try GSSAPI first
-            if self.gssapi_login(principal, keytab, ccache, proxyuser=proxyuser):
-                return True
-        except Exception as e:
-            if krbV:
-                e_str = ''.join(traceback.format_exception_only(type(e), e))
-                self.logger.debug('gssapi auth failed: %s', e_str)
-                pass
-            else:
-                raise
-
-        if not krbV:
-            raise PythonImportError(
-                "Please install python-krbV to use kerberos."
-            )
-
-        if not ctx:
-            ctx = krbV.default_context()
-
-        if ccache is not None:
-            ccache = krbV.CCache(name=ccache, context=ctx)
-        else:
-            ccache = ctx.default_ccache()
-
-        if principal is not None:
-            if keytab is not None:
-                cprinc = krbV.Principal(name=principal, context=ctx)
-                keytab = krbV.Keytab(name=keytab, context=ctx)
-                ccache.init(cprinc)
-                ccache.init_creds_keytab(principal=cprinc, keytab=keytab)
-            else:
-                raise AuthError('cannot specify a principal without a keytab')
-        else:
-            # We're trying to log ourself in.  Connect using existing credentials.
-            cprinc = ccache.principal()
-
-        self.logger.debug('Authenticating as: %s', cprinc.name)
-        sprinc = krbV.Principal(name=self._serverPrincipal(cprinc), context=ctx)
-
-        ac = krbV.AuthContext(context=ctx)
-        ac.flags = krbV.KRB5_AUTH_CONTEXT_DO_SEQUENCE | krbV.KRB5_AUTH_CONTEXT_DO_TIME
-        ac.rcache = ctx.default_rcache()
-
-        # create and encode the authentication request
-        (ac, req) = ctx.mk_req(server=sprinc, client=cprinc,
-                               auth_context=ac, ccache=ccache,
-                               options=krbV.AP_OPTS_MUTUAL_REQUIRED)
-        req_enc = base64.encodestring(req)
-
-        # ask the server to authenticate us
-        (rep_enc, sinfo_enc, addrinfo) = self.callMethod('krbLogin', req_enc, proxyuser)
-        # Set the addrinfo we received from the server
-        # (necessary before calling rd_priv())
-        # addrinfo is in (serveraddr, serverport, clientaddr, clientport)
-        # format, so swap the pairs because clientaddr is now the local addr
-        ac.addrs = tuple((addrinfo[2], addrinfo[3], addrinfo[0], addrinfo[1]))
-
-        # decode and read the reply from the server
-        rep = base64.b64decode(rep_enc)
-        ctx.rd_rep(rep, auth_context=ac)
-
-        # decode and decrypt the login info
-        sinfo_priv = base64.b64decode(sinfo_enc)
-        sinfo_str = ac.rd_priv(sinfo_priv)
-        sinfo = dict(zip(['session-id', 'session-key'], sinfo_str.split()))
-
-        if not sinfo:
-            self.logger.warning('No session info received')
-            return False
-        self.setSession(sinfo)
-
-        self.krb_principal = cprinc.name
-        self.authtype = AUTHTYPE_KERB
-        return True
-
-    def _serverPrincipal(self, cprinc):
-        """Get the Kerberos principal of the server we're connecting
-        to, based on baseurl."""
-
-        host = six.moves.urllib.parse.urlparse(self.baseurl).hostname
-        servername = self._fix_krb_host(host)
-        realm = self.opts.get('krb_server_realm')
-        if not realm:
-            realm = cprinc.realm
-        service = self.opts.get('krbservice', 'host')
-
-        ret = '%s/%s@%s' % (service, servername, realm)
-        self.logger.debug('Using server principal: %s', ret)
-        return ret
-
-    def _fix_krb_host(self, host):
-        if self.opts.get('krb_canon_host', False):
-            if dns_resolver is None:
-                self.logger.warning('python-dns missing -- cannot resolve hostname')
-            else:
-                answer = dns_resolver.query(host, 'A')
-                return answer.canonical_name.to_text(omit_final_dot=True)
-        if self.opts.get('krb_rdns', True):
-            return socket.getfqdn(host)
-        # else
-        return host
 
     def gssapi_login(self, principal=None, keytab=None, ccache=None, proxyuser=None):
         if not requests_kerberos:

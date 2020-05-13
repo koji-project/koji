@@ -119,7 +119,6 @@ def get_options():
                       help=_("specify a configuration profile"))
     parser.add_option("--keytab", help=_("specify a Kerberos keytab to use"), metavar="FILE")
     parser.add_option("--principal", help=_("specify a Kerberos principal to use"))
-    parser.add_option("--krbservice", help=_("specify the Kerberos service name for the hub"))
     parser.add_option("--cert", help=_("specify a SSL cert to use"), metavar="FILE")
     parser.add_option("--ca", help=SUPPRESS_HELP, metavar="FILE")  # FIXME: remove in 1.24
     parser.add_option("--runas", help=_("run as the specified user (requires special privileges)"))

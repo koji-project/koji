@@ -883,11 +883,6 @@ For a simple test, all we need is the ``server`` and authentication sections.
     ;path to the koji top directory
     topdir = /mnt/koji
 
-    ; configuration for Kerberos authentication
-
-    ;the service name of the principal being used by the hub
-    ;krbservice = host
-
     ; configuration for SSL athentication
 
     ;client certificate
@@ -1350,12 +1345,6 @@ Authentication Configuration
 
     ;location of the keytab
     ;keytab = /etc/kojira/kojira.keytab
-
-    ;the service name of the principal being used by the hub
-    ;krbservice = host
-
-    ;The realm of server principal. Using client's realm if not set
-    ;krb_server_realm = EXAMPLE.COM
 
 ``/etc/sysconfig/kojira``
     The local user kojira runs as needs to be able to read and write to

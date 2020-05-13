@@ -9,7 +9,6 @@ import koji
 
 NORMAL_VAL = {'user': 'jdoe',
               'password': 'fakepwd',
-              'krbservice': 'fakekrbservice',
               'debug_xmlrpc': True,
               'debug': False,
               'max_retries': 3,
@@ -20,8 +19,6 @@ NORMAL_VAL = {'user': 'jdoe',
               'timeout': 30000,
               'use_fast_upload': False,
               'upload_blocksize': 1024,
-              'krb_rdns': 'fakerdns',
-              'krb_canon_host': 'fakehost',
               'no_ssl_verify': True,
               'serverca': '/fake/serverca.cert',
               }
@@ -30,7 +27,6 @@ EMPTY_VAL = {}
 
 NONE_VAL = {'user': None,
             'password': None,
-            'krbservice': None,
             'debug_xmlrpc': None,
             'debug': None,
             'max_retries': None,
@@ -41,8 +37,6 @@ NONE_VAL = {'user': None,
             'timeout': None,
             'use_fast_upload': None,
             'upload_blocksize': None,
-            'krb_rdns': None,
-            'krb_canon_host': None,
             'no_ssl_verify': None,
             'serverca': None,
             }
@@ -53,13 +47,11 @@ MIXED_VAL = {'user': None,
              'password': None,
              'anon_retry': 3,
              'timeout': 100,
-             'krb_rdns': 'fakerdns',
              'meaningless': 'wow',
              'nonval': None}
 
 MIXED_REL = {'anon_retry': 3,
              'timeout': 100,
-             'krb_rdns': 'fakerdns',
              }
 
 
