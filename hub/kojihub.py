@@ -64,6 +64,7 @@ from koji.daemon import SCM
 from koji.util import (
     base64encode,
     decode_bytes,
+    deprecated,
     dslice,
     joinpath,
     move_and_symlink,
@@ -13502,6 +13503,7 @@ class HostExports(object):
         return task.open(host.id)
 
     def getTask(self):
+        deprecated("Call host.openTask is deprecated and will be removed in 1.23")
         host = Host()
         host.verify()
         return host.getTask()
