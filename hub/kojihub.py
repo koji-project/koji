@@ -4069,6 +4069,12 @@ def get_user_by_krb_principal(krb_principal, strict=False, krb_princs=True):
 
 
 def find_build_id(X, strict=False):
+    """gets build ID for various inputs
+
+    :param int|str|dict X: build ID | NVR | dict with name, version and release values
+
+    :returns int: build ID
+    """
     if isinstance(X, six.integer_types):
         return X
     elif isinstance(X, str):
@@ -10569,6 +10575,7 @@ class RootExports(object):
 
     def buildReferences(self, build, limit=None, lazy=False):
         return build_references(get_build(build, strict=True)['id'], limit, lazy)
+    buildReferences.__doc__ = build_references.__doc__
 
     addVolume = staticmethod(add_volume)
     removeVolume = staticmethod(remove_volume)
@@ -10599,6 +10606,19 @@ class RootExports(object):
         return apply_volume_policy(build, strict)
 
     def createEmptyBuild(self, name, version, release, epoch, owner=None):
+        """Creates empty build entry
+
+        :param str name: build name
+        :param str version: build version
+        :param str release: release version
+        :param str epoch: epoch version
+        :param userInfo: a str (Kerberos principal or name) or an int (user id)
+                         or a dict:
+                             - id: User's ID
+                             - name: User's name
+                             - krb_principal: Kerberos principal
+        :return: int build ID
+        """
         context.session.assertPerm('admin')
         data = {'name': name, 'version': version, 'release': release,
                 'epoch': epoch}
@@ -11379,6 +11399,16 @@ class RootExports(object):
         return writeInheritanceData(tag, data, clear=clear)
 
     def getFullInheritance(self, tag, event=None, reverse=False, stops=None, jumps=None):
+        """
+        :param int|str tag: tag ID | name
+        :param int event: event ID
+        :param bool reverse: return reversed tree (descendants instead of
+                             parents)
+        :param dict stops: dict of tag ids which should be ignored
+        :param dict jumps: dict of tag ids which should be skipped
+
+        :returns: list of node dicts
+        """
         if stops is None:
             stops = {}
         if jumps is None:
@@ -11886,6 +11916,16 @@ class RootExports(object):
         return taginfo
 
     def getRepo(self, tag, state=None, event=None, dist=False):
+        """Get individual repository data based on tag and additional filters.
+        If more repos fits, most recent is returned.
+
+        :param int|str tag: tag ID or name
+        :param int state: value from koji.REPO_STATES
+        :param int event: event ID
+        :param bool dist: True = dist repo, False = regular repo
+
+        :returns: dict with repo data (id, state, create_event, time, dist)
+        """
         if isinstance(tag, six.integer_types):
             id = tag
         else:
@@ -12480,6 +12520,17 @@ class RootExports(object):
             return None
 
     def setBuildOwner(self, build, user):
+        """Sets owner of a build
+
+        :param int|str|dict build: build ID, NVR or dict with name, version and release
+        :param user: a str (Kerberos principal or name) or an int (user id)
+                     or a dict:
+                         - id: User's ID
+                         - name: User's name
+                         - krb_principal: Kerberos principal
+
+        :returns: None
+        """
         context.session.assertPerm('admin')
         buildinfo = get_build(build, strict=True)
         userinfo = get_user(user, strict=True)
