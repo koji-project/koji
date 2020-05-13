@@ -336,8 +336,8 @@ class WindowsBuild(object):
                 checksum = hashlib.md5()
             else:
                 raise BuildError('Unknown checksum type %s for %s' % (  # noqa: F821
-                        checksum_type,
-                        os.path.basename(fileinfo['localpath'])))
+                                 checksum_type,
+                                 os.path.basename(fileinfo['localpath'])))
         with open(destpath, 'w') as destfile:
             offset = 0
             while True:

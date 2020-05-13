@@ -2612,7 +2612,7 @@ def anon_handle_list_untagged(goptions, session, args):
             if refs.get('rpms'):
                 r.append("rpms: %s" % refs['rpms'])
             if refs.get('component_of'):
-                r.append("images/archives: %" % refs['component_of'])
+                r.append("images/archives: %s" % refs['component_of'])
             if refs.get('archives'):
                 r.append("archives buildroots: %s" % refs['archives'])
             build['refs'] = ', '.join(r)

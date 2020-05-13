@@ -6,7 +6,7 @@ import koji
 from koji.context import context
 from koji.plugin import export
 sys.path.insert(0, '/usr/share/koji-hub/')
-import kojihub  # noqa: F402
+import kojihub  # noqa: E402
 
 __all__ = ('saveFailedTree',)
 

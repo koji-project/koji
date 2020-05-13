@@ -8,7 +8,7 @@ import koji.policy
 from koji.context import context
 from koji.plugin import callback, export
 sys.path.insert(0, "/usr/share/koji-hub/")
-from kojihub import (  # noqa: F402
+from kojihub import (  # noqa: E402
     QueryProcessor,
     _create_build_target,
     _create_tag,
