@@ -2287,6 +2287,11 @@ def add_host_to_channel(hostname, channel_name, create=False):
 
 
 def remove_host_from_channel(hostname, channel_name):
+    """Remove the host from the specified channel
+
+    :param str hostname: host name
+    :param str channel_name: channel name
+    """
     context.session.assertPerm('host')
     host = get_host(hostname)
     if host is None:
@@ -2784,6 +2789,14 @@ def repo_set_state(repo_id, state, check=True):
 
 
 def repo_info(repo_id, strict=False):
+    """Get repo information
+
+    :param int repo_id: repo ID
+    :param bool strict: raise an error on non-existent repo
+
+    :returns: dict (id, state, create_event, creation_time, tag_id, tag_name,
+              dist)
+    """
     fields = (
         ('repo.id', 'id'),
         ('repo.state', 'state'),
@@ -7487,6 +7500,14 @@ def check_rpm_sig(an_rpm, sigkey, sighdr):
 
 
 def query_rpm_sigs(rpm_id=None, sigkey=None, queryOpts=None):
+    """Queries db for rpm signatures
+
+    :param int rpm_id: rpm ID
+    :param int sigkey: signature key hash
+    :param queryOpts: query options used by the QueryProcessor.
+
+    :returns: list of dicts (rpm_id, sigkey, sighash)
+    """
     fields = ('rpm_id', 'sigkey', 'sighash')
     clauses = []
     if rpm_id is not None:
@@ -9936,6 +9957,13 @@ class RootExports(object):
     '''Contains functions that are made available via XMLRPC'''
 
     def restartHosts(self, priority=5, options=None):
+        """Spawns restartHosts task
+
+        :param int priority: task priority
+        :param dict options: additional task arguments (see restartHosts task)
+
+        :returns: task ID
+        """
         context.session.assertPerm('host')
         if options is None:
             args = []
@@ -10212,9 +10240,11 @@ class RootExports(object):
         return koji.API_VERSION
 
     def mavenEnabled(self):
+        """Get status of maven support"""
         return bool(context.opts.get('EnableMaven'))
 
     def winEnabled(self):
+        """Get status of windows support"""
         return bool(context.opts.get('EnableWin'))
 
     def showSession(self):
@@ -10226,6 +10256,7 @@ class RootExports(object):
         return context.session.session_data
 
     def showOpts(self):
+        """Returns hub options"""
         context.session.assertPerm('admin')
         return "%r" % context.opts
 
@@ -10277,22 +10308,29 @@ class RootExports(object):
         return _singleRow(q, values, fields, strict=True)
 
     def makeTask(self, *args, **opts):
-        # this is mainly for debugging
-        # only an admin can make arbitrary tasks
+        """Creates task manually. This is mainly for debugging, only an admin
+        can make arbitrary tasks. You need to supply all *args and **opts
+        accordingly to the task."""
         context.session.assertPerm('admin')
         return make_task(*args, **opts)
 
     def uploadFile(self, path, name, size, md5sum, offset, data, volume=None):
-        # path: the relative path to upload to
-        # name: the name of the file
-        # size: size of contents (bytes)
-        # md5: md5sum (hex digest) of contents
-        # data: base64 encoded file contents
-        # offset: the offset of the chunk
-        # files can be uploaded in chunks, if so the md5 and size describe
-        # the chunk rather than the whole file. the offset indicates where
-        # the chunk belongs
-        # the special offset -1 is used to indicate the final chunk
+        """upload file to the hub
+
+        Files can be uploaded in chunks, if so the md5 and size describe the
+        chunk rather than the whole file.
+
+        :param str path: the relative path to upload to
+        :param str name: the name of the file
+        :param int size: size of contents (bytes)
+        :param str md5: md5sum (hex digest) of contents
+        :param str data: base64 encoded file contents
+        :param int offset: The offset indicates where the chunk belongs.
+                           The special offset -1 is used to indicate the final
+                           chunk.
+
+        :returns: True
+        """
         context.session.assertLogin()
         contents = base64.b64decode(data)
         del data
