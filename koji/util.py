@@ -123,18 +123,18 @@ def duration(start):
     return '%s:%02i' % (mins, secs)
 
 
-def printList(l):
+def printList(lst):
     """Print the contents of the list comma-separated"""
-    if len(l) == 0:
+    if len(lst) == 0:
         return ''
-    elif len(l) == 1:
-        return l[0]
-    elif len(l) == 2:
-        return ' and '.join(l)
+    elif len(lst) == 1:
+        return lst[0]
+    elif len(lst) == 2:
+        return ' and '.join(lst)
     else:
-        ret = ', '.join(l[:-1])
+        ret = ', '.join(lst[:-1])
         ret += ', and '
-        ret += l[-1]
+        ret += lst[-1]
         return ret
 
 
@@ -838,7 +838,7 @@ def parse_maven_chain(confs, scratch=False):
     return builds
 
 
-def to_list(l):
+def to_list(lst):
     """
     Helper function for py2/py3 compatibility used e.g. in
     list(dict.keys())
@@ -847,7 +847,7 @@ def to_list(l):
     used, so it is always an iterator.
     """
 
-    if isinstance(l, list):
-        return l
+    if isinstance(lst, list):
+        return lst
     else:
-        return list(l)
+        return list(lst)
