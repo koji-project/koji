@@ -7,7 +7,7 @@ BEGIN WORK;
 -- in the event that the system clock rolls back, event_ids will retain proper sequencing
 CREATE TABLE events (
 	id SERIAL NOT NULL PRIMARY KEY,
-	time TIMESTAMP NOT NULL DEFAULT clock_timestamp()
+	time TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp()
 ) WITHOUT OIDS;
 
 -- A function that creates an event and returns the id, used as DEFAULT value for versioned tables
@@ -18,7 +18,7 @@ CREATE FUNCTION get_event() RETURNS INTEGER AS '
 
 -- A convenience function for converting events to timestamps, useful for
 -- quick queries where you want to avoid JOINs.
-CREATE FUNCTION get_event_time(INTEGER) RETURNS TIMESTAMP AS '
+CREATE FUNCTION get_event_time(INTEGER) RETURNS TIMESTAMPTZ AS '
 	SELECT time FROM events WHERE id=$1;
 ' LANGUAGE SQL;
 
@@ -116,8 +116,8 @@ CREATE TABLE sessions (
 	authtype INTEGER,
 	hostip VARCHAR(255),
 	callnum INTEGER,
-	start_time TIMESTAMP NOT NULL DEFAULT NOW(),
-	update_time TIMESTAMP NOT NULL DEFAULT NOW(),
+	start_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	update_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 	exclusive BOOLEAN CHECK (exclusive),
 	CONSTRAINT no_exclusive_subsessions CHECK (
 		master IS NULL OR "exclusive" IS NULL),
@@ -213,9 +213,9 @@ CREATE TABLE host_channels (
 CREATE TABLE task (
 	id SERIAL NOT NULL PRIMARY KEY,
 	state INTEGER,
-	create_time TIMESTAMP NOT NULL DEFAULT NOW(),
-	start_time TIMESTAMP,
-	completion_time TIMESTAMP,
+	create_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	start_time TIMESTAMPTZ,
+	completion_time TIMESTAMPTZ,
 	channel_id INTEGER NOT NULL REFERENCES channels(id),
 	host_id INTEGER REFERENCES host (id),
 	parent INTEGER REFERENCES task (id),
@@ -279,8 +279,8 @@ CREATE TABLE build (
 	epoch INTEGER,
 	source TEXT,
 	create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
-	start_time TIMESTAMP,
-	completion_time TIMESTAMP,
+	start_time TIMESTAMPTZ,
+	completion_time TIMESTAMPTZ,
 	state INTEGER NOT NULL,
 	task_id INTEGER REFERENCES task (id),
 	owner INTEGER NOT NULL REFERENCES users (id),
@@ -518,7 +518,7 @@ CREATE TABLE cg_users (
 CREATE TABLE build_reservations (
 	build_id INTEGER NOT NULL REFERENCES build(id),
 	token VARCHAR(64),
-        created TIMESTAMP NOT NULL,
+        created TIMESTAMPTZ NOT NULL,
 	PRIMARY KEY (build_id)
 ) WITHOUT OIDS;
 CREATE INDEX build_reservations_created ON build_reservations(created);
