@@ -1,0 +1,7 @@
+[Unit]
+Description=Koji garbage collection
+Documentation=https://docs.pagure.org/koji/utils/
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/koji-gc --lock-file=/var/lock/koji-gc.lock --exit-on-lock

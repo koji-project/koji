@@ -594,6 +594,8 @@ rm -rf $RPM_BUILD_ROOT
 %files utils
 %{_sbindir}/kojira
 %if %{use_systemd}
+%{_unitdir}/koji-gc.service
+%{_unitdir}/koji-gc.timer
 %{_unitdir}/kojira.service
 %else
 %{_initrddir}/kojira

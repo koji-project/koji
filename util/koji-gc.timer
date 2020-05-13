@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily Koji garbage collection
+Documentation=https://docs.pagure.org/koji/utils/
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+
+[Install]
+WantedBy=timers.target
