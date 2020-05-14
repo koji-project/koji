@@ -2988,9 +2988,12 @@ def anon_handle_list_builds(goptions, session, args):
     parser.add_option("--package", help=_("List builds for this package"))
     parser.add_option("--buildid", help=_("List specific build from ID or nvr"))
     parser.add_option("--before",
-                      help=_("List builds built before this time"))
+                      help=_("List builds built before this time, "
+                             "time is specified as timestamp or date/time in any "
+                             "format which can be parsed by dateutil.parser. e.g. "
+                             "\"2020-12-31 12:35\" or \"December 31st 12:35\""))
     parser.add_option("--after",
-                      help=_("List builds built after this time"))
+                      help=_("List builds built after this time (same format as for --before"))
     parser.add_option("--state", help=_("List builds in this state"))
     parser.add_option("--type", help=_("List builds of this type."))
     parser.add_option("--prefix", help=_("Only list packages starting with this prefix"))
@@ -4449,9 +4452,13 @@ def anon_handle_list_history(goptions, session, args):
     parser.add_option("--group", help=_("Only show entries relating to a given group"))
     parser.add_option("--host", help=_("Only show entries related to given host"))
     parser.add_option("--channel", help=_("Only show entries related to given channel"))
-    parser.add_option("--before", metavar="TIMESTAMP",
-                      help=_("Only show entries before timestamp"))
-    parser.add_option("--after", metavar="TIMESTAMP", help=_("Only show entries after timestamp"))
+    parser.add_option("--before",
+                      help=_("Only show entries before this time, "
+                             "time is specified as timestamp or date/time in any "
+                             "format which can be parsed by dateutil.parser. e.g. "
+                             "\"2020-12-31 12:35\" or \"December 31st 12:35\""))
+    parser.add_option("--after",
+                      help=_("Only show entries after timestamp (same format as for --before)"))
     parser.add_option("--before-event", metavar="EVENT_ID", type='int',
                       help=_("Only show entries before event"))
     parser.add_option("--after-event", metavar="EVENT_ID", type='int',
