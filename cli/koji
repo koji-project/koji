@@ -168,6 +168,9 @@ def get_options():
         value = os.path.expanduser(getattr(options, name))
         setattr(options, name, value)
 
+    if options.ca:
+        koji.util.deprecated("--ca option is deprecated and will be removed in 1.24")
+
     # honor topdir
     if options.topdir:
         koji.BASEDIR = options.topdir
