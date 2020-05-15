@@ -150,6 +150,9 @@ def get_options():
                       help=_("list commands"))
     (options, args) = parser.parse_args()
 
+    if options.ca:
+        koji.util.deprecated("--ca option is deprecated and will be removed in 1.24")
+
     # load local config
     try:
         result = koji.read_config(options.profile, user_config=options.configFile)
@@ -167,9 +170,6 @@ def get_options():
         # expand paths here, so we don't have to worry about it later
         value = os.path.expanduser(getattr(options, name))
         setattr(options, name, value)
-
-    if options.ca:
-        koji.util.deprecated("--ca option is deprecated and will be removed in 1.24")
 
     # honor topdir
     if options.topdir:
