@@ -658,6 +658,19 @@ Unit tests are run automatically for any commit in master branch. We use
 Fedora's jenkins instance for that. Details are given here: :doc:`Unit tests
 in Fedora's Jenkins <configuring_jenkins>`.
 
+Further testing
+===============
+
+Currently we automatically build two versions of rpms in Fedora's `Copr
+<https://copr.fedorainfracloud.org/>`__. First one is simple "master" branch and
+is available `here <https://copr.fedorainfracloud.org/coprs/tkopecek/koji/>`__.
+These RPMs are early release candidates before we tag each final release. Second
+one lives `here
+<https://copr.fedorainfracloud.org/coprs/tkopecek/koji-testing/>`__ and contains
+the "master" branch with all the in-progress pull requests that have
+"testing-ready" flag. Both repos are built once per four hours if there are new
+changes in pagure.
+
 Code Style
 ==========
 
