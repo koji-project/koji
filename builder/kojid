@@ -3067,6 +3067,16 @@ class ImageTask(BaseTaskHandler):
         self.uploadFile(kskoji)
         return broot.path_without_to_within(kskoji)  # absolute path within chroot
 
+    def getBootloaderAppend(self):
+        """
+        Return `bootloader --append`
+        This is passed to livemedia `--extra-boot-args`
+        """
+        try:
+            return self.ks.handler.bootloader.appendLine
+        except AttributeError:
+            return
+
     def getImagePackages(self, cachepath):
         """
         Read RPM header information from the yum cache available in the
@@ -3511,6 +3521,7 @@ class LiveMediaTask(ImageTask):
         kspath = self.fetchKickstart(broot, ksfile, target_info['build_tag_name'])
         self.readKickstart(kspath, opts)
         kskoji = self.prepareKickstart(repo_info, target_info, arch, broot, opts)
+        b_append = self.getBootloaderAppend()
 
         # arbitrary paths in chroot
         livemedia_log = broot.tmpdir(within=True) + '/lmc-logs/livemedia-out.log'
@@ -3547,6 +3558,10 @@ class LiveMediaTask(ImageTask):
 
         if arch == 'x86_64':
             cmd.append('--macboot')
+
+        if b_append:
+            cmd.extend(['--extra-boot-args',
+                        '--append=\"%s\"' % b_append])
 
         if 'lorax_url' in self.opts:
             templates_dir = self.fetch_lorax_templates_from_scm(broot)
