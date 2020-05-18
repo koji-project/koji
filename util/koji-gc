@@ -426,7 +426,7 @@ Build: %%(name)s-%%(version)s-%%(release)s
             s = smtplib.SMTP(options.smtp_host)
             if options.smtp_user is not None and options.smtp_pass is not None:
                 s.login(options.smtp_user, options.smtp_pass)
-                s.sendmail(msg['From'], emails, msg.as_string())
+            s.sendmail(msg['From'], emails, msg.as_string())
             s.quit()
         except Exception:
             print("FAILED: Sending warning notice to %s" % emails)
