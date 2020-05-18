@@ -1224,6 +1224,10 @@ a host, but allow from it otherwise
 
 The explicit block syntax was added in version 1.13.0.
 
+SCM checkout can contain multiple spec files (checkouted or created by
+``source_cmd``). In such case spec file named same as a checkout directory will
+be selected.
+
 
 Add the host to the createrepo channel
 --------------------------------------
