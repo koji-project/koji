@@ -1751,16 +1751,17 @@ def format_exc_plus():
 
 
 def request_with_retry(retries=3, backoff_factor=0.3,
-                        status_forcelist=(500, 502, 504, 408, 429), session=None):
+                       status_forcelist=(500, 502, 504, 408, 429), session=None):
     # stolen from https://www.peterbe.com/plog/best-practice-with-retries-with-requests
     session = session or requests.Session()
     retry = Retry(total=retries, read=retries, connect=retries,
-                backoff_factor=backoff_factor,
-                status_forcelist=status_forcelist)
+                  backoff_factor=backoff_factor,
+                  status_forcelist=status_forcelist)
     adapter = HTTPAdapter(max_retries=retry)
     session.mount('http://', adapter)
     session.mount('https://', adapter)
     return session
+
 
 def openRemoteFile(relpath, topurl=None, topdir=None, tempdir=None):
     """Open a file on the main server (read-only)
@@ -1780,6 +1781,13 @@ def openRemoteFile(relpath, topurl=None, topdir=None, tempdir=None):
             raise GenericError("Downloaded file %s doesn't match expected size (%s vs %s)" %
                                (url, fo.tell(), resp.headers['Content-Length']))
         fo.seek(0)
+        if relpath.endswith('.rpm'):
+            # if it is an rpm run basic checks (assume that anything ending with the suffix,
+            # but not being rpm is suspicious anyway)
+            try:
+                check_rpm_file(fo)
+            except Exception as ex:
+                raise GenericError("Downloaded rpm %s is corrupted:\n%s" % (url, str(ex)))
     elif topdir:
         fn = "%s/%s" % (topdir, relpath)
         fo = open(fn)

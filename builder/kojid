@@ -1148,7 +1148,6 @@ class BuildTask(BaseTaskHandler):
         opts = dict([(k, getattr(self.options, k)) for k in ('topurl', 'topdir')])
         opts['tempdir'] = self.workdir
         with koji.openRemoteFile(relpath, **opts) as fo:
-            koji.check_rpm_file(fo)
             h = koji.get_rpm_header(fo)
         if not koji.get_header_field(h, 'sourcepackage'):
             raise koji.BuildError("%s is not a source package" % srpm)

@@ -170,7 +170,6 @@ class MiscFunctionTestCase(unittest.TestCase):
             m_requests.register_uri('GET', url, text=text,
                     headers = {'Content-Length': "3"})
             m_TemporaryFile.return_value.tell.return_value = len(text)
-            # using neither
             with self.assertRaises(koji.GenericError):
                 koji.openRemoteFile(path, topurl=topurl)
             m_TemporaryFile.assert_called_once()
@@ -186,12 +185,31 @@ class MiscFunctionTestCase(unittest.TestCase):
             m_requests.register_uri('GET', url, text=text,
                     headers = {'Content-Length': "100"})
             m_TemporaryFile.return_value.tell.return_value = len(text)
-            # using neither
             with self.assertRaises(koji.GenericError):
                 koji.openRemoteFile(path, topurl=topurl)
             m_TemporaryFile.assert_called_once()
             m_TemporaryFile.return_value.tell.assert_called()
             m_open.assert_not_called()
+
+    def test_openRemoteFile_valid_rpm(self):
+        # downloaded file is correct rpm
+        with requests_mock.Mocker() as m_requests:
+            topurl = 'http://example.com/koji'
+            path = 'tests/test_lib/data/rpms/test-src-1-1.fc24.src.rpm'
+            url = os.path.join(topurl, path)
+            m_requests.register_uri('GET', url, body=open(path, 'rb'))
+            #with self.assertRaises(koji.GenericError):
+            koji.openRemoteFile(path, topurl=topurl)
+
+    def test_openRemoteFile_invalid_rpm(self):
+        # downloaded file is correct rpm
+        with requests_mock.Mocker() as m_requests:
+            topurl = 'http://example.com/koji'
+            path = 'file.rpm'
+            url = os.path.join(topurl, path)
+            m_requests.register_uri('GET', url, text='123')
+            with self.assertRaises(koji.GenericError):
+                koji.openRemoteFile(path, topurl=topurl)
 
     def test_joinpath_bad(self):
         bad_joins = [
