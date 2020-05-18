@@ -1915,7 +1915,7 @@ def read_config(profile_name, user_config=None):
             result[name] = os.path.expanduser(result[name])
 
     if result.get('ca'):
-        util.deprecated("--ca option is deprecated and will be removed in 1.24")
+        util.deprecated("ca option in config file is deprecated and will be removed in 1.24")
 
     return result
 

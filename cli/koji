@@ -150,6 +150,9 @@ def get_options():
                       help=_("list commands"))
     (options, args) = parser.parse_args()
 
+    if options.ca:
+        koji.util.deprecated("--ca option is deprecated and will be removed in 1.24")
+
     # load local config
     try:
         result = koji.read_config(options.profile, user_config=options.configFile)
