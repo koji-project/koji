@@ -55,6 +55,8 @@ import six
 import six.moves.configparser
 import six.moves.http_client
 import six.moves.urllib
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
 from six.moves import range, zip
 
 from koji.xmlrpcplus import Fault, dumps, getparser, loads, xmlrpc_client
@@ -1748,6 +1750,18 @@ def format_exc_plus():
     return rv
 
 
+def request_with_retry(retries=3, backoff_factor=0.3,
+                        status_forcelist=(500, 502, 504, 408, 429), session=None):
+    # stolen from https://www.peterbe.com/plog/best-practice-with-retries-with-requests
+    session = session or requests.Session()
+    retry = Retry(total=retries, read=retries, connect=retries,
+                backoff_factor=backoff_factor,
+                status_forcelist=status_forcelist)
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount('http://', adapter)
+    session.mount('https://', adapter)
+    return session
+
 def openRemoteFile(relpath, topurl=None, topdir=None, tempdir=None):
     """Open a file on the main server (read-only)
 
@@ -1756,12 +1770,15 @@ def openRemoteFile(relpath, topurl=None, topdir=None, tempdir=None):
     if topurl:
         url = "%s/%s" % (topurl, relpath)
         fo = tempfile.TemporaryFile(dir=tempdir)
-        resp = requests.get(url, stream=True)
+        resp = request_with_retry().get(url, stream=True)
         try:
             for chunk in resp.iter_content(chunk_size=8192):
                 fo.write(chunk)
         finally:
             resp.close()
+        if resp.headers.get('Content-Length') and fo.tell() != int(resp.headers['Content-Length']):
+            raise GenericError("Downloaded file %s doesn't match expected size (%s vs %s)" %
+                               (url, fo.tell(), resp.headers['Content-Length']))
         fo.seek(0)
     elif topdir:
         fn = "%s/%s" % (topdir, relpath)

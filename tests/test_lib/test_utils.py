@@ -161,6 +161,38 @@ class MiscFunctionTestCase(unittest.TestCase):
             for m in mocks:
                 m.assert_not_called()
 
+        for m in mocks:
+            m.reset_mock()
+
+        # downloaded size is larger than content-length
+        with requests_mock.Mocker() as m_requests:
+            text = 'random content'
+            m_requests.register_uri('GET', url, text=text,
+                    headers = {'Content-Length': "3"})
+            m_TemporaryFile.return_value.tell.return_value = len(text)
+            # using neither
+            with self.assertRaises(koji.GenericError):
+                koji.openRemoteFile(path, topurl=topurl)
+            m_TemporaryFile.assert_called_once()
+            m_TemporaryFile.return_value.tell.assert_called()
+            m_open.assert_not_called()
+
+        for m in mocks:
+            m.reset_mock()
+
+        # downloaded size is shorter than content-length
+        with requests_mock.Mocker() as m_requests:
+            text = 'random content'
+            m_requests.register_uri('GET', url, text=text,
+                    headers = {'Content-Length': "100"})
+            m_TemporaryFile.return_value.tell.return_value = len(text)
+            # using neither
+            with self.assertRaises(koji.GenericError):
+                koji.openRemoteFile(path, topurl=topurl)
+            m_TemporaryFile.assert_called_once()
+            m_TemporaryFile.return_value.tell.assert_called()
+            m_open.assert_not_called()
+
     def test_joinpath_bad(self):
         bad_joins = [
             ['/foo', '../bar'],
