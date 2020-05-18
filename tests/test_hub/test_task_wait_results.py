@@ -1,10 +1,6 @@
-from __future__ import absolute_import
 import mock
-import six.moves.xmlrpc_client
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
+import xmlrpc.client
+import unittest
 
 import koji
 import kojihub
@@ -66,8 +62,8 @@ class TestTaskWaitResults(unittest.TestCase):
             task = self.getTask(t)
             task.getResult.return_value = "OK"
             task.isCanceled.return_value = False
-        self.tasks[6].getResult.side_effect = six.moves.xmlrpc_client.Fault(1, "error")
-        with self.assertRaises(six.moves.xmlrpc_client.Fault):
+        self.tasks[6].getResult.side_effect = xmlrpc.client.Fault(1, "error")
+        with self.assertRaises(xmlrpc.client.Fault):
             results = self.host_exports.taskWaitResults(parent, task_ids)
             self.assertEqual(results, [])
         self.tasks[6].getResult.side_effect = koji.GenericError('problem')

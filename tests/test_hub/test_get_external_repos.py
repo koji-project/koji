@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import koji
 import kojihub
 from .utils import DBQueryTestCase

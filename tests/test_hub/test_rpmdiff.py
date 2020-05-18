@@ -1,11 +1,7 @@
-from __future__ import absolute_import
 import copy
 import mock
 import os
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
+import unittest
 
 import koji
 import kojihub

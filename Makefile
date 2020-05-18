@@ -80,8 +80,9 @@ test: test2 test3
 
 test2:
 	coverage2 erase
-	PYTHONPATH=hub/.:plugins/hub/.:plugins/builder/.:plugins/cli/.:cli/.:www/lib coverage2 run \
-	    --source . -m nose
+	PYTHONPATH=.:plugins/builder/.:plugins/cli/.:cli/.:www/lib coverage2 run \
+	    --source . -m nose tests/test_builder tests/test_cli tests/test_lib \
+	    tests/test_plugins/test*builder.py tests/test_plugins/test*cli.py
 	coverage2 report
 	coverage2 html
 	@echo Full coverage report at file://${CURDIR}/htmlcov/py2/index.html

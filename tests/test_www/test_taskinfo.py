@@ -1,16 +1,11 @@
-from __future__ import absolute_import
-from __future__ import print_function
 import mock
-import koji
 import copy
 import datetime
-
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
+import unittest
 
 from mock import call
+
+import koji
 from .loadwebindex import webidx
 
 
