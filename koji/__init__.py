@@ -2175,7 +2175,8 @@ def is_requests_cert_error(e):
     if ('Permission denied' in errstr or  # certificate not readable
             'certificate revoked' in errstr or
             'certificate expired' in errstr or
-            'certificate verify failed' in errstr):
+            'certificate verify failed' in errstr or
+            "doesn't match" in errstr):
         return True
 
     return False
