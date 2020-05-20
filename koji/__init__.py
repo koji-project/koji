@@ -1016,7 +1016,8 @@ def get_header_field(hdr, name, src_arch=False):
     if name.startswith('SIG'):
         return result
 
-    # otherwise we decode any strings
+    # Some older versions of rpm return string header values as bytes. Newer
+    # versions return strings, so this is a workaround for those older versions
     return _decode_item(result)
 
 
