@@ -1012,6 +1012,11 @@ def get_header_field(hdr, name, src_arch=False):
             # no such header
             pass
 
+    # some string results are binary and should not be decoded
+    if name.startswith('SIG'):
+        return result
+
+    # otherwise we decode any strings
     return _decode_item(result)
 
 
