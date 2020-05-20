@@ -1024,7 +1024,11 @@ def anon_handle_mock_config(goptions, session, args):
         opts['package_manager'] = buildcfg['extra']['mock.package_manager']
     if 'mock.yum.module_hotfixes' in buildcfg['extra']:
         opts['module_hotfixes'] = buildcfg['extra']['mock.yum.module_hotfixes']
-
+    if 'mock.bootstrap_image' in buildcfg['extra']:
+        opts['use_bootstrap_image'] = True
+        opts['bootstrap_image'] = buildcfg['extra']['mock.bootstrap_image']
+    if 'mock.use_bootstrap' in buildcfg['extra']:
+        opts['use_bootstrap'] = buildcfg['extra']['mock.use_bootstrap']
     output = koji.genMockConfig(name, arch, **opts)
     if options.ofile:
         with open(options.ofile, 'w') as fo:

@@ -394,7 +394,7 @@ environment follows:
 * ``mock.new_chroot`` - 0/1 value. If it is set, `--new-chroot` or
   `--old-chroot` option is appended to any mock call. If it is not set,
   mock's default behavior is used.
-* ``mock.bootstrap_chroot`` - 0/1 value. If it is set, ``--bootstrap-chroot``
+* ``mock.use_bootstrap`` - 0/1 value. If it is set, ``--bootstrap-chroot``
   is appended to the mock init call.  This tells mock to build in two stages,
   using chroot rpm for creating the build chroot. If it is not set, mock's
   default behaviour is used. (Note, that it changed in mock `1.4.1
@@ -407,7 +407,7 @@ environment follows:
   before using this. You could need it, but do it with following
   recommendations:
 
-  - you need to explicitly allow builders to do that (``mock_boostrap_image =
+  - you need to explicitly allow builders to do that (``mock_bootstrap_image =
     True`` in ``kojid.conf``).
 
   - you need to have builders with `podman <https://podman.io/>`_ installed and
@@ -421,13 +421,13 @@ environment follows:
     `podman images -a --quiet``` periodically via cron or use some other
     cache-cleaning mechanism. Even simple task will consume roughly three times
     more space than without bootstrap image (downloaded image + exploded
-    boostrap dir + mock's buildroot itself)
+    bootstrap dir + mock's buildroot itself)
 
   - be sure, that your podman is configured properly and it downloads images
     only from trusted sources. Note, that this setting effectivelly circumvents
     network isolation *inside* buildroot, as outside DNS, etc. can be spoofed.
 
-  - this option will automatically turn ``mock.bootstrap_chroot`` (this is how
+  - this option will automatically turn ``mock.use_bootstrap`` (this is how
     it is implemented in mock)
 
 
