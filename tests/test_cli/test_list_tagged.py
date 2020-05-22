@@ -64,14 +64,13 @@ class TestCliListTagged(utils.CliTestCase):
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji.util.eventFromOpts', return_value={'id': 1000,
                                                          'ts': 1000000.11})
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_list_tagged_builds(self, activate_session_mock,
+    @mock.patch('koji_cli.commands.ensure_connection')
+    def test_list_tagged_builds(self, ensure_connection_mock,
                                 event_from_opts_mock, stdout):
         args = ['tag', 'pkg', '--latest', '--inherit', '--event=1000']
 
         anon_handle_list_tagged(self.options, self.session, args)
-        activate_session_mock.assert_called_once_with(self.session,
-                                                      self.options)
+        ensure_connection_mock.assert_called_once_with(self.session)
         self.session.getTag.assert_called_once_with('tag', event=1000)
         self.session.listTagged.assert_called_once_with('tag',
                                                         event=1000,
@@ -87,8 +86,8 @@ class TestCliListTagged(utils.CliTestCase):
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji.util.eventFromOpts', return_value=None)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_list_tagged_builds_paths(self, activate_session_mock,
+    @mock.patch('koji_cli.commands.ensure_connection')
+    def test_list_tagged_builds_paths(self, ensure_connection_mock,
                                       event_from_opts_mock, stdout):
         args = ['tag', 'pkg', '--latest', '--inherit', '--paths']
 
@@ -100,15 +99,14 @@ class TestCliListTagged(utils.CliTestCase):
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji.util.eventFromOpts', return_value=None)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_list_tagged_rpms(self, activate_session_mock,
+    @mock.patch('koji_cli.commands.ensure_connection')
+    def test_list_tagged_rpms(self, ensure_connection_mock,
                               event_from_opts_mock, stdout):
         args = ['tag', 'pkg', '--latest-n=3', '--rpms', '--sigs',
                 '--arch=x86_64', '--arch=noarch']
 
         anon_handle_list_tagged(self.options, self.session, args)
-        activate_session_mock.assert_called_once_with(self.session,
-                                                      self.options)
+        ensure_connection_mock.assert_called_once_with(self.session)
         self.session.getTag.assert_called_once_with('tag', event=None)
         self.session.listTaggedRPMS.assert_called_once_with('tag',
                                                             package='pkg',
@@ -124,8 +122,8 @@ class TestCliListTagged(utils.CliTestCase):
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji.util.eventFromOpts', return_value=None)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_list_tagged_rpms_paths(self, activate_session_mock,
+    @mock.patch('koji_cli.commands.ensure_connection')
+    def test_list_tagged_rpms_paths(self, ensure_connection_mock,
                                     event_from_opts_mock, stdout):
         args = ['tag', 'pkg', '--latest-n=3', '--rpms',
                 '--arch=x86_64', '--paths']
@@ -137,8 +135,8 @@ class TestCliListTagged(utils.CliTestCase):
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji.util.eventFromOpts', return_value=None)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_list_tagged_sigs_paths(self, activate_session_mock,
+    @mock.patch('koji_cli.commands.ensure_connection')
+    def test_list_tagged_sigs_paths(self, ensure_connection_mock,
                                     event_from_opts_mock, stdout):
         args = ['tag', 'pkg', '--latest-n=3', '--rpms', '--sigs',
                 '--arch=x86_64', '--paths']
@@ -148,8 +146,8 @@ class TestCliListTagged(utils.CliTestCase):
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji.util.eventFromOpts', return_value=None)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_list_tagged_type(self, activate_session_mock,
+    @mock.patch('koji_cli.commands.ensure_connection')
+    def test_list_tagged_type(self, ensure_connection_mock,
                               event_from_opts_mock, stdout):
         args = ['tag', 'pkg', '--latest-n=3', '--type=maven']
         self.session.listTagged.return_value = [{'id': 1,
@@ -163,8 +161,7 @@ class TestCliListTagged(utils.CliTestCase):
                                                  'maven_artifact_id': 'artifact'}]
 
         anon_handle_list_tagged(self.options, self.session, args)
-        activate_session_mock.assert_called_once_with(self.session,
-                                                      self.options)
+        ensure_connection_mock.assert_called_once_with(self.session)
         self.session.getTag.assert_called_once_with('tag', event=None)
         self.session.listTagged.assert_called_once_with('tag',
                                                         package='pkg',
@@ -179,8 +176,8 @@ class TestCliListTagged(utils.CliTestCase):
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji.util.eventFromOpts', return_value=None)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_list_tagged_type_paths(self, activate_session_mock,
+    @mock.patch('koji_cli.commands.ensure_connection')
+    def test_list_tagged_type_paths(self, ensure_connection_mock,
                               event_from_opts_mock, stdout):
         args = ['tag', 'pkg', '--latest-n=3', '--type=maven', '--paths']
         self.session.listTagged.return_value = [{'id': 1,
@@ -199,9 +196,10 @@ class TestCliListTagged(utils.CliTestCase):
                                     '----------------------------------------  --------------------  --------------------  --------------------  ----------------\n'
                                     '/mnt/koji/packages/packagename/version/1.el6/maven  tag                   group                 artifact              owner\n')
 
+    @mock.patch('koji_cli.commands.ensure_connection')
     @mock.patch('koji.util.eventFromOpts', return_value={'id': 1000,
                                                          'ts': 1000000.11})
-    def test_list_tagged_args(self, event_from_opts_mock):
+    def test_list_tagged_args(self, event_from_opts_mock, ensure_connection_mock):
         # Case 1, no argument
         expected = self.format_error_message(
             "A tag name must be specified")
@@ -233,7 +231,8 @@ class TestCliListTagged(utils.CliTestCase):
             self.options,
             self.session,
             ['tag', 'pkg1'],
-            stderr=expected)
+            stderr=expected,
+            activate_session=None)
 
     def test_handle_list_tagged_help(self):
         self.assert_help(

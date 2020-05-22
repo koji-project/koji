@@ -61,9 +61,9 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji.genMockConfig')
-    @mock.patch('koji_cli.commands.activate_session')
+    @mock.patch('koji_cli.commands.ensure_connection')
     def test_handle_mock_config_buildroot_option(
-            self, activate_session_mock, gen_config_mock, stdout, stderr):
+            self, ensure_connection_mock, gen_config_mock, stdout, stderr):
         """Test anon_handle_mock_config buildroot options"""
         arguments = []
         options = mock.MagicMock()
@@ -89,7 +89,8 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
             options,
             session,
             arguments,
-            stderr=expected)
+            stderr=expected,
+            activate_session=None)
 
         arguments = self.common_args + ['--buildroot', '1',
                                         '--name', self.progname]
@@ -117,9 +118,9 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji.genMockConfig')
-    @mock.patch('koji_cli.commands.activate_session')
+    @mock.patch('koji_cli.commands.ensure_connection')
     def test_handle_mock_config_task_option(
-            self, activate_session_mock, gen_config_mock, stdout, stderr):
+            self, ensure_connection_mock, gen_config_mock, stdout, stderr):
         """Test  anon_handle_mock_config task options"""
         arguments = []
         task_id = 1001
@@ -138,7 +139,8 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
             options,
             session,
             arguments,
-            stderr=expected)
+            stderr=expected,
+            activate_session=None)
 
         arguments = ['--task', str(task_id)]
         expected = "No buildroots for task %s (or no such task)\n" % str(task_id)
@@ -176,9 +178,9 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji.genMockConfig')
-    @mock.patch('koji_cli.commands.activate_session')
+    @mock.patch('koji_cli.commands.ensure_connection')
     def test_handle_mock_config_tag_option(
-            self, activate_session_mock, gen_config_mock, stdout, stderr):
+            self, ensure_connection_mock, gen_config_mock, stdout, stderr):
         """Test anon_handle_mock_config with tag option"""
         arguments = []
         tag = 'tag'
@@ -205,7 +207,8 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
             options,
             session,
             arguments,
-            stderr=expected)
+            stderr=expected,
+            activate_session=None)
 
         # return tag info
         session.getTag.return_value = tag
@@ -248,10 +251,10 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji.genMockConfig')
-    @mock.patch('koji_cli.commands.activate_session')
+    @mock.patch('koji_cli.commands.ensure_connection')
     @mock.patch('koji_cli.commands.open')
     def test_handle_mock_config_target_option(
-            self, openf, activate_session_mock, gen_config_mock, stdout, stderr):
+            self, openf, ensure_connection_mock, gen_config_mock, stdout, stderr):
         """Test anon_handle_mock_config with target option"""
         arguments = []
         arch = "x86_64"
@@ -284,7 +287,8 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
             options,
             session,
             arguments,
-            stderr=expected)
+            stderr=expected,
+            activate_session=None)
 
         session.getBuildTarget.return_value = target
         expected = "Could not get a repo for tag: %s\n" % target['build_tag_name']
@@ -321,7 +325,8 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
             self.progname, arch, **opts)
 
     @mock.patch('sys.stderr', new_callable=six.StringIO)
-    def test_handle_mock_config_errors(self, stderr):
+    @mock.patch('koji_cli.commands.ensure_connection')
+    def test_handle_mock_config_errors(self, ensure_connection_mock, stderr):
         """Test anon_handle_mock_config general error messages"""
         arguments = []
         options = mock.MagicMock()
@@ -338,7 +343,8 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
             options,
             session,
             arguments,
-            stderr=expected)
+            stderr=expected,
+            activate_session=None)
 
         # name is specified twice case
         arguments = [self.progname, '--name', 'name']
@@ -349,7 +355,8 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
             options,
             session,
             arguments,
-            stderr=expected)
+            stderr=expected,
+            activate_session=None)
 
     def test_handle_mock_config_help(self):
         """Test anon_handle_mock_config help message full output"""

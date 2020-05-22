@@ -23,10 +23,10 @@ class TestListApi(utils.CliTestCase):
 """ % (self.progname, self.progname)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
+    @mock.patch('koji_cli.commands.ensure_connection')
     def test_anon_handle_list_api(
             self,
-            activate_session_mock,
+            ensure_connection_mock,
             stdout):
         """Test anon_handle_list_api function"""
         session = mock.MagicMock()

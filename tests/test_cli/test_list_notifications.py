@@ -45,15 +45,15 @@ No notification blocks
 
         self.maxDiff=None
         self.assertMultiLineEqual(actual, expected)
-        activate_session_mock.assert_called_once_with(self.session, self.options)
+        activate_session_mock.assert_called_once()
         self.session.getTag.assert_has_calls([mock.call(1), mock.call(1)])
         self.session.getPackage.assert_has_calls([mock.call(11), mock.call(11)])
         self.session.getUser.assert_not_called()
         self.session.getBuildNotifications.assert_called_once_with(None)
 
     @mock.patch('sys.stdout', new_callable=StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_list_notifications_user(self, activate_session_mock, stdout):
+    @mock.patch('koji_cli.commands.ensure_connection')
+    def test_list_notifications_user(self, ensure_connection_mock, stdout):
         self.session.getBuildNotifications.return_value = [
             {'id': 1, 'tag_id': 1, 'package_id': 11, 'email': 'email@test.com', 'success_only': True},
             {'id': 2, 'tag_id': None, 'package_id': 11, 'email': 'email@test.com', 'success_only': False},
@@ -94,7 +94,7 @@ Notification blocks
 
         self.maxDiff=None
         self.assertMultiLineEqual(actual, expected)
-        activate_session_mock.assert_called_once_with(self.session, self.options)
+        ensure_connection_mock.assert_called_once_with(self.session)
         self.session.getTag.assert_has_calls([mock.call(1), mock.call(1)])
         self.session.getPackage.assert_has_calls([mock.call(11), mock.call(11)])
         self.session.getUser.assert_called_once_with('random_name')

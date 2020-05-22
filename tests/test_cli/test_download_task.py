@@ -47,7 +47,7 @@ class TestDownloadTask(utils.CliTestCase):
         self.list_task_output_all_volumes = mock.patch('koji_cli.commands.list_task_output_all_volumes').start()
         self.ensuredir = mock.patch('koji.ensuredir').start()
         self.download_file = mock.patch('koji_cli.commands.download_file').start()
-        self.activate_session = mock.patch('koji_cli.commands.activate_session').start()
+        self.ensure_connection = mock.patch('koji_cli.commands.ensure_connection').start()
         self.stdout = mock.patch('sys.stdout', new_callable=six.StringIO).start()
         self.stderr = mock.patch('sys.stderr', new_callable=six.StringIO).start()
 
@@ -80,7 +80,7 @@ class TestDownloadTask(utils.CliTestCase):
         expected = ''
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        self.activate_session.assert_called_once_with(self.session, self.options)
+        self.ensure_connection.assert_called_once_with(self.session)
         self.session.getTaskInfo.assert_called_once_with(task_id)
         self.session.getTaskChildren.assert_not_called()
         self.list_task_output_all_volumes.assert_called_once_with(self.session, task_id)
@@ -105,8 +105,7 @@ class TestDownloadTask(utils.CliTestCase):
         expected = 'No such task: #123333\n'
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        self.activate_session.assert_called_once_with(self.session,
-                                                      self.options)
+        self.ensure_connection.assert_called_once_with(self.session)
         self.session.getTaskInfo.assert_called_once_with(task_id)
         self.session.getTaskChildren.assert_not_called()
 
@@ -148,7 +147,7 @@ class TestDownloadTask(utils.CliTestCase):
         expected = ''
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        self.activate_session.assert_called_once_with(self.session, self.options)
+        self.ensure_connection.assert_called_once_with(self.session)
         self.session.getTaskInfo.assert_called_once_with(task_id)
         self.session.getTaskChildren.assert_called_once_with(task_id)
         self.assertEqual(self.list_task_output_all_volumes.mock_calls, [
@@ -189,7 +188,7 @@ class TestDownloadTask(utils.CliTestCase):
         expected = ''
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        self.activate_session.assert_called_once_with(self.session, self.options)
+        self.ensure_connection.assert_called_once_with(self.session)
         self.session.getTaskInfo.assert_called_once_with(task_id)
         self.session.getTaskChildren.assert_not_called()
         self.list_task_output_all_volumes.assert_called_once_with(self.session, task_id)
@@ -224,7 +223,7 @@ class TestDownloadTask(utils.CliTestCase):
         expected = 'No files for download found.\n'
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        self.activate_session.assert_called_once_with(self.session, self.options)
+        self.ensure_connection.assert_called_once_with(self.session)
         self.session.getTaskInfo.assert_called_once_with(task_id)
         self.session.getTaskChildren.assert_not_called()
         self.list_task_output_all_volumes.assert_called_once_with(self.session, task_id)
@@ -257,7 +256,7 @@ class TestDownloadTask(utils.CliTestCase):
         expected = 'Task 123333 has not finished yet.\n'
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        self.activate_session.assert_called_once_with(self.session, self.options)
+        self.ensure_connection.assert_called_once_with(self.session)
         self.session.getTaskInfo.assert_called_once_with(task_id)
         self.session.getTaskChildren.assert_not_called()
         self.list_task_output_all_volumes.assert_called_once_with(self.session, task_id)
@@ -288,7 +287,7 @@ class TestDownloadTask(utils.CliTestCase):
         expected = 'Child task 22222 has not finished yet.\n'
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        self.activate_session.assert_called_once_with(self.session, self.options)
+        self.ensure_connection.assert_called_once_with(self.session)
         self.session.getTaskInfo.assert_called_once_with(task_id)
         self.session.getTaskChildren.assert_called_once_with(task_id)
         self.list_task_output_all_volumes.assert_called_once_with(self.session, 22222)
@@ -315,7 +314,7 @@ class TestDownloadTask(utils.CliTestCase):
         expected = 'Invalid file name: somerpm..src.rpm\n'
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        self.activate_session.assert_called_once_with(self.session, self.options)
+        self.ensure_connection.assert_called_once_with(self.session)
         self.session.getTaskInfo.assert_called_once_with(task_id)
         self.session.getTaskChildren.assert_not_called()
         self.list_task_output_all_volumes.assert_called_once_with(self.session, task_id)
