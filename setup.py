@@ -14,7 +14,7 @@ def get_install_requires():
     requires = [
         'python-dateutil',
         'requests',
-        'requests-kerberos',
+        'requests-gssapi',
         'six',
         # 'libcomps',
         # 'rpm-py-installer', # it is optional feature

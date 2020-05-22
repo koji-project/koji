@@ -72,9 +72,12 @@ except Exception:  # pragma: no cover
     # we ignore it here
     pass
 try:
-    import requests_kerberos
+    import requests_gssapi as reqgssapi
 except ImportError:  # pragma: no cover
-    requests_kerberos = None
+    try:
+        import requests_kerberos as reqgssapi
+    except ImportError:  # pragma: no cover
+        reqgssapi = None
 try:
     import rpm
 except ImportError:
@@ -2460,9 +2463,9 @@ class ClientSession(object):
                                  ccache=ccache, proxyuser=proxyuser)
 
     def gssapi_login(self, principal=None, keytab=None, ccache=None, proxyuser=None):
-        if not requests_kerberos:
+        if not reqgssapi:
             raise PythonImportError(
-                "Please install python-requests-kerberos to use GSSAPI."
+                "Please install python-requests-gssapi to use GSSAPI."
             )
         # force https
         old_baseurl = self.baseurl
@@ -2489,14 +2492,14 @@ class ClientSession(object):
                 old_env['KRB5CCNAME'] = os.environ.get('KRB5CCNAME')
                 os.environ['KRB5CCNAME'] = ccache
             if principal:
-                if re.match(r'0[.][1-8]\b', requests_kerberos.__version__):
+                if re.match(r'0[.][1-8]\b', reqgssapi.__version__):
                     raise PythonImportError(
-                        'python-requests-kerberos >= 0.9.0 required for '
+                        'python-requests-gssapi >= 0.9.0 required for '
                         'keytab auth'
                     )
                 else:
                     kwargs['principal'] = principal
-            self.opts['auth'] = requests_kerberos.HTTPKerberosAuth(**kwargs)
+            self.opts['auth'] = reqgssapi.HTTPKerberosAuth(**kwargs)
             try:
                 # Depending on the server configuration, we might not be able to
                 # connect without client certificate, which means that the conn
