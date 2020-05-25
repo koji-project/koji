@@ -38,6 +38,26 @@ help with these tasks, see the :doc:`server_howto`.
   .. note::
     This uses $arch NOT $basearch
 
+  Koji behaves differently to the external repository based on which ``merge``
+  mode is set for that. Merge modes can be set via ``-m`` option and are as
+  follows:
+
+    ``koji``
+        Basic mode - koji expects, that that repo is complete and
+        doesn't contain mixed content.  It runs ``mergerepos_c --koji``
+        Repositories generated via ``dist-repo`` command (or other repositories
+        coming from koji` has these properties.
+
+    ``bare``
+        It runs ``mergerepos_c --pkgorigins --all``. It includes all rpms with
+        same NA. This one is needed for modular repos. ``createrepo_c`` 0.14+
+        compiled with ``libmodule`` support needs to be installed on the builder.
+
+    ``simple``
+        It runs ``mergerepos_c --mode simple`` - we're not that strict with this
+        type of repo. Even packages with identical NEVRA are accepted in such
+        case. Simple mode is in ``createrepo_c`` suite from version 0.13.
+
 * Create a build target that includes the tags you've already created. ::
 
     $ koji add-target dist-foo dist-foo-build
@@ -86,10 +106,12 @@ help with these tasks, see the :doc:`server_howto`.
 Regenerating your repo
 ======================
 
-koji doesn't monitor external repositories for changes. new repositories
-will be generated when packages you build land in a tag that populates
-the buildroot or you manually regenerate the repository. you should be
-sure to regularly regenerate the repositories manually to pick up
+koji doesn't monitor external repositories for changes by default.
+Administrators can enable such bejaviour with setting ``check_external_repos =
+true`` in ``kojira.conf`` (for details see :doc:`utils.rst`). If it is not
+enabled new repositories will be generated when packages you build land in a tag
+that populates the buildroot or you manually regenerate the repository. you
+should be sure to regularly regenerate the repositories manually to pick up
 updates.
 
 ::
