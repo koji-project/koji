@@ -184,17 +184,17 @@ $printOpts($params[2])
 #end if
 #elif $task.method == 'distRepo'
 <strong>Tag:</strong> <a href="taginfo?tagID=$tag.id">$tag.name</a><br/>
-<strong>Repo ID:</strong> <a href="$pathinfo.distrepo($params[1],$tag.name)">$params[1]</a></br>
+<strong>Repo ID:</strong> <a href="repoinfo?repoID=$params[1]">$params[1]</a></br>
 <strong>Keys:</strong> $printValue(0, $params[2])<br/>
 $printOpts($params[3])
 #elif $task.method == 'prepRepo'
 <strong>Tag:</strong> <a href="taginfo?tagID=$params[0].id">$params[0].name</a>
 #elif $task.method == 'createrepo'
-<strong>Repo ID:</strong> $params[0]<br/>
+<strong>Repo ID:</strong> <a href="repoinfo?repoID=$params[0]">$params[0]</a><br/>
 <strong>Arch:</strong> $params[1]<br/>
 #set $oldrepo = $params[2]
 #if $oldrepo
-    <strong>Old Repo ID:</strong> $oldrepo.id<br/>
+    <strong>Old Repo ID:</strong> <a href="repoinfo?repoID=$oldrepo.id">$oldrepo.id</a><br/>
     <strong>Old Repo Creation:</strong> $koji.formatTimeLong($oldrepo.creation_time)<br/>
 #end if
 #if $len($params) > 4 and $params[4]
@@ -202,7 +202,7 @@ $printOpts($params[3])
 #end if
 #elif $task.method == 'createdistrepo'
 <strong>Tag:</strong> <a href="taginfo?tagID=$tag.id">$tag.name</a><br/>
-<strong>Repo ID:</strong> <a href="$pathinfo.distrepo($params[1],$tag.name)">$params[1]</a></br>
+<strong>Repo ID:</strong> <a href="repoinfo?repoID=$params[1]">$params[1]</a></br>
 <strong>Arch:</strong> $printValue(0, $params[2])<br/>
 <strong>Keys:</strong> $printValue(0, $params[3])<br/>
 <strong>Options:</strong> $printMap($params[4], '&nbsp;&nbsp;&nbsp;&nbsp;')
