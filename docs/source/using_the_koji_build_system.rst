@@ -391,7 +391,7 @@ environment follows:
 
 * ``mock.package_manager`` - If this is set, it will override mock's default
   package manager. Typically used with ``yum`` or ``dnf`` values.
-* ``mock.new_chroot`` - 0/1 value. If it is set, `--new-chroot` or
+* ``mock.new_chroot`` - 0/1 value. If it is set, ``--new-chroot`` or
   `--old-chroot` option is appended to any mock call. If it is not set,
   mock's default behavior is used.
 * ``mock.use_bootstrap`` - 0/1 value. If it is set, ``--bootstrap-chroot``
@@ -429,7 +429,21 @@ environment follows:
 
   - this option will automatically turn ``mock.use_bootstrap`` (this is how
     it is implemented in mock)
+* ``mock.yum.module_hotfixes`` - 0/1 value. If set, yum/dnf will use packages
+  regardless if they come from modularity repo or not. It makes sense only for
+  tags with external repositories. (See dnf `docs
+  <https://dnf.readthedocs.io/en/latest/modularity.html#hotfix-repositories>`__)
 
+* `mock signing plugin
+  <https://github.com/rpm-software-management/mock/wiki/Plugin-Sign>`__ -
+  Options ``mock.plugin_conf.sign_enable``, ``mock.plugin_conf.sign_cmd`` and
+  ``mock.plugin_conf.sign_opts`` are propagated to mock conf to be used by this
+  plugin. Note, that these tools are run outside of the jailed env. Note, that
+  this functionality doesn't interfere with koji's standard signing commands
+  (``import-sig``, ``write-signed-rpm``, etc.). Note, that rpmsign vs gpg must
+  be configured correctly. If it is not it a) can silently ignore problems
+  during signing b) can hang forever when e.g. gpg password store is not
+  accessible.
 
 You may also specify per-tag environment variables for mock to use.
 For example, to set the CC environment variable to clang, you could
