@@ -410,9 +410,12 @@ Build: %%(name)s-%%(version)s-%%(release)s
         msg['Subject'] = "%i builds marked for deletion" % len(builds)
     msg['From'] = options.from_addr
     msg['To'] = "%s@%s" % (owner_name, options.email_domain)  # XXX!
-    emails = [msg['To']] + options.cc_addr + options.bcc_addr
+    emails = [msg['To']]
     if options.cc_addr:
         msg['Cc'] = ','.join(options.cc_addr)
+        emails += options.cc_addr
+    if options.bcc_addr:
+        emails += options.bcc_addr
     msg['X-Koji-Builder'] = owner_name
     if options.test:
         if options.debug:
