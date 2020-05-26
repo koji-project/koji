@@ -299,8 +299,8 @@ class BuildRoot(object):
             opts['plugin_conf'] = {
                 'sign_enable': self.config['extra']['mock.plugin_conf.sign_enable'],
                 'sign_opts': {
-                    'cmd': self.config['extra']['mock.plugin_conf.sign_opts.cmd'],
-                    'opts': self.config['extra']['mock.plugin_conf.sign_opts.opts'],
+                    'cmd': self.config['extra']['mock.plugin_conf.sign_cmd'],
+                    'opts': self.config['extra']['mock.plugin_conf.sign_opts'],
                 }
             }
         if self.internal_dev_setup is not None:
