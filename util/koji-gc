@@ -675,10 +675,10 @@ def handle_delete(just_salvage=False):
     continuing, trash = [], continuing
     for nvr, binfo in trash:
         # determine how long this build has been in the trashcan
-        mcall.queryHistory(build=binfo['id'], tag=trashcan_tag)['tag_listing']
+        mcall.queryHistory(build=binfo['id'], tag=trashcan_tag)
 
     for (nvr, binfo), [history] in zip(trash, mcall.call_all()):
-        current = [x for x in history if x['active']]
+        current = [x for x in history['tag_listing'] if x['active']]
         if not current:
             # untagged just now?
             print("Warning: history missing for %s" % nvr)
@@ -877,7 +877,7 @@ def handle_prune():
             continue
         pkghist = {}
         for h in history:
-            if taginfo['maven_include_all'] and h.get('maven_build_id', default=None):
+            if taginfo['maven_include_all'] and h.get('maven_build_id'):
                 pkghist.setdefault(h['name'] + '-' + h['version'], []).append(h)
             else:
                 pkghist.setdefault(h['name'], []).append(h)
