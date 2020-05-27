@@ -442,53 +442,87 @@ The following commands will:
     This will ensure all objects are owned by the koji database user. Upgrades
     may be difficult if this was not done correctly.
 
-Authorize Koji-web and Koji-hub resources
------------------------------------------
+Authorize Koji-hub to PostgreSQL
+--------------------------------
 
-.. note::
-    In this example, Koji-web and Koji-hub are running on localhost.
+Koji-hub is the only service that needs direct access to the database. Every
+other Koji service talks with the koji-hub via the API calls.
 
-``/var/lib/pgsql/data/pg_hba.conf``
-    These settings need to be valid and inline with other services
-    configurations. Please note, the first matching auth line is used so this
-    line must be above any other potential matches. Add:
+Example: Everything on localhost
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-    ::
+In this example, the koji-hub Apache server is running on the same system
+as the PostgreSQL server, so we can use local-only connections over a Unix
+domain socket.
 
-        #TYPE   DATABASE    USER    CIDR-ADDRESS      METHOD
-        host    koji        koji    127.0.0.1/32      trust
-        host    koji        koji     ::1/128          trust
+#. Edit ``/var/lib/pgsql/data/pg_hba.conf`` to have the following
+   contents::
 
-    It may also be necessary to add an entry for your machine's external IP
-    address:
+       #TYPE   DATABASE    USER    CIDR-ADDRESS      METHOD
+       local   koji        koji                       trust
+       local   all         postgres                   peer
 
-    ::
+   Explanation:
 
-        host    koji        koji    $IP_ADDRESS/32    trust
+   * The ``local`` connection type means the postgres connection uses a local
+     Unix socket, so PostgreSQL is not exposed over TCP/IP at all.
 
-    You can also use UNIX socket access. The DBHost variable must be unset to
-    use this method. Add:
+   * The local ``koji`` user should only have access to the ``koji`` database.
+     The local ``postgres`` user will have access to everything (in order to
+     create the ``koji`` database and user.)
 
-    ::
+   * The ``CIDR-ADDRESS`` column is blank, because this example only uses
+     local Unix sockets.
 
-        local   koji        apache                            trust
-        local   koji        koji                              trust
+   * The `trust <https://www.postgresql.org/docs/current/auth-trust.html>`_
+     method means that PosgreSQL will permit any connections from any local
+     user for this username. We set this for the ``koji`` user because Apache
+     httpd runs as the ``apache`` system user rather than the ``koji`` user
+     when it connects to the Unix socket. ``trust`` is not secure on a
+     multi-user system, but it is fine for a single-purpose Koji system.
 
-    .. note::
-        To enforce password based logins to the database, change ``trust`` to ``md5``.
+     The `peer <https://www.postgresql.org/docs/current/auth-peer.html>`_
+     method means that PostgreSQL will obtain the client's operating system
+     username and use that as the allowed username. This is safer than
+     ``trust`` because only the local ``postgres`` system user will be able to
+     access PostgreSQL with this level of access.
 
-    ::
+#. Edit ``/var/lib/pgsql/data/postgresql.conf`` and set ``listen_addresses``
+   to prevent TCP/IP access entirely::
 
-        #TYPE   DATABASE    USER    CIDR-ADDRESS      METHOD
-        host    koji        koji    127.0.0.1/32      md5
-        host    koji        koji     ::1/128          md5
-        host    koji        koji    $IP_ADDRESS/32    md5
+       listen_addresses = ''
 
-Make auth changes live:
-You must reload the PostgreSQL configuration for these changes to become
-active.
+Example: Separate PostgreSQL and Apache servers
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-::
+In this example, the PostgreSQL server "db.example.com" is running on one
+host, and the koji-hub Apache server talks to this PostgreSQL server over the
+network. The koji-hub Apache server has an IP address of 192.0.2.1 (IPv4) and
+2001:db8::1 (IPv6), so we authorize connections from both addresses for the
+``koji`` user account.
+
+#. Edit ``/var/lib/pgsql/data/pg_hba.conf`` to have the following contents::
+
+       #TYPE   DATABASE    USER    CIDR-ADDRESS      METHOD
+       host    koji        koji    192.0.2.1/32       md5
+       host    koji        koji    2001:db8::1/128    md5
+       local   all         postgres                   peer
+
+   The ``md5`` authentication mechanism is available in PostgreSQL 9 (RHEL 7).
+   On PostgreSQL 10 (RHEL 8+ and Fedora), use the stronger ``scram-sha-256``
+   mechanism instead, and set ``password_encryption = scram-sha-256`` in
+   ``postgresql.conf``.
+
+#. Edit ``/var/lib/pgsql/data/postgresql.conf`` and set ``listen_addresses``
+   so that PostgreSQL will listen on all network interfaces::
+
+    listen_addresses = '*'
+
+Activating changes
+^^^^^^^^^^^^^^^^^^
+
+You must reload the PostgreSQL daemon to activate changes to
+``postgresql.conf`` or ``pg_hba.conf``::
 
     root@localhost$ systemctl reload postgresql
 
@@ -600,23 +634,6 @@ complete the authentication setup and the kojihub configuration. If you wish
 to access koji via a web browser, you will also need to get kojiweb up and
 running.
 
-Set Database To Listen On All Addresses
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-The ``koji-hub`` service will attempt to connect to the database server in the
-manner you configure.  If you use the system hostname, then the database will
-need to be available on that address.  To configure this please perform the
-following:
-
-#.  Edit ``/var/lib/pgsql/data/postgresql.conf``
-#.  Set ``listen_address`` so postgres will listen on all interfaces:
-    ::
-
-        listen_addresses = '*'
-#.  Reload the postgresql service:
-    ::
-
-        systemctl restart postgresql
-
 Koji Hub
 ========
 
@@ -727,14 +744,20 @@ beginning.
 
     DBName = koji
     DBUser = koji
-    DBPass = mypassword
-    DBHost = db.example.com
+
+    # If PostgreSQL is on another host, set that here:
+    #DBHost = db.example.com
+    #DBPass = mypassword
+
     KojiDir = /mnt/koji
     LoginCreatesUser = On
     KojiWebURL = http://kojiweb.example.com/koji
 
-If kojihub is running on the same server as the koji db, then DBHost should be
-set to 127.0.0.1
+If koji-hub is running on the same server as PostgreSQL and you are using Unix
+sockets to query the database, omit the ``DBHost``, ``DBPort``, and ``DBPass``
+variables. Do not set ``DBHost`` to ``localhost``, or else PostgreSQL will
+attempt to connect with TCP through ``127.0.0.1`` instead of using the Unix
+socket.
 
 Authentication Configuration
 ----------------------------
