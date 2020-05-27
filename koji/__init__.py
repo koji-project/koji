@@ -1697,6 +1697,13 @@ name=build
         value = macros[key]
         parts.append("config_opts['macros'][%r] = %r\n" % (key, value))
     parts.append("\n")
+    envvars = opts.get('tag_envvars', {})
+    for key in sorted(envvars):
+        value = envvars[key]
+        parts.append("config_opts['environment'][%r] = %r\n" % (key, value))
+    if len(envvars):
+        parts.append("\n")
+
     for key in sorted(files):
         value = files[key]
         parts.append("config_opts['files'][%r] = %r\n" % (key, value))

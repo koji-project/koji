@@ -293,10 +293,13 @@ class BuildRoot(object):
         if self.internal_dev_setup is not None:
             opts['internal_dev_setup'] = bool(self.internal_dev_setup)
         opts['tag_macros'] = {}
+        opts['tag_envvars'] = {}
         for key in self.config['extra']:
             if key.startswith('rpm.macro.'):
                 macro = '%' + key[10:]
                 opts['tag_macros'][macro] = self.config['extra'][key]
+            elif key.startswith('rpm.env.'):
+                opts['tag_envvars'][key[8:]] = self.config['extra'][key]
         output = koji.genMockConfig(self.name, self.br_arch, managed=True, **opts)
 
         # write config
