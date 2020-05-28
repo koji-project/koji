@@ -760,6 +760,12 @@ variables. Do not set ``DBHost`` to ``localhost``, or else PostgreSQL will
 attempt to connect with TCP through ``127.0.0.1`` instead of using the Unix
 socket.
 
+If koji-hub is running on a separate server from PostgreSQL, you must set the
+``DBHost`` and ``DBPass`` options. You must also configure SELinux to allow
+Apache to connect to the remote PostgreSQL server::
+
+    root@localhost$ setsebool -P httpd_can_network_connect_db=1
+
 Authentication Configuration
 ----------------------------
 
@@ -823,21 +829,16 @@ needed.
 SELinux Configuration
 ^^^^^^^^^^^^^^^^^^^^^
 
-If running in Enforcing mode
-    * you will need to allow apache to connect to the postgreSQL server
-    * you will need to allow apache to write some files to disk
+Configure SELinux to allow Apache write access to ``/mnt/koji``::
 
-Even if you are not currently running in Enforcing mode, it is still
-recommended to configure the SELinux settings so that there are no future
-issues with SELinux if Enforcing mode is enabled later on.
+    root@localhost$ setsebool -P allow_httpd_anon_write=1
+    root@localhost$ semanage fcontext -a -t public_content_rw_t "/mnt/koji(/.*)?"
+    root@localhost$ restorecon -r -v /mnt/koji
 
-::
+If you've placed ``/mnt/koji`` on an NFS share, enable a separate boolean to
+allow Apache access to NFS::
 
-    root@localhost$ setsebool -P httpd_can_network_connect_db=1 allow_httpd_anon_write=1
-    root@localhost$ chcon -R -t public_content_rw_t /mnt/koji/*
-
-If you've placed ``/mnt/koji`` on an NFS share you may also need to set
-``httpd_use_nfs``.
+    root@localhost$ setsebool -P httpd_use_nfs=1
 
 Check Your Configuration
 ^^^^^^^^^^^^^^^^^^^^^^^^
