@@ -492,6 +492,10 @@ class VMExecTask(BaseTaskHandler):
             curr_mem_node = ctx.xpathEval('/domain/currentMemory')[0]
             if str(mem) != curr_mem_node.getContent():
                 curr_mem_node.setContent(str(mem))
+        if opts.get('static_mac'):
+            mac = opts['static_mac']
+            mac_node = ctx.xpathEval('/domain/devices/interface/mac')[0]
+            mac_node.setProp('address', mac)
         fixed_xml = str(doc)
         ctx.xpathFreeContext()
         doc.freeDoc()
@@ -517,7 +521,9 @@ class VMExecTask(BaseTaskHandler):
 
         if opts.get('static_mac'):
             orig_mac = self.macAddr(orig_vm)
-            cmd += ["--mac", orig_mac]
+            #doesn't work anymore, needs to place mac address inside the xml
+            #cmd += ["--mac", orig_mac]
+            opts['static_mac'] = orig_mac
 
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT, close_fds=True)
