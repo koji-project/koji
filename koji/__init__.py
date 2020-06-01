@@ -1763,6 +1763,36 @@ def request_with_retry(retries=3, backoff_factor=0.3,
     return session
 
 
+def downloadFile(url, path=None, fo=None):
+    """download remote file.
+
+    :param str url: URL to download from
+    :param str path: relative path where to save the file
+    :param FileObject fo: if specified path will not be used (only for filetype
+                          detection)
+    """
+
+    if not fo:
+        fo = open(path, "wb")
+
+    resp = request_with_retry().get(url, stream=True)
+    try:
+        for chunk in resp.iter_content(chunk_size=8192):
+            fo.write(chunk)
+    finally:
+        resp.close()
+    if resp.headers.get('Content-Length') and fo.tell() != int(resp.headers['Content-Length']):
+        raise GenericError("Downloaded file %s doesn't match expected size (%s vs %s)" %
+                           (url, fo.tell(), resp.headers['Content-Length']))
+    fo.seek(0)
+    if path and path.endswith('.rpm'):
+        # if it is an rpm run basic checks (assume that anything ending with the suffix,
+        # but not being rpm is suspicious anyway)
+        try:
+            check_rpm_file(fo)
+        except Exception as ex:
+            raise GenericError("Downloaded rpm %s is corrupted:\n%s" % (url, str(ex)))
+
 def openRemoteFile(relpath, topurl=None, topdir=None, tempdir=None):
     """Open a file on the main server (read-only)
 
@@ -1771,23 +1801,7 @@ def openRemoteFile(relpath, topurl=None, topdir=None, tempdir=None):
     if topurl:
         url = "%s/%s" % (topurl, relpath)
         fo = tempfile.TemporaryFile(dir=tempdir)
-        resp = request_with_retry().get(url, stream=True)
-        try:
-            for chunk in resp.iter_content(chunk_size=8192):
-                fo.write(chunk)
-        finally:
-            resp.close()
-        if resp.headers.get('Content-Length') and fo.tell() != int(resp.headers['Content-Length']):
-            raise GenericError("Downloaded file %s doesn't match expected size (%s vs %s)" %
-                               (url, fo.tell(), resp.headers['Content-Length']))
-        fo.seek(0)
-        if relpath.endswith('.rpm'):
-            # if it is an rpm run basic checks (assume that anything ending with the suffix,
-            # but not being rpm is suspicious anyway)
-            try:
-                check_rpm_file(fo)
-            except Exception as ex:
-                raise GenericError("Downloaded rpm %s is corrupted:\n%s" % (url, str(ex)))
+        downloadFile(url, path=relpath, fo=fo)
     elif topdir:
         fn = "%s/%s" % (topdir, relpath)
         fo = open(fn)
