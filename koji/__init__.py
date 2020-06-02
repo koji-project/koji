@@ -1773,7 +1773,7 @@ def downloadFile(url, path=None, fo=None):
     """
 
     if not fo:
-        fo = open(path, "wb")
+        fo = open(path, "w+b")
 
     resp = request_with_retry().get(url, stream=True)
     try:
@@ -1829,13 +1829,15 @@ def _check_rpm_file(fo):
     """Check that the open file appears to be an rpm"""
     # TODO: trap exception and raise something with more infomation
     ts = rpm.TransactionSet()
+    # for basic validity we can ignore sigs as there needn't be public keys installed
+    ts.setVSFlags(rpm._RPMVSF_NOSIGNATURES)
     try:
         hdr = ts.hdrFromFdno(fo.fileno())
     except rpm.error as ex:
         raise GenericError("rpm's header can't be extracted: %s (rpm error: %s)" %
                            (fo.name, ', '.join(ex.args)))
     try:
-        rpm.TransactionSet().hdrCheck(hdr.unload())
+        ts.hdrCheck(hdr.unload())
     except rpm.error as ex:
         raise GenericError("rpm's header can't be checked: %s (rpm error: %s)" %
                            (fo.name, ', '.join(ex.args)))
