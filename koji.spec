@@ -81,7 +81,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.21.0
+Version: 1.21.1
 Release: %{release}%{?dist}
 License: LGPLv2 and GPLv2+
 # the included arch lib from yum's rpmUtils is GPLv2+
@@ -727,6 +727,30 @@ fi
 %endif
 
 %changelog
+* Wed Jun 03 2020 Tomas Kopecek <tkopecek at redhat.com> - 1.21.1-1
+ - PR#2279: koji-gc: fix query order
+ - PR#2038: Don't use listTagged(tag, *) for untag-build
+ - PR#2245: cli: extend docs for --before/--after options
+ - PR#2103: fix list-signed --tag memory issues
+ - PR#2241: hub: API docs
+ - PR#2242: hub: additional API docs
+ - PR#2136: replace logging.warn with warning
+ - PR#2141: kojiweb: update for mod_auth_gssapi configuration
+ - PR#2153: koji-gc: various typos in maven path
+ - PR#2157: kojira: use cached getTag for external repos
+ - PR#2158: hub: document addExternalRepoToTag arguments
+ - PR#2194: remove obsoleted note
+ - PR#2211: koji-gc: test existence of trashcan tag
+ - PR#2203: hub: admin can't force tag now
+ - PR#2224: cli: fix variable name
+ - PR#2223: cli: fix un/lock-tag permission handling
+ - PR#2268: don't decode signature headers
+ - PR#2248: doc: links to copr builds
+ - PR#2178: docs: Fix sidetag enablement typo
+ - PR#2174: hub: document removeExternalRepoFromTag arguments
+ - fix docs
+ - missing file from 1.21 docs
+
 * Tue Apr 14 2020 Tomas Kopecek <tkopecek at redhat.com> - 1.21-1
 - PR#2057: update docs on httpd configuration
 - PR#1385: Add --no-delete option to clone-tag
