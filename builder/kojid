@@ -304,6 +304,9 @@ class BuildRoot(object):
             opts['use_bootstrap'] = bool(self.config['extra']['mock.use_bootstrap'])
 
         # it must be allowed in kojid.conf *and* in tag's extra info
+        if not self.options.mock_bootstrap_image and \
+            self.config['extra'].get('mock.bootstrap_image'):
+                self.logger.warning("Mock bootstrap image requested by buildroot %d, but forbidden on builder" % self.id)
         opts['bootstrap_image'] = self.options.mock_bootstrap_image and \
             self.config['extra'].get('mock.bootstrap_image')
 
