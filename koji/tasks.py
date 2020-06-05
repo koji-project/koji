@@ -28,7 +28,6 @@ import random
 import signal
 import time
 
-import requests
 import six.moves.xmlrpc_client
 from six.moves import range
 

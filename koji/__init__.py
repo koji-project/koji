@@ -1793,6 +1793,7 @@ def downloadFile(url, path=None, fo=None):
         except Exception as ex:
             raise GenericError("Downloaded rpm %s is corrupted:\n%s" % (url, str(ex)))
 
+
 def openRemoteFile(relpath, topurl=None, topdir=None, tempdir=None):
     """Open a file on the main server (read-only)
 
