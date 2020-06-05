@@ -44,19 +44,28 @@ help with these tasks, see the :doc:`server_howto`.
 
     ``koji``
         Basic mode - koji expects, that that repo is complete and
-        doesn't contain mixed content.  It runs ``mergerepos_c --koji``
-        Repositories generated via ``dist-repo`` command (or other repositories
-        coming from koji` has these properties.
+        doesn't contain mixed content. It means that only rpms from one SRPM can
+        be present in repo for given package.
+
+        It runs ``mergerepos_c --koji`` Repositories generated via ``dist-repo``
+        command (and all other repositories coming from koji` has these
+        properties.
 
     ``bare``
         It runs ``mergerepos_c --pkgorigins --all``. It includes all rpms with
-        same NA. This one is needed for modular repos. ``createrepo_c`` 0.14+
-        compiled with ``libmodule`` support needs to be installed on the builder.
+        same package name and architecture even if version or release is
+        different. This one is needed for modular repos. ``createrepo_c`` 0.14+
+        compiled with ``libmodule`` support needs to be installed on the
+        builder. Nevertheless, only the first rpm with identical NEVRA is
+        accepted.
 
     ``simple``
-        It runs ``mergerepos_c --mode simple`` - we're not that strict with this
-        type of repo. Even packages with identical NEVRA are accepted in such
-        case. Simple mode is in ``createrepo_c`` suite from version 0.13.
+        It runs ``mergerepos_c --mode simple`` - we're least restrivtive with
+        this type of repo. Even packages with identical NEVRA are accepted in
+        such case. Simple mode is in ``createrepo_c`` suite from version 0.13.
+        Reasons to use this compared to ``bare`` mode is a) you have older
+        ``createrepo_c``, b) you really want to have all this identical NEVRAs
+        in the repo.
 
 * Create a build target that includes the tags you've already created. ::
 
