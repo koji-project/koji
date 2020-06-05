@@ -45,7 +45,8 @@ from koji.util import (
     base64encode,
     dslice,
     parseStatus,
-    to_list
+    to_list,
+    joinpath,
 )
 
 
@@ -728,6 +729,9 @@ class TaskManager(object):
                             continue
                     else:
                         age = min(age, time.time() - st.st_mtime)
+                topdir_bootstrap = "%s-bootstrap" % topdir
+                if not os.path.exists(topdir_bootstrap):
+                    topdir_bootstrap = None
                 # note: https://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=192153)
                 # If rpmlib is installing in this chroot, removing it entirely
                 # can lead to a world of hurt.
@@ -736,27 +740,36 @@ class TaskManager(object):
                 if age > 3600 * 24:
                     # dir untouched for a day
                     self.logger.info("Removing buildroot: %s" % desc)
-                    if topdir and safe_rmtree(topdir, unmount=True, strict=False) != 0:
+                    if ((topdir and safe_rmtree(topdir, unmount=True, strict=False) != 0) or
+                        (topdir_bootstrap and
+                            safe_rmtree(topdir_bootstrap, unmount=True, strict=False) != 0)):
                         continue
                     # also remove the config
                     try:
                         os.unlink(data['cfg'])
                     except OSError as e:
                         self.logger.warning("%s: can't remove config: %s" % (desc, e))
-                elif age > 120:
-                    if rootdir:
+                elif age > 120 and rootdir:
+                    for d in (topdir, topdir_bootstrap):
+                        if not d:
+                            continue
+                        if d == topdir_bootstrap:
+                            desc2 = "%s [bootstrap]" % desc
+                        else:
+                            desc2 = desc
+                        rootdir = joinpath(d, 'root')
                         try:
                             flist = os.listdir(rootdir)
                         except OSError as e:
-                            self.logger.warning("%s: can't list rootdir: %s" % (desc, e))
+                            self.logger.warning("%s: can't list rootdir: %s" % (desc2, e))
                             continue
                         if flist:
-                            self.logger.info("%s: clearing rootdir" % desc)
+                            self.logger.info("%s: clearing rootdir" % desc2)
                         for fn in flist:
                             safe_rmtree("%s/%s" % (rootdir, fn), unmount=True, strict=False)
-                        resultdir = "%s/result" % topdir
+                        resultdir = "%s/result" % d
                         if os.path.isdir(resultdir):
-                            self.logger.info("%s: clearing resultdir" % desc)
+                            self.logger.info("%s: clearing resultdir" % desc2)
                             safe_rmtree(resultdir, unmount=True, strict=False)
                 else:
                     self.logger.debug("Recent buildroot: %s: %i seconds" % (desc, age))
