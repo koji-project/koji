@@ -56,7 +56,8 @@ Hub Changes
 
 | PR: https://pagure.io/koji/pull-request/2203
 
-Previously admin cannot force policy for tagging. It is no more true.
+Previously admin cannot force policy for tagging. Now admins can override the
+policy and force tagging.
 
 Utilities Changes
 -----------------
