@@ -55,6 +55,8 @@ import six
 import six.moves.configparser
 import six.moves.http_client
 import six.moves.urllib
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
 from six.moves import range, zip
 
 from koji.xmlrpcplus import Fault, dumps, getparser, loads, xmlrpc_client
@@ -1748,6 +1750,50 @@ def format_exc_plus():
     return rv
 
 
+def request_with_retry(retries=3, backoff_factor=0.3,
+                       status_forcelist=(500, 502, 504, 408, 429), session=None):
+    # stolen from https://www.peterbe.com/plog/best-practice-with-retries-with-requests
+    session = session or requests.Session()
+    retry = Retry(total=retries, read=retries, connect=retries,
+                  backoff_factor=backoff_factor,
+                  status_forcelist=status_forcelist)
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount('http://', adapter)
+    session.mount('https://', adapter)
+    return session
+
+
+def downloadFile(url, path=None, fo=None):
+    """download remote file.
+
+    :param str url: URL to download from
+    :param str path: relative path where to save the file
+    :param FileObject fo: if specified path will not be used (only for filetype
+                          detection)
+    """
+
+    if not fo:
+        fo = open(path, "w+b")
+
+    resp = request_with_retry().get(url, stream=True)
+    try:
+        for chunk in resp.iter_content(chunk_size=8192):
+            fo.write(chunk)
+    finally:
+        resp.close()
+    if resp.headers.get('Content-Length') and fo.tell() != int(resp.headers['Content-Length']):
+        raise GenericError("Downloaded file %s doesn't match expected size (%s vs %s)" %
+                           (url, fo.tell(), resp.headers['Content-Length']))
+    fo.seek(0)
+    if path and path.endswith('.rpm'):
+        # if it is an rpm run basic checks (assume that anything ending with the suffix,
+        # but not being rpm is suspicious anyway)
+        try:
+            check_rpm_file(fo)
+        except Exception as ex:
+            raise GenericError("Downloaded rpm %s is corrupted:\n%s" % (url, str(ex)))
+
+
 def openRemoteFile(relpath, topurl=None, topdir=None, tempdir=None):
     """Open a file on the main server (read-only)
 
@@ -1756,13 +1802,7 @@ def openRemoteFile(relpath, topurl=None, topdir=None, tempdir=None):
     if topurl:
         url = "%s/%s" % (topurl, relpath)
         fo = tempfile.TemporaryFile(dir=tempdir)
-        resp = requests.get(url, stream=True)
-        try:
-            for chunk in resp.iter_content(chunk_size=8192):
-                fo.write(chunk)
-        finally:
-            resp.close()
-        fo.seek(0)
+        downloadFile(url, path=relpath, fo=fo)
     elif topdir:
         fn = "%s/%s" % (topdir, relpath)
         fo = open(fn)
@@ -1790,13 +1830,15 @@ def _check_rpm_file(fo):
     """Check that the open file appears to be an rpm"""
     # TODO: trap exception and raise something with more infomation
     ts = rpm.TransactionSet()
+    # for basic validity we can ignore sigs as there needn't be public keys installed
+    ts.setVSFlags(rpm._RPMVSF_NOSIGNATURES)
     try:
         hdr = ts.hdrFromFdno(fo.fileno())
     except rpm.error as ex:
         raise GenericError("rpm's header can't be extracted: %s (rpm error: %s)" %
                            (fo.name, ', '.join(ex.args)))
     try:
-        rpm.TransactionSet().hdrCheck(hdr.unload())
+        ts.hdrCheck(hdr.unload())
     except rpm.error as ex:
         raise GenericError("rpm's header can't be checked: %s (rpm error: %s)" %
                            (fo.name, ', '.join(ex.args)))

@@ -28,7 +28,6 @@ import random
 import signal
 import time
 
-import requests
 import six.moves.xmlrpc_client
 from six.moves import range
 
@@ -495,15 +494,9 @@ class BaseTaskHandler(object):
                 return fn
             self.logger.debug("Downloading %s", relpath)
             url = "%s/%s" % (self.options.topurl, relpath)
-            resp = requests.get(url, stream=True)
-            try:
-                if not os.path.exists(os.path.dirname(fn)):
-                    os.makedirs(os.path.dirname(fn))
-                with open(fn, 'wb') as fdst:
-                    for chunk in resp.iter_content(chunk_size=8192):
-                        fdst.write(chunk)
-            finally:
-                resp.close()
+            if not os.path.exists(os.path.dirname(fn)):
+                os.makedirs(os.path.dirname(fn))
+            koji.downloadFile(url, path=fn)
         else:
             fn = "%s/%s" % (self.options.topdir, relpath)
         return fn
