@@ -290,6 +290,8 @@ class BuildRoot(object):
             opts['package_manager'] = self.config['extra']['mock.package_manager']
         if 'mock.yum.module_hotfixes' in self.config['extra']:
             opts['module_hotfixes'] = self.config['extra']['mock.yum.module_hotfixes']
+        if 'mock.yum.best' in self.config['extra']:
+            opts['yum_best'] = int(self.config['extra']['mock.yum.best'])
         # Append opts['plugin_conf'] to enable Mock package signing
         if 'mock.plugin_conf.sign_enable' in self.config['extra']:
             # check rest of configuration

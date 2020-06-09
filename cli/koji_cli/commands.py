@@ -1024,6 +1024,8 @@ def anon_handle_mock_config(goptions, session, args):
         opts['package_manager'] = buildcfg['extra']['mock.package_manager']
     if 'mock.yum.module_hotfixes' in buildcfg['extra']:
         opts['module_hotfixes'] = buildcfg['extra']['mock.yum.module_hotfixes']
+    if 'mock.yum.best' in buildcfg['extra']:
+        opts['yum_best'] = int(buildcfg['extra']['mock.yum.best'])
     if 'mock.bootstrap_image' in buildcfg['extra']:
         opts['use_bootstrap_image'] = True
         opts['bootstrap_image'] = buildcfg['extra']['mock.bootstrap_image']
