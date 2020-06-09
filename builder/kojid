@@ -300,6 +300,16 @@ class BuildRoot(object):
                 opts['tag_macros'][macro] = self.config['extra'][key]
             elif key.startswith('rpm.env.'):
                 opts['tag_envvars'][key[8:]] = self.config['extra'][key]
+        if 'mock.use_bootstrap' in self.config['extra']:
+            opts['use_bootstrap'] = bool(self.config['extra']['mock.use_bootstrap'])
+
+        # it must be allowed in kojid.conf *and* in tag's extra info
+        if not self.options.mock_bootstrap_image and \
+            self.config['extra'].get('mock.bootstrap_image'):
+                self.logger.warning("Mock bootstrap image requested by buildroot %d, but forbidden on builder" % self.id)
+        opts['bootstrap_image'] = self.options.mock_bootstrap_image and \
+            self.config['extra'].get('mock.bootstrap_image')
+
         output = koji.genMockConfig(self.name, self.br_arch, managed=True, **opts)
 
         # write config
@@ -6396,6 +6406,7 @@ def get_options():
                 'use_createrepo_c': True,
                 'createrepo_skip_stat': True,
                 'createrepo_update': True,
+                'mock_bootstrap_image': False,
                 'pkgurl': None,
                 'allowed_scms': '',
                 'scm_credentials_dir': None,
