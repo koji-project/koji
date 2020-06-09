@@ -5381,6 +5381,8 @@ def query_buildroots(hostID=None, tagID=None, state=None, rpmID=None, archiveID=
                                values=locals())
         result = set(query.execute())
         candidate_buildroot_ids = result
+        if not candidate_buildroot_ids:
+            return []
 
     if archiveID is not None:
         joins.insert(0, 'buildroot_archives ON buildroot.id = buildroot_archives.buildroot_id')
@@ -5393,6 +5395,8 @@ def query_buildroots(hostID=None, tagID=None, state=None, rpmID=None, archiveID=
             candidate_buildroot_ids &= result
         else:
             candidate_buildroot_ids = result
+        if not candidate_buildroot_ids:
+            return []
 
     if taskID is not None:
         clauses.append('standard_buildroot.task_id = %(taskID)i')
@@ -5404,6 +5408,8 @@ def query_buildroots(hostID=None, tagID=None, state=None, rpmID=None, archiveID=
             candidate_buildroot_ids &= result
         else:
             candidate_buildroot_ids = result
+        if not candidate_buildroot_ids:
+            return []
 
     if candidate_buildroot_ids:
         candidate_buildroot_ids = list(candidate_buildroot_ids)
