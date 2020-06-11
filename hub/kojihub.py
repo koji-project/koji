@@ -562,46 +562,7 @@ def make_task(method, arglist, **opts):
     if 'channel' in opts:
         policy_data['req_channel'] = opts['channel']
         req_channel_id = get_channel_id(opts['channel'], strict=True)
-    params = {}
-    try:
-        params = koji.tasks.parse_task_params(method, arglist)
-    except TypeError:
-        logger.warning("%s is not a standard koji task", method)
-    except koji.ParameterError:
-        logger.warning("Cannot parse parameters: %s of %s task", arglist, method)
-    except Exception:
-        logger.warning("Unexcepted error occurs when parsing parameters: %s of %s task",
-                       arglist, method, exc_info=True)
-    if params:
-        # parameters that indicate source for build
-        for k in ('src', 'spec_url', 'url'):
-            if method == 'newRepo':
-                # newRepo has a 'src' parameter that means something else
-                break
-            if k in params:
-                policy_data['source'] = params.get(k)
-                break
-        # parameters that indicate build target
-        target = None
-        hastarget = False
-        for k in ('target', 'build_target', 'target_info'):
-            if k in params:
-                target = params.get(k)
-                hastarget = True
-                break
-        if hastarget:
-            if isinstance(target, dict):
-                if 'name' not in target:
-                    logger.warning("Bad build target parameter: %r", target)
-                    target = None
-                else:
-                    target = target.get('name')
-            if target is None:
-                policy_data['target'] = None
-            else:
-                policy_data['target'] = get_build_target(target, strict=True)['name']
-        t_opts = params.get('opts', {})
-        policy_data['scratch'] = t_opts.get('scratch', False)
+    policy_data.update(policy_data_from_task_args(method, arglist))
 
     ruleset = context.policy.get('channel')
     result = ruleset.apply(policy_data)
@@ -9836,6 +9797,71 @@ def check_policy(name, data, default='deny', strict=False, force=False):
     if context.opts.get('KojiDebug') or context.opts.get('VerbosePolicy'):
         err_str += " [rule: %s]" % lastrule
     raise koji.ActionNotAllowed(err_str)
+
+
+def policy_data_from_task(task_id):
+    """Calculate policy data from task id
+
+        :param int task_id: the task id
+
+        :returns: dict with policy data
+        """
+    task = Task(task_id)
+    taskinfo = task.getInfo(strict=True, request=True)
+    return policy_data_from_task_args(taskinfo['method'], taskinfo['request'])
+
+
+def policy_data_from_task_args(method, arglist):
+    """Calculate policy data from task arguments
+
+        :param str method: task method
+        :param list arglist: raw task params
+
+        :returns: dict with policy data
+        """
+    params = {}
+    policy_data = {}
+    try:
+        params = koji.tasks.parse_task_params(method, arglist)
+    except TypeError:
+        logger.warning("%s is not a standard koji task", method)
+    except koji.ParameterError:
+        logger.warning("Cannot parse parameters: %s of %s task", arglist, method)
+    except Exception:
+        logger.warning("Unexcepted error occurs when parsing parameters: %s of %s task",
+                       arglist, method, exc_info=True)
+    if params:
+        # parameters that indicate source for build
+        for k in ('src', 'spec_url', 'url'):
+            if method == 'newRepo':
+                # newRepo has a 'src' parameter that means something else
+                break
+            if k in params:
+                policy_data['source'] = params.get(k)
+                break
+        # parameters that indicate build target
+        target = None
+        hastarget = False
+        for k in ('target', 'build_target', 'target_info'):
+            if k in params:
+                target = params.get(k)
+                hastarget = True
+                break
+        if hastarget:
+            if isinstance(target, dict):
+                if 'name' not in target:
+                    logger.warning("Bad build target parameter: %r", target)
+                    target = None
+                else:
+                    target = target.get('name')
+            if target is None:
+                policy_data['target'] = None
+            else:
+                policy_data['target'] = get_build_target(target, strict=True)['name']
+        t_opts = params.get('opts', {})
+        policy_data['scratch'] = t_opts.get('scratch', False)
+
+    return policy_data
 
 
 def assert_policy(name, data, default='deny', force=False):
