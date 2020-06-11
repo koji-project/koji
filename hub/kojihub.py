@@ -9323,13 +9323,19 @@ def policy_get_cgs(data):
 
 
 def policy_get_build_tags(data):
-    # pull cg info out
-    # note that br_id will be None if a component had no buildroot
     if 'build_tag' in data:
         return [get_tag(data['build_tag'], strict=True)['name']]
     elif 'build_tags' in data:
         return [get_tag(t, strict=True)['name'] for t in data['build_tags']]
-    # otherise look at buildroots
+
+    # see if we have a target
+    target = data.get('target')
+    if target:
+        target = get_build_target(target, strict=False)
+        if target:
+            return [target['build_tag_name']]
+
+    # otherwise look at buildroots
     tags = set()
     for br_id in policy_get_brs(data):
         if br_id is None:
