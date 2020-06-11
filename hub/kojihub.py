@@ -5890,6 +5890,8 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
         'import': True,
         'import_type': 'rpm',
     }
+    if task_id is not None:
+        policy_data.update(policy_data_from_task(task_id))
     vol = check_volume_policy(policy_data, strict=False, default='DEFAULT')
     build['volume_id'] = vol['id']
     build['volume_name'] = vol['name']
@@ -13795,6 +13797,7 @@ class HostExports(object):
             'import': True,
             'import_type': 'maven',
         }
+        policy_data.update(policy_data_from_task(task_id))
         vol = check_volume_policy(policy_data, strict=False, default='DEFAULT')
         if vol['id'] != build_info['volume_id']:
             build_info['volume_id'] = vol['id']
@@ -13876,6 +13879,7 @@ class HostExports(object):
             'import': True,
             'import_type': 'maven',
         }
+        policy_data.update(policy_data_from_task(task_id))
         vol = check_volume_policy(policy_data, strict=False, default='DEFAULT')
         if vol['id'] != build_info['volume_id']:
             build_info['volume_id'] = vol['id']
@@ -14052,6 +14056,7 @@ class HostExports(object):
             'import': True,
             'import_type': 'win',
         }
+        policy_data.update(policy_data_from_task(task_id))
         vol = check_volume_policy(policy_data, strict=False, default='DEFAULT')
         if vol['id'] != build_info['volume_id']:
             build_info['volume_id'] = vol['id']
