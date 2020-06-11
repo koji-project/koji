@@ -10728,7 +10728,7 @@ class RootExports(object):
         context.session.assertPerm('admin')
         add_external_rpm(rpminfo, external_repo, strict=strict)
 
-    def tagBuildBypass(self, tag, build, force=False, notify=True):
+    def tagBuildBypass(self, tag, build, force=False, notify=False):
         """Tag a build without running post checks
 
         This is a short circuit function for imports.
@@ -10832,7 +10832,7 @@ class RootExports(object):
             tag_notification(False, None, tag, build, user_id, False, "%s: %s" % (exctype, value))
             raise
 
-    def untagBuildBypass(self, tag, build, strict=True, force=False, notify=True):
+    def untagBuildBypass(self, tag, build, strict=True, force=False, notify=False):
         """Untag a build without any checks
 
         Admin and tag permission only. Intended for syncs/imports.
