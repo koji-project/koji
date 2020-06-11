@@ -9832,36 +9832,43 @@ def policy_data_from_task_args(method, arglist):
     except Exception:
         logger.warning("Unexcepted error occurs when parsing parameters: %s of %s task",
                        arglist, method, exc_info=True)
-    if params:
-        # parameters that indicate source for build
-        for k in ('src', 'spec_url', 'url'):
-            if method == 'newRepo':
-                # newRepo has a 'src' parameter that means something else
-                break
-            if k in params:
-                policy_data['source'] = params.get(k)
-                break
-        # parameters that indicate build target
-        target = None
-        hastarget = False
-        for k in ('target', 'build_target', 'target_info'):
-            if k in params:
-                target = params.get(k)
-                hastarget = True
-                break
-        if hastarget:
-            if isinstance(target, dict):
-                if 'name' not in target:
-                    logger.warning("Bad build target parameter: %r", target)
-                    target = None
-                else:
-                    target = target.get('name')
-            if target is None:
-                policy_data['target'] = None
+    if not params:
+        return {}
+
+    if method == 'indirectionimage':
+        # this handler buries all its arguments in a single 'opts' parameter
+        opts = params.get('opts') or {}
+        params = dict(**opts)
+        params['opts'] = opts
+    # parameters that indicate source for build
+    for k in ('src', 'spec_url', 'url'):
+        if method == 'newRepo':
+            # newRepo has a 'src' parameter that means something else
+            break
+        if k in params:
+            policy_data['source'] = params.get(k)
+            break
+    # parameters that indicate build target
+    target = None
+    hastarget = False
+    for k in ('target', 'build_target', 'target_info'):
+        if k in params:
+            target = params.get(k)
+            hastarget = True
+            break
+    if hastarget:
+        if isinstance(target, dict):
+            if 'name' not in target:
+                logger.warning("Bad build target parameter: %r", target)
+                target = None
             else:
-                policy_data['target'] = get_build_target(target, strict=True)['name']
-        t_opts = params.get('opts', {})
-        policy_data['scratch'] = t_opts.get('scratch', False)
+                target = target.get('name')
+        if target is None:
+            policy_data['target'] = None
+        else:
+            policy_data['target'] = get_build_target(target, strict=True)['name']
+    t_opts = params.get('opts', {})
+    policy_data['scratch'] = t_opts.get('scratch', False)
 
     return policy_data
 
