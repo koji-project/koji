@@ -5656,6 +5656,9 @@ def apply_volume_policy(build, strict=False):
     volume we be retained.
     """
     policy_data = {'build': build}
+    task_id = build['task_id']
+    if task_id:
+        policy_data.update(policy_data_from_task(task_id))
     volume = check_volume_policy(policy_data, strict=strict)
     if volume is None:
         # just leave the build where it is
