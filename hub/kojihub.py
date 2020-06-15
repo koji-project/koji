@@ -8385,7 +8385,7 @@ def get_notification_recipients(build, tag_id, state):
     if not recipients:
         return []
 
-    # apply the out outs
+    # apply the opt-outs
     user_ids = list(set([r['user_id'] for r in recipients]))
     if user_ids:
         clauses = ['user_id IN %(user_ids)s']
