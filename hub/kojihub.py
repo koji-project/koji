@@ -1231,27 +1231,26 @@ def readPackageList(tagID=None, userID=None, pkgID=None, event=None, inherit=Fal
     return packages
 
 
-def list_tags(build=None, package=None, perms=True, queryOpts=None):
-    """List tags.  If build is specified, only return tags associated with the
-    given build.  If package is specified, only return tags associated with the
-    specified package.  If neither is specified, return all tags.  Build can be
-    either an integer ID or a string N-V-R.  Package can be either an integer ID
-    or a string name.  Only one of build and package may be specified.  Returns
-    a list of maps.  Each map contains keys:
-      - id
-      - name
-      - arches
-      - locked
+def list_tags(build=None, package=None, perms=True, pattern=None, queryOpts=None):
+    """List tags according to filters
 
-    If package is specified, each map will also contain:
-      - owner_id
-      - owner_name
-      - blocked
-      - extra_arches
+    :param int|str build: If build is specified, only return tags associated with
+                          the given build.  Build can be either an integer ID or
+                          a string N-V-R.
+    :param int|str package: If package is specified, only return tags associated with the
+                            specified package. Package can be either an integer ID or a
+                            string name.
 
-    If perms is True, each map will also contain:
-      - perm_id
-      - perm
+                            In this case resulting map will have additional keys:
+                              - owner_id
+                              - owner_name
+                              - blocked
+                              - extra_arches
+    :param bool perms: If perms is True, perm_id and perm is added to resulting maps.
+    :param pattern: If glob pattern is specified, only return tags matching that pattern.
+
+    :returns list of dicts: Each map contains id, name, arches and locked keys and
+                            additional keys as specified via package or perms options.
     """
     if build is not None and package is not None:
         raise koji.GenericError('only one of build and package may be specified')
@@ -1292,6 +1291,11 @@ def list_tags(build=None, package=None, perms=True, queryOpts=None):
                      "   tag_package_owners.active IS TRUE")
         joins.append('users ON tag_package_owners.owner = users.id')
         packageID = packageinfo['id']
+    if pattern is not None:
+        # copied from _prepareSearchTerms / glob
+        pattern = pattern.replace(
+            '\\', '\\\\').replace('_', r'\_').replace('?', '_').replace('*', '%')
+        clauses.append('tag.name ILIKE %(pattern)s')
 
     query = QueryProcessor(columns=fields, aliases=aliases, tables=tables,
                            joins=joins, clauses=clauses, values=locals(),
