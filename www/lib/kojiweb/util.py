@@ -173,7 +173,7 @@ def _genToken(environ, tstamp=None):
         tstamp = _truncTime()
     value = user + str(tstamp) + environ['koji.options']['Secret'].value
     value = value.encode('utf-8')
-    return hashlib.md5(value).hexdigest()[-8:]
+    return hashlib.sha1(value).hexdigest()[-8:]
 
 
 def _getValidTokens(environ):
