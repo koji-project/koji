@@ -162,10 +162,22 @@ class ManagedRepo(object):
         # XXX - config
         if self.state != koji.REPO_INIT:
             return False
-        age = time.time() - max(self.event_ts, self.first_seen)
-        # the first_seen timestamp is also factored in because a repo can be
+        times = [self.event_ts]
+        # the mtime is also factored in because a repo can be
         # created from an older event and should not be expired based solely on
         # that event's timestamp.
+        path = self.get_path()
+        if os.path.exists(path):
+            try:
+                times.append(os.stat(path).st_mtime)
+            except Exception:
+                self.logger.error("Can't read mtime for %s" % path)
+                return False
+        else:
+            times.append(self.first_seen)
+            self.logger.warning("Repo %d is in INIT state, "
+                                "but doesn't have directory %s yet?" % (self.repo_id, path))
+        age = time.time() - max(times)
         return age > timeout
 
     def tryDelete(self):
@@ -193,7 +205,7 @@ class ManagedRepo(object):
                 self.logger.error("Can't stat repo directory: %s, %s" % (path, e.strerror))
                 return False
         else:
-            times = [self.event_ts, mtime, self.first_seen, self.expire_ts]
+            times = [self.event_ts, mtime, self.expire_ts]
             times = [ts for ts in times if ts is not None]
             age = time.time() - max(times)
             self.logger.debug("Repo %s (%s) age: %i sec", self.repo_id, path, age)
