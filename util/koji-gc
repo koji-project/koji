@@ -62,7 +62,7 @@ def get_options():
                       help=_("show debug output"))
     parser.add_option("--debug-xmlrpc", action="store_true", default=False,
                       help=_("show xmlrpc debug output"))
-    parser.add_option("--smtp-host", metavar="HOST",
+    parser.add_option("--smtp-host", metavar="HOST", default='localhost',
                       help=_("specify smtp server for notifications"))
     parser.add_option("--smtp-user", dest="smtp_user", metavar="USER",
                       help=_("specify smtp username for notifications"))
