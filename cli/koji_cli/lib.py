@@ -18,7 +18,7 @@ from six.moves import range
 import koji
 # import parse_arches to current namespace for backward compatibility
 from koji import parse_arches
-from koji.util import to_list
+from koji.util import md5_constructor, to_list
 
 try:
     import krbV
@@ -612,7 +612,7 @@ def download_archive(build, archive, topurl, quiet=False, noprogress=False):
 
     # check checksum/checksum_type
     if archive['checksum_type'] == koji.CHECKSUM_TYPES['md5']:
-        hash = hashlib.md5()
+        hash = md5_constructor()
     elif archive['checksum_type'] == koji.CHECKSUM_TYPES['sha1']:
         hash = hashlib.sha1()
     elif archive['checksum_type'] == koji.CHECKSUM_TYPES['sha256']:

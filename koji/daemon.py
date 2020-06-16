@@ -23,7 +23,6 @@
 from __future__ import absolute_import, division
 
 import errno
-import hashlib
 import logging
 import os
 import signal
@@ -44,6 +43,7 @@ from koji.util import (
     adler32_constructor,
     base64encode,
     dslice,
+    md5_constructor,
     parseStatus,
     to_list,
     joinpath,
@@ -69,7 +69,7 @@ def incremental_upload(session, fname, fd, path, retries=5, logger=None):
             break
 
         data = base64encode(contents)
-        digest = hashlib.md5(contents).hexdigest()
+        digest = md5_constructor(contents).hexdigest()
         del contents
 
         tries = 0

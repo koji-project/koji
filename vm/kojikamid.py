@@ -333,7 +333,7 @@ class WindowsBuild(object):
             elif checksum_type == 'sha256':
                 checksum = hashlib.sha256()
             elif checksum_type == 'md5':
-                checksum = hashlib.md5()
+                checksum = md5_constructor.md5()  # noqa: F821
             else:
                 raise BuildError('Unknown checksum type %s for %s' % (  # noqa: F821
                                  checksum_type,

@@ -45,6 +45,17 @@ import koji
 from koji.xmlrpcplus import DateTime
 
 
+# BEGIN kojikamid dup #
+
+def md5_constructor(*args, **kwargs):
+    if hasattr(hashlib._hashlib, 'get_fips_mode') and hashlib._hashlib.get_fips_mode():
+        # do not care about FIPS
+        kwargs['usedforsecurity'] = False
+    return hashlib.md5(*args, **kwargs)
+
+# END kojikamid dup #
+
+
 # imported from kojiweb and kojihub
 def deprecated(message):
     """Print deprecation warning"""
@@ -583,7 +594,7 @@ def check_sigmd5(filename):
         f.seek(o)
 
         # compute md5 of rest of file
-        md5 = hashlib.md5()
+        md5 = md5_constructor()
         while True:
             d = f.read(1024**2)
             if not d:

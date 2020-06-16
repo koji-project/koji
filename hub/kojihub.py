@@ -64,6 +64,7 @@ from koji.util import (
     decode_bytes,
     dslice,
     joinpath,
+    md5_constructor,
     move_and_symlink,
     multi_fnmatch,
     safer_move,
@@ -6641,7 +6642,7 @@ class CG_Importer(object):
                 # until we change the way we handle checksums, we have to limit this to md5
                 raise koji.GenericError("Unsupported checksum type: %(checksum_type)s" % fileinfo)
             with open(path, 'rb') as fp:
-                m = hashlib.md5()
+                m = md5_constructor()
                 while True:
                     contents = fp.read(8192)
                     if not contents:
@@ -7226,7 +7227,7 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
         # trust values computed on hub (CG_Importer.prep_outputs)
         if not fileinfo or not fileinfo.get('hub.checked_md5'):
             with open(filepath, 'rb') as archivefp:
-                m = hashlib.md5()
+                m = md5_constructor()
                 while True:
                     contents = archivefp.read(8192)
                     if not contents:
@@ -7367,7 +7368,7 @@ def _generate_maven_metadata(mavendir):
             continue
         if not os.path.isfile('%s/%s' % (mavendir, mavenfile)):
             continue
-        for ext, sum_constr in (('.md5', hashlib.md5), ('.sha1', hashlib.sha1)):
+        for ext, sum_constr in (('.md5', md5_constructor), ('.sha1', hashlib.sha1)):
             sumfile = mavenfile + ext
             if sumfile not in mavenfiles:
                 sum = sum_constr()
@@ -7417,7 +7418,7 @@ def add_rpm_sig(an_rpm, sighdr):
         # we use the sigkey='' to represent unsigned in the db (so that uniqueness works)
     else:
         sigkey = koji.get_sigpacket_key_id(sigkey)
-    sighash = hashlib.md5(sighdr).hexdigest()
+    sighash = md5_constructor(sighdr).hexdigest()
     rpm_id = rinfo['id']
     # - db entry
     q = """SELECT sighash FROM rpmsigs WHERE rpm_id=%(rpm_id)i AND sigkey=%(sigkey)s"""
@@ -14636,7 +14637,7 @@ def get_upload_path(reldir, name, create=False, volume=None):
 
 def get_verify_class(verify):
     if verify == 'md5':
-        return hashlib.md5
+        return md5_constructor
     elif verify == 'adler32':
         return koji.util.adler32_constructor
     elif verify:

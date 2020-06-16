@@ -2,7 +2,6 @@ from __future__ import absolute_import, division
 
 import ast
 import fnmatch
-import hashlib
 import itertools
 import json
 import logging
@@ -24,7 +23,7 @@ import six.moves.xmlrpc_client
 from six.moves import filter, map, range, zip
 
 import koji
-from koji.util import base64encode, to_list
+from koji.util import base64encode, md5_constructor, to_list
 from koji_cli.lib import (
     _,
     _list_tasks,
@@ -1500,7 +1499,7 @@ def handle_import_sig(goptions, session, args):
         previous = session.queryRPMSigs(rpm_id=rinfo['id'], sigkey=sigkey)
         assert len(previous) <= 1
         if previous:
-            sighash = hashlib.md5(sighdr).hexdigest()
+            sighash = md5_constructor(sighdr).hexdigest()
             if previous[0]['sighash'] == sighash:
                 print(_("Signature already imported: %s") % path)
                 continue
