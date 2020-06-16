@@ -570,7 +570,7 @@ class RepoManager(object):
                 symlink = False
                 if stat.S_ISLNK(dirstat.st_mode):
                     symlink = True
-                elif stat.S_ISDIR(dirstat.st_mode):
+                elif not stat.S_ISDIR(dirstat.st_mode):
                     self.logger.debug("%s not a directory, skipping", repodir)
                     continue
                 dir_ts = dirstat.st_mtime
