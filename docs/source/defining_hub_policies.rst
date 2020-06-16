@@ -19,8 +19,11 @@ Policy configuration is optional. If you don't define one, then by default:
 * tag/untag/move operations are governed by tag locks/permissions
 * builds from srpm are only allowed for admins
 * builds from expired repos are only allowed for admins
-* only admins may modify package lists
+* only admins and users with ``tag`` permission may modify package lists
 * tasks go to the default channel
+* vm tasks need ``admin`` or ``win-admin`` permission
+* content generator import can be done by anyone
+* all content ends in ``DEFAULT`` volume.
 
 Configuration
 =============
