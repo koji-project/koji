@@ -8383,7 +8383,7 @@ def get_notification_recipients(build, tag_id, state):
         #   using all package owners from all tags would be way overkill.
 
     if not recipients:
-        return None
+        return []
 
     # apply the out outs
     user_ids = list(set([r['user_id'] for r in recipients]))
