@@ -1029,6 +1029,11 @@ def anon_handle_mock_config(goptions, session, args):
         opts['bootstrap_image'] = buildcfg['extra']['mock.bootstrap_image']
     if 'mock.use_bootstrap' in buildcfg['extra']:
         opts['use_bootstrap'] = buildcfg['extra']['mock.use_bootstrap']
+    opts['tag_macros'] = {}
+    for key in buildcfg['extra']:
+        if key.startswith('rpm.macro.'):
+            macro = '%' + key[10:]
+            opts['tag_macros'][macro] = buildcfg['extra'][key]
     output = koji.genMockConfig(name, arch, **opts)
     if options.ofile:
         with open(options.ofile, 'w') as fo:

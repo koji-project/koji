@@ -97,7 +97,8 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
         opts = self.common_opts.copy()
         opts.update({
             'repoid': buildroot_info['repo_id'],
-            'tag_name': buildroot_info['tag_name']
+            'tag_name': buildroot_info['tag_name'],
+            'tag_macros': {},
         })
         anon_handle_mock_config(options, session, arguments)
         self.assert_console_message(
@@ -162,7 +163,8 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
         opts = self.common_opts.copy()
         opts.update({
             'repoid': 'latest',
-            'tag_name': multi_broots[0]['tag_name']
+            'tag_name': multi_broots[0]['tag_name'],
+            'tag_macros': {},
         })
         arguments = self.common_args + ['--task', str(task_id),
                                         '--name', self.progname,
@@ -219,7 +221,15 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
         self.assert_console_message(stderr, expected)
 
         # return build config
-        session.getBuildConfig.return_value = {'id': 301, 'extra': {}}
+        session.getBuildConfig.return_value = {
+            'id': 301,
+            'extra': {
+                'rpm.macro.random_macro1': 'random_macro_content1',
+                'rpm.macro.random_macro2': 'random_macro_content2',
+                'mock.package_manager': 'yum',
+                'mock.yum.module_hotfixes': 1,
+            }
+        }
         expected = "Could not get a repo for tag: %(name)s\n" % tag
         with self.assertRaises(SystemExit) as ex:
             anon_handle_mock_config(options, session, arguments)
@@ -241,6 +251,12 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
         opts.update({
             'repoid': 'latest',
             'tag_name': tag['name'],
+            'tag_macros': {
+                '%random_macro1': 'random_macro_content1',
+                '%random_macro2': 'random_macro_content2',
+            },
+            'package_manager': 'yum',
+            'module_hotfixes': 1,
         })
         anon_handle_mock_config(options, session, arguments)
         self.assert_console_message(
@@ -303,7 +319,8 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
         opts = self.common_opts.copy()
         opts.update({
             'repoid': 101,
-            'tag_name': target['build_tag_name']
+            'tag_name': target['build_tag_name'],
+            'tag_macros': {},
         })
         session.getRepo.return_value = {'id': 101}
         gen_config_mock.return_value = self.mock_output
