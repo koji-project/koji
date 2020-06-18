@@ -949,13 +949,13 @@ def main(options, session):
             repomgr.checkQueue()
             repomgr.printState()
             repomgr.pruneLocalRepos()
-            if not curr_chk_thread.isAlive():
+            if not curr_chk_thread.is_alive():
                 logger.error("Currency checker thread died. Restarting it.")
                 curr_chk_thread = start_currency_checker(session, repomgr)
-            if options.check_external_repos and not curr_ext_chk_thread.isAlive():
+            if options.check_external_repos and not curr_ext_chk_thread.is_alive():
                 logger.error("External currency checker thread died. Restarting it.")
                 curr_ext_chk_thread = start_external_currency_checker(session, repomgr)
-            if not regen_thread.isAlive():
+            if not regen_thread.is_alive():
                 logger.error("Regeneration thread died. Restarting it.")
                 regen_thread = start_regen_loop(session, repomgr)
         except KeyboardInterrupt:
