@@ -8457,7 +8457,7 @@ def build_notification(task_id, build_id):
     web_url = context.opts.get('KojiWebURL', 'http://localhost/koji')
 
     recipients = get_notification_recipients(build, dest_tag, build['state'])
-    if len(recipients) > 0:
+    if recipients:
         make_task('buildNotification', [recipients, build, target, web_url])
 
 
