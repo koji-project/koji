@@ -1,7 +1,7 @@
 #import koji
 #from kojiweb import util
 #from pprint import pformat
-#from six.moves.urllib.parse import quote
+#from urllib.parse import quote
 
 #attr _PASSTHROUGH = ['archiveID', 'fileOrder', 'fileStart', 'buildrootOrder', 'buildrootStart']
 

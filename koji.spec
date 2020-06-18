@@ -183,6 +183,7 @@ Provides: python%{python3_pkgversion}-%{name}-sidetag-plugin-cli = %{version}-%{
 Plugins to the koji command-line interface
 %endif
 
+%if 0%{py3_support} > 1
 %package hub
 Summary: Koji XMLRPC interface
 Group: Applications/Internet
@@ -197,27 +198,6 @@ Suggests: python%{python3_pkgversion}-%{name}-hub-plugins
 %description hub
 koji-hub is the XMLRPC interface to the koji database
 
-%if 0%{py2_support} > 1
-%package -n python2-%{name}-hub
-Summary: Koji XMLRPC interface
-Group: Applications/Internet
-License: LGPLv2 and GPLv2
-# rpmdiff lib (from rpmlint) is GPLv2 (only)
-Requires: httpd
-Requires: mod_wsgi
-%if 0%{?fedora} || 0%{?rhel} >= 7
-Requires: mod_auth_gssapi
-%endif
-Requires: python-psycopg2
-Requires: python2-%{name} = %{version}-%{release}
-# py2 xor py3
-Provides: %{name}-hub-code = %{version}-%{release}
-
-%description -n python2-%{name}-hub
-koji-hub is the XMLRPC interface to the koji database
-%endif
-
-%if 0%{py3_support} > 1
 %package -n python%{python3_pkgversion}-%{name}-hub
 Summary: Koji XMLRPC interface
 Group: Applications/Internet
@@ -235,7 +215,6 @@ Provides: %{name}-hub-code = %{version}-%{release}
 
 %description -n python%{python3_pkgversion}-%{name}-hub
 koji-hub is the XMLRPC interface to the koji database
-%endif
 
 %package hub-plugins
 Summary: Koji hub plugins
@@ -249,27 +228,6 @@ Suggests: python%{python3_pkgversion}-%{name}-hub-plugins
 %description hub-plugins
 Plugins to the koji XMLRPC interface
 
-%if 0%{py2_support} > 1
-%package -n python2-%{name}-hub-plugins
-Summary: Koji hub plugins
-Group: Applications/Internet
-License: LGPLv2
-Requires: python2-%{name}-hub = %{version}-%{release}
-%if 0%{?rhel} < 8
-Requires: python-qpid-proton
-%else
-Requires: python2-qpid-proton
-%endif
-Requires: cpio
-Provides: %{name}-hub-plugins-code = %{version}-%{release}
-Obsoletes: python2-%{name}-sidetag-plugin-hub < %{version}-%{release}
-Provides: python2-%{name}-sidetag-plugin-hub = %{version}-%{release}
-
-%description -n python2-%{name}-hub-plugins
-Plugins to the koji XMLRPC interface
-%endif
-
-%if 0%{py3_support} > 1
 %package -n python%{python3_pkgversion}-%{name}-hub-plugins
 Summary: Koji hub plugins
 Group: Applications/Internet
@@ -384,6 +342,7 @@ Requires(postun): systemd
 %description utils
 Utilities for the Koji system
 
+%if 0%{py3_support} > 1
 %package web
 Summary: Koji Web UI
 Group: Applications/Internet
@@ -397,30 +356,6 @@ Suggests: python%{python3_pkgversion}-%{name}-web
 %description web
 koji-web is a web UI to the Koji system.
 
-%if 0%{py2_support} > 1
-%package -n python2-%{name}-web
-Summary: Koji Web UI
-Group: Applications/Internet
-License: LGPLv2
-%{?python_provide:%python_provide python2-%{name}-web}
-Requires: httpd
-Requires: mod_wsgi
-%if 0%{?fedora} || 0%{?rhel} >= 7
-Requires: mod_auth_gssapi
-%else
-Requires: mod_auth_kerb
-Requires: python-krbV >= 1.0.13
-%endif
-Requires: python-psycopg2
-Requires: python-cheetah
-Requires: python2-%{name} = %{version}-%{release}
-Provides: %{name}-web-code = %{version}-%{release}
-
-%description -n python2-%{name}-web
-koji-web is a web UI to the Koji system.
-%endif
-
-%if 0%{py3_support} > 1
 %package -n python%{python3_pkgversion}-%{name}-web
 Summary: Koji Web UI
 Group: Applications/Internet
@@ -508,6 +443,24 @@ done
 %endif
 %endif
 
+# in case, we're building only py2, delete all py3 content
+%if 0%{py3_support} < 1 && 0%{py2_support} > 0
+   rm -rf %{buildroot}%{_datadir}/koji-web
+   rm -rf %{buildroot}%{_datadir}/koji-hub
+   rm -rf %{buildroot}%{_prefix}/lib/koji-hub-plugins
+   rm -f %{buildroot}/etc/httpd/conf.d/kojihub.conf
+   rm -f %{buildroot}/etc/httpd/conf.d/kojiweb.conf
+   rm -f %{buildroot}/etc/koji-hub/hub.conf
+   rm -f %{buildroot}/etc/koji-hub/plugins/protonmsg.conf
+   rm -f %{buildroot}/etc/koji-hub/plugins/rpm2maven.conf
+   rm -f %{buildroot}/etc/koji-hub/plugins/save_failed_tree.conf
+   rm -f %{buildroot}/etc/koji-hub/plugins/sidetag.conf
+   rm -f %{buildroot}/etc/kojiweb/web.conf
+   rm -f %{buildroot}%{_prefix}/lib/systemd/system/koji-sweep-db.service
+   rm -f %{buildroot}%{_prefix}/lib/systemd/system/koji-sweep-db.timer
+   rm -f %{buildroot}%{_prefix}/sbin/koji-sweep-db
+%endif
+
 %clean
 rm -rf $RPM_BUILD_ROOT
 
@@ -545,6 +498,7 @@ rm -rf $RPM_BUILD_ROOT
 #%%config(noreplace) %%{_sysconfdir}/koji/plugins/*.conf
 %endif
 
+%if 0%{py3_support} > 1
 %files hub
 %config(noreplace) /etc/httpd/conf.d/kojihub.conf
 %dir /etc/koji-hub
@@ -556,27 +510,14 @@ rm -rf $RPM_BUILD_ROOT
 %{_unitdir}/koji-sweep-db.timer
 %endif
 
-%if 0%{py2_support} > 1
-%files -n python2-%{name}-hub
-%{_datadir}/koji-hub/*.py*
-%endif
-
-%if 0%{py3_support} > 1
 %files -n python%{python3_pkgversion}-%{name}-hub
 %{_datadir}/koji-hub/*.py
 %{_datadir}/koji-hub/__pycache__
-%endif
 
 %files hub-plugins
 %dir /etc/koji-hub/plugins
 %config(noreplace) /etc/koji-hub/plugins/*.conf
 
-%if 0%{py2_support} > 1
-%files -n python2-%{name}-hub-plugins
-%{_prefix}/lib/koji-hub-plugins/*.py*
-%endif
-
-%if 0%{py3_support} > 1
 %files -n python%{python3_pkgversion}-%{name}-hub-plugins
 %{_prefix}/lib/koji-hub-plugins/*.py
 %{_prefix}/lib/koji-hub-plugins/__pycache__
@@ -612,18 +553,13 @@ rm -rf $RPM_BUILD_ROOT
 %config(noreplace) /etc/koji-shadow/koji-shadow.conf
 %{_sbindir}/koji-sidetag-cleanup
 
+%if 0%{py3_support} > 1
 %files web
 %dir /etc/kojiweb
 %config(noreplace) /etc/kojiweb/web.conf
 %config(noreplace) /etc/httpd/conf.d/kojiweb.conf
 %dir /etc/kojiweb/web.conf.d
 
-%if 0%{py2_support} > 1
-%files -n python2-%{name}-web
-%{_datadir}/koji-web
-%endif
-
-%if 0%{py3_support} > 1
 %files -n python%{python3_pkgversion}-%{name}-web
 %{_datadir}/koji-web
 %endif

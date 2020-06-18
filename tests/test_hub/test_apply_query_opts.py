@@ -1,9 +1,5 @@
-from __future__ import absolute_import
 import copy
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
+import unittest
 from nose.tools import eq_
 
 import kojihub

@@ -1,11 +1,7 @@
-from __future__ import absolute_import, with_statement
 import mock
 import os
 import datetime
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
+import unittest
 
 from kojihub import _write_maven_repo_metadata
 

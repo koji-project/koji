@@ -1,10 +1,5 @@
-from __future__ import absolute_import
 import mock
-import six
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
+import unittest
 
 import kojihub
 
@@ -36,7 +31,7 @@ class DBQueryTestCase(unittest.TestCase):
         return query
 
     def assertQueryEqual(self, query, **kwargs):
-        for k, v in six.iteritems(kwargs):
+        for k, v in kwargs.items():
             self.assertEqual(getattr(query, k, None), v)
 
     def assertLastQueryEqual(self, **kwargs):

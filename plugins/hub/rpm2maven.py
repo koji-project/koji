@@ -5,8 +5,6 @@
 # Authors:
 #     Mike Bonnet <mikeb@redhat.com>
 
-from __future__ import absolute_import
-
 import fnmatch
 import os
 import subprocess
