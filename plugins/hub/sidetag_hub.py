@@ -41,7 +41,7 @@ def is_sidetag_owner(taginfo, user, raise_error=False):
     """Check, that given user is owner of the sidetag"""
     result = (taginfo['extra'].get('sidetag') and
               (taginfo['extra'].get('sidetag_user_id') == user['id'] or
-               context.session.hasPerm('admin'))))
+               context.session.hasPerm('admin')))
     if not result and raise_error:
         raise koji.ActionNotAllowed("This is not your sidetag")
 
