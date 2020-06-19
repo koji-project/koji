@@ -1648,6 +1648,8 @@ name=build
         'yum_cache_enable': False,
         'root_cache_enable': False
     }
+    # Append config_opts['plugin_conf'] to enable Mock package signing
+    plugin_conf.update(opts.get('plugin_conf', {}))
 
     macros = {
         '%_rpmfilename': '%%{NAME}-%%{VERSION}-%%{RELEASE}.%%{ARCH}.rpm',
@@ -1689,7 +1691,14 @@ name=build
     parts.append("\n")
     for key in sorted(plugin_conf):
         value = plugin_conf[key]
-        parts.append("config_opts['plugin_conf'][%r] = %r\n" % (key, value))
+        # allow two-level dicts
+        if isinstance(value, dict):
+            parts.append("config_opts['plugin_conf'][%r] = {}\n" % key)
+            for key2 in sorted(value):
+                value2 = value[key2]
+                parts.append("config_opts['plugin_conf'][%r][%r] = %r\n" % (key, key2, value2))
+        else:
+            parts.append("config_opts['plugin_conf'][%r] = %r\n" % (key, value))
     parts.append("\n")
 
     if bind_opts:
