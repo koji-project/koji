@@ -5430,8 +5430,20 @@ def get_buildroot(buildrootID, strict=False):
 
 
 def list_channels(hostID=None, event=None):
-    """List channels.  If hostID is specified, only list
-    channels associated with the host with that ID."""
+    """
+    List builder channels.
+
+    :param hostID: Koji builder host ID or hostname. If specified, Koji will
+                   return only the channels associated with this builder host.
+                   If unspecified, Koji will return all channels.
+    :type hostID: int or str
+    :param int event: The event ID at which to search. If unspecified, the
+                      default behavior is to search for the "active" host
+                      settings. You must specify a hostID parameter with this
+                      option.
+    :returns: list of dicts, one per channel. For example,
+              [{'id': 20, 'name': 'container'}]
+    """
     fields = {'channels.id': 'id', 'channels.name': 'name'}
     columns, aliases = zip(*fields.items())
     if hostID:
