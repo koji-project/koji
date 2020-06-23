@@ -1641,6 +1641,8 @@ name=build
         yc_parts.append("        %s\n" % url)
     if opts.get('module_hotfixes'):
         yc_parts.append("module_hotfixes=1\n")
+    if opts.get('yum_best'):
+        yc_parts.append("best=%s\n" % int(opts['yum_best']))
     config_opts['yum.conf'] = ''.join(yc_parts)
 
     plugin_conf = {
