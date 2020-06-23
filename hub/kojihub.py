@@ -10317,7 +10317,7 @@ class RootExports(object):
         context.session.assertPerm('admin')
         return make_task(*args, **opts)
 
-    def uploadFile(self, path, name, size, md5sum, offset, data, volume=None):
+    def uploadFile(self, path, name, size, md5sum, offset, data, volume=None, checksum=None):
         """upload file to the hub
 
         Files can be uploaded in chunks, if so the hash and size describe the
@@ -10326,12 +10326,14 @@ class RootExports(object):
         :param str path: the relative path to upload to
         :param str name: the name of the file
         :param int size: size of contents (bytes)
-        :param str md5sum: md5sum (hex digest) of contents or tuple (hash_type, digest)
-                           md5sum name is misleading, but it is here for backwas compatibility
+        :param checksum: MD5 hex digest (see md5sum) or a tuple (hash_type, digest) of contents
+        :type checksum: str or tuple
         :param str data: base64 encoded file contents
         :param int offset: The offset indicates where the chunk belongs.
                            The special offset -1 is used to indicate the final
                            chunk.
+        :param str md5sum: legacy param name of checksum. md5sum name is misleading,
+                           but it is here for backwards compatibility
 
         :returns: True
         """
@@ -10341,14 +10343,16 @@ class RootExports(object):
         # we will accept offset and size as strings to work around xmlrpc limits
         offset = koji.decode_int(offset)
         size = koji.decode_int(size)
-        if isinstance(md5sum, str):
+        if checksum is None and md5sum is not None:
+            checksum = md5sum
+        if isinstance(checksum, str):
             # this case is for backwards compatibility
             verify = "md5"
-            digest = hash
-        elif hash is None:
+            digest = checksum
+        elif checksum is None:
             verify = None
         else:
-            verify, digest = hash
+            verify, digest = checksum
         sum_cls = get_verify_class(verify)
         if offset != -1:
             if size is not None:
