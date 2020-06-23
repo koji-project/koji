@@ -49,7 +49,8 @@ from koji.xmlrpcplus import DateTime
 
 def md5_constructor(*args, **kwargs):
     if hasattr(hashlib._hashlib, 'get_fips_mode') and hashlib._hashlib.get_fips_mode():
-        # do not care about FIPS
+        # do not care about FIPS we need md5 for signatures and older hashes
+        # It is still used for *some* security
         kwargs['usedforsecurity'] = False
     return hashlib.md5(*args, **kwargs)
 

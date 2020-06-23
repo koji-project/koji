@@ -6637,22 +6637,18 @@ class CG_Importer(object):
                     (filesize, fileinfo['filename'], fileinfo['filesize']))
 
             # checksum
-            if fileinfo['checksum_type'] != 'md5':
-                # XXX
-                # until we change the way we handle checksums, we have to limit this to md5
-                raise koji.GenericError("Unsupported checksum type: %(checksum_type)s" % fileinfo)
             with open(path, 'rb') as fp:
-                m = md5_constructor()
+                chksum = get_verify_class(fileinfo['checksum_type'])()
                 while True:
                     contents = fp.read(8192)
                     if not contents:
                         break
-                    m.update(contents)
-                if fileinfo['checksum'] != m.hexdigest():
+                    chksum.update(contents)
+                if fileinfo['checksum'] != chksum.hexdigest():
                     raise koji.GenericError("File checksum mismatch for %s: %s != %s" %
                                             (fileinfo['filename'], fileinfo['checksum'],
-                                             m.hexdigest()))
-            fileinfo['hub.checked_md5'] = True
+                                             chksum.hexdigest()))
+            fileinfo['hub.checked_hash'] = True
 
             if fileinfo['buildroot_id'] not in self.br_prep:
                 raise koji.GenericError("Missing buildroot metadata for id %(buildroot_id)r" %
@@ -7214,9 +7210,7 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
         archiveinfo['filename'] = filename
         archiveinfo['size'] = fileinfo['filesize']
         archiveinfo['checksum'] = fileinfo['checksum']
-        if fileinfo['checksum_type'] != 'md5':
-            # XXX
-            # until we change the way we handle checksums, we have to limit this to md5
+        if fileinfo['checksum_type'] not in ('md5', 'sha256'):
             raise koji.GenericError("Unsupported checksum type: %(checksum_type)s" % fileinfo)
         archiveinfo['checksum_type'] = koji.CHECKSUM_TYPES[fileinfo['checksum_type']]
         archiveinfo['metadata_only'] = True
@@ -7225,28 +7219,26 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
         archiveinfo['filename'] = filename
         archiveinfo['size'] = os.path.getsize(filepath)
         # trust values computed on hub (CG_Importer.prep_outputs)
-        if not fileinfo or not fileinfo.get('hub.checked_md5'):
+        if not fileinfo or not fileinfo.get('hub.checked_hash'):
             with open(filepath, 'rb') as archivefp:
-                m = md5_constructor()
+                chksum = get_verify_class('sha256')()
                 while True:
                     contents = archivefp.read(8192)
                     if not contents:
                         break
-                    m.update(contents)
-            archiveinfo['checksum'] = m.hexdigest()
+                    chksum.update(contents)
+            archiveinfo['checksum'] = chksum.hexdigest()
+            archiveinfo['checksum_type'] = koji.CHECKSUM_TYPES['sha256']
         else:
             archiveinfo['checksum'] = fileinfo['checksum']
-        archiveinfo['checksum_type'] = koji.CHECKSUM_TYPES['md5']
+            archiveinfo['checksum_type'] = fileinfo['checksum_type']
         if fileinfo:
             # check against metadata
             if archiveinfo['size'] != fileinfo['filesize']:
                 raise koji.GenericError("File size mismatch for %s: %s != %s" %
                                         (filename, archiveinfo['size'], fileinfo['filesize']))
-            if fileinfo['checksum_type'] != 'md5':
-                # XXX
-                # until we change the way we handle checksums, we have to limit this to md5
-                raise koji.GenericError("Unsupported checksum type: %(checksum_type)s" % fileinfo)
-            if archiveinfo['checksum'] != fileinfo['checksum']:
+            if (archiveinfo['checksum'] != fileinfo['checksum'] or
+                    archiveinfo['checksum_type'] != fileinfo['checksum_type']):
                 raise koji.GenericError("File checksum mismatch for %s: %s != %s" %
                                         (filename, archiveinfo['checksum'], fileinfo['checksum']))
     archivetype = get_archive_type(filename, strict=True)
@@ -10328,13 +10320,14 @@ class RootExports(object):
     def uploadFile(self, path, name, size, md5sum, offset, data, volume=None):
         """upload file to the hub
 
-        Files can be uploaded in chunks, if so the md5 and size describe the
+        Files can be uploaded in chunks, if so the hash and size describe the
         chunk rather than the whole file.
 
         :param str path: the relative path to upload to
         :param str name: the name of the file
         :param int size: size of contents (bytes)
-        :param str md5: md5sum (hex digest) of contents
+        :param str md5sum: md5sum (hex digest) of contents or tuple (hash_type, digest)
+                           md5sum name is misleading, but it is here for backwas compatibility
         :param str data: base64 encoded file contents
         :param int offset: The offset indicates where the chunk belongs.
                            The special offset -1 is used to indicate the final
@@ -10351,11 +10344,11 @@ class RootExports(object):
         if isinstance(md5sum, str):
             # this case is for backwards compatibility
             verify = "md5"
-            digest = md5sum
-        elif md5sum is None:
+            digest = hash
+        elif hash is None:
             verify = None
         else:
-            verify, digest = md5sum
+            verify, digest = hash
         sum_cls = get_verify_class(verify)
         if offset != -1:
             if size is not None:
@@ -10453,14 +10446,13 @@ class RootExports(object):
             data['size'] = st.st_size
             data['mtime'] = st.st_mtime
             if verify:
-                sum_cls = get_verify_class(verify)
+                chksum = get_verify_class(verify)()
                 if tail is not None:
                     if tail < 0:
                         raise koji.GenericError("invalid tail value: %r" % tail)
                     offset = max(st.st_size - tail, 0)
                     os.lseek(fd, offset, 0)
                 length = 0
-                chksum = sum_cls()
                 chunk = os.read(fd, 8192)
                 while chunk:
                     length += len(chunk)
@@ -14640,6 +14632,8 @@ def get_verify_class(verify):
         return md5_constructor
     elif verify == 'adler32':
         return koji.util.adler32_constructor
+    elif verify == 'sha256':
+        return hashlib.sha256
     elif verify:
         raise koji.GenericError("Unsupported verify type: %s" % verify)
     else:
@@ -14667,9 +14661,8 @@ def handle_upload(environ):
             raise koji.GenericError("destination not a file: %s" % fn)
         if offset == 0 and not overwrite:
             raise koji.GenericError("upload path exists: %s" % fn)
-    sum_cls = get_verify_class(verify)
+    chksum = get_verify_class(verify)()
     size = 0
-    chksum = sum_cls()
     inf = environ['wsgi.input']
     fd = os.open(fn, os.O_RDWR | os.O_CREAT, 0o666)
     try:

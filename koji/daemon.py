@@ -23,6 +23,7 @@
 from __future__ import absolute_import, division
 
 import errno
+import hashlib
 import logging
 import os
 import signal
@@ -43,7 +44,6 @@ from koji.util import (
     adler32_constructor,
     base64encode,
     dslice,
-    md5_constructor,
     parseStatus,
     to_list,
     joinpath,
@@ -69,12 +69,12 @@ def incremental_upload(session, fname, fd, path, retries=5, logger=None):
             break
 
         data = base64encode(contents)
-        digest = md5_constructor(contents).hexdigest()
+        digest = hashlib.sha256(contents).hexdigest()
         del contents
 
         tries = 0
         while True:
-            if session.uploadFile(path, fname, size, digest, offset, data):
+            if session.uploadFile(path, fname, size, ("sha256", digest), offset, data):
                 break
 
             if tries <= retries:

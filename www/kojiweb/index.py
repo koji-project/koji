@@ -56,7 +56,7 @@ def _setUserCookie(environ, user):
         raise koji.AuthError('Unable to authenticate, server secret not configured')
     digest_string = value + options['Secret'].value
     digest_string = digest_string.encode('utf-8')
-    shasum = hashlib.sha1(digest_string)
+    shasum = hashlib.sha256(digest_string)
     value = "%s:%s" % (shasum.hexdigest(), value)
     cookies = http.cookies.SimpleCookie()
     cookies['user'] = value
@@ -96,7 +96,7 @@ def _getUserCookie(environ):
         raise koji.AuthError('Unable to authenticate, server secret not configured')
     digest_string = value + options['Secret'].value
     digest_string = digest_string.encode('utf-8')
-    shasum = hashlib.sha1(digest_string)
+    shasum = hashlib.sha256(digest_string)
     if shasum.hexdigest() != sig:
         authlogger.warning('invalid user cookie: %s:%s', sig, value)
         return None
