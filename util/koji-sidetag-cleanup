@@ -190,7 +190,7 @@ def delete_tags(tags):
 
 def clean_empty(tags):
     # delete empty tags which are older than --empty-delay
-    if not options.clean_old:
+    if not options.clean_empty:
         return tags
     passed = []
     candidates = []
