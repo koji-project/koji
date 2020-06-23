@@ -43,11 +43,11 @@ import tarfile
 import tempfile
 import time
 import traceback
+from urllib.parse import parse_qs
+import xmlrpc.client
 import zipfile
 
 import rpm
-import xmlrpc.client
-from urllib.parse import parse_qs
 
 import koji
 import koji.auth
