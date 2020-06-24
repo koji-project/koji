@@ -2469,10 +2469,6 @@ class BuildImageTask(MultiPlatformTask):
                                                 dict(name=name, version=version, release=release,
                                                      epoch=0))
 
-    def getRelease(self, name, ver):
-        """return the next available release number for an N-V"""
-        return self.session.getNextRelease(dict(name=name, version=ver))
-
 
 class BuildBaseImageTask(BuildImageTask):
     Methods = ['image']
@@ -2504,15 +2500,14 @@ class BuildBaseImageTask(BuildImageTask):
         bld_info = None
         try:
             release = opts.get('release')
-            if not release:
-                release = self.getRelease(name, version)
             if '-' in version:
                 raise koji.ApplianceError('The Version may not have a hyphen')
-            if '-' in release:
+            if release and '-' in release:
                 raise koji.ApplianceError('The Release may not have a hyphen')
             if not opts.get('scratch'):
                 bld_info = self.initImageBuild(name, version, release,
                                                target_info, opts)
+                release = bld_info['release']
 
             subtasks = {}
             self.logger.debug("Spawning jobs for image arches: %r" % (arches))
@@ -2644,11 +2639,10 @@ class BuildApplianceTask(BuildImageTask):
         bld_info = None
         try:
             release = opts.get('release')
-            if not release:
-                release = self.getRelease(name, version)
             if not opts.get('scratch'):
                 bld_info = self.initImageBuild(name, version, release,
                                                target_info, opts)
+                release = bld_info['release']
             create_task_id = self.session.host.subtask(method='createAppliance',
                                                        arglist=[name, version, release, arch,
                                                                 target_info, build_tag,
@@ -2732,11 +2726,10 @@ class BuildLiveCDTask(BuildImageTask):
         bld_info = None
         try:
             release = opts.get('release')
-            if not release:
-                release = self.getRelease(name, version)
             if not opts.get('scratch'):
                 bld_info = self.initImageBuild(name, version, release,
                                                target_info, opts)
+                release = bld_info['release']
             create_task_id = self.session.host.subtask(method='createLiveCD',
                                                        arglist=[name, version, release, arch,
                                                                 target_info, build_tag,
@@ -2825,16 +2818,16 @@ class BuildLiveMediaTask(BuildImageTask):
         bld_info = None
         try:
             release = opts.get('release')
-            if not release:
-                release = self.getRelease(name, version)
             if not opts.get('scratch'):
                 bld_info = self.initImageBuild(name, version, release,
                                                target_info, opts)
+                release = bld_info['release']
             subtasks = {}
             canfail = []
             for arch in arches:
                 subtasks[arch] = self.subtask('createLiveMedia',
-                                              [name, version, release, arch, target_info,
+                                              [name, version, release,
+                                               arch, target_info,
                                                build_tag, repo_info, ksfile, opts],
                                               label='livemedia %s' % arch, arch=arch)
                 if arch in opts.get('optional_arches', []):
@@ -4497,11 +4490,6 @@ class BuildIndirectionImageTask(OzImageTask):
         return self.session.host.initImageBuild(self.id,
                                                 dict(name=name, version=version, release=release,
                                                      epoch=0))
-
-    def getRelease(self, name, ver):
-        """return the next available release number for an N-V"""
-        return self.session.getNextRelease(dict(name=name, version=ver))
-
     # END inefficient base image task method copies
 
     def fetchHubOrSCM(self, filepath, fileurl, build_tag):
@@ -4680,11 +4668,9 @@ class BuildIndirectionImageTask(OzImageTask):
         release = opts['release']
 
         # TODO: Another mostly copy-paste
-        if not release:
-            release = self.getRelease(name, version)
         if '-' in version:
             raise koji.ApplianceError('The Version may not have a hyphen')
-        if '-' in release:
+        if release and '-' in release:
             raise koji.ApplianceError('The Release may not have a hyphen')
 
         indirection_template = self.fetchHubOrSCM(opts.get('indirection_template'),
