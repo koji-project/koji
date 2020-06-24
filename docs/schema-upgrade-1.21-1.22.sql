@@ -28,4 +28,7 @@ CREATE FUNCTION get_event_time(INTEGER) RETURNS TIMESTAMPTZ AS '
 	SELECT time FROM events WHERE id=$1;
 ' LANGUAGE SQL;
 
+DROP INDEX IF EXISTS sessions_active_and_recent;
+CREATE INDEX sessions_active_and_recent ON sessions(expired, master, update_time) WHERE (expired = FALSE AND master IS NULL);
+
 COMMIT;
