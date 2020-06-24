@@ -10972,7 +10972,7 @@ class RootExports(object):
             srpm_path = joinpath(koji.pathinfo.build(build_info), koji.pathinfo.rpm(srpm_info))
         elif taskID:
             if not filepath:
-                raise koji.GenericError('filepath must be spcified with taskID')
+                raise koji.GenericError('filepath must be specified with taskID')
             if filepath.startswith('/') or '../' in filepath:
                 raise koji.GenericError('invalid filepath: %s' % filepath)
             srpm_path = joinpath(koji.pathinfo.work(),
