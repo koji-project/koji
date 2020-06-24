@@ -20,3 +20,7 @@ class TestGetVerifyClass(unittest.TestCase):
 
     def test_get_verify_class_is_adler32(self):
         kojihub.get_verify_class('adler32') is adler32_constructor
+
+    def test_get_verify_class_is_sha256(self):
+        kojihub.get_verify_class('sha256') is hashlib.sha256
+

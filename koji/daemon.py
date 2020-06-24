@@ -69,12 +69,12 @@ def incremental_upload(session, fname, fd, path, retries=5, logger=None):
             break
 
         data = base64encode(contents)
-        digest = hashlib.md5(contents).hexdigest()
+        digest = hashlib.sha256(contents).hexdigest()
         del contents
 
         tries = 0
         while True:
-            if session.uploadFile(path, fname, size, digest, offset, data):
+            if session.uploadFile(path, fname, size, ("sha256", digest), offset, data):
                 break
 
             if tries <= retries:

@@ -3110,24 +3110,24 @@ class ClientSession(object):
         fo = open(localfile, "rb")  # specify bufsize?
         totalsize = os.path.getsize(localfile)
         ofs = 0
-        md5sum = hashlib.md5()
+        sha256sum = hashlib.sha256sum()
         debug = self.opts.get('debug', False)
         if callback:
             callback(0, totalsize, 0, 0, 0)
         while True:
             lap = time.time()
             contents = fo.read(blocksize)
-            md5sum.update(contents)
+            sha256sum.update(contents)
             size = len(contents)
             data = util.base64encode(contents)
             if size == 0:
                 # end of file, use offset = -1 to finalize upload
                 offset = -1
-                digest = md5sum.hexdigest()
+                digest = sha256sum.hexdigest()
                 sz = ofs
             else:
                 offset = ofs
-                digest = hashlib.md5(contents).hexdigest()
+                digest = hashlib.sha256(contents).hexdigest()
                 sz = size
             del contents
             tries = 0
@@ -3135,7 +3135,8 @@ class ClientSession(object):
                 if debug:
                     self.logger.debug("uploadFile(%r,%r,%r,%r,%r,...)" %
                                       (path, name, sz, digest, offset))
-                if self.callMethod('uploadFile', path, name, sz, digest, offset, data, **volopts):
+                if self.callMethod('uploadFile', path, name, sz, ("sha256", digest),
+                                   offset, data, **volopts):
                     break
                 if tries <= retries:
                     tries += 1

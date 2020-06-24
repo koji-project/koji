@@ -333,7 +333,7 @@ class WindowsBuild(object):
             elif checksum_type == 'sha256':
                 checksum = hashlib.sha256()
             elif checksum_type == 'md5':
-                checksum = hashlib.md5()
+                checksum = md5_constructor.md5()  # noqa: F821
             else:
                 raise BuildError('Unknown checksum type %s for %s' % (  # noqa: F821
                                  checksum_type,
@@ -608,7 +608,7 @@ def upload_file(server, prefix, path):
     destpath = os.path.join(prefix, path)
     fobj = open(destpath, 'r')
     offset = 0
-    sum = hashlib.md5()
+    sum = hashlib.sha256()
     while True:
         data = fobj.read(131072)
         if not data:
@@ -619,8 +619,8 @@ def upload_file(server, prefix, path):
         sum.update(data)
     fobj.close()
     digest = sum.hexdigest()
-    server.verifyChecksum(path, digest, 'md5')
-    logger.info('Uploaded %s (%s bytes, md5: %s)', destpath, offset, digest)
+    server.verifyChecksum(path, digest, 'sha256')
+    logger.info('Uploaded %s (%s bytes, sha256: %s)', destpath, offset, digest)
 
 
 def get_mgmt_server():
@@ -709,10 +709,10 @@ def stream_logs(server, handler, builds):
             if contents:
                 size = len(contents)
                 data = base64.b64encode(contents)
-                digest = hashlib.md5(contents).hexdigest()
+                digest = hashlib.sha256(contents).hexdigest()
                 del contents
                 try:
-                    server.uploadDirect(relpath, offset, size, digest, data)
+                    server.uploadDirect(relpath, offset, size, ('sha256', digest), data)
                 except Exception:
                     log_local('error uploading %s' % relpath)
         time.sleep(1)

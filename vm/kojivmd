@@ -775,14 +775,14 @@ class VMExecTask(BaseTaskHandler):
         fobj.close()
         return len(data)
 
-    def uploadDirect(self, filepath, offset, size, md5sum, data):
+    def uploadDirect(self, filepath, offset, size, checksum, data):
         """
         Upload contents directly to the server.
         """
         remotepath = os.path.dirname(os.path.join(self.getUploadDir(), filepath))
         filename = os.path.basename(filepath)
         self.session.uploadFile(remotepath, filename, size,
-                                md5sum, offset, data)
+                                checksum, offset, data)
 
     def verifyChecksum(self, path, checksum, algo='sha1'):
         local_path = os.path.abspath(os.path.join(self.output_dir, path))
@@ -795,7 +795,7 @@ class VMExecTask(BaseTaskHandler):
         if algo == 'sha1':
             sum = hashlib.sha1()
         elif algo == 'md5':
-            sum = hashlib.md5()
+            sum = koji.util.md5_constructor()
         elif algo == 'sha256':
             sum == hashlib.sha256()
         else:
