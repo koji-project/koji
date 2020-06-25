@@ -2454,6 +2454,11 @@ class ClientSession(object):
         sinfo = self.callMethod('subsession')
         return type(self)(self.baseurl, self.opts, sinfo)
 
+    def krb_login(self, principal=None, keytab=None, ccache=None, proxyuser=None, ctx=None):
+        util.deprecated("krb_login is deprecated, use gssapi_login instead")
+        return self.gssapi_login(principal=principal, keytab=keytab,
+                                 ccache=ccache, proxyuser=proxyuser)
+
     def gssapi_login(self, principal=None, keytab=None, ccache=None, proxyuser=None):
         if not requests_kerberos:
             raise PythonImportError(
