@@ -38,10 +38,7 @@ install-systemd: _install
 	install -p -m 644 koji-sweep-db.timer $(DESTDIR)$(SYSTEMDSYSTEMUNITDIR)
 
 install-sysv: _install
-	mkdir -p $(DESTDIR)/etc/rc.d/init.d
-	install -p -m 755 kojira.init $(DESTDIR)/etc/rc.d/init.d/kojira
-
-	mkdir -p $(DESTDIR)/etc/sysconfig
-	install -p -m 644 kojira.sysconfig $(DESTDIR)/etc/sysconfig/kojira
+	# no more utils support for sysv
+	true
 
 install: install-$(TYPE)

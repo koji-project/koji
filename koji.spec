@@ -538,9 +538,6 @@ rm -rf $RPM_BUILD_ROOT
 %{_unitdir}/koji-gc.service
 %{_unitdir}/koji-gc.timer
 %{_unitdir}/kojira.service
-%else
-%{_initrddir}/kojira
-%config(noreplace) /etc/sysconfig/kojira
 %endif
 %dir /etc/kojira
 %config(noreplace) /etc/kojira/kojira.conf
