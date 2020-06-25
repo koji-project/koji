@@ -526,9 +526,15 @@ def handle_trash():
             else:
                 age = time.time() - ts
         else:
-            history = [(h['revoke_event'], h) for h in history]
-            last = max(history)[1]
-            if not last['revoke_event']:
+            tagged = False
+            last = history[0]
+            for h in history:
+                if not h['revoke_event']:
+                    tagged = True
+                    break
+                if h['revoke_event'] > last['revoke_event']:
+                    last = h
+            if tagged:
                 # this might happen if the build was tagged just now
                 print("[%i/%i] Warning: build not untagged: %s" % (i, N, nvr))
                 continue
