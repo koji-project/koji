@@ -81,12 +81,6 @@ def get_options():
                       help=_("run as the specified user (requires special privileges)"))
     parser.add_option("--user", help=_("specify user"))
     parser.add_option("--password", help=_("specify password"))
-    parser.add_option("--krb-rdns", action="store_true", default=False,
-                      help=_("get reverse dns FQDN for krb target"))
-    parser.add_option("--krb-canon-host", action="store_true", default=False,
-                      help=_("get canonical hostname for krb target"))
-    parser.add_option("--krb-server-realm",
-                      help=_("the realm of server Kerberos principal"))
     parser.add_option("--noauth", action="store_true", default=False,
                       help=_("do not authenticate"))
     parser.add_option("-n", "--test", action="store_true", default=False,

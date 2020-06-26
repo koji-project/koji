@@ -74,7 +74,6 @@ The command line and several other tools support the following new configuration
     * ``use_old_ssl``   : Use the old ssl code instead of python-requests
     * ``no_ssl_verify``   : Disable certificate verification for https connections
     * ``upload_blocksize`` : Override the blocksize for uploads
-    * ``krb_rdns``      : Use the fqdn of the server when authenticating via kerberos
 
 The ``ca`` option is deprecated and no longer required for ssl authentication (``serverca`` is still required).
 
