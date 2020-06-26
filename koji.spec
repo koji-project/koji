@@ -563,8 +563,10 @@ rm -rf $RPM_BUILD_ROOT
 
 %files builder
 %{_sbindir}/kojid
+%if 0%{py2_support} > 1
 %dir %{_libexecdir}/kojid
 %{_libexecdir}/kojid/mergerepos
+%endif
 %if %{use_systemd}
 %{_unitdir}/kojid.service
 %else
