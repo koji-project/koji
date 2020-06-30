@@ -4118,7 +4118,17 @@ def anon_handle_list_tags(goptions, session, args):
         if not buildinfo:
             parser.error(_("Invalid build %s" % options.build))
 
-    tags = session.listTags(buildinfo.get('id', None), pkginfo.get('id', None))
+    if not args:
+        # list everything if no pattern is supplied
+        args = [None]
+
+    tags = []
+    with session.multicall() as m:
+        for arg in args:
+            tags.append(m.listTags(build=buildinfo.get('id', None),
+                                   package=pkginfo.get('id', None),
+                                   pattern=arg))
+    tags = list(itertools.chain(*[t.result for t in tags]))
     tags.sort(key=lambda x: x['name'])
     # if options.verbose:
     #    fmt = "%(name)s [%(id)i] %(perm)s %(locked)s %(arches)s"
@@ -4127,12 +4137,6 @@ def anon_handle_list_tags(goptions, session, args):
     else:
         fmt = "%(name)s"
     for tag in tags:
-        if args:
-            for pattern in args:
-                if fnmatch.fnmatch(tag['name'], pattern):
-                    break
-            else:
-                continue
         if options.unlocked:
             if tag['locked'] or tag['perm']:
                 continue
