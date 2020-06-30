@@ -188,6 +188,35 @@ tagging a build:
     $ koji tag-build mytag mypkg-1.0-1
 
 
+List of callbacks
+-----------------
+
+hub:
+
+- preBuildStateChange
+- preImport
+- prePackageListChange
+- preRPMSign
+- preRepoDone
+- preRepoInit
+- preTag
+- preTaskStateChange
+- preUntag
+- postBuildStateChange
+- postImport
+- postPackageListChange
+- postRPMSign
+- postRepoDone
+- postRepoInit
+- postTag
+- postTaskStateChange
+- postUntag
+
+builder:
+
+- preSCMCheckout
+- postSCMCheckout
+
 .. _plugin-cli-command:
 
 New command for CLI
