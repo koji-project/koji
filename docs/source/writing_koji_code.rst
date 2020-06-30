@@ -641,15 +641,19 @@ changes to the code. To do so, just run ``make test`` in your terminal.
 
 You will need to install the following packages to actually run the tests.
 
- * ``findutils``
- * ``pyOpenSSL``
- * ``python-coverage``
- * ``python-krbV``
- * ``python-mock``
- * ``python-psycopg2``
- * ``python-requests``
- * ``python-requests-mock``
- * ``python-qpid-proton``
+ * ``glibc-langpack-en``
+ * ``make``
+ * ``python3-cheetah``
+ * ``python3-coverage``
+ * ``python3-dateutil``
+ * ``python3-mock``
+ * ``python3-multilib``
+ * ``python3-nose``
+ * ``python3-psycopg2``
+ * ``python3-qpid-proton``
+ * ``python3-requests``
+ * ``python3-requests-kerberos``
+ * ``python3-requests-mock``
 
 Please note that it is currently not supported to use *virtualenv* when hacking
 on Koji.
