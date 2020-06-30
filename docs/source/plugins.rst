@@ -7,7 +7,31 @@ Following plugins are available in default koji installation.
 Runroot
 =======
 
-Plugin for running any command in buildroot.
+Plugin for running any command in buildroot. It has three parts as most of the
+others (hub, builder and CLI).
+
+Builder
+-------
+You enable plugin by editing ``/etc/kojid.conf`` by adding ``plugin = runroot``
+there. Plugin itself has separate configuration file on each builder located at
+``/etc/kojid/plugins/runroot.conf`` There is a sample configuration file
+with option descriptions installed.
+
+Hub
+---
+On the hub side ``Plugins = runroot_hub`` needs to be added to
+``/etc/koji-hub/hub.conf``. Note, that by default policy runroot tasks are
+assigned to ``runroot`` channel. As this is a plugin, we don't create it
+automatically. There are three options - create channel when adding first builder
+there via ``koji add-host-to-channel --new hostname runroot`` or by changing the
+default channel policy according to :doc:`defining_hub_policies`. Last option is
+to use ``--channel-override`` option in CLI to drive task to channel of choice.
+
+CLI
+---
+CLI is looking for available plugins every run, so it if it is installed, you'll
+see new command ``runroot`` with options described in its help. No config
+options are needed to enable it.
 
 Save Failed Tree
 ================
