@@ -64,7 +64,7 @@ def getTag(session, tag, event=None):
 
 class ManagedRepo(object):
 
-    def __init__(self, manager, data):
+    def __init__(self, manager, data, repodata=None):
         self.manager = manager
         self.session = manager.session
         self.options = manager.options
@@ -81,7 +81,7 @@ class ManagedRepo(object):
         self.expire_ts = None
         if koji.REPO_STATES[self.state] in ['EXPIRED', 'DELETED', 'PROBLEM']:
             self.current = False
-            self.expire_ts = time.time()
+            self._find_expire_time(repodata)
             # TODO use hub data to find the actual expiration time
         self.first_seen = time.time()
         if self.current:
@@ -91,6 +91,17 @@ class ManagedRepo(object):
             for x in order:
                 tags[x['parent_id']] = 1
             self.taglist = to_list(tags.keys())
+
+    def _find_expire_time(self, repodata):
+        # find all newer repos for same tag and set oldest as expire_ts for our repo
+        if repodata:
+            repos = [r for r in repodata if
+                     r['tag_id'] == self.tag_id and r['create_event'] > self.event_id]
+            if repos:
+                invalidated_by = sorted(repos, key=lambda x: x['create_event'])
+                self.expire_ts = invalidated_by[0]['create_ts']
+        if not self.expire_ts:
+            self.expire_ts = time.time()
 
     @property
     def dist(self):
@@ -374,7 +385,7 @@ class RepoManager(object):
             else:
                 self.logger.info('Found repo %s, state=%s'
                                  % (repo_id, koji.REPO_STATES[data['state']]))
-                repo = ManagedRepo(self, data)
+                repo = ManagedRepo(self, data, repodata)
                 self.repos[repo_id] = repo
             if not getTag(self.session, repo.tag_id) and not repo.expired():
                 self.logger.info('Tag %d for repo %d disappeared, expiring.', repo.tag_id, repo_id)
