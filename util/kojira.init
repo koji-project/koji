@@ -14,8 +14,6 @@
 # Check that we're a privileged user
 [ `id -u` = 0 ] || exit 0
 
-[ -f /etc/sysconfig/kojira ] && . /etc/sysconfig/kojira
-
 prog="kojira"
 
 # Check that networking is up.

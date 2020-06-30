@@ -1277,7 +1277,6 @@ Configuration Files
 -------------------
 
 * ``/etc/kojira/kojira.conf`` - Kojira Daemon Configuration
-* ``/etc/sysconfig/kojira`` - Kojira Daemon Switches
 
 Install kojira
 ---------------
