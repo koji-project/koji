@@ -5558,9 +5558,9 @@ class CreaterepoTask(BaseTaskHandler):
         if merge_mode == 'simple':
             if self.options.use_createrepo_c or six.PY3:
                 version = self._get_mergerepo_c_version()
-                if version < (0, 15, 1):
-                    raise koji.GenericError("mergerepo_c is not installed or has low "
-                                            "version: %s (0.15.1 - required)" % version)
+                if version < (0, 13, 0):
+                    raise koji.GenericError("mergerepo_c is not installed or has low version: "
+                                            "%s (0.13.0 - required for --simple)" % version)
                 cmd = ['/usr/bin/mergerepo_c', '--koji', '--simple']
             else:
                 cmd = ['/usr/libexec/kojid/mergerepos',
