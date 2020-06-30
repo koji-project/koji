@@ -1231,7 +1231,7 @@ def readPackageList(tagID=None, userID=None, pkgID=None, event=None, inherit=Fal
     return packages
 
 
-def list_tags(build=None, package=None, perms=True, pattern=None, queryOpts=None):
+def list_tags(build=None, package=None, perms=True, queryOpts=None, pattern=None):
     """List tags according to filters
 
     :param int|str build: If build is specified, only return tags associated with
@@ -1247,6 +1247,7 @@ def list_tags(build=None, package=None, perms=True, pattern=None, queryOpts=None
                               - blocked
                               - extra_arches
     :param bool perms: If perms is True, perm_id and perm is added to resulting maps.
+    :param dict queryOpts: hash with query options for QueryProcessor
     :param pattern: If glob pattern is specified, only return tags matching that pattern.
 
     :returns list of dicts: Each map contains id, name, arches and locked keys and
