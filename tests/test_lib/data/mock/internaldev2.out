@@ -3,7 +3,7 @@
 config_opts['basedir'] = '/var/lib/mock'
 config_opts['chroot_setup_cmd'] = 'groupinstall build'
 config_opts['chroothome'] = '/builddir'
-config_opts['dnf_warning'] = True
+config_opts['dnf_warning'] = False
 config_opts['internal_dev_setup'] = True
 config_opts['root'] = 'ROOTNAME'
 config_opts['rpmbuild_networking'] = False
