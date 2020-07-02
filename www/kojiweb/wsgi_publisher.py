@@ -288,6 +288,7 @@ class Dispatcher(object):
         if err:
             result.append("<p>%s</p>\n" % err)
         result.append("</body></html>\n")
+        result = [x.encode('utf-8') for x in result]
         length = sum([len(x) for x in result])
         headers = [
             ('Allow', 'GET, POST, HEAD'),
