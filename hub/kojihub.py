@@ -562,46 +562,7 @@ def make_task(method, arglist, **opts):
     if 'channel' in opts:
         policy_data['req_channel'] = opts['channel']
         req_channel_id = get_channel_id(opts['channel'], strict=True)
-    params = {}
-    try:
-        params = koji.tasks.parse_task_params(method, arglist)
-    except TypeError:
-        logger.warning("%s is not a standard koji task", method)
-    except koji.ParameterError:
-        logger.warning("Cannot parse parameters: %s of %s task", arglist, method)
-    except Exception:
-        logger.warning("Unexcepted error occurs when parsing parameters: %s of %s task",
-                       arglist, method, exc_info=True)
-    if params:
-        # parameters that indicate source for build
-        for k in ('src', 'spec_url', 'url'):
-            if method == 'newRepo':
-                # newRepo has a 'src' parameter that means something else
-                break
-            if k in params:
-                policy_data['source'] = params.get(k)
-                break
-        # parameters that indicate build target
-        target = None
-        hastarget = False
-        for k in ('target', 'build_target', 'target_info'):
-            if k in params:
-                target = params.get(k)
-                hastarget = True
-                break
-        if hastarget:
-            if isinstance(target, dict):
-                if 'name' not in target:
-                    logger.warning("Bad build target parameter: %r", target)
-                    target = None
-                else:
-                    target = target.get('name')
-            if target is None:
-                policy_data['target'] = None
-            else:
-                policy_data['target'] = get_build_target(target, strict=True)['name']
-        t_opts = params.get('opts', {})
-        policy_data['scratch'] = t_opts.get('scratch', False)
+    policy_data.update(policy_data_from_task_args(method, arglist))
 
     ruleset = context.policy.get('channel')
     result = ruleset.apply(policy_data)
@@ -5695,6 +5656,9 @@ def apply_volume_policy(build, strict=False):
     volume we be retained.
     """
     policy_data = {'build': build}
+    task_id = build['task_id']
+    if task_id:
+        policy_data.update(policy_data_from_task(task_id))
     volume = check_volume_policy(policy_data, strict=strict)
     if volume is None:
         # just leave the build where it is
@@ -5929,6 +5893,8 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
         'import': True,
         'import_type': 'rpm',
     }
+    if task_id is not None:
+        policy_data.update(policy_data_from_task(task_id))
     vol = check_volume_policy(policy_data, strict=False, default='DEFAULT')
     build['volume_id'] = vol['id']
     build['volume_name'] = vol['name']
@@ -9360,13 +9326,19 @@ def policy_get_cgs(data):
 
 
 def policy_get_build_tags(data):
-    # pull cg info out
-    # note that br_id will be None if a component had no buildroot
     if 'build_tag' in data:
         return [get_tag(data['build_tag'], strict=True)['name']]
     elif 'build_tags' in data:
         return [get_tag(t, strict=True)['name'] for t in data['build_tags']]
-    # otherise look at buildroots
+
+    # see if we have a target
+    target = data.get('target')
+    if target:
+        target = get_build_target(target, strict=False)
+        if target:
+            return [target['build_tag_name']]
+
+    # otherwise look at buildroots
     tags = set()
     for br_id in policy_get_brs(data):
         if br_id is None:
@@ -9836,6 +9808,78 @@ def check_policy(name, data, default='deny', strict=False, force=False):
     if context.opts.get('KojiDebug') or context.opts.get('VerbosePolicy'):
         err_str += " [rule: %s]" % lastrule
     raise koji.ActionNotAllowed(err_str)
+
+
+def policy_data_from_task(task_id):
+    """Calculate policy data from task id
+
+        :param int task_id: the task id
+
+        :returns: dict with policy data
+        """
+    task = Task(task_id)
+    taskinfo = task.getInfo(strict=True, request=True)
+    return policy_data_from_task_args(taskinfo['method'], taskinfo['request'])
+
+
+def policy_data_from_task_args(method, arglist):
+    """Calculate policy data from task arguments
+
+        :param str method: task method
+        :param list arglist: raw task params
+
+        :returns: dict with policy data
+        """
+    params = {}
+    policy_data = {}
+    try:
+        params = koji.tasks.parse_task_params(method, arglist)
+    except TypeError:
+        logger.warning("%s is not a standard koji task", method)
+    except koji.ParameterError:
+        logger.warning("Cannot parse parameters: %s of %s task", arglist, method)
+    except Exception:
+        logger.warning("Unexcepted error occurs when parsing parameters: %s of %s task",
+                       arglist, method, exc_info=True)
+    if not params:
+        return {}
+
+    if method == 'indirectionimage':
+        # this handler buries all its arguments in a single 'opts' parameter
+        opts = params.get('opts') or {}
+        params = dict(**opts)
+        params['opts'] = opts
+    # parameters that indicate source for build
+    for k in ('src', 'spec_url', 'url'):
+        if method == 'newRepo':
+            # newRepo has a 'src' parameter that means something else
+            break
+        if k in params:
+            policy_data['source'] = params.get(k)
+            break
+    # parameters that indicate build target
+    target = None
+    hastarget = False
+    for k in ('target', 'build_target', 'target_info'):
+        if k in params:
+            target = params.get(k)
+            hastarget = True
+            break
+    if hastarget:
+        if isinstance(target, dict):
+            if 'name' not in target:
+                logger.warning("Bad build target parameter: %r", target)
+                target = None
+            else:
+                target = target.get('name')
+        if target is None:
+            policy_data['target'] = None
+        else:
+            policy_data['target'] = get_build_target(target, strict=True)['name']
+    t_opts = params.get('opts', {})
+    policy_data['scratch'] = t_opts.get('scratch', False)
+
+    return policy_data
 
 
 def assert_policy(name, data, default='deny', force=False):
@@ -13769,6 +13813,7 @@ class HostExports(object):
             'import': True,
             'import_type': 'maven',
         }
+        policy_data.update(policy_data_from_task(task_id))
         vol = check_volume_policy(policy_data, strict=False, default='DEFAULT')
         if vol['id'] != build_info['volume_id']:
             build_info['volume_id'] = vol['id']
@@ -13850,6 +13895,7 @@ class HostExports(object):
             'import': True,
             'import_type': 'maven',
         }
+        policy_data.update(policy_data_from_task(task_id))
         vol = check_volume_policy(policy_data, strict=False, default='DEFAULT')
         if vol['id'] != build_info['volume_id']:
             build_info['volume_id'] = vol['id']
@@ -14026,6 +14072,7 @@ class HostExports(object):
             'import': True,
             'import_type': 'win',
         }
+        policy_data.update(policy_data_from_task(task_id))
         vol = check_volume_policy(policy_data, strict=False, default='DEFAULT')
         if vol['id'] != build_info['volume_id']:
             build_info['volume_id'] = vol['id']
