@@ -6982,6 +6982,8 @@ def anon_handle_download_task(options, session, args):
                       help=_("URL under which Koji files are accessible"))
     parser.add_option("--noprogress", action="store_true",
                       help=_("Do not display progress meter"))
+    parser.add_option("--wait", action="store_true",
+                      help=_("Wait for running tasks to finish"))
     parser.add_option("-q", "--quiet", action="store_true",
                       help=_("Suppress output"), default=options.quiet)
 
@@ -7002,6 +7004,13 @@ def anon_handle_download_task(options, session, args):
     base_task = session.getTaskInfo(base_task_id)
     if not base_task:
         error(_('No such task: #%i') % base_task_id)
+
+    if suboptions.wait and base_task['state'] not in (
+            koji.TASK_STATES['CLOSED'],
+            koji.TASK_STATES['CANCELED'],
+            koji.TASK_STATES['FAILED']):
+        watch_tasks(session, [base_task_id], quiet=suboptions.quiet,
+                    poll_interval=options.poll_interval)
 
     def check_downloadable(task):
         return task["method"] == "buildArch"
