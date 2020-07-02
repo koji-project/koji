@@ -9919,7 +9919,7 @@ def rpmdiff(basepath, rpmlist, hashes):
                 'rpmdiff output was:\n%s' % (os.path.basename(first_rpm), d.textdiff()))
 
 
-def importImageInternal(task_id, build_id, imgdata):
+def importImageInternal(task_id, build_info, imgdata):
     """
     Import image info and the listing into the database, and move an image
     to the final resting place. The filesize may be reported as a string if it
@@ -9942,7 +9942,6 @@ def importImageInternal(task_id, build_id, imgdata):
     koji.plugin.run_callbacks('preImport', type='image', image=imgdata)
 
     # import the build output
-    build_info = get_build(build_id, strict=True)
     workpath = koji.pathinfo.task(imgdata['task_id'])
     imgdata['relpath'] = koji.pathinfo.taskrelpath(imgdata['task_id'])
     archives = []
@@ -13821,7 +13820,7 @@ class HostExports(object):
             build_info['volume_name'] = vol['name']
             vol_update = True
 
-        self.importImage(task_id, build_id, results)
+        self.importImage(task_id, build_info, results)
         ensure_volume_symlink(build_info)
 
         st_old = build_info['state']
@@ -14208,7 +14207,7 @@ class HostExports(object):
             _untag_build(fromtag, build, user_id=user_id, force=force, strict=True)
         _tag_build(tag, build, user_id=user_id, force=force)
 
-    def importImage(self, task_id, build_id, results):
+    def importImage(self, task_id, build_info, results):
         """
         Import a built image, populating the database with metadata and
         moving the image to its final location.
@@ -14217,11 +14216,11 @@ class HostExports(object):
             if 'task_id' not in sub_results:
                 logger.warning('Task %s failed, no image available' % task_id)
                 continue
-            importImageInternal(task_id, build_id, sub_results)
+            importImageInternal(task_id, build_info, sub_results)
             if 'rpmresults' in sub_results:
                 rpm_results = sub_results['rpmresults']
                 _import_wrapper(rpm_results['task_id'],
-                                get_build(build_id, strict=True), rpm_results)
+                                get_build(build_info['id'], strict=True), rpm_results)
 
     def tagNotification(self, is_successful, tag_id, from_id, build_id, user_id,
                         ignore_success=False, failure_msg=''):
