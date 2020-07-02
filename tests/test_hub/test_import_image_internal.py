@@ -38,11 +38,14 @@ class TestImportImageInternal(unittest.TestCase):
         context.session.host_id = 42
         get_build.return_value = {
             'id': 2,
+            'name': 'name',
+            'version': 'version',
+            'release': 'release',
         }
         get_archive_type.return_value = 4
         work.return_value = self.tempdir
         os.makedirs(self.tempdir + "/tasks/1/1")
-        kojihub.importImageInternal(task_id=1, build_id=2, imgdata=imgdata)
+        kojihub.importImageInternal(task_id=1, build_info=get_build.return_value, imgdata=imgdata)
 
     @mock.patch('kojihub.get_rpm')
     @mock.patch('koji.pathinfo.build')
@@ -76,10 +79,16 @@ class TestImportImageInternal(unittest.TestCase):
             ],
             'rpmlist': [rpm],
         }
+        build_info = {
+            'name': 'name',
+            'version': 'version',
+            'release': 'release',
+            'id': 2
+        }
         cursor = mock.MagicMock()
         context.cnx.cursor.return_value = cursor
         context.session.host_id = 42
-        get_build.return_value = {'id': 2}
+        get_build.return_value = build_info
         get_rpm.return_value = rpm
         get_archive_type.return_value = 4
         work.return_value = self.tempdir
@@ -94,7 +103,7 @@ class TestImportImageInternal(unittest.TestCase):
         with open(workdir + '/foo.log', 'w'):
             pass
 
-        kojihub.importImageInternal(task_id=1, build_id=2, imgdata=imgdata)
+        kojihub.importImageInternal(task_id=1, build_info=build_info, imgdata=imgdata)
 
         # Check that the log symlink made it to where it was supposed to.
         dest = os.readlink(workdir + '/foo.log')
