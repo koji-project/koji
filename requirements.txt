@@ -1,0 +1,7 @@
+-e .
+Cheetah;python_version < '3.0'
+Cheetah3;python_version >= '3.0'
+psycopg2-binary;python_version >= '3.0'
+python-multilib
+python-qpid-proton
+rpm-py-installer
