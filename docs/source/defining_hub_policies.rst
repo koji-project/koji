@@ -56,6 +56,8 @@ match, the action is applied. Our example above limits non-admins to tags
 ending in -candidate.
 
 Getting a bit more complicated
+------------------------------
+
 The example above is very simple. The policy syntax also supports compound
 tests, negated tests, and nested tests. Consider the following example:
 
