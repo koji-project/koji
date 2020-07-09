@@ -122,15 +122,15 @@ Available policies
 ==================
 The system currently looks for the following policies
 
-* tag : checked during tag/untag/move operations
-* build_from_srpm : checked when a build from srpm (not an SCM reference) is
+* ``tag``: checked during tag/untag/move operations
+* ``build_from_srpm``: checked when a build from srpm (not an SCM reference) is
   requested.
-* build_from_repo_id : checked when a build from a specified repo id is
+* ``build_from_repo_id``: checked when a build from a specified repo id is
   requested
-* package_list : checked when the package list for a tag is modified
-* channel : consulted when a task is created
-* cg_import : consulted during content generator imports
-* volume : determine which volume a build should live on
+* ``package_list``: checked when the package list for a tag is modified
+* ``channel``: consulted when a task is created
+* ``cg_import``: consulted during content generator imports
+* ``volume``: determine which volume a build should live on
 
 These policies are set by assigning a rule set to the given name in the policy
 section.
