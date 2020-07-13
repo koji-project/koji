@@ -6548,7 +6548,7 @@ class CG_Importer(object):
 
         type_mismatches = 0
         for archive in list_archives(filename=comp['filename'], size=comp['filesize']):
-            if archive['checksum_type'] != comp['checksum_type']:
+            if archive['checksum_type'] != koji.CHECKSUM_TYPES[comp['checksum_type']]:
                 type_mismatches += 1
                 continue
             if archive['checksum'] == comp['checksum']:
@@ -7202,14 +7202,15 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
             archiveinfo['checksum_type'] = koji.CHECKSUM_TYPES['sha256']
         else:
             archiveinfo['checksum'] = fileinfo['checksum']
-            archiveinfo['checksum_type'] = fileinfo['checksum_type']
+            archiveinfo['checksum_type'] = koji.CHECKSUM_TYPES[fileinfo['checksum_type']]
         if fileinfo:
             # check against metadata
             if archiveinfo['size'] != fileinfo['filesize']:
                 raise koji.GenericError("File size mismatch for %s: %s != %s" %
                                         (filename, archiveinfo['size'], fileinfo['filesize']))
             if (archiveinfo['checksum'] != fileinfo['checksum'] or
-                    archiveinfo['checksum_type'] != fileinfo['checksum_type']):
+                    archiveinfo['checksum_type'] != koji.CHECKSUM_TYPES[
+                        fileinfo['checksum_type']]):
                 raise koji.GenericError("File checksum mismatch for %s: %s != %s" %
                                         (filename, archiveinfo['checksum'], fileinfo['checksum']))
     archivetype = get_archive_type(filename, strict=True)
