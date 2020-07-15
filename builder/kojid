@@ -5584,7 +5584,8 @@ class CreaterepoTask(BaseTaskHandler):
             blocklist = self.repodir + '/blocklist'
             cmd.extend(['-b', blocklist])
         cmd.extend(['-a', arch, '-o', self.outdir])
-        if cmd[0].endswith('mergerepo_c') and mergerepo_c_version >= (0, 15, 11):
+        if cmd[0].endswith('mergerepo_c') and mergerepo_c_version \
+           and mergerepo_c_version >= (0, 15, 11):
             cmd.append('--arch-expand')
         if os.path.isfile(groupdata):
             cmd.extend(['-g', groupdata])
