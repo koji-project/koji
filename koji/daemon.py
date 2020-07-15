@@ -767,10 +767,13 @@ class TaskManager(object):
                             self.logger.info("%s: clearing rootdir" % desc2)
                         for fn in flist:
                             safe_rmtree("%s/%s" % (rootdir, fn), unmount=True, strict=False)
-                        resultdir = "%s/result" % d
-                        if os.path.isdir(resultdir):
-                            self.logger.info("%s: clearing resultdir" % desc2)
-                            safe_rmtree(resultdir, unmount=True, strict=False)
+                        # bootstrap's resultdir is 'results', so we try the best to remove both
+                        # 'result(s)' dirs
+                        for r in ('result', 'results'):
+                            resultdir = "%s/%s" % (d, r)
+                            if os.path.isdir(resultdir):
+                                self.logger.info("%s: clearing resultdir: %s" % (desc2, resultdir))
+                                safe_rmtree(resultdir, unmount=True, strict=False)
                 else:
                     self.logger.debug("Recent buildroot: %s: %i seconds" % (desc, age))
         self.logger.debug("Local buildroots: %d" % len(local_br))
