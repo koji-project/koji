@@ -5511,10 +5511,14 @@ class CreaterepoTask(BaseTaskHandler):
 
     def _get_mergerepo_c_version(self):
         cmd = ['/usr/bin/mergerepo_c', '--version']
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-        out, _ = proc.communicate()
-        status = proc.wait()
-        if status != 0:
+        try:
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+            out, _ = proc.communicate()
+            status = proc.wait()
+            if status != 0:
+                self.logger.warning("Unable to detect mergerepo_c version")
+                return None
+        except Exception:
             self.logger.warning("Unable to detect mergerepo_c version")
             return None
         out = out.decode().strip()
