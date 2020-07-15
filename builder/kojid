@@ -5515,10 +5515,15 @@ class CreaterepoTask(BaseTaskHandler):
         out, _ = proc.communicate()
         status = proc.wait()
         if status != 0:
+            self.logger.warning("Unable to detect mergerepo_c version")
             return None
         out = out.decode().strip()
-        #Version: 0.15.11 (Features: DeltaRPM LegacyWeakdeps )
-        version = re.match('Version: (\d+).(\d+).(\d+).*', out).groups()
+        # Expects output like: "Version: 0.15.11 (Features: DeltaRPM LegacyWeakdeps )"
+        m = re.match('Version: (\d+).(\d+).(\d+).*', out)
+        if not m:
+            self.logger.warning("Unable to parse mergerepo_c version")
+            return None
+        version = m.groups()
         version = [int(x) for x in version]
         return tuple(version)
 
@@ -5549,19 +5554,18 @@ class CreaterepoTask(BaseTaskHandler):
             ext_url = ext_url.replace('$arch', arch)
             repos.append(ext_url)
 
+        mergerepo_c_version = None
         if self.options.use_createrepo_c or six.PY3:
-            version = self._get_mergerepo_c_version()
-            if version is None:
-                raise koji.GenericError("mergerepo_c is not installed")
+            mergerepo_c_version = self._get_mergerepo_c_version()
 
         # construct command
         if merge_mode == 'simple':
-            if self.options.use_createrepo_c or six.PY3:
-                version = self._get_mergerepo_c_version()
-                if version < (0, 13, 0):
-                    raise koji.GenericError("mergerepo_c is not installed or has low version: "
-                                            "%s (0.13.0 - required for --simple)" % version)
+            if mergerepo_c_version and mergerepo_c_version >= (0, 13, 0):
                 cmd = ['/usr/bin/mergerepo_c', '--koji', '--simple']
+            elif six.PY3:
+                # koji's mergerepos script only works on python2
+                raise koji.GenericError("mergerepo_c is not installed or has low version: "
+                                        "%s (0.13.0 needed for --simple)" % mergerepo_c_version)
             else:
                 cmd = ['/usr/libexec/kojid/mergerepos',
                        '--mode', 'simple',
@@ -5579,7 +5583,7 @@ class CreaterepoTask(BaseTaskHandler):
             blocklist = self.repodir + '/blocklist'
             cmd.extend(['-b', blocklist])
         cmd.extend(['-a', arch, '-o', self.outdir])
-        if cmd[0].endswith('mergerepo_c') and version > (0, 15, 10):
+        if cmd[0].endswith('mergerepo_c') and mergerepo_c_version >= (0, 15, 11):
             cmd.append('--arch-expand')
         if os.path.isfile(groupdata):
             cmd.extend(['-g', groupdata])
