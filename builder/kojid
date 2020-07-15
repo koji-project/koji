@@ -5519,7 +5519,7 @@ class CreaterepoTask(BaseTaskHandler):
             return None
         out = out.decode().strip()
         # Expects output like: "Version: 0.15.11 (Features: DeltaRPM LegacyWeakdeps )"
-        m = re.match('Version: (\d+).(\d+).(\d+).*', out)
+        m = re.match(r'Version: (\d+).(\d+).(\d+).*', out)
         if not m:
             self.logger.warning("Unable to parse mergerepo_c version")
             return None
