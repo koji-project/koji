@@ -538,8 +538,6 @@ def handle_build(options, session, args):
         session.logout()
         return watch_tasks(session, [task_id], quiet=build_opts.quiet,
                            poll_interval=options.poll_interval)
-    else:
-        return
 
 
 def handle_chain_build(options, session, args):
@@ -1155,8 +1153,6 @@ def handle_restart_hosts(options, session, args):
         session.logout()
         return watch_tasks(session, [task_id], quiet=my_opts.quiet,
                            poll_interval=options.poll_interval)
-    else:
-        return
 
 
 def handle_import(goptions, session, args):
@@ -5908,11 +5904,9 @@ def _build_image_indirection(options, task_opts, session, args):
     if not options.quiet:
         print("Created task: %d" % task_id)
         print("Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id))
-    # if task_opts.wait or (task_opts.wait is None and not _running_in_bg()):
-    #    session.logout()
-    #    return watch_tasks(session, [task_id], quiet=options.quiet)
-    # else:
-    #    return
+    if task_opts.wait or (task_opts.wait is None and not _running_in_bg()):
+        session.logout()
+        return watch_tasks(session, [task_id], quiet=options.quiet)
 
 
 def handle_image_build(options, session, args):
@@ -6109,8 +6103,6 @@ def _build_image(options, task_opts, session, args, img_type):
         session.logout()
         return watch_tasks(session, [task_id], quiet=options.quiet,
                            poll_interval=options.poll_interval)
-    else:
-        return
 
 
 def _build_image_oz(options, task_opts, session, args):
@@ -6180,8 +6172,6 @@ def _build_image_oz(options, task_opts, session, args):
         session.logout()
         return watch_tasks(session, [task_id], quiet=options.quiet,
                            poll_interval=options.poll_interval)
-    else:
-        return
 
 
 def handle_win_build(options, session, args):
@@ -6257,8 +6247,6 @@ def handle_win_build(options, session, args):
         session.logout()
         return watch_tasks(session, [task_id], quiet=build_opts.quiet,
                            poll_interval=options.poll_interval)
-    else:
-        return
 
 
 def handle_free_task(goptions, session, args):

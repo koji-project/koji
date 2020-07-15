@@ -28,7 +28,7 @@ TASK_OPTIONS = {
     "indirection_template_url": "git://git.github.org/git/",
     "results_loc": "results",
     "scratch": None,
-    "wait": None,
+    "wait": False,
     "noprogress": None,
     "skip_tag": False,
 }
