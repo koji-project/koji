@@ -23,7 +23,8 @@ ALTER TABLE build ALTER COLUMN completion_time TYPE TIMESTAMPTZ USING
 ALTER TABLE build_reservations ALTER COLUMN created TYPE TIMESTAMPTZ USING
     timezone(current_setting('TIMEZONE'), created::timestamptz);
 
-DROP FUNCTION IF EXISTS get_event_time;
+-- input type has to be specified on PostgreSQL 9.x
+DROP FUNCTION IF EXISTS get_event_time(INTEGER);
 CREATE FUNCTION get_event_time(INTEGER) RETURNS TIMESTAMPTZ AS '
 	SELECT time FROM events WHERE id=$1;
 ' LANGUAGE SQL;
