@@ -3406,7 +3406,7 @@ def handle_clone_tag(goptions, session, args):
         print(_("Cloning at event %(id)i (%(timestr)s)") % event)
 
     # store tags.
-    srctag = session.getTag(args[0])
+    srctag = session.getTag(args[0], event=event.get('id'))
     dsttag = session.getTag(args[1])
     if not srctag:
         parser.error(_("Unknown src-tag: %s" % args[0]))

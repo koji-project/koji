@@ -211,7 +211,7 @@ clone-tag will create the destination tag if it does not already exist
         handle_clone_tag(self.options, self.session, args)
         self.activate_session.assert_called_once()
         self.session.assert_has_calls([call.hasPerm('admin'),
-                                       call.getTag('src-tag'),
+                                       call.getTag('src-tag', event=None),
                                        call.getTag('dst-tag'),
                                        call.createTag('dst-tag',
                                                       arches='arch1 arch2',
@@ -485,7 +485,7 @@ List of changes:
         handle_clone_tag(self.options, self.session, args)
         self.activate_session.assert_called_once()
         self.session.assert_has_calls([call.hasPerm('admin'),
-                                       call.getTag('src-tag'),
+                                       call.getTag('src-tag', event=None),
                                        call.getTag('dst-tag'),
                                        call.listPackages(event=None,
                                                          inherited=True,
