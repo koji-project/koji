@@ -5565,7 +5565,8 @@ class CreaterepoTask(BaseTaskHandler):
             elif six.PY3:
                 # koji's mergerepos script only works on python2
                 raise koji.GenericError("mergerepo_c is not installed or has low version: "
-                                        "%s (0.13.0 needed for --simple)" % mergerepo_c_version)
+                                        "%s (0.13.0 needed for --simple)" %
+                                        ".".join([str(d) for d in mergerepo_c_version or [None]]))
             else:
                 cmd = ['/usr/libexec/kojid/mergerepos',
                        '--mode', 'simple',
