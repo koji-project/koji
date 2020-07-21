@@ -4116,15 +4116,27 @@ def anon_handle_list_tags(goptions, session, args):
 
     if not args:
         # list everything if no pattern is supplied
-        args = [None]
+        tags = session.listTags(build=buildinfo.get('id', None),
+                                package=pkginfo.get('id', None))
+    else:
+        # The hub may not support the pattern option. We try with that first
+        # and fall back to the old way.
+        fallback=False
+        try:
+            tags = []
+            with session.multicall(strict=True) as m:
+                for arg in args:
+                    tags.append(m.listTags(build=buildinfo.get('id', None),
+                                           package=pkginfo.get('id', None),
+                                           pattern=arg))
+            tags = list(itertools.chain(*[t.result for t in tags]))
+        except koji.ParameterError:
+            fallback=True
+        if fallback:
+            # without the pattern option, we have to filter client side
+            tags = session.listTags(buildinfo.get('id', None), pkginfo.get('id', None))
+            tags = [t for t in tags if koji.util.multi_fnmatch(t['name'], args)]
 
-    tags = []
-    with session.multicall() as m:
-        for arg in args:
-            tags.append(m.listTags(build=buildinfo.get('id', None),
-                                   package=pkginfo.get('id', None),
-                                   pattern=arg))
-    tags = list(itertools.chain(*[t.result for t in tags]))
     tags.sort(key=lambda x: x['name'])
     # if options.verbose:
     #    fmt = "%(name)s [%(id)i] %(perm)s %(locked)s %(arches)s"
