@@ -1581,8 +1581,8 @@ def genMockConfig(name, arch, managed=False, repoid=None, tag_name=None, **opts)
         'use_host_resolv': opts.get('use_host_resolv', False),
         # Don't let a build last more than 24 hours
         'rpmbuild_timeout': opts.get('rpmbuild_timeout', 86400),
-        # warn if yum is used instead of dnf
-        'dnf_warning': True,
+        # turn off warning for yum being used in place of dnf
+        'dnf_warning': False,
     }
     if opts.get('package_manager'):
         config_opts['package_manager'] = opts['package_manager']
