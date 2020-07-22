@@ -37,6 +37,7 @@ import shutil
 import signal
 import smtplib
 import socket
+import subprocess
 import sys
 import time
 import traceback
@@ -5508,6 +5509,28 @@ class CreaterepoTask(BaseTaskHandler):
             raise koji.GenericError('failed to create repo: %s'
                                     % parseStatus(status, ' '.join(cmd)))
 
+    def _get_mergerepo_c_version(self):
+        cmd = ['/usr/bin/mergerepo_c', '--version']
+        try:
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+            out, _ = proc.communicate()
+            status = proc.wait()
+            if status != 0:
+                self.logger.warning("Unable to detect mergerepo_c version")
+                return None
+        except Exception:
+            self.logger.warning("Unable to detect mergerepo_c version")
+            return None
+        out = out.decode().strip()
+        # Expects output like: "Version: 0.15.11 (Features: DeltaRPM LegacyWeakdeps )"
+        m = re.match(r'Version: (\d+).(\d+).(\d+).*', out)
+        if not m:
+            self.logger.warning("Unable to parse mergerepo_c version")
+            return None
+        version = m.groups()
+        version = [int(x) for x in version]
+        return tuple(version)
+
     def merge_repos(self, external_repos, arch, groupdata):
         # group repos by merge type
         repos_by_mode = {}
@@ -5535,26 +5558,39 @@ class CreaterepoTask(BaseTaskHandler):
             ext_url = ext_url.replace('$arch', arch)
             repos.append(ext_url)
 
+        mergerepo_c_version = None
+        if self.options.use_createrepo_c or six.PY3:
+            mergerepo_c_version = self._get_mergerepo_c_version()
+
         # construct command
         if merge_mode == 'simple':
-            # currently only supported by our own mergerepos script
-            # (we need it to write pkgorigins)
-            cmd = ['/usr/libexec/kojid/mergerepos',
-                   '--mode', 'simple',
-                   '--tempdir', self.workdir]
+            if mergerepo_c_version and mergerepo_c_version >= (0, 13, 0):
+                cmd = ['/usr/bin/mergerepo_c', '--koji', '--simple']
+            elif six.PY3:
+                # koji's mergerepos script only works on python2
+                raise koji.GenericError("mergerepo_c is not installed or has low version: "
+                                        "%s (0.13.0 needed for --simple)" %
+                                        ".".join([str(d) for d in mergerepo_c_version or [None]]))
+            else:
+                cmd = ['/usr/libexec/kojid/mergerepos',
+                       '--mode', 'simple',
+                       '--tempdir', self.workdir]
         elif merge_mode == 'bare':
             # "bare" merge mode for repos with modular metadata
             # forces use of mergerepo_c
             cmd = ['/usr/bin/mergerepo_c', '--pkgorigins', '--all']
-        elif self.options.use_createrepo_c:
+        elif self.options.use_createrepo_c or six.PY3:
             cmd = ['/usr/bin/mergerepo_c', '--koji']
         else:
-            cmd = ['/usr/libexec/kojid/mergerepos']
-            cmd.extend(['--tempdir', self.workdir])
+            cmd = ['/usr/libexec/kojid/mergerepos', '--tempdir', self.workdir]
+
         if merge_mode != 'bare':
             blocklist = self.repodir + '/blocklist'
             cmd.extend(['-b', blocklist])
         cmd.extend(['-a', arch, '-o', self.outdir])
+        if cmd[0].endswith('mergerepo_c') and mergerepo_c_version \
+           and mergerepo_c_version >= (0, 15, 11):
+            cmd.append('--arch-expand')
         if os.path.isfile(groupdata):
             cmd.extend(['-g', groupdata])
         for repo in repos:
