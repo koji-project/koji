@@ -4121,7 +4121,7 @@ def anon_handle_list_tags(goptions, session, args):
     else:
         # The hub may not support the pattern option. We try with that first
         # and fall back to the old way.
-        fallback=False
+        fallback = False
         try:
             tags = []
             with session.multicall(strict=True) as m:
@@ -4131,7 +4131,7 @@ def anon_handle_list_tags(goptions, session, args):
                                            pattern=arg))
             tags = list(itertools.chain(*[t.result for t in tags]))
         except koji.ParameterError:
-            fallback=True
+            fallback = True
         if fallback:
             # without the pattern option, we have to filter client side
             tags = session.listTags(buildinfo.get('id', None), pkginfo.get('id', None))
