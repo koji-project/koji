@@ -1030,7 +1030,7 @@ def _get_header_field(hdr, name):
     return hdr[hdr_key]
 
 
-def get_header_fields(X, fields, src_arch=False):
+def get_header_fields(X, fields=None, src_arch=False):
     """Extract named fields from an rpm header and return as a dictionary
 
     X may be either the rpm header or the rpm filename
@@ -1040,8 +1040,13 @@ def get_header_fields(X, fields, src_arch=False):
     else:
         hdr = X
     ret = {}
+
+    if fields is None:
+        fields = [rpm.tagnames[k] for k in hdr.keys()]
+
     for f in fields:
         ret[f] = get_header_field(hdr, f, src_arch=src_arch)
+
     return ret
 
 

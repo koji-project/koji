@@ -11670,8 +11670,7 @@ class RootExports(object):
         is not valid or the rpm does not exist on the file system, an empty map
         will be returned.
         """
-        if not headers:
-            headers = []
+
         if rpmID:
             rpm_info = get_rpm(rpmID)
             if not rpm_info or not rpm_info['build_id']:
