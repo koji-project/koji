@@ -27,6 +27,7 @@ Contents
     external_repo_server_bootstrap
     image_build
     winbuild
+    exporting_repositories
     tag_inheritance
     misc
     release_notes/release_notes
