@@ -1035,6 +1035,7 @@ def get_header_fields(X, fields=None, src_arch=False):
 
     X may be either the rpm header or the rpm filename
     """
+
     if isinstance(X, str):
         hdr = get_rpm_header(X)
     else:
@@ -1042,6 +1043,13 @@ def get_header_fields(X, fields=None, src_arch=False):
     ret = {}
 
     if fields is None:
+        if not rpm:
+            # while get_rpm_header will also check this, it's possible
+            # that X was constructed without rpm's help, bypassing
+            # that function.
+            raise GenericError("rpm's python bindings are not installed")
+
+        # resolve the names of all the keys we found in the header
         fields = [rpm.tagnames[k] for k in hdr.keys()]
 
     for f in fields:
