@@ -4530,7 +4530,9 @@ def list_btypes(query=None, queryOpts=None):
                        If this parameter is None (default), Koji returns all
                        btypes.
     :param dict queryOpts: additional options for this query.
-    :returns: a list of btype dicts.
+    :returns: a list of btype dicts. If you specify a query parameter for a
+              btype name or id that does not exist, Koji will return an empty
+              list.
     """
     if query is None:
         query = {}
