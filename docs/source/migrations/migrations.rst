@@ -5,6 +5,7 @@ Migrations
 .. toctree::
     :maxdepth: 1
 
+    migrating_to_1.22
     migrating_to_1.21
     migrating_to_1.20
     migrating_to_1.19
