@@ -436,14 +436,14 @@ environment follows:
 
 * `mock signing plugin
   <https://github.com/rpm-software-management/mock/wiki/Plugin-Sign>`__ -
-  Options ``mock.plugin_conf.sign_enable``, ``mock.plugin_conf.sign_cmd`` and
-  ``mock.plugin_conf.sign_opts`` are propagated to mock conf to be used by this
-  plugin. Note, that these tools are run outside of the jailed env. Note, that
-  this functionality doesn't interfere with koji's standard signing commands
-  (``import-sig``, ``write-signed-rpm``, etc.). Note, that rpmsign vs gpg must
-  be configured correctly. If it is not it a) can silently ignore problems
-  during signing b) can hang forever when e.g. gpg password store is not
-  accessible.
+  Options ``mock.plugin_conf.sign_enable``, ``mock.plugin_conf.sign_opts.cmd``
+  and ``mock.plugin_conf.sign_opts.opts`` are propagated to mock conf to be used
+  by this plugin. Note, that these tools are run outside of the jailed env.
+  Note, that this functionality doesn't interfere with koji's standard signing
+  commands (``import-sig``, ``write-signed-rpm``, etc.). Note, that rpmsign vs
+  gpg must be configured correctly. If it is not it a) can silently ignore
+  problems during signing b) can hang forever when e.g. gpg password store is
+  not accessible.
 
 You may also specify per-tag environment variables for mock to use.
 For example, to set the CC environment variable to clang, you could
