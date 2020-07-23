@@ -19,6 +19,7 @@ RUN \
     python-pip \
     python-psycopg2 \
     python-qpid-proton \
-    python-requests-kerberos && \
+    python-requests-kerberos \
+    yumdownloader && \
   pip install -U 'pip==9.0.1' && \
   pip install -U tox

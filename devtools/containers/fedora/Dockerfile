@@ -1,6 +1,7 @@
 FROM fedora:32
 RUN \
   dnf install -y \
+  'dnf-command(download)' \
   gcc \
   git \
   glib2-devel \
