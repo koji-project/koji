@@ -2,7 +2,8 @@
 flake8
 flake8-import-order
 mock<=2.0.0
-requests-mock
+requests-mock;python_version >= '2.7'
+requests-mock<1.5.0;python_version < '2.7'
 coverage
 nose
 unittest2;python_version < '3.0'
