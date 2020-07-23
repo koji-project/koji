@@ -441,7 +441,7 @@ Kojira
 
 With a writable filepath specified, the state information will be saved into
 this file in each cycle. For more information, please refer to
-:doc:`../utils#Kojira`.
+:ref:`utils-kojira`.
 
 **Use mtime of repo directory to determine the age**
 
