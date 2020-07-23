@@ -84,10 +84,13 @@ finished as the same as the behavior of ``build`` command.
 Although there's a ``--wait`` option for ``image-build-indirection``, it was not
 working until it's fixed by this PR.
 
-**Fix the problem that clone-tag doesn't honor event for tag config**
+**Fix event option handling in clone-tag**
 
-``getTag()`` call for fetching source tag info in ``clone_tag`` didn't use event
+| PR: https://pagure.io/koji/pull-request/2364
+
+The ``getTag()`` call for fetching source tag info in ``clone_tag`` didn't use event
 before. Now, it does.
+
 
 Library Changes
 ---------------
@@ -143,10 +146,9 @@ used by ``getBuildroot``.
 
 | PR: https://pagure.io/koji/issue/2292
 
-Adding notification to ```[un]tagBuildBypass` is possible to lead a huge plenty of
-``tagnotification`` tasks which exhaust the resources of service. For example,
-``clone-tag`` commands against a *big* source tag may turn into a
-denial-of-service.
+
+The ``notify`` option to the ``tagBuildBypass`` and ``untagBuildBypass`` now defaults to False.
+Tools that wish to generate email notifications will need to explicitly pass ``notify=True``.
 
 **Fix a typo in the error message of getChangelogEntries**
 
@@ -162,6 +164,7 @@ This option is a GLOB match pattern for the name of tag. You can now directly
 call ``session.listTags(pattern='prefix-*-postfix')`` for example, to filter the
 result list on server side. ``list-tags`` command tries its best to call it with
 ``pattern`` as well.
+
 
 Builder Changes
 ---------------
@@ -254,6 +257,7 @@ This change impacts ``BuildMavenTask``, ``WrapperRPMTask``, ``ImageTask`` and
 this could make them more fragile across releases. This feature does not come
 with a promise avoid changing the behavior of the ``BuildRoot`` class.
 
+
 Web UI Changes
 --------------
 
@@ -270,6 +274,7 @@ on taskinfo and buildrootinfo page.
 
 The rendering of error page won't work properly without this fix.
 
+
 Win Builder Changes
 -------------------
 
@@ -280,6 +285,7 @@ Win Builder Changes
 We've hit a problem that while VM is being cloned, the mac address cloning is
 refused and a new one is assigned instead. We are now using the xml file for mac
 address setup.
+
 
 System Changes
 --------------
@@ -326,7 +332,7 @@ ino release passed in, rather than calling ``getNextRelease`` in the ImageBuild
 task individually. This would notably reduce the possibility of the race
 condition.
 
-**Replace MD5 with SHA-256 in the most of places**
+**Replace MD5 with SHA-256 in most places**
 
 | PR: https://pagure.io/koji/pull-request/2317
 
@@ -356,10 +362,13 @@ _ditto_, and it is both for hub and web
 
 | PR: https://pagure.io/koji/pull-request/2306
 
-This PR reuses the logic of determination of channel policy in ``make_task()``
-for volume policy plus a fix for ``indirectionimage`` task. Notice that we are
-unable to get the similar policy data for ``CGImport`` and legacy imported
-builds.
+For builds with associated tasks, more information is now available to the volume policy.
+In particular, the ``buildtag`` policy test should work for such builds.
+
+Note that some builds (e.g. content generator builds and other imported builds) do not
+have associated tasks.
+
+For more information on hub policies, see :doc:`defining_hub_policies`.
 
 **Archive's checksum_type should be always integer in DB**
 
@@ -377,6 +386,7 @@ fetching it from DB again. So, it won't miss the volume information anymore.
 Notice that the signature has been changed: the argument ``build_id`` is changed to
 ``build_info``.
 
+
 Plugins
 -------
 
@@ -387,16 +397,17 @@ sidetag
 
 | PR: https://pagure.io/koji/pull-request/2132
 
-We are now having an easier way to show the owner of sidetags
+We now provide an easier way to find the owner of sidetags
 
 **Give koji admins the permission to operate sidetags**
 
 | PR: https://pagure.io/koji/pull-request/2322
 | PR: https://pagure.io/koji/pull-request/2326
 
-The admins should be able to sidetags even if they are not their own. This also
+The admins should be able to manage sidetags even if they are not their own. This also
 fix a bug that ``is_sidetag_owner`` ``is_sidetag`` used in policy check and many
 other places do not return result.
+
 
 Utilities Changes
 -----------------
