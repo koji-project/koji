@@ -8,14 +8,17 @@ and web service for python3 if you are going to upgrade them to koji 1.22.
 All changes can be found at `pagure <https://pagure.io/koji/roadmap/1.22/>`_.
 Most important changes are listed here.
 
+
 Migrating from Koji 1.21/1.21.1
 -------------------------------
 
 For details on migrating see :doc:`../migrations/migrating_to_1.22`
 
+
 Security Fixes
 --------------
 `None`
+
 
 Client Changes
 --------------
@@ -405,7 +408,7 @@ We now provide an easier way to find the owner of sidetags
 | PR: https://pagure.io/koji/pull-request/2326
 
 The admins should be able to manage sidetags even if they are not their own. This also
-fix a bug that ``is_sidetag_owner`` ``is_sidetag`` used in policy check and many
+fix a bug that ``is_sidetag_owner``, ``is_sidetag`` used in policy check and many
 other places do not return result.
 
 
@@ -507,7 +510,6 @@ There was a typo that checking ``clean_old`` instead of ``clean_empty`` in
 Direct comparison between dicts isn't supported by python3. We've changed the
 logic for python3 compatibility.
 
-
 koji-sweep-db
 .............
 
@@ -518,6 +520,7 @@ koji-sweep-db
 ``oneshot`` is the appropriate choice for periodic cleanup scripts, see `systemd
 docs
 <https://www.freedesktop.org/software/systemd/man/systemd.service.html#Type=>`_.
+
 
 Documentation Changes
 ---------------------
@@ -609,6 +612,7 @@ CLI Doc
 **Improve grant-permission --new --help message**
 
 | PR: https://pagure.io/koji/pull-request/2207
+
 
 Miscellaneous Changes
 ---------------------
