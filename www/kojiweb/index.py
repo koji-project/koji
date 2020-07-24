@@ -118,13 +118,13 @@ def _getUserCookie(environ):
     return user
 
 
-def _krbLogin(environ, session, principal):
+def _gssapiLogin(environ, session, principal):
     options = environ['koji.options']
     wprinc = options['WebPrincipal']
     keytab = options['WebKeytab']
     ccache = options['WebCCache']
-    return session.krb_login(principal=wprinc, keytab=keytab,
-                             ccache=ccache, proxyuser=principal)
+    return session.gssapi_login(principal=wprinc, keytab=keytab,
+                                ccache=ccache, proxyuser=principal)
 
 
 def _sslLogin(environ, session, username):
@@ -146,7 +146,7 @@ def _assertLogin(environ):
             if not _sslLogin(environ, session, environ['koji.currentLogin']):
                 raise koji.AuthError('could not login %s via SSL' % environ['koji.currentLogin'])
         elif options['WebPrincipal']:
-            if not _krbLogin(environ, environ['koji.session'], environ['koji.currentLogin']):
+            if not _gssapiLogin(environ, environ['koji.session'], environ['koji.currentLogin']):
                 raise koji.AuthError(
                     'could not login using principal: %s' % environ['koji.currentLogin'])
         else:
@@ -174,12 +174,7 @@ def _assertLogin(environ):
 
 def _getServer(environ):
     opts = environ['koji.options']
-    s_opts = {'krbservice': opts['KrbService'],
-              'krb_rdns': opts['KrbRDNS'],
-              'krb_canon_host': opts['KrbCanonHost'],
-              'krb_server_realm': opts['KrbServerRealm']
-              }
-    session = koji.ClientSession(opts['KojiHubURL'], opts=s_opts)
+    session = koji.ClientSession(opts['KojiHubURL'])
 
     environ['koji.currentLogin'] = _getUserCookie(environ)
     if environ['koji.currentLogin']:
@@ -273,7 +268,7 @@ def login(environ, page=None):
                 'configuration error: mod_auth_gssapi should have performed authentication before '
                 'presenting this page')
 
-        if not _krbLogin(environ, session, principal):
+        if not _gssapiLogin(environ, session, principal):
             raise koji.AuthError('could not login using principal: %s' % principal)
 
         username = principal

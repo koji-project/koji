@@ -1082,10 +1082,6 @@ def get_options():
                 'principal': None,
                 'keytab': '/etc/kojira/kojira.keytab',
                 'ccache': '/var/tmp/kojira.ccache',
-                'krbservice': 'host',
-                'krb_rdns': True,
-                'krb_canon_host': False,
-                'krb_server_realm': None,
                 'retry_interval': 60,
                 'max_retries': 120,
                 'offline_retry': True,
@@ -1114,10 +1110,10 @@ def get_options():
                     'delete_batch_size', 'dist_repo_lifetime', 'sleeptime',
                     'recent_tasks_lifetime')
         str_opts = ('topdir', 'server', 'user', 'password', 'logfile', 'principal', 'keytab',
-                    'krbservice', 'cert', 'ca', 'serverca', 'debuginfo_tags', 'queue_file',
+                    'cert', 'ca', 'serverca', 'debuginfo_tags', 'queue_file',
                     'source_tags', 'separate_source_tags', 'ignore_tags')  # FIXME: remove ca here
         bool_opts = ('verbose', 'debug', 'ignore_stray_repos', 'offline_retry',
-                     'krb_rdns', 'krb_canon_host', 'no_ssl_verify', 'check_external_repos')
+                     'no_ssl_verify', 'check_external_repos')
         legacy_opts = ('with_src')
         for name in config.options(section):
             if name in int_opts:
@@ -1195,8 +1191,8 @@ if __name__ == "__main__":
     elif options.user:
         # authenticate using user/password
         session.login()
-    elif (koji.krbV or koji.requests_kerberos) and options.principal and options.keytab:
-        session.krb_login(options.principal, options.keytab, options.ccache)
+    elif koji.requests_kerberos and options.principal and options.keytab:
+        session.gssapi_login(options.principal, options.keytab, options.ccache)
     else:
         quit("No username/password/certificate supplied and Kerberos missing or not configured")
     # get an exclusive session

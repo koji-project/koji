@@ -125,11 +125,7 @@ Requires: rpm-python
 %endif
 Requires: pyOpenSSL
 Requires: python-requests
-%if 0%{?fedora} || 0%{?rhel} >= 7
 Requires: python-requests-kerberos
-%else
-Requires: python-krbV >= 1.0.13
-%endif
 Requires: python-dateutil
 Requires: python-six
 

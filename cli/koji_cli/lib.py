@@ -20,11 +20,6 @@ import koji
 from koji import parse_arches
 from koji.util import md5_constructor, to_list
 
-try:
-    import krbV
-except ImportError:  # pragma: no cover
-    krbV = None
-
 
 # for compatibility with plugins based on older version of lib
 # Use optparse imports directly in new code.
@@ -663,18 +658,6 @@ def warn(msg):
     sys.stderr.flush()
 
 
-def has_krb_creds():
-    if krbV is None:
-        return False
-    try:
-        ctx = krbV.default_context()
-        ccache = ctx.default_ccache()
-        ccache.principal()
-        return True
-    except krbV.Krb5Error:
-        return False
-
-
 def activate_session(session, options):
     """Test and login the session is applicable"""
     if isinstance(options, dict):
@@ -692,7 +675,7 @@ def activate_session(session, options):
             and options.authtype is None:
         # authenticate using user/password
         session.login()
-    elif options.authtype == "kerberos" or has_krb_creds() and options.authtype is None:
+    elif options.authtype == "kerberos" or options.authtype is None:
         try:
             if getattr(options, 'keytab', None) and getattr(options, 'principal', None):
                 session.gssapi_login(principal=options.principal, keytab=options.keytab,

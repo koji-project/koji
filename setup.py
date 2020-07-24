@@ -20,10 +20,6 @@ def get_install_requires():
         # 'rpm-py-installer', # it is optional feature
         # 'rpm',
     ]
-    if sys.version_info[0] < 3:
-        # optional auth library for older hubs
-        # hubs >= 1.12 are using requests' default GSSAPI
-        requires.append('python-krbV')
     # since pyOpenSSL-18.0.0, py26 support is dropped
     # see https://pagure.io/koji/issue/1060
     if sys.version_info[0] == 2 and sys.version_info[1] < 7:

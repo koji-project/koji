@@ -44,11 +44,6 @@ from six.moves import range
 import koji
 from koji.util import to_list
 
-try:
-    import krbV
-except ImportError:  # pragma: no cover
-    krbV = None
-
 # koji.fp.o keeps stalling, probably network errors...
 # better to time out than to stall
 socket.setdefaulttimeout(180)  # XXX - too short?
@@ -82,18 +77,10 @@ def get_options():
                       help=_("use alternate configuration file"))
     parser.add_option("--keytab", help=_("specify a Kerberos keytab to use"))
     parser.add_option("--principal", help=_("specify a Kerberos principal to use"))
-    parser.add_option("--krbservice", help=_("the service name of the"
-                                             " principal being used by the hub"))
     parser.add_option("--runas", metavar="USER",
                       help=_("run as the specified user (requires special privileges)"))
     parser.add_option("--user", help=_("specify user"))
     parser.add_option("--password", help=_("specify password"))
-    parser.add_option("--krb-rdns", action="store_true", default=False,
-                      help=_("get reverse dns FQDN for krb target"))
-    parser.add_option("--krb-canon-host", action="store_true", default=False,
-                      help=_("get canonical hostname for krb target"))
-    parser.add_option("--krb-server-realm",
-                      help=_("the realm of server Kerberos principal"))
     parser.add_option("--noauth", action="store_true", default=False,
                       help=_("do not authenticate"))
     parser.add_option("-n", "--test", action="store_true", default=False,
@@ -305,17 +292,12 @@ def activate_session(session):
     elif options.user:
         # authenticate using user/password
         session.login()
-    elif krbV:
-        try:
-            if options.keytab and options.principal:
-                session.krb_login(principal=options.principal, keytab=options.keytab,
-                                  proxyuser=options.runas)
-            else:
-                session.krb_login(proxyuser=options.runas)
-        except krbV.Krb5Error as e:
-            error(_("Kerberos authentication failed: '%s' (%s)") % (e.args[1], e.args[0]))
-        except socket.error as e:
-            warn(_("Could not connect to Kerberos authentication service: '%s'") % e.args[1])
+    else:
+        if options.keytab and options.principal:
+            session.gssapi_login(principal=options.principal, keytab=options.keytab,
+                                 proxyuser=options.runas)
+        else:
+            session.gssapi_login(proxyuser=options.runas)
     if not options.noauth and not session.logged_in:
         error(_("Error: unable to log in"))
     ensure_connection(session)

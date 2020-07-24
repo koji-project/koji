@@ -21,7 +21,6 @@
 
 from __future__ import absolute_import
 
-import base64
 import random
 import re
 import socket
@@ -33,11 +32,6 @@ from six.moves import range, urllib, zip
 import koji
 from .context import context
 from .util import to_list
-
-try:
-    import krbV
-except ImportError:
-    krbV = None
 
 # 1 - load session if provided
 #       - check uri for session id
@@ -299,82 +293,6 @@ class Session(object):
         session_id = sinfo['session-id']
         context.cnx.commit()
         return sinfo
-
-    def krbLogin(self, krb_req, proxyuser=None):
-        """Authenticate the user using the base64-encoded
-        AP_REQ message in krb_req.  If proxyuser is not None,
-        log in that user instead of the user associated with the
-        Kerberos principal.  The principal must be an authorized
-        "proxy_principal" in the server config."""
-        if self.logged_in:
-            raise koji.AuthError("Already logged in")
-
-        if krbV is None:
-            # python3 is not supported
-            raise koji.AuthError("krbV module not installed")
-
-        if not (context.opts.get('AuthPrincipal') and context.opts.get('AuthKeytab')):
-            raise koji.AuthError('not configured for Kerberos authentication')
-
-        ctx = krbV.default_context()
-        srvprinc = krbV.Principal(name=context.opts.get('AuthPrincipal'), context=ctx)
-        srvkt = krbV.Keytab(name=context.opts.get('AuthKeytab'), context=ctx)
-
-        ac = krbV.AuthContext(context=ctx)
-        ac.flags = krbV.KRB5_AUTH_CONTEXT_DO_SEQUENCE | krbV.KRB5_AUTH_CONTEXT_DO_TIME
-        conninfo = self.getConnInfo()
-        ac.addrs = conninfo
-
-        # decode and read the authentication request
-        req = base64.b64decode(krb_req)
-        ac, opts, sprinc, ccreds = ctx.rd_req(req, server=srvprinc, keytab=srvkt,
-                                              auth_context=ac,
-                                              options=krbV.AP_OPTS_MUTUAL_REQUIRED)
-        cprinc = ccreds[2]
-
-        # Successfully authenticated via Kerberos, now log in
-        if proxyuser:
-            proxyprincs = [princ.strip()
-                           for princ in context.opts.get('ProxyPrincipals', '').split(',')]
-            if cprinc.name in proxyprincs:
-                login_principal = proxyuser
-            else:
-                raise koji.AuthError(
-                    'Kerberos principal %s is not authorized to log in other users' % cprinc.name)
-        else:
-            login_principal = cprinc.name
-
-        if '@' in login_principal:
-            user_id = self.getUserIdFromKerberos(login_principal)
-        else:
-            # backward compatible
-            # it's only possible when proxyuser is username, but we shouldn't
-            # allow this.
-            user_id = self.getUserId(login_principal)
-
-        if not user_id:
-            # Only do autocreate if we also couldn't find by username AND the proxyuser
-            # looks like a krb5 principal
-            if context.opts.get('LoginCreatesUser') and '@' in login_principal:
-                user_id = self.createUserFromKerberos(login_principal)
-            else:
-                raise koji.AuthError('Unknown Kerberos principal: %s' % login_principal)
-
-        self.checkLoginAllowed(user_id)
-
-        hostip = self.get_remote_ip()
-
-        sinfo = self.createSession(user_id, hostip, koji.AUTHTYPE_KERB)
-
-        # encode the reply
-        rep = ctx.mk_rep(auth_context=ac)
-        rep_enc = base64.encodestring(rep)
-
-        # encrypt and encode the login info
-        sinfo_priv = ac.mk_priv('%(session-id)s %(session-key)s' % sinfo)
-        sinfo_enc = base64.encodestring(sinfo_priv)
-
-        return (rep_enc, sinfo_enc, conninfo)
 
     def getConnInfo(self):
         """Return a tuple containing connection information

@@ -17,8 +17,6 @@ class TestActivateSession(unittest.TestCase):
         self.warn = mock.patch('koji_cli.lib.warn').start()
         self.error = mock.patch('koji_cli.lib.error').start()
         # self.ensure_connection = mock.patch('koji_cli.lib.warn.ensure_connection').start()
-        self.has_krb_creds = mock.patch('koji_cli.lib.has_krb_creds').start()
-        self.has_krb_creds.return_value = False
 
     def tearDown(self):
         mock.patch.stopall()
@@ -33,7 +31,6 @@ class TestActivateSession(unittest.TestCase):
         activate_session(session, options)
         session.login.assert_not_called()
         session.ssl_login.assert_not_called()
-        session.krb_login.assert_not_called()
         session.gssapi_login.assert_not_called()
 
     def test_activate_session_ssl(self):
@@ -48,7 +45,6 @@ class TestActivateSession(unittest.TestCase):
         session.ssl_login.assert_called_once_with(certfile, None, 'SERVERCA',
                     proxyuser=None)
         session.login.assert_not_called()
-        session.krb_login.assert_not_called()
         session.gssapi_login.assert_not_called()
 
     def test_activate_session_ssl_implicit(self):
@@ -64,7 +60,6 @@ class TestActivateSession(unittest.TestCase):
         session.ssl_login.assert_called_once_with(certfile, None, 'SERVERCA',
                     proxyuser=None)
         session.login.assert_not_called()
-        session.krb_login.assert_not_called()
         session.gssapi_login.assert_not_called()
 
     def test_activate_session_pw(self):
@@ -74,7 +69,6 @@ class TestActivateSession(unittest.TestCase):
         activate_session(session, options)
         session.login.assert_called_once_with()
         session.ssl_login.assert_not_called()
-        session.krb_login.assert_not_called()
         session.gssapi_login.assert_not_called()
 
     def test_activate_session_pw_implicit(self):
@@ -85,7 +79,6 @@ class TestActivateSession(unittest.TestCase):
         activate_session(session, options)
         session.login.assert_called_once_with()
         session.ssl_login.assert_not_called()
-        session.krb_login.assert_not_called()
         session.gssapi_login.assert_not_called()
 
     def test_activate_session_krb(self):
@@ -96,7 +89,6 @@ class TestActivateSession(unittest.TestCase):
         activate_session(session, options)
         session.login.assert_not_called()
         session.ssl_login.assert_not_called()
-        session.krb_login.assert_not_called()
         session.gssapi_login.assert_called_once_with(proxyuser=None)
 
     def test_activate_session_krb_implicit(self):
@@ -104,11 +96,9 @@ class TestActivateSession(unittest.TestCase):
         session.logged_in = True
         options = {'authtype': None, 'debug': False, 'cert': '',
                 'keytab': None, 'principal': None}
-        self.has_krb_creds.return_value = True
         activate_session(session, options)
         session.login.assert_not_called()
         session.ssl_login.assert_not_called()
-        session.krb_login.assert_not_called()
         session.gssapi_login.assert_called_once_with(proxyuser=None)
 
     def test_activate_session_krb_keytab(self):
@@ -119,7 +109,6 @@ class TestActivateSession(unittest.TestCase):
         activate_session(session, options)
         session.login.assert_not_called()
         session.ssl_login.assert_not_called()
-        session.krb_login.assert_not_called()
         session.gssapi_login.assert_called_once_with(principal='PRINCIPAL',
                     keytab='KEYTAB', proxyuser=None)
 
@@ -127,10 +116,8 @@ class TestActivateSession(unittest.TestCase):
         session = mock.MagicMock()
         session.logged_in = False
         options = {'authtype': None, 'debug': False, 'cert': ''}
-        self.has_krb_creds.return_value = False
         activate_session(session, options)
         session.login.assert_not_called()
         session.ssl_login.assert_not_called()
-        session.krb_login.assert_not_called()
-        session.gssapi_login.assert_not_called()
+        session.gssapi_login.assert_called_once()
         self.error.assert_called_once()
