@@ -145,7 +145,11 @@ Requires: rpm-python%{python3_pkgversion}
 %endif
 Requires: python%{python3_pkgversion}-pyOpenSSL
 Requires: python%{python3_pkgversion}-requests
+%if 0%{?fedora} >= 32
+Requires: python%{python3_pkgversion}-requests-gssapi
+%else
 Requires: python%{python3_pkgversion}-requests-kerberos
+%endif
 Requires: python%{python3_pkgversion}-dateutil
 Requires: python%{python3_pkgversion}-six
 

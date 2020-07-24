@@ -374,7 +374,7 @@ def activate_session(session):
     elif options.user:
         # authenticate using user/password
         session.login()
-    elif koji.requests_kerberos:
+    elif koji.reqgssapi:
         session.gssapi_login(principal=options.principal, keytab=options.keytab,
                              proxyuser=options.runas)
     if not options.noauth and not session.logged_in:
