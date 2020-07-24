@@ -558,12 +558,13 @@ def download_rpm(build, rpm, topurl, sigkey=None, quiet=False, noprogress=False)
 
     download_file(url, path, quiet=quiet, noprogress=noprogress, filesize=rpm['size'])
 
-    # size
-    size = os.path.getsize(path)
-    if size != rpm['size']:
-        os.unlink(path)
-        error("Downloaded rpm %s size %d does not match db size %d, deleting" %
-              (path, size, rpm['size']))
+    # size - we have stored size only for unsigned copies
+    if not sigkey:
+        size = os.path.getsize(path)
+        if size != rpm['size']:
+            os.unlink(path)
+            error("Downloaded rpm %s size %d does not match db size %d, deleting" %
+                  (path, size, rpm['size']))
 
     # basic sanity
     try:
