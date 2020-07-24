@@ -487,6 +487,13 @@ The condition was opposite before.
 
 Thus, we won't provide kojira service on <=EL6 platform.
 
+**Repo deletion within thread**
+
+| PR: https://pagure.io/koji/pull-request/2340
+
+Kojira are now able to delete repos in a separated thread. ``delete_batch_size``
+is useless now.
+
 koji-sidetag-cleanup
 ....................
 
