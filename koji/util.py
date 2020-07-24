@@ -23,6 +23,7 @@ from __future__ import absolute_import, division
 import base64
 import calendar
 import datetime
+import errno
 import hashlib
 import logging
 import os
@@ -472,7 +473,12 @@ def _stripcwd(dev):
     """Unlink all files in cwd and return list of subdirs"""
     dirs = []
     for fn in os.listdir('.'):
-        st = os.lstat(fn)
+        try:
+            st = os.lstat(fn)
+        except OSError as e:
+            if e.errno == errno.ENOENT:
+                continue
+            raise
         if st.st_dev != dev:
             # don't cross fs boundary
             continue
