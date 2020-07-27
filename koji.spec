@@ -81,7 +81,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.21.1
+Version: 1.22.0
 Release: %{release}%{?dist}
 License: LGPLv2 and GPLv2+
 # the included arch lib from yum's rpmUtils is GPLv2+
@@ -662,6 +662,141 @@ fi
 %endif
 
 %changelog
+* Tue Jul 28 2020 Mike McLean <mikem at redhat.com> - 1.22.0-1
+- PR#2393: release notes - 1.22
+- PR#2397: kojira: remove unused delete_batch_size
+- PR#2401: kojira: drop reference to krb_login
+- PR#2280: Use requests_gssapi instead of requests_kerberos
+- PR#2244: remove deprecated krbV support
+- PR#2340: kojira: threaded repo deletion
+- PR#2337: align option naming with mock
+- PR#2363: sphinx formatting fixes for hub policy doc
+- PR#2377: hub: document listBType return value when query matches no entries
+- PR#2123: Pass buildroot to preSCMCheckout and postSCMCheckout where applicable.
+- PR#2257:  BuildSRPMFromSCMTask: Support auto-selecting a matching specfile name
+- PR#2387: cli: list-tags: fall back to old behavior on ParameterError
+- PR#2353: turn off dnf_warning in mock.cfg
+- PR#2385: doc: exporting repositories
+- PR#2372: TaskManager: clean both result and results dirs
+- PR#2376: kojid: use mergerepo_c for all merge modes
+- PR#2359: hub: importImage doesn't honor volume
+- PR#2364: cli clone-tag - get srctag info with event
+- PR#2347: cli: fix image-build-indirection --wait
+- PR#2366: upgrade-sql: fix backward compatibility
+- PR#2369: hub: make sure checksum_type is int for DB
+- PR#2306: Provide task-based data to volume policy
+- PR#2346: cli: --wait for download-task
+- PR#2342: fix simple_error_message encoding
+- PR#2358: web: remove "GssapiLocalName off" setting
+- PR#2354: fix error message
+- PR#2351: hub: remove "GssapiLocalName off" setting
+- PR#2350: doc: improve hub selinux instructions
+- PR#2352: doc: update test suite dependency list for py3
+- PR#2348: fix option order
+- PR#2339: kojira: drop kojira.sysconfig
+- PR#2320: hub: allow glob matching for listTags
+- PR#2344: runroot: basic docs
+- PR#2345: builder: document plugin callbacks
+- PR#2327: koji-gc: fix py3 compare behaviour for dicts
+- PR#2338: hub: fix typo
+- PR#2334: hub: fix index so it gets used by planner
+- PR#2137: more debug info for un/tracked tasks in kojira
+- PR#2161: doc: update documentation for SSLCACertificateFile
+- PR#2162: hub: remove "GssapiSSLonly Off" option
+- PR#2287: doc: rewrite PostgreSQL authorization instructions
+- PR#2290: vm: clone mac address via xml
+- PR#2317: md5: try the best to use sha256 instead of md5 and ignore FIPS in other parts
+- PR#2263: improve race condition for getNextRelease / images
+- PR#2085: hide local --debug options
+- PR#2301: avoid redundant clauses and joins in query_buildroots()
+- PR#2237: db: use timestamps with timezone
+- PR#2329: docs: align "Hub" text in diagram
+- PR#2330: clean_old option was duplicated on clean_empty
+- PR#2331: hub: document listChannels arguments
+- PR#2318: make mock depsolver policy configurable
+- PR#1932: per-tag settings for mock's sign plugin
+- PR#2328: koji-gc: fix flake8
+- PR#2218: Drop py2 support for hub/web
+- PR#2316: kojira: replace deprecated Thread.isAlive()
+- PR#2309: hub: simplify recipients condition in build_notification()
+- PR#2326: sidetag: parenthesis typo
+- PR#2322: Side tags: allow admin ops and misc fixes
+- PR#2323: kojira: Fix logic detecting directories
+- PR#2276: document merge modes
+- PR#2310: hub: fix "opt-outs" comment in get_notification_recipients()
+- PR#2256: Don't break on deleted tag
+- PR#2154: kojira: swap first_seen with latest mtime for repo
+- PR#2275: hub: default policy allow packagelist changes with 'tag' permission
+- PR#2255: cli: output extra['rpm.macro.*'] to mock-config
+- PR#2253: koji-gc: set smtp_host to localhost by default
+- PR#2308: hub: return empty list in get_notification_recipients()
+- PR#2293: disable notifications by default in [un]tagBuildBypass calls
+- PR#2303: hub: query_buildroots fix query behaviour
+- PR#2299: hub: query_buildroots have to return ASAP
+- PR#2166: mock's boostrap + image support
+- PR#2295: Koji 1.21.1 release notes
+- PR#2278: koji-gc: fix cc/bcc e-mail handling
+- PR#2212: kojid: remove bootstrap dir
+- PR#2254:  openRemoteFile retries and checks downloaded content
+- PR#2225: hub: log tracebacks for multicalls
+- PR#2279: koji-gc: fix query order
+- PR#2064: Support tag specific environment variables
+- PR#2153: koji-gc: various typos in maven path
+- PR#2193: www: repoinfo page
+- PR#2268: don't decode signature headers
+- PR#2214: cli: drop unneeded activate_session
+- PR#2266: Correctly identify "hostname doesn't match" errors
+- PR#2228: cli: flush stdout during watch-logs
+- PR#2264: replace deprecated function with logging
+- PR#2262: Pass bootloader append option to livemedia builds
+- PR#2195: koji-gc: allow specifying CC and BCC address for email notifications
+- PR#2141: kojiweb: update for mod_auth_gssapi configuration
+- PR#2238: hub: deprecate host.getTask call
+- PR#2224: cli: fix variable name
+- PR#2245: cli: extend docs for --before/--after options
+- PR#2246: deprecated warning for cli option --ca as well
+- PR#2248: doc: links to copr builds
+- PR#2223: cli: fix un/lock-tag permission handling
+- PR#2241: hub: API docs
+- PR#2242: hub: additional API docs
+- PR#2199: koji-gc: add systemd unit files
+- PR#2157: kojira: use cached getTag for external repos
+- PR#2226: cli: deprecate --ca
+- PR#2197: Use %autosetup (fixes #2196)
+- PR#2235: doc: update postgresql-setup command for el8 and Fedora
+- PR#2236: fix additional flake8 problems
+- PR#2233: fix flake8 errors
+- PR#2151: koji-gc: support request_kerberos
+- PR#2211: koji-gc: test existence of trashcan tag
+- PR#2132: listSideTags returns also user info
+- PR#2187: koji-sweep-db: use "Type=oneshot" for systemd
+- PR#2213: Correct docstring about deleting inheritance rules
+- PR#2209: koji-utils: only requires /usr/bin/python2 on rhel<=7
+- PR#2205: doc: fix koji-sweep-db filename typo
+- PR#2206: doc: indent SQL query for user ID discovery
+- PR#2207: cli: improve grant-permission --new --help message
+- PR#2203: hub: admin can't force tag now
+- PR#2194: remove obsoleted note
+- PR#2158: hub: document addExternalRepoToTag arguments
+- PR#2172: hub: document createUser arguments
+- PR#2180: cli: fix "list-history --help" text for "--cg"
+- PR#2044: Unify error messages in CLI
+- fix flake8
+- PR#2024: queue log file for kojira
+- PR#2136: replace logging.warn with warning
+- PR#2038: Don't use listTagged(tag, *) for untag-build
+- PR#2103: fix list-signed --tag memory issues
+- PR#2150: translate exceptions to GenericError
+- PR#2176: hub: document editUser method
+- PR#2175: kojira: remove duplicate Kerberos configuration boilerplate
+- Merge #2173 `hub: document getTagExternalRepos`
+- PR#2177: doc: "koji build" requires a target
+- PR#2178: docs: Fix sidetag enablement typo
+- PR#2174: hub: document removeExternalRepoFromTag arguments
+- hub: document getTagExternalRepos
+- fix docs
+- missing file from 1.21 docs
+
 * Wed Jun 03 2020 Tomas Kopecek <tkopecek at redhat.com> - 1.21.1-1
  - PR#2279: koji-gc: fix query order
  - PR#2038: Don't use listTagged(tag, *) for untag-build
