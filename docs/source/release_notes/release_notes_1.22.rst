@@ -325,6 +325,22 @@ Finally, python2 support for hub and web have been dropped in this release.
 ``requests_gssapi`` is supported in this release. In all of the components we provide, we now try to
 use ``request_gssapi`` at first, if it isn't installed, fallback to ``requests_kerberos`` then.
 
+**DB: Use timestamps with timezone**
+
+| PR: https://pagure.io/koji/pull-request/2237
+| PR: https://pagure.io/koji/pull-request/2366
+
+We have updated all our timestamp fields to include timezone.
+This prevents time inconsistencies when the database has a timezone setting
+other than UTC.
+
+**DB: Update sessions_active_and_recent index**
+
+| PR: https://pagure.io/koji/pull-request/2334
+
+We have adjusted the ``sessions_active_and_recent`` index so that the planner
+will actually use it.
+
 **Log tracebacks for multicall**
 
 | PR: https://pagure.io/koji/pull-request/2225
@@ -553,112 +569,3 @@ koji-sweep-db
 ``oneshot`` is the appropriate choice for periodic cleanup scripts, see `systemd
 docs
 <https://www.freedesktop.org/software/systemd/man/systemd.service.html#Type=>`_.
-
-
-Documentation Changes
----------------------
-
-Documentation
-.............
-
-**"koji build" requires a target rather than a tag**
-
-| PR: https://pagure.io/koji/pull-request/2177
-
-**kojira: remove duplicate Kerberos configuration boilerplate**
-
-| PR: https://pagure.io/koji/pull-request/2175
-
-**Server How To: Documentation improvement**
-
-| PR: https://pagure.io/koji/pull-request/2206
-| PR: https://pagure.io/koji/pull-request/2205
-| PR: https://pagure.io/koji/pull-request/2235
-| PR: https://pagure.io/koji/pull-request/2287
-| PR: https://pagure.io/koji/pull-request/2161
-| PR: https://pagure.io/koji/pull-request/2350
-
-**Document merge modes**
-
-| PR: https://pagure.io/koji/pull-request/2276
-
-**Align "Hub" text in diagram**
-
-| PR: https://pagure.io/koji/pull-request/2329
-
-**Document plugin callbacks**
-
-| PR: https://pagure.io/koji/pull-request/2345
-
-**Document runroot plugin**
-
-| PR: https://pagure.io/koji/pull-request/2344
-
-**Update test suite dependency list for py3**
-
-| PR: https://pagure.io/koji/pull-request/2352
-
-**Exporting repositories**
-
-| PR: https://pagure.io/koji/pull-request/2385
-
-**Sphinx formatting fixes for hub policy doc**
-
-| PR: https://pagure.io/koji/pull-request/2363
-
-API Doc
-.......
-
-**getTagExternalRepos**
-
-| PR: https://pagure.io/koji/pull-request/2173
-
-**editUser**
-
-| PR: https://pagure.io/koji/pull-request/2176
-
-**createUser**
-
-| PR: https://pagure.io/koji/pull-request/2172
-
-**setInheritanceData**
-
-| PR: https://pagure.io/koji/pull-request/2213
-
-Correct docstring about deleting inheritance rules.
-
-**listChannels**
-
-| PR: https://pagure.io/koji/pull-request/2331
-
-**listBType**
-
-| PR: https://pagure.io/koji/pull-request/2377
-
-CLI Doc
-.......
-
-**Fix "list-history --help" text for "--cg"**
-
-| PR: https://pagure.io/koji/pull-request/2180
-
-**Improve grant-permission --new --help message**
-
-| PR: https://pagure.io/koji/pull-request/2207
-
-
-Miscellaneous Changes
----------------------
-
-**Packaging: Use %autosetup to manage patches**
-
-| PR: https://pagure.io/koji/pull-request/2197
-
-**DB: Use timestamps with timezone**
-
-| PR: https://pagure.io/koji/pull-request/2237
-| PR: https://pagure.io/koji/pull-request/2366
-
-**DB: Change sessions_active_and_recent index to get it used by planner**
-
-| PR: https://pagure.io/koji/pull-request/2334
