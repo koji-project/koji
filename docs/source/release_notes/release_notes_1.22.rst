@@ -17,7 +17,8 @@ For details on migrating see :doc:`../migrations/migrating_to_1.22`
 
 Security Fixes
 --------------
-`None`
+
+None
 
 
 Client Changes
@@ -27,14 +28,7 @@ Client Changes
 
 | PR: https://pagure.io/koji/pull-request/2255
 
-``mock-config`` command honors 'rpm.macro.*' options in tag's extra config now.
-
-**Unify error messages in CLI**
-
-| PR: https://pagure.io/koji/pull-request/2044
-
-This is a technical dept enhancement. Now we are calling ``error()`` instead of
-``print()`` and ``return 1``.
+The ``mock-config`` command honors 'rpm.macro.*' options in tag's extra config now.
 
 **--ca option has been deprecated**
 
@@ -59,19 +53,23 @@ In some CLI commands we used ``active_session()`` which will try its best to
 login, but it is not necessary. Now, we only ensure the connection without
 authentication.
 
-**Hide local --debug options for some commands**
+**Unify --debug options**
 
 | PR: https://pagure.io/koji/pull-request/2085
 
-Following commands use the global ``--debug`` option for their own debug purpose
-now:
+The cli accepts a global ``--debug`` option before the command name.
+Some commands accepted a separate ``--debug`` option local to the command,
+which was confusing.
+Now these commands take their cue from the global option.
+The local option is still accepted for backwards compatibility, though
+it has been hidden in the help output.
+
+The following commands were affected:
 
 * ``prune-sigs``
 * ``list-signed``
 * ``list-tag-history``
 * ``list-history``
-
-The local ``--debug`` options are still usable as we just hide them in helps.
 
 **New option --wait for download-task**
 
@@ -84,8 +82,9 @@ finished as the same as the behavior of ``build`` command.
 
 | PR: https://pagure.io/koji/pull-request/2347
 
-Although there's a ``--wait`` option for ``image-build-indirection``, it was not
-working until it's fixed by this PR.
+Previously, the ``image-build-indirection`` command accepted the ``--wait``
+option, but did not honor it.
+This oversight has been fixed.
 
 **Fix event option handling in clone-tag**
 
@@ -117,6 +116,7 @@ malfunctions, like cache, filesystem, network, etc. Now, in
 * check the rpm header is valid if the file is an RPM
 * do 3 times retries if it fails
 
+
 API Changes
 -----------
 
@@ -135,15 +135,19 @@ argument is not expected.
 
 This host API will be finally removed in 1.23
 
-**query_buildroots have to return ASAP**
+**Optimizations to the listBuildroots call**
 
 | PR: https://pagure.io/koji/pull-request/2299
 | PR: https://pagure.io/koji/pull-request/2303
 | PR: https://pagure.io/koji/pull-request/2301
 
-For the optimization purpose, ``query_buildroots()`` can return earlier if there
-is no candidate buildroot. This function equals ``listBuildroots`` API and is
-used by ``getBuildroot``.
+For the optimization purpose, the ``listBuildroots`` API call avoids
+unnecessary checks when the return will be empty.
+
+Additionally, the call avoids some table joins that can slow down the queries
+in some cases.
+As a result, the return value will no longer include the ``is_update`` field
+when querying by ``rpmID``.
 
 **Disable notifications by default in [un]tagBuildBypass calls**
 
@@ -165,7 +169,7 @@ Tools that wish to generate email notifications will need to explicitly pass ``n
 
 This option is a GLOB match pattern for the name of tag. You can now directly
 call ``session.listTags(pattern='prefix-*-postfix')`` for example, to filter the
-result list on server side. ``list-tags`` command tries its best to call it with
+result list on server side. The ``list-tags`` command tries its best to call it with
 ``pattern`` as well.
 
 
@@ -255,10 +259,16 @@ going to use the specfile with the SCM repo's name in root or ``SPECS`` dir.
 
 | PR: https://pagure.io/koji/pull-request/2123
 
+The ``preSCMCheckout`` and ``postSCMCheckout`` callbacks for kojid now include
+a ``buildroot`` field that provides access to the internal ``BuildRoot``
+object, when such an object is available.
 This change impacts ``BuildMavenTask``, ``WrapperRPMTask``, ``ImageTask`` and
-``BuildSRPMfromRPMTask``. Any plugins that use this should be aware that using
-this could make them more fragile across releases. This feature does not come
-with a promise avoid changing the behavior of the ``BuildRoot`` class.
+``BuildSRPMfromRPMTask``.
+The current exceptions are ``OzImageTask`` and ``BuildIndirectionImageTask``,
+which do not use this type of buildroot.
+
+Any plugins that use this field should be aware that the behavior of this class
+may change across releases.
 
 
 Web UI Changes
@@ -302,6 +312,7 @@ Finally, python2 support for hub and web have been dropped in this release.
 **Drop krbV support**
 
 | PR: https://pagure.io/koji/pull-request/2244
+| PR: https://pagure.io/koji/pull-request/2151
 
 ``krbV`` support has been finally removed from this release. For more information, please refer to
 :ref:`migration_krbv`.
@@ -326,26 +337,24 @@ benefit us for debugging purpose, as we are often using multicall more and more.
 | PR: https://pagure.io/koji/pull-request/2308
 | PR: https://pagure.io/koji/pull-request/2309
 
-`PR#1417 <https://pagure.io/koji/pull-request/1417>`_ uses ``len()`` to check
-the result of ``get_notification_recipients()``, but it could be ``None`` then
-will cause a ``TypeError``. Now we fix this issue by both fixing the condition
-in ``build_notification()`` and returning ``[]`` in
-``get_notification_recipients()``.
+This change fixes an inconsistency in the function where it would return
+``None`` instead of an empty list as expected.
 
 **Allow packagelist changes with 'tag' permission by the default policy**
 
 | PR: https://pagure.io/koji/pull-request/2275
 
-'tag' permission has been introduced for tag config management. It makes much
-sense to let the users with `tag` permission be able to change packagelist as
-well.
+The ``tag`` permission was introduced in version 1.18 as part of an effort to
+make admin permissions more granular.
+This permission now grants access to make package list changes for tags
+via the default ``package_list`` policy.
 
 **Improve race condition for getNextRelease call and images**
 
 | PR: https://pagure.io/koji/pull-request/2263
 
 It was possible to meet the race condition in the old logic of image building.
-We are now calling ``get_next_release()`` in ``initImageBuild`` call if there is
+We are now calling ``get_next_release()`` in the ``initImageBuild`` call if there is
 ino release passed in, rather than calling ``getNextRelease`` in the ImageBuild
 task individually. This would notably reduce the possibility of the race
 condition.
@@ -362,7 +371,12 @@ but only keeping MD5 for RPM file processing.
 
 | PR: https://pagure.io/koji/pull-request/2162
 
-This option has been ``Off`` be default, see `mod_auth_gssapi doc
+We have removed the ``GssapiSSLonly`` option from our example httpd
+configuration.
+It was previously shown in the example, set to ``Off``.
+This is also the default in mod_auth_gssapi, but *it is not the recommended
+setting*.
+For more information, see `mod_auth_gssapi doc
 <https://github.com/gssapi/mod_auth_gssapi#gssapisslonly>`_
 
 **Remove "GssapiLocalName Off" option**
@@ -370,7 +384,9 @@ This option has been ``Off`` be default, see `mod_auth_gssapi doc
 | PR: https://pagure.io/koji/pull-request/2351
 | PR: https://pagure.io/koji/pull-request/2358
 
-_ditto_, and it is both for hub and web
+We have also removed the ``GssapiLocalName`` option from our example httpd
+configurations.
+Similar to the above, our example setting was already the default.
 
 **hub: Fix typo in ensure_volume_symlink**
 
@@ -386,7 +402,7 @@ In particular, the ``buildtag`` policy test should work for such builds.
 Note that some builds (e.g. content generator builds and other imported builds) do not
 have associated tasks.
 
-For more information on hub policies, see :doc:`defining_hub_policies`.
+For more information on hub policies, see :doc:`../defining_hub_policies`.
 
 **Archive's checksum_type should be always integer in DB**
 
@@ -395,14 +411,11 @@ For more information on hub policies, see :doc:`defining_hub_policies`.
 We fixed the problem in ``CG_Importer.match_file()`` and
 ``import_archive_internal()``.
 
-**host.importImage doesn't honor volume**
+**Honor volume policy in host.importImage**
 
 | PR: https://pagure.io/koji/pull-request/2359
 
-``host.importImage`` now directly uses the data of ``build_info`` rather than
-fetching it from DB again. So, it won't miss the volume information anymore.
-Notice that the signature has been changed: the argument ``build_id`` is changed to
-``build_info``.
+This fixes a bug where an underlying function as ignoring the volume policy result.
 
 
 Plugins
@@ -420,11 +433,17 @@ We now provide an easier way to find the owner of sidetags
 **Give koji admins the permission to operate sidetags**
 
 | PR: https://pagure.io/koji/pull-request/2322
+
+
+Users with the ``admin`` permission can now manage sidetags even if they are
+not their own.
+
+**Fix is_sidetag_owner and is_sidetag policy tests**
+
 | PR: https://pagure.io/koji/pull-request/2326
 
-The admins should be able to manage sidetags even if they are not their own. This also
-fix a bug that ``is_sidetag_owner``, ``is_sidetag`` used in policy check and many
-other places do not return result.
+These policy tests would previously always return a null result.
+Now they return the correct one.
 
 
 Utilities Changes
@@ -432,12 +451,6 @@ Utilities Changes
 
 Garbage Collector
 .................
-
-**Support of GSSAPI auth requests-kerberos**
-
-| PR: https://pagure.io/koji/pull-request/2151
-
-Meanwhile, the ``krb_login`` auth with ``krbV`` has been dropped.
 
 **Systemd units for koji-gc**
 
@@ -457,9 +470,8 @@ New options ``cc_addr``, ``bcc_addr`` in config file, or CLI options
 
 | PR: https://pagure.io/koji/pull-request/2253
 
-The previous default value of ``smtp_host`` is ``None``. It will It will cause
-``smtplib.SMTP().connect()`` to fail. Setting the default vault to 'localhost'
-fixes this issue accordingly.
+The previous the default value was ``None``, which would cause failures
+if notifications were enabled.
 
 Kojira
 ......
@@ -476,9 +488,7 @@ this file in each cycle. For more information, please refer to
 
 | PR: https://pagure.io/koji/pull-request/2154
 
-``first_seen`` is measured from start of the kojira process. It doesn't make
-much sense for short-lived kojira to determine the age of repo. Trying the best
-to replace it with mtime of repo directory would be a more accurate approach.
+Kojira should now do a better job of determining the age of a repo at startup.
 
 **Fix logic detecting directories for pruneLocalRepos**
 
@@ -507,8 +517,8 @@ Thus, we won't provide kojira service on <=EL6 platform.
 | PR: https://pagure.io/koji/pull-request/2340
 | PR: https://pagure.io/koji/pull-request/2397
 
-Kojira are now able to delete repos in a separated thread. ``delete_batch_size``
-is useless now.
+Kojira are now able to delete repos in a separated thread.
+The old ``delete_batch_size`` option is no longer used and has been removed.
 
 koji-sidetag-cleanup
 ....................
