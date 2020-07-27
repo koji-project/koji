@@ -304,7 +304,7 @@ Finally, python2 support for hub and web have been dropped in this release.
 | PR: https://pagure.io/koji/pull-request/2244
 
 ``krbV`` support has been finally removed from this release. For more information, please refer to
-:ref:`_migration_krbv`.
+:ref:`migration_krbv`.
 
 **Use requests_gssapi for GSSAPI authentication**
 
