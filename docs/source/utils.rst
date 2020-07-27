@@ -81,10 +81,6 @@ especially in relation to throttling in creating ``newRepo`` tasks.
     Overall limit on running tasks is set here. It involves all
     ``newRepo`` tasks spawned by kojira and also by other users.
 
-``delete_batch_size = 3``
-    How many repos are being removed from disk in one iteration. This
-    generally doesn't need to be changed.
-
 ``check_external_repos = false``
     If True, monitor external repos and trigger the appropriate Koji repo
     regenerations when they change.
