@@ -153,7 +153,6 @@ when querying by ``rpmID``.
 
 | PR: https://pagure.io/koji/issue/2292
 
-
 The ``notify`` option to the ``tagBuildBypass`` and ``untagBuildBypass`` now defaults to False.
 Tools that wish to generate email notifications will need to explicitly pass ``notify=True``.
 
@@ -281,12 +280,6 @@ Web UI Changes
 The new page displays basic information of a normal repo, linked by the repo id
 on taskinfo and buildrootinfo page.
 
-**Fix simple_error_message encoding for PY3**
-
-| PR: https://pagure.io/koji/pull-request/2342
-
-The rendering of error page won't work properly without this fix.
-
 
 Win Builder Changes
 -------------------
@@ -306,6 +299,7 @@ System Changes
 **Drop python2 support for hub and web**
 
 | PR: https://pagure.io/koji/pull-request/2218
+| PR: https://pagure.io/koji/pull-request/2342
 
 Finally, python2 support for hub and web have been dropped in this release.
 
@@ -404,10 +398,6 @@ We have also removed the ``GssapiLocalName`` option from our example httpd
 configurations.
 Similar to the above, our example setting was already the default.
 
-**hub: Fix typo in ensure_volume_symlink**
-
-| PR: https://pagure.io/koji/pull-request/2354
-
 **Provide task-based data to volume policy**
 
 | PR: https://pagure.io/koji/pull-request/2306
@@ -419,13 +409,6 @@ Note that some builds (e.g. content generator builds and other imported builds) 
 have associated tasks.
 
 For more information on hub policies, see :doc:`../defining_hub_policies`.
-
-**Archive's checksum_type should be always integer in DB**
-
-| PR: https://pagure.io/koji/pull-request/2369
-
-We fixed the problem in ``CG_Importer.match_file()`` and
-``import_archive_internal()``.
 
 **Honor volume policy in host.importImage**
 
@@ -512,16 +495,6 @@ Kojira should now do a better job of determining the age of a repo at startup.
 
 The condition was opposite before.
 
-**Replace deprecated Thread.isAlive() by Thread.is_alive()**
-
-| PR: https://pagure.io/koji/pull-request/2316
-
-``is_alive()`` call exists since python 2.7.
-
-**More debug info for un/tracked tasks**
-
-| PR: https://pagure.io/koji/pull-request/2137
-
 **Totally drop SysV support**
 
 | PR: https://pagure.io/koji/issue/2171
@@ -544,20 +517,6 @@ koji-sidetag-cleanup
 | PR: https://pagure.io/koji/pull-request/2209
 
 Otherwise, the build will fail on RHEL<=7.
-
-**Fix useless of the option --no-empty**
-
-| PR: https://pagure.io/koji/pull-request/2330
-
-There was a typo that checking ``clean_old`` instead of ``clean_empty`` in
-``clean_empty()``.
-
-**Fix the dict comparison of dicts**
-
-| PR: https://pagure.io/koji/pull-request/2327
-
-Direct comparison between dicts isn't supported by python3. We've changed the
-logic for python3 compatibility.
 
 koji-sweep-db
 .............
