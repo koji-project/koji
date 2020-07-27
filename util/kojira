@@ -1112,7 +1112,7 @@ def get_options():
                     'source_tags', 'separate_source_tags', 'ignore_tags')  # FIXME: remove ca here
         bool_opts = ('verbose', 'debug', 'ignore_stray_repos', 'offline_retry',
                      'no_ssl_verify', 'check_external_repos')
-        legacy_opts = ('with_src')
+        legacy_opts = ('with_src', 'delete_batch_size')
         for name in config.options(section):
             if name in int_opts:
                 defaults[name] = config.getint(section, name)
