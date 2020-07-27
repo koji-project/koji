@@ -1192,7 +1192,7 @@ if __name__ == "__main__":
         # authenticate using user/password
         session.login()
     elif koji.reqgssapi and options.principal and options.keytab:
-        session.krb_login(options.principal, options.keytab, options.ccache)
+        session.gssapi_login(options.principal, options.keytab, options.ccache)
     else:
         quit("No username/password/certificate supplied and Kerberos missing or not configured")
     # get an exclusive session
