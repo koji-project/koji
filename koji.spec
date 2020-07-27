@@ -663,6 +663,7 @@ fi
 
 %changelog
 * Tue Jul 28 2020 Mike McLean <mikem at redhat.com> - 1.22.0-1
+- PR#2404: release bump and changelog
 - PR#2393: release notes - 1.22
 - PR#2397: kojira: remove unused delete_batch_size
 - PR#2401: kojira: drop reference to krb_login
