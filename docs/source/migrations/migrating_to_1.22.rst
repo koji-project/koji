@@ -29,6 +29,7 @@ Starting with Koji 1.22, hub and web will only support Python 3.
 The CLI, builder, and utils retain Python 2 support for now.
 For more information see: `PR#2218 <https://pagure.io/koji/pull-request/2218>`_
 
+.. _migration_krbv:
 
 Dropped krbV authentication support
 -----------------------------------

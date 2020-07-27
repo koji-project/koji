@@ -299,6 +299,21 @@ System Changes
 
 Finally, python2 support for hub and web have been dropped in this release.
 
+**Drop krbV support**
+
+| PR: https://pagure.io/koji/pull-request/2244
+
+``krbV`` support has been finally removed from this release. For more information, please refer to
+:ref:`_migration_krbv`.
+
+**Use requests_gssapi for GSSAPI authentication**
+
+| PR: https://pagure.io/koji/pull-request/2244
+| PR: https://pagure.io/koji/pull-request/2401
+
+``requests_gssapi`` is supported in this release. In all of the components we provide, we now try to
+use ``request_gssapi`` at first, if it isn't installed, fallback to ``requests_kerberos`` then.
+
 **Log tracebacks for multicall**
 
 | PR: https://pagure.io/koji/pull-request/2225
@@ -490,6 +505,7 @@ Thus, we won't provide kojira service on <=EL6 platform.
 **Repo deletion within thread**
 
 | PR: https://pagure.io/koji/pull-request/2340
+| PR: https://pagure.io/koji/pull-request/2397
 
 Kojira are now able to delete repos in a separated thread. ``delete_batch_size``
 is useless now.
