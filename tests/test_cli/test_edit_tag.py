@@ -75,7 +75,7 @@ class TestEditTag(utils.CliTestCase):
         args.append('--unlock')
         args.append('--no-maven-support')
         args.append('--no-include-all')
-        opts = {'perm_id': None,
+        opts = {'perm': None,
                 'locked': not locked,
                 'maven_support': not maven_support,
                 'maven_include_all': not maven_include_all}
