@@ -104,7 +104,6 @@ info commands:
         list-hosts                Print the host listing
         list-permissions          List user permissions
         list-pkgs                 Print the package listing for tag or for owner
-        list-tag-history          Print a history of tag operations
         list-tag-inheritance      Print the inheritance information for a tag
         list-tagged               List the builds or rpms in a tag
         list-tags                 Print the list of tags
