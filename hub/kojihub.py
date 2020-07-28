@@ -13503,12 +13503,6 @@ class HostExports(object):
         task = Task(task_id)
         return task.open(host.id)
 
-    def getTask(self):
-        logging.warn("Call host.getTask is deprecated and will be removed in 1.23")
-        host = Host()
-        host.verify()
-        return host.getTask()
-
     def closeTask(self, task_id, response):
         host = Host()
         host.verify()
