@@ -5039,7 +5039,7 @@ def handle_edit_tag(goptions, session, args):
     if options.arches:
         opts['arches'] = koji.parse_arches(options.arches)
     if options.no_perm:
-        opts['perm_id'] = None
+        opts['perm'] = None
     elif options.perm:
         opts['perm'] = options.perm
     if options.unlock:
