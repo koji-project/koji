@@ -5,6 +5,8 @@ Basic koji is equipped with few handy utilities for maintaining
 healthy build environment. They are packaged in ``koji-utils`` rpm and
 can be installed as such.
 
+.. _utils-kojira:
+
 Kojira
 ------
 

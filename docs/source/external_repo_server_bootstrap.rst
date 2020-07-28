@@ -117,7 +117,7 @@ Regenerating your repo
 
 koji doesn't monitor external repositories for changes by default.
 Administrators can enable such bejaviour with setting ``check_external_repos =
-true`` in ``kojira.conf`` (for details see :doc:`utils.rst`). If it is not
+true`` in ``kojira.conf`` (for details see :doc:`utils`). If it is not
 enabled new repositories will be generated when packages you build land in a tag
 that populates the buildroot or you manually regenerate the repository. you
 should be sure to regularly regenerate the repositories manually to pick up
