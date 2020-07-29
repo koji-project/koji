@@ -3368,13 +3368,13 @@ def _edit_tag(tagInfo, **kwargs):
         raise koji.GenericError("Maven support not enabled")
 
     tag = get_tag(tagInfo, strict=True)
+    if 'perm' in kwargs and 'perm_id' not in kwargs:
+        # for compatibility, perm and perm_id are aliases
+        # if both are given, perm_id takes precedence
+        kwargs['perm_id'] = kwargs['perm']
     if 'perm_id' in kwargs:
-        kwargs['perm_id'] = get_perm_id(kwargs['perm_id'], strict=True)
-    elif 'perm' in kwargs:
-        if kwargs['perm'] is None:
-            kwargs['perm_id'] = None
-        else:
-            kwargs['perm_id'] = get_perm_id(kwargs['perm'], strict=True)
+        if kwargs['perm_id'] is not None:
+            kwargs['perm_id'] = get_perm_id(kwargs['perm_id'], strict=True)
 
     name = kwargs.get('name')
     if name and tag['name'] != name:
