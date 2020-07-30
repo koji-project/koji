@@ -39,6 +39,7 @@ Contents
     database_howto
     kojid_conf
     using_the_koji_build_system
+    setting_rpm_macros
     profiles
     plugins
     volumes
