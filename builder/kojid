@@ -2069,7 +2069,7 @@ class WrapperRPMTask(BaseBuildTask):
         contents = contents.encode('utf-8')
 
         specfile = spec_template[:-5]
-        with open(specfile, 'w') as specfd:
+        with open(specfile, 'wb') as specfd:
             specfd.write(contents)
 
         # Run spec file sanity checks.  Any failures will throw a BuildError
