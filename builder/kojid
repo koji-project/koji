@@ -6339,6 +6339,7 @@ class WaitrepoTask(BaseTaskHandler):
         last_repo = None
 
         while True:
+            taginfo = self.session.getTag(tag, strict=True)
             repo = self.session.getRepo(taginfo['id'])
             if repo and repo != last_repo:
                 if builds:
