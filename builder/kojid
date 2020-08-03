@@ -6339,7 +6339,13 @@ class WaitrepoTask(BaseTaskHandler):
         last_repo = None
 
         while True:
-            taginfo = self.session.getTag(tag, strict=True)
+            try:
+                taginfo = self.session.getTag(tag, strict=True)
+            except koji.GenericError:
+                self.logger.debug("Tag %s got lost while waiting for newrepo", tag)
+                raise koji.GenericError("Unsuccessfully waited %s for %s repo. "
+                                        "Tag was probably deleted meanwhile." %
+                                        (koji.util.duration(start), tag))
             repo = self.session.getRepo(taginfo['id'])
             if repo and repo != last_repo:
                 if builds:
