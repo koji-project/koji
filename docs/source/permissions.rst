@@ -14,8 +14,8 @@ For example, the ``dist-repo`` permission allows access to create dist repos.
 
 Custom permissions can used as the required permission for a tag, or they can be
 referenced in :doc:`hub policies <defining_hub_policies>`. Note, that you need
-to first understand policy mechanism as most permissions are reflected in policy
-rules.
+to first understand the policy mechanism as most permissions are reflected in
+policy rules.
 
 
 Permission management
