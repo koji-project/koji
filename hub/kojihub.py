@@ -11393,6 +11393,7 @@ class RootExports(object):
                      JOIN events ON build.create_event = events.id
                      WHERE build.pkg_id = %(packageID)i
                        AND build.state = %(st_complete)i
+                       AND build.completion_time >  NOW() - '6 months'::interval
                        AND build.task_id IS NOT NULL"""
 
         return _singleValue(query, locals())
