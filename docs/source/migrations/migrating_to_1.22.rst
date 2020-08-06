@@ -46,6 +46,20 @@ The newer gssapi authentication mechanism requires either ``python-requests-kerb
 For more information see: `PR#2244 <https://pagure.io/koji/pull-request/2244>`_ and
 `PR#2280 <https://pagure.io/koji/pull-request/2280>`_
 
+As part of this, the ``krbservice`` and ``krb_rdns`` options have been dropped.
+These options were accepted in several configuration files and also as command
+line options (``--krbservice`` and ``--krb-rdns``) in the cli and some utility
+scripts.
+In the Web UI configuration (``web.conf``), these options were named
+``KrbService`` and ``KrbRDNS``.
+Users and admins should remove these options from their configuration.
+
+These options will cause an error if given on the command line.
+They will also cause an error if used in the following configuration files:
+
+* kojid.conf
+* kojira.conf
+
 
 Other changes
 -------------
