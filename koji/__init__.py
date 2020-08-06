@@ -50,6 +50,7 @@ import xml.sax
 import xml.sax.handler
 from fnmatch import fnmatch
 
+import dateutil.parser
 import requests
 import six
 import six.moves.configparser
@@ -3290,10 +3291,18 @@ def formatTimeLong(value):
     """
     if not value:
         return ''
+    if isinstance(value, six.string_types):
+        t = dateutil.parser.parse(value)
+    elif isinstance(value, xmlrpc_client.DateTime):
+        t = dateutil.parser.parse(value.value)
     else:
-        # Assume the string value passed in is the local time
-        localtime = time.mktime(time.strptime(formatTime(value), '%Y-%m-%d %H:%M:%S'))
-        return time.strftime('%a, %d %b %Y %H:%M:%S %Z', time.localtime(localtime))
+        t = value
+    # return date in local timezone, py 2.6 has tzone as astimezone required parameter
+    # would work simply as t.astimezone() for py 2.7+
+    if t.tzinfo is None:
+        t = t.replace(tzinfo=dateutil.tz.gettz())
+    t = t.astimezone(dateutil.tz.gettz())
+    return datetime.datetime.strftime(t, '%a, %d %b %Y %H:%M:%S %Z')
 
 
 def buildLabel(buildInfo, showEpoch=False):
