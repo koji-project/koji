@@ -9158,28 +9158,30 @@ SELECT %(col_str)s
         c = context.cnx.cursor()
         c.execute(query, values)
         c.close()
-        query = "FETCH %i FROM %s" % (chunksize, cname)
-        while True:
-            if as_list:
-                if self.transform is None:
-                    buf = _fetchMulti(query, {})
+        try:
+            query = "FETCH %i FROM %s" % (chunksize, cname)
+            while True:
+                if as_list:
+                    if self.transform is None:
+                        buf = _fetchMulti(query, {})
+                    else:
+                        # if we're transforming, generate the dicts so the transform can modify
+                        buf = _multiRow(query, self.values, fields)
+                        buf = [self.transform(row) for row in buf]
+                        # and then convert back to lists
+                        buf = [[row[f] for f in fields] for row in buf]
                 else:
-                    # if we're transforming, generate the dicts so the transform can modify
-                    buf = _multiRow(query, self.values, fields)
-                    buf = [self.transform(row) for row in buf]
-                    # and then convert back to lists
-                    buf = [[row[f] for f in fields] for row in buf]
-            else:
-                buf = _multiRow(query, {}, fields)
-                if self.transform is not None:
-                    buf = [self.transform(row) for row in buf]
-            if not buf:
-                break
-            for row in buf:
-                yield row
-        c = context.cnx.cursor()
-        c.execute("CLOSE %s" % cname)
-        c.close()
+                    buf = _multiRow(query, {}, fields)
+                    if self.transform is not None:
+                        buf = [self.transform(row) for row in buf]
+                if not buf:
+                    break
+                for row in buf:
+                    yield row
+        finally:
+            c = context.cnx.cursor()
+            c.execute("CLOSE %s" % cname)
+            c.close()
 
     def executeOne(self, strict=False):
         results = self.execute()
