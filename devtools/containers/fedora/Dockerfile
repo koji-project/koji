@@ -17,5 +17,6 @@ RUN \
   python3-tox \
   redhat-rpm-config \
   rpm-build \
+  rpm-devel \
   sqlite-devel \
   yum-utils
