@@ -5,25 +5,6 @@ Access Controls
 Koji is complex system, so there are many places where some kind of access
 control is used. Here is the documentation hub for all the mechanisms in place.
 
-Perimeter
-=========
-
-This can't be covered here as it highly depends on architecture and usage of the
-system. Nevertheless, the best option would be global (or company-wide) access
-to web and hub https ports, so clients and builders can connect there.
-
-Builders should be restricted on external level (firewalls outside of builders
-themselves) to contact only hub and allowed SCMs.  There should be no allowed
-access to the internet if there is no good reason to do that and these accessess
-are monitored. Otherwise koji can't ensure reproducibility of the build (e.g. if
-spec is downloading *something* from the internet - we're doomed). Secluded
-intranet segment with nothing able to interfere here is a worthy thing.
-
-Only builders from createrepo channel (and runroot if you're using that plugin)
-should have mounted koji volumes in read-write mode. Other builders don't need
-that and from security/safety reasons it is not recommended to have it mounted
-at all.
-
 User/Builder Authentication
 ===========================
 
@@ -50,10 +31,14 @@ Details of ``alowed_scms`` option is covered under :ref:`scm-config`
 Hub Policies
 ============
 
-Hub policies are core system of access controls. It can define specialized
+Hub policies are core system of access controls. They can define specialized
 policies for many things ranging from permissions to tag specific builds to
 specific tag to e.g. assigning builds to specific builders (channels) or storing
-results on different disk volumes.
+results on different disk volumes. Policies allow user permissions (see below)
+to be used in their rulesets.
+
+Only some policies are for access control (allow/deny permissions checks) while
+others like channel policy governs different areas of koji.
 
 There is whole document :doc:`defining_hub_policies` covering this.
 
