@@ -5190,6 +5190,7 @@ def get_host(hostInfo, strict=False, event=None):
     - comment
     - ready
     - enabled
+    - version
     """
     tables = ['host_config']
     joins = ['host ON host.id = host_config.host_id']
@@ -5199,6 +5200,7 @@ def get_host(hostInfo, strict=False, event=None):
               'host.name': 'name',
               'host.ready': 'ready',
               'host.task_load': 'task_load',
+              'host.version': 'version',
               'host_config.arches': 'arches',
               'host_config.capacity': 'capacity',
               'host_config.description': 'description',
@@ -10278,6 +10280,9 @@ class RootExports(object):
     def echo(self, *args):
         return args
 
+    def getKojiVersion(self):
+        return koji.__version__
+
     def getAPIVersion(self):
         return koji.API_VERSION
 
@@ -12482,6 +12487,7 @@ class RootExports(object):
                   'host.name': 'name',
                   'host.ready': 'ready',
                   'host.task_load': 'task_load',
+                  'host.version': 'version',
                   'host_config.arches': 'arches',
                   'host_config.capacity': 'capacity',
                   'host_config.description': 'description',
@@ -13444,14 +13450,17 @@ class Host(object):
                     task['alert'] = True
         return tasks
 
-    def updateHost(self, task_load, ready):
+    def updateHost(self, task_load, ready, resources=None):
         host_data = get_host(self.id)
-        if task_load != host_data['task_load'] or ready != host_data['ready']:
-            c = context.cnx.cursor()
+        if task_load != host_data['task_load'] or \
+           ready != host_data['ready'] or \
+           resources and resources.get('version') and host_data['version'] != resources['version']:
             id = self.id
-            q = """UPDATE host SET task_load=%(task_load)s,ready=%(ready)s WHERE id=%(id)s"""
-            c.execute(q, locals())
-            context.commit_pending = True
+            update = UpdateProcessor('host', clauses=['id=%(id)s'], values=locals())
+            update.set(task_load=task_load, ready=ready)
+            if resources and 'version' in resources:
+                update.set(version=resources['version'])
+            update.execute()
 
     def getLoadData(self):
         """Get load balancing data
@@ -13529,10 +13538,10 @@ class HostExports(object):
         host.verify()
         return host.id
 
-    def updateHost(self, task_load, ready):
+    def updateHost(self, task_load, ready, resources=None):
         host = Host()
         host.verify()
-        host.updateHost(task_load, ready)
+        host.updateHost(task_load, ready, resources=resources)
 
     def getLoadData(self):
         host = Host()

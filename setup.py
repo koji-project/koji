@@ -30,9 +30,14 @@ def get_install_requires():
     return requires
 
 
+def get_version():
+    exec(open('koji/_version.py', 'rt').read())
+    return(locals()['__version__'])
+
+
 setup(
     name="koji",
-    version="1.22.1",
+    version=get_version(),
     description=("Koji is a system for building and tracking RPMS. The base"
                  " package contains shared libraries and the command-line"
                  " interface."),

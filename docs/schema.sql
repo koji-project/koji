@@ -156,7 +156,8 @@ CREATE TABLE host (
 	user_id INTEGER NOT NULL REFERENCES users (id),
 	name VARCHAR(128) UNIQUE NOT NULL,
 	task_load FLOAT CHECK (NOT task_load < 0) NOT NULL DEFAULT 0.0,
-	ready BOOLEAN NOT NULL DEFAULT 'false'
+	ready BOOLEAN NOT NULL DEFAULT 'false',
+        version VARCHAR(10) NOT NULL DEFAULT ''
 ) WITHOUT OIDS;
 
 CREATE TABLE host_config (

@@ -62,6 +62,9 @@ from six.moves import range, zip
 
 from koji.xmlrpcplus import Fault, dumps, getparser, loads, xmlrpc_client
 from . import util
+from . import _version
+__version__ = _version.__version__
+__version_info__ = _version.__version_info__
 
 SSL_Error = None
 try:

@@ -633,7 +633,8 @@ class TaskManager(object):
         for task_id in self.pids:
             self.cleanupTask(task_id)
         self.session.host.freeTasks(to_list(self.tasks.keys()))
-        self.session.host.updateHost(task_load=0.0, ready=False)
+        self.session.host.updateHost(task_load=0.0, ready=False,
+                                     resources={'version': koji.__version__})
 
     def updateBuildroots(self, nolocal=False):
         """Handle buildroot cleanup/maintenance
@@ -891,7 +892,8 @@ class TaskManager(object):
 
     def getNextTask(self):
         self.ready = self.readyForTask()
-        self.session.host.updateHost(self.task_load, self.ready)
+        self.session.host.updateHost(self.task_load, self.ready,
+                                     resources={'version': koji.__version__})
         if not self.ready:
             self.logger.info("Not ready for task")
             return False
