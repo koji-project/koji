@@ -2890,6 +2890,7 @@ def tag_changed_since_event(event, taglist):
         'tag_listing',
         'tag_inheritance',
         'tag_config',
+        'tag_extra',
         'tag_packages',
         'tag_external_repos',
         'group_package_listing',
