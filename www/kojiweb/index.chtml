@@ -24,7 +24,7 @@
       #if not $user
       <td class="user-$build.owner_name"><a href="userinfo?userID=$build.owner_id">$build.owner_name</a></td>
       #end if
-      <td>$util.formatTime($build.completion_time)</td>
+      <td>$util.formatTime($build.completion_ts)</td>
       <td class="$stateName">$util.stateImage($build.state)</td>
     </tr>
     #end for
@@ -65,7 +65,7 @@
       </td>
       #end if
       <td>$task.arch</td>
-      <td>$util.formatTime($task.completion_time)</td>
+      <td>$util.formatTime($task.completion_ts)</td>
       <td class="task$state">$util.imageTag($state)</td>
     </tr>
     #end for

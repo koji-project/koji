@@ -100,4 +100,17 @@ class TestFormatTime(unittest.TestCase):
         r = formatTimeLong(d3)
         self.assertEqual(r, desired)
 
+        # timestamps, local timezone
+        d4 = 0
+        desired = 'Thu, 01 Jan 1970 01:00:00 CET'
+        r = formatTimeLong(d4)
+        self.assertEqual(r, desired)
+
+        # timestamps, GMT
+        desired = 'Thu, 01 Jan 1970 00:00:00 GMT'
+        os.environ['TZ'] = 'GMT'
+        time.tzset()
+        r = formatTimeLong(d4)
+        self.assertEqual(r, desired)
+
         locale.resetlocale()

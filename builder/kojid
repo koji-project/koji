@@ -5275,8 +5275,8 @@ Build Info: %(weburl)s/buildinfo?buildID=%(build_id)i\r
         if target is not None:
             dest_tag = target['dest_tag_name']
         status = koji.BUILD_STATES[build['state']].lower()
-        creation_time = koji.formatTimeLong(build['creation_time'])
-        completion_time = koji.formatTimeLong(build['completion_time'])
+        creation_time = koji.formatTimeLong(build['creation_ts'])
+        completion_time = koji.formatTimeLong(build['completion_ts'])
         task_id = build['task_id']
 
         task_data = self._getTaskData(task_id)

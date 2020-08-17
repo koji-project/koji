@@ -43,7 +43,7 @@
       <title>$koji.BUILD_STATES[$build.state].lower(): $koji.buildLabel($build)#if $build.task then ', target: ' + $build.task.request[1] else ''#</title>
       <link>$weburl/buildinfo?buildID=$build.build_id</link>
       #if $build.completion_time
-      <pubDate>$util.formatTimeRSS($build.completion_time)</pubDate>
+      <pubDate>$util.formatTimeRSS($build.completion_ts)</pubDate>
       #end if
       #if $build.state == $koji.BUILD_STATES['COMPLETE'] and $build.changelog
       <description>&lt;pre&gt;$util.escapeHTML($koji.util.formatChangelog($build.changelog))&lt;/pre&gt;</description>

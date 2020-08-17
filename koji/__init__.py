@@ -3270,10 +3270,12 @@ class DBHandler(logging.Handler):
 
 def formatTime(value):
     """Format a timestamp so it looks nicer"""
-    if not value:
+    if not value and not isinstance(value, (int, float)):
         return ''
     if isinstance(value, xmlrpc_client.DateTime):
         value = datetime.datetime.strptime(value.value, "%Y%m%dT%H:%M:%S")
+    elif isinstance(value, (int, float)):
+        value = datetime.datetime.fromtimestamp(value)
     if isinstance(value, datetime.datetime):
         return value.strftime('%Y-%m-%d %H:%M:%S')
     else:
@@ -3289,12 +3291,14 @@ def formatTimeLong(value):
     """Format a timestamp to a more human-reable format, i.e.:
     Sat, 07 Sep 2002 00:00:01 GMT
     """
-    if not value:
+    if not value and not isinstance(value, (int, float)):
         return ''
     if isinstance(value, six.string_types):
         t = dateutil.parser.parse(value)
     elif isinstance(value, xmlrpc_client.DateTime):
         t = dateutil.parser.parse(value.value)
+    elif isinstance(value, (int, float)):
+        t = datetime.datetime.fromtimestamp(value)
     else:
         t = value
     # return date in local timezone, py 2.6 has tzone as astimezone required parameter

@@ -11,7 +11,7 @@
   <tr><th>Tag</th><td><a href="taginfo?tagID=$repo.tag_id">$repo.tag_name</a></td></tr>
   #set $state = $util.repoState($repo.state)
   <tr><th>State</th><td class="repo$state">$state</td></tr>
-  <tr><th>Event</th><td>$repo.create_event ($util.formatTimeLong($repo.creation_time))</td></tr>
+  <tr><th>Event</th><td>$repo.create_event ($util.formatTimeLong($repo.creation_ts))</td></tr>
   #if $repo.state != koji.REPO_STATES['DELETED']
   <tr><th>URL</th><td><a href="$url">repodata</a></td></tr>
   <tr><th>Repo json</th><td><a href="$repo_json">repo.json</a></td></tr>
