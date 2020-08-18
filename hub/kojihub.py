@@ -7818,62 +7818,6 @@ def query_history(tables=None, **kwargs):
     return ret
 
 
-def tag_history(build=None, tag=None, package=None, active=None, queryOpts=None):
-    """Returns historical tag data
-
-    package: only for given package
-    build: only for given build
-    tag: only for given tag
-
-    Deprecated; will be removed in a future version
-    See: https://pagure.io/koji/issue/836
-    """
-    logger.warning("The tag_history call is deprecated and will be removed in a future version.")
-    fields = ('build.id', 'package.name', 'build.version', 'build.release',
-              'tag.id', 'tag.name', 'tag_listing.active',
-              'tag_listing.create_event', 'tag_listing.revoke_event',
-              'tag_listing.creator_id', 'tag_listing.revoker_id',
-              'creator.name', 'revoker.name',
-              'EXTRACT(EPOCH FROM ev1.time)', 'EXTRACT(EPOCH FROM ev2.time)',
-              'maven_builds.build_id', 'win_builds.build_id')
-    aliases = ('build_id', 'name', 'version', 'release',
-               'tag_id', 'tag_name', 'active',
-               'create_event', 'revoke_event',
-               'creator_id', 'revoker_id',
-               'creator_name', 'revoker_name',
-               'create_ts', 'revoke_ts',
-               'maven_build_id', 'win_build_id')
-    st_complete = koji.BUILD_STATES['COMPLETE']
-    tables = ['tag_listing']
-    joins = ["tag ON tag.id = tag_listing.tag_id",
-             "build ON build.id = tag_listing.build_id",
-             "package ON package.id = build.pkg_id",
-             "events AS ev1 ON ev1.id = tag_listing.create_event",
-             "LEFT OUTER JOIN events AS ev2 ON ev2.id = tag_listing.revoke_event",
-             "users AS creator ON creator.id = tag_listing.creator_id",
-             "LEFT OUTER JOIN users AS revoker ON revoker.id = tag_listing.revoker_id",
-             "LEFT OUTER JOIN maven_builds ON maven_builds.build_id = build.id",
-             "LEFT OUTER JOIN win_builds ON win_builds.build_id = build.id"]
-    clauses = []
-    if tag is not None:
-        tag_id = get_tag_id(tag, strict=True)
-        clauses.append("tag.id = %(tag_id)i")
-    if build is not None:
-        build_id = get_build(build, strict=True)['id']
-        clauses.append("build.id = %(build_id)i")
-    if package is not None:
-        pkg_id = get_package_id(package, strict=True)
-        clauses.append("package.id = %(pkg_id)i")
-    if active is True:
-        clauses.append("tag_listing.active is true")
-    elif active is False:
-        clauses.append("tag_listing.active is not true")
-    query = QueryProcessor(columns=fields, aliases=aliases, tables=tables,
-                           joins=joins, clauses=clauses, values=locals(),
-                           opts=queryOpts)
-    return query.iterate()
-
-
 def untagged_builds(name=None, queryOpts=None):
     """Returns the list of untagged builds"""
     fields = ('build.id', 'package.name', 'build.version', 'build.release')
@@ -10622,7 +10566,6 @@ class RootExports(object):
     CGImport = staticmethod(cg_import)
 
     untaggedBuilds = staticmethod(untagged_builds)
-    tagHistory = staticmethod(tag_history)
     queryHistory = staticmethod(query_history)
 
     deleteBuild = staticmethod(delete_build)
