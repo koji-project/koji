@@ -1173,7 +1173,10 @@ def buildinfo(environ, buildID):
 
     buildID = int(buildID)
 
-    build = server.getBuild(buildID)
+    try:
+        build = server.getBuild(buildID, strict=True)
+    except koji.GenericError:
+        raise koji.GenericError("Invalid build ID: %i" % buildID)
 
     values['title'] = koji.buildLabel(build) + ' | Build Info'
 
