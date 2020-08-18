@@ -11379,11 +11379,15 @@ class RootExports(object):
         tag_id = get_tag_id(tag, strict=True)
         return maven_tag_archives(tag_id, event_id=event, inherit=inherit)
 
-    def getAverageBuildDuration(self, package):
+    def getAverageBuildDuration(self, package, age=None):
         """Get the average duration of a build of the given package.
-        Returns a floating-point value indicating the
-        average number of seconds the package took to build.  If the package
-        has never been built, return None."""
+
+        :param int|str package: Package name or id
+        :param int age: length of history in months
+
+        :return float|None: average number of seconds - If package wasn't built
+                            during past age months (or never), None is returned
+        """
         packageID = get_package_id(package)
         if not packageID:
             return None
@@ -11394,6 +11398,8 @@ class RootExports(object):
                      WHERE build.pkg_id = %(packageID)i
                        AND build.state = %(st_complete)i
                        AND build.task_id IS NOT NULL"""
+        if age is not None:
+            query += " AND build.completion_time >  NOW() - '%s months'::interval" % int(age)
 
         return _singleValue(query, locals())
 

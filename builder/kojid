@@ -1363,7 +1363,7 @@ class BuildArchTask(BaseBuildTask):
         weight is scaled from a minimum of 1.5 to a maximum of 6, based on
         the average duration of a build of this package.
         """
-        avg = self.session.getAverageBuildDuration(name)
+        avg = self.session.getAverageBuildDuration(name, age=6)
         if not avg:
             return
         if avg < 0:
