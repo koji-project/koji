@@ -1279,12 +1279,12 @@ def buildinfo(environ, buildID):
         if field not in values:
             values[field] = None
 
-    values['start_time'] = build.get('start_time') or build['creation_time']
+    values['start_ts'] = build.get('start_ts') or build['creation_ts']
     # the build start time is not accurate for maven and win builds, get it from the
     # task start time instead
     if 'maven' in typeinfo or 'win' in typeinfo:
         if task:
-            values['start_time'] = task['start_time']
+            values['start_ts'] = task['start_ts']
     if build['state'] == koji.BUILD_STATES['BUILDING']:
         avgDuration = server.getAverageBuildDuration(build['package_id'])
         if avgDuration is not None:
