@@ -3431,15 +3431,16 @@ def handle_clone_tag(goptions, session, args):
     chggrplist = []
     # case of brand new dst-tag.
     if not dsttag:
-        if not options.config:
-            parser.error(_('Cannot create tag without specifying --config'))
         # create a new tag, copy srctag header.
         if not options.test:
-            session.createTag(args[1], parent=None, arches=srctag['arches'],
-                              perm=srctag['perm_id'],
-                              locked=srctag['locked'],
-                              maven_support=srctag['maven_support'],
-                              maven_include_all=srctag['maven_include_all'])
+            if options.config:
+                session.createTag(args[1], parent=None, arches=srctag['arches'],
+                                  perm=srctag['perm_id'],
+                                  locked=srctag['locked'],
+                                  maven_support=srctag['maven_support'],
+                                  maven_include_all=srctag['maven_include_all'])
+            else:
+                session.createTag(args[1], parent=None)
             # store the new tag, need its assigned id.
             newtag = session.getTag(args[1], strict=True)
         # get pkglist of src-tag, including inherited packages.
