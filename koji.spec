@@ -500,9 +500,9 @@ rm -rf $RPM_BUILD_ROOT
 
 %if 0%{py3_support} > 1
 %files hub
-%config(noreplace) /etc/httpd/conf.d/kojihub.conf
+%config(noreplace) %attr(0640, root, apache) /etc/httpd/conf.d/kojihub.conf
 %dir /etc/koji-hub
-%config(noreplace) /etc/koji-hub/hub.conf
+%config(noreplace) %attr(0640, root, apache) /etc/koji-hub/hub.conf
 %dir /etc/koji-hub/hub.conf.d
 %{_sbindir}/koji-sweep-db
 %if %{use_systemd}
