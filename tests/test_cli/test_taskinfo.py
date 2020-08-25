@@ -218,7 +218,7 @@ class TestParseTaskParams(utils.CliTestCase):
         self.__run_parseTask_test('prepRepo', params, expect)
 
     def test_createRepo(self):
-        params = [1, 'x86_64', {'id': 1, 'creation_ts': 0},
+        params = [1, 'x86_64', {'id': 1, 'create_ts': 0},
                   [{'external_repo_name': 'fedoraproject.net'},
                    {'external_repo_name': 'centos.org'}]]
         expect = ["Repo ID: %i" % params[0]]
