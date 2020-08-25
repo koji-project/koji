@@ -59,6 +59,7 @@ class MyClientSession(koji.ClientSession):
 class TestBuildNotification(unittest.TestCase):
 
     def setUp(self):
+        self.maxDiff = None
         self.original_timezone = os.environ.get('TZ')
         os.environ['TZ'] = 'US/Eastern'
         time.tzset()
@@ -111,5 +112,5 @@ class TestBuildNotification(unittest.TestCase):
             msg_expect = fp.read()
         if six.PY2:
             msg_expect = msg_expect.decode()
-        self.assertEqual(message, msg_expect)
+        self.assertMultiLineEqual(message.decode(), msg_expect.decode())
         locale.resetlocale()

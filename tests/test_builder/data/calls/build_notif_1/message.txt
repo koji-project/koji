@@ -11,8 +11,8 @@ Tag: f23
 Status: complete
 Built by: user
 ID: 612609
-Started: Wed, 18 Feb 2015 14:50:37 EST
-Finished: Wed, 18 Feb 2015 14:57:37 EST
+Started: Wed, 18 Feb 2015 09:50:37 EST
+Finished: Wed, 18 Feb 2015 09:57:37 EST
 Changelog:
 * Wed Feb 18 2015 Happy Koji User <user@example.com> - 1:0.3.0-0.2.M1
 - Unbundle ASM
