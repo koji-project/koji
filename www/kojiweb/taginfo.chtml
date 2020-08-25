@@ -115,7 +115,7 @@
       <th>Repo&nbsp;created</th>
       <td>
       #if $repo
-        <a href="repoinfo?repoID=$repo.id">$util.formatTimeRSS($repo.creation_ts)</a>
+        <a href="repoinfo?repoID=$repo.id">$util.formatTimeRSS($repo.create_ts)</a>
       #end if
       </td>
     </tr>

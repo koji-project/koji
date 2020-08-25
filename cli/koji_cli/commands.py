@@ -4662,7 +4662,7 @@ def _do_parseTaskParams(session, method, task_id, topdir):
         oldrepo = params[2]
         if oldrepo:
             lines.append("Old Repo ID: %i" % oldrepo['id'])
-            lines.append("Old Repo Creation: %s" % koji.formatTimeLong(oldrepo['creation_ts']))
+            lines.append("Old Repo Creation: %s" % koji.formatTimeLong(oldrepo['create_ts']))
         if len(params) > 3:
             lines.append("External Repos: %s" %
                          ', '.join([ext['external_repo_name'] for ext in params[3]]))
