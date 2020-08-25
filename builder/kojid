@@ -3588,8 +3588,7 @@ class LiveMediaTask(ImageTask):
             cmd.append('--macboot')
 
         if b_append:
-            cmd.extend(['--extra-boot-args',
-                        '--append=\"%s\"' % b_append])
+            cmd.extend(['--extra-boot-args', '\"%s\"' % b_append])
 
         if 'lorax_url' in self.opts:
             templates_dir = self.fetch_lorax_templates_from_scm(broot)
