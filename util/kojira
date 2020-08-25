@@ -873,7 +873,8 @@ class RepoManager(object):
                 return
             elif len(self.tasks) + len(self.other_tasks) >= self.options.repo_tasks_limit:
                 self.logger.debug("Tracked tasks (%s): %s" % (len(self.tasks), list(self.tasks)))
-                self.logger.debug("Untracked tasks (%s): %s" % (len(self.other_tasks), list(self.other_tasks)))
+                self.logger.debug("Untracked tasks (%s): %s" % (len(self.other_tasks),
+                                                                list(self.other_tasks)))
                 self.logger.info("Repo task limit reached")
                 return
             tagname = tag['taginfo']['name']

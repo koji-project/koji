@@ -511,8 +511,8 @@ class VMExecTask(BaseTaskHandler):
 
         if opts.get('static_mac'):
             orig_mac = self.macAddr(orig_vm)
-            #doesn't work anymore, needs to place mac address inside the xml
-            #cmd += ["--mac", orig_mac]
+            # doesn't work anymore, needs to place mac address inside the xml
+            # cmd += ["--mac", orig_mac]
             opts['static_mac'] = orig_mac
 
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
