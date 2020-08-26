@@ -525,22 +525,27 @@ def download_file(url, relpath, quiet=False, noprogress=False, size=None,
         # rewrite
         f = open(relpath, 'wb')
 
-    # closing needs to be used for requests < 2.18.0
-    with closing(requests.get(url, headers=headers, stream=True)) as response:
-        if response.status_code in (200, 416):  # full content provided or reaching behing EOF
-            # rewrite in such case
-            f.close()
-            f = open(relpath, 'wb')
-        response.raise_for_status()
-        length = filesize or int(response.headers.get('content-length') or 0)
-        for chunk in response.iter_content(chunk_size=1024**2):
-            pos += len(chunk)
-            f.write(chunk)
-            if not (quiet or noprogress):
-                _download_progress(length, pos, filesize)
-        if not length and not (quiet or noprogress):
-            _download_progress(pos, pos, filesize)
-    f.close()
+    try:
+        # closing needs to be used for requests < 2.18.0
+        with closing(requests.get(url, headers=headers, stream=True)) as response:
+            if response.status_code in (200, 416):  # full content provided or reaching behind EOF
+                # rewrite in such case
+                f.close()
+                f = open(relpath, 'wb')
+            response.raise_for_status()
+            length = filesize or int(response.headers.get('content-length') or 0)
+            for chunk in response.iter_content(chunk_size=1024**2):
+                pos += len(chunk)
+                f.write(chunk)
+                if not (quiet or noprogress):
+                    _download_progress(length, pos, filesize)
+            if not length and not (quiet or noprogress):
+                _download_progress(pos, pos, filesize)
+    finally:
+        f.close()
+        if pos == 0:
+            # nothing was downloaded, e.g file not found
+            os.unlink(relpath)
 
     if not (quiet or noprogress):
         print('')
