@@ -48,7 +48,7 @@ import six.moves.xmlrpc_client
 # urllib is required by the SCM class which is substituted into this file
 # do not remove the import below
 from six.moves import urllib  # noqa: F401
-from six.moves.configparser import ConfigParser, SafeConfigParser
+from six.moves.configparser import RawConfigParser
 
 MANAGER_PORT = 7000
 
@@ -222,10 +222,7 @@ class WindowsBuild(object):
         elif len(specfiles) > 1:
             raise BuildError('Multiple .ini files found')  # noqa: F821
 
-        if six.PY2:
-            conf = SafeConfigParser()
-        else:
-            conf = ConfigParser()
+        conf = RawConfigParser()
         conf.read(os.path.join(self.spec_dir, specfiles[0]))
 
         # [naming] section
