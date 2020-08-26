@@ -93,7 +93,7 @@
           <tr class="$util.rowToggle($self)">
             #set $stateName = $util.stateName($build.state)
             <td><a href="buildinfo?buildID=$build.build_id">$build.nvr</a></td>
-            <td>$util.formatTime($build.completion_time)</td>
+            <td>$util.formatTime($build.completion_ts)</td>
             <td class="$stateName">$util.stateImage($build.state)</td>
           </tr>
           #end for

@@ -195,7 +195,7 @@ $printOpts($params[3])
 #set $oldrepo = $params[2]
 #if $oldrepo
     <strong>Old Repo ID:</strong> <a href="repoinfo?repoID=$oldrepo.id">$oldrepo.id</a><br/>
-    <strong>Old Repo Creation:</strong> $koji.formatTimeLong($oldrepo.creation_time)<br/>
+    <strong>Old Repo Creation:</strong> $koji.formatTimeLong($oldrepo.create_ts)<br/>
 #end if
 #if $len($params) > 4 and $params[4]
     <strong>External Repos:</strong> $printValue(None, [ext['external_repo_name'] for ext in $params[3]])<br/>

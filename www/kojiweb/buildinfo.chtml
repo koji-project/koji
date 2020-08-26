@@ -69,7 +69,7 @@
       <td>$build.volume_name</td>
     </tr>
     <tr>
-      <th>Started</th><td>$util.formatTimeLong($start_time)</td>
+      <th>Started</th><td>$util.formatTimeLong($start_ts)</td>
     </tr>
     #if $build.state == $koji.BUILD_STATES.BUILDING
     #if $estCompletion
@@ -79,7 +79,7 @@
     #end if
     #else
     <tr>
-      <th>Completed</th><td>$util.formatTimeLong($build.completion_time)</td>
+      <th>Completed</th><td>$util.formatTimeLong($build.completion_ts)</td>
     </tr>
     #end if
     #if $build.cg_id

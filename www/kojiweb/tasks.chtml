@@ -153,7 +153,7 @@ All
             #end if
           </td>
           <td>$task.arch</td>
-          <td>$util.formatTime($task.completion_time)</td>
+          <td>$util.formatTime($task.completion_ts)</td>
           <td class="task$state">$util.imageTag($taskState)</td>
         </tr>
       #end for

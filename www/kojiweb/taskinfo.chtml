@@ -77,11 +77,11 @@
     #end for
     #end if
     <tr>
-      <th>Created</th><td>$util.formatTimeLong($task.create_time)</td>
+      <th>Created</th><td>$util.formatTimeLong($task.create_ts)</td>
     </tr>
     #if $task.start_time
     <tr>
-      <th>Started</th><td>$util.formatTimeLong($task.start_time)</td>
+      <th>Started</th><td>$util.formatTimeLong($task.start_ts)</td>
     #end if
     #set $end_ts = None
     #if $task.state == $koji.TASK_STATES.OPEN
@@ -93,7 +93,7 @@
     #end if
     #elif $task.completion_time
     <tr>
-      <th>Completed</th><td>$util.formatTimeLong($task.completion_time)</td>
+      <th>Completed</th><td>$util.formatTimeLong($task.completion_ts)</td>
     </tr>
     #set $end_ts = $task.completion_ts
     #end if

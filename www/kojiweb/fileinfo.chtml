@@ -23,7 +23,7 @@
     </tr>
     #if 'mtime' in $file and $file.mtime
     <tr>
-      <th>Modification time</th><td>$util.formatTimeLong($datetime.datetime.fromtimestamp($file.mtime))</td>
+      <th>Modification time</th><td>$util.formatTimeLong($file.mtime)</td>
     </tr>
     #end if
     #if 'user' in $file and $file.user
