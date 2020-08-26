@@ -12,8 +12,10 @@ It grants superuser access and can stand in for any other permission.
 Most of the built-in permissions control access to various hub calls.
 For example, the ``dist-repo`` permission allows access to create dist repos.
 
-Custom permissions can used as the required permission for a tag, or they can
-be referenced in :doc:`hub policies <defining_hub_policies>`.
+Custom permissions can used as the required permission for a tag, or they can be
+referenced in :doc:`hub policies <defining_hub_policies>`. Note, that you need
+to first understand the policy mechanism as most permissions are reflected in
+policy rules.
 
 
 Permission management
@@ -48,11 +50,15 @@ The following permissions govern access to key administrative actions.
   We recommend granting the smallest effective permission.
 
 ``host``
-  Restricted permission for handling host-related management tasks.
+  Restricted admin permission for handling host-related management tasks.
 
 ``tag``
-  Permission for adding/deleting/editing tags.
-  Allows use of the tagBuildBypass and untagBuildBypass API calls.
+  Permission for adding/deleting/editing tags.  Allows use of the
+  ``tagBuildBypass`` and ``untagBuildBypass`` API calls also. Note, that this
+  name could be confusing as it is not related to tagging builds but to editing
+  tags themselves. Tagging builds (and adding/removing packages from package
+  lists for given tags) is handled by ``tag`` and ``package_list`` policies
+  respectively.
 
 ``target``
   Permission for adding/deleting/editing targets

@@ -1314,6 +1314,9 @@ Additional Notes
 * It is not recommended that kojira run on the builders, as builders only
   should require read-only access to ``/mnt/koji``.
 
+
+.. _auth-config:
+
 Authentication Configuration
 ----------------------------
 

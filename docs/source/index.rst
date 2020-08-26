@@ -22,6 +22,7 @@ Contents
     :maxdepth: 2
 
     HOWTO
+    access_controls
     permissions
     defining_hub_policies
     external_repo_server_bootstrap
