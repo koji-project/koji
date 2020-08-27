@@ -631,6 +631,7 @@ def eventCondition(event, table=None):
 
 
 def readGlobalInheritance(event=None):
+    logger.warning("The getGlobalInheritance call is deprecated and will be removed in 1.25.")
     c = context.cnx.cursor()
     fields = ('tag_id', 'parent_id', 'name', 'priority', 'maxdepth', 'intransitive',
               'noconfig', 'pkg_filter')
