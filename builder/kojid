@@ -3188,6 +3188,10 @@ class ApplianceTask(ImageTask):
         for part in self.ks.handler.partition.partitions:
             if part.mountpoint == '/':
                 return part.disk
+            elif part.fstype == 'btrfs':
+                for s in self.ks.handler.btrfs.btrfsList:
+                    if s.subvol and s.mountpoint == '/':
+                        return part.disk
         raise koji.ApplianceError('kickstart lacks a "/" mountpoint')
 
     def handler(self, name, version, release, arch, target_info,
