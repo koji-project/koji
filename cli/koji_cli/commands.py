@@ -3356,12 +3356,13 @@ def anon_handle_hostinfo(goptions, session, args):
 
 def _multicall_with_check(session, batch_size):
     """Helper for running multicall inside handle_clone_tag"""
-    error = False
+    err = False
     for r in session.multiCall(batch=batch_size):
         if isinstance(r, dict):
             warn(r['faultString'])
-            error = True
-    error('Errors during the last call. Target tag could be inconsistent.')
+            err = True
+    if err:
+        error('Errors during the last call. Target tag could be inconsistent.')
 
 
 def handle_clone_tag(goptions, session, args):
