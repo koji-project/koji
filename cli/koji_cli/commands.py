@@ -3354,6 +3354,16 @@ def anon_handle_hostinfo(goptions, session, args):
             print("None")
 
 
+def _multicall_with_check(session, batch_size):
+    """Helper for running multicall inside handle_clone_tag"""
+    error = False
+    for r in session.multiCall(batch=batch_size):
+        if isinstance(r, dict):
+            warn(r['faultString'])
+            error = True
+    error('Errors during the last call. Target tag could be inconsistent.')
+
+
 def handle_clone_tag(goptions, session, args):
     "[admin] Duplicate the contents of one tag onto another tag"
     usage = _("usage: %prog clone-tag [options] <src-tag> <dst-tag>")
@@ -3466,7 +3476,7 @@ def handle_clone_tag(goptions, session, args):
                                            block=pkgs['blocked'],
                                            extra_arches=pkgs['extra_arches'])
             if not options.test:
-                session.multiCall(batch=options.batch)
+                _multicall_with_check(session, options.batch)
         if options.builds:
             # get --all latest builds from src tag
             builds = reversed(session.listTagged(srctag['id'],
@@ -3491,7 +3501,7 @@ def handle_clone_tag(goptions, session, args):
                                            force=options.force,
                                            notify=options.notify)
             if not options.test:
-                session.multiCall(batch=options.batch)
+                _multicall_with_check(session, options.batch)
         if options.groups:
             # Copy the group data
             srcgroups = session.getTagGroups(srctag['name'],
@@ -3509,7 +3519,7 @@ def handle_clone_tag(goptions, session, args):
                                                     block=pkg['blocked'])
                     chggrplist.append(('[new]', pkg['package'], group['name']))
             if not options.test:
-                session.multiCall(batch=options.batch)
+                _multicall_with_check(session, options.batch)
     # case of existing dst-tag.
     if dsttag:
         # get fresh list of packages & builds into maps.
@@ -3669,7 +3679,7 @@ def handle_clone_tag(goptions, session, args):
                                        block=pkg['blocked'],
                                        extra_arches=pkg['extra_arches'])
         if not options.test:
-            session.multiCall(batch=options.batch)
+            _multicall_with_check(session, options.batch)
         # DEL builds. To keep the order we should untag builds at first
         if not options.test:
             session.multicall = True
@@ -3691,7 +3701,7 @@ def handle_clone_tag(goptions, session, args):
                                              force=options.force,
                                              notify=options.notify)
         if not options.test:
-            session.multiCall(batch=options.batch)
+            _multicall_with_check(session, options.batch)
         # ADD builds.
         if not options.test:
             session.multicall = True
@@ -3711,7 +3721,7 @@ def handle_clone_tag(goptions, session, args):
                                        force=options.force,
                                        notify=options.notify)
         if not options.test:
-            session.multiCall(batch=options.batch)
+            _multicall_with_check(session, options.batch)
         # ADD groups.
         if not options.test:
             session.multicall = True
@@ -3728,7 +3738,7 @@ def handle_clone_tag(goptions, session, args):
                                                 force=options.force)
                 chggrplist.append(('[new]', pkg['package'], group['name']))
         if not options.test:
-            session.multiCall(batch=options.batch)
+            _multicall_with_check(session, options.batch)
         # ADD group pkgs.
         if not options.test:
             session.multicall = True
@@ -3741,7 +3751,7 @@ def handle_clone_tag(goptions, session, args):
                                                 pkg,
                                                 force=options.force)
         if not options.test:
-            session.multiCall(batch=options.batch)
+            _multicall_with_check(session, options.batch)
         if options.delete:
             # DEL packages
             ninhrtpdellist = []
@@ -3762,6 +3772,8 @@ def handle_clone_tag(goptions, session, args):
             if not options.test:
                 session.multicall = True
             for pkg, [builds] in zip(ninhrtpdellist, bump_builds):
+                if isinstance(builds, dict):
+                    error(builds['faultString'])
                 # remove all its builds first if there are any.
                 for build in builds:
                     # add missing 'name' field.
@@ -3798,7 +3810,7 @@ def handle_clone_tag(goptions, session, args):
                 if not options.test:
                     session.packageListBlock(dsttag['name'], pkg['package_name'])
             if not options.test:
-                session.multiCall(batch=options.batch)
+                _multicall_with_check(session, options.batch)
             # DEL groups.
             if not options.test:
                 session.multicall = True
@@ -3818,7 +3830,7 @@ def handle_clone_tag(goptions, session, args):
                     for pkg in group['packagelist']:
                         chggrplist.append(('[blk]', pkg['package'], group['name']))
             if not options.test:
-                session.multiCall(batch=options.batch)
+                _multicall_with_check(session, options.batch)
             # DEL group pkgs.
             if not options.test:
                 session.multicall = True
@@ -3839,7 +3851,7 @@ def handle_clone_tag(goptions, session, args):
                                                           group,
                                                           pkg)
             if not options.test:
-                session.multiCall(batch=options.batch)
+                _multicall_with_check(session, options.batch)
     # print final list of actions.
     if options.verbose:
         pfmt = '    %-7s %-28s %-10s %-10s %-10s\n'
