@@ -3006,8 +3006,11 @@ def anon_handle_list_builds(goptions, session, args):
     parser.add_option("--after",
                       help=_("List builds built after this time (same format as for --before"))
     parser.add_option("--state", help=_("List builds in this state"))
+    parser.add_option("--task", help=_("List builds for this task"))
     parser.add_option("--type", help=_("List builds of this type."))
-    parser.add_option("--prefix", help=_("Only list packages starting with this prefix"))
+    parser.add_option("--prefix", help=_("Only builds starting with this prefix"))
+    parser.add_option("--source", help=_("Only builds where the source field matches "
+                                         "(glob pattern)"))
     parser.add_option("--owner", help=_("List builds built by this owner"))
     parser.add_option("--volume", help=_("List builds by volume ID"))
     parser.add_option("-k", "--sort-key", action="append", metavar='FIELD',
@@ -3084,6 +3087,13 @@ def anon_handle_list_builds(goptions, session, args):
         opts['completeBefore'] = getattr(options, 'before')
     if options.after:
         opts['completeAfter'] = getattr(options, 'after')
+    if options.task:
+        try:
+            opts['taskID'] = int(options.task)
+        except ValueError:
+            parser.error(_("Task id must be an integer"))
+    if options.source:
+        opts['source'] = options.source
     if options.buildid:
         try:
             buildid = int(options.buildid)
