@@ -1,6 +1,7 @@
 # coding=utf-8
 from __future__ import absolute_import
 import calendar
+import errno
 import locale
 import mock
 import optparse
@@ -1423,6 +1424,24 @@ class TestRmtree(unittest.TestCase):
         unlink.assert_called_once_with('b')
         isdir.assert_has_calls([call('mode'), call('mode')])
         lstat.assert_has_calls([call('a'), call('b')])
+
+    @patch('os.listdir')
+    @patch('os.lstat')
+    @patch('stat.S_ISDIR')
+    @patch('os.unlink')
+    def test_stripcwd_stat_fail(dev, unlink, isdir, lstat, listdir):
+        # something else deletes a file in the middle of _stripcwd()
+        dev = 'dev'
+        listdir.return_value = ['will-not-exist.txt']
+        lstat.side_effect = OSError(errno.ENOENT, 'No such file or directory')
+
+        koji.util._stripcwd(dev)
+
+        listdir.assert_called_once_with('.')
+        lstat.assert_called_once_with('will-not-exist.txt')
+        unlink.assert_not_called()
+        isdir.assert_not_called()
+
 
 class TestMoveAndSymlink(unittest.TestCase):
     @mock.patch('koji.ensuredir')
