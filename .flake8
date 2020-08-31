@@ -15,7 +15,8 @@ exclude =
     __pycache__,
     tests,
     docs,
-    ./koji-*/*
+    ./koji-*/*,
+    .tox
 
 filename =
     *.py,
