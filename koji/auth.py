@@ -501,7 +501,12 @@ class Session(object):
 
     def assertPerm(self, name):
         if not self.hasPerm(name) and not self.hasPerm('admin'):
-            raise koji.ActionNotAllowed("%s permission required" % name)
+            msg = "%s permission required" % name
+            if self.logged_in:
+                msg += ' (logged in as %s)' % self.user_data['name']
+            else:
+                msg += ' (user not logged in)'
+            raise koji.ActionNotAllowed(msg)
 
     def assertLogin(self):
         if not self.logged_in:
