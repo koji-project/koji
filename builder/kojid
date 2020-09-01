@@ -1034,7 +1034,7 @@ class BuildTask(BaseTaskHandler):
             'skip_tag': bool(self.opts.get('skip_tag')),
         }
         if target_info:
-            policy_data['target'] = target_info['id'],
+            policy_data['target'] = target_info['name']
         if not self.opts.get('skip_tag'):
             policy_data['tag'] = dest_tag  # id
         if not SCM.is_scm_url(src) and not opts.get('scratch'):
