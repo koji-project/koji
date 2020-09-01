@@ -1524,7 +1524,7 @@ def handle_write_signed_rpm(goptions, session, args):
         parser.error(_("A signature key must be specified"))
     if len(args) < 2 and not (options.all or options.buildid):
         parser.error(_("At least one RPM must be specified"))
-    key = args.pop(0)
+    key = args.pop(0).lower()
     activate_session(session, goptions)
     if options.all:
         rpms = session.queryRPMSigs(sigkey=key)

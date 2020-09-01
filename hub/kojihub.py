@@ -7472,7 +7472,7 @@ def check_rpm_sig(an_rpm, sigkey, sighdr):
         found_key = None
     else:
         found_key = koji.get_sigpacket_key_id(raw_key)
-    if sigkey != found_key:
+    if sigkey.lower() != found_key:
         raise koji.GenericError("Signature key mismatch: got %s, expected %s"
                                 % (found_key, sigkey))
     os.unlink(temp)
@@ -7492,6 +7492,7 @@ def query_rpm_sigs(rpm_id=None, sigkey=None, queryOpts=None):
     if rpm_id is not None:
         clauses.append("rpm_id=%(rpm_id)s")
     if sigkey is not None:
+        sigkey = sigkey.lower()
         clauses.append("sigkey=%(sigkey)s")
     query = QueryProcessor(columns=fields, tables=('rpmsigs',), clauses=clauses,
                            values=locals(), opts=queryOpts)
@@ -7500,6 +7501,7 @@ def query_rpm_sigs(rpm_id=None, sigkey=None, queryOpts=None):
 
 def write_signed_rpm(an_rpm, sigkey, force=False):
     """Write a signed copy of the rpm"""
+    sigkey = sigkey.lower()
     rinfo = get_rpm(an_rpm, strict=True)
     if rinfo['external_repo_id']:
         raise koji.GenericError("Not an internal rpm: %s (from %s)"
