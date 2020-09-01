@@ -341,7 +341,7 @@ class ModXMLRPCRequestHandler(object):
                 # a circular reference.
                 exc_type, exc_value = sys.exc_info()[:2]
                 faultCode = getattr(exc_type, 'faultCode', 1)
-                faultString = ', '.join(exc_value.args)
+                faultString = ', '.join([str(arg) for arg in exc_value.args])
                 trace = traceback.format_exception(*sys.exc_info())
                 # traceback is not part of the multicall spec,
                 # but we include it for debugging purposes
