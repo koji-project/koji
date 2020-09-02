@@ -551,12 +551,14 @@ def download_rpm(build, rpm, topurl, sigkey=None, quiet=False, noprogress=False)
     pi = koji.PathInfo(topdir=topurl)
     if sigkey:
         fname = pi.signed(rpm, sigkey)
+        filesize = None
     else:
         fname = pi.rpm(rpm)
+        filesize = rpm['size']
     url = os.path.join(pi.build(build), fname)
     path = os.path.basename(fname)
 
-    download_file(url, path, quiet=quiet, noprogress=noprogress, filesize=rpm['size'])
+    download_file(url, path, quiet=quiet, noprogress=noprogress, filesize=filesize)
 
     # size - we have stored size only for unsigned copies
     if not sigkey:
