@@ -3427,7 +3427,10 @@ def handle_clone_tag(goptions, session, args):
         print(_("Cloning at event %(id)i (%(timestr)s)") % event)
 
     # store tags.
-    srctag = session.getTag(args[0], event=event.get('id'))
+    try:
+        srctag = session.getBuildConfig(args[0], event=event.get('id'))
+    except koji.GenericError:
+        parser.error(_("Unknown src-tag: %s" % args[0]))
     dsttag = session.getTag(args[1])
     if not srctag:
         parser.error(_("Unknown src-tag: %s" % args[0]))
@@ -3449,7 +3452,8 @@ def handle_clone_tag(goptions, session, args):
                                   perm=srctag['perm_id'],
                                   locked=srctag['locked'],
                                   maven_support=srctag['maven_support'],
-                                  maven_include_all=srctag['maven_include_all'])
+                                  maven_include_all=srctag['maven_include_all'],
+                                  extra=srctag['extra'])
             else:
                 session.createTag(args[1], parent=None)
             # store the new tag, need its assigned id.
@@ -3523,6 +3527,17 @@ def handle_clone_tag(goptions, session, args):
                 _multicall_with_check(session, options.batch)
     # case of existing dst-tag.
     if dsttag:
+        if options.config and not options.test:
+            if dsttag['extra']:
+                session.editTag2(dsttag['id'], remove_extra=list(dsttag['extra'].keys()))
+            session.editTag2(dsttag['id'], parent=None, arches=srctag['arches'],
+                             perm=srctag['perm_id'],
+                             locked=srctag['locked'],
+                             maven_support=srctag['maven_support'],
+                             maven_include_all=srctag['maven_include_all'],
+                             extra=srctag['extra'])
+            dsttag = session.getTag(dsttag['id'], strict=True)
+
         # get fresh list of packages & builds into maps.
         srcpkgs = {}
         dstpkgs = {}
