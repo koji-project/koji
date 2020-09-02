@@ -969,7 +969,7 @@ def handle_prune():
             else:
                 print("Deleting untagged build: %s" % nvr)
                 try:
-                    session.deleteBuild(build_id, strict=False)
+                    session.deleteBuild(build_id, strict=True)
                 except (six.moves.xmlrpc_client.Fault, koji.GenericError) as e:
                     print("Warning: deletion failed: %s" % e)
                     # server issue
