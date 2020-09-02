@@ -527,7 +527,7 @@ def download_file(url, relpath, quiet=False, noprogress=False, size=None,
 
     # closing needs to be used for requests < 2.18.0
     with closing(requests.get(url, headers=headers, stream=True)) as response:
-        if response.status_code == 200:  # full content provided?
+        if response.status_code in (200, 416):  # full content provided or reaching behing EOF
             # rewrite in such case
             f.close()
             f = open(relpath, 'wb')
