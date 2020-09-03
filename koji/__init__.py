@@ -58,6 +58,7 @@ import six.moves.http_client
 import six.moves.urllib
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
+from requests.exceptions import RequestException
 from six.moves import range, zip
 
 from koji.xmlrpcplus import Fault, dumps, getparser, loads, xmlrpc_client
@@ -2770,6 +2771,14 @@ class ClientSession(object):
                 except (SystemExit, KeyboardInterrupt):
                     # (depending on the python version, these may or may not be subclasses of
                     # Exception)
+                    raise
+                except RequestException as e:
+                    _err_res = e.response
+                    _err_req = e.request
+                    if _err:
+                        self.logger.error('Response error: %s::%s::%s' % (_err_res.status_code, _err_res.text, str(_err_res)))
+                    else:
+                        self.logger.error('Request error: %s::%s::%s' % (_err_req.method, _err_req.url, str(_err_req)))
                     raise
                 except Exception as e:
                     tb_str = ''.join(traceback.format_exception(*sys.exc_info()))
