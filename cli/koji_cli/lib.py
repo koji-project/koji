@@ -527,7 +527,7 @@ def download_file(url, relpath, quiet=False, noprogress=False, size=None,
 
     # closing needs to be used for requests < 2.18.0
     with closing(requests.get(url, headers=headers, stream=True)) as response:
-        if response.status_code == 200:  # full content provided?
+        if response.status_code in (200, 416):  # full content provided or reaching behing EOF
             # rewrite in such case
             f.close()
             f = open(relpath, 'wb')
@@ -551,12 +551,14 @@ def download_rpm(build, rpm, topurl, sigkey=None, quiet=False, noprogress=False)
     pi = koji.PathInfo(topdir=topurl)
     if sigkey:
         fname = pi.signed(rpm, sigkey)
+        filesize = None
     else:
         fname = pi.rpm(rpm)
+        filesize = rpm['size']
     url = os.path.join(pi.build(build), fname)
     path = os.path.basename(fname)
 
-    download_file(url, path, quiet=quiet, noprogress=noprogress, filesize=rpm['size'])
+    download_file(url, path, quiet=quiet, noprogress=noprogress, filesize=filesize)
 
     # size - we have stored size only for unsigned copies
     if not sigkey:
