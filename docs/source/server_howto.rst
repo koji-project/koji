@@ -648,6 +648,7 @@ Configuration Files
 -------------------
 
 * ``/etc/koji-hub/hub.conf``
+* ``/etc/koji-hub/hub.conf.d/*``
 * ``/etc/httpd/conf/httpd.conf``
 * ``/etc/httpd/conf.d/kojihub.conf``
 * ``/etc/httpd/conf.d/ssl.conf`` (when using ssl auth)
@@ -765,6 +766,16 @@ If koji-hub is running on a separate server from PostgreSQL, you must set the
 Apache to connect to the remote PostgreSQL server::
 
     root@localhost$ setsebool -P httpd_can_network_connect_db=1
+
+Note, that database connection parameters (password) are sensitive values.
+Config is installed by default with 0640 root/apache file permissions. If you're
+not installing hub from rpm double-check these permissions.
+
+Furthermore, you can install any config file in ``/etc/koji-hub/hub.conf.d``
+directory. These files are read *at first* and main config is allowed to
+override all these values. So, you can use e.g.
+``/etc/koji-hub/hub.conf.d/secret.conf`` for sensitive values. Typical usecase
+for separate config is :doc:`policy <defining_hub_policies>` configuration file.
 
 Authentication Configuration
 ----------------------------
@@ -914,6 +925,7 @@ Configuration Files
 * ``/etc/httpd/conf.d/kojiweb.conf``
 * ``/etc/httpd/conf.d/ssl.conf``
 * ``/etc/kojiweb/web.conf``
+* ``/etc/kojiweb/web.conf.d/*``
 
 Install Koji-Web
 ----------------
@@ -973,7 +985,14 @@ it should use to access the hub, the koji packages and its own web interface.
 You will also need to tell kojiweb where it can find the SSL certificates for
 each of these components. If you are using SSL authentication, the "WebCert"
 line below must contain both the public **and** private key. You will also want
-to change the last line in the example below to a unique password.
+to change the last line in the example below to a unique password. Also check
+the file permissions (due to Secret value) if you're not installing koji web
+from rpm (0640, root/apache by default).
+
+Furthermore, you can install any config file in ``/etc/kojiweb/web.conf.d``
+directory. These files are read *at first* and main config is allowed to
+override all these values. So, you can use e.g.
+``/etc/kojiweb/web.conf.d/secret.conf`` for sensitive values.
 
 ::
 
