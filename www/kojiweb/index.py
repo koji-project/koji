@@ -2485,7 +2485,6 @@ def api(environ):
     server = _getServer(environ)
 
     values['methods'] = sorted(server._listapi(), key=lambda x: x['name'])
-    values['api_version'] = server.getAPIVersion()
     values['koji_version'] = server.getKojiVersion()
 
     return _genHTML(environ, 'api.chtml')

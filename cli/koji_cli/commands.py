@@ -2843,7 +2843,6 @@ def anon_handle_list_hosts(goptions, session, args):
     parser.add_option("--quiet", action="store_true", default=goptions.quiet,
                       help=_("Do not print header information"))
     parser.add_option("--show-channels", action="store_true", help=_("Show host's channels"))
-    parser.add_option("--show-version", action="store_true", help=_("Show host's' version"))
     (options, args) = parser.parse_args(args)
     opts = {}
     ensure_connection(session)
@@ -2897,24 +2896,14 @@ def anon_handle_list_hosts(goptions, session, args):
     if not options.quiet:
         hdr = "{hostname:<{longest_host}} Enb Rdy Load/Cap  Arches           Last Update".format(
             longest_host=longest_host, hostname='Hostname')
-        if options.show_version:
-            hdr += "         Version"
         if options.show_channels:
-            hdr += "    Channels"
+            hdr += "         Channels"
         print(hdr)
     mask = "%%(name)-%ss %%(enabled)-3s %%(ready)-3s %%(task_load)4.1f/%%(capacity)-4.1f " \
            "%%(arches)-16s %%(update)-19s" % longest_host
-    if options.show_version:
-        mask += " %(version)-10s"
     if options.show_channels:
         mask += " %(channels)s"
     for host in hosts:
-        if host.get('version') is None:
-            # hub doesn't support it, so we don't know the version
-            host['version'] = 'not supported'
-        elif not host.get('version'):
-            # hub supports it, but builder doesn't report
-            host['version'] = '-'
         print(mask % host)
 
 
@@ -3341,7 +3330,6 @@ def anon_handle_hostinfo(goptions, session, args):
                 print("%s%s" % (" " * 9, line))
         else:
             print("Comment:")
-        print('Version: %s' % info['version'])
         print("Enabled: %s" % (info['enabled'] and 'yes' or 'no'))
         print("Ready: %s" % (info['ready'] and 'yes' or 'no'))
         update = session.getLastHostUpdate(info['id'])

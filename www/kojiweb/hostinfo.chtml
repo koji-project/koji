@@ -27,9 +27,6 @@
       <th>Comment</th><td class="usertext">$util.escapeHTML($host.comment)</td>
     </tr>
     <tr>
-      <th>Version</th><td>$host.get('version')</td>
-    </tr>
-    <tr>
       #set $enabled = $host.enabled and 'yes' or 'no'
       <th>Enabled?</th>
       <td class="$enabled">
