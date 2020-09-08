@@ -1,9 +1,10 @@
 import mock
-import unittest
-import kojihub
 import time
-from koji import GenericError
+import unittest
 from collections import defaultdict
+
+import koji
+import kojihub
 
 
 class TestDeleteBuild(unittest.TestCase):
@@ -21,7 +22,7 @@ class TestDeleteBuild(unittest.TestCase):
                 retval = defaultdict(dict)
                 retval[ref] = True
                 refs.return_value = retval
-                with self.assertRaises(GenericError):
+                with self.assertRaises(koji.GenericError):
                     kojihub.delete_build(build='', strict=True)
 
     @mock.patch('kojihub.context')
@@ -64,7 +65,7 @@ class TestDeleteBuild(unittest.TestCase):
         '''Test that we can handle lazy return from build_references'''
         context.session.assertPerm = mock.MagicMock()
         buildrefs.return_value = {'tags': []}
-        binfo = {'id': 'BUILD ID'}
+        binfo = {'id': 'BUILD ID', 'state': koji.BUILD_STATES['COMPLETE']}
         build.return_value = binfo
         kojihub.delete_build(build=binfo, strict=True)
 

@@ -8025,6 +8025,9 @@ def delete_build(build, strict=True, min_ref_age=604800):
     """
     context.session.assertPerm('admin')
     binfo = get_build(build, strict=True)
+    if binfo['state'] == koji.BUILD_STATES['DELETED']:
+        # silently return on already deleted build
+        return
     refs = build_references(binfo['id'], limit=10, lazy=True)
     if refs.get('tags'):
         if strict:
