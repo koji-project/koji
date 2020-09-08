@@ -1,12 +1,11 @@
 [run]
 data_file = .coverage3
 
-; extra omissions for py3 for now
-
 omit =
     setup.py
     /usr/*
     tests/*
+    .tox/*
 
 [report]
 exclude_lines =
