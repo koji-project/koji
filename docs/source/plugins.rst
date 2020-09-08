@@ -158,3 +158,38 @@ And in scripts, you can use following calls:
     ks = koji.ClientSession('https://koji.fedoraproject.org/kojihub')
     ks.gssapi_login()
     ks.createSideTag('f30-build')
+
+Proton messaging
+================
+
+It is hub-only plugin which can send all the messages produced by koji to amqps
+message brokers.
+
+``Plugins = protonmsg``  needs to be added to ``/etc/koji-hub/hub.conf``.
+Configuration file must be placed in ``/etc/koji-hub/plugins/protonmsg.conf``.
+There are three sections in config file - broker, queue and message.
+
+Broker section allows admin to set up connection options like urls,
+certificates, timeouts and topic prefix.
+
+Normally, only messages in apache process memory are remembered. There are
+various reasons, why these messages can be lost if broker is unavailable for
+longer time. For more reliability admin can enable persistent database message
+queue. For this is section ``queue`` where ``enabled`` boolean enables this
+behaviour. Currently you need to create table manually by running the following
+SQL:
+
+.. code-block:: plpgsql
+
+   CREATE TABLE proton_queue (
+       id SERIAL PRIMARY KEY,
+       props JSON NOT NULL,
+       body JSON NOT NULL
+   )
+
+Last related option is ``batch_size`` - it says how many messages are send
+during one request. It should be balanced number. If there is a large queue it
+shouldn't block the request itself as user is waiting for it. On the other hand
+it is not hardcoded as it plays with ``extra_limit`` - e.g. there could be more small
+messages if ``extra_limit`` is set to small number or less bigger messages with
+unlimited size.
