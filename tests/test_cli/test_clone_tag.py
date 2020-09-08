@@ -121,23 +121,6 @@ clone-tag will create the destination tag if it does not already exist
         self.activate_session.getTag.has_called([mock.call('src-tag'),
                                                  mock.call('dst-tag')])
 
-    def test_handle_clone_tag_no_config(self):
-        args = ['src-tag', 'dst-tag']
-        self.session.getTag.side_effect = [{'id': 1,
-                                            'locked': False},
-                                           None]
-        self.assert_system_exit(
-            handle_clone_tag,
-            self.options,
-            self.session,
-            args,
-            stderr=self.format_error_message(
-                "Cannot create tag without specifying --config"),
-            activate_session=None)
-        self.activate_session.assert_called_once()
-        self.activate_session.getTag.has_called([mock.call('src-tag'),
-                                                 mock.call('dst-tag')])
-
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     def test_handle_clone_tag_new_dsttag(self, stdout):
         args = ['src-tag', 'dst-tag', '--all', '-v']
