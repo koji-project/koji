@@ -99,8 +99,8 @@ clone-tag will create the destination tag if it does not already exist
             stderr=self.format_error_message("Unknown src-tag: src-tag"),
             activate_session=None)
         self.activate_session.assert_called_once()
-        self.activate_session.getTag.has_called([mock.call('src-tag'),
-                                                 mock.call('dst-tag')])
+        self.activate_session.getTag.has_called([call('src-tag'),
+                                                 call('dst-tag')])
 
     def test_handle_clone_tag_locked(self):
         args = ['src-tag', 'dst-tag']
@@ -118,9 +118,11 @@ clone-tag will create the destination tag if it does not already exist
                 "Please use --force if this is what you really want to do."),
             activate_session=None)
         self.activate_session.assert_called_once()
-        self.activate_session.getTag.has_called([mock.call('src-tag'),
-                                                 mock.call('dst-tag')])
+        self.activate_session.getTag.has_called([call('src-tag'),
+                                                 call('dst-tag')])
 
+        self.activate_session.getTag.has_called([call('src-tag'),
+                                                 call('dst-tag')])
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     def test_handle_clone_tag_new_dsttag(self, stdout):
         args = ['src-tag', 'dst-tag', '--all', '-v']
@@ -191,6 +193,7 @@ clone-tag will create the destination tag if it does not already exist
                                             'maven_support': False,
                                             'maven_include_all': True,
                                             'locked': False}]
+        self.session.multiCall.return_value = []
         handle_clone_tag(self.options, self.session, args)
         self.activate_session.assert_called_once()
         self.session.assert_has_calls([call.hasPerm('admin'),
