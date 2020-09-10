@@ -6441,6 +6441,8 @@ def get_options():
             quit('invalid section found in config file: %s' % x)
     defaults = {'sleeptime': 15,
                 'maxjobs': 10,
+                'buildroot_basic_cleanup_delay': 120,
+                'buildroot_final_cleanup_delay': 3600 * 2,
                 'literal_task_arches': '',
                 'minspace': 8192,
                 'admin_emails': None,
