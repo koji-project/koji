@@ -18,8 +18,12 @@
 # and no python2 on rhel8+
 %define py2_support 0
 %else
-%if 0%{?rhel}
+%if 0%{?rhel} >= 7
 # No python3 for older rhel
+%define py3_support 0
+%else
+# don't build anything for rhel6
+%define py2_support 0
 %define py3_support 0
 %endif
 %endif

@@ -26,6 +26,7 @@ from __future__ import absolute_import, division
 import copy
 import glob
 import grp
+import io
 import json
 import logging
 import logging.handlers
@@ -48,6 +49,8 @@ from gzip import GzipFile
 from optparse import SUPPRESS_HELP, OptionParser
 
 import Cheetah.Template
+import dnf
+import librepo
 import requests
 import rpm
 import six
@@ -78,26 +81,6 @@ except ImportError:  # pragma: no cover
         Krb5Error = reqgssapi.exceptions.RequestException
     except ImportError:  # pragma: no cover
         reqgssapi = None
-
-try:
-    import librepo
-    import io
-except ImportError:
-    librepo = None
-
-try:
-    import dnf
-except ImportError:
-    dnf = None
-
-try:
-    # yum
-    from yum import repoMDObject
-    import yum.packages
-    import yum.Errors
-    yum_available = True
-except ImportError:
-    yum_available = False
 
 # imports for LiveCD, LiveMedia, and Appliance handler
 try:
@@ -803,42 +786,26 @@ class BuildRoot(object):
         opts = dict([(k, getattr(self.options, k)) for k in ('topurl', 'topdir')])
         opts['tempdir'] = self.options.workdir
 
-        # prefer librepo
-        if librepo is not None:
-            repo_url = os.path.join(repodir, self.br_arch)
-            # repo_url can start with '/', don't use os.path.join
-            if self.options.topurl:
-                repo_url = '%s/%s' % (self.options.topurl, repo_url)
-            elif self.options.topdir:
-                repo_url = '%s/%s' % (self.options.topdir, repo_url)
-            logging.error(repo_url)
-            tmpdir = os.path.join(self.tmpdir(), 'librepo-markExternalRPMs')
-            koji.ensuredir(tmpdir)
-            h = librepo.Handle()
-            r = librepo.Result()
-            h.setopt(librepo.LRO_REPOTYPE, librepo.LR_YUMREPO)
-            h.setopt(librepo.LRO_URLS, [repo_url])
-            h.setopt(librepo.LRO_DESTDIR, tmpdir)
-            # We are using this just to find out location of 'origin',
-            # we don't even need to download it since we use openRemoteFile
-            h.setopt(librepo.LRO_YUMDLIST, [])
-            h.perform(r)
-            pkgorigins = r.getinfo(librepo.LRR_YUM_REPOMD)['origin']['location_href']
-            koji.util.rmtree(tmpdir)
-        elif yum_available:
-            # XXX - cheap hack to get relative paths
-            repomdpath = os.path.join(repodir, self.br_arch, 'repodata', 'repomd.xml')
-            with koji.openRemoteFile(repomdpath, **opts) as fo:
-                try:
-                    repodata = repoMDObject.RepoMD('ourrepo', fo)
-                except Exception:
-                    raise koji.BuildError("Unable to parse repomd.xml file for %s" %
-                                          os.path.join(repodir, self.br_arch))
-            data = repodata.getData('origin')
-            pkgorigins = data.location[1]
-        else:
-            # shouldn't occur
-            raise koji.GenericError("install librepo or yum")
+        repo_url = os.path.join(repodir, self.br_arch)
+        # repo_url can start with '/', don't use os.path.join
+        if self.options.topurl:
+            repo_url = '%s/%s' % (self.options.topurl, repo_url)
+        elif self.options.topdir:
+            repo_url = '%s/%s' % (self.options.topdir, repo_url)
+        logging.error(repo_url)
+        tmpdir = os.path.join(self.tmpdir(), 'librepo-markExternalRPMs')
+        koji.ensuredir(tmpdir)
+        h = librepo.Handle()
+        r = librepo.Result()
+        h.setopt(librepo.LRO_REPOTYPE, librepo.LR_YUMREPO)
+        h.setopt(librepo.LRO_URLS, [repo_url])
+        h.setopt(librepo.LRO_DESTDIR, tmpdir)
+        # We are using this just to find out location of 'origin',
+        # we don't even need to download it since we use openRemoteFile
+        h.setopt(librepo.LRO_YUMDLIST, [])
+        h.perform(r)
+        pkgorigins = r.getinfo(librepo.LRR_YUM_REPOMD)['origin']['location_href']
+        koji.util.rmtree(tmpdir)
 
         relpath = os.path.join(repodir, self.br_arch, pkgorigins)
         with koji.openRemoteFile(relpath, **opts) as fo:
@@ -5754,10 +5721,7 @@ class createDistRepoTask(BaseTaskHandler):
         self.uploadpath = self.getUploadDir()
         self.get_rpms(tag, arch, keys, opts)
         if opts['multilib'] and koji.arch.isMultiLibArch(arch):
-            if dnf is not None:
-                self.do_multilib_dnf(arch, self.archmap[arch], opts['multilib'])
-            else:
-                self.do_multilib_yum(arch, self.archmap[arch], opts['multilib'])
+            self.do_multilib(arch, self.archmap[arch], opts['multilib'])
         self.split_pkgs(opts)
         self.write_kojipkgs()
         self.write_pkglist()
@@ -5884,7 +5848,7 @@ class createDistRepoTask(BaseTaskHandler):
             raise koji.GenericError('failed to create repo: %s'
                                     % parseStatus(status, ' '.join(cmd)))
 
-    def do_multilib_dnf(self, arch, ml_arch, conf):
+    def do_multilib(self, arch, ml_arch, conf):
         repodir = koji.pathinfo.distrepo(self.rinfo['id'], self.rinfo['tag_name'])
         mldir = os.path.join(repodir, koji.canonArch(ml_arch))
         ml_true = set()  # multilib packages we need to include before depsolve
@@ -5989,139 +5953,6 @@ enabled=1
                 outfile.write('The following multilib files were missing:\n')
                 for ml_path in fs_missing:
                     outfile.write(ml_path + '\n')
-            self.session.uploadWrapper(missing_log, self.uploadpath)
-            raise koji.GenericError('multilib packages missing. '
-                                    'See missing_multilib.log')
-
-        # step 5: update kojipkgs
-        for dep_path in ml_needed:
-            tspkg = ml_needed[dep_path]
-            bnp = os.path.basename(dep_path)
-            if bnp in self.kojipkgs:
-                # we expect duplication with noarch, but not other arches
-                if tspkg.arch != 'noarch':
-                    self.logger.warning("Multilib duplicate: %s", bnp)
-                continue
-            rpminfo = ml_pkgs[bnp].copy()
-            # fix _pkgpath, which comes from another task and could be wrong
-            # for us
-            # TODO: would be better if we could use the proper path here
-            rpminfo['_pkgpath'] = dep_path
-            rpminfo['_multilib'] = True
-            self.kojipkgs[bnp] = rpminfo
-
-    def do_multilib_yum(self, arch, ml_arch, conf):
-        repodir = koji.pathinfo.distrepo(self.rinfo['id'], self.rinfo['tag_name'])
-        mldir = os.path.join(repodir, koji.canonArch(ml_arch))
-        ml_true = set()  # multilib packages we need to include before depsolve
-        ml_conf = os.path.join(koji.pathinfo.work(), conf)
-
-        # read pkgs data from multilib repo
-        ml_pkgfile = os.path.join(mldir, 'kojipkgs')
-        ml_pkgs = json.load(open(ml_pkgfile, 'r'))
-
-        # step 1: figure out which packages are multilib (should already exist)
-        mlm = multilib.DevelMultilibMethod(ml_conf)
-        fs_missing = set()
-        for bnp in self.kojipkgs:
-            rpminfo = self.kojipkgs[bnp]
-            ppath = rpminfo['_pkgpath']
-            po = yum.packages.YumLocalPackage(filename=ppath)
-            if mlm.select(po):
-                # we need a multilib package to be included
-                ml_bnp = bnp.replace(arch, self.archmap[arch])
-                ml_path = os.path.join(mldir, ml_bnp[0].lower(), ml_bnp)
-                # ^ XXX - should actually generate this
-                if ml_bnp not in ml_pkgs:
-                    # not in our multilib repo
-                    self.logger.error('%s (multilib) is not on the filesystem' % ml_path)
-                    fs_missing.add(ml_path)
-                    # we defer failure so can report all the missing deps
-                    continue
-                ml_true.add(ml_path)
-
-        # step 2: set up architectures for yum configuration
-        self.logger.info("Resolving multilib for %s using method devel" % arch)
-        yumbase = yum.YumBase()
-        yumbase.verbose_logger.setLevel(logging.ERROR)
-        yumdir = os.path.join(self.workdir, 'yum')
-        # TODO: unwind this arch mess
-        archlist = (arch, 'noarch')
-        transaction_arch = arch
-        archlist = archlist + self.compat[self.biarch[arch]]
-        best_compat = self.compat[self.biarch[arch]][0]
-        if koji.arch.archDifference(best_compat, arch) > 0:
-            transaction_arch = best_compat
-        if hasattr(koji.arch, 'ArchStorage'):
-            yumbase.preconf.arch = transaction_arch
-        else:
-            koji.arch.canonArch = transaction_arch
-
-        yconfig = """
-[main]
-debuglevel=2
-pkgpolicy=newest
-exactarch=1
-gpgcheck=0
-reposdir=/dev/null
-cachedir=/yumcache
-installroot=%s
-logfile=/yum.log
-
-[koji-%s]
-name=koji multilib task
-baseurl=file://%s
-enabled=1
-
-""" % (yumdir, self.id, mldir)
-        os.makedirs(os.path.join(yumdir, "yumcache"))
-        os.makedirs(os.path.join(yumdir, 'var/lib/rpm'))
-
-        # step 3: proceed with yum config and set up
-        yconfig_path = os.path.join(yumdir, 'yum.conf-koji-%s' % arch)
-        with open(yconfig_path, 'w') as f:
-            f.write(yconfig)
-        self.session.uploadWrapper(yconfig_path, self.uploadpath,
-                                   os.path.basename(yconfig_path))
-        yumbase.doConfigSetup(fn=yconfig_path)
-        yumbase.conf.cache = 0
-        yumbase.doRepoSetup()
-        yumbase.doTsSetup()
-        yumbase.doRpmDBSetup()
-        # we trust Koji's files, so skip verifying sigs and digests
-        yumbase.ts.pushVSFlags(
-            (rpm._RPMVSF_NOSIGNATURES | rpm._RPMVSF_NODIGESTS))
-        yumbase.doSackSetup(archlist=archlist, thisrepo='koji-%s' % arch)
-        yumbase.doSackFilelistPopulate()
-        for pkg in ml_true:
-            # TODO: store packages by first letter
-            # ppath = os.path.join(pkgdir, pkg.name[0].lower(), pname)
-            po = yum.packages.YumLocalPackage(filename=pkg)
-            yumbase.tsInfo.addInstall(po)
-
-        # step 4: execute yum transaction to get dependencies
-        self.logger.info("Resolving depenencies for arch %s" % arch)
-        rc, errors = yumbase.resolveDeps()
-        ml_needed = {}
-        for tspkg in yumbase.tsInfo.getMembers():
-            bnp = os.path.basename(tspkg.po.localPkg())
-            dep_path = os.path.join(mldir, bnp[0].lower(), bnp)
-            ml_needed[dep_path] = tspkg
-            self.logger.debug("added %s" % dep_path)
-            if not os.path.exists(dep_path):
-                self.logger.error('%s (multilib dep) not on filesystem' % dep_path)
-                fs_missing.add(dep_path)
-        self.logger.info('yum return code: %s' % rc)
-        if not rc:
-            self.logger.error('yum depsolve was unsuccessful')
-            raise koji.GenericError(errors)
-        if len(fs_missing) > 0:
-            missing_log = os.path.join(self.workdir, 'missing_multilib.log')
-            with open(missing_log, 'w') as outfile:
-                outfile.write('The following multilib files were missing:\n')
-                for ml_path in fs_missing:
-                    outfile.write(ml_path)
-                    outfile.write('\n')
             self.session.uploadWrapper(missing_log, self.uploadpath)
             raise koji.GenericError('multilib packages missing. '
                                     'See missing_multilib.log')
