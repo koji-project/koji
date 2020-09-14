@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/python3
 
 # Koji virtual machine management daemon
 # Copyright (c) 2010-2014 Red Hat, Inc.
@@ -35,14 +35,13 @@ import subprocess
 import sys
 import threading
 import time
+import xmlrpc
 from contextlib import closing
 from optparse import OptionParser
 
 import libvirt
 import libxml2
 import requests
-import six.moves.xmlrpc_client
-import six.moves.xmlrpc_server
 
 import koji
 import koji.util
@@ -254,24 +253,24 @@ def main(options, session):
 # Tasks for handling VM lifecycle
 ####################
 
-class DaemonXMLRPCServer(six.moves.xmlrpc_server.SimpleXMLRPCServer):
+class DaemonXMLRPCServer(xmlrpc.server.SimpleXMLRPCServer):
     allow_reuse_address = True
 
     def __init__(self, addr, port):
         if sys.version_info[:2] <= (2, 4):
-            six.moves.xmlrpc_server.SimpleXMLRPCServer.__init__(self, (addr, port),
-                                                                logRequests=False)
+            xmlrpc.server.SimpleXMLRPCServer.__init__(self, (addr, port),
+                                                      logRequests=False)
         else:
-            six.moves.xmlrpc_server.SimpleXMLRPCServer.__init__(self, (addr, port),
-                                                                logRequests=False,
-                                                                allow_none=True)
+            xmlrpc.server.SimpleXMLRPCServer.__init__(self, (addr, port),
+                                                     logRequests=False,
+                                                     allow_none=True)
         self.logger = logging.getLogger('koji.vm.DaemonXMLRPCServer')
         self.socket.settimeout(5)
         self.active = True
 
     def server_close(self):
         self.active = False
-        six.moves.xmlrpc_server.SimpleXMLRPCServer.server_close(self)
+        xmlrpc.server.SimpleXMLRPCServer.server_close(self)
 
     def handle_while_active(self):
         while self.active:
@@ -292,23 +291,20 @@ class DaemonXMLRPCServer(six.moves.xmlrpc_server.SimpleXMLRPCServer):
         # Copy and paste from SimpleXMLRPCServer, with the addition of passing
         # allow_none=True to xmlrpclib.dumps()
         def _marshaled_dispatch(self, data, dispatch_method=None):
-            params, method = six.moves.xmlrpc_client.loads(data)
+            params, method = xmlrpc.client.loads(data)
             try:
                 if dispatch_method is not None:
                     response = dispatch_method(method, params)
                 else:
                     response = self._dispatch(method, params)
                 response = (response,)
-                response = six.moves.xmlrpc_client.dumps(response,
-                                                         methodresponse=1, allow_none=True)
-            except six.moves.xmlrpc_client.Fault as fault:
-                response = six.moves.xmlrpc_client.dumps(fault)
+                response = xmlrpc.client.dumps(response, methodresponse=1, allow_none=True)
+            except xmlrpc.client.Fault as fault:
+                response = xmlrpc.client.dumps(fault)
             except Exception:
                 # report exception back to server
-                response = six.moves.xmlrpc_client.dumps(
-                    six.moves.xmlrpc_client.Fault(
-                        1, "%s:%s" %
-                        (sys.exc_info()[0], sys.exc_info()[1]))
+                response = xmlrpc.client.dumps(
+                    xmlrpc.client.Fault(1, "%s:%s" % (sys.exc_info()[0], sys.exc_info()[1]))
                 )
             return response
 
@@ -434,7 +430,7 @@ class VMExecTask(BaseTaskHandler):
 
     def __init__(self, *args, **kw):
         super(VMExecTask, self).__init__(*args, **kw)
-        self.task_manager = six.moves.xmlrpc_client.ServerProxy(
+        self.task_manager = xmlrpc.client.ServerProxy(
             'http://%s:%s/' % (self.options.privaddr, self.options.portbase), allow_none=True)
         self.port = None
         self.server = None
