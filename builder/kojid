@@ -845,18 +845,16 @@ class BuildRoot(object):
             # at this point we know there were external repos at the create event,
             # so there should be an origins file.
             origin_idx = {}
-            # don't use 'with GzipFile' as it is not supported on py2.6
-            fo2 = GzipFile(fileobj=fo, mode='r')
-            if six.PY3:
-                fo2 = io.TextIOWrapper(fo2, encoding='utf-8')
-            for line in fo2:
-                parts = line.split(None, 2)
-                if len(parts) < 2:
-                    continue
-                # first field is formated by yum as [e:]n-v-r.a
-                nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" % koji.parse_NVRA(parts[0])
-                origin_idx[nvra] = parts[1]
-            fo2.close()
+            with GzipFile(fileobj=fo, mode='r') as fo2:
+                if six.PY3:
+                    fo2 = io.TextIOWrapper(fo2, encoding='utf-8')
+                for line in fo2:
+                    parts = line.split(None, 2)
+                    if len(parts) < 2:
+                        continue
+                    # first field is formated by yum as [e:]n-v-r.a
+                    nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" % koji.parse_NVRA(parts[0])
+                    origin_idx[nvra] = parts[1]
         # mergerepo starts from a local repo in the task workdir, so internal
         # rpms have an odd-looking origin that we need to look for
         localtail = '/repo_%s_premerge/' % self.repo_info['id']
