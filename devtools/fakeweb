@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/python3
 
 from __future__ import absolute_import, print_function
 
@@ -7,10 +7,10 @@ import os
 import os.path
 import pprint
 import sys
+from urllib.parse import quote
 from wsgiref.simple_server import make_server
 from wsgiref.util import setup_testing_defaults
 
-from six.moves.urllib.parse import quote
 
 CWD = os.getcwd()
 sys.path.insert(0, CWD)
