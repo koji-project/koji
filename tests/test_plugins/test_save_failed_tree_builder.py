@@ -2,10 +2,7 @@ from __future__ import absolute_import
 import mock
 import os
 import sys
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
+import unittest
 
 # alter pythonpath to not load hub plugin
 sys.path = [os.path.join(os.path.dirname(__file__), '../../plugins/builder')] + sys.path

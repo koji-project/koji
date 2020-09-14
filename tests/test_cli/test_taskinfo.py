@@ -3,10 +3,7 @@ import collections
 import mock
 import six
 import time
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
+import unittest
 
 import koji
 from koji_cli.commands import anon_handle_taskinfo, \

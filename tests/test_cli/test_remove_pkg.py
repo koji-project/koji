@@ -3,10 +3,7 @@ import mock
 import os
 import six
 import sys
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
+import unittest
 
 from mock import call
 

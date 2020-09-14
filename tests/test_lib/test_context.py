@@ -3,10 +3,7 @@ import six
 import time
 import random
 from six.moves import range
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
+import unittest
 
 from koji.context import context
 

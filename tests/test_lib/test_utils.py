@@ -10,10 +10,7 @@ import resource
 import six.moves.configparser
 import time
 import six
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
+import unittest
 
 import requests_mock
 from mock import call, patch

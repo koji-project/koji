@@ -1,10 +1,7 @@
 from __future__ import absolute_import
 import mock
 import tempfile
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
+import unittest
 from .loadkojid import kojid
 import logging
 

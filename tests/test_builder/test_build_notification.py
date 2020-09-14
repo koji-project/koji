@@ -5,6 +5,7 @@ import locale
 import os
 import tempfile
 import time
+import unittest
 
 import mock
 import six
@@ -12,12 +13,6 @@ import six
 import koji
 import koji.util
 from .loadkojid import kojid
-
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
-
 
 
 class MyClientSession(koji.ClientSession):

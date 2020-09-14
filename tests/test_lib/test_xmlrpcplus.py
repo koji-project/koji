@@ -1,10 +1,7 @@
 # coding=utf-8
 from __future__ import absolute_import
 from six.moves import range
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
+import unittest
 
 from six.moves import xmlrpc_client
 from koji import xmlrpcplus

@@ -5,10 +5,7 @@ import mock
 import random
 import six
 from six.moves import range
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
+import unittest
 
 from mock import call
 from koji.util import base64encode

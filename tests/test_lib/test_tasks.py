@@ -3,10 +3,7 @@ import random
 import shutil
 import six
 from six.moves import range
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
+import unittest
 
 from os import path, makedirs
 from tempfile import gettempdir

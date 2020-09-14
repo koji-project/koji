@@ -8,10 +8,7 @@ from . import utils
 
 import os
 
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
+import unittest
 
 
 class TestImportCG(utils.CliTestCase):

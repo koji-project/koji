@@ -3,10 +3,7 @@ import copy
 import datetime
 import mock
 from six.moves import range
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
+import unittest
 
 import koji
 import koji.util

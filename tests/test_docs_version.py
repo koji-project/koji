@@ -2,10 +2,7 @@ from __future__ import absolute_import
 import os
 import six
 import subprocess
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
+import unittest
 
 # docs version lives in docs/source/conf.py
 TOPDIR = os.path.dirname(__file__) + '/..'

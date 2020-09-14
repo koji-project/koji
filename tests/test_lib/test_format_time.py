@@ -3,10 +3,7 @@ import datetime
 import os
 import time
 import locale
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
+import unittest
 
 import six.moves.xmlrpc_client as xmlrpc_client
 

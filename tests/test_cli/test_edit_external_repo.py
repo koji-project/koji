@@ -2,10 +2,7 @@
 from __future__ import absolute_import
 import mock
 import six
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
+import unittest
 
 import koji
 from koji_cli.commands import handle_edit_external_repo

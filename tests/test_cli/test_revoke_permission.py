@@ -1,10 +1,7 @@
 from __future__ import absolute_import
 import mock
 import six
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
+import unittest
 
 from koji_cli.commands import handle_revoke_permission
 from . import utils
