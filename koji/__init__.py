@@ -3304,10 +3304,6 @@ def formatTimeLong(value):
         t = datetime.datetime.fromtimestamp(value)
     else:
         t = value
-    # return date in local timezone, py 2.6 has tzone as astimezone required parameter
-    # would work simply as t.astimezone() for py 2.7+
-    if t.tzinfo is None:
-        t = t.replace(tzinfo=dateutil.tz.gettz())
     t = t.astimezone(dateutil.tz.gettz())
     return datetime.datetime.strftime(t, '%a, %d %b %Y %H:%M:%S %Z')
 
