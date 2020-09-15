@@ -337,8 +337,10 @@ if __name__ == "__main__":
         rv = locals()[command].__call__(options, session, args)
         if not rv:
             rv = 0
-    except (KeyboardInterrupt, SystemExit):
+    except KeyboardInterrupt:
         rv = 1
+    except SystemExit:
+        raise
     except Exception:
         if options.debug:
             raise
