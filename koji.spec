@@ -70,13 +70,6 @@
 # If the definition isn't available for python3_pkgversion, define it
 %{?!python3_pkgversion:%global python3_pkgversion 3}
 
-%if 0%{?fedora} || 0%{?rhel} >= 7
-%global use_systemd 1
-%else
-%global use_systemd 0
-%global install_opt TYPE=sysv
-%endif
-
 %define baserelease 1
 #build with --define 'testbuild 1' to have a timestamp appended to release
 %if "x%{?testbuild}" == "x1"
@@ -104,10 +97,8 @@ Requires: python2-%{name} = %{version}-%{release}
 Requires: python-libcomps
 %endif
 %endif
-%if %{use_systemd}
 BuildRequires: systemd
 BuildRequires: pkgconfig
-%endif
 
 %description
 Koji is a system for building and tracking RPMS.  The base package
@@ -265,16 +256,9 @@ License: LGPLv2 and GPLv2+
 Requires: mock >= 0.9.14
 Requires(pre): /usr/sbin/useradd
 Requires: squashfs-tools
-%if %{use_systemd}
 Requires(post): systemd
 Requires(preun): systemd
 Requires(postun): systemd
-%else
-Requires(post): /sbin/chkconfig
-Requires(post): /sbin/service
-Requires(preun): /sbin/chkconfig
-Requires(preun): /sbin/service
-%endif
 Requires: /usr/bin/cvs
 Requires: /usr/bin/svn
 Requires: /usr/bin/git
@@ -299,16 +283,9 @@ Summary: Koji virtual machine management daemon
 Group: Applications/System
 License: LGPLv2
 Requires: %{name} = %{version}-%{release}
-%if %{use_systemd}
 Requires(post): systemd
 Requires(preun): systemd
 Requires(postun): systemd
-%else
-Requires(post): /sbin/chkconfig
-Requires(post): /sbin/service
-Requires(preun): /sbin/chkconfig
-Requires(preun): /sbin/service
-%endif
 %if 0%{py3_support} > 1
 Requires: python%{python3_pkgversion}-libvirt
 Requires: python%{python3_pkgversion}-libxml2
@@ -337,11 +314,9 @@ Requires: python-psycopg2
 Obsoletes: python2-koji-sidetag-plugin-tools < %{version}-%{release}
 Provides: python2-koji-sidetag-plugin-tools = %{version}-%{release}
 %endif
-%if %{use_systemd}
 Requires(post): systemd
 Requires(preun): systemd
 Requires(postun): systemd
-%endif
 
 %description utils
 Utilities for the Koji system
@@ -392,12 +367,12 @@ exit 1
 
 # python2 build
 %if 0%{py2_support} > 1
-make DESTDIR=$RPM_BUILD_ROOT PYTHON=%{__python2} %{?install_opt} install
+make DESTDIR=$RPM_BUILD_ROOT PYTHON=%{__python2} install
 %else
 %if 0%{py2_support}
 for d in koji cli plugins ; do
     pushd $d
-    make DESTDIR=$RPM_BUILD_ROOT KOJI_MINIMAL=1 PYTHON=%{__python2} %{?install_opt} install
+    make DESTDIR=$RPM_BUILD_ROOT KOJI_MINIMAL=1 PYTHON=%{__python2} install
     popd
 done
 %endif
@@ -406,7 +381,7 @@ done
 
 # python3 build
 %if 0%{py3_support} > 1
-make DESTDIR=$RPM_BUILD_ROOT PYTHON=%{__python3} %{?install_opt} install
+make DESTDIR=$RPM_BUILD_ROOT PYTHON=%{__python3} install
 # alter python interpreter in koji CLI
 scripts='%{_bindir}/koji %{_sbindir}/kojid %{_sbindir}/kojira %{_sbindir}/koji-shadow
          %{_sbindir}/koji-gc %{_sbindir}/kojivmd %{_sbindir}/koji-sweep-db
@@ -419,7 +394,7 @@ done
 # minimal
 for d in koji cli plugins ; do
     pushd $d
-    make DESTDIR=$RPM_BUILD_ROOT KOJI_MINIMAL=1 PYTHON=%{__python3} %{?install_opt} install
+    make DESTDIR=$RPM_BUILD_ROOT KOJI_MINIMAL=1 PYTHON=%{__python3} install
     popd
 done
 # alter python interpreter in koji CLI
@@ -509,10 +484,8 @@ rm -rf $RPM_BUILD_ROOT
 %config(noreplace) %attr(0640, root, apache) /etc/koji-hub/hub.conf
 %dir /etc/koji-hub/hub.conf.d
 %{_sbindir}/koji-sweep-db
-%if %{use_systemd}
 %{_unitdir}/koji-sweep-db.service
 %{_unitdir}/koji-sweep-db.timer
-%endif
 
 %files -n python%{python3_pkgversion}-%{name}-hub
 %{_datadir}/koji-hub/*.py
@@ -538,11 +511,9 @@ rm -rf $RPM_BUILD_ROOT
 
 %files utils
 %{_sbindir}/kojira
-%if %{use_systemd}
 %{_unitdir}/koji-gc.service
 %{_unitdir}/koji-gc.timer
 %{_unitdir}/kojira.service
-%endif
 %dir /etc/kojira
 %config(noreplace) /etc/kojira/kojira.conf
 %{_sbindir}/koji-gc
@@ -571,20 +542,13 @@ rm -rf $RPM_BUILD_ROOT
 %dir %{_libexecdir}/kojid
 %{_libexecdir}/kojid/mergerepos
 %endif
-%if %{use_systemd}
 %{_unitdir}/kojid.service
-%else
-%{_initrddir}/kojid
-%config(noreplace) /etc/sysconfig/kojid
-%endif
 %dir /etc/kojid
 %config(noreplace) /etc/kojid/kojid.conf
 %attr(-,kojibuilder,kojibuilder) /etc/mock/koji
 
 %pre builder
 /usr/sbin/useradd -r -s /bin/bash -G mock -d /builddir -M kojibuilder 2>/dev/null ||:
-
-%if %{use_systemd}
 
 %post builder
 %systemd_post kojid.service
@@ -595,32 +559,13 @@ rm -rf $RPM_BUILD_ROOT
 %postun builder
 %systemd_postun kojid.service
 
-%else
-
-%post builder
-/sbin/chkconfig --add kojid
-
-%preun builder
-if [ $1 = 0 ]; then
-  /sbin/service kojid stop &> /dev/null
-  /sbin/chkconfig --del kojid
-fi
-%endif
-
 %files vm
 %{_sbindir}/kojivmd
 #dir %%{_datadir}/kojivmd
 %{_datadir}/kojivmd/kojikamid
-%if %{use_systemd}
 %{_unitdir}/kojivmd.service
-%else
-%{_initrddir}/kojivmd
-%config(noreplace) /etc/sysconfig/kojivmd
-%endif
 %dir /etc/kojivmd
 %config(noreplace) /etc/kojivmd/kojivmd.conf
-
-%if %{use_systemd}
 
 %post vm
 %systemd_post kojivmd.service
@@ -631,19 +576,6 @@ fi
 %postun vm
 %systemd_postun kojivmd.service
 
-%else
-
-%post vm
-/sbin/chkconfig --add kojivmd
-
-%preun vm
-if [ $1 = 0 ]; then
-  /sbin/service kojivmd stop &> /dev/null
-  /sbin/chkconfig --del kojivmd
-fi
-
-%if %{use_systemd}
-
 %post utils
 %systemd_post kojira.service
 
@@ -652,18 +584,6 @@ fi
 
 %postun utils
 %systemd_postun kojira.service
-
-%else
-%post utils
-/sbin/chkconfig --add kojira
-/sbin/service kojira condrestart &> /dev/null || :
-%preun utils
-if [ $1 = 0 ]; then
-  /sbin/service kojira stop &> /dev/null || :
-  /sbin/chkconfig --del kojira
-fi
-%endif
-%endif
 
 %changelog
 * Tue Jul 28 2020 Mike McLean <mikem at redhat.com> - 1.22.0-1
