@@ -6502,7 +6502,8 @@ def get_options():
             if name in ['sleeptime', 'maxjobs', 'minspace', 'retry_interval',
                         'max_retries', 'offline_retry_interval', 'failed_buildroot_lifetime',
                         'timeout', 'rpmbuild_timeout', 'oz_install_timeout',
-                        'task_avail_delay']:
+                        'task_avail_delay', 'buildroot_basic_cleanup_delay',
+                        'buildroot_final_cleanup_delay']:
                 try:
                     defaults[name] = int(value)
                 except ValueError:
