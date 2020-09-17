@@ -3266,7 +3266,7 @@ def _create_tag(name, parent=None, arches=None, perm=None, locked=False, maven_s
     return tag_id
 
 
-def get_tag(tagInfo, strict=False, event=None):
+def get_tag(tagInfo, strict=False, event=None, blocked=False):
     """Get tag information based on the tagInfo.  tagInfo may be either
     a string (the tag name) or an int (the tag ID).
     Returns a map containing the following keys:
@@ -3318,21 +3318,28 @@ def get_tag(tagInfo, strict=False, event=None):
         if strict:
             raise koji.GenericError("Invalid tagInfo: %r" % tagInfo)
         return None
-    result['extra'] = get_tag_extra(result, event)
+    result['extra'] = get_tag_extra(result, event, blocked=blocked)
     return result
 
 
-def get_tag_extra(tagInfo, event=None):
+def get_tag_extra(tagInfo, event=None, blocked=False):
     """ Get tag extra info (no inheritance) """
     tables = ['tag_extra']
-    fields = ['key', 'value']
+    fields = ['key', 'value', 'CASE WHEN value IS NULL THEN TRUE ELSE FALSE END']
+    aliases = ['key', 'value', 'blocked']
     clauses = [eventCondition(event, table='tag_extra'), "tag_id = %(id)i"]
+    if not blocked:
+        clauses.append("value IS NOT NULL")
     query = QueryProcessor(columns=fields, tables=tables, clauses=clauses, values=tagInfo,
-                           opts={'asList': True})
+                           aliases=aliases)
     result = {}
-    for key, value in query.execute():
-        value = parse_json(value, errstr="Invalid tag extra data: %s" % key)
-        result[key] = value
+    for h in query.execute():
+        if h['value'] is not None:
+            h['value'] = parse_json(h['value'], errstr="Invalid tag extra data: %s" % h['key'])
+        if blocked:
+            result[h['key']] = (h['blocked'], h['value'])
+        else:
+            result[h['key']] = h['value']
     return result
 
 
@@ -3357,6 +3364,7 @@ def edit_tag(tagInfo, **kwargs):
                                    the Maven repo.
     :param dict extra: add or update extra tag parameters.
     :param list remove_extra: remove extra tag parameters.
+    :param list block_extra: block inherited extra tag parameters.
     """
 
     context.session.assertPerm('tag')
@@ -3425,19 +3433,23 @@ WHERE id = %(tagID)i"""
 
     # handle extra data
     if 'extra' in kwargs:
+        removed = set(kwargs.get('block_extra', [])) | set(kwargs.get('remove_extra', []))
         # check whether one key is both in extra and remove_extra
-        if 'remove_extra' in kwargs:
-            for removed in kwargs['remove_extra']:
-                if removed in kwargs['extra']:
-                    raise koji.GenericError("Can not both add/update and remove tag-extra: '%s'" %
-                                            removed)
+        conflicts = removed.intersection(set(kwargs['extra']))
+        if conflicts:
+            raise koji.GenericError("Can not both add/update and remove tag-extra: '%s'" %
+                                    conflicts.pop())
         for key in kwargs['extra']:
             value = kwargs['extra'][key]
             if key not in tag['extra'] or tag['extra'][key] != value:
+                if value is None:
+                    value = 'null'
+                else:
+                    value = json.dumps(value)
                 data = {
                     'tag_id': tag['id'],
                     'key': key,
-                    'value': json.dumps(kwargs['extra'][key]),
+                    'value': value,
                 }
                 # revoke old entry, if any
                 update = UpdateProcessor('tag_extra', values=data, clauses=['tag_id = %(tag_id)i',
@@ -3448,6 +3460,23 @@ WHERE id = %(tagID)i"""
                 insert = InsertProcessor('tag_extra', data=data)
                 insert.make_create()
                 insert.execute()
+
+    if 'block_extra' in kwargs:
+        for key in kwargs['block_extra']:
+            data = {
+                'tag_id': tag['id'],
+                'key': key,
+                'value': None,
+            }
+            # revoke old entry, if any
+            update = UpdateProcessor('tag_extra', values=data, clauses=['tag_id = %(tag_id)i',
+                                                                        'key=%(key)s'])
+            update.make_revoke()
+            update.execute()
+            # add new entry
+            insert = InsertProcessor('tag_extra', data=data)
+            insert.make_create()
+            insert.execute()
 
     # handle remove_extra data
     if 'remove_extra' in kwargs:
@@ -11916,18 +11945,24 @@ class RootExports(object):
 
     def getBuildConfig(self, tag, event=None):
         """Return build configuration associated with a tag"""
-        taginfo = get_tag(tag, strict=True, event=event)
+        taginfo = get_tag(tag, strict=True, event=event, blocked=True)
         order = readFullInheritance(taginfo['id'], event=event)
         # follow inheritance for arches and extra
         for link in order:
             if link['noconfig']:
                 continue
-            ancestor = get_tag(link['parent_id'], strict=True, event=event)
+            ancestor = get_tag(link['parent_id'], strict=True, event=event, blocked=True)
             if taginfo['arches'] is None and ancestor['arches'] is not None:
                 taginfo['arches'] = ancestor['arches']
             for key in ancestor['extra']:
                 if key not in taginfo['extra']:
                     taginfo['extra'][key] = ancestor['extra'][key]
+        # cleanup extras by blocked
+        for k, v in list(taginfo['extra'].items()):
+            if v[0]:
+                del taginfo['extra'][k]
+            else:
+                taginfo['extra'][k] = v[1]
         return taginfo
 
     def getRepo(self, tag, state=None, event=None, dist=False):

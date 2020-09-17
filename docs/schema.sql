@@ -394,7 +394,7 @@ CREATE TABLE tag_config (
 CREATE TABLE tag_extra (
 	tag_id INTEGER NOT NULL REFERENCES tag(id),
 	key TEXT NOT NULL,
-	value TEXT NOT NULL,  -- TODO - move this to jsonb when we can
+	value TEXT,
 -- versioned - see desc above
 	create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
 	revoke_event INTEGER REFERENCES events(id),
