@@ -4866,10 +4866,10 @@ def anon_handle_taginfo(goptions, session, args):
 
     tags = []
     for tag in args:
-        info = session.getTag(tag, **event_opts)
+        info = session.getBuildConfig(tag, **event_opts)
         if info is None:
             try:
-                info = session.getTag(int(tag), **event_opts)
+                info = session.getBuildConfig(int(tag), **event_opts)
             except ValueError:
                 info = None
             if info is None:
@@ -4896,7 +4896,10 @@ def anon_handle_taginfo(goptions, session, args):
         if 'extra' in info:
             print("Tag options:")
             for key in sorted(info['extra'].keys()):
-                print("  %s : %s" % (key, pprint.pformat(info['extra'][key])))
+                line = "  %s : %s" % (key, pprint.pformat(info['extra'][key]))
+                if key in info['extra_inheritance']:
+                    line = "%-30s [%s]" % (line, info['extra_inheritance'][key]['name'])
+                print(line)
         dest_targets = session.getBuildTargets(destTagID=info['id'], **event_opts)
         build_targets = session.getBuildTargets(buildTagID=info['id'], **event_opts)
         repos = {}
