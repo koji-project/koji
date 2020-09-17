@@ -737,7 +737,7 @@ class TaskManager(object):
                 # can lead to a world of hurt.
                 # We remove the rootdir contents but leave the rootdir unless it
                 # is really old
-                if age > 3600 * 24:
+                if age > self.options.buildroot_final_cleanup_delay:
                     # dir untouched for a day
                     self.logger.info("Removing buildroot: %s" % desc)
                     if ((topdir and safe_rmtree(topdir, unmount=True, strict=False) != 0) or
@@ -749,7 +749,7 @@ class TaskManager(object):
                         os.unlink(data['cfg'])
                     except OSError as e:
                         self.logger.warning("%s: can't remove config: %s" % (desc, e))
-                elif age > 120 and rootdir:
+                elif age > self.options.buildroot_basic_cleanup_delay and rootdir:
                     for d in (topdir, topdir_bootstrap):
                         if not d:
                             continue

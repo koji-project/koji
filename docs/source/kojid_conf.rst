@@ -25,6 +25,16 @@ General
       serves as a backup to the capacity check and prevents a tremendous
       number of low weight jobs from piling up.
 
+   buildroot_basic_cleanup_delay=120
+      Time after which successfully finished task's buildroot is deleted (2
+      minutes in seconds). Some logs and directories are left in place until
+      buildroot_final_cleanup_delay
+
+   buildroot_final_cleanup_delay=86400
+      Time after which buildroot (pre-cleand after
+      ``buildroot_basic_cleanup_delay``) is deleted completely. (1 day in
+      seconds)
+
    max_retries=120
       Set the maximum number of times that an individual hub call can be
       retried.

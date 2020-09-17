@@ -6441,6 +6441,8 @@ def get_options():
             quit('invalid section found in config file: %s' % x)
     defaults = {'sleeptime': 15,
                 'maxjobs': 10,
+                'buildroot_basic_cleanup_delay': 120,
+                'buildroot_final_cleanup_delay': 86400,
                 'literal_task_arches': '',
                 'minspace': 8192,
                 'admin_emails': None,
@@ -6500,7 +6502,8 @@ def get_options():
             if name in ['sleeptime', 'maxjobs', 'minspace', 'retry_interval',
                         'max_retries', 'offline_retry_interval', 'failed_buildroot_lifetime',
                         'timeout', 'rpmbuild_timeout', 'oz_install_timeout',
-                        'task_avail_delay']:
+                        'task_avail_delay', 'buildroot_basic_cleanup_delay',
+                        'buildroot_final_cleanup_delay']:
                 try:
                     defaults[name] = int(value)
                 except ValueError:
