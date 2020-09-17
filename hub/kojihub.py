@@ -11949,6 +11949,7 @@ class RootExports(object):
     def getBuildConfig(self, tag, event=None):
         """Return build configuration associated with a tag"""
         taginfo = get_tag(tag, strict=True, event=event, blocked=True)
+        taginfo['extra_inheritance'] = {}
         order = readFullInheritance(taginfo['id'], event=event)
         # follow inheritance for arches and extra
         for link in order:
@@ -11960,6 +11961,7 @@ class RootExports(object):
             for key in ancestor['extra']:
                 if key not in taginfo['extra']:
                     taginfo['extra'][key] = ancestor['extra'][key]
+                    taginfo['extra_inheritance'][key] = dslice(ancestor, ('id', 'name'))
         # cleanup extras by blocked
         for k, v in list(taginfo['extra'].items()):
             if v[0]:
