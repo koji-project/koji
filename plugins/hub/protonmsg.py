@@ -336,6 +336,8 @@ def query_from_db():
     c = context.cnx.cursor()
     c.execute('BEGIN')
     c.execute('LOCK TABLE proton_queue IN ACCESS EXCLUSIVE MODE NOWAIT')
+    c.execute("DELETE FROM proton_queue WHERE created_ts < NOW() -'%s hours'::interval" %
+              CONFIG.getint('queue', 'age', fallback=24))
     query = QueryProcessor(tables=('proton_queue',),
                            columns=('id', 'address', 'props', 'body'),
                            opts={'order': 'id', 'limit': limit})
