@@ -3,6 +3,7 @@ import unittest
 
 import kojihub
 
+
 class TestGetBuildConfig(unittest.TestCase):
 
     @mock.patch('kojihub.readFullInheritance')
