@@ -4897,7 +4897,7 @@ def anon_handle_taginfo(goptions, session, args):
             print("Tag options:")
             for key in sorted(info['extra'].keys()):
                 line = "  %s : %s" % (key, pprint.pformat(info['extra'][key]))
-                if key in info['extra_inheritance']:
+                if key in info.get('extra_inheritance', []):
                     line = "%-30s [%s]" % (line, info['extra_inheritance'][key]['name'])
                 print(line)
         dest_targets = session.getBuildTargets(destTagID=info['id'], **event_opts)
