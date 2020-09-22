@@ -1556,7 +1556,7 @@ def handle_write_signed_rpm(goptions, session, args):
 
 def handle_prune_signed_copies(goptions, session, args):
     "[admin] Prune signed copies"
-    usage = _("usage: %prog prune-sigs [options]")
+    usage = _("usage: %prog prune-signed-copies [options]")
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("-n", "--test", action="store_true", help=_("Test mode"))
     parser.add_option("-v", "--verbose", action="store_true", help=_("Be more verbose"))
