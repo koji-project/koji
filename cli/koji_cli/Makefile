@@ -1,10 +1,7 @@
 PYFILES = $(wildcard *.py)
 
 PACKAGE = $(shell basename `pwd`)
-PYVER := $(shell $(PYTHON) -c 'import sys; print("%.3s" % (sys.version))')
-PYSYSDIR := $(shell $(PYTHON) -c 'import sys; print(sys.prefix)')
-PYLIBDIR = $(PYSYSDIR)/lib/python$(PYVER)
-PKGDIR = $(PYLIBDIR)/site-packages/$(PACKAGE)
+PKGDIR = $(shell $(PYTHON) -c "import site; print(site.getsitepackages()[0])")/$(PACKAGE)
 
 _default:
 	@echo "nothing to make.  try make install"
