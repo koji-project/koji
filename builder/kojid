@@ -2177,8 +2177,8 @@ class WrapperRPMTask(BaseBuildTask):
             # Otherwise we let the parent task handle it.
             uploaddir = self.getUploadDir()
             relsrpm = uploaddir + '/' + srpm
-            relrpms = [uploaddir + '/' + r for r in rpms]
-            rellogs = [uploaddir + '/' + l for l in logs]
+            relrpms = [uploaddir + '/' + rpm for rpm in rpms]
+            rellogs = [uploaddir + '/' + log for log in logs]
             if opts.get('scratch'):
                 self.session.host.moveBuildToScratch(
                     self.id, relsrpm, relrpms, {'noarch': rellogs})
