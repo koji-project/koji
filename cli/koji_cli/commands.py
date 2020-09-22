@@ -4059,7 +4059,19 @@ def _printInheritance(tags, sibdepths=None, reverse=False):
 
 def anon_handle_list_tag_inheritance(goptions, session, args):
     "[info] Print the inheritance information for a tag"
-    usage = _("usage: %prog list-tag-inheritance [options] <tag>")
+    usage = _("""\
+        usage: %prog list-tag-inheritance [options] <tag>
+
+        Prints tag inheritance with basic information about links.
+        Four flags could be seen in the output:
+         M - maxdepth - limits inheritance to n-levels
+         F - package filter (packages ignored for inheritance)
+         I - intransitive link - inheritance immediately stops here
+         N - noconfig - if tag is used in buildroot, its configuration values will not be used
+
+        Exact values for maxdepth and package filter can be inquired by taginfo command.
+    """)
+    usage = textwrap.dedent(usage)
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--reverse", action="store_true",
                       help=_("Process tag's children instead of its parents"))
@@ -4071,7 +4083,7 @@ def anon_handle_list_tag_inheritance(goptions, session, args):
     parser.add_option("--repo", type='int', metavar="REPO#", help=_("query at event for a repo"))
     (options, args) = parser.parse_args(args)
     if len(args) != 1:
-        parser.error(_("This command takes exctly one argument: a tag name or ID"))
+        parser.error(_("This command takes exactly one argument: a tag name or ID"))
     ensure_connection(session)
     event = koji.util.eventFromOpts(session, options)
     if event:
