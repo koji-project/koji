@@ -82,7 +82,7 @@ Task info: weburl/taskinfo?taskID=1
         self.session.logout.assert_called()
         watch_tasks_mock.assert_called_once_with(
             self.session, [task_id], quiet=self.options.quiet,
-            poll_interval=self.options.poll_interval)
+            poll_interval=self.options.poll_interval, topurl=self.options.topurl)
         self.assertEqual(rv, 0)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
@@ -528,7 +528,7 @@ Task info: weburl/taskinfo?taskID=1
         self.session.logout.assert_called()
         watch_tasks_mock.assert_called_once_with(
             self.session, [task_id], quiet=self.options.quiet,
-            poll_interval=self.options.poll_interval)
+            poll_interval=self.options.poll_interval, topurl=self.options.topurl)
         self.assertEqual(rv, 0)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
@@ -591,7 +591,7 @@ Task info: weburl/taskinfo?taskID=1
         self.session.logout.assert_called()
         watch_tasks_mock.assert_called_once_with(
             self.session, [task_id], quiet=self.options.quiet,
-            poll_interval=self.options.poll_interval)
+            poll_interval=self.options.poll_interval, topurl=self.options.topurl)
         self.assertEqual(rv, 0)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)

@@ -97,7 +97,7 @@ via 'koji edit-tag -x distrepo.cancel_others=True'
                 self.session,
                 [self.task_id],
                 quiet=self.options.quiet,
-                poll_interval=self.options.poll_interval)
+                poll_interval=self.options.poll_interval, topurl=self.options.topurl)
 
     def test_handle_dist_repo_nowait(self):
         arguments = [self.tag_name, self.fake_key, '--nowait']

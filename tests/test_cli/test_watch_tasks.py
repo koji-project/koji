@@ -47,7 +47,7 @@ class TestWatchTasks(unittest.TestCase):
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     def test_watch_tasks_no_tasklist(self, stdout):
-        returned = watch_tasks(self.session, [], poll_interval=0)
+        returned = watch_tasks(self.session, [], poll_interval=0, topurl=self.options.topurl)
         actual = stdout.getvalue()
         expected = ""
         self.assertIsNone(returned)
@@ -60,7 +60,8 @@ class TestWatchTasks(unittest.TestCase):
         with open(cfile) as fp:
             cdata = json.load(fp)
         self.session.load_calls(cdata)
-        rv = watch_tasks(self.session, [1188], quiet=False, poll_interval=0)
+        rv = watch_tasks(self.session, [1188], quiet=False, poll_interval=0,
+                         topurl=self.options.topurl)
         self.assertEqual(rv, 0)
         expected = (
 '''Watching tasks (this may be safely interrupted)...
@@ -80,7 +81,7 @@ class TestWatchTasks(unittest.TestCase):
         with open(cfile) as fp:
             cdata = json.load(fp)
         self.session.load_calls(cdata)
-        rv = watch_tasks(self.session, [1208], quiet=False, poll_interval=5)
+        rv = watch_tasks(self.session, [1208], quiet=False, poll_interval=5, topurl=None)
         self.assertEqual(rv, 1)
         expected = ('''Watching tasks (this may be safely interrupted)...
 1208 build (f24, /users/mikem/fake.git:master): free
@@ -108,7 +109,8 @@ class TestWatchTasks(unittest.TestCase):
         sleep.side_effect = [None] * 10  + [KeyboardInterrupt]
         with self.assertRaises(KeyboardInterrupt):
             # watch_tasks catches and re-raises it to display a message
-            watch_tasks(self.session, [1208], quiet=False, poll_interval=5)
+            watch_tasks(self.session, [1208], quiet=False, poll_interval=5,
+                        topurl=self.options.topurl)
         expected = ('''Watching tasks (this may be safely interrupted)...
 1208 build (f24, /users/mikem/fake.git:master): free
 1208 build (f24, /users/mikem/fake.git:master): free -> open (builder-01)
@@ -137,7 +139,7 @@ Running Tasks:
         with self.assertRaises(KeyboardInterrupt):
             # watch_tasks catches and re-raises it to display a message
             watch_tasks(self.session, [1208], quiet=False, poll_interval=5,
-                        ki_handler=customized_handler)
+                        ki_handler=customized_handler, topurl=self.options.topurl)
         expected = ('''Watching tasks (this may be safely interrupted)...
 1208 build (f24, /users/mikem/fake.git:master): free
 1208 build (f24, /users/mikem/fake.git:master): free -> open (builder-01)

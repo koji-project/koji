@@ -56,7 +56,7 @@ class TestTagBuild(utils.CliTestCase):
             self.session,
             tasks,
             quiet=self.options.quiet,
-            poll_interval=self.options.poll_interval)
+            poll_interval=self.options.poll_interval, topurl=self.options.topurl)
 
     def test_handle_tag_build_quiet_mode(self):
         """Test handle_tag_build function with --nowait option"""

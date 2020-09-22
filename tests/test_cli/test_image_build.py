@@ -139,7 +139,7 @@ class TestBuildImageOz(utils.CliTestCase):
         self.watch_tasks.assert_called_with(
             self.session, [task_id],
             quiet=self.options.quiet,
-            poll_interval=self.options.poll_interval)
+            poll_interval=self.options.poll_interval, topurl=self.options.topurl)
         self.session.buildImageOz.assert_called_once()
 
     def test_build_image_oz_background(self):

@@ -80,7 +80,8 @@ class TestWrapperRpm(utils.CliTestCase):
         activate_session_mock.assert_called_with(session, options)
         watch_tasks_mock.assert_called_with(
             session, [self.task_id], quiet=options.quiet,
-            poll_interval=options.poll_interval)
+            poll_interval=options.poll_interval,
+            topurl=options.topurl)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)
@@ -190,7 +191,8 @@ class TestWrapperRpm(utils.CliTestCase):
         activate_session_mock.assert_called_with(session, options)
         watch_tasks_mock.assert_called_with(
             session, [self.task_id], quiet=options.quiet,
-            poll_interval=options.poll_interval)
+            poll_interval=options.poll_interval,
+            topurl=options.topurl)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)

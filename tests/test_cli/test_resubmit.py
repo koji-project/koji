@@ -83,7 +83,8 @@ Log Files:
             session,
             [new_task_id],
             quiet=True,
-            poll_interval=options.poll_interval)
+            poll_interval=options.poll_interval,
+            topurl=options.topurl)
         session.logout.assert_called_once()
         session.resubmitTask.assert_called_with(self.task_id)
         session.resubmitTask.assert_called_once()

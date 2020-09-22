@@ -87,7 +87,7 @@ def handle_runroot(options, session, args):
     if opts.watch:
         session.logout()
         return watch_tasks(session, [task_id], quiet=opts.quiet,
-                           poll_interval=options.poll_interval)
+                           poll_interval=options.poll_interval, topurl=options.topurl)
 
     try:
         while True:

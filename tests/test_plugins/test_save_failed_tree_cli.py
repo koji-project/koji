@@ -122,7 +122,8 @@ class TestSaveFailedTree(unittest.TestCase):
         self.session.logout.assert_called_once_with()
         save_failed_tree.watch_tasks.assert_called_once_with(self.session, [spawned_id],
                                                              poll_interval=options.poll_interval,
-                                                             quiet=options.quiet)
+                                                             quiet=options.quiet,
+                                                             topurl=options.topurl)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     def test_handle_save_failed_tree_errors(self, stdout):
