@@ -22,7 +22,7 @@ class TestGetBuildConfig(unittest.TestCase):
             'id': 123,
             'name': tag,
             'extra': {},
-            'extra_inheritance': {},
+            'config_inheritance': {'extra': {}, 'arches': None},
         })
 
     @mock.patch('kojihub.readFullInheritance')
@@ -70,7 +70,10 @@ class TestGetBuildConfig(unittest.TestCase):
         self.assertEqual(taginfo, {
             'arches': 'x86_64',
             'extra': {'value': 'inherited'},
-            'extra_inheritance': {'value': {'id': 1234, 'name': 'parent'}},
+            'config_inheritance': {
+                'arches': {'id': 1234, 'name': 'parent'},
+                'extra' : {'value': {'id': 1234, 'name': 'parent'}}
+            },
             'id': 123,
             'name': 'tag_name'
         })
@@ -117,7 +120,7 @@ class TestGetBuildConfig(unittest.TestCase):
         self.assertEqual(taginfo, {
             'arches': None,
             'extra': {},
-            'extra_inheritance': {},
+            'config_inheritance': {'extra': {}, 'arches': None},
             'id': 123,
             'name': 'tag_name'
         })
