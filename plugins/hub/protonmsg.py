@@ -335,26 +335,39 @@ def store_to_db(msgs):
     c.execute('COMMIT')
 
 
-def query_from_db():
+def handle_db_msgs(urls, CONFIG):
     limit = CONFIG.getint('queue', 'batch_size', fallback=100)
+    c = context.cnx.cursor()
+    # we're running in postCommit, so we need to handle new transaction
+    c.execute('BEGIN')
     try:
-        c = context.cnx.cursor()
-        # we're running in postCommit, so we need to handle new transaction
-        c.execute('BEGIN')
         c.execute('LOCK TABLE proton_queue IN ACCESS EXCLUSIVE MODE NOWAIT')
+    except psycopg2.OperationalError:
+        LOG.debug('skipping db queue due to lock')
+        return
+    try:
         c.execute("DELETE FROM proton_queue WHERE created_ts < NOW() -'%s hours'::interval" %
                   CONFIG.getint('queue', 'age', fallback=24))
         query = QueryProcessor(tables=('proton_queue',),
                                columns=('id', 'address', 'props', 'body'),
                                opts={'order': 'id', 'limit': limit})
         msgs = list(query.execute())
+        if CONFIG.getboolean('broker', 'test_mode', fallback=False):
+            if msgs:
+                LOG.debug('test mode: skipping send for %i messages from db', len(msgs))
+            unsent = []
+        else:
+            unsent = {m['id'] for m in _send_msgs(urls, msgs, CONFIG)}
+        sent = [m for m in msgs if m['id'] not in unsent]
         if msgs:
             c.execute('DELETE FROM proton_queue WHERE id IN %(ids)s',
-                      {'ids': [msg['id'] for msg in msgs]})
-        c.execute('COMMIT')
-        return msgs
-    except psycopg2.errors.LockNotAvailable:
-        return []
+                      {'ids': [msg['id'] for msg in sent]})
+    finally:
+        # make sure we free the lock
+        try:
+            c.execute('COMMIT')
+        except Exception:
+            c.execute('ROLLBACK')
 
 
 @ignore_error
@@ -374,24 +387,35 @@ def send_queued_msgs(cbtype, *args, **kws):
     db_enabled = False
     if CONFIG.has_option('queue', 'enabled'):
         db_enabled = CONFIG.getboolean('queue', 'enabled')
+
     if test_mode:
         LOG.debug('test mode: skipping send to urls: %r', urls)
-        for msg in msgs:
+        fail_chance = CONFIG.getint('broker', 'test_mode_fail', fallback=0)
+        if fail_chance:
+            # simulate unsent messages in test mode
+            sent = []
+            unsent = []
+            for m in msgs:
+                if random.randint(1, 100) <= fail_chance:
+                    unsent.append(m)
+                else:
+                    sent.append(m)
+            if unsent:
+                LOG.info('simulating %i unsent messages' % len(unsent))
+        else:
+            sent = msgs
+            unsent = []
+        for msg in sent:
             LOG.debug('test mode: skipped msg: %r', msg)
-        return
+    else:
+        unsent = _send_msgs(urls, msgs, CONFIG)
 
-    msgs = _send_msgs(urls, msgs, CONFIG)
-
-    if db_enabled and not test_mode:
-        if msgs:
+    if db_enabled:
+        if unsent:
             # if we still have some messages, store them and leave for another call to pick them up
             store_to_db(msgs)
         else:
             # otherwise we are another call - look to db if there remains something to send
-            msgs = query_from_db()
-            msgs = _send_msgs(urls, msgs, CONFIG)
-            # return unsuccesful data to db
-            store_to_db(msgs)
-
-    if msgs:
-        LOG.error('could not send messages to any destinations, %s stored to db' % len(msgs))
+            handle_db_msgs(urls, CONFIG)
+    elif unsent:
+        LOG.error('could not send %i messages. db queue disabled' % len(msgs))

@@ -162,34 +162,54 @@ And in scripts, you can use following calls:
 Proton messaging
 ================
 
-It is hub-only plugin which can send all the messages produced by koji to amqps
-message brokers.
+The ``protonmsg`` plugin for the hub will, if enabled, send a wide range of
+messages about Koji activity to the configured amqps message brokers.
+Most callback events on the hub are translated into messages.
 
-``Plugins = protonmsg``  needs to be added to ``/etc/koji-hub/hub.conf``.
-Configuration file must be placed in ``/etc/koji-hub/plugins/protonmsg.conf``.
-There are three sections in config file - broker, queue and message.
+In order to enable this plugin, you must:
 
-Broker section allows admin to set up connection options like urls,
-certificates, timeouts and topic prefix.
+* add ``protonmsg`` to the ``Plugins`` setting in ``/etc/koji-hub/hub.conf``
 
-Normally, only messages in apache process memory are remembered. There are
-various reasons, why these messages can be lost if broker is unavailable for
-longer time. For more reliability admin can enable persistent database message
-queue. For this is section ``queue`` where ``enabled`` boolean enables this
-behaviour. Currently you need to create table manually by running the following
-SQL:
+* provide a configuration file for the plugin at
+  ``/etc/koji-hub/plugins/protonmsg.conf``
 
-.. code-block:: plpgsql
+The configuration file is ini-style format with three sections: broker,
+queue and message.
+The ``[broker]`` section defines how the plugin connects to the message bus.
+The following fields are understood:
 
-   CREATE TABLE proton_queue (
-       id SERIAL PRIMARY KEY,
-       props JSON NOT NULL,
-       body JSON NOT NULL
-   )
+* ``urls`` -- a space separated list of amqps urls. Additional urls are
+  treated as fallbacks. The plugin will send to the first one that accepts
+  the message
+* ``cert`` -- the client cert file for authentication
+* ``cacert`` -- the ca cert to validate the server
+* ``topic_prefix`` -- this string will be used as a prefix for all message topics
+* ``connect_timeout`` -- the number of seconds to wait for a connection before
+  timing out
+* ``send_timeout`` -- the number of seconds to wait while sending a message
+  before timing out
 
-Last related option is ``batch_size`` - it says how many messages are send
-during one request. It should be balanced number. If there is a large queue it
-shouldn't block the request itself as user is waiting for it. On the other hand
-it is not hardcoded as it plays with ``extra_limit`` - e.g. there could be more small
-messages if ``extra_limit`` is set to small number or less bigger messages with
-unlimited size.
+The ``[message]`` section sets parameters for how messages are formed.
+Currently only one field is understood:
+
+* ``extra_limit`` -- the maximum allowed size for ``build.extra`` fields that
+  appear in messages. If the ``build.extra`` field is longer (in terms of 
+  json-encoded length), then it will be omitted. The default value is ``0``
+  which means no limit.
+
+The ``[queue]`` section controls how (or if) the plugin will use the database
+to queue messages when they cannot be immediately sent.
+The following fields are understood:
+
+* ``enabled`` -- if true, then the feature is enabled
+* ``batch_size`` -- the maximum number of queued messages to send at one time
+* ``max_age`` -- the age (in hours) at which old messages in the queue are discarded
+
+It is important to note that the database queue is only a fallback mechanism.
+The plugin will always attempt to send messages as they are issued.
+Messages are only placed in the database queue when they cannot be immediately
+sent on the bus (e.g. if the amqps server is offline).
+
+Admins should consider the balance between the ``batch_size`` and
+``extra_limit`` options, as both can affect the total amount of data that the
+plugin could attempt to send during a single call.
