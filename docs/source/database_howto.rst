@@ -22,6 +22,11 @@ almost always query by ``buildroot_id``.
 
 It has three steps - first is to backup your db and turn hub offline.
 
+.. note::
+    SQL syntax used here (PARTITION BY) is in Postgres from version 10.  Same
+    behaviour can be made to work even with older releases but needs a bit of
+    additional code to replace it.
+
 Second is creating trigger, which will be used when new buildroot is
 created and will ensure that potential new partition is created:
 
@@ -60,7 +65,7 @@ created and will ensure that potential new partition is created:
   FOR EACH ROW EXECUTE PROCEDURE create_partition_and_insert();
 
 
-The second one is one-time code, which will be used for converting
+The third one is one-time code, which will be used for converting
 existing tables.
 
 .. code-block:: plpgsql
