@@ -46,6 +46,7 @@ class TestEditTag(utils.CliTestCase):
                 'maven_support': maven_support,
                 'maven_include_all': maven_include_all,
                 'extra': extra,
+                'block_extra': [],
                 'remove_extra': remove_extra}
         options = mock.MagicMock()
 
@@ -78,6 +79,8 @@ class TestEditTag(utils.CliTestCase):
         opts = {'perm': None,
                 'locked': not locked,
                 'maven_support': not maven_support,
+                'block_extra': [],
+                'remove_extra': [],
                 'maven_include_all': not maven_include_all}
         # Run it and check immediate output
         # args: tag --no-perm --unlock --no-maven-support --no-include-all
@@ -130,6 +133,8 @@ Options:
                         Set tag extra option
   -r key, --remove-extra=key
                         Remove tag extra option
+  -b key, --block-extra=key
+                        Block inherited tag extra option
 """ % progname
         expected_stderr = ''
         self.assertMultiLineEqual(actual_stdout, expected_stdout)

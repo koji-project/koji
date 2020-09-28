@@ -4999,6 +4999,8 @@ def handle_edit_tag(goptions, session, args):
                       help=_("Set tag extra option"))
     parser.add_option("-r", "--remove-extra", action="append", default=[], metavar="key",
                       help=_("Remove tag extra option"))
+    parser.add_option("-b", "--block-extra", action="append", default=[], metavar="key",
+                      help=_("Block inherited tag extra option"))
     (options, args) = parser.parse_args(args)
     if len(args) != 1:
         parser.error(_("Please specify a name for the tag"))
@@ -5032,8 +5034,8 @@ def handle_edit_tag(goptions, session, args):
             value = arg_filter(value)
             extra[key] = value
         opts['extra'] = extra
-    if options.remove_extra:
-        opts['remove_extra'] = options.remove_extra
+    opts['remove_extra'] = options.remove_extra
+    opts['block_extra'] = options.block_extra
     # XXX change callname
     session.editTag2(tag, **opts)
 
