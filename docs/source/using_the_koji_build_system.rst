@@ -11,9 +11,6 @@ use the koji client to request package builds and get information about
 the buildsystem. Koji runs on top of Mock to build RPM packages for
 specific architectures and ensure that they build correctly.
 
-There is also a `simplified Chinese
-edition <Zh/使用Koji编译打包系统>`__.
-
 Installing Koji
 ---------------
 
