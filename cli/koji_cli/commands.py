@@ -7665,4 +7665,3 @@ def handle_version(goptions, session, args):
         print("Hub:    %s" % version)
     except koji.GenericError:
         print("Hub:    Can' determine (older than 1.23)")
-
