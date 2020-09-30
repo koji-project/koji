@@ -158,3 +158,58 @@ And in scripts, you can use following calls:
     ks = koji.ClientSession('https://koji.fedoraproject.org/kojihub')
     ks.gssapi_login()
     ks.createSideTag('f30-build')
+
+Proton messaging
+================
+
+The ``protonmsg`` plugin for the hub will, if enabled, send a wide range of
+messages about Koji activity to the configured amqps message brokers.
+Most callback events on the hub are translated into messages.
+
+In order to enable this plugin, you must:
+
+* add ``protonmsg`` to the ``Plugins`` setting in ``/etc/koji-hub/hub.conf``
+
+* provide a configuration file for the plugin at
+  ``/etc/koji-hub/plugins/protonmsg.conf``
+
+The configuration file is ini-style format with three sections: broker,
+queue and message.
+The ``[broker]`` section defines how the plugin connects to the message bus.
+The following fields are understood:
+
+* ``urls`` -- a space separated list of amqps urls. Additional urls are
+  treated as fallbacks. The plugin will send to the first one that accepts
+  the message
+* ``cert`` -- the client cert file for authentication
+* ``cacert`` -- the ca cert to validate the server
+* ``topic_prefix`` -- this string will be used as a prefix for all message topics
+* ``connect_timeout`` -- the number of seconds to wait for a connection before
+  timing out
+* ``send_timeout`` -- the number of seconds to wait while sending a message
+  before timing out
+
+The ``[message]`` section sets parameters for how messages are formed.
+Currently only one field is understood:
+
+* ``extra_limit`` -- the maximum allowed size for ``build.extra`` fields that
+  appear in messages. If the ``build.extra`` field is longer (in terms of 
+  json-encoded length), then it will be omitted. The default value is ``0``
+  which means no limit.
+
+The ``[queue]`` section controls how (or if) the plugin will use the database
+to queue messages when they cannot be immediately sent.
+The following fields are understood:
+
+* ``enabled`` -- if true, then the feature is enabled
+* ``batch_size`` -- the maximum number of queued messages to send at one time
+* ``max_age`` -- the age (in hours) at which old messages in the queue are discarded
+
+It is important to note that the database queue is only a fallback mechanism.
+The plugin will always attempt to send messages as they are issued.
+Messages are only placed in the database queue when they cannot be immediately
+sent on the bus (e.g. if the amqps server is offline).
+
+Admins should consider the balance between the ``batch_size`` and
+``extra_limit`` options, as both can affect the total amount of data that the
+plugin could attempt to send during a single call.

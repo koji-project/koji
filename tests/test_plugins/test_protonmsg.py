@@ -215,7 +215,7 @@ extra_limit = 2048
         self.assertEqual(log.debug.call_count, 2)
         for args in log.debug.call_args_list:
             self.assertTrue(args[0][0].startswith('could not send'))
-        self.assertEqual(log.error.call_count, 1)
+        self.assertEqual(log.error.call_count, 2)
         self.assertTrue(log.error.call_args[0][0].startswith('could not send'))
 
     @patch('protonmsg.Container')
