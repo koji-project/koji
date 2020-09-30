@@ -7660,4 +7660,9 @@ def handle_version(goptions, session, args):
     """Report client and hub versions"""
     ensure_connection(session)
     print('Client: %s' % koji.__version__)
-    print('Hub:    %s' % session.getKojiVersion())
+    try:
+        version = session.getKojiVersion()
+        print("Hub:    %s" % version)
+    except koji.GenericError:
+        print("Hub:    Can' determine (older than 1.23)")
+
