@@ -1,6 +1,7 @@
 #include "includes/header.chtml"
+#import koji
 
-<h4>API reference</h4>
+<h4>API reference <small>(hub version: $koji_version, web version: $koji.__version__)</small></h4>
 
 <ul>
 #for method in $methods

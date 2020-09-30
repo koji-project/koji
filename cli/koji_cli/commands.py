@@ -7654,3 +7654,14 @@ def handle_unblock_notification(goptions, session, args):
         session.deleteNotificationBlock(n_id)
         if not goptions.quiet:
             print(_("Notification block %d successfully removed.") % n_id)
+
+
+def handle_version(goptions, session, args):
+    """Report client and hub versions"""
+    ensure_connection(session)
+    print('Client: %s' % koji.__version__)
+    try:
+        version = session.getKojiVersion()
+        print("Hub:    %s" % version)
+    except koji.GenericError:
+        print("Hub:    Can' determine (older than 1.23)")

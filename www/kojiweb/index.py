@@ -2485,6 +2485,10 @@ def api(environ):
     server = _getServer(environ)
 
     values['methods'] = sorted(server._listapi(), key=lambda x: x['name'])
+    try:
+        values['koji_version'] = server.getKojiVersion()
+    except koji.GenericError:
+        values['koji_version'] = "Can't determine (older then 1.23)"
 
     return _genHTML(environ, 'api.chtml')
 

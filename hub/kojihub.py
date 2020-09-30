@@ -10278,6 +10278,9 @@ class RootExports(object):
     def echo(self, *args):
         return args
 
+    def getKojiVersion(self):
+        return koji.__version__
+
     def getAPIVersion(self):
         return koji.API_VERSION
 
