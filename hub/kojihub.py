@@ -68,7 +68,6 @@ from koji.util import (
     move_and_symlink,
     multi_fnmatch,
     safer_move,
-    to_list
 )
 
 try:
@@ -2189,18 +2188,18 @@ def readTagGroups(tag, event=None, inherit=True, incl_pkgs=True, incl_reqs=True,
     Blocked packages/groups can alternatively also be listed if incl_blocked is set to True
     """
     groups = get_tag_groups(tag, event, inherit, incl_pkgs, incl_reqs)
-    groups = to_list(groups.values())
+    groups = list(groups.values())
     for group in groups:
         # filter blocked entries and collapse to a list
         if 'packagelist' in group:
             if incl_blocked:
-                group['packagelist'] = to_list(group['packagelist'].values())
+                group['packagelist'] = list(group['packagelist'].values())
             else:
                 group['packagelist'] = [x for x in group['packagelist'].values()
                                         if not x['blocked']]
         if 'grouplist' in group:
             if incl_blocked:
-                group['grouplist'] = to_list(group['grouplist'].values())
+                group['grouplist'] = list(group['grouplist'].values())
             else:
                 group['grouplist'] = [x for x in group['grouplist'].values()
                                       if not x['blocked']]
@@ -2366,7 +2365,7 @@ def get_all_arches():
             # in a perfect world, this list would only include canonical
             # arches, but not all admins will undertand that.
             ret[koji.canonArch(arch)] = 1
-    return to_list(ret.keys())
+    return list(ret.keys())
 
 
 def get_active_tasks(host=None):
@@ -5922,7 +5921,7 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
         'package': build['name'],
         'version': build['version'],
         'release': build['release'],
-        'buildroots': to_list(brmap.values()),
+        'buildroots': list(brmap.values()),
         'import': True,
         'import_type': 'rpm',
     }
@@ -7927,7 +7926,7 @@ def build_references(build_id, limit=None, lazy=False):
             idx.setdefault(row['id'], row)
         if limit is not None and len(idx) > limit:
             break
-    ret['rpms'] = to_list(idx.values())
+    ret['rpms'] = list(idx.values())
 
     if lazy and ret['rpms']:
         return ret
@@ -7971,7 +7970,7 @@ def build_references(build_id, limit=None, lazy=False):
             idx.setdefault(row['id'], row)
         if limit is not None and len(idx) > limit:
             break
-    ret['archives'] = to_list(idx.values())
+    ret['archives'] = list(idx.values())
 
     if lazy and ret['archives']:
         return ret
@@ -8383,7 +8382,7 @@ def tag_notification(is_successful, tag_id, from_id, build_id, user_id, ignore_s
         if from_tag:
             for email in get_notification_recipients(build, from_tag['id'], state):
                 recipients[email] = 1
-    recipients_uniq = to_list(recipients.keys())
+    recipients_uniq = list(recipients.keys())
     if len(recipients_uniq) > 0 and not (is_successful and ignore_success):
         task_id = make_task('tagNotification',
                             [recipients_uniq, is_successful, tag_id, from_id, build_id, user_id,
@@ -8779,7 +8778,7 @@ class InsertProcessor(object):
         if not self.data and not self.rawdata:
             return "-- incomplete update: no assigns"
         parts = ['INSERT INTO %s ' % self.table]
-        columns = sorted(to_list(self.data.keys()) + to_list(self.rawdata.keys()))
+        columns = sorted(list(self.data.keys()) + list(self.rawdata.keys()))
         parts.append("(%s) " % ', '.join(columns))
         values = []
         for key in columns:
@@ -8822,7 +8821,7 @@ class InsertProcessor(object):
             del data['create_event']
             del data['creator_id']
         clauses = ["%s = %%(%s)s" % (k, k) for k in data]
-        query = QueryProcessor(columns=to_list(data.keys()), tables=[self.table],
+        query = QueryProcessor(columns=list(data.keys()), tables=[self.table],
                                clauses=clauses, values=data)
         if query.execute():
             return True
@@ -11468,7 +11467,7 @@ class RootExports(object):
             # lookup tag id
             tag = get_tag_id(tag, strict=True)
         for mapping in [stops, jumps]:
-            for key in to_list(mapping.keys()):
+            for key in mapping.keys():
                 mapping[int(key)] = mapping[key]
         return readFullInheritance(tag, event, reverse, stops, jumps)
 
@@ -13695,7 +13694,7 @@ class HostExports(object):
         scratchdir = koji.pathinfo.scratch()
         username = get_user(task.getOwner())['name']
         destdir = joinpath(scratchdir, username, 'task_%s' % task_id)
-        for reldir, files in to_list(results['files'].items()) + [('', results['logs'])]:
+        for reldir, files in list(results['files'].items()) + [('', results['logs'])]:
             for filename in files:
                 if reldir:
                     relpath = joinpath(reldir, filename)
@@ -13723,7 +13722,7 @@ class HostExports(object):
         scratchdir = koji.pathinfo.scratch()
         username = get_user(task.getOwner())['name']
         destdir = joinpath(scratchdir, username, 'task_%s' % task_id)
-        for relpath in to_list(results['output'].keys()) + results['logs']:
+        for relpath in list(results['output'].keys()) + results['logs']:
             filename = joinpath(koji.pathinfo.task(results['task_id']), relpath)
             dest = joinpath(destdir, relpath)
             move_and_symlink(filename, dest, create_dir=True)
@@ -14441,7 +14440,7 @@ class HostExports(object):
                             build = get_build(build_id)
                             logger.error("g:a:v supplied by build %(nvr)s", build)
                             logger.error("Build supplies %i archives: %r",
-                                         len(build_archives), to_list(build_archives.keys()))
+                                         len(build_archives), list(build_archives.keys()))
                         if tag_archive:
                             logger.error("Size mismatch, br: %i, db: %i",
                                          fileinfo['size'], tag_archive['size'])

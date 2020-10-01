@@ -155,7 +155,7 @@ class HandlerRegistry(object):
         return args
 
     def system_listMethods(self):
-        return koji.util.to_list(self.funcs.keys())
+        return list(self.funcs.keys())
 
     def system_methodSignature(self, method):
         # it is not possible to autogenerate this data

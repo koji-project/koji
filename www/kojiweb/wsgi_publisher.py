@@ -30,7 +30,7 @@ import traceback
 import koji
 import koji.util
 from koji.server import ServerError, ServerRedirect
-from koji.util import dslice, to_list
+from koji.util import dslice
 
 
 class URLNotFound(ServerError):
@@ -402,7 +402,7 @@ class Dispatcher(object):
         if isinstance(result, str):
             headers.setdefault('content-length', ('Content-Length', str(len(result))))
         headers.setdefault('content-type', ('Content-Type', 'text/html'))
-        headers = to_list(headers.values()) + extra
+        headers = list(headers.values()) + extra
         self.logger.debug("Headers:")
         self.logger.debug(koji.util.LazyString(pprint.pformat, [headers]))
         start_response(status, headers)
