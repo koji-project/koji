@@ -599,14 +599,13 @@ def eventFromOpts(session, opts):
     if event_id:
         return session.getEvent(event_id)
     ts = getattr(opts, 'ts')
-    if ts:
+    if ts is not None:
         return session.getLastEvent(before=ts)
     repo = getattr(opts, 'repo')
-    if repo:
-        rinfo = session.repoInfo(repo)
-        if rinfo:
-            return {'id': rinfo['create_event'],
-                    'ts': rinfo['create_ts']}
+    if repo is not None:
+        rinfo = session.repoInfo(repo, strict=True)
+        return {'id': rinfo['create_event'],
+                'ts': rinfo['create_ts']}
     return None
 
 
