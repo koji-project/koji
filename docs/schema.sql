@@ -941,7 +941,7 @@ CREATE TABLE win_archives (
 -- Message queue for the protonmsg plugin
 CREATE TABLE proton_queue (
         id SERIAL PRIMARY KEY,
-        created_ts TIMESTAMPTZ,
+        created_ts TIMESTAMPTZ DEFAULT NOW(),
         address TEXT NOT NULL,
         props JSON NOT NULL,
         body JSON NOT NULL
