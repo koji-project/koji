@@ -428,37 +428,66 @@ def lazysetattr(object, name, func, args, kwargs=None, cache=False):
     setattr(object, name, value)
 
 
-def rmtree(path):
+def rmtree(path, logger=None):
     """Delete a directory tree without crossing fs boundaries"""
     # implemented to avoid forming long paths
     # see: https://pagure.io/koji/issue/201
+    logger = logger or logging.getLogger('koji')
     st = os.lstat(path)
     if not stat.S_ISDIR(st.st_mode):
         raise koji.GenericError("Not a directory: %s" % path)
     dev = st.st_dev
     cwd = os.getcwd()
+    root = os.path.abspath(path)
     try:
-        os.chdir(path)
-        _rmtree(dev)
+        try:
+            os.chdir(path)
+        except OSError as e:
+            if e.errno not in (errno.ENOENT, errno.ESTALE):
+                return
+            raise
+        _rmtree(dev, root)
     finally:
         os.chdir(cwd)
-    os.rmdir(path)
+    try:
+        os.rmdir(path)
+    except OSError as e:
+        if e.errno == errno.ENOTEMPTY:
+            logger.warning('%s path is not empty, but it may be a phantom error caused by some'
+                           ' race condition', path, exc_info=True)
+        elif e.errno != errno.ENOENT:
+            raise
 
 
-def _rmtree(dev):
+def _rmtree(dev, root):
     dirstack = []
     while True:
         dirs = _stripcwd(dev)
         # if no dirs, walk back up until we find some
         while not dirs and dirstack:
-            os.chdir('..')
-            dirs = dirstack.pop()
-            empty_dir = dirs.pop()
             try:
-                os.rmdir(empty_dir)
-            except OSError:
-                # we'll still fail at the top level
-                pass
+                os.chdir('..')
+                dirs = dirstack.pop()
+                empty_dir = dirs.pop()
+                try:
+                    os.rmdir(empty_dir)
+                except OSError:
+                    # we'll still fail at the top level
+                    pass
+            except OSError as e:
+                if e.errno in (errno.ENOENT, errno.ESTALE):
+                    # go back to root if chdir fails
+                    dirstack = []
+                    dirs = _stripcwd(dev)
+                    try:
+                        os.chdir(root)
+                    except OSError as e:
+                        # root has been deleted
+                        if e.errno == errno.ENOENT:
+                            return
+                        raise
+                else:
+                    raise
         if not dirs:
             # we are done
             break
@@ -466,13 +495,33 @@ def _rmtree(dev):
         subdir = dirs[-1]
         # note: we do not pop here because we need to remember to remove subdir later
         dirstack.append(dirs)
-        os.chdir(subdir)
+        try:
+            os.chdir(subdir)
+        except OSError as e:
+            # go back to root if subdir doesn't exist
+            if e.errno == errno.ENOENT:
+                dirstack = []
+                try:
+                    os.chdir(root)
+                except OSError as e:
+                    # root has been deleted
+                    if e.errno == errno.ENOENT:
+                        return
+                    raise
+            else:
+                raise
 
 
 def _stripcwd(dev):
     """Unlink all files in cwd and return list of subdirs"""
     dirs = []
-    for fn in os.listdir('.'):
+    try:
+        fdirs = os.listdir('.')
+    except OSError as e:
+        # cwd has been removed by others, just return an empty list
+        if e.errno in (errno.ENOENT, errno.ESTALE):
+            return dirs
+    for fn in fdirs:
         try:
             st = os.lstat(fn)
         except OSError as e:
