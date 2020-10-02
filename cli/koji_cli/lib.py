@@ -139,12 +139,13 @@ def print_task_recurse(task, depth=0):
 
 class TaskWatcher(object):
 
-    def __init__(self, task_id, session, level=0, quiet=False):
+    def __init__(self, task_id, session, level=0, quiet=False, topurl=None):
         self.id = task_id
         self.session = session
         self.info = None
         self.level = level
         self.quiet = quiet
+        self.topurl = topurl
 
     # XXX - a bunch of this stuff needs to adapt to different tasks
 
@@ -198,7 +199,7 @@ class TaskWatcher(object):
         else:
             # First time we're seeing this task, so just show the current state
             if not self.quiet:
-                print("%s: %s" % (self.str(), self.display_state(self.info)))
+                print("%s: %s" % (self.str(), self.display_state(self.info, level=self.level)))
             return False
 
     def is_done(self):
@@ -213,7 +214,7 @@ class TaskWatcher(object):
         state = koji.TASK_STATES[self.info['state']]
         return (state == 'CLOSED')
 
-    def display_state(self, info):
+    def display_state(self, info, level=0):
         # We can sometimes be passed a task that is not yet open, but
         # not finished either.  info would be none.
         if not info:
@@ -225,7 +226,25 @@ class TaskWatcher(object):
             else:
                 return 'open'
         elif info['state'] == koji.TASK_STATES['FAILED']:
-            return 'FAILED: %s' % self.get_failure()
+            s = 'FAILED: %s' % self.get_failure()
+
+            if self.topurl:
+                # add relevant logs if there are any
+                output = list_task_output_all_volumes(self.session, self.id)
+                files = []
+                for filename, volumes in six.iteritems(output):
+                    files += [(filename, volume) for volume in volumes]
+
+                files = [file_volume for file_volume in files if file_volume[0].endswith('log')]
+
+                pi = koji.PathInfo(topdir=self.topurl)
+                # indent more than current level
+                level += 1
+                logs = ['  ' * level + os.path.join(pi.task(self.id, f[1]), f[0]) for f in files]
+                if logs:
+                    s += '\n' + '  ' * level + 'Relevant logs:\n'
+                    s += '\n'.join(logs)
+            return s
         else:
             return koji.TASK_STATES[info['state']].lower()
 
@@ -264,7 +283,7 @@ def display_task_results(tasks):
             print('%s has not completed' % task_label)
 
 
-def watch_tasks(session, tasklist, quiet=False, poll_interval=60, ki_handler=None):
+def watch_tasks(session, tasklist, quiet=False, poll_interval=60, ki_handler=None, topurl=None):
     if not tasklist:
         return
     if not quiet:
@@ -272,7 +291,7 @@ def watch_tasks(session, tasklist, quiet=False, poll_interval=60, ki_handler=Non
     if ki_handler is None:
         def ki_handler(progname, tasks, quiet):
             if not quiet:
-                tlist = ['%s: %s' % (t.str(), t.display_state(t.info))
+                tlist = ['%s: %s' % (t.str(), t.display_state(t.info, level=t.level))
                          for t in tasks.values() if not t.is_done()]
                 print(
                     "Tasks still running. You can continue to watch with the"
@@ -283,7 +302,7 @@ def watch_tasks(session, tasklist, quiet=False, poll_interval=60, ki_handler=Non
     try:
         tasks = {}
         for task_id in tasklist:
-            tasks[task_id] = TaskWatcher(task_id, session, quiet=quiet)
+            tasks[task_id] = TaskWatcher(task_id, session, quiet=quiet, topurl=topurl)
         while True:
             all_done = True
             for task_id, task in list(tasks.items()):
@@ -301,7 +320,7 @@ def watch_tasks(session, tasklist, quiet=False, poll_interval=60, ki_handler=Non
                     child_id = child['id']
                     if child_id not in tasks.keys():
                         tasks[child_id] = TaskWatcher(child_id, session, task.level + 1,
-                                                      quiet=quiet)
+                                                      quiet=quiet, topurl=topurl)
                         tasks[child_id].update()
                         # If we found new children, go through the list again,
                         # in case they have children also

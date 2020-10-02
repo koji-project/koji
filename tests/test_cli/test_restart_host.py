@@ -46,7 +46,7 @@ class TestRestartHosts(utils.CliTestCase):
         session.restartHosts.assert_called_with()
         session.logout.assert_called_once()
         watch_tasks_mock.assert_called_with(
-            session, [self.task_id], quiet=None, poll_interval=3)
+            session, [self.task_id], quiet=None, poll_interval=3, topurl=options.topurl)
 
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('sys.stdout', new_callable=six.StringIO)
@@ -148,7 +148,7 @@ class TestRestartHosts(utils.CliTestCase):
         session.restartHosts.assert_called_with()
         session.logout.assert_called_once()
         watch_tasks_mock.assert_called_with(
-            session, [self.task_id], quiet=None, poll_interval=3)
+            session, [self.task_id], quiet=None, poll_interval=3, topurl=options.topurl)
 
     @mock.patch('koji_cli.commands.watch_tasks')
     @mock.patch('koji_cli.commands._running_in_bg')

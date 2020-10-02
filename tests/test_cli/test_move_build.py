@@ -67,7 +67,7 @@ class TestMoveBuild(utils.CliTestCase):
             self.session,
             tasks,
             quiet=self.options.quiet,
-            poll_interval=self.options.poll_interval)
+            poll_interval=self.options.poll_interval, topurl=self.options.topurl)
 
     def test_handle_move_build_nowait(self):
         """Test handle_move_build function with --nowait option"""

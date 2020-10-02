@@ -537,7 +537,7 @@ def handle_build(options, session, args):
     if build_opts.wait or (build_opts.wait is None and not _running_in_bg()):
         session.logout()
         return watch_tasks(session, [task_id], quiet=build_opts.quiet,
-                           poll_interval=options.poll_interval)
+                           poll_interval=options.poll_interval, topurl=options.topurl)
 
 
 def handle_chain_build(options, session, args):
@@ -612,7 +612,7 @@ def handle_chain_build(options, session, args):
     else:
         session.logout()
         return watch_tasks(session, [task_id], quiet=build_opts.quiet,
-                           poll_interval=options.poll_interval)
+                           poll_interval=options.poll_interval, topurl=options.topurl)
 
 
 def handle_maven_build(options, session, args):
@@ -713,7 +713,7 @@ def handle_maven_build(options, session, args):
     else:
         session.logout()
         return watch_tasks(session, [task_id], quiet=build_opts.quiet,
-                           poll_interval=options.poll_interval)
+                           poll_interval=options.poll_interval, topurl=options.topurl)
 
 
 def handle_wrapper_rpm(options, session, args):
@@ -785,7 +785,7 @@ def handle_wrapper_rpm(options, session, args):
     else:
         session.logout()
         return watch_tasks(session, [task_id], quiet=options.quiet,
-                           poll_interval=options.poll_interval)
+                           poll_interval=options.poll_interval, topurl=options.topurl)
 
 
 def handle_maven_chain(options, session, args):
@@ -837,7 +837,7 @@ def handle_maven_chain(options, session, args):
     else:
         session.logout()
         return watch_tasks(session, [task_id], quiet=options.quiet,
-                           poll_interval=options.poll_interval)
+                           poll_interval=options.poll_interval, topurl=options.topurl)
 
 
 def handle_resubmit(goptions, session, args):
@@ -865,7 +865,7 @@ def handle_resubmit(goptions, session, args):
     else:
         session.logout()
         return watch_tasks(session, [newID], quiet=options.quiet,
-                           poll_interval=goptions.poll_interval)
+                           poll_interval=goptions.poll_interval, topurl=goptions.topurl)
 
 
 def handle_call(goptions, session, args):
@@ -1152,7 +1152,7 @@ def handle_restart_hosts(options, session, args):
     if my_opts.wait or (my_opts.wait is None and not _running_in_bg()):
         session.logout()
         return watch_tasks(session, [task_id], quiet=my_opts.quiet,
-                           poll_interval=options.poll_interval)
+                           poll_interval=options.poll_interval, topurl=options.topurl)
 
 
 def handle_import(goptions, session, args):
@@ -5889,7 +5889,7 @@ def _build_image_indirection(options, task_opts, session, args):
         print("Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id))
     if task_opts.wait or (task_opts.wait is None and not _running_in_bg()):
         session.logout()
-        return watch_tasks(session, [task_id], quiet=options.quiet)
+        return watch_tasks(session, [task_id], quiet=options.quiet, topurl=options.topurl)
 
 
 def handle_image_build(options, session, args):
@@ -6085,7 +6085,7 @@ def _build_image(options, task_opts, session, args, img_type):
     if task_opts.wait or (task_opts.wait is None and not _running_in_bg()):
         session.logout()
         return watch_tasks(session, [task_id], quiet=options.quiet,
-                           poll_interval=options.poll_interval)
+                           poll_interval=options.poll_interval, topurl=options.topurl)
 
 
 def _build_image_oz(options, task_opts, session, args):
@@ -6154,7 +6154,7 @@ def _build_image_oz(options, task_opts, session, args):
     if task_opts.wait or (task_opts.wait is None and not _running_in_bg()):
         session.logout()
         return watch_tasks(session, [task_id], quiet=options.quiet,
-                           poll_interval=options.poll_interval)
+                           poll_interval=options.poll_interval, topurl=options.topurl)
 
 
 def handle_win_build(options, session, args):
@@ -6229,7 +6229,7 @@ def handle_win_build(options, session, args):
     if build_opts.wait or (build_opts.wait is None and not _running_in_bg()):
         session.logout()
         return watch_tasks(session, [task_id], quiet=build_opts.quiet,
-                           poll_interval=options.poll_interval)
+                           poll_interval=options.poll_interval, topurl=options.topurl)
 
 
 def handle_free_task(goptions, session, args):
@@ -6476,7 +6476,7 @@ def anon_handle_watch_task(goptions, session, args):
             parser.error(_("at least one task id must be specified"))
 
     return watch_tasks(session, tasks, quiet=options.quiet,
-                       poll_interval=goptions.poll_interval)
+                       poll_interval=goptions.poll_interval, topurl=goptions.topurl)
 
 
 def anon_handle_watch_logs(goptions, session, args):
@@ -6540,7 +6540,7 @@ def handle_make_task(goptions, session, args):
     else:
         session.logout()
         return watch_tasks(session, [task_id], quiet=goptions.quiet,
-                           poll_interval=goptions.poll_interval)
+                           poll_interval=goptions.poll_interval, topurl=goptions.topurl)
 
 
 def handle_tag_build(opts, session, args):
@@ -6566,7 +6566,7 @@ def handle_tag_build(opts, session, args):
     else:
         session.logout()
         return watch_tasks(session, tasks, quiet=opts.quiet,
-                           poll_interval=opts.poll_interval)
+                           poll_interval=opts.poll_interval, topurl=opts.topurl)
 
 
 def handle_move_build(opts, session, args):
@@ -6617,7 +6617,7 @@ def handle_move_build(opts, session, args):
     else:
         session.logout()
         return watch_tasks(session, tasks, quiet=opts.quiet,
-                           poll_interval=opts.poll_interval)
+                           poll_interval=opts.poll_interval, topurl=opts.topurl)
 
 
 def handle_untag_build(goptions, session, args):
@@ -6981,7 +6981,7 @@ def anon_handle_download_task(options, session, args):
             koji.TASK_STATES['CANCELED'],
             koji.TASK_STATES['FAILED']):
         watch_tasks(session, [base_task_id], quiet=suboptions.quiet,
-                    poll_interval=options.poll_interval)
+                    poll_interval=options.poll_interval, topurl=options.topurl)
 
     def check_downloadable(task):
         return task["method"] == "buildArch"
@@ -7188,7 +7188,7 @@ def handle_regen_repo(options, session, args):
     else:
         session.logout()
         return watch_tasks(session, [task_id], quiet=options.quiet,
-                           poll_interval=options.poll_interval)
+                           poll_interval=options.poll_interval, topurl=options.topurl)
 
 
 def handle_dist_repo(options, session, args):
@@ -7327,7 +7327,7 @@ def handle_dist_repo(options, session, args):
     else:
         session.logout()
         return watch_tasks(session, [task_id], quiet=options.quiet,
-                           poll_interval=options.poll_interval)
+                           poll_interval=options.poll_interval, topurl=options.topurl)
 
 
 _search_types = ('package', 'build', 'tag', 'target', 'user', 'host', 'rpm',
