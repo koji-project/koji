@@ -433,7 +433,11 @@ def rmtree(path, logger=None):
     # implemented to avoid forming long paths
     # see: https://pagure.io/koji/issue/201
     logger = logger or logging.getLogger('koji')
-    st = os.lstat(path)
+    try:
+        st = os.lstat(path)
+    except FileNotFoundError:
+        logger.warning("No such file/dir %s for removal" % path)
+        return
     if not stat.S_ISDIR(st.st_mode):
         raise koji.GenericError("Not a directory: %s" % path)
     dev = st.st_dev
