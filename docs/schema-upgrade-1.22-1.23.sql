@@ -6,6 +6,7 @@ BEGIN;
 
 CREATE INDEX task_by_no_parent_state_method ON task(parent, state, method) WHERE parent IS NULL;
 
+ALTER TABLE tag_extra ALTER COLUMN value DROP NOT NULL;
 
 -- Message queue for the protonmsg plugin
 CREATE TABLE proton_queue (
