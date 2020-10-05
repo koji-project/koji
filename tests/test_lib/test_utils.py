@@ -1277,7 +1277,7 @@ class TestRmtree(unittest.TestCase):
 
         self.assertEquals(koji.util.rmtree(path), None)
         chdir.assert_called_with('cwd')
-        _rmtree.assert_called_once_with('dev')
+        _rmtree.assert_called_once_with('dev', path)
         rmdir.assert_called_once_with(path)
 
     @patch('koji.util._rmtree')
@@ -1308,7 +1308,7 @@ class TestRmtree(unittest.TestCase):
         dev = 'dev'
         stripcwd.return_value = []
 
-        koji.util._rmtree(dev)
+        koji.util._rmtree(dev, 'any')
 
         stripcwd.assert_called_once_with(dev)
         rmdir.assert_not_called()
@@ -1321,7 +1321,7 @@ class TestRmtree(unittest.TestCase):
         dev = 'dev'
         stripcwd.side_effect = (['a', 'b'], [], [])
 
-        koji.util._rmtree(dev)
+        koji.util._rmtree(dev, 'any')
 
         stripcwd.assert_has_calls([call(dev), call(dev), call(dev)])
         rmdir.assert_has_calls([call('b'), call('a')])
@@ -1336,7 +1336,7 @@ class TestRmtree(unittest.TestCase):
         rmdir.side_effect = OSError()
 
         # don't fail on anything
-        koji.util._rmtree(dev)
+        koji.util._rmtree(dev, 'any')
 
         stripcwd.assert_has_calls([call(dev), call(dev), call(dev)])
         rmdir.assert_has_calls([call('b'), call('a')])
