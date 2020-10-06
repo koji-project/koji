@@ -15,7 +15,7 @@ class TestGetBuildConfig(unittest.TestCase):
 
         taginfo = kojihub.RootExports().getBuildConfig(tag)
 
-        get_tag.assert_called_with(tag, event=None, strict=True)
+        get_tag.assert_called_with(tag, event=None, strict=True, blocked=True)
         readFullInheritance.assert_called_with(123, event=None)
 
         self.assertEqual(taginfo, {
@@ -39,7 +39,7 @@ class TestGetBuildConfig(unittest.TestCase):
             {
                 'id': 1234,
                 'name': 'parent',
-                'extra': {'value': 'inherited'},
+                'extra': {'value': (False, 'inherited')},
                 'arches': 'x86_64',
             },
         ]
@@ -62,14 +62,16 @@ class TestGetBuildConfig(unittest.TestCase):
         taginfo = kojihub.RootExports().getBuildConfig(tag, event=1111)
 
         get_tag.assert_has_calls([
-            mock.call(tag, event=1111, strict=True),
-            mock.call(1234, event=1111, strict=True),
+            mock.call(tag, event=1111, strict=True, blocked=True),
+            mock.call(1234, event=1111, strict=True, blocked=True),
         ])
         readFullInheritance.assert_called_with(123, event=1111)
 
         self.assertEqual(taginfo, {
             'arches': 'x86_64',
-            'extra': {'value': 'inherited'},
+            'extra': {
+                'value': 'inherited'
+             },
             'config_inheritance': {
                 'arches': {'id': 1234, 'name': 'parent'},
                 'extra' : {'value': {'id': 1234, 'name': 'parent'}}
@@ -92,7 +94,7 @@ class TestGetBuildConfig(unittest.TestCase):
             {
                 'id': 1234,
                 'name': 'parent',
-                'extra': {'value': 'inherited'},
+                'extra': {'value': (False, 'inherited')},
                 'arches': 'x86_64',
             },
         ]
@@ -114,7 +116,7 @@ class TestGetBuildConfig(unittest.TestCase):
 
         taginfo = kojihub.RootExports().getBuildConfig(tag, event=1111)
 
-        get_tag.assert_called_once_with(tag, event=1111, strict=True)
+        get_tag.assert_called_once_with(tag, event=1111, strict=True, blocked=True)
         readFullInheritance.assert_called_with(123, event=1111)
 
         self.assertEqual(taginfo, {
