@@ -9,6 +9,7 @@ try:
 except ImportError:
     import unittest
 
+import koji
 from koji_cli.commands import handle_clone_tag
 from . import utils
 
@@ -90,7 +91,7 @@ clone-tag will create the destination tag if it does not already exist
 
     def test_handle_clone_tag_no_srctag(self):
         args = ['src-tag', 'dst-tag']
-        self.session.getTag.side_effect = [None, None]
+        self.session.getBuildConfig.side_effect = koji.GenericError
         self.assert_system_exit(
             handle_clone_tag,
             self.options,
@@ -178,15 +179,7 @@ clone-tag will create the destination tag if it does not already exist
                                                        {'package': 'bpkg',
                                                         'blocked': False}]
                                                    }]
-        self.session.getTag.side_effect = [{'id': 1,
-                                            'name': 'src-tag',
-                                            'arches': 'arch1 arch2',
-                                            'perm_id': 1,
-                                            'maven_support': False,
-                                            'maven_include_all': True,
-                                            'locked': False,
-                                            'extra': {}},
-                                           None,
+        self.session.getTag.side_effect = [None,
                                            {'id': 2,
                                             'name': 'dst-tag',
                                             'arches': 'arch1 arch2',
@@ -195,11 +188,20 @@ clone-tag will create the destination tag if it does not already exist
                                             'maven_include_all': True,
                                             'locked': False,
                                             'extra': {}}]
+        self.session.getBuildConfig.side_effect = [{'id': 1,
+                                            'name': 'src-tag',
+                                            'arches': 'arch1 arch2',
+                                            'perm_id': 1,
+                                            'maven_support': False,
+                                            'maven_include_all': True,
+                                            'locked': False,
+                                            'extra': {}},
+                                           ]
         self.session.multiCall.return_value = []
         handle_clone_tag(self.options, self.session, args)
         self.activate_session.assert_called_once()
         self.session.assert_has_calls([call.hasPerm('admin'),
-                                       call.getTag('src-tag', event=None),
+                                       call.getBuildConfig('src-tag', event=None),
                                        call.getTag('dst-tag'),
                                        call.createTag('dst-tag',
                                                       arches='arch1 arch2',
@@ -457,15 +459,15 @@ List of changes:
                                                        {'package': 'fpkg',
                                                         'blocked': False}]}
                                                   ]]
-        self.session.getTag.side_effect = [{'id': 1,
+        self.session.getBuildConfig.side_effect = [{'id': 1,
                                             'name': 'src-tag',
                                             'arches': 'arch1 arch2',
                                             'perm_id': 1,
                                             'maven_support': False,
                                             'maven_include_all': True,
                                             'locked': False,
-                                            'extra': {}},
-                                           {'id': 2,
+                                            'extra': {}}]
+        self.session.getTag.side_effect = [{'id': 2,
                                             'name': 'dst-tag',
                                             'arches': 'arch1 arch2',
                                             'perm_id': 1,
@@ -484,7 +486,7 @@ List of changes:
         handle_clone_tag(self.options, self.session, args)
         self.activate_session.assert_called_once()
         self.session.assert_has_calls([call.hasPerm('admin'),
-                                       call.getTag('src-tag', event=None),
+                                       call.getBuildConfig('src-tag', event=None),
                                        call.getTag('dst-tag'),
                                        call.editTag2(2, arches='arch1 arch2',
                                                      extra={}, locked=False,
@@ -654,15 +656,15 @@ List of changes:
                                                [],
                                                ]
         self.session.getTagGroups.return_value = []
-        self.session.getTag.side_effect = [{'id': 1,
+        self.session.getBuildConfig.side_effect = [{'id': 1,
                                             'name': 'src-tag',
                                             'arches': 'arch1 arch2',
                                             'perm_id': 1,
                                             'maven_support': False,
                                             'maven_include_all': True,
                                             'locked': False,
-                                            'extra': {}},
-                                           {'id': 2,
+                                            'extra': {}}]
+        self.session.getTag.side_effect = [ {'id': 2,
                                             'name': 'dst-tag',
                                             'arches': 'arch1 arch2',
                                             'perm_id': 1,
@@ -741,15 +743,7 @@ List of changes:
                                                 ]
                                                ]
         self.session.getTagGroups.return_value = []
-        self.session.getTag.side_effect = [{'id': 1,
-                                            'name': 'src-tag',
-                                            'arches': 'arch1 arch2',
-                                            'perm_id': 1,
-                                            'maven_support': False,
-                                            'maven_include_all': True,
-                                            'locked': False,
-                                            'extra': {}},
-                                           {'id': 2,
+        self.session.getTag.side_effect = [{'id': 2,
                                             'name': 'dst-tag',
                                             'arches': 'arch1 arch2',
                                             'perm_id': 1,
@@ -765,6 +759,15 @@ List of changes:
                                             'maven_include_all': True,
                                             'locked': False,
                                             'extra': {}}]
+        self.session.getBuildConfig.return_value = {
+                'id': 1,
+                'name': 'src-tag',
+                'arches': 'arch1 arch2',
+                'perm_id': 1,
+                'maven_support': False,
+                'maven_include_all': True,
+                'locked': False,
+                'extra': {}}
         handle_clone_tag(self.options, self.session, args)
         self.activate_session.assert_called_once()
         self.assert_console_message(stdout, """
@@ -821,15 +824,7 @@ List of changes:
                                                  ]
                                                ]
         self.session.getTagGroups.return_value = []
-        self.session.getTag.side_effect = [{'id': 1,
-                                            'name': 'src-tag',
-                                            'arches': 'arch1 arch2',
-                                            'perm_id': 1,
-                                            'maven_support': False,
-                                            'maven_include_all': True,
-                                            'locked': False,
-                                            'extra': {}},
-                                           {'id': 2,
+        self.session.getTag.side_effect = [{'id': 2,
                                             'name': 'dst-tag',
                                             'arches': 'arch1 arch2',
                                             'perm_id': 1,
@@ -837,7 +832,7 @@ List of changes:
                                             'maven_include_all': True,
                                             'locked': False,
                                             'extra': {}},
-                                           {'id': 2,
+                                            {'id': 2,
                                             'name': 'dst-tag',
                                             'arches': 'arch1 arch2',
                                             'perm_id': 1,
@@ -845,6 +840,15 @@ List of changes:
                                             'maven_include_all': True,
                                             'locked': False,
                                             'extra': {}}]
+        self.session.getBuildConfig.side_effect = [{'id': 1,
+                                            'name': 'src-tag',
+                                            'arches': 'arch1 arch2',
+                                            'perm_id': 1,
+                                            'maven_support': False,
+                                            'maven_include_all': True,
+                                            'locked': False,
+                                            'extra': {}},
+                                           ]
         handle_clone_tag(self.options, self.session, args)
         self.activate_session.assert_called_once()
         self.assert_console_message(stdout, """
