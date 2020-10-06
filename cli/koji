@@ -76,7 +76,7 @@ def load_plugins(plugin_paths):
     logger = logging.getLogger('koji.plugins')
     # first, always load plugins from koji_cli_plugins module
     paths = [
-         '%s/lib/python%s.%s/site-packages/koji_cli_plugins' %
+        '%s/lib/python%s.%s/site-packages/koji_cli_plugins' %
         (sys.prefix, sys.version_info[0], sys.version_info[1]),
         '%s/lib64/python%s.%s/site-packages/koji_cli_plugins' %
         (sys.prefix, sys.version_info[0], sys.version_info[1])
