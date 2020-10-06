@@ -184,7 +184,8 @@ clone-tag will create the destination tag if it does not already exist
                                             'perm_id': 1,
                                             'maven_support': False,
                                             'maven_include_all': True,
-                                            'locked': False},
+                                            'locked': False,
+                                            'extra': {}},
                                            None,
                                            {'id': 2,
                                             'name': 'dst-tag',
@@ -192,7 +193,8 @@ clone-tag will create the destination tag if it does not already exist
                                             'perm_id': 1,
                                             'maven_support': False,
                                             'maven_include_all': True,
-                                            'locked': False}]
+                                            'locked': False,
+                                            'extra': {}}]
         self.session.multiCall.return_value = []
         handle_clone_tag(self.options, self.session, args)
         self.activate_session.assert_called_once()
@@ -204,7 +206,8 @@ clone-tag will create the destination tag if it does not already exist
                                                       locked=False,
                                                       maven_include_all=True,
                                                       maven_support=False,
-                                                      parent=None, perm=1),
+                                                      parent=None, perm=1,
+                                                      extra={}),
                                        call.getTag('dst-tag', strict=True),
                                        call.listPackages(event=None,
                                                          inherited=True,
@@ -460,19 +463,35 @@ List of changes:
                                             'perm_id': 1,
                                             'maven_support': False,
                                             'maven_include_all': True,
-                                            'locked': False},
+                                            'locked': False,
+                                            'extra': {}},
                                            {'id': 2,
                                             'name': 'dst-tag',
                                             'arches': 'arch1 arch2',
                                             'perm_id': 1,
                                             'maven_support': False,
                                             'maven_include_all': True,
-                                            'locked': False}]
+                                            'locked': False,
+                                            'extra': {}},
+                                           {'id': 2,
+                                            'name': 'dst-tag',
+                                            'arches': 'arch1 arch2',
+                                            'perm_id': 1,
+                                            'maven_support': False,
+                                            'maven_include_all': True,
+                                            'locked': False,
+                                            'extra': {}}]
         handle_clone_tag(self.options, self.session, args)
         self.activate_session.assert_called_once()
         self.session.assert_has_calls([call.hasPerm('admin'),
                                        call.getTag('src-tag', event=None),
                                        call.getTag('dst-tag'),
+                                       call.editTag2(2, arches='arch1 arch2',
+                                                     extra={}, locked=False,
+                                                     maven_include_all=True,
+                                                     maven_support=False,
+                                                     parent=None, perm=1),
+                                       call.getTag(2, strict=True),
                                        call.listPackages(event=None,
                                                          inherited=True,
                                                          tagID=1),
@@ -641,14 +660,24 @@ List of changes:
                                             'perm_id': 1,
                                             'maven_support': False,
                                             'maven_include_all': True,
-                                            'locked': False},
+                                            'locked': False,
+                                            'extra': {}},
                                            {'id': 2,
                                             'name': 'dst-tag',
                                             'arches': 'arch1 arch2',
                                             'perm_id': 1,
                                             'maven_support': False,
                                             'maven_include_all': True,
-                                            'locked': False}]
+                                            'locked': False,
+                                            'extra': {}},
+                                           {'id': 2,
+                                            'name': 'dst-tag',
+                                            'arches': 'arch1 arch2',
+                                            'perm_id': 1,
+                                            'maven_support': False,
+                                            'maven_include_all': True,
+                                            'locked': False,
+                                            'extra': {}}]
         handle_clone_tag(self.options, self.session, args)
         self.activate_session.assert_called_once()
         self.assert_console_message(stdout, """
@@ -718,14 +747,24 @@ List of changes:
                                             'perm_id': 1,
                                             'maven_support': False,
                                             'maven_include_all': True,
-                                            'locked': False},
+                                            'locked': False,
+                                            'extra': {}},
                                            {'id': 2,
                                             'name': 'dst-tag',
                                             'arches': 'arch1 arch2',
                                             'perm_id': 1,
                                             'maven_support': False,
                                             'maven_include_all': True,
-                                            'locked': False}]
+                                            'locked': False,
+                                            'extra': {}},
+                                           {'id': 2,
+                                            'name': 'dst-tag',
+                                            'arches': 'arch1 arch2',
+                                            'perm_id': 1,
+                                            'maven_support': False,
+                                            'maven_include_all': True,
+                                            'locked': False,
+                                            'extra': {}}]
         handle_clone_tag(self.options, self.session, args)
         self.activate_session.assert_called_once()
         self.assert_console_message(stdout, """
@@ -788,14 +827,24 @@ List of changes:
                                             'perm_id': 1,
                                             'maven_support': False,
                                             'maven_include_all': True,
-                                            'locked': False},
+                                            'locked': False,
+                                            'extra': {}},
                                            {'id': 2,
                                             'name': 'dst-tag',
                                             'arches': 'arch1 arch2',
                                             'perm_id': 1,
                                             'maven_support': False,
                                             'maven_include_all': True,
-                                            'locked': False}]
+                                            'locked': False,
+                                            'extra': {}},
+                                           {'id': 2,
+                                            'name': 'dst-tag',
+                                            'arches': 'arch1 arch2',
+                                            'perm_id': 1,
+                                            'maven_support': False,
+                                            'maven_include_all': True,
+                                            'locked': False,
+                                            'extra': {}}]
         handle_clone_tag(self.options, self.session, args)
         self.activate_session.assert_called_once()
         self.assert_console_message(stdout, """
