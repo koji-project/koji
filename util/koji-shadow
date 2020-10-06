@@ -34,7 +34,6 @@ import string
 import sys
 import time
 import urllib2
-import xmlrpc.client  # for Fault
 
 import requests
 import rpm

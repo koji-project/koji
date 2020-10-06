@@ -262,8 +262,8 @@ class DaemonXMLRPCServer(xmlrpc.server.SimpleXMLRPCServer):
                                                       logRequests=False)
         else:
             xmlrpc.server.SimpleXMLRPCServer.__init__(self, (addr, port),
-                                                     logRequests=False,
-                                                     allow_none=True)
+                                                      logRequests=False,
+                                                      allow_none=True)
         self.logger = logging.getLogger('koji.vm.DaemonXMLRPCServer')
         self.socket.settimeout(5)
         self.active = True

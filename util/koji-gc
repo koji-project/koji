@@ -467,7 +467,7 @@ def handle_trash():
     mcall = koji.MultiCallSession(session, batch=1000)
     for binfo in continuing:
         mcall.buildReferences(binfo['id'], limit=10, lazy=True)
-    for binfo, [refs] in zip(continuing, mcall.call_all():
+    for binfo, [refs] in zip(continuing, mcall.call_all()):
         i += 1
         nvr = binfo['nvr']
         # XXX - this is more data than we need
@@ -651,7 +651,7 @@ def handle_delete(just_salvage=False):
     mcall = koji.MultiCallSession(session, batch=1000)
     for nvr, binfo in trash:
         mcall.listTags(build=binfo['id'], perms=False)
-    for (nvr, binfo), [tags] in zip(trash, mcall.call_all():
+    for (nvr, binfo), [tags] in zip(trash, mcall.call_all()):
         # see if build has been tagged elsewhere
         tags = [t['name'] for t in tags if t['name'] != trashcan_tag]
         if tags:
@@ -709,7 +709,7 @@ def handle_delete(just_salvage=False):
             mcall.untagBuildBypass(trashcan_tag, binfo['id'])
             mcall.deleteBuild(binfo['id'])
 
-    for binfo, result in zip(continuing, mcall.call_all():
+    for binfo, result in zip(continuing, mcall.call_all()):
         if isinstance(result, dict):
             print("Warning: deletion failed: %s" % result['faultString'])
             # TODO - log details for delete failures
