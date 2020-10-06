@@ -1,10 +1,9 @@
 #!/usr/bin/python2
 
 import os
+import xmlrpc.client
+from configparser import RawConfigParser
 from optparse import OptionParser
-
-from six.moves import xmlrpc_client
-from six.moves.configparser import RawConfigParser
 
 import koji.db
 
@@ -71,7 +70,7 @@ def clean_scratch_tasks(cursor, vacuum, test, age):
     for row in cursor.fetchall():
         task_id, request = row
         try:
-            params, method = xmlrpc_client.loads(request)
+            params, method = xmlrpc.client.loads(request)
             opts = params[2]
             if opts['scratch']:
                 cursor.execute("INSERT INTO temp_scratch_tasks VALUES (%s)", (task_id,))

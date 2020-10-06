@@ -1,7 +1,5 @@
 from __future__ import absolute_import
 
-import sys
-
 from setuptools import setup
 
 
@@ -13,6 +11,7 @@ def get_install_requires():
 
     requires = [
         'python-dateutil',
+        'pyOpenSSL',
         'requests',
         'requests-gssapi',
         'six',
@@ -20,13 +19,6 @@ def get_install_requires():
         # 'rpm-py-installer', # it is optional feature
         # 'rpm',
     ]
-    # since pyOpenSSL-18.0.0, py26 support is dropped
-    # see https://pagure.io/koji/issue/1060
-    if sys.version_info[0] == 2 and sys.version_info[1] < 7:
-        requires.append('pyOpenSSL<18.0.0')
-    else:
-        requires.append('pyOpenSSL')
-
     return requires
 
 
@@ -51,7 +43,6 @@ setup(
         "Intended Audience :: Developers",
         "License :: OSI Approved :: GNU Lesser General Public License v2 or later (LGPLv2+)",
         "Natural Language :: English",
-        "Programming Language :: Python :: 2.6",
         "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
         "Operating System :: POSIX :: Linux",
@@ -74,6 +65,6 @@ setup(
         'util/koji-sweep-db',
         'util/kojira',
     ],
-    python_requires='>=2.6',
+    python_requires='>=2.7',
     install_requires=get_install_requires(),
 )

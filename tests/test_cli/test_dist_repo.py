@@ -3,10 +3,7 @@ from __future__ import print_function
 import copy
 import mock
 import six
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
+import unittest
 
 
 from koji_cli.commands import handle_dist_repo

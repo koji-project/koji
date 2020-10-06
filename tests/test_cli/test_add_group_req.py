@@ -1,9 +1,6 @@
 from __future__ import absolute_import
 import mock
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
+import unittest
 
 from koji_cli.commands import handle_add_group_req
 from . import utils

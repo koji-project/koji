@@ -5,10 +5,7 @@ import os
 import six
 import sys
 from six.moves import map
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
+import unittest
 
 
 PROGNAME = os.path.basename(sys.argv[0]) or 'koji'

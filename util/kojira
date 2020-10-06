@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/python3
 
 # Koji Repository Administrator (kojira)
 # Copyright (c) 2005-2014 Red Hat, Inc.
@@ -20,8 +20,6 @@
 # Authors:
 #       Mike McLean <mikem@redhat.com>
 
-from __future__ import absolute_import, division
-
 import errno
 import json
 import logging
@@ -38,7 +36,6 @@ from optparse import OptionParser
 from xml.etree import ElementTree
 
 import requests
-import six
 
 import koji
 from koji.util import deprecated, parseStatus, rmtree, to_list
@@ -300,9 +297,9 @@ class RepoManager(object):
     def printState(self):
         self.logger.debug('Tracking %i repos, %i child processes',
                           len(self.repos), len(self.delete_pids))
-        for tag_id, task_id in six.iteritems(self.tasks):
+        for tag_id, task_id in self.tasks.items():
             self.logger.debug("Tracking task %s for tag %s", task_id, tag_id)
-        for pid, desc in six.iteritems(self.delete_pids):
+        for pid, desc in self.delete_pids.items():
             self.logger.debug("Delete job %s: %r", pid, desc)
 
     def rmtree(self, path):

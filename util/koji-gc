@@ -1,12 +1,10 @@
-#!/usr/bin/python2
+#!/usr/bin/python3
 
 # koji-gc: a garbage collection tool for Koji
 # Copyright (c) 2007-2014 Red Hat, Inc.
 #
 # Authors:
 #       Mike McLean <mikem@redhat.com>
-
-from __future__ import absolute_import
 
 import datetime
 import fcntl
@@ -17,13 +15,11 @@ import pprint
 import smtplib
 import sys
 import time
+import xmlrpc.client  # for Fault
+from email.mime import text as MIMEText
 from string import Template
 
 import requests
-import six
-import six.moves.configparser
-import six.moves.xmlrpc_client  # for Fault
-from six.moves import email_mime_text as MIMEText
 
 import koji
 import koji.policy
@@ -471,7 +467,7 @@ def handle_trash():
     mcall = koji.MultiCallSession(session, batch=1000)
     for binfo in continuing:
         mcall.buildReferences(binfo['id'], limit=10, lazy=True)
-    for binfo, [refs] in six.moves.zip(continuing, mcall.call_all()):
+    for binfo, [refs] in zip(continuing, mcall.call_all()):
         i += 1
         nvr = binfo['nvr']
         # XXX - this is more data than we need
@@ -583,7 +579,7 @@ def handle_trash():
                     # best we can do currently
                     owner = binfo['owner_id']
                 else:
-                    owner = max([(n, k) for k, n in six.iteritems(count)])[1]
+                    owner = max([(n, k) for k, n in count.items()])[1]
                 mcall.packageListAdd(trashcan_tag, binfo['name'], owner)
                 mcall.tagBuildBypass(trashcan_tag, binfo['id'], force=True)
     # run all packageListAdd/tagBuildBypass finally
@@ -655,7 +651,7 @@ def handle_delete(just_salvage=False):
     mcall = koji.MultiCallSession(session, batch=1000)
     for nvr, binfo in trash:
         mcall.listTags(build=binfo['id'], perms=False)
-    for (nvr, binfo), [tags] in six.moves.zip(trash, mcall.call_all()):
+    for (nvr, binfo), [tags] in zip(trash, mcall.call_all()):
         # see if build has been tagged elsewhere
         tags = [t['name'] for t in tags if t['name'] != trashcan_tag]
         if tags:
@@ -713,7 +709,7 @@ def handle_delete(just_salvage=False):
             mcall.untagBuildBypass(trashcan_tag, binfo['id'])
             mcall.deleteBuild(binfo['id'])
 
-    for binfo, result in six.moves.zip(continuing, mcall.call_all()):
+    for binfo, result in zip(continuing, mcall.call_all()):
         if isinstance(result, dict):
             print("Warning: deletion failed: %s" % result['faultString'])
             # TODO - log details for delete failures
@@ -936,7 +932,7 @@ def handle_prune():
                             session.untagBuildBypass(taginfo['id'], entry['build_id'],
                                                      force=bypass)
                             untagged.setdefault(nvr, {})[tagname] = 1
-                        except (six.moves.xmlrpc_client.Fault, koji.GenericError) as e:
+                        except (xmlrpc.client.Fault, koji.GenericError) as e:
                             print("Warning: untag operation failed: %s" % e)
                             pass
                 # if action == 'keep' do nothing
@@ -970,7 +966,7 @@ def handle_prune():
                 print("Deleting untagged build: %s" % nvr)
                 try:
                     session.deleteBuild(build_id, strict=True)
-                except (six.moves.xmlrpc_client.Fault, koji.GenericError) as e:
+                except (xmlrpc.client.Fault, koji.GenericError) as e:
                     print("Warning: deletion failed: %s" % e)
                     # server issue
                     pass

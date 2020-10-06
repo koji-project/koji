@@ -26,8 +26,6 @@
 #   kojiwind --install
 # in a cygwin shell.
 
-from __future__ import absolute_import
-
 import base64
 import glob
 import hashlib
@@ -43,12 +41,11 @@ import traceback
 import zipfile
 from optparse import OptionParser
 
-import six
-import six.moves.xmlrpc_client
+import xmlrpc.client
 # urllib is required by the SCM class which is substituted into this file
 # do not remove the import below
-from six.moves import urllib  # noqa: F401
-from six.moves.configparser import RawConfigParser
+import urllib  # noqa: F401
+from configparser import RawConfigParser
 
 MANAGER_PORT = 7000
 
@@ -630,14 +627,12 @@ def get_mgmt_server():
         macaddr, gateway = find_net_info()
     logger.debug('found MAC address %s, connecting to %s:%s',
                  macaddr, gateway, MANAGER_PORT)
-    server = six.moves.xmlrpc_client.ServerProxy('http://%s:%s/' %
-                                                 (gateway, MANAGER_PORT), allow_none=True)
+    server = xmlrpc.client.ServerProxy('http://%s:%s/' % (gateway, MANAGER_PORT), allow_none=True)
     # we would set a timeout on the socket here, but that is apparently not
     # supported by python/cygwin/Windows
     task_port = server.getPort(macaddr)
     logger.debug('found task-specific port %s', task_port)
-    return six.moves.xmlrpc_client.ServerProxy('http://%s:%s/' % (gateway, task_port),
-                                               allow_none=True)
+    return xmlrpc.client.ServerProxy('http://%s:%s/' % (gateway, task_port), allow_none=True)
 
 
 def get_options():
@@ -690,7 +685,7 @@ def stream_logs(server, handler, builds):
                 logpath = os.path.join(build.source_dir, relpath)
                 if logpath not in logs:
                     logs[logpath] = (relpath, None)
-        for log, (relpath, fd) in six.iteritems(logs):
+        for log, (relpath, fd) in logs.items():
             if not fd:
                 if os.path.isfile(log):
                     try:

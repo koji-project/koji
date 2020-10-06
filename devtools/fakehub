@@ -1,15 +1,15 @@
-#!/usr/bin/python2
+#!/usr/bin/python3
 
 from __future__ import absolute_import, print_function
 
 import ast
+import io
 import os
 import os.path
 import pprint
 import sys
 
-from six.moves import cStringIO
-from six.moves.urllib.parse import quote
+from urllib.parse import quote
 
 sys.path.insert(0, os.getcwd())
 sys.path.insert(1, os.path.join(os.getcwd(), 'hub'))
@@ -94,7 +94,7 @@ def main():
     environ['SERVER_NAME'] = 'myserver'
     environ['SERVER_PORT'] = '443'
     environ['REQUEST_URI'] = get_url(environ)
-    environ['wsgi.input'] = cStringIO(get_request())
+    environ['wsgi.input'] = io.StringIO(get_request())
     environ['REQUEST_METHOD'] = 'POST'
     environ['CONTENT_TYPE'] = 'text/xml'
     set_config(environ)

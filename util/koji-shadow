@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/python3
 
 # koji-shadow: a tool to shadow builds between koji instances
 # Copyright (c) 2007-2016 Red Hat, Inc.
@@ -37,9 +37,6 @@ import urllib2
 
 import requests
 import rpm
-import six
-import six.moves.xmlrpc_client  # for Fault
-from six.moves import range
 
 import koji
 from koji.util import to_list
@@ -513,7 +510,7 @@ class TrackedBuild(object):
         #        changes happened during the build startup and some subtasks got the old
         #        repo and others the new one.
         base = []
-        for name, brlist in six.iteritems(bases):
+        for name, brlist in bases.items():
             # We want to determine for each name if that package was present
             # in /all/ the buildroots or just some.
             # Because brlist is constructed only from elements of buildroots, we
@@ -525,7 +522,7 @@ class TrackedBuild(object):
         if len(tags) > 1:
             log("Warning: found multiple buildroot tags for %s: %s" %
                 (self.nvr, to_list(tags.keys())))
-            counts = sorted([(n, tag) for tag, n in six.iteritems(tags)])
+            counts = sorted([(n, tag) for tag, n in tags.items()])
             tag = counts[-1][1]
         else:
             tag = to_list(tags.keys())[0]
@@ -973,7 +970,7 @@ class BuildTracker(object):
                 for pkg in session.listPackages(pkgID=name):
                     owners.setdefault(pkg['owner_id'], []).append(pkg)
                 if owners:
-                    order = sorted([(len(v), k) for k, v in six.iteritems(owners)])
+                    order = sorted([(len(v), k) for k, v in owners.items()])
                     owner = order[-1][1]
                 else:
                     # just use ourselves
@@ -1119,7 +1116,7 @@ class BuildTracker(object):
                     nvr = dep.substitute
                 problem_counts.setdefault(nvr, 0)
                 problem_counts[nvr] += 1
-        order = [(c, nvr) for (nvr, c) in six.iteritems(problem_counts)]
+        order = [(c, nvr) for (nvr, c) in problem_counts.items()]
         if order:
             order.sort(reverse=True)
             # print top 5 problems
@@ -1200,7 +1197,7 @@ class BuildTracker(object):
         ret = False
         if options.max_jobs and len(self.state_idx['pending']) >= options.max_jobs:
             return ret
-        missing = sorted([(b.order, b.id, b) for b in six.itervalues(self.state_idx['missing'])])
+        missing = sorted([(b.order, b.id, b) for b in self.state_idx['missing'].values()])
         for order, build_id, build in missing:
             if not self.checkBuildDeps(build):
                 continue

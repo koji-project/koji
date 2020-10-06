@@ -1,8 +1,5 @@
 from __future__ import absolute_import
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
+import unittest
 
 from six.moves import range
 

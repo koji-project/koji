@@ -4,10 +4,7 @@ import mock
 import six
 from mock import call
 
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
+import unittest
 
 import koji
 from koji_cli.commands import handle_clone_tag

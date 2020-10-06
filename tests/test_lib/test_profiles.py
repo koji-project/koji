@@ -6,10 +6,7 @@ import traceback
 import mock
 from six.moves import range
 
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
+import unittest
 
 class ProfilesTestCase(unittest.TestCase):
 
