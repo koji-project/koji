@@ -14,6 +14,11 @@ to Koji should leave this page knowing where to begin and have enough
 understanding of Koji's architecture to be able to estimate how much
 work is still ahead of them.
 
+Koji is written to support a variety of platforms and python versions,
+with some portions of Koji supported over a larger set than others.
+When making changes, please be considerate of those
+:doc:`supported_platforms`.
+
 Task Flow
 =========
 
@@ -688,6 +693,9 @@ You will need to install the packages below to run the check.
 
 Release process
 ===============
+
+Supported OS
+------------
 
 Merging PRs
 -----------

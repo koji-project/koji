@@ -49,6 +49,7 @@ Contents
     content_generator_metadata
     configuring_jenkins
     utils
+    supported_platforms
 
 HowTos
 ======
