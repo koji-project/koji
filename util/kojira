@@ -415,11 +415,11 @@ class RepoManager(object):
         # find latest timestamp across expanded urls
         max_ts = 0
         for arch_url in expanded_urls:
+            arch_url = os.path.join(arch_url, 'repodata/repomd.xml')
             if arch_url in self.external_repo_ts:
                 # just use the cache
                 max_ts = max(max_ts, self.external_repo_ts[arch_url])
                 continue
-            arch_url = os.path.join(arch_url, 'repodata/repomd.xml')
             self.logger.debug('Checking external url: %s' % arch_url)
             try:
                 r = requests.get(arch_url, timeout=5)
