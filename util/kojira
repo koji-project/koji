@@ -408,7 +408,7 @@ class RepoManager(object):
                 return False
             arches = taginfo.get('arches', '').split()
             if not arches:
-                self.logger.error('Tag with external repo lacks arches: %(name)s', taginfo)
+                self.logger.warning('Tag with external repo lacks arches: %(name)s', taginfo)
                 return False
             expanded_urls = [url.replace('$arch', a) for a in arches]
 
