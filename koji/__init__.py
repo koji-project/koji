@@ -1855,6 +1855,9 @@ def check_rpm_file(rpmfile):
 def _check_rpm_file(fo):
     """Check that the open file appears to be an rpm"""
     # TODO: trap exception and raise something with more infomation
+    if rpm is None:
+        logging.warning("python-rpm is not installed, file will not be checked")
+        return
     ts = rpm.TransactionSet()
     # for basic validity we can ignore sigs as there needn't be public keys installed
     ts.setVSFlags(rpm._RPMVSF_NOSIGNATURES)
