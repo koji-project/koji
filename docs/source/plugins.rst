@@ -159,6 +159,8 @@ And in scripts, you can use following calls:
     ks.gssapi_login()
     ks.createSideTag('f30-build')
 
+.. _protonmsg-config:
+
 Proton messaging
 ================
 

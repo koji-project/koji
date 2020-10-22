@@ -32,7 +32,7 @@ Hub Changes
 In some cases (especially ``hastag`` policy in combination with ``clone-tag``)
 there were allocated db cursors but not freed.
 
-**stricter config file permissions
+**stricter config file permissions**
 
 | PR: https://pagure.io/koji/pull-request/2474
 
