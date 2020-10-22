@@ -119,7 +119,7 @@ class Task(object):
         ('task.weight', 'weight'))
 
     def __init__(self, id):
-        self.id = id
+        self.id = int(id)
         self.logger = logging.getLogger("koji.hub.Task")
 
     def _split_fields(self, fields=None):
