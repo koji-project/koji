@@ -16,7 +16,7 @@ from koji_cli.lib import _, activate_session, arg_filter
 @export_cli
 def handle_add_sidetag(options, session, args):
     "Create sidetag"
-    usage = _("usage: %(prog)s add-sidetag [options] <basetag>")
+    usage = _("%(prog)s add-sidetag [options] <basetag>")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = ArgumentParser(usage=usage)
     parser.add_argument("basetag", help="name of basetag")
@@ -56,7 +56,7 @@ def handle_add_sidetag(options, session, args):
 @export_cli
 def handle_remove_sidetag(options, session, args):
     "Remove sidetag"
-    usage = _("usage: %(prog)s remove-sidetag [options] <sidetag> ...")
+    usage = _("%(prog)s remove-sidetag [options] <sidetag> ...")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = ArgumentParser(usage=usage)
     parser.add_argument("sidetags", help="name of sidetag", nargs="+")
@@ -73,7 +73,7 @@ def handle_remove_sidetag(options, session, args):
 @export_cli
 def handle_list_sidetags(options, session, args):
     "List sidetags"
-    usage = _("usage: %(prog)s list-sidetags [options]")
+    usage = _("%(prog)s list-sidetags [options]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = ArgumentParser(usage=usage)
     parser.add_argument("--basetag", action="store", help=_("Filter on basetag"))
@@ -98,7 +98,7 @@ def handle_list_sidetags(options, session, args):
 @export_cli
 def handle_edit_sidetag(options, session, args):
     "Edit sidetag"
-    usage = _("usage: %(prog)s edit-sidetag [options]")
+    usage = _("%(prog)s edit-sidetag [options]")
     usage += _("\n(Specify the --help global option for a list of other help options)")
     parser = ArgumentParser(usage=usage)
     parser.add_argument("sidetag", help="name of sidetag")
