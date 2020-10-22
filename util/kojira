@@ -780,10 +780,14 @@ class RepoManager(object):
 
         n_need = len(self.needed_tags)
         ignore = self.options.ignore_tags.split()
-        self.build_tags = set([
-            t['build_tag'] for t in self.session.getBuildTargets()
-            if not koji.util.multi_fnmatch(t['build_tag_name'], ignore)
-        ])
+        self.build_tags = set()
+        self.ignored_build_tags = set()
+        for t in self.session.getBuildTargets():
+            if koji.util.multi_fnmatch(t['build_tag_name'], ignore):
+                self.ignored_build_tags.add(t['build_tag'])
+            else:
+                self.build_tags.add(t['build_tag'])
+
         # index repos by tag
         tag_repos = {}
         for repo in to_list(self.repos.values()):
@@ -846,7 +850,7 @@ class RepoManager(object):
                                  entry['taginfo'])
                 del self.needed_tags[tag_id]
         for tag_id, repolist in tag_repos.items():
-            if tag_id not in self.build_tags:
+            if tag_id not in self.build_tags and not in self.ignored_build_tags:
                 # repos for these tags are no longer required
                 for repo in repolist:
                     if repo.ready():
