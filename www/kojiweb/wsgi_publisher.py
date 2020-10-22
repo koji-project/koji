@@ -78,6 +78,8 @@ class Dispatcher(object):
         ['KrbCanonHost', 'boolean', False],
         ['KrbServerRealm', 'string', None],
 
+        ['WebAuth', 'string', None],
+
         ['WebCert', 'string', None],
         ['KojiHubCA', 'string', '/etc/kojiweb/kojihubca.crt'],
 
