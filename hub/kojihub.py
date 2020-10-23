@@ -10265,6 +10265,7 @@ class RootExports(object):
         return make_task('image', [name, version, arches, target, inst_tree, opts], **taskOpts)
 
     def hello(self, *args):
+        """Simple testing call returning a string"""
         return "Hello World"
 
     def fault(self):
@@ -10293,9 +10294,11 @@ class RootExports(object):
         return bool(context.opts.get('EnableWin'))
 
     def showSession(self):
+        """Return string representation of session for current user"""
         return "%s" % context.session
 
     def getSessionInfo(self):
+        """Return session info for current user"""
         if not context.session.logged_in:
             return None
         return context.session.session_data

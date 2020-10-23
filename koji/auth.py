@@ -748,6 +748,15 @@ def get_user_data(user_id):
 
 
 def login(*args, **opts):
+    """Create a login session with plain user/password credentials.
+
+    :param str user: username
+    :param str password: password
+    :param dict opts: curently can contain only 'host_ip' key for overriding client IP address
+
+    :returns dict: session info
+    """
+
     return context.session.login(*args, **opts)
 
 
@@ -756,18 +765,29 @@ def krbLogin(*args, **opts):
 
 
 def sslLogin(*args, **opts):
+    """Login via SSL certificate
+
+    :param str proxyuser: proxy username
+    :returns dict: session info
+    """
     return context.session.sslLogin(*args, **opts)
 
 
 def logout():
+    """expire a login session"""
     return context.session.logout()
 
 
 def subsession():
+    """Create a subsession"""
     return context.session.subsession()
 
 
 def logoutChild(session_id):
+    """expire a subsession
+
+    :param int subsession_id: subsession ID (for current session)
+    """
     return context.session.logoutChild(session_id)
 
 
