@@ -406,7 +406,7 @@ class RepoManager(object):
             if not taginfo:
                 self.logger.error('Invalid tag for external repo: %s', tag)
                 return False
-            arches = taginfo.get('arches', '').split()
+            arches = (taginfo.get('arches', '') or '').split()
             if not arches:
                 self.logger.warning('Tag with external repo lacks arches: %(name)s', taginfo)
                 return False
