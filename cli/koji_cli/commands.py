@@ -3009,6 +3009,7 @@ def anon_handle_list_builds(goptions, session, args):
     parser.add_option("--task", help=_("List builds for this task"))
     parser.add_option("--type", help=_("List builds of this type."))
     parser.add_option("--prefix", help=_("Only builds starting with this prefix"))
+    parser.add_option("--pattern", help=_("Only list builds matching this GLOB pattern"))
     parser.add_option("--source", help=_("Only builds where the source field matches "
                                          "(glob pattern)"))
     parser.add_option("--owner", help=_("List builds built by this owner"))
@@ -3024,7 +3025,7 @@ def anon_handle_list_builds(goptions, session, args):
         parser.error(_("This command takes no arguments"))
     ensure_connection(session)
     opts = {}
-    for key in ('type', 'prefix'):
+    for key in ('type', 'prefix', 'pattern'):
         value = getattr(options, key)
         if value is not None:
             opts[key] = value
