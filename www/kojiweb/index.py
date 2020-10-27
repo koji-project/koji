@@ -511,7 +511,7 @@ def tasks(environ, owner=None, state='active', view='tree', method='all', hostID
     else:
         method = 'all'
     values['method'] = method
-    values['alltasks'] = _TASKS + environ['koji.options']['Tasks']
+    values['alltasks'] = sorted(_TASKS + environ['koji.options']['Tasks'])
 
     treeEnabled = True
     if hostID or (method not in ['all'] + _PARENT_TASKS + environ['koji.options']['ParentTasks']):
