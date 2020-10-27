@@ -780,20 +780,20 @@ class RepoManager(object):
 
         n_need = len(self.needed_tags)
         ignore = self.options.ignore_tags.split()
-        self.build_tags = set()
-        self.ignored_build_tags = set()
+        build_tags = set()
+        ignored_build_tags = set()
         for t in self.session.getBuildTargets():
             if koji.util.multi_fnmatch(t['build_tag_name'], ignore):
-                self.ignored_build_tags.add(t['build_tag'])
+                ignored_build_tags.add(t['build_tag'])
             else:
-                self.build_tags.add(t['build_tag'])
+                build_tags.add(t['build_tag'])
 
         # index repos by tag
         tag_repos = {}
         for repo in to_list(self.repos.values()):
             tag_repos.setdefault(repo.tag_id, []).append(repo)
 
-        for tag_id in self.build_tags:
+        for tag_id in build_tags:
             covered = False
             for repo in tag_repos.get(tag_id, []):
                 if repo.current:
@@ -845,12 +845,12 @@ class RepoManager(object):
         # some cleanup
         for tag_id in list(self.needed_tags):
             entry = self.needed_tags.get(tag_id)
-            if tag_id not in self.build_tags:
+            if tag_id not in build_tags:
                 self.logger.info("Tag %(name)s is no longer a build tag",
                                  entry['taginfo'])
                 del self.needed_tags[tag_id]
         for tag_id, repolist in tag_repos.items():
-            if tag_id not in self.build_tags and not in self.ignored_build_tags:
+            if tag_id not in build_tags and tag_id not in ignored_build_tags:
                 # repos for these tags are no longer required
                 for repo in repolist:
                     if repo.ready():
