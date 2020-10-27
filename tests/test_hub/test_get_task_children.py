@@ -29,7 +29,7 @@ class TestGetTaskChildren(unittest.TestCase):
         q.execute.return_value = []
         self.QueryProcessor.side_effect = [q]
 
-        r = self.exports.getTaskChildren("bogus_item")
+        r = self.exports.getTaskChildren(1000)
 
         self.assertEqual(r, [])
 
@@ -40,7 +40,7 @@ class TestGetTaskChildren(unittest.TestCase):
         self.QueryProcessor.side_effect = [q]
 
         with self.assertRaises(koji.GenericError):
-            self.exports.getTaskChildren("bogus_item", strict=True)
+            self.exports.getTaskChildren(1000, strict=True)
 
     def test_get_task_children(self):
         children = [{'id': 1}]
@@ -48,6 +48,6 @@ class TestGetTaskChildren(unittest.TestCase):
         q.execute.return_value = children
         self.QueryProcessor.side_effect = [q]
 
-        r = self.exports.getTaskChildren("bogus_item")
+        r = self.exports.getTaskChildren(1000)
 
         self.assertEqual(r, children)
