@@ -37,6 +37,7 @@ LIVEMEDIA_OPTIONS = {
     "install_tree_url": None,
     "lorax_dir": None,
     "lorax_url": None,
+    "nomacboot": False,
     "optional_arches": None,
     "volid": None,
 }
@@ -422,6 +423,7 @@ Options:
   --lorax_url=URL       The URL to the SCM containing any custom lorax
                         templates that are to be used to override the default
                         templates.
+  --nomacboot           Pass the nomacboot option to livemedia-creator
 """ % (self.progname))
 
 

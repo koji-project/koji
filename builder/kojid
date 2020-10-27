@@ -3553,7 +3553,7 @@ class LiveMediaTask(ImageTask):
                     '--releasever', version,
                     ])
 
-        if arch == 'x86_64':
+        if arch == 'x86_64' and not opts.get('nomacboot'):
             cmd.append('--macboot')
         else:
             cmd.append('--nomacboot')
