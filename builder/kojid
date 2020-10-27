@@ -5594,7 +5594,9 @@ class CreaterepoTask(BaseTaskHandler):
 
         # run command
         logfile = '%s/mergerepos.log' % self.workdir
-        status = log_output(self.session, cmd[0], cmd, logfile, self.getUploadDir(), logerror=True)
+        env = {'TMPDIR': self.workdir}
+        status = log_output(self.session, cmd[0], cmd, logfile, self.getUploadDir(),
+                            logerror=True, env=env)
         if not isSuccess(status):
             raise koji.GenericError('failed to merge repos: %s'
                                     % parseStatus(status, ' '.join(cmd)))
