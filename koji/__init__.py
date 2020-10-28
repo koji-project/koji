@@ -2775,10 +2775,12 @@ class ClientSession(object):
                 except RequestException as e:
                     _err_res = e.response
                     _err_req = e.request
-                    if _err:
-                        self.logger.error('Response error: %s::%s::%s' % (_err_res.status_code, _err_res.text, str(_err_res)))
+                    if _err_res:
+                        _values = (_err_res.status_code, _err_res.text, str(_err_res))
+                        self.logger.error('Response error: %s::%s::%s' % _values)
                     else:
-                        self.logger.error('Request error: %s::%s::%s' % (_err_req.method, _err_req.url, str(_err_req)))
+                        _values = (_err_req.method, _err_req.url, str(_err_req))
+                        self.logger.error('Request error: %s::%s::%s' % _values)
                     raise
                 except Exception as e:
                     tb_str = ''.join(traceback.format_exception(*sys.exc_info()))

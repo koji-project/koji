@@ -176,7 +176,7 @@ def _getServer(environ):
     opts = {
         'serverca': koji_opts.get('KojiHubCA', '')
     }
-    
+
     session = koji.ClientSession(koji_opts['KojiHubURL'], opts=opts)
 
     environ['koji.currentLogin'] = _getUserCookie(environ)

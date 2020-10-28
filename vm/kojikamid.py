@@ -40,7 +40,6 @@ import time
 import traceback
 import zipfile
 from optparse import OptionParser
-
 import xmlrpc.client
 # urllib is required by the SCM class which is substituted into this file
 # do not remove the import below
