@@ -3675,7 +3675,7 @@ def delete_external_repo(info):
     update.execute()
 
 
-def add_external_repo_to_tag(tag_info, repo_info, priority, merge_mode='koji'):
+def add_external_repo_to_tag(tag_info, repo_info, priority, merge_mode='koji', arches=None):
     """Add an external repo to a tag"""
 
     context.session.assertPerm('tag')
@@ -3701,7 +3701,7 @@ def add_external_repo_to_tag(tag_info, repo_info, priority, merge_mode='koji'):
 
     insert = InsertProcessor('tag_external_repos')
     insert.set(tag_id=tag_id, external_repo_id=repo_id, priority=priority,
-               merge_mode=merge_mode)
+               merge_mode=merge_mode, arches=arches)
     insert.make_create()
     insert.execute()
 
@@ -3726,7 +3726,7 @@ def remove_external_repo_from_tag(tag_info, repo_info):
     update.execute()
 
 
-def edit_tag_external_repo(tag_info, repo_info, priority=None, merge_mode=None):
+def edit_tag_external_repo(tag_info, repo_info, priority=None, merge_mode=None, arches=None):
     """Edit a tag<->external repo association
     This allows you to update the priority and merge_mode without removing/adding the repo.
 
@@ -3747,7 +3747,7 @@ def edit_tag_external_repo(tag_info, repo_info, priority=None, merge_mode=None):
     tag_repo = tag_repos[0]
 
     data = {}
-    for k in ('priority', 'merge_mode'):
+    for k in ('priority', 'merge_mode', 'arches'):
         val = locals().get(k)
         # None value means no change
         if val is not None and val != tag_repo[k]:
@@ -3755,7 +3755,7 @@ def edit_tag_external_repo(tag_info, repo_info, priority=None, merge_mode=None):
     if not data:
         return False
     else:
-        for k in ('priority', 'merge_mode'):
+        for k in ('priority', 'merge_mode', 'arches'):
             data.setdefault(k, tag_repo[k])
         remove_external_repo_from_tag(tag_id, repo_id)
         add_external_repo_to_tag(tag_id, repo_id, **data)
@@ -3800,6 +3800,7 @@ def get_tag_external_repos(tag_info=None, repo_info=None, event=None):
         'tag.name': 'tag_name',
         'url': 'url',
         'merge_mode': 'merge_mode',
+        'arches': 'arches',
     }
     columns, aliases = zip(*fields.items())
 
@@ -10553,7 +10554,7 @@ class RootExports(object):
     deleteExternalRepo = staticmethod(delete_external_repo)
 
     def addExternalRepoToTag(self, tag_info, repo_info, priority,
-                             merge_mode='koji'):
+                             merge_mode='koji', arches=None):
         """Add an external repo to a tag.
 
         :param tag_info: Tag name or ID number
@@ -10564,7 +10565,8 @@ class RootExports(object):
                                the default is "koji".
         """
         # wrap the local method so we don't expose the event parameter
-        add_external_repo_to_tag(tag_info, repo_info, priority, merge_mode)
+        add_external_repo_to_tag(tag_info, repo_info, priority,
+                                 merge_mode=merge_mode, arches=arches)
 
     def removeExternalRepoFromTag(self, tag_info, repo_info):
         """
