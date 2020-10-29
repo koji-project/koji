@@ -210,10 +210,11 @@ def _redirect(environ, location):
 
 
 def _redirectBack(environ, page, forceSSL):
+    localurl = '%s://%s' % (environ['REQUEST_SCHEME'], environ['SERVER_NAME'])
     if page:
         # We'll work with the page we were given
         pass
-    elif 'HTTP_REFERER' in environ:
+    elif environ.get('HTTP_REFERER', '').startswith(localurl):
         page = environ['HTTP_REFERER']
     else:
         page = 'index'
