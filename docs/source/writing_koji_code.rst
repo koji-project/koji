@@ -694,9 +694,6 @@ You will need to install the packages below to run the check.
 Release process
 ===============
 
-Supported OS
-------------
-
 Merging PRs
 -----------
 
