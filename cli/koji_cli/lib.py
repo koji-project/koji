@@ -722,9 +722,14 @@ def _list_tasks(options, session):
     "Retrieve a list of tasks"
 
     callopts = {
-        'state': [koji.TASK_STATES[s] for s in ('FREE', 'OPEN', 'ASSIGNED')],
         'decode': True,
     }
+    if not options.all:
+        callopts['state'] = [koji.TASK_STATES[s] for s in ('FREE', 'OPEN', 'ASSIGNED')]
+    if options.after:
+        callopts['startedAfter'] = options.after
+    if options.before:
+        callopts['startedBefore'] = options.before
 
     if getattr(options, 'mine', False):
         if getattr(options, 'user', None):

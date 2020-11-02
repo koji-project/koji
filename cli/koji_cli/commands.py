@@ -6391,9 +6391,21 @@ def handle_list_tasks(goptions, session, args):
     parser.add_option("--host", help=_("Only tasks for this host"))
     parser.add_option("--quiet", action="store_true", default=goptions.quiet,
                       help=_("Do not display the column headers"))
+    parser.add_option("--before",
+                      help=_("List builds built before this time, "
+                             "time is specified as timestamp or date/time in any "
+                             "format which can be parsed by dateutil.parser. e.g. "
+                             "\"2020-12-31 12:35\" or \"December 31st 12:35\""))
+    parser.add_option("--after",
+                      help=_("List builds built after this time (same format as for --before"))
+    parser.add_option("--all", action="store_true",
+                      help=_("List also finished tasks (valid only with --after)"))
     (options, args) = parser.parse_args(args)
     if len(args) != 0:
         parser.error(_("This command takes no arguments"))
+
+    if options.all and not options.after:
+        parser.error(_("--all must be used with --after"))
 
     activate_session(session, goptions)
     tasklist = _list_tasks(options, session)
