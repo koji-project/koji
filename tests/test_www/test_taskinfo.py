@@ -249,8 +249,7 @@ class TestTaskInfo(unittest.TestCase):
         server = self.__get_server(task)
         self.get_server.return_value = server
         webidx.taskinfo(self.environ, self.task_id)
-        server.getTag.assert_not_called()
-        self.assertEqual(self.environ['koji.values']['buildTag'], 'testBuildMaven')
+        server.getTag.assert_called_with('testBuildMaven', strict=True)
 
         # case 3. buildSRPMFromSCM
         task = copy.deepcopy(self.task)

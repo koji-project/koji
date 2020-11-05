@@ -38,7 +38,13 @@ $value
 #if $task.method == 'buildSRPMFromSCM'
 <strong>SCM URL:</strong> $params[0]<br/>
 #if $len($params) > 1
-<strong>Build Tag:</strong> <a href="taginfo?tagID=$quote($buildTag)">$buildTag</a><br/>
+<strong>Build Tag:</strong>
+#if $buildTag.id
+<a href="taginfo?tagID=$buildTag.id">$buildTag.name</a>
+#else
+$buildTag.name
+#end if
+<br/>
 #end if
 #if $len($params) > 2
 $printOpts($params[2])
@@ -47,7 +53,13 @@ $printOpts($params[2])
 <strong>CVS URL:</strong> $params[0]
 #elif $task.method == 'buildArch'
 <strong>SRPM:</strong> $params[0]<br/>
-<strong>Build Tag:</strong> <a href="taginfo?tagID=$quote($buildTag)">$buildTag</a><br/>
+<strong>Build Tag:</strong>
+#if $buildTag.id
+<a href="taginfo?tagID=$buildTag.id">$buildTag.name</a>
+#else
+$buildTag.name
+#end if
+<br/>
 <strong>Arch:</strong> $params[2]<br/>
 <strong>Keep SRPM?</strong> #if $params[3] then 'yes' else 'no'#<br/>
 #if $len($params) > 4
@@ -92,7 +104,13 @@ $printOpts($params[2])
 $printOpts($params[2])
 #elif $task.method == 'buildMaven'
 <strong>SCM URL:</strong> $params[0]<br/>
-<strong>Build Tag:</strong> <a href="taginfo?tagID=$buildTag.id">$buildTag.name</a><br/>
+<strong>Build Tag:</strong>
+#if $buildTag.id
+<a href="taginfo?tagID=$buildTag.id">$buildTag.name</a>
+#else
+$buildTag.name
+#end if
+<br/>
 #if $len($params) > 2
 $printOpts($params[2])
 #end if
@@ -100,7 +118,13 @@ $printOpts($params[2])
 <strong>Spec File URL:</strong> $params[0]<br/>
 #if 'locked' in $buildTarget
 #set $buildTag = $buildTarget.name
-<strong>Build Tag:</strong> <a href="taginfo?tagID=$quote($buildTag)">$buildTag</a><br/>
+<strong>Build Tag:</strong>
+#if $buildTag.id
+<a href="taginfo?tagID=$buildTag.id">$buildTag.name</a>
+#else
+$buildTag.name
+#end if
+<br/>
 #else
 <strong>Build Target:</strong> <a href="buildtargetinfo?targetID=$buildTarget.id">$buildTarget.name</a><br/>
 #end if

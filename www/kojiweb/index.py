@@ -651,20 +651,12 @@ def taskinfo(environ, taskID):
     buildroots = server.listBuildroots(taskID=task['id'])
     values['buildroots'] = buildroots
 
-    if task['method'] == 'buildArch':
-        try:
-            values['buildTag'] = server.getTag(params[1], strict=True)['name']
-        except koji.GenericError:
-            values['buildTag'] = "%d (deleted)" % params[1]
-    elif task['method'] == 'buildMaven':
-        buildTag = params[1]
-        values['buildTag'] = buildTag
-    elif task['method'] == 'buildSRPMFromSCM':
+    if task['method'] in ('buildArch', 'buildMaven', 'buildSRPMFromSCM'):
         if len(params) > 1:
             try:
-                values['buildTag'] = server.getTag(params[1], strict=True)['name']
+                values['buildTag'] = server.getTag(params[1], strict=True)
             except koji.GenericError:
-                values['buildTag'] = "%d (deleted)" % params[1]
+                values['buildTag'] = {'name': "%d (deleted)" % params[1], 'id': None}
     elif task['method'] == 'tagBuild':
         destTag = server.getTag(params[0])
         build = server.getBuild(params[1])
