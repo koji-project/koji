@@ -275,7 +275,7 @@ class RepoManager(object):
         self._local = threading.local()
         self._local.session = session
         self.repos = {}
-        self.external_repos = {}
+        self.external_repo_ts = {}
         self.tasks = {}
         self.recent_tasks = {}
         self.other_tasks = {}
@@ -398,32 +398,44 @@ class RepoManager(object):
     def checkExternalRepo(self, ts, repodata, tag):
         """Determine which external repos are current, return True if remote repo is newer"""
         url = repodata['url']
-        if url not in self.external_repos:
-            self.external_repos[url] = 0
-            arches = []  # placeholder for repos without $arch bit
+
+        # expand the arch urls if needed
+        expanded_urls = [url]
+        if '$arch' in url:
+            taginfo = getTag(self.session, tag)
+            if not taginfo:
+                self.logger.error('Invalid tag for external repo: %s', tag)
+                return False
+            arches = (taginfo.get('arches', '') or '').split()
+            if not arches:
+                self.logger.warning('Tag with external repo lacks arches: %(name)s', taginfo)
+                return False
+            expanded_urls = [url.replace('$arch', a) for a in arches]
+
+        # find latest timestamp across expanded urls
+        max_ts = 0
+        for arch_url in expanded_urls:
+            arch_url = os.path.join(arch_url, 'repodata/repomd.xml')
+            if arch_url in self.external_repo_ts:
+                # just use the cache
+                max_ts = max(max_ts, self.external_repo_ts[arch_url])
+                continue
+            self.logger.debug('Checking external url: %s' % arch_url)
             try:
-                arches = getTag(self.session, tag)['arches'].split()
-            except AttributeError:
+                r = requests.get(arch_url, timeout=5)
+                root = ElementTree.fromstring(r.text)
+                ts_elements = root.iter('{http://linux.duke.edu/metadata/repo}timestamp')
+                arch_ts = max([int(child.text) for child in ts_elements])
+                self.external_repo_ts[arch_url] = arch_ts
+                max_ts = max(max_ts, arch_ts)
+            except Exception:
+                # inaccessible or without timestamps
+                # treat repo as unchanged (ts = 0)
+                self.logger.warning('Unable to read timestamp for external repo: %s', arch_url)
+                self.external_repo_ts[arch_url] = 0
                 pass
-            for arch in arches:
-                if '$arch' in url:
-                    arch_url = url.replace('$arch', arch)
-                else:
-                    arch_url = url
-                arch_url = os.path.join(arch_url, 'repodata/repomd.xml')
-                self.logger.debug('Checking external url: %s' % arch_url)
-                try:
-                    r = requests.get(arch_url, timeout=5)
-                    root = ElementTree.fromstring(r.text)
-                    for child in root.iter('{http://linux.duke.edu/metadata/repo}timestamp'):
-                        remote_ts = int(child.text)
-                        if remote_ts > self.external_repos[url]:
-                            self.external_repos[url] = remote_ts
-                except Exception:
-                    # inaccessible or without timestamps
-                    # treat repo as unchanged (ts = 0)
-                    pass
-        return ts < self.external_repos[url]
+
+        return ts < max_ts
 
     def reposToCheck(self):
         to_check = []
@@ -451,7 +463,7 @@ class RepoManager(object):
     def checkExternalRepos(self):
         """Determine which external repos changed"""
         # clean external repo cache
-        self.external_repos = {}
+        self.external_repo_ts = {}
         for repo in self.reposToCheck():
             changed = False
             for tag in repo.taglist:
