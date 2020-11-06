@@ -3023,25 +3023,26 @@ class ImageTask(BaseTaskHandler):
         # in the kickstart file. If --repo wasn't specified, then we use the
         # repo associated with the target passed in initially.
         repo_class = kscontrol.dataMap[self.ks.version]['RepoData']
-        self.ks.handler.repo.repoList = []  # delete whatever the ks file told us
-        if opts.get('repo'):
-            user_repos = opts['repo']
-            if isinstance(user_repos, six.string_types):
-                user_repos = user_repos.split(',')
-            index = 0
-            for user_repo in user_repos:
+        if not opts.get('ksrepo'):
+            self.ks.handler.repo.repoList = []  # delete whatever the ks file told us
+            if opts.get('repo'):
+                user_repos = opts['repo']
+                if isinstance(user_repos, six.string_types):
+                    user_repos = user_repos.split(',')
+                index = 0
+                for user_repo in user_repos:
+                    self.ks.handler.repo.repoList.append(repo_class(
+                        baseurl=user_repo, name='koji-override-%i' % index))
+                    index += 1
+            else:
+                path_info = koji.PathInfo(topdir=self.options.topurl)
+                repopath = path_info.repo(repo_info['id'],
+                                          target_info['build_tag_name'])
+                baseurl = '%s/%s' % (repopath, arch)
+                self.logger.debug('BASEURL: %s' % baseurl)
                 self.ks.handler.repo.repoList.append(repo_class(
-                    baseurl=user_repo, name='koji-override-%i' % index))
-                index += 1
-        else:
-            path_info = koji.PathInfo(topdir=self.options.topurl)
-            repopath = path_info.repo(repo_info['id'],
-                                      target_info['build_tag_name'])
-            baseurl = '%s/%s' % (repopath, arch)
-            self.logger.debug('BASEURL: %s' % baseurl)
-            self.ks.handler.repo.repoList.append(repo_class(
-                baseurl=baseurl, name='koji-%s-%i' % (target_info['build_tag_name'],
-                                                      repo_info['id'])))
+                    baseurl=baseurl, name='koji-%s-%i' % (target_info['build_tag_name'],
+                                                          repo_info['id'])))
         # inject url if provided
         if opts.get('install_tree_url'):
             self.ks.handler.url(url=opts['install_tree_url'])

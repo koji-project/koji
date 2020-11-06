@@ -5703,6 +5703,8 @@ def handle_spin_livemedia(options, session, args):
                              'default templates.'))
     parser.add_option('--nomacboot', action="store_true",
                       help=_("Pass the nomacboot option to livemedia-creator"))
+    parser.add_option('--ksrepo', action="store_true",
+                      help=_("Do not overwrite repos in the kickstart"))
     (task_options, args) = parser.parse_args(args)
 
     # Make sure the target and kickstart is specified.
@@ -6085,7 +6087,7 @@ def _build_image(options, task_opts, session, args, img_type):
         'format', 'install_tree_url', 'isoname', 'ksurl',
         'ksversion', 'release', 'repo', 'scratch', 'skip_tag',
         'specfile', 'vcpu', 'vmem', 'volid', 'optional_arches',
-        'lorax_dir', 'lorax_url', 'nomacboot',
+        'lorax_dir', 'lorax_url', 'nomacboot', 'ksrepo',
     ]
     for opt in passthru_opts:
         val = getattr(task_opts, opt, None)
