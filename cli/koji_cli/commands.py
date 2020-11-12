@@ -5592,8 +5592,11 @@ def handle_remove_external_repo(goptions, session, args):
         if tags:
             parser.error(_("Do not specify tags when using --alltags"))
         if not current_tags:
-            print(_("External repo %s not associated with any tags") % repo)
-            return 0
+            if options.force:
+                delete = True
+            else:
+                warn(_("External repo %s not associated with any tags") % repo)
+                return 0
         tags = current_tags
     if delete:
         # removing entirely
