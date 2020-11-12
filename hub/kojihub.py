@@ -6284,22 +6284,24 @@ class CG_Importer(object):
     def assert_cg_access(self):
         """Check that user has access for all referenced content generators"""
 
-        cgs = set()
+        cg_id = None
         for brdata in self.metadata['buildroots']:
             cginfo = brdata['content_generator']
             cg = lookup_name('content_generator', cginfo['name'], strict=True)
-            cgs.add(cg['id'])
-            brdata['cg_id'] = cg['id']
-        for cg_id in cgs:
-            assert_cg(cg_id)
-        self.cgs = cgs
+            if cg_id is None:
+                cg_id = cg['id']
+            elif cg_id != cg['id']:
+                raise koji.GenericError("Koji now support only one content-generator per import")
+            brdata['cg_id'] = cg_id
+        assert_cg(cg_id)
+        self.cg = cg_id
 
     def assert_policy(self):
         policy_data = {
             'package': self.buildinfo['name'],
             'source': self.buildinfo.get('source'),
             'metadata_only': self.metadata_only,
-            'cg_list': list(self.cgs),
+            'cg_list': [self.cg],
             # TODO: provide more data
         }
         assert_policy('cg_import', policy_data)
@@ -6312,7 +6314,7 @@ class CG_Importer(object):
             'version': self.buildinfo['version'],
             'release': self.buildinfo['release'],
             'source': self.buildinfo['source'],
-            'cg_list': list(self.cgs),
+            'cg_list': [self.cg],
             'import': True,
             'import_type': 'cg',
         }
@@ -6334,10 +6336,7 @@ class CG_Importer(object):
     def prep_build(self, token=None):
         metadata = self.metadata
         if metadata['build'].get('build_id'):
-            if len(self.cgs) != 1:
-                raise koji.GenericError(
-                    "Reserved builds can handle only single content generator.")
-            cg_id = list(self.cgs)[0]
+            cg_id = self.cg
             build_id = metadata['build']['build_id']
             buildinfo = get_build(build_id, strict=True)
             build_token = get_reservation_token(build_id)
@@ -6381,6 +6380,7 @@ class CG_Importer(object):
             if not isinstance(owner, str):
                 raise koji.GenericError("Invalid owner format (expected username): %s" % owner)
             buildinfo['owner'] = get_user(owner, strict=True)['id']
+        buildinfo['cg_id'] = self.cg
         self.buildinfo = buildinfo
 
         koji.check_NVR(buildinfo, strict=True)
