@@ -38,6 +38,7 @@ LIVEMEDIA_OPTIONS = {
     "lorax_dir": None,
     "lorax_url": None,
     "nomacboot": False,
+    "ksrepo": False,
     "optional_arches": None,
     "volid": None,
 }
@@ -424,6 +425,7 @@ Options:
                         templates that are to be used to override the default
                         templates.
   --nomacboot           Pass the nomacboot option to livemedia-creator
+  --ksrepo              Do not overwrite repos in the kickstart
 """ % (self.progname))
 
 
