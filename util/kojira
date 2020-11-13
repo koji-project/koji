@@ -754,7 +754,11 @@ class RepoManager(object):
             if tstate == 'CLOSED':
                 self.logger.info("Finished: newRepo task %s for tag %s", task_id, tag_id)
                 del self.tasks[task_id]
-                del self.needed_tags[tag_id]
+                try:
+                    del self.needed_tags[tag_id]
+                except KeyError:
+                    # it could be already removed by checkNeeded
+                    pass
             elif tstate in ('CANCELED', 'FAILED'):
                 self.logger.info(
                     "Problem: newRepo task %s for tag %s is %s", task_id, tag_id, tstate)
@@ -809,7 +813,11 @@ class RepoManager(object):
                     # no longer needed
                     self.logger.info("Tag %(name)s has a current or in "
                                      "progress repo", entry['taginfo'])
-                    del self.needed_tags[tag_id]
+                    try:
+                        del self.needed_tags[tag_id]
+                    except KeyError:
+                        # it could be already deleted by checkTasks
+                        pass
                 # if not covered, we already know
                 continue
             if covered:
