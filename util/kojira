@@ -275,7 +275,6 @@ class RepoManager(object):
         self.repos = {}
         self.external_repo_ts = {}
         self.tasks = {}
-        self.recent_tasks = {}
         self.other_tasks = {}
         self.needed_tags = {}
         self.tag_use_stats = {}
@@ -743,9 +742,6 @@ class RepoManager(object):
 
         # prune recent tasks
         now = time.time()
-        for task_id in list(self.recent_tasks):
-            if now - self.recent_tasks[task_id] > self.options.recent_tasks_lifetime:
-                del self.recent_tasks[task_id]
 
         # check on current tasks
         task_ids = list(self.tasks)
@@ -757,12 +753,11 @@ class RepoManager(object):
             tag_id = self.tasks[task_id]['tag_id']
             if tstate == 'CLOSED':
                 self.logger.info("Finished: newRepo task %s for tag %s", task_id, tag_id)
-                self.recent_tasks[task_id] = time.time()
                 del self.tasks[task_id]
+                del self.needed_tags[tag_id]
             elif tstate in ('CANCELED', 'FAILED'):
                 self.logger.info(
                     "Problem: newRepo task %s for tag %s is %s", task_id, tag_id, tstate)
-                self.recent_tasks[task_id] = time.time()
                 del self.tasks[task_id]
             else:
                 self.tasks[task_id]['taskinfo'] = tinfo
@@ -907,9 +902,6 @@ class RepoManager(object):
             if task_id:
                 if task_id in self.tasks:
                     # we already have a task
-                    continue
-                elif task_id in self.recent_tasks:
-                    # avoiding a race, see https://pagure.io/koji/issue/942
                     continue
                 else:
                     # should not happen
@@ -1133,7 +1125,6 @@ def get_options():
                 # XXX should really be called expired_repo_lifetime
                 'dist_repo_lifetime': 7 * 24 * 3600,
                 'check_external_repos': False,
-                'recent_tasks_lifetime': 600,
                 'sleeptime': 15,
                 'cert': None,
                 'serverca': None,
@@ -1143,13 +1134,13 @@ def get_options():
         int_opts = ('deleted_repo_lifetime', 'max_repo_tasks', 'repo_tasks_limit',
                     'retry_interval', 'max_retries', 'offline_retry_interval',
                     'max_delete_processes', 'max_repo_tasks_maven', 'dist_repo_lifetime',
-                    'sleeptime', 'recent_tasks_lifetime')
+                    'sleeptime')
         str_opts = ('topdir', 'server', 'user', 'password', 'logfile', 'principal', 'keytab',
                     'cert', 'serverca', 'debuginfo_tags', 'queue_file',
                     'source_tags', 'separate_source_tags', 'ignore_tags')
         bool_opts = ('verbose', 'debug', 'ignore_stray_repos', 'offline_retry',
                      'no_ssl_verify', 'check_external_repos')
-        legacy_opts = ('with_src', 'delete_batch_size')
+        legacy_opts = ('with_src', 'delete_batch_size', 'recent_tasks_lifetime')
         for name in config.options(section):
             if name in int_opts:
                 defaults[name] = config.getint(section, name)
