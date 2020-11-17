@@ -3106,7 +3106,12 @@ def anon_handle_list_builds(goptions, session, args):
     else:
         # Check filter exists
         if any(opts):
-            data = session.listBuilds(**opts)
+            try:
+                data = session.listBuilds(**opts)
+            except koji.ParameterError as e:
+                if e.args[0].endswith("'pattern'"):
+                    parser.error(_("The hub doesn't support the 'pattern' argument, please try"
+                                   " filtering the result on your local instead."))
         else:
             parser.error(_("Filter must be provided for list"))
     if not options.sort_key:
