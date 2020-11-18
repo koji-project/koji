@@ -11290,8 +11290,8 @@ class RootExports(object):
             clauses.append("package.name ilike %(prefix)s || '%%'")
         if pattern:
             pattern = self._prepareSearchTerms(pattern, 'glob')
-            clauses.append('package.name || '-' || build.version || '-' || build.release'
-                           ' ilike %(pattern)s')
+            clauses.append("package.name || '-' || build.version || '-' || build.release"
+                           " ilike %(pattern)s")
         if state is not None:
             clauses.append('build.state = %(state)i')
         if createdBefore:
