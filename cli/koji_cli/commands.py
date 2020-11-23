@@ -2843,6 +2843,8 @@ def anon_handle_list_hosts(goptions, session, args):
     parser.add_option("--quiet", action="store_true", default=goptions.quiet,
                       help=_("Do not print header information"))
     parser.add_option("--show-channels", action="store_true", help=_("Show host's channels"))
+    parser.add_option("--comment", action="store_true", help=_("Show comments"))
+    parser.add_option("--description", action="store_true", help=_("Show descriptions"))
     (options, args) = parser.parse_args(args)
     opts = {}
     ensure_connection(session)
@@ -2866,6 +2868,16 @@ def anon_handle_list_hosts(goptions, session, args):
         else:
             return 'N'
 
+    def truncate(s):
+        if s:
+            s = s.replace('\n', ' ')
+            if len(s) > 47:
+                return s[:47] + '...'
+            else:
+                return s
+        else:
+            return ''
+
     # pull in the last update using multicall to speed it up a bit
     session.multicall = True
     for host in hosts:
@@ -2880,6 +2892,8 @@ def anon_handle_list_hosts(goptions, session, args):
         host['enabled'] = yesno(host['enabled'])
         host['ready'] = yesno(host['ready'])
         host['arches'] = ','.join(host['arches'].split())
+        host['description'] = truncate(host['description'])
+        host['comment'] = truncate(host['comment'])
 
     # pull hosts' channels
     if options.show_channels:
@@ -2894,13 +2908,21 @@ def anon_handle_list_hosts(goptions, session, args):
     else:
         longest_host = 8
     if not options.quiet:
-        hdr = "{hostname:<{longest_host}} Enb Rdy Load/Cap  Arches           Last Update".format(
-            longest_host=longest_host, hostname='Hostname')
+        hdr = "{hostname:<{longest_host}} Enb Rdy Load/Cap  Arches           Last Update         "
+        hdr = hdr.format(longest_host=longest_host, hostname='Hostname')
+        if options.description:
+            hdr += "Description".ljust(51)
+        if options.comment:
+            hdr += "Comment".ljust(51)
         if options.show_channels:
-            hdr += "         Channels"
+            hdr += "Channels"
         print(hdr)
     mask = "%%(name)-%ss %%(enabled)-3s %%(ready)-3s %%(task_load)4.1f/%%(capacity)-4.1f " \
            "%%(arches)-16s %%(update)-19s" % longest_host
+    if options.description:
+        mask += " %(description)-50s"
+    if options.comment:
+        mask += " %(comment)-50s"
     if options.show_channels:
         mask += " %(channels)s"
     for host in hosts:
