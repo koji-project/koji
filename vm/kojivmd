@@ -139,7 +139,6 @@ def get_options():
                 'offline_retry_interval': 120,
                 'allowed_scms': '',
                 'cert': None,
-                'ca': '',  # FIXME: Remove in next major release
                 'serverca': None}
     if config.has_section('kojivmd'):
         for name, value in config.items('kojivmd'):

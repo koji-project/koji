@@ -122,7 +122,6 @@ def get_options():
     parser.add_option("--keytab", help=_("specify a Kerberos keytab to use"), metavar="FILE")
     parser.add_option("--principal", help=_("specify a Kerberos principal to use"))
     parser.add_option("--cert", help=_("specify a SSL cert to use"), metavar="FILE")
-    parser.add_option("--ca", help=SUPPRESS_HELP, metavar="FILE")  # FIXME: remove in 1.24
     parser.add_option("--runas", help=_("run as the specified user (requires special privileges)"))
     parser.add_option("--user", help=_("specify user"))
     parser.add_option("--password", help=_("specify password"))
@@ -150,9 +149,6 @@ def get_options():
     parser.add_option("--help-commands", action="store_true", default=False,
                       help=_("list commands"))
     (options, args) = parser.parse_args()
-
-    if options.ca:
-        koji.util.deprecated("--ca option is deprecated and will be removed in 1.24")
 
     # load local config
     try:

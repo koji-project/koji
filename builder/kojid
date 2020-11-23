@@ -6327,7 +6327,6 @@ def get_options():
                 'xz_options': '-z6T0',
                 'task_avail_delay': 300,
                 'cert': None,
-                'ca': '',  # FIXME: Unused, remove in next major release
                 'serverca': None}
     if config.has_section('kojid'):
         for name, value in config.items('kojid'):

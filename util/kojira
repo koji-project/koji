@@ -1137,7 +1137,6 @@ def get_options():
                 'recent_tasks_lifetime': 600,
                 'sleeptime': 15,
                 'cert': None,
-                'ca': '',  # FIXME: unused, remove in next major release
                 'serverca': None,
                 'queue_file': None,
                 }
@@ -1147,8 +1146,8 @@ def get_options():
                     'max_delete_processes', 'max_repo_tasks_maven', 'dist_repo_lifetime',
                     'sleeptime', 'recent_tasks_lifetime')
         str_opts = ('topdir', 'server', 'user', 'password', 'logfile', 'principal', 'keytab',
-                    'cert', 'ca', 'serverca', 'debuginfo_tags', 'queue_file',
-                    'source_tags', 'separate_source_tags', 'ignore_tags')  # FIXME: remove ca here
+                    'cert', 'serverca', 'debuginfo_tags', 'queue_file',
+                    'source_tags', 'separate_source_tags', 'ignore_tags')
         bool_opts = ('verbose', 'debug', 'ignore_stray_repos', 'offline_retry',
                      'no_ssl_verify', 'check_external_repos')
         legacy_opts = ('with_src', 'delete_batch_size')
