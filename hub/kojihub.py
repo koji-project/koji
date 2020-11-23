@@ -3691,6 +3691,9 @@ def add_external_repo_to_tag(tag_info, repo_info, priority, merge_mode='koji', a
     repo = get_external_repo(repo_info, strict=True)
     repo_id = repo['id']
 
+    if arches is not None:
+        arches = koji.parse_arches(arches, strict=True)
+
     tag_repos = get_tag_external_repos(tag_info=tag_id)
     if [tr for tr in tag_repos if tr['external_repo_id'] == repo_id]:
         raise koji.GenericError('tag %s already associated with external repo %s' %
@@ -3745,6 +3748,9 @@ def edit_tag_external_repo(tag_info, repo_info, priority=None, merge_mode=None, 
         raise koji.GenericError('external repo %s not associated with tag %s' %
                                 (repo['name'], tag['name']))
     tag_repo = tag_repos[0]
+
+    if arches is not None:
+        arches = koji.parse_arches(arches, strict=True)
 
     data = {}
     for k in ('priority', 'merge_mode', 'arches'):
@@ -10563,6 +10569,7 @@ class RootExports(object):
         :param str merge_mode: This must be one of the values of the
                                koji.REPO_MERGE_MODES set. If unspecified,
                                the default is "koji".
+        :param str arches: space-separated list of arches handled by the repo.
         """
         # wrap the local method so we don't expose the event parameter
         add_external_repo_to_tag(tag_info, repo_info, priority,
