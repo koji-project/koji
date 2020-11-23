@@ -3101,8 +3101,8 @@ def anon_handle_list_builds(goptions, session, args):
         except ValueError:
             buildid = options.buildid
         data = [session.getBuild(buildid)]
-        if data is None:
-            parser.error(_("Invalid build ID"))
+        if data[0] is None:
+            parser.error(_("No build with ID '%s'" % buildid))
     else:
         # Check filter exists
         if any(opts):
