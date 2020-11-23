@@ -3009,6 +3009,7 @@ def anon_handle_list_builds(goptions, session, args):
     parser.add_option("--task", help=_("List builds for this task"))
     parser.add_option("--type", help=_("List builds of this type."))
     parser.add_option("--prefix", help=_("Only builds starting with this prefix"))
+    parser.add_option("--pattern", help=_("Only list builds matching this GLOB pattern"))
     parser.add_option("--source", help=_("Only builds where the source field matches "
                                          "(glob pattern)"))
     parser.add_option("--owner", help=_("List builds built by this owner"))
@@ -3024,7 +3025,7 @@ def anon_handle_list_builds(goptions, session, args):
         parser.error(_("This command takes no arguments"))
     ensure_connection(session)
     opts = {}
-    for key in ('type', 'prefix'):
+    for key in ('type', 'prefix', 'pattern'):
         value = getattr(options, key)
         if value is not None:
             opts[key] = value
@@ -3105,7 +3106,12 @@ def anon_handle_list_builds(goptions, session, args):
     else:
         # Check filter exists
         if any(opts):
-            data = session.listBuilds(**opts)
+            try:
+                data = session.listBuilds(**opts)
+            except koji.ParameterError as e:
+                if e.args[0].endswith("'pattern'"):
+                    parser.error(_("The hub doesn't support the 'pattern' argument, please try"
+                                   " filtering the result on your local instead."))
         else:
             parser.error(_("Filter must be provided for list"))
     if not options.sort_key:

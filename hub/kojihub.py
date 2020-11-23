@@ -11173,7 +11173,7 @@ class RootExports(object):
                    volumeID=None, source=None,
                    createdBefore=None, createdAfter=None,
                    completeBefore=None, completeAfter=None, type=None, typeInfo=None,
-                   queryOpts=None):
+                   queryOpts=None, pattern=None):
         """Return a list of builds that match the given parameters
 
         Filter parameters
@@ -11184,6 +11184,7 @@ class RootExports(object):
             - volumeID: only builds stored on the given volume (numeric id)
             - source: only builds where the source field matches (glob pattern)
             - prefix: only builds whose package name starts with that prefix
+            - pattern: only builds whose nvr matches the glob pattern
             - state: only builds in the given state (numeric value)
 
         Timestamp filter parameters
@@ -11287,6 +11288,10 @@ class RootExports(object):
             clauses.append('build.source ilike %(source)s')
         if prefix:
             clauses.append("package.name ilike %(prefix)s || '%%'")
+        if pattern:
+            pattern = self._prepareSearchTerms(pattern, 'glob')
+            clauses.append("package.name || '-' || build.version || '-' || build.release"
+                           " ilike %(pattern)s")
         if state is not None:
             clauses.append('build.state = %(state)i')
         if createdBefore:
