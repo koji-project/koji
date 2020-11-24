@@ -4973,8 +4973,11 @@ def anon_handle_taginfo(goptions, session, args):
         if external_repos:
             print("External repos:")
             for rinfo in external_repos:
+                if not rinfo['arches']:
+                    rinfo['arches'] = 'inherited from tag'
+                    # TODO else intersection of arches?
                 print("  %(priority)3i %(external_repo_name)s "
-                      "(%(url)s, merge mode: %(merge_mode)s)" % rinfo)
+                      "(%(url)s, merge mode: %(merge_mode)s), arches: %(arches)s" % rinfo)
         print("Inheritance:")
         for parent in session.getInheritanceData(info['id'], **event_opts):
             parent['flags'] = format_inheritance_flags(parent)
@@ -5520,6 +5523,8 @@ def handle_add_external_repo(goptions, session, args):
     parser.add_option("-p", "--priority", type='int',
                       help=_("Set priority (when adding to tag)"))
     parser.add_option("-m", "--mode", help=_("Set merge mode"))
+    parser.add_option("-a", "--arches", metavar="ARCH1,ARCH2, ...",
+                      help=_("Use only subset of arches from given repo"))
     (options, args) = parser.parse_args(args)
     activate_session(session, goptions)
     if options.mode:
@@ -5549,6 +5554,8 @@ def handle_add_external_repo(goptions, session, args):
             callopts = {}
             if options.mode:
                 callopts['merge_mode'] = options.mode
+            if options.arches:
+                callopts['arches'] = options.arches
             session.addExternalRepoToTag(tag, rinfo['name'], priority, **callopts)
             print("Added external repo %s to tag %s (priority %i)"
                   % (rinfo['name'], tag, priority))
@@ -5567,6 +5574,8 @@ def handle_edit_external_repo(goptions, session, args):
     parser.add_option("-m", "--mode", metavar="MODE",
                       help=_("Edit the merge mode of the repo for the tag specified by --tag. "
                              "Options: %s.") % ", ".join(koji.REPO_MERGE_MODES))
+    parser.add_option("-a", "--arches", metavar="ARCH1,ARCH2, ...",
+                      help=_("Use only subset of arches from given repo"))
     (options, args) = parser.parse_args(args)
     if len(args) != 1:
         parser.error(_("Incorrect number of arguments"))
@@ -5581,12 +5590,14 @@ def handle_edit_external_repo(goptions, session, args):
             tag_repo_opts['priority'] = options.priority
         if options.mode:
             tag_repo_opts['merge_mode'] = options.mode
+        if options.arches is not None:
+            tag_repo_opts['arches'] = options.arches
         if not tag_repo_opts:
             parser.error(_("At least, one of priority and merge mode should be specified"))
         tag_repo_opts['tag_info'] = options.tag
         tag_repo_opts['repo_info'] = args[0]
     else:
-        for k in ('priority', 'mode'):
+        for k in ('priority', 'mode', 'arches'):
             if getattr(options, k) is not None:
                 parser.error(_("If %s is specified, --tag must be specified as well") % k)
 

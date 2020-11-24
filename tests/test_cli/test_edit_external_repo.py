@@ -91,6 +91,8 @@ Options:
                         --tag.
   -m MODE, --mode=MODE  Edit the merge mode of the repo for the tag specified
                         by --tag. Options: %s.
+  -a ARCH1,ARCH2, ..., --arches=ARCH1,ARCH2, ...
+                        Use only subset of arches from given repo
 """ % (self.progname, ', '.join(koji.REPO_MERGE_MODES)))
 
 

@@ -18,7 +18,8 @@ class TestEditTagExternalRepo(unittest.TestCase):
         self.get_tag_external_repos.return_value = [{'external_repo_id': 11,
                                                      'tag_id': 1,
                                                      'priority': 5,
-                                                     'merge_mode': 'simple'}]
+                                                     'merge_mode': 'simple',
+                                                     'arches': 'x86_64 i686'}]
 
         self.remove_external_repo_from_tag = mock.patch(
             'kojihub.remove_external_repo_from_tag').start()
@@ -33,7 +34,8 @@ class TestEditTagExternalRepo(unittest.TestCase):
         self.get_external_repo.assert_called_once_with('ext_repo', strict=True)
         self.get_tag_external_repos.assert_called_once_with(tag_info=1, repo_info=11)
         self.remove_external_repo_from_tag.assert_called_once_with(1, 11)
-        self.add_external_repo_to_tag.assert_called_once_with(1, 11, priority=6, merge_mode='bare')
+        self.add_external_repo_to_tag.assert_called_once_with(1, 11, priority=6, merge_mode='bare',
+                                                              arches='x86_64 i686')
         self.assertTrue(rv)
 
     def test_edit_no_tag_repo(self):
@@ -74,9 +76,10 @@ class TestEditTagExternalRepo(unittest.TestCase):
         self.get_tag_external_repos.return_value = [{'external_repo_id': 11,
                                                      'tag_id': 1,
                                                      'priority': 5,
-                                                     'merge_mode': None}]
+                                                     'merge_mode': None,
+                                                     'arches': None}]
         rv = kojihub.edit_tag_external_repo('tag', 'ext_repo', priority=None, merge_mode='simple')
         self.remove_external_repo_from_tag.assert_called_once_with(1, 11)
-        self.add_external_repo_to_tag.assert_called_once_with(1, 11,
+        self.add_external_repo_to_tag.assert_called_once_with(1, 11, arches=None,
                                                               priority=5, merge_mode='simple')
         self.assertTrue(rv)

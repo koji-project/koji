@@ -465,7 +465,7 @@ create table external_repo (
 -- fake repo id for internal stuff (needed for unique index)
 INSERT INTO external_repo (id, name) VALUES (0, 'INTERNAL');
 
-create table external_repo_config (
+CREATE TABLE external_repo_config (
 	external_repo_id INTEGER NOT NULL REFERENCES external_repo(id),
 	url TEXT NOT NULL,
 -- versioned - see earlier description of versioning
@@ -481,11 +481,12 @@ create table external_repo_config (
 	UNIQUE (external_repo_id, active)
 ) WITHOUT OIDS;
 
-create table tag_external_repos (
+CREATE TABLE tag_external_repos (
 	tag_id INTEGER NOT NULL REFERENCES tag(id),
 	external_repo_id INTEGER NOT NULL REFERENCES external_repo(id),
 	priority INTEGER NOT NULL,
 	merge_mode TEXT NOT NULL DEFAULT 'koji',
+	arches TEXT,
 -- versioned - see earlier description of versioning
 	create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
 	revoke_event INTEGER REFERENCES events(id),
