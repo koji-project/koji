@@ -62,7 +62,7 @@
 # not yet to RHEL proper.
 # https://bugzilla.redhat.com/show_bug.cgi?id=1307190
 %{!?__python2: %global __python2 /usr/bin/python2}
-%{!?python2_sitearch: %global python2_sitearch %(%{__python2} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")}
+%{!?python2_sitelib: %global python2_sitelib %(%{__python2} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")}
 %{!?python2_sitearch: %global python2_sitearch %(%{__python2} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib(1))")}
 %{!?py2_build: %global py2_build %{expand: CFLAGS="%{optflags}" %{__python2} setup.py %{?py_setup_args} build --executable="%{__python2} -s"}}
 %{!?py2_install: %global py2_install %{expand: CFLAGS="%{optflags}" %{__python2} setup.py %{?py_setup_args} install -O1 --skip-build --root %{buildroot}}}
@@ -451,19 +451,19 @@ rm -rf $RPM_BUILD_ROOT
 
 %if 0%{py2_support}
 %files -n python2-%{name}
-%{python2_sitearch}/%{name}
-%{python2_sitearch}/koji_cli
+%{python2_sitelib}/%{name}
+%{python2_sitelib}/koji_cli
 %endif
 
 %if 0%{py3_support}
 %files -n python%{python3_pkgversion}-koji
-%{python3_sitearch}/%{name}
-%{python3_sitearch}/koji_cli
+%{python3_sitelib}/%{name}
+%{python3_sitelib}/koji_cli
 %endif
 
 %if 0%{py2_support}
 %files -n python2-%{name}-cli-plugins
-%{python2_sitearch}/koji_cli_plugins
+%{python2_sitelib}/koji_cli_plugins
 # we don't have config files for default plugins yet
 #%%dir %%{_sysconfdir}/koji/plugins
 #%%config(noreplace) %%{_sysconfdir}/koji/plugins/*.conf
@@ -471,7 +471,7 @@ rm -rf $RPM_BUILD_ROOT
 
 %if 0%{py3_support}
 %files -n python%{python3_pkgversion}-%{name}-cli-plugins
-%{python3_sitearch}/koji_cli_plugins
+%{python3_sitelib}/koji_cli_plugins
 # we don't have config files for default plugins yet
 #%%dir %%{_sysconfdir}/koji/plugins
 #%%config(noreplace) %%{_sysconfdir}/koji/plugins/*.conf

@@ -2,7 +2,7 @@ PACKAGE = $(shell basename `pwd`)
 PYFILES = $(wildcard *.py)
 PYSCRIPTS =
 SUBDIRS =
-PKGDIR = $(shell $(PYTHON) -c "import site; print(site.getsitepackages()[0])")/$(PACKAGE)
+PKGDIR = $(shell $(PYTHON) -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")/$(PACKAGE)
 
 _default:
 	@echo "nothing to make.  try make install"

@@ -1,7 +1,7 @@
 SUBDIRS=koji_cli
 
 PACKAGE = $(shell basename `pwd`)
-PKGDIR = $(shell $(PYTHON) -c "import site; print(site.getsitepackages()[0])")/$(PACKAGE)
+PKGDIR = $(shell $(PYTHON) -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")/$(PACKAGE)
 
 FILES = koji
 
