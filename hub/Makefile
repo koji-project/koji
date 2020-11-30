@@ -1,6 +1,6 @@
 PACKAGE = $(shell basename `pwd`)
 PYFILES = $(wildcard *.py)
-PKGDIR = $(shell $(PYTHON) -c "import site; print(site.getsitepackages()[0])")/$(PACKAGE)
+PKGDIR = $(shell $(PYTHON) -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")/$(PACKAGE)
 
 SERVERDIR = /usr/share/koji-hub
 PYFILES = $(wildcard *.py)
