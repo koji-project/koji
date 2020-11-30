@@ -17,7 +17,6 @@ import traceback
 from collections import OrderedDict, defaultdict
 from optparse import SUPPRESS_HELP, OptionParser
 
-import dateutil.parser
 import six
 import six.moves.xmlrpc_client
 from six.moves import filter, map, range, zip
@@ -25,6 +24,7 @@ from six.moves import filter, map, range, zip
 import koji
 from koji.util import base64encode, md5_constructor, to_list
 from koji_cli.lib import (
+    TimeOption,
     _,
     _list_tasks,
     _progress_callback,
@@ -3017,15 +3017,12 @@ def anon_handle_list_pkgs(goptions, session, args):
 def anon_handle_list_builds(goptions, session, args):
     "[info] Print the build listing"
     usage = _("usage: %prog list-builds [options]")
-    parser = OptionParser(usage=get_usage_str(usage))
+    parser = OptionParser(usage=get_usage_str(usage), option_class=TimeOption)
     parser.add_option("--package", help=_("List builds for this package"))
     parser.add_option("--buildid", help=_("List specific build from ID or nvr"))
-    parser.add_option("--before",
-                      help=_("List builds built before this time, "
-                             "time is specified as timestamp or date/time in any "
-                             "format which can be parsed by dateutil.parser. e.g. "
-                             "\"2020-12-31 12:35\" or \"December 31st 12:35\""))
-    parser.add_option("--after",
+    parser.add_option("--before", type="time",
+                      help=_("List builds built before this time, ") + TimeOption.get_help())
+    parser.add_option("--after", type="time",
                       help=_("List builds built after this time (same format as for --before"))
     parser.add_option("--state", help=_("List builds in this state"))
     parser.add_option("--task", help=_("List builds for this task"))
@@ -3090,26 +3087,10 @@ def anon_handle_list_builds(goptions, session, args):
                 opts['state'] = koji.BUILD_STATES[options.state]
             except KeyError:
                 parser.error(_("Invalid state"))
-    for opt in ('before', 'after'):
-        val = getattr(options, opt)
-        if not val:
-            continue
-        try:
-            ts = float(val)
-            setattr(options, opt, ts)
-            continue
-        except ValueError:
-            pass
-        try:
-            dt = dateutil.parser.parse(val)
-            ts = time.mktime(dt.timetuple())
-            setattr(options, opt, ts)
-        except Exception:
-            parser.error(_("Invalid time specification: %s") % val)
     if options.before:
-        opts['completeBefore'] = getattr(options, 'before')
+        opts['completeBefore'] = options.before
     if options.after:
-        opts['completeAfter'] = getattr(options, 'after')
+        opts['completeAfter'] = options.after
     if options.task:
         try:
             opts['taskID'] = int(options.task)
@@ -4475,7 +4456,7 @@ _table_keys = {
 def anon_handle_list_history(goptions, session, args):
     "[info] Display historical data"
     usage = _("usage: %prog list-history [options]")
-    parser = OptionParser(usage=get_usage_str(usage))
+    parser = OptionParser(usage=get_usage_str(usage), option_class=TimeOption)
     # Don't use local debug option, this one stays here for backward compatibility
     # https://pagure.io/koji/issue/2084
     parser.add_option("--debug", action="store_true", default=goptions.debug, help=SUPPRESS_HELP)
@@ -4495,12 +4476,9 @@ def anon_handle_list_history(goptions, session, args):
     parser.add_option("--group", help=_("Only show entries relating to a given group"))
     parser.add_option("--host", help=_("Only show entries related to given host"))
     parser.add_option("--channel", help=_("Only show entries related to given channel"))
-    parser.add_option("--before",
-                      help=_("Only show entries before this time, "
-                             "time is specified as timestamp or date/time in any "
-                             "format which can be parsed by dateutil.parser. e.g. "
-                             "\"2020-12-31 12:35\" or \"December 31st 12:35\""))
-    parser.add_option("--after",
+    parser.add_option("--before", type="time",
+                      help=_("Only show entries before this time, ") + TimeOption.get_help())
+    parser.add_option("--after", type="time",
                       help=_("Only show entries after timestamp (same format as for --before)"))
     parser.add_option("--before-event", metavar="EVENT_ID", type='int',
                       help=_("Only show entries before event"))
@@ -4522,22 +4500,6 @@ def anon_handle_list_history(goptions, session, args):
         parser.error(_("This command takes no arguments"))
     kwargs = {}
     limited = False
-    for opt in ('before', 'after'):
-        val = getattr(options, opt)
-        if not val:
-            continue
-        try:
-            ts = float(val)
-            setattr(options, opt, ts)
-            continue
-        except ValueError:
-            pass
-        try:
-            dt = dateutil.parser.parse(val)
-            ts = time.mktime(dt.timetuple())
-            setattr(options, opt, ts)
-        except Exception:
-            parser.error(_("Invalid time specification: %s") % val)
     for opt in ('package', 'tag', 'build', 'editor', 'user', 'permission',
                 'cg', 'external_repo', 'build_target', 'group', 'before',
                 'after', 'host', 'channel'):
@@ -6382,7 +6344,7 @@ def handle_set_task_priority(goptions, session, args):
 def handle_list_tasks(goptions, session, args):
     "[info] Print the list of tasks"
     usage = _("usage: %prog list-tasks [options]")
-    parser = OptionParser(usage=get_usage_str(usage))
+    parser = OptionParser(usage=get_usage_str(usage), option_class=TimeOption)
     parser.add_option("--mine", action="store_true", help=_("Just print your tasks"))
     parser.add_option("--user", help=_("Only tasks for this user"))
     parser.add_option("--arch", help=_("Only tasks for this architecture"))
@@ -6391,13 +6353,10 @@ def handle_list_tasks(goptions, session, args):
     parser.add_option("--host", help=_("Only tasks for this host"))
     parser.add_option("--quiet", action="store_true", default=goptions.quiet,
                       help=_("Do not display the column headers"))
-    parser.add_option("--before",
-                      help=_("List builds built before this time, "
-                             "time is specified as timestamp or date/time in any "
-                             "format which can be parsed by dateutil.parser. e.g. "
-                             "\"2020-12-31 12:35\" or \"December 31st 12:35\""))
-    parser.add_option("--after",
-                      help=_("List builds built after this time (same format as for --before"))
+    parser.add_option("--before", type="time",
+                      help=_("List tasks completed before this time, ") + TimeOption.get_help())
+    parser.add_option("--after", type="time",
+                      help=_("List tasks completed after this time (same format as for --before"))
     parser.add_option("--all", action="store_true",
                       help=_("List also finished tasks (valid only with --after)"))
     (options, args) = parser.parse_args(args)

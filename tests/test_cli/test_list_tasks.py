@@ -262,11 +262,11 @@ Options:
   --channel=CHANNEL  Only tasks in this channel
   --host=HOST        Only tasks for this host
   --quiet            Do not display the column headers
-  --before=BEFORE    List builds built before this time, time is specified as
-                     timestamp or date/time in any format which can be parsed
-                     by dateutil.parser. e.g. "2020-12-31 12:35" or "December
-                     31st 12:35"
-  --after=AFTER      List builds built after this time (same format as for
+  --before=BEFORE    List tasks completed before this time, time is specified
+                     as timestamp or date/time in any format which can be
+                     parsed by dateutil.parser. e.g. "2020-12-31 12:35" or
+                     "December 31st 12:35"
+  --after=AFTER      List tasks completed after this time (same format as for
                      --before
   --all              List also finished tasks (valid only with --after)
 """ % self.progname)
