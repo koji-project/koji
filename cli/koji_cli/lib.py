@@ -10,9 +10,11 @@ import string
 import sys
 import time
 from contextlib import closing
+from copy import copy
 
 import requests
 import six
+import dateutil.parser
 from six.moves import range
 
 import koji
@@ -23,7 +25,38 @@ from koji.util import md5_constructor, to_list
 
 # for compatibility with plugins based on older version of lib
 # Use optparse imports directly in new code.
+# Nevertheless, TimeOption can be used from here.
 OptionParser = optparse.OptionParser
+
+
+def _check_time_option(option, opt, value):
+    """Converts str timestamp or date/time to float timestamp"""
+    try:
+        ts = float(value)
+        return ts
+    except ValueError:
+        pass
+    try:
+        dt = dateutil.parser.parse(value)
+        ts = time.mktime(dt.timetuple())
+        return ts
+    except Exception:
+        raise optparse.OptionValueError(
+            _("option %s: invalid time specification: %r") % (opt, value))
+
+
+class TimeOption(optparse.Option):
+    """OptionParser extension for timestamp/datetime values"""
+    TYPES = optparse.Option.TYPES + ("time",)
+    TYPE_CHECKER = copy(optparse.Option.TYPE_CHECKER)
+    TYPE_CHECKER['time'] = _check_time_option
+
+    @classmethod
+    def get_help(self):
+        return _("time is specified as timestamp or date/time in any "
+                 "format which can be parsed by dateutil.parser. e.g. "
+                 "\"2020-12-31 12:35\" or \"December 31st 12:35\"")
+
 
 greetings = ('hello', 'hi', 'yo', "what's up", "g'day", 'back to work',
              'bonjour',
@@ -722,9 +755,15 @@ def _list_tasks(options, session):
     "Retrieve a list of tasks"
 
     callopts = {
-        'state': [koji.TASK_STATES[s] for s in ('FREE', 'OPEN', 'ASSIGNED')],
         'decode': True,
     }
+    if not options.all:
+        callopts['state'] = [koji.TASK_STATES[s] for s in ('FREE', 'OPEN', 'ASSIGNED')]
+
+    if options.after:
+        callopts['startedAfter'] = options.after
+    if options.before:
+        callopts['startedBefore'] = options.before
 
     if getattr(options, 'mine', False):
         if getattr(options, 'user', None):
