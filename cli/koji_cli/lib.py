@@ -757,12 +757,12 @@ def _list_tasks(options, session):
     callopts = {
         'decode': True,
     }
-    if not options.all:
+    if not getattr(options, 'all', False):
         callopts['state'] = [koji.TASK_STATES[s] for s in ('FREE', 'OPEN', 'ASSIGNED')]
 
-    if options.after:
+    if getattr(options, 'after', False):
         callopts['startedAfter'] = options.after
-    if options.before:
+    if getattr(options, 'before', False):
         callopts['startedBefore'] = options.before
 
     if getattr(options, 'mine', False):
