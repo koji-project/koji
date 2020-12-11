@@ -247,7 +247,7 @@ or they may be passed to the ``call_all`` method.
 
 ::
 
-    with session.multicall(strict=True, batch=500):
+    with session.multicall(strict=True, batch=500) as m:
         builds = [m.getBuild(build_id) for build_id in mylist]
 
 
