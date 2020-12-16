@@ -4631,9 +4631,8 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
 
     If 'type' is specified, then the archives listed will be limited
     those associated with additional metadata of the given type.
-    Currently supported types are:
-
-    maven, win, image
+    Supported types are "maven", "win", "image", or the btype name of any
+    other content generator (eg. "remote-sources").
 
     If 'maven' is specified as a type, each returned map will contain
     these additional keys:
