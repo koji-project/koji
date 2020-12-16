@@ -6754,7 +6754,7 @@ def anon_handle_download_build(options, session, args):
                       help=_("Only download packages for this arch (may be used multiple times)"))
     parser.add_option("--type",
                       help=_("Download archives of the given type, rather than rpms "
-                             "(maven, win, or image)"))
+                             "(maven, win, image, remote-source)"))
     parser.add_option("--latestfrom", dest="latestfrom",
                       help=_("Download the latest build from this tag"))
     parser.add_option("--debuginfo", action="store_true", help=_("Also download -debuginfo rpms"))
