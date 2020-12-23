@@ -83,6 +83,11 @@ Various features of repo generation (e.g. multilib support, delta rpms, or
 zchunk files) are controlled via command options.
 For a full list of options, see ``koji dist-repo --help``.
 
+**Koji Hub plugin**
+
+Fedora release engineering uses a hub plugin `tag2distrepo
+<https://pagure.io/releng/tag2distrepo>`_ to automatically export dist-repos
+for certain tags.
 
 Beyond Koji
 ===========
