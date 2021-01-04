@@ -1121,11 +1121,11 @@ class MavenUtilTestCase(unittest.TestCase):
         self.assertEqual(None, koji.util.eventFromOpts(session, opts))
 
         # opts.ts = timestamp
-        opts = mock.MagicMock(event='', ts=timestamp)
+        opts = mock.MagicMock(event=None, ts=timestamp)
         self.assertEqual(event, koji.util.eventFromOpts(session, opts))
 
         # opts.repo = '1'
-        opts = mock.MagicMock(event='', ts='', repo=1)
+        opts = mock.MagicMock(event=None, ts=None, repo=1)
         expect = {'id': repo_info['create_event'],
                   'ts': repo_info['create_ts']}
 
@@ -1134,8 +1134,12 @@ class MavenUtilTestCase(unittest.TestCase):
         six.assertCountEqual(self, list(expect.items()), list(actual.items()))
 
         # no event is matched case
-        opts = mock.MagicMock(event=0, ts=0, repo=0)
+        opts = mock.MagicMock(event=None, ts=None, repo=None)
         self.assertEqual(None, koji.util.eventFromOpts(session, opts))
+
+        # special case for ts 0
+        opts = mock.MagicMock(event=None, ts=0, repo=None)
+        self.assertEqual(event, koji.util.eventFromOpts(session, opts))
 
     def test_setup_rlimits(self):
         """Test test_setup_rlimits function"""
