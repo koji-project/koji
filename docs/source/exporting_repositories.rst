@@ -79,6 +79,11 @@ This behavior can be modified with the ``--allow-missing-signatures`` or
 The ``key_id`` argument may be omitted entirely if the
 ``--allow-missing-signatures`` option is specified.
 
+Koji will export the repository to ``<topdir>/repos-dist/<tag_name>/<repo_id>``
+The current dist repo for a given tag can be determined with a call to
+``getRepo(dist=True)``. Similar to internal build repos, Koji also maintains a
+"latest" symlink for each tag: ``<topdir>/repos-dist/<tag_name>/latest``.
+
 Various features of repo generation (e.g. multilib support, delta rpms, or
 zchunk files) are controlled via command options.
 For a full list of options, see ``koji dist-repo --help``.
