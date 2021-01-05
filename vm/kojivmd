@@ -788,7 +788,7 @@ class VMExecTask(BaseTaskHandler):
         elif algo == 'md5':
             sum = koji.util.md5_constructor()
         elif algo == 'sha256':
-            sum == hashlib.sha256()
+            sum = hashlib.sha256()
         else:
             raise koji.BuildError('unsupported checksum algorithm: %s' % algo)
 
