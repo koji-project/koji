@@ -42,6 +42,7 @@ import sys
 import tarfile
 import tempfile
 import time
+import types
 import traceback
 from urllib.parse import parse_qs
 import xmlrpc.client
@@ -12660,15 +12661,16 @@ class RootExports(object):
         A method return value of None will return O, a return value of type "list", "tuple", or
         "dict" will return len(value), and a return value of any other type will return 1. An
         invalid methodName will raise GenericError."""
-        try:
-            method = getattr(self, methodName)
-        except AttributeError:
+        handler = context.handlers.get(methodName)
+        if not handler:
             raise koji.GenericError("method %s doesn't exist" % methodName)
-        result = method(*args, **kw)
+        result = handler(*args, **kw)
         if result is None:
             return 0
         elif isinstance(result, (list, tuple, dict)):
             return len(result)
+        elif isinstance(result, types.GeneratorType):
+            return sum(1 for r in result)
         else:
             return 1
 
@@ -12722,14 +12724,17 @@ class RootExports(object):
         """
         filterOpts = kw.pop('filterOpts', {})
 
-        try:
-            method = getattr(self, methodName)
-        except AttributeError:
+        handler = context.handlers.get(methodName)
+        if not handler:
             raise koji.GenericError("method %s doesn't exist" % methodName)
         try:
-            results = method(*args, **kw)
+            results = handler(*args, **kw)
         except Exception as ex:
             raise koji.GenericError("method %s raised an exception (%s)" % (methodName, str(ex)))
+
+        if isinstance(results, types.GeneratorType):
+            # unfortunately due to the nature of the return, we have to generate the full list
+            results = list(results)
 
         if results is None:
             return 0, None
