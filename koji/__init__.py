@@ -2702,8 +2702,11 @@ class ClientSession(object):
                 _val = callopts[_key]
                 if _key == 'data':
                     if six.PY3 and isinstance(_val, bytes):
-                        # convert to hex-string
-                        _val = '0x' + _val.hex()
+                        try:
+                            _val = _val.decode()
+                        except UnicodeDecodeError:
+                            # convert to hex-string
+                            _val = '0x' + _val.hex()
                     if len(_val) > 1024:
                         _val = _val[:1024] + '...'
                 self.logger.debug("%s: %r" % (_key, _val))
