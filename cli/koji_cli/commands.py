@@ -4475,7 +4475,7 @@ def anon_handle_list_history(goptions, session, args):
     parser.add_option("--group", help=_("Only show entries relating to a given group"))
     parser.add_option("--host", help=_("Only show entries related to given host"))
     parser.add_option("--channel", help=_("Only show entries related to given channel"))
-    parser.add_option("--key", help=_("Only show entries related to given key"))
+    parser.add_option("--xkey", help=_("Only show entries related to given tag extra key"))
     parser.add_option("--before", type="time",
                       help=_("Only show entries before this time, ") + TimeOption.get_help())
     parser.add_option("--after", type="time",
@@ -4502,7 +4502,7 @@ def anon_handle_list_history(goptions, session, args):
     limited = False
     for opt in ('package', 'tag', 'build', 'editor', 'user', 'permission',
                 'cg', 'external_repo', 'build_target', 'group', 'before',
-                'after', 'host', 'channel', 'key'):
+                'after', 'host', 'channel', 'xkey'):
         val = getattr(options, opt)
         if val:
             kwargs[opt] = val
