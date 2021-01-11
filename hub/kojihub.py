@@ -593,6 +593,31 @@ def make_task(method, arglist, **opts):
             logger.error("Invalid result from channel policy: %s", ruleset.last_rule())
             raise koji.GenericError("invalid channel policy")
 
+    ruleset = context.policy.get('priority')
+    result = ruleset.apply(policy_data)
+    if result is None:
+        logger.warning('Priority policy returned no result, using default value: %s' % opts['priority'])
+    else:
+        try:
+            parts = result.split()
+            if parts[0] == 'stay':
+                # dont' change priority
+                pass
+            elif parts[0] == 'set':
+                # fixed value
+                opts['priority'] = int(parts[1])
+            elif parts[0] == 'increment' and parts[1] == 'by':
+                opts['priority'] += int(parts[2])
+            elif parts[0] == 'decrement' and parts[1] == 'by':
+                opts['priority'] += int(parts[2])
+            else:
+                logger.error("Invalid result from priority policy: %s", ruleset.last_rule())
+                raise koji.GenericError("invalid priority policy")
+        except IndexError:
+            logger.error("Invalid result from priority policy: %s", ruleset.last_rule())
+            raise koji.GenericError("invalid priority policy")
+
+
     # encode xmlrpc request
     opts['request'] = koji.xmlrpcplus.dumps(tuple(arglist), methodname=method)
     opts['state'] = koji.TASK_STATES['FREE']

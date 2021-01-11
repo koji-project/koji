@@ -543,6 +543,9 @@ _default_policies = {
     'volume': '''
             all :: DEFAULT
             ''',
+    'priority': '''
+            all :: stay
+            ''',
 }
 
 
