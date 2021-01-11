@@ -216,6 +216,8 @@ builder:
 
 - preSCMCheckout
 - postSCMCheckout
+- postCreateDistRepo
+- postCreateRepo
 
 .. _plugin-cli-command:
 
