@@ -341,12 +341,13 @@ class Dispatcher(object):
         environ['koji.values'].setdefault('mavenEnabled', False)
         environ['koji.values'].setdefault('winEnabled', False)
         result = _genHTML(environ, 'error.chtml')
+        result = self._tobytes(result)
         headers = [
             ('Allow', 'GET, POST, HEAD'),
-            ('Content-Length', str(len(result))),
+            ('Content-Length', str(len(result[0]))),
             ('Content-Type', 'text/html'),
         ]
-        return self._tobytes(result), headers
+        return result, headers
 
     def _tobytes(self, result):
         if isinstance(result, str):
@@ -400,13 +401,15 @@ class Dispatcher(object):
                 # last one wins
                 headers[key] = (name, value)
         if isinstance(result, str):
-            headers.setdefault('content-length', ('Content-Length', str(len(result))))
+            result = self._tobytes(result)
+            headers.setdefault('content-length',
+                               ('Content-Length', str(len(result[0]))))
         headers.setdefault('content-type', ('Content-Type', 'text/html'))
         headers = list(headers.values()) + extra
         self.logger.debug("Headers:")
         self.logger.debug(koji.util.LazyString(pprint.pformat, [headers]))
         start_response(status, headers)
-        return self._tobytes(result)
+        return result
 
     def application(self, environ, start_response):
         """wsgi handler"""
