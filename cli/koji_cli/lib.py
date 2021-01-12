@@ -655,8 +655,7 @@ def download_archive(build, archive, topurl, quiet=False, noprogress=False):
         path = archive['filename']
     else:
         # TODO: cover module/operator-manifests/remote-sources
-        # can't happen
-        assert False  # pragma: no cover
+        raise NotImplementedError(archive['btype'])
 
     download_file(url, path, quiet=quiet, noprogress=noprogress, filesize=archive['size'])
 
