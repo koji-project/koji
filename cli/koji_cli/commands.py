@@ -5176,15 +5176,13 @@ def handle_add_tag_inheritance(goptions, session, args):
     samePriority = [datum for datum in inheritanceData if datum['priority'] == priority]
 
     if sameParents and not options.force:
-        print(_("Error: You are attempting to add %s as %s's parent even though it already is "
-                "%s's parent.")
-              % (parent['name'], tag['name'], tag['name']))
-        print(_("Please use --force if this is what you really want to do."))
-        return
+        warn(_("Error: You are attempting to add %s as %s's parent even though it already is "
+               "%s's parent.")
+             % (parent['name'], tag['name'], tag['name']))
+        error(_("Please use --force if this is what you really want to do."))
     if samePriority:
-        print(_("Error: There is already an active inheritance with that priority on %s, "
+        error(_("Error: There is already an active inheritance with that priority on %s, "
                 "please specify a different priority with --priority." % tag['name']))
-        return
 
     new_data = {}
     new_data['parent_id'] = parent['id']
@@ -5317,18 +5315,14 @@ def handle_remove_tag_inheritance(goptions, session, args):
         data = [datum for datum in data if datum['priority'] == priority]
 
     if len(data) == 0:
-        print(_("No inheritance link found to remove.  Please check your arguments"))
-        return
+        error(_("No inheritance link found to remove.  Please check your arguments"))
     elif len(data) > 1:
         print(_("Multiple matches for tag."))
         if not parent:
-            print(_("Please specify a parent on the command line."))
-            return
+            error(_("Please specify a parent on the command line."))
         if not priority:
-            print(_("Please specify a priority on the command line."))
-            return
-        print(_("Error: Key constraints may be broken.  Exiting."))
-        return
+            error(_("Please specify a priority on the command line."))
+        error(_("Error: Key constraints may be broken.  Exiting."))
 
     # len(data) == 1
     data = data[0]
