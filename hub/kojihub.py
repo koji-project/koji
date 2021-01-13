@@ -4252,6 +4252,11 @@ def get_next_release(build_info):
         r_split = release.split('.')
         r_split[0] = str(int(r_split[0]) + 1)
         release = '.'.join(r_split)
+    elif len(release.split('.')) == 3 and release.split('.')[2].isdigit():
+        # Handle the {date}.nightly.%{id} case
+        r_split = release.split('.')
+        r_split[2] = str(int(r_split[2]) + 1)
+        release = '.'.join(r_split)
     else:
         raise koji.BuildError('Unable to increment release value: %s' % release)
     return release
