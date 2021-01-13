@@ -459,7 +459,7 @@ def handle_trash():
 
     print("2nd pass: references")
     i = 0
-    mcall = koji.MultiCallSession(session, batch=1000)
+    mcall = koji.MultiCallSession(session, batch=10)
     for binfo in continuing:
         mcall.buildReferences(binfo['id'], limit=10, lazy=True)
     for binfo, [refs] in zip(continuing, mcall.call_all()):
@@ -554,7 +554,7 @@ def handle_trash():
     for binfo in to_trash:
         by_owner.setdefault(binfo['owner_name'], []).append(binfo)
     owners = sorted(to_list(by_owner.keys()))
-    mcall = koji.MultiCallSession(session, batch=1000)
+    mcall = koji.MultiCallSession(session, batch=100)
     for owner_name in owners:
         builds = sorted([(b['nvr'], b) for b in by_owner[owner_name]])
         send_warning_notice(owner_name, [x[1] for x in builds])
@@ -643,7 +643,7 @@ def handle_delete(just_salvage=False):
 
     print("2nd pass: tags")
     continuing, trash = [], continuing
-    mcall = koji.MultiCallSession(session, batch=1000)
+    mcall = koji.MultiCallSession(session, batch=100)
     for nvr, binfo in trash:
         mcall.listTags(build=binfo['id'], perms=False)
     for (nvr, binfo), [tags] in zip(trash, mcall.call_all()):
