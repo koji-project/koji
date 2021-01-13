@@ -223,7 +223,7 @@ clone-tag will create the destination tag if it does not already exist
                                                            block=True,
                                                            extra_arches='arch3 arch4',
                                                            owner='userB'),
-                                       call.multiCall(batch=1000),
+                                       call.multiCall(batch=100),
                                        call.listTagged(1, event=None,
                                                        inherit=None,
                                                        latest=None),
@@ -255,7 +255,7 @@ clone-tag will create the destination tag if it does not already exist
                                            'tag_name': 'src-tag',
                                            'name': 'pkg1'}, force=None,
                                                            notify=False),
-                                       call.multiCall(batch=1000),
+                                       call.multiCall(batch=100),
                                        call.getTagGroups('src-tag',
                                                          event=None),
                                        call.groupListAdd('dst-tag', 'group1'),
@@ -276,7 +276,7 @@ clone-tag will create the destination tag if it does not already exist
                                                                 'group2',
                                                                 'bpkg',
                                                                 block=False),
-                                       call.multiCall(batch=1000)])
+                                       call.multiCall(batch=100)])
         self.assert_console_message(stdout, """
 List of changes:
 
@@ -508,7 +508,7 @@ List of changes:
                                                            block=True,
                                                            extra_arches='arch3 arch4',
                                                            owner='userB'),
-                                       call.multiCall(batch=1000),
+                                       call.multiCall(batch=100),
                                        call.untagBuildBypass('dst-tag', {
                                            'owner_name': 'b_owner',
                                            'nvr': 'pkg1-2.1-2',
@@ -530,7 +530,7 @@ List of changes:
                                            'tag_name': 'dst-tag',
                                            'name': 'pkg3'}, force=None,
                                                              notify=False),
-                                       call.multiCall(batch=1000),
+                                       call.multiCall(batch=100),
                                        call.tagBuildBypass('dst-tag', {
                                            'owner_name': 'b_owner',
                                            'nvr': 'pkg1-0.1-1',
@@ -552,8 +552,8 @@ List of changes:
                                            'tag_name': 'src-tag',
                                            'name': 'pkg1'}, force=None,
                                                            notify=False),
-                                       call.multiCall(batch=1000),
-                                       call.multiCall(batch=1000),
+                                       call.multiCall(batch=100),
+                                       call.multiCall(batch=100),
                                        call.groupPackageListAdd('dst-tag',
                                                                 'group1',
                                                                 'pkg2',
@@ -570,21 +570,21 @@ List of changes:
                                                                 'group2',
                                                                 'bpkg',
                                                                 force=None),
-                                       call.multiCall(batch=1000),
-                                       call.multiCall(batch=1000),
+                                       call.multiCall(batch=100),
+                                       call.multiCall(batch=100),
                                        call.packageListBlock('dst-tag',
                                                              'bpkg'),
                                        call.packageListBlock('dst-tag',
                                                              'cpkg'),
                                        call.packageListBlock('dst-tag',
                                                              'dpkg'),
-                                       call.multiCall(batch=1000),
+                                       call.multiCall(batch=100),
                                        call.groupListRemove('dst-tag',
                                                             'group3',
                                                             force=None),
                                        call.groupListBlock('dst-tag',
                                                            'group4'),
-                                       call.multiCall(batch=1000),
+                                       call.multiCall(batch=100),
                                        call.groupPackageListRemove('dst-tag',
                                                                    'group1',
                                                                    'pkg5',
@@ -592,7 +592,7 @@ List of changes:
                                        call.groupPackageListBlock('dst-tag',
                                                                   'group2',
                                                                   'cpkg'),
-                                       call.multiCall(batch=1000)])
+                                       call.multiCall(batch=100)])
         self.assert_console_message(stdout, """
 List of changes:
 
@@ -886,7 +886,7 @@ Options:
   --notify          Send tagging/untagging notifications
   -f, --force       override tag locks if necessary
   -n, --test        test mode
-  --batch=SIZE      batch size of multicalls [0 to disable, default: 1000]
+  --batch=SIZE      batch size of multicalls [0 to disable, default: 100]
 """ % self.progname)
 
 
