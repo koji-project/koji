@@ -18,10 +18,10 @@ class TestGenMockConfig(unittest.TestCase):
             if not fn.endswith('.data'):
                 continue
             path = os.path.join(datadir, fn)
-            with open(path) as fo:
+            with open(path, 'rt', encoding='utf-8') as fo:
                 s = fo.read()
                 params = ast.literal_eval(s)
-            with open(path[:-5] + '.out') as fo:
+            with open(path[:-5] + '.out', 'rt', encoding='utf-8') as fo:
                 expected = fo.read()
             output = koji.genMockConfig(**params)
             self.assertMultiLineEqual(output, expected)

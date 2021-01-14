@@ -331,7 +331,7 @@ class WindowsBuild(object):
                 raise BuildError('Unknown checksum type %s for %s' % (  # noqa: F821
                                  checksum_type,
                                  os.path.basename(fileinfo['localpath'])))
-        with open(destpath, 'w') as destfile:
+        with open(destpath, 'wt', encoding='utf-8') as destfile:
             offset = 0
             while True:
                 encoded = self.server.getFile(buildinfo, fileinfo, encode_int(offset), 1048576,
@@ -412,7 +412,7 @@ class WindowsBuild(object):
         """Do the build: run the execute line(s) with cmd.exe"""
         tmpfd, tmpname = tempfile.mkstemp(prefix='koji-tmp', suffix='.bat',
                                           dir='/cygdrive/c/Windows/Temp')
-        script = os.fdopen(tmpfd, 'w')
+        script = os.fdopen(tmpfd, 'wt', encoding='utf-8')
         for attr in ['source_dir', 'spec_dir', 'patches_dir']:
             val = getattr(self, attr)
             if val:
@@ -449,7 +449,7 @@ class WindowsBuild(object):
     def bashBuild(self):
         """Do the build: run the execute line(s) with bash"""
         tmpfd, tmpname = tempfile.mkstemp(prefix='koji-tmp.', dir='/tmp')
-        script = os.fdopen(tmpfd, 'w')
+        script = os.fdopen(tmpfd, 'wt', encoding='utf-8')
         script.write("export source_dir='%s'\n" % self.source_dir)
         script.write("export spec_dir='%s'\n" % self.spec_dir)
         if self.patches_dir:
@@ -599,7 +599,7 @@ def upload_file(server, prefix, path):
     """upload a single file to the vmd"""
     logger = logging.getLogger('koji.vm')
     destpath = os.path.join(prefix, path)
-    fobj = open(destpath, 'r')
+    fobj = open(destpath, 'rb')
     offset = 0
     sum = hashlib.sha256()
     while True:
@@ -657,7 +657,7 @@ def setup_logging(opts):
     if opts.debug:
         level = logging.DEBUG
     logger.setLevel(level)
-    logfd = open(logfile, 'w')
+    logfd = open(logfile, 'wt', encoding='utf-8')
     handler = logging.StreamHandler(logfd)
     handler.setLevel(level)
     handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s'))
@@ -688,7 +688,7 @@ def stream_logs(server, handler, builds):
             if not fd:
                 if os.path.isfile(log):
                     try:
-                        fd = open(log, 'r')
+                        fd = open(log, 'rb')
                         logs[log] = (relpath, fd)
                     except Exception:
                         log_local('Error opening %s' % log)

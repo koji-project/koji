@@ -237,7 +237,7 @@ def _try_read_cpuinfo():
     """ Try to read /proc/cpuinfo ... if we can't ignore errors (ie. proc not
         mounted). """
     try:
-        return open("/proc/cpuinfo", "r")
+        return open("/proc/cpuinfo", "rt")
     except Exception:
         return []
 
@@ -383,9 +383,8 @@ def getCanonX86_64Arch(arch):
 def getCanonArch(skipRpmPlatform=0):
     if not skipRpmPlatform and os.access("/etc/rpm/platform", os.R_OK):
         try:
-            f = open("/etc/rpm/platform", "r")
-            line = f.readline()
-            f.close()
+            with open("/etc/rpm/platform", "rt", encoding='utf-8') as f:
+                line = f.readline()
             (arch, vendor, opersys) = line.split("-", 2)
             return arch
         except Exception:

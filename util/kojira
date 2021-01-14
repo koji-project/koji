@@ -21,7 +21,6 @@
 #       Mike McLean <mikem@redhat.com>
 
 import errno
-import json
 import logging
 import logging.handlers
 import os
@@ -119,8 +118,7 @@ class ManagedRepo(object):
         if not os.path.exists(fn):
             self.logger.warning('Repo info file missing: %s', fn)
             return None
-        with open(fn, 'r') as fp:
-            return json.load(fp)
+        return koji.load_json(fn)
 
     def get_path(self, volume=None):
         """Return the path to the repo directory"""
@@ -732,7 +730,7 @@ class RepoManager(object):
         self.updateTagScores()
 
         if self.options.queue_file:
-            with open(self.options.queue_file, "wt") as f:
+            with open(self.options.queue_file, "wt", encoding='utf-8') as f:
                 fmt = "%-40s %7s %5s\n"
                 f.write(fmt % ("Tag", "Expired", "Score"))
                 for tag in sorted(self.needed_tags.values(), key=lambda t: t['score'],

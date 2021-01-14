@@ -1035,7 +1035,7 @@ def anon_handle_mock_config(goptions, session, args):
             opts['tag_macros'][macro] = buildcfg['extra'][key]
     output = koji.genMockConfig(name, arch, **opts)
     if options.ofile:
-        with open(options.ofile, 'w') as fo:
+        with open(options.ofile, 'wt', encoding='utf-8') as fo:
             fo.write(output)
     else:
         print(output)
@@ -1319,7 +1319,7 @@ def handle_import_cg(goptions, session, args):
     if json is None:
         parser.error(_("Unable to find json module"))
     activate_session(session, goptions)
-    metadata = json.load(open(args[0], 'r'))
+    metadata = koji.load_json(args[0])
     if 'output' not in metadata:
         print(_("Metadata contains no output"))
         sys.exit(1)
@@ -1586,10 +1586,10 @@ def handle_prune_signed_copies(goptions, session, args):
     # (with the modification that we check to see if the build was latest within
     # the last N days)
     if options.ignore_tag_file:
-        with open(options.ignore_tag_file) as fo:
+        with open(options.ignore_tag_file, encoding='utf-8') as fo:
             options.ignore_tag.extend([line.strip() for line in fo.readlines()])
     if options.protect_tag_file:
-        with open(options.protect_tag_file) as fo:
+        with open(options.protect_tag_file, encoding='utf-8') as fo:
             options.protect_tag.extend([line.strip() for line in fo.readlines()])
     if options.debug:
         options.verbose = True
@@ -6884,7 +6884,7 @@ def anon_handle_download_logs(options, session, args):
         full_filename = os.path.normpath(os.path.join(task_log_dir, FAIL_LOG))
         koji.ensuredir(os.path.dirname(full_filename))
         sys.stdout.write("Writing: %s\n" % full_filename)
-        with open(full_filename, 'w') as fo:
+        with open(full_filename, 'wt', encoding='utf-8') as fo:
             fo.write(content)
 
     def download_log(task_log_dir, task_id, filename, blocksize=102400, volume=None):

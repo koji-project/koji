@@ -29,7 +29,7 @@
           <img src="$util.themePath('images/koji.png')" alt="Koji Logo" id="kojiLogo"/>
 #set $localnavpath=$util.themePath("extra-nav.html", local=True)
 #if os.path.exists($localnavpath)
-#set $localnav="".join(open($localnavpath).readlines())
+#set $localnav="".join(open($localnavpath, 'rt', encoding='utf-8').readlines())
 $localnav
 #end if
           <form action="search" id="headerSearch">

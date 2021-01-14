@@ -49,7 +49,7 @@ class TestCompleteMavenBuild(unittest.TestCase):
     def set_up_files(self, name):
         datadir = os.path.join(os.path.dirname(__file__), 'data/maven', name)
         # load maven result data for our test build
-        data = json.load(open(datadir + '/data.json'))
+        data = koji.load_json(datadir + '/data.json')
         data['task_id'] = 9999
         taskdir = koji.pathinfo.task(data['task_id'])
         for subdir in data['files']:
@@ -64,7 +64,7 @@ class TestCompleteMavenBuild(unittest.TestCase):
             dst = os.path.join(taskdir, fn)
             shutil.copy(src, dst)
         self.maven_data = data
-        files = open(datadir + '/files').readlines()
+        files = open(datadir + '/files', 'rt', encoding='utf-8').readlines()
         files = [l.strip() for l in files]
         self.expected_files = files
 
