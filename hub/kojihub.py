@@ -9745,22 +9745,25 @@ class PolicyTest(koji.policy.BaseSimpleTest):
 
     def __init__(self, str):
         super(PolicyTest, self).__init__(str)
-        self.depth = 0
-        # this is used to detect loops. Note that each test in a ruleset is
-        # a distinct instance of its test class. So this value is particular
-        # to a given appearance of a policy check in a ruleset.
 
     def run(self, data):
         args = self.str.split()[1:]
-        if self.depth != 0:
+        # we store some instance-specific state in context for loop detection
+        # note that context is thread local and cleared after each call
+        # note that this instance represents a specific test in the policy
+        # i.e. each occurrence of 'policy foo' is a separate instance
+        key = 'policy_test_state_%s_running' % id(self)
+        if hasattr(context, key):
             # LOOP!
             raise koji.GenericError("encountered policy loop at %s" % self.str)
         ruleset = context.policy.get(args[0])
         if not ruleset:
             raise koji.GenericError("no such policy: %s" % args[0])
-        self.depth += 1
-        result = ruleset.apply(data)
-        self.depth -= 1
+        setattr(context, key, True)
+        try:
+            result = ruleset.apply(data)
+        finally:
+            delattr(context, key)
         if result is None:
             return False
         else:
