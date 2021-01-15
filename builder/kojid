@@ -1329,7 +1329,7 @@ class BuildArchTask(BaseBuildTask):
         """
         try:
             avg = self.session.getAverageBuildDuration(name, age=6)
-        except ParameterError:
+        except koji.ParameterError:
             # for hub < 1.23
             avg = self.session.getAverageBuildDuration(name)
 
