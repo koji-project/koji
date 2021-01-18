@@ -78,7 +78,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.23.0
+Version: 1.23.1
 Release: %{release}%{?dist}
 License: LGPLv2 and GPLv2+
 # the included arch lib from yum's rpmUtils is GPLv2+
@@ -586,6 +586,25 @@ rm -rf $RPM_BUILD_ROOT
 %systemd_postun kojira.service
 
 %changelog
+* Mon Jan  4 2021 Tomas Kopecek <tkopecek at redhat.com> - 1.23.1-1
+- PR#2603: hub: fix py2-like 'stop' usage in getFullInheritance
+- PR#2593: docs: assign multicall to "m" in code example
+- PR#2586: cli: some options are not supplied in all _list_tasks calls
+- PR#2579: Install into /usr/lib rather than /usr/lib64/
+- PR#2569: Revert "timezones for py 2.7"
+- PR#2547: builder: mergerepo uses workdir as tmpdir
+- PR#2558: web: disable links to deleted tags
+- PR#2548: kojira: don't expire ignored tags with targets
+- PR#2567: hub: use CTE for build_references
+- PR#2533: kojira: cache external repo timestamps by arch_url
+- PR#2515: to_list is not needed in py3 code
+- PR#2517: lib: better argument checking for eventFromOpts
+- PR#2504: Only redirect back to HTTP_REFERER if it points to kojiweb
+- PR#2526: sidetag: remove double "usage"
+- PR#2577: fix not found build id error for list-builds
+- PR#2509: doc: api docs
+- PR#2528: doc: python support matrix
+
 * Tue Jul 28 2020 Mike McLean <mikem at redhat.com> - 1.22.0-1
 - PR#2404: release bump and changelog
 - PR#2393: release notes - 1.22
