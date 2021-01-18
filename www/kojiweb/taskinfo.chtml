@@ -19,6 +19,7 @@
       #set $childState = $util.taskState($child.state)
       <span class="treeBranch">
         <span class="treeLabel">
+          <span class="task$childState">$util.imageTag($childState)</span>
           <a href="taskinfo?taskID=$child.id" class="task$childState" title="$childState">$koji.taskLabel($child)</a>
         </span>
       </span>
@@ -163,6 +164,8 @@
       <th>Descendants</th>
       <td class="tree">
         #if $len($descendents[$str($task.id)]) > 0
+        #set $taskState = $util.taskState($task.state)
+        <span class="task$taskState">$util.imageTag($taskState)</span>
         <span class="root">$task.method</span>
         #end if
         $printChildren($task.id, $descendents)
