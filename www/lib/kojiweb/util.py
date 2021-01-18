@@ -22,6 +22,7 @@
 import datetime
 import hashlib
 import os
+import re
 import ssl
 import stat
 import xmlrpc.client
@@ -48,6 +49,9 @@ except Exception:
 
 themeInfo = {}
 themeCache = {}
+
+# allowed values for SQL ordering (e.g. -id, package_name, etc.)
+RE_ORDER = re.compile(r'^-?\w+$')
 
 
 def _initValues(environ, title='Build System Info', pageID='summary'):
@@ -290,6 +294,8 @@ def paginateList(values, data, start, dataName, prefix=None, order=None, noneGre
     be added to the value map.
     """
     if order is not None:
+        if not RE_ORDER.match(order):
+            raise ValueError("Ordering is not alphanumeric: %r" % order)
         if order.startswith('-'):
             order = order[1:]
             reverse = True
@@ -327,6 +333,8 @@ def paginateMethod(server, values, methodName, args=None, kw=None,
         start = 0
     if not dataName:
         raise Exception('dataName must be specified')
+    if not RE_ORDER.match(order):
+        raise ValueError("Ordering is not alphanumeric: %r" % order)
 
     kw['queryOpts'] = {'countOnly': True}
     totalRows = getattr(server, methodName)(*args, **kw)
@@ -358,6 +366,8 @@ def paginateResults(server, values, methodName, args=None, kw=None,
         start = 0
     if not dataName:
         raise Exception('dataName must be specified')
+    if not RE_ORDER.match(order):
+        raise ValueError("Ordering is not alphanumeric: %r" % order)
 
     kw['filterOpts'] = {'order': order,
                         'offset': start,
