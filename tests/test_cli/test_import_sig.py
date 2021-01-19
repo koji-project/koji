@@ -276,7 +276,6 @@ class TestImportSIG(utils.CliTestCase):
 Options:
   -h, --help       show this help message and exit
   --with-unsigned  Also import unsigned sig headers
-  --write          Also write the signed copies
   --test           Test mode -- don't actually import
 """ % self.progname)
 
