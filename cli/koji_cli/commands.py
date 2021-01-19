@@ -22,7 +22,7 @@ import six.moves.xmlrpc_client
 from six.moves import filter, map, range, zip
 
 import koji
-from koji.util import base64encode, md5_constructor, to_list
+from koji.util import base64encode, md5_constructor, to_list, deprecated
 from koji_cli.lib import (
     TimeOption,
     _,
@@ -4127,6 +4127,7 @@ def anon_handle_list_tag_inheritance(goptions, session, args):
         opts['event'] = event['id']
 
     if options.jump:
+        deprecated("--jump option is deprecated and will be removed in 1.26")
         match = re.match(r'^(.*)/(.*)$', options.jump)
         if match:
             tag1 = session.getTagID(match.group(1))
@@ -4138,6 +4139,7 @@ def anon_handle_list_tag_inheritance(goptions, session, args):
             opts['jumps'][str(tag1)] = tag2
 
     if options.stop:
+        deprecated("--stop option is deprecated and will be removed in 1.26")
         tag1 = session.getTagID(options.stop)
         if not tag1:
             parser.error(_("Unknown tag: %s" % options.stop))
