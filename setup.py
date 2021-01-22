@@ -47,7 +47,11 @@ setup(
         "Operating System :: POSIX :: Linux",
         "Topic :: Utilities"
     ],
-    packages=['koji', 'koji_cli', 'koji_cli_plugins'],
+    packages=[
+        'koji',
+        'koji_cli',
+        'koji_cli_plugins',
+    ],
     package_dir={
         'koji': 'koji',
         'koji_cli': 'cli/koji_cli',
