@@ -1450,13 +1450,12 @@ def _import_comps_alt(session, filename, tag, options):  # no cover 3.x
 
 
 def handle_import_sig(goptions, session, args):
-    "[admin] Import signatures into the database"
+    "[admin] Import signatures into the database and write signed RPMs"
     usage = _("usage: %prog import-sig [options] <package> [<package> ...]")
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--with-unsigned", action="store_true",
                       help=_("Also import unsigned sig headers"))
-    parser.add_option("--write", action="store_true",
-                      help=_("Also write the signed copies"))
+    parser.add_option("--write", action="store_true", help=SUPPRESS_HELP)
     parser.add_option("--test", action="store_true",
                       help=_("Test mode -- don't actually import"))
     (options, args) = parser.parse_args(args)
