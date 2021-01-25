@@ -1300,6 +1300,11 @@ def buildinfo(environ, buildID):
         if field not in values:
             values[field] = None
 
+    # We added the start_time field in 2015 as part of Koji's content
+    # generator feature. Builds before that point have a null value for
+    # start_time. Fall back to creation_ts in those cases.
+    # Currently new_build() has data.setdefault('start_time', 'NOW'), so all
+    # recent builds should have a value for the field.
     values['start_ts'] = build.get('start_ts') or build['creation_ts']
     # the build start time is not accurate for maven and win builds, get it from the
     # task start time instead
