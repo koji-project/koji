@@ -2546,7 +2546,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None, with_separa
     groupsdir = "%s/groups" % (repodir)
     koji.ensuredir(groupsdir)
     comps = koji.generate_comps(groups, expand_groups=True)
-    with open("%s/comps.xml" % groupsdir, 'w') as fo:
+    with open("%s/comps.xml" % groupsdir, 'wt', encoding='utf-8') as fo:
         fo.write(comps)
 
     # write repo info to disk
@@ -2559,7 +2559,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None, with_separa
         'with_separate_src': with_separate_src,
         'with_debuginfo': with_debuginfo,
     }
-    with open('%s/repo.json' % repodir, 'w') as fp:
+    with open('%s/repo.json' % repodir, 'wt', encoding='utf-8') as fp:
         json.dump(repo_info, fp, indent=2)
 
     # get build dirs
@@ -2577,7 +2577,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None, with_separa
         top_relpath = os.path.relpath(koji.pathinfo.topdir, archdir)
         top_link = joinpath(archdir, 'toplink')
         os.symlink(top_relpath, top_link)
-        pkglist[repoarch] = open(joinpath(archdir, 'pkglist'), 'w')
+        pkglist[repoarch] = open(joinpath(archdir, 'pkglist'), 'wt', encoding='utf-8')
     # NOTE - rpms is now an iterator
     for rpminfo in rpms:
         if not with_debuginfo and koji.is_debuginfo(rpminfo['name']):
@@ -2606,7 +2606,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None, with_separa
 
     # write blocked package lists
     for repoarch in repo_arches:
-        blocklist = open(joinpath(repodir, repoarch, 'blocklist'), 'w')
+        blocklist = open(joinpath(repodir, repoarch, 'blocklist'), 'wt', encoding='utf-8')
         for pkg in blocks:
             blocklist.write(pkg['package_name'])
             blocklist.write('\n')
@@ -2676,7 +2676,7 @@ def _write_maven_repo_metadata(destdir, artifacts):
   </versioning>
 </metadata>
 """ % datetime.datetime.now().strftime('%Y%m%d%H%M%S')
-    with open(joinpath(destdir, 'maven-metadata.xml'), 'w') as mdfile:
+    with open(joinpath(destdir, 'maven-metadata.xml'), 'wt', encoding='utf-8') as mdfile:
         mdfile.write(contents)
     _generate_maven_metadata(destdir)
 
@@ -2727,8 +2727,7 @@ def dist_repo_init(tag, keys, task_opts):
         'volume': volume,
         'task_opts': task_opts,
     }
-    with open('%s/repo.json' % repodir, 'w') as fp:
-        json.dump(repo_info, fp, indent=2)
+    koji.dump_json('%s/repo.json' % repodir, repo_info, indent=2)
     # note: we need to match args from the other postRepoInit callback
     koji.plugin.run_callbacks('postRepoInit', tag=tinfo, with_src=False,
                               with_debuginfo=False, event=event, repo_id=repo_id,
@@ -4933,7 +4932,7 @@ def _get_tarball_list(archive_id, tarpath):
     result = []
     if not os.path.exists(tarpath):
         return result
-    with tarfile.open(tarpath, 'r') as archive:
+    with tarfile.open(tarpath, 'rb') as archive:
         for entry in archive:
             filename = koji.fixEncoding(entry.name)
             result.append({'archive_id': archive_id,
@@ -5875,7 +5874,7 @@ def check_noarch_rpms(basepath, rpms, logs=None):
     for arch in logs:
         for log in logs[arch]:
             if os.path.basename(log) == 'noarch_rpmdiff.json':
-                task_hash = json.load(open(joinpath(basepath, log), 'rt'))
+                task_hash = koji.load_json(joinpath(basepath, log))
                 for task_id in task_hash:
                     hashes[task_id] = task_hash[task_id]
 
@@ -6279,7 +6278,7 @@ class CG_Importer(object):
             path = joinpath(workdir, directory, metadata)
             if not os.path.exists(path):
                 raise koji.GenericError("No such file: %s" % metadata)
-            with open(path, 'rt') as fo:
+            with open(path, 'rt', encoding='utf-8') as fo:
                 metadata = fo.read()
         self.raw_metadata = metadata
         self.metadata = parse_json(metadata, desc='metadata')
@@ -6482,7 +6481,7 @@ class CG_Importer(object):
         builddir = koji.pathinfo.build(self.buildinfo)
         koji.ensuredir(builddir)
         path = joinpath(builddir, 'metadata.json')
-        with open(path, 'w') as fo:
+        with open(path, 'wt', encoding='utf-8') as fo:
             fo.write(self.raw_metadata)
 
     def prep_brs(self):
@@ -7385,7 +7384,7 @@ def _generate_maven_metadata(mavendir):
                         if not content:
                             break
                         sum.update(content)
-                with open('%s/%s' % (mavendir, sumfile), 'w') as sumobj:
+                with open('%s/%s' % (mavendir, sumfile), 'wt') as sumobj:
                     sumobj.write(sum.hexdigest())
 
 
@@ -14581,15 +14580,13 @@ class HostExports(object):
         fn = '%s/%s/repo_manifest' % (workdir, uploadpath)
         if not os.path.isfile(fn):
             raise koji.GenericError('Missing repo manifest')
-        with open(fn) as fp:
-            files = json.load(fp)
+        files = koji.load_json(fn)
 
         # Read package data
         fn = '%s/%s/kojipkgs' % (workdir, uploadpath)
         if not os.path.isfile(fn):
             raise koji.GenericError('Missing kojipkgs file')
-        with open(fn) as fp:
-            kojipkgs = json.load(fp)
+        kojipkgs = koji.load_json(fn)
 
         # Figure out where to send the uploaded files
         file_moves = []
@@ -14697,12 +14694,12 @@ def get_upload_path(reldir, name, create=False, volume=None):
             # assuming login was asserted earlier
             u_fn = joinpath(udir, '.user')
             if os.path.exists(u_fn):
-                user_id = int(open(u_fn, 'r').read())
+                user_id = int(open(u_fn, 'rt').read())
                 if context.session.user_id != user_id:
                     raise koji.GenericError("Invalid upload directory, not owner: %s" %
                                             orig_reldir)
             else:
-                with open(u_fn, 'w') as fo:
+                with open(u_fn, 'wt') as fo:
                     fo.write(str(context.session.user_id))
     return joinpath(udir, name)
 

@@ -43,7 +43,7 @@ class TestGetUploadPath(unittest.TestCase):
         fullpath = '%s/work/%s' % (self.topdir, reldir)
         os.makedirs(fullpath)
 
-        with open('{0}/.user'.format(fullpath), 'wt') as f:
+        with open('{0}/.user'.format(fullpath), 'wt', encoding='utf-8') as f:
             f.write('1')
 
         with self.assertRaises(GenericError):

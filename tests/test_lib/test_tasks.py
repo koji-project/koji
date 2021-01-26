@@ -364,7 +364,7 @@ class TasksTestCase(unittest.TestCase):
         temp_path = get_tmp_dir_path('TestTask')
         makedirs(temp_path)
         temp_file = path.join(temp_path, 'test.txt')
-        with open(temp_file, 'w') as temp_file_handler:
+        with open(temp_file, 'wt') as temp_file_handler:
             temp_file_handler.write('Test')
 
         obj = TestTask(123, 'some_method', ['random_arg'], None, None, temp_path)
@@ -400,11 +400,11 @@ class TasksTestCase(unittest.TestCase):
         makedirs(dummy_dir)
 
         dummy_file = path.join(temp_path, 'test.txt')
-        with open(dummy_file, 'w') as temp_file_handler:
+        with open(dummy_file, 'wt') as temp_file_handler:
             temp_file_handler.write('Test')
 
         dummy_file2 = path.join(dummy_dir, 'test2.txt')
-        with open(dummy_file2, 'w') as temp_file_handler2:
+        with open(dummy_file2, 'wt') as temp_file_handler2:
             temp_file_handler2.write('Test2')
 
         obj = TestTask(123, 'some_method', ['random_arg'], None, None, temp_path)

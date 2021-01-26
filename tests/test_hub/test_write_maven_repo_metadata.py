@@ -32,7 +32,7 @@ class TestWriteMavenRepoMetadata(unittest.TestCase):
                 _write_maven_repo_metadata(destdir, artifacts)
 
         openf_mock.assert_called_with(
-            os.path.join(destdir, 'maven-metadata.xml'), 'w')
+            os.path.join(destdir, 'maven-metadata.xml'), 'wt', encoding='utf-8')
 
         handle = openf_mock().__enter__()
         expected = """\

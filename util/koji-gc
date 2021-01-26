@@ -382,7 +382,7 @@ def send_warning_notice(owner_name, builds):
         print("Warning: empty build list. No notice sent")
         return
 
-    with open(options.email_template, 'r') as f:
+    with open(options.email_template, 'rt', encoding='utf-8') as f:
         tpl = Template(f.read())
 
     fmt = """\
@@ -782,7 +782,7 @@ def read_policies(fn=None):
     The expected format as follows
         test [params] [&& test [params] ...] :: (keep|untag|skip)
     """
-    fo = open(fn, 'r')
+    fo = open(fn, 'rt', encoding='utf-8')
     tests = koji.policy.findSimpleTests(globals())
     ret = koji.policy.SimpleRuleSet(fo, tests)
     fo.close()

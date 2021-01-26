@@ -29,6 +29,7 @@ import datetime
 import errno
 import hashlib
 import imp
+import json
 import logging
 import logging.handlers
 import optparse
@@ -1282,9 +1283,8 @@ def parse_pom(path=None, contents=None):
     values = {}
     handler = POMHandler(values, fields)
     if path:
-        fd = open(path)
-        contents = fd.read()
-        fd.close()
+        with open(path, encoding='utf-8') as fd:
+            contents = fd.read()
 
     if not contents:
         raise GenericError(
@@ -1351,6 +1351,16 @@ def mavenLabel(maveninfo):
 def hex_string(s):
     """Converts a string to a string of hex digits"""
     return ''.join(['%02x' % _ord(x) for x in s])
+
+
+def load_json(filepath):
+    """Loads json from file"""
+    return json.load(open(filepath, 'rt', encoding='utf-8'))
+
+
+def dump_json(filepath, data, indent=4, sort_keys=False):
+    """Write json to file"""
+    json.dump(data, open(filepath, 'wt', encoding='utf-8'), indent=indent, sort_keys=sort_keys)
 
 
 def make_groups_spec(grplist, name='buildsys-build', buildgroup=None):
@@ -1611,9 +1621,7 @@ def genMockConfig(name, arch, managed=False, repoid=None, tag_name=None, **opts)
     if opts.get('use_host_resolv', False) and os.path.exists('/etc/hosts'):
         # if we're setting up DNS,
         # also copy /etc/hosts from the host
-        etc_hosts = open('/etc/hosts')
-        files['etc/hosts'] = etc_hosts.read()
-        etc_hosts.close()
+        files['etc/hosts'] = open('/etc/hosts', 'rt', encoding='utf-8').read()
     mavenrc = ''
     if opts.get('maven_opts'):
         mavenrc = 'export MAVEN_OPTS="%s"\n' % ' '.join(opts['maven_opts'])
@@ -1832,7 +1840,7 @@ def openRemoteFile(relpath, topurl=None, topdir=None, tempdir=None):
         downloadFile(url, path=relpath, fo=fo)
     elif topdir:
         fn = "%s/%s" % (topdir, relpath)
-        fo = open(fn)
+        fo = open(fn, 'rb')
     else:
         raise GenericError("No access method for remote file: %s" % relpath)
     return fo

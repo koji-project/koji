@@ -131,7 +131,7 @@ class HeaderTestCase(unittest.TestCase):
     rpmdir = os.path.join(os.path.dirname(__file__), 'data/rpms')
 
     def setUp(self):
-        self.fd = open(self.rpm_path)
+        self.fd = open(self.rpm_path, 'rb')
 
     def tearDown(self):
         self.fd.close()

@@ -252,7 +252,7 @@ class RepoMerge(object):
                     include_srpms[srpm_name] = (pkg.sourcerpm, pkg.repoid)
 
         pkgorigins = os.path.join(self.yumbase.conf.cachedir, 'pkgorigins')
-        origins = open(pkgorigins, 'w')
+        origins = open(pkgorigins, 'wt', encoding='utf-8')
 
         seen_rpms = {}
         for repo in repos:
@@ -307,7 +307,7 @@ class RepoMerge(object):
                     pkg._return_remote_location = make_const_func(loc)
 
         pkgorigins = os.path.join(self.yumbase.conf.cachedir, 'pkgorigins')
-        origins = open(pkgorigins, 'w')
+        origins = open(pkgorigins, 'wt', encoding='utf-8')
 
         seen_rpms = {}
         for repo in repos:
@@ -348,9 +348,8 @@ def main(args):
     opts = parse_args(args)
 
     if opts.blocked:
-        blocked_fo = open(opts.blocked)
-        blocked_list = blocked_fo.readlines()
-        blocked_fo.close()
+        with open(opts.blocked, encoding='utf-8') as blocked_fo:
+            blocked_list = blocked_fo.readlines()
         blocked = dict([(b.strip(), 1) for b in blocked_list])
     else:
         blocked = {}

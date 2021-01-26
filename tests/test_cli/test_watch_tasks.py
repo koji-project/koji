@@ -9,6 +9,7 @@ import unittest
 from mock import call
 from six.moves import range
 
+import koji
 from koji_cli.lib import watch_tasks
 from .fakeclient import FakeClientSession, RecordingClientSession
 
@@ -27,8 +28,7 @@ class TestWatchTasks(unittest.TestCase):
         if self.recording:
             # save recorded calls
             if self.record_file:
-                with open(self.record_file, 'w') as fp:
-                    json.dump(self.session.get_calls(), fp, indent=4)
+                koji.dump_json(self.record_file, self.session.get_calls())
             else:
                 json.dump(self.session.get_calls(), sys.stderr, indent=4)
             self.recording = False
@@ -54,8 +54,7 @@ class TestWatchTasks(unittest.TestCase):
     def test_watch_tasks(self, stdout):
         # self.setup_record('foo.json')
         cfile = os.path.dirname(__file__) + '/data/calls/watchtasks1.json'
-        with open(cfile) as fp:
-            cdata = json.load(fp)
+        cdata = koji.load_json(cfile)
         self.session.load_calls(cdata)
         rv = watch_tasks(self.session, [1188], quiet=False, poll_interval=0,
                          topurl=self.options.topurl)
@@ -75,8 +74,7 @@ class TestWatchTasks(unittest.TestCase):
     def test_watch_tasks_fail(self, stdout, sleep):
         # self.setup_record('foo.json')
         cfile = os.path.dirname(__file__) + '/data/calls/watchtasks2.json'
-        with open(cfile) as fp:
-            cdata = json.load(fp)
+        cdata = koji.load_json(cfile)
         self.session.load_calls(cdata)
         rv = watch_tasks(self.session, [1208], quiet=False, poll_interval=5, topurl=None)
         self.assertEqual(rv, 1)
@@ -100,8 +98,7 @@ class TestWatchTasks(unittest.TestCase):
         """Raise KeyboardInterrupt inner watch_tasks.
         Raising it by SIGNAL might be better"""
         cfile = os.path.dirname(__file__) + '/data/calls/watchtasks2.json'
-        with open(cfile) as fp:
-            cdata = json.load(fp)
+        cdata = koji.load_json(cfile)
         self.session.load_calls(cdata)
         sleep.side_effect = [None] * 10  + [KeyboardInterrupt]
         with self.assertRaises(KeyboardInterrupt):
@@ -125,8 +122,7 @@ Running Tasks:
     def test_watch_tasks_with_keyboardinterrupt_handler(self, stdout, sleep):
         """Raise KeyboardInterrupt inner watch_tasks with a ki_handler"""
         cfile = os.path.dirname(__file__) + '/data/calls/watchtasks2.json'
-        with open(cfile) as fp:
-            cdata = json.load(fp)
+        cdata = koji.load_json(cfile)
         self.session.load_calls(cdata)
         sleep.side_effect = [None] * 10 + [KeyboardInterrupt]
 

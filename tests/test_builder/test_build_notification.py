@@ -23,8 +23,7 @@ class MyClientSession(koji.ClientSession):
 
     def load_calls(self, name):
         fn = os.path.join(os.path.dirname(__file__), 'data/calls', name,'calls.json')
-        with open(fn) as fp:
-            data = json.load(fp)
+        data = koji.load_json(fn)
         for call in data:
             key = self._munge([call['method'], call['args'], call['kwargs']])
             self._testcalls[key] = call
@@ -79,8 +78,7 @@ class TestBuildNotification(unittest.TestCase):
         # task_info['id'], method, params, self.session, self.options
         task_id = 999
         fn = os.path.join(os.path.dirname(__file__), 'data/calls', 'build_notif_1', 'params.json')
-        with open(fn) as fp:
-            kwargs = json.load(fp)
+        kwargs = koji.load_json(fn)
         self.session = MyClientSession('https://koji.example.com/kojihub')
         self.session.load_calls('build_notif_1')
         self.options.from_addr = "koji@example.com"

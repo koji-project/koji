@@ -36,7 +36,7 @@ class TestImportCG(utils.CliTestCase):
     @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
     @mock.patch('koji_cli.commands.linked_upload')
     @mock.patch('koji_cli.commands.activate_session')
-    @mock.patch('koji_cli.commands.json')
+    @mock.patch('koji.json')
     def test_handle_import_cg(
             self,
             json_mock,
@@ -153,15 +153,7 @@ class TestImportCG(utils.CliTestCase):
             activate_session=None)
 
         # Case 2. JSON module does not exist
-        expected = self.format_error_message('Unable to find json module')
-        with mock.patch('koji_cli.commands.json', new=None):
-            self.assert_system_exit(
-                handle_import_cg,
-                options,
-                session,
-                arguments,
-                stderr=expected,
-                activate_session=None)
+        # dropped - it is now part of stdlib
 
         metadata = {
             'output': [
@@ -177,7 +169,7 @@ class TestImportCG(utils.CliTestCase):
 
         with mock.patch(utils.get_builtin_open()):
             with mock.patch('os.path.exists', new=self.mock_os_path_exists):
-                with mock.patch('koji_cli.commands.json') as json_mock:
+                with mock.patch('koji.json') as json_mock:
 
                     # Case 3. metafile doesn't have output section
                     json_mock.load.return_value = {}

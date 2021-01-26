@@ -31,7 +31,7 @@ class TestGetBuildLogs(unittest.TestCase):
                 dirpath = os.path.dirname(path)
             koji.ensuredir(dirpath)
             if path:
-                with open(path, 'w') as fo:
+                with open(path, 'wt') as fo:
                     fo.write('TEST LOG FILE CONTENTS\n')
 
     def test_get_build_logs_basic(self):
@@ -54,7 +54,7 @@ class TestGetBuildLogs(unittest.TestCase):
 
     def test_get_build_logs_notadir(self):
         fn = "%s/SOMEFILE" % self.tempdir
-        with open(fn, 'w') as fo:
+        with open(fn, 'wt') as fo:
             fo.write('NOT A DIRECTORY\n')
         koji.pathinfo.build_logs.return_value = fn
         try:

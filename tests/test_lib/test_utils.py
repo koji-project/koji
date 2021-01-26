@@ -145,7 +145,7 @@ class MiscFunctionTestCase(unittest.TestCase):
             fo = koji.openRemoteFile(path, topdir=topdir)
             self.assertEqual(m_requests.call_count, 0)
             m_TemporaryFile.assert_not_called()
-            m_open.assert_called_once_with(filename)
+            m_open.assert_called_once_with(filename, 'rb')
             assert fo is m_open.return_value
 
         for m in mocks:
@@ -736,7 +736,7 @@ class MavenUtilTestCase(unittest.TestCase):
 
     def _read_conf(self, cfile):
         path = os.path.dirname(__file__)
-        with open(path + cfile, 'r') as conf_file:
+        with open(path + cfile, 'rt', encoding='utf-8') as conf_file:
             if six.PY2:
                 config = six.moves.configparser.SafeConfigParser()
                 config.readfp(conf_file)

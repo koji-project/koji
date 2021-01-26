@@ -1,5 +1,4 @@
 import unittest
-import json
 import mock
 import os
 import shutil
@@ -138,7 +137,7 @@ class TestDistRepoMove(unittest.TestCase):
         for fn in self.files:
             path = os.path.join(uploaddir, fn)
             koji.ensuredir(os.path.dirname(path))
-            with open(path, 'w') as fo:
+            with open(path, 'wt', encoding='utf-8') as fo:
                 fo.write('%s' % os.path.basename(fn))
 
         # generate pkglist file
@@ -148,7 +147,7 @@ class TestDistRepoMove(unittest.TestCase):
         self.rpms = {}
         self.builds ={}
         self.key = '4c8da725'
-        with open(plist, 'w') as f_pkglist:
+        with open(plist, 'wt', encoding='utf-8') as f_pkglist:
             for nvr in nvrs:
                 binfo = koji.parse_NVR(nvr)
                 rpminfo = binfo.copy()
@@ -158,7 +157,7 @@ class TestDistRepoMove(unittest.TestCase):
                 path = os.path.join(builddir, relpath)
                 koji.ensuredir(os.path.dirname(path))
                 basename = os.path.basename(path)
-                with open(path, 'w') as fo:
+                with open(path, 'wt', encoding='utf-8') as fo:
                     fo.write('%s' % basename)
                 f_pkglist.write(path)
                 f_pkglist.write('\n')
@@ -179,13 +178,11 @@ class TestDistRepoMove(unittest.TestCase):
         for rpminfo in self.rpms.values():
             bnp = '%(name)s-%(version)s-%(release)s.%(arch)s.rpm' % rpminfo
             kojipkgs[bnp] = rpminfo
-        with open("%s/kojipkgs" % uploaddir, "w") as fp:
-            json.dump(kojipkgs, fp, indent=4)
+        koji.dump_json("%s/kojipkgs" % uploaddir, kojipkgs)
         self.files.append('kojipkgs')
 
         # write manifest
-        with open("%s/repo_manifest" % uploaddir, "w") as fp:
-            json.dump(self.files, fp, indent=4)
+        koji.dump_json("%s/repo_manifest" % uploaddir, self.files)
 
         # mocks
         self.repo_info = mock.patch('kojihub.repo_info').start()
@@ -221,7 +218,7 @@ class TestDistRepoMove(unittest.TestCase):
             basename = os.path.basename(path)
             if not os.path.exists(path):
                 raise Exception("Missing file: %s" % path)
-            data = open(path).read()
+            data = open(path, 'rt', encoding='utf-8').read()
             data.strip()
             self.assertEquals(data, basename)
 

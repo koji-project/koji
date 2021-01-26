@@ -27,7 +27,6 @@ import copy
 import glob
 import grp
 import io
-import json
 import logging
 import logging.handlers
 import os
@@ -311,7 +310,7 @@ class BuildRoot(object):
         output = koji.genMockConfig(self.name, self.br_arch, managed=True, **opts)
 
         # write config
-        with open(configfile, 'w') as fo:
+        with open(configfile, 'wt', encoding='utf-8') as fo:
             fo.write(output)
 
     def _repositoryEntries(self, pi, plugin=False):
@@ -410,8 +409,8 @@ class BuildRoot(object):
 </settings>
 """
         settings = settings % locals()
-        with open(self.rootdir() + destfile, 'w') as fo:
-            fo.write(settings)
+        with open(self.rootdir() + destfile, 'wt') as fo:
+            fo.write(settings, encoding='utf-8')
 
     def mock(self, args):
         """Run mock"""
@@ -457,13 +456,13 @@ class BuildRoot(object):
                             ts_name = '%s-ts.log' % fname
                             fpath = os.path.join(resultdir, ts_name)
                             if os.path.exists(fpath):
-                                with open(fpath, 'rt') as ts_file:
+                                with open(fpath, 'rt', encoding='utf-8') as ts_file:
                                     lines = ts_file.readlines()
                                     if lines:
                                         last = int(lines[-1].split()[1])
                                         ts_offsets[fname] = last
                             else:
-                                with open(fpath, 'a') as ts_file:
+                                with open(fpath, 'at', encoding='utf-8') as ts_file:
                                     ts_file.write('%.0f 0\n' % time.time())
                             logs[ts_name] = (None, None, 0, fpath)
                 if workdir and mocklog not in logs:
@@ -474,13 +473,13 @@ class BuildRoot(object):
                             ts_name = '%s-ts.log' % mocklog
                             fpath = os.path.join(workdir, ts_name)
                             if os.path.exists(fpath):
-                                with open(fpath, 'rt') as ts_file:
+                                with open(fpath, 'rt', encoding='utf-8') as ts_file:
                                     lines = ts_file.readlines()
                                     if lines:
                                         last = int(lines[-1].split()[1])
                                         ts_offsets[mocklog] = last
                             else:
-                                with open(fpath, 'a') as ts_file:
+                                with open(fpath, 'at', encoding='utf-8') as ts_file:
                                     ts_file.write('%.0f 0\n' % time.time())
                             logs[ts_name] = (None, None, 0, fpath)
 
@@ -511,7 +510,7 @@ class BuildRoot(object):
                         ts_offsets.setdefault(fname, 0)
                         if ts_offsets[fname] < position:
                             fpath = os.path.join(resultdir, '%s-ts.log' % fname)
-                            with open(fpath, 'a') as ts_file:
+                            with open(fpath, 'at', encoding='utf-8') as ts_file:
                                 ts_file.write('%.0f %i\n' % (time.time(), position))
                             ts_offsets[fname] = position
                     incremental_upload(self.session, fname, fd, uploadpath, logger=self.logger)
@@ -1438,9 +1437,8 @@ class BuildArchTask(BaseBuildTask):
         if rpmdiff_hash[self.id]:
             log_name = 'noarch_rpmdiff.json'
             noarch_hash_path = os.path.join(broot.workdir, log_name)
-            with open(noarch_hash_path, 'wt') as f:
-                json.dump(rpmdiff_hash, f, indent=2, sort_keys=True)
-                log_files.append(log_name)
+            koji.dump_json(noarch_hash_path, rpmdiff_hash, indent=2, sort_keys=True)
+            log_files.append(log_name)
 
         self.logger.debug("rpms: %r" % rpm_files)
         self.logger.debug("srpms: %r" % srpm_files)
@@ -1827,7 +1825,7 @@ class WrapperRPMTask(BaseBuildTask):
             tgt[field] = src.get(field)
 
     def spec_sanity_checks(self, filename):
-        spec = open(filename).read()
+        spec = open(filename, encoding='utf-8').read()
         for tag in ("Packager", "Distribution", "Vendor"):
             if re.match("%s:" % tag, spec, re.M):
                 raise koji.BuildError("%s is not allowed to be set in spec file" % tag)
@@ -3052,7 +3050,7 @@ class ImageTask(BaseTaskHandler):
         kskoji = os.path.join(broot.tmpdir(), 'koji-image-%s-%i.ks' %
                               (target_info['build_tag_name'], self.id))
         koji.ensuredir(broot.tmpdir())
-        with open(kskoji, 'w') as outfile:
+        with open(kskoji, 'wt', encoding='utf-8') as outfile:
             outfile.write(str(self.ks.handler))
 
         # put the new ksfile in the output directory
@@ -3250,7 +3248,7 @@ class LiveCDTask(ImageTask):
         Using iso9660 from pycdio, get the file manifest of the given image,
         and save it to the text file manifile.
         """
-        fd = open(manifile, 'w')
+        fd = open(manifile, 'wt', encoding='utf-8')
         if not fd:
             raise koji.GenericError(
                 'Unable to open manifest file (%s) for writing!' % manifile)
@@ -3439,7 +3437,7 @@ class LiveMediaTask(ImageTask):
         Using iso9660 from pycdio, get the file manifest of the given image,
         and save it to the text file manifile.
         """
-        fd = open(manifile, 'w')
+        fd = open(manifile, 'wt', encoding='utf-8')
         if not fd:
             raise koji.GenericError(
                 'Unable to open manifest file (%s) for writing!' % manifile)
@@ -3772,7 +3770,7 @@ class OzImageTask(BaseTaskHandler):
             an absolute path to the kickstart file we wrote
         """
         kspath = os.path.join(self.workdir, ksname)
-        with open(kspath, 'w') as outfile:
+        with open(kspath, 'wt', encoding='utf-8') as outfile:
             outfile.write(str(ksobj.handler))
 
         # put the new ksfile in the output directory
@@ -3906,7 +3904,7 @@ class OzImageTask(BaseTaskHandler):
         edriver = newxml.getElementsByTagName('driver')[0]
         edriver.setAttribute('type', format)
         xml_path = os.path.join(self.workdir, filename)
-        with open(xml_path, 'w') as xmlfd:
+        with open(xml_path, 'wt', encoding='utf-8') as xmlfd:
             xmlfd.write(newxml.toprettyxml())
         return xml_path
 
@@ -4356,7 +4354,7 @@ class BaseImageTask(OzImageTask):
         ApplicationConfiguration(configuration=config)
 
         tdl_path = os.path.join(self.workdir, 'tdl-%s.xml' % self.arch)
-        with open(tdl_path, 'w') as tdl:
+        with open(tdl_path, 'wt', encoding='utf-8') as tdl:
             tdl.write(template)
         self.uploadFile(tdl_path)
 
@@ -4506,7 +4504,7 @@ class BuildIndirectionImageTask(OzImageTask):
             tops['tempdir'] = self.workdir
             final_path = os.path.join(self.workdir, os.path.basename(filepath))
             with koji.openRemoteFile(filepath, **tops) as remote_fileobj:
-                with open(final_path, 'w') as final_fileobj:
+                with open(final_path, 'wb') as final_fileobj:
                     shutil.copyfileobj(remote_fileobj, final_fileobj)
         self.logger.debug('uploading retrieved file from here: %s' % final_path)
         self.uploadFile(final_path)  # upload the original ks file
@@ -4560,7 +4558,7 @@ class BuildIndirectionImageTask(OzImageTask):
             # Factory doesn't attempt to modify a disk image after it is COMPLETE so
             # this will work safely on read-only NFS mounts
             factory_base_image.data = diskimage_full
-            factory_base_image.template = open(tdl_full).read()
+            factory_base_image.template = open(tdl_full, encoding='utf-8').read()
             factory_base_image.status = 'COMPLETE'
             # Now save it
             pim.save_image(factory_base_image)
@@ -4612,7 +4610,7 @@ class BuildIndirectionImageTask(OzImageTask):
             # Factory doesn't attempt to modify a disk image after it is COMPLETE so
             # this will work safely on read-only NFS mounts
             factory_base_image.data = diskimage_full
-            factory_base_image.template = open(tdl_full).read()
+            factory_base_image.template = open(tdl_full, encoding='utf-8').read()
             factory_base_image.status = 'COMPLETE'
             # Now save it
             pim.save_image(factory_base_image)
@@ -4702,7 +4700,7 @@ class BuildIndirectionImageTask(OzImageTask):
         rm = ReservationManager()
         rm._listen_port = rm.MIN_PORT + self.id % (rm.MAX_PORT - rm.MIN_PORT)
 
-        utility_customizations = open(indirection_template).read()
+        utility_customizations = open(indirection_template, encoding='utf-8').read()
         results_loc = opts.get('results_loc', None)
         if results_loc[0] != "/":
             results_loc = "/" + results_loc
@@ -4720,7 +4718,7 @@ class BuildIndirectionImageTask(OzImageTask):
                     pim = PersistentImageManager.default_manager()
                     pim.add_image(target_image)
                     target.target_image = target_image
-                    with open(target_image.data, "w") as f:
+                    with open(target_image.data, "wt", encoding='utf-8') as f:
                         f.write("Mock build from task ID: %s" % self.id)
                     target_image.status = 'COMPLETE'
                 else:
@@ -4880,7 +4878,7 @@ class BuildSRPMFromSCMTask(BaseBuildTask):
     _taskWeight = 1.0
 
     def spec_sanity_checks(self, filename):
-        spec = open(filename).read()
+        spec = open(filename, encoding='utf-8').read()
         for tag in ("Packager", "Distribution", "Vendor"):
             if re.match("%s:" % tag, spec, re.M):
                 raise koji.BuildError("%s is not allowed to be set in spec file" % tag)
@@ -5452,7 +5450,7 @@ class CreaterepoTask(BaseTaskHandler):
         if external_repos:
             self.merge_repos(external_repos, arch, groupdata)
         elif pkglist is None:
-            with open(os.path.join(self.datadir, "EMPTY_REPO"), 'w') as fo:
+            with open(os.path.join(self.datadir, "EMPTY_REPO"), 'wt') as fo:
                 fo.write("This repo is empty because its tag has no content for this arch\n")
 
         uploadpath = self.getUploadDir()
@@ -5751,7 +5749,7 @@ class createDistRepoTask(BaseTaskHandler):
                 zck_dict_dir=opts.get('zck_dict_dir'))
         if len(self.kojipkgs) == 0:
             fn = os.path.join(self.repodir, "repodata", "EMPTY_REPO")
-            with open(fn, 'w') as fp:
+            with open(fn, 'wt') as fp:
                 fp.write("This repo is empty because its tag has no content "
                          "for this arch\n")
 
@@ -5793,8 +5791,7 @@ class createDistRepoTask(BaseTaskHandler):
     def upload_repo_manifest(self):
         """Upload a list of the repo files we've uploaded"""
         fn = '%s/repo_manifest' % self.workdir
-        with open(fn, 'w') as fp:
-            json.dump(self.repo_files, fp, indent=4)
+        koji.dump_json(fn, self.repo_files, indent=4)
         self.session.uploadWrapper(fn, self.uploadpath)
 
     def do_createrepo(self, repodir, pkglist, groupdata, oldpkgs=None,
@@ -5862,7 +5859,7 @@ class createDistRepoTask(BaseTaskHandler):
 
         # read pkgs data from multilib repo
         ml_pkgfile = os.path.join(mldir, 'kojipkgs')
-        ml_pkgs = json.load(open(ml_pkgfile, 'r'))
+        ml_pkgs = koji.load_json(ml_pkgfile)
 
         # step 1: figure out which packages are multilib (should already exist)
         dnfbase = dnf.Base()
@@ -5918,7 +5915,7 @@ enabled=1
 
         # step 3: proceed with dnf config and set up
         yconfig_path = os.path.join(dnfdir, 'dnf.conf-koji-%s' % arch)
-        with open(yconfig_path, 'w') as f:
+        with open(yconfig_path, 'wt', encoding='utf-8') as f:
             f.write(dnfconfig)
         self.session.uploadWrapper(yconfig_path, self.uploadpath,
                                    os.path.basename(yconfig_path))
@@ -5955,7 +5952,7 @@ enabled=1
 
         if len(fs_missing) > 0:
             missing_log = os.path.join(self.workdir, 'missing_multilib.log')
-            with open(missing_log, 'w') as outfile:
+            with open(missing_log, 'wt', encoding='utf-8') as outfile:
                 outfile.write('The following multilib files were missing:\n')
                 for ml_path in fs_missing:
                     outfile.write(ml_path + '\n')
@@ -6058,7 +6055,7 @@ enabled=1
         # report problems
         if len(fs_missing) > 0:
             missing_log = os.path.join(self.workdir, 'missing_files.log')
-            with open(missing_log, 'w') as outfile:
+            with open(missing_log, 'wt', encoding='utf-8') as outfile:
                 outfile.write('Some rpm files were missing.\n'
                               'Most likely, you want to create these signed copies.\n\n'
                               'Missing files:\n')
@@ -6071,7 +6068,7 @@ enabled=1
         if sig_missing:
             # log missing signatures and possibly error
             missing_log = os.path.join(self.workdir, 'missing_signatures.log')
-            with open(missing_log, 'w') as outfile:
+            with open(missing_log, 'wt', encoding='utf-8') as outfile:
                 outfile.write('Some rpms were missing requested signatures.\n')
                 if opts['skip_missing_signatures']:
                     outfile.write('The skip_missing_signatures option was specified, so '
@@ -6120,19 +6117,18 @@ enabled=1
             else:
                 pkgs.append('Packages/%s/%s\n' % (bnplet, bnp))
 
-        with open('%s/pkglist' % self.repodir, 'w') as fo:
+        with open('%s/pkglist' % self.repodir, 'wt', encoding='utf-8') as fo:
             for line in pkgs:
                 fo.write(line)
         for subrepo in subrepo_pkgs:
             koji.ensuredir('%s/%s' % (self.repodir, subrepo))
-            with open('%s/%s/pkglist' % (self.repodir, subrepo), 'w') as fo:
+            with open('%s/%s/pkglist' % (self.repodir, subrepo), 'wt', encoding='utf-8') as fo:
                 for line in subrepo_pkgs[subrepo]:
                     fo.write(line)
 
     def write_kojipkgs(self):
         filename = os.path.join(self.repodir, 'kojipkgs')
-        with open(filename, 'w') as datafile:
-            json.dump(self.kojipkgs, datafile, indent=4, sort_keys=True)
+        koji.dump_json(filename, self.kojipks, sort_keys=False)
 
 
 class WaitrepoTask(BaseTaskHandler):

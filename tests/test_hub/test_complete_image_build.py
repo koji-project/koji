@@ -96,15 +96,15 @@ class TestCompleteImageBuild(unittest.TestCase):
     def set_up_files(self, name):
         datadir = os.path.join(os.path.dirname(__file__), 'data/image', name)
         # load image result data for our test build
-        data = json.load(open(datadir + '/data.json'))
-        self.db_expect = json.load(open(datadir + '/db.json'))
+        data = koji.load_json(datadir + '/data.json')
+        self.db_expect = koji.load_json(datadir + '/db.json')
         for arch in data:
             taskdir = koji.pathinfo.task(data[arch]['task_id'])
             os.makedirs(taskdir)
             filenames = data[arch]['files'] +  data[arch]['logs']
             for filename in filenames:
                 path = os.path.join(taskdir, filename)
-                with open(path, 'w') as fp:
+                with open(path, 'wt', encoding='utf-8') as fp:
                     fp.write('Test file for %s\n%s\n' % (arch, filename))
         self.image_data = data
 
