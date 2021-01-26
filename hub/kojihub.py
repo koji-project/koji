@@ -7852,6 +7852,12 @@ def query_history(tables=None, **kwargs):
                 clauses.append(' OR '.join([c_test, r_test]))
                 fields[c_test] = '_created_before_event'
                 fields[r_test] = '_revoked_before_event'
+            elif arg == 'xkey':
+                if 'key' not in table_fields[table]:
+                    skip = True
+                    break
+                data['key'] = str(value)
+                clauses.append("%s.key = %%(key)s" % table)
         if skip:
             continue
         fields, aliases = zip(*fields.items())
