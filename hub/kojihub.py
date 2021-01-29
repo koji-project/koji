@@ -596,7 +596,8 @@ def make_task(method, arglist, **opts):
     ruleset = context.policy.get('priority')
     result = ruleset.apply(policy_data)
     if result is None:
-        logger.warning('Priority policy returned no result, using default value: %s' % opts['priority'])
+        logger.warning('Priority policy returned no result, using default value: %s'
+                       % opts['priority'])
     else:
         try:
             parts = result.split()
@@ -615,7 +616,6 @@ def make_task(method, arglist, **opts):
         except (IndexError, ValueError):
             logger.error("Invalid result from priority policy: %s", ruleset.last_rule())
             raise koji.GenericError("invalid priority policy")
-
 
     # encode xmlrpc request
     opts['request'] = koji.xmlrpcplus.dumps(tuple(arglist), methodname=method)
