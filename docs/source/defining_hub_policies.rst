@@ -178,10 +178,10 @@ different:
 ``set <int>``
     * set priority to this value
 
-``increment by <int>``
+``adjust +<int>``
     * increment default priority
 
-``decrement by <int>``
+``adjust -<int>``
     * decrement default priority
 
 Available tests

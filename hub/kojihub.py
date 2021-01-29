@@ -606,14 +606,13 @@ def make_task(method, arglist, **opts):
             elif parts[0] == 'set':
                 # fixed value
                 opts['priority'] = int(parts[1])
-            elif parts[0] == 'increment' and parts[1] == 'by':
-                opts['priority'] += int(parts[2])
-            elif parts[0] == 'decrement' and parts[1] == 'by':
-                opts['priority'] -= int(parts[2])
+            elif parts[0] == 'adjust':
+                # note: int() will accept our preferred "+1" representation for increments
+                opts['priority'] += int(parts[1])
             else:
                 logger.error("Invalid result from priority policy: %s", ruleset.last_rule())
                 raise koji.GenericError("invalid priority policy")
-        except IndexError:
+        except (IndexError, ValueError):
             logger.error("Invalid result from priority policy: %s", ruleset.last_rule())
             raise koji.GenericError("invalid priority policy")
 
