@@ -5712,13 +5712,13 @@ class createDistRepoTask(BaseTaskHandler):
         oldpkgs = []
         if opts.get('delta'):
             # should be a list of repo ids to delta against
-            for repo_id in opts['delta']:
-                oldrepo = self.session.repoInfo(repo_id, strict=True)
+            for delta_repo_id in opts['delta']:
+                oldrepo = self.session.repoInfo(delta_repo_id, strict=True)
                 if not oldrepo['dist']:
                     raise koji.GenericError("Base repo for deltas must also "
                                             "be a dist repo")
                     # regular repos don't actually have rpms, just pkglist
-                path = koji.pathinfo.distrepo(repo_id, oldrepo['tag_name'])
+                path = koji.pathinfo.distrepo(delta_repo_id, oldrepo['tag_name'])
                 if not os.path.exists(path):
                     raise koji.GenericError('Base drpm repo missing: %s' % path)
                 # note: since we're using the top level dir, this will handle
