@@ -772,10 +772,16 @@ def _writeInheritanceData(tag_id, changes, clear=False):
 
 def readFullInheritance(tag_id, event=None, reverse=False, stops=None, jumps=None):
     """Returns a list representing the full, ordered inheritance from tag"""
-    if stops is None:
+    if not stops:
         stops = {}
-    if jumps is None:
+    else:
+        logger.warning(
+            "readFullInheritance stops option is deprecated and will be removed in 1.26")
+    if not jumps:
         jumps = {}
+    else:
+        logger.warning(
+            "readFullInheritance jumps option is deprecated and will be removed in 1.26")
     order = []
     readFullInheritanceRecurse(tag_id, event, order, stops, {}, {}, 0, None, False, [], reverse,
                                jumps)
