@@ -6133,7 +6133,7 @@ enabled=1
 
     def write_kojipkgs(self):
         filename = os.path.join(self.repodir, 'kojipkgs')
-        koji.dump_json(filename, self.kojipks, sort_keys=False)
+        koji.dump_json(filename, self.kojipkgs, sort_keys=False)
 
 
 class WaitrepoTask(BaseTaskHandler):
