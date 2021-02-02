@@ -653,13 +653,11 @@ def download_archive(build, archive, topurl, quiet=False, noprogress=False):
     elif archive['btype'] == 'image':
         url = os.path.join(pi.imagebuild(build), archive['filename'])
         path = archive['filename']
-    elif archive['btype'] == 'remote-sources':
-        directory = pi.typedir(build, 'remote-sources')
+    else:
+        # non-legacy types are more systematic
+        directory = pi.typedir(build, archive['btype'])
         url = os.path.join(directory, archive['filename'])
         path = archive['filename']
-    else:
-        # TODO: cover module/operator-manifests/remote-sources
-        raise NotImplementedError(archive['btype'])
 
     download_file(url, path, quiet=quiet, noprogress=noprogress, filesize=archive['size'])
 
