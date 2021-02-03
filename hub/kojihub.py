@@ -4939,7 +4939,7 @@ def _get_tarball_list(archive_id, tarpath):
     result = []
     if not os.path.exists(tarpath):
         return result
-    with tarfile.open(tarpath, 'rb') as archive:
+    with tarfile.open(tarpath, 'r') as archive:
         for entry in archive:
             filename = koji.fixEncoding(entry.name)
             result.append({'archive_id': archive_id,
