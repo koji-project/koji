@@ -4937,7 +4937,10 @@ def anon_handle_taginfo(goptions, session, args):
         if external_repos:
             print("External repos:")
             for rinfo in external_repos:
-                if not rinfo['arches']:
+                if 'arches' not in rinfo:
+                    # older hubs will not return this field
+                    rinfo['arches'] = '-'
+                elif not rinfo['arches']:
                     rinfo['arches'] = 'inherited from tag'
                     # TODO else intersection of arches?
                 print("  %(priority)3i %(external_repo_name)s "
