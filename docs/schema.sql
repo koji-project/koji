@@ -870,8 +870,6 @@ INSERT INTO archivetypes (name, description, extensions) VALUES ('vmdk-compresse
 -- add kernel-image and imitramfs: From schema-upgrade-1.18-1.19
 INSERT INTO archivetypes (name, description, extensions) VALUES ('kernel-image', 'Kernel BZ2 Image', 'vmlinuz vmlinuz.gz vmlinuz.xz');
 INSERT INTO archivetypes (name, description, extensions) VALUES ('initramfs', 'Compressed Initramfs Image', 'img');
--- debian packages from schema-upgrade-1.23-1.24
-INSERT INTO archivetypes (name, description, extensions) VALUES ('deb', 'Debian package', 'deb');
 
 
 -- Do we want to enforce a constraint that a build can only generate one
