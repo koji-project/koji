@@ -34,6 +34,7 @@ from koji.util import encode_datetime_recurse
 # the available callback hooks and a list
 # of functions to be called for each event
 callbacks = {
+    # hub
     'prePackageListChange': [],
     'postPackageListChange': [],
     'preTaskStateChange': [],
@@ -54,8 +55,11 @@ callbacks = {
     'postRepoDone': [],
     'preCommit': [],
     'postCommit': [],
+    # builder
     'preSCMCheckout': [],
     'postSCMCheckout': [],
+    'postCreateDistRepo': [],
+    'postCreateRepo': [],
 }
 
 
