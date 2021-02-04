@@ -50,6 +50,16 @@
       <th>Description</th><td class="rpmheader">$util.escapeHTML($description)</td>
     </tr>
     #end if
+    #if $vcs
+    <tr>
+        <th><label title="Package source code VCS location">VCS</label></th><td>$vcs</td>
+    </tr>
+    #end if
+    #if $disturl
+    <tr>
+        <th>DistURL</th><td>$disturl</td>
+    </tr>
+    #end if
     <tr>
       <th>Built by</th><td class="user-$build.owner_name"><a href="userinfo?userID=$build.owner_id">$build.owner_name</a></td>
     </tr>

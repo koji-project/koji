@@ -1240,9 +1240,10 @@ def buildinfo(environ, buildID):
 
     if 'src' in rpmsByArch:
         srpm = rpmsByArch['src'][0]
-        headers = server.getRPMHeaders(srpm['id'], headers=['summary', 'description'])
-        values['summary'] = koji.fixEncoding(headers.get('summary'))
-        values['description'] = koji.fixEncoding(headers.get('description'))
+        headers = ('summary', 'description', 'disturl', 'vcs')
+        result = server.getRPMHeaders(rpm['id'], headers=headers)
+        for header in headers:
+            values[header] = koji.fixEncoding(result.get(header))
         values['changelog'] = server.getChangelogEntries(build['id'])
 
     if build['task_id']:
@@ -1496,10 +1497,10 @@ def rpminfo(environ, rpmID, fileOrder='name', fileStart=None, buildrootOrder='-i
         for dep_type in dep_names:
             values[dep_names[dep_type]] = [d for d in deps if d['type'] == dep_type]
             values[dep_names[dep_type]].sort(key=_sortbyname)
-        headers = server.getRPMHeaders(rpm['id'], headers=['summary', 'description', 'license'])
-        values['summary'] = koji.fixEncoding(headers.get('summary'))
-        values['description'] = koji.fixEncoding(headers.get('description'))
-        values['license'] = koji.fixEncoding(headers.get('license'))
+        headers = ('summary', 'description', 'license', 'disturl', 'vcs')
+        result = server.getRPMHeaders(rpm['id'], headers=headers)
+        for header in headers:
+            values[header] = koji.fixEncoding(result.get(header))
     buildroots = kojiweb.util.paginateMethod(server, values, 'listBuildroots',
                                              kw={'rpmID': rpm['id']},
                                              start=buildrootStart,
