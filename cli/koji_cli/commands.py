@@ -2459,29 +2459,34 @@ def anon_handle_latest_build(goptions, session, args):
 
 def anon_handle_list_api(goptions, session, args):
     "[info] Print the list of XML-RPC APIs"
-    usage = _("usage: %prog list-api [options]")
+    usage = _("usage: %prog list-api [options] [method_name ...]")
     parser = OptionParser(usage=get_usage_str(usage))
     (options, args) = parser.parse_args(args)
-    if len(args) != 0:
-        parser.error(_("This command takes no arguments"))
     ensure_connection(session, goptions)
-    for x in sorted(session._listapi(), key=lambda x: x['name']):
-        if 'argdesc' in x:
-            args = x['argdesc']
-        elif x['args']:
-            # older servers may not provide argdesc
-            expanded = []
-            for arg in x['args']:
-                if isinstance(arg, str):
-                    expanded.append(arg)
-                else:
-                    expanded.append('%s=%s' % (arg[0], arg[1]))
-            args = "(%s)" % ", ".join(expanded)
-        else:
-            args = "()"
-        print('%s%s' % (x['name'], args))
-        if x['doc']:
-            print("  description: %s" % x['doc'])
+    if args:
+        for method in args:
+            help = session.system.methodHelp(method)
+            if not help:
+                parser.error(_("Unknown method: %s") % method)
+            print(help)
+    else:
+        for x in sorted(session._listapi(), key=lambda x: x['name']):
+            if 'argdesc' in x:
+                args = x['argdesc']
+            elif x['args']:
+                # older servers may not provide argdesc
+                expanded = []
+                for arg in x['args']:
+                    if isinstance(arg, str):
+                        expanded.append(arg)
+                    else:
+                        expanded.append('%s=%s' % (arg[0], arg[1]))
+                args = "(%s)" % ", ".join(expanded)
+            else:
+                args = "()"
+            print('%s%s' % (x['name'], args))
+            if x['doc']:
+                print("  description: %s" % x['doc'])
 
 
 def anon_handle_list_tagged(goptions, session, args):
