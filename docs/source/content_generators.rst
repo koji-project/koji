@@ -143,3 +143,17 @@ Relevant API calls for Content Generator are:
   containing ``token`` and ``build_id``. ``token`` would be used in subsequent
   call of ``CGImport`` while ``build_id`` needs to be part of metadata (as item
   in ``build`` key).
+
+Current Public Implementations
+==============================
+
+Following koji plugins uses CGs as part of their workflow.
+
+- `OpenShift Build Service <https://github.com/containerbuildsystem/>`__
+- `OSBuild <https://github.com/osbuild/>`__
+- `MBS <https://pagure.io/fm-orchestrator/blob/master/f/module_build_service/builder/KojiContentGenerator.py>`__
+
+Standalone CG utilites are here:
+- `CoreOS <https://github.com/coreos/coreos-assembler/blob/master/src/cmd-koji-upload>`__
+- `misoctl - Debian package CG <https://github.com/red-hat-storage/misoctl>`__
+- `Project NewCastle - Java package CG component <https://github.com/project-ncl/causeway>`__
