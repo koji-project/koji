@@ -181,21 +181,21 @@ td.building {
 }
 
 td.complete {
-    color: #0c0;
+    color: #008000;
 }
 
 td.deleted,
 td.failed,
 td.canceled {
-    color: #c00;
+    color: #ff0000;
 }
 
 td.false {
-    color: #c00;
+    color: #ff0000;
 }
 
 td.true {
-    color: #0c0;
+    color: #008000;
 }
 
 img.sort {
