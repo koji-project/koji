@@ -78,7 +78,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.23.1
+Version: 1.24.0
 Release: %{release}%{?dist}
 License: LGPLv2 and GPLv2+
 # the included arch lib from yum's rpmUtils is GPLv2+
@@ -590,6 +590,47 @@ rm -rf $RPM_BUILD_ROOT
 %systemd_postun kojira.service
 
 %changelog
+* Thu Feb  4 2021 Tomas Kopecek <tkopecek at redhat.com> - 1.24.0-1
+- PR#2637: plugin hooks for repo modification
+- PR#2680: fix the mode of tarfile.open
+- PR#2608: cli: support download-build --type=remote-sources
+- PR#2674: cli: fix tests
+- PR#2667: spec: pythonic provides
+- PR#2671: fix typo
+- PR#2651: make policy test thread safe
+- PR#2664: requires python[23]-requests-gssapi for rhel[78]
+- PR#2655: readFullInheritance stops/jumps deprecation
+- PR#2589: history query by key
+- PR#2633: handle plugins and generator results in count and countAndFilterResults
+- PR#2649: kojid: backward compatible hub call
+- PR#2647: explicit encoding for text file operations
+- PR#2661: web: add comment explaining null start_time values
+- PR#2639: web: return correct content-length
+- PR#2654: cli: hide import-sig --write option
+- PR#2644: Lower default multicall batch values
+- PR#2584: require gssapi-requests 1.22
+- PR#2576: db: add debian package archivetype
+- PR#2627: hub: remove global SSLVerifyClient option
+- PR#2605: cli: return error if add/remove-tag-inheritance can't be applied
+- PR#2630: fix nightly getNextReelase format
+- PR#2610: cli: raise NotImplementedError with btype name
+- PR#2598: lib: better print with debug_xmlrpc
+- PR#2621: docs: mention the final destination for new dist-repos
+- PR#2617: docs: link to tag2distrepo hub plugin
+- PR#2609: hub: doc listArchive types param for content generators
+- PR#2595: unify sql case
+- PR#2566: cli: list-task --after/--before/--all
+- PR#2574: hub: limit CGImport to allow only one CG per import
+- PR#2564: external repos can have specified arch list
+- PR#2562: cli: list-hosts can display description/comment
+- PR#2529: remove deprecated --ca option
+- PR#2555: hub: [listBuilds] add nvr glob pattern support
+- PR#2560: cli: allow removal of unused external repo even with --alltags
+- PR#2571: Add option to use repos from kickstart for livemedia builds
+- PR#2559: web: order methods by name in select box
+- PR#2540: Add nomacboot option for spin-livemedia
+- PR#2561: hub: fix tests
+
 * Mon Jan  4 2021 Tomas Kopecek <tkopecek at redhat.com> - 1.23.1-1
 - PR#2603: hub: fix py2-like 'stop' usage in getFullInheritance
 - PR#2593: docs: assign multicall to "m" in code example
