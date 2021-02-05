@@ -61,6 +61,7 @@ from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 from six.moves import range, zip
 
+from koji.tasks import parse_task_params
 from koji.xmlrpcplus import Fault, dumps, getparser, loads, xmlrpc_client
 from . import util
 from . import _version
@@ -3336,116 +3337,73 @@ def taskLabel(taskInfo):
 def _taskLabel(taskInfo):
     """Format taskInfo (dict) into a descriptive label."""
     method = taskInfo['method']
+    request = taskInfo['request']
     arch = taskInfo['arch']
+    params = parse_task_params(method, request)
     extra = ''
     if method in ('build', 'maven'):
-        if 'request' in taskInfo:
-            source, target = taskInfo['request'][:2]
-            if '://' in source:
-                module_info = _module_info(source)
-            else:
-                module_info = os.path.basename(source)
-            extra = '%s, %s' % (target, module_info)
+        src = params.get('src') or params.get('url')
+        if '://' in src:
+            module_info = _module_info(src)
+        else:
+            module_info = os.path.basename(src)
+        target = params.get('target') or params.get('build_tag')
+        extra = '%s, %s' % (target, module_info)
     elif method in ('indirectionimage',):
-        if 'request' in taskInfo:
-            if len(taskInfo['request']) == 1:
-                module_name = taskInfo['request'][0]['name']
-                module_version = taskInfo['request'][0]['version']
-                module_release = taskInfo['request'][0]['release']
-                extra = '%s, %s, %s' % (module_name, module_version, module_release)
-    elif method in ('buildSRPMFromSCM', 'buildSRPMFromCVS'):
-        if 'request' in taskInfo:
-            url = taskInfo['request'][0]
-            extra = _module_info(url)
+        module_name = params['opts']['name']
+        module_version = params['opts']['version']
+        module_release = params['opts']['release']
+        extra = '%s, %s, %s' % (module_name, module_version, module_release)
+    elif method in ('buildSRPMFromSCM'):
+        extra = _module_info(params['url'])
     elif method == 'buildArch':
-        if 'request' in taskInfo:
-            srpm, tagID, arch = taskInfo['request'][:3]
-            srpm = os.path.basename(srpm)
-            extra = '%s, %s' % (srpm, arch)
+        srpm = os.path.basename(params['pkg'])
+        arch = params['arch']
+        extra = '%s, %s' % (srpm, arch)
     elif method == 'buildMaven':
-        if 'request' in taskInfo:
-            build_tag = taskInfo['request'][1]
-            extra = build_tag['name']
+        extra = params['build_tag']['name']
     elif method == 'wrapperRPM':
-        if 'request' in taskInfo:
-            build_target = taskInfo['request'][1]
-            build = taskInfo['request'][2]
-            if build:
-                extra = '%s, %s' % (build_target['name'], buildLabel(build))
-            else:
-                extra = build_target['name']
+        if params['build']:
+            extra = '%s, %s' % (params['build_target']['name'], buildLabel(params['build']))
+        else:
+            extra = params['build_target']['name']
     elif method == 'winbuild':
-        if 'request' in taskInfo:
-            # vm = taskInfo['request'][0]
-            url = taskInfo['request'][1]
-            target = taskInfo['request'][2]
-            module_info = _module_info(url)
-            extra = '%s, %s' % (target, module_info)
+        module_info = _module_info(params['source_url'])
+        extra = '%s, %s' % (params['target'], module_info)
     elif method == 'vmExec':
-        if 'request' in taskInfo:
-            extra = taskInfo['request'][0]
+        extra = params['name']
     elif method == 'buildNotification':
-        if 'request' in taskInfo:
-            build = taskInfo['request'][1]
-            extra = buildLabel(build)
+        extra = buildLabel(params['build'])
     elif method in ('newRepo', 'distRepo'):
-        if 'request' in taskInfo:
-            extra = str(taskInfo['request'][0])
+        extra = str(params['tag'])
     elif method in ('tagBuild', 'tagNotification'):
         # There is no displayable information included in the request
         # for these methods
         pass
-    elif method == 'prepRepo':
-        if 'request' in taskInfo:
-            tagInfo = taskInfo['request'][0]
-            extra = tagInfo['name']
     elif method == 'createrepo':
-        if 'request' in taskInfo:
-            arch = taskInfo['request'][1]
-            extra = arch
+        extra = params['arch']
     elif method == 'createdistrepo':
-        if 'request' in taskInfo:
-            repo_id = taskInfo['request'][1]
-            arch = taskInfo['request'][2]
-            extra = '%s, %s' % (repo_id, arch)
+        extra = '%s, %s' % (params['repo_id'], params['arch'])
     elif method == 'dependantTask':
-        if 'request' in taskInfo:
-            extra = ', '.join([subtask[0] for subtask in taskInfo['request'][1]])
+        task_list = params['task_list']
+        extra = ', '.join([str(subtask[0]) for subtask in task_list])
     elif method in ('chainbuild', 'chainmaven'):
-        if 'request' in taskInfo:
-            extra = taskInfo['request'][1]
+        extra = params['target']
     elif method == 'waitrepo':
-        if 'request' in taskInfo:
-            extra = str(taskInfo['request'][0])
-            if len(taskInfo['request']) >= 3:
-                nvrs = taskInfo['request'][2]
-                if isinstance(nvrs, list):
-                    extra += ', ' + ', '.join(nvrs)
+        extra = str(params['tag'])
+        if isinstance(params['nvrs'], list):
+            extra += ', ' + ', '.join(params['nvrs'])
     elif method in ('livecd', 'appliance', 'image', 'livemedia'):
-        if 'request' in taskInfo:
-            stuff = taskInfo['request']
-            if method == 'image':
-                kickstart = os.path.basename(stuff[-1]['kickstart'])
-            else:
-                kickstart = os.path.basename(stuff[4])
-            extra = '%s, %s-%s, %s' % (stuff[3], stuff[0], stuff[1], kickstart)
+        kstart = params.get('ksfile') or params.get('inst_tree')
+        arch = params.get('arch') or params.get('arches')
+        extra = '%s, %s-%s, %s' % (arch, params['name'], params['version'], kstart)
     elif method in ('createLiveCD', 'createAppliance', 'createImage', 'createLiveMedia'):
-        if 'request' in taskInfo:
-            stuff = taskInfo['request']
-            if method == 'createImage':
-                kickstart = os.path.basename(stuff[-1]['kickstart'])
-            else:
-                kickstart = os.path.basename(stuff[7])
-            extra = '%s, %s-%s-%s, %s, %s' % (stuff[4]['name'], stuff[0],
-                                              stuff[1], stuff[2], kickstart, stuff[3])
-    elif method == 'restart':
-        if 'request' in taskInfo:
-            host = taskInfo['request'][0]
-            extra = host['name']
-    elif method == 'restartVerify':
-        if 'request' in taskInfo:
-            task_id, host = taskInfo['request'][:2]
-            extra = host['name']
+        kstart = params.get('ksfile') or params.get('inst_tree')
+        extra = '%s, %s-%s-%s, %s, %s' % (params['target_info']['name'],
+                                          params['name'], params['version'], params['release'],
+                                          kstart, params['arch'])
+    elif method in ('restart', 'restartVerify'):
+        extra = params['host']['name']
 
     if extra:
         return '%s (%s)' % (method, extra)
