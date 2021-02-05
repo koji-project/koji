@@ -181,21 +181,21 @@ td.building {
 }
 
 td.complete {
-    color: #0c0;
+    color: #008000;
 }
 
 td.deleted,
 td.failed,
 td.canceled {
-    color: #c00;
+    color: #ff0000;
 }
 
 td.false {
-    color: #c00;
+    color: #ff0000;
 }
 
 td.true {
-    color: #0c0;
+    color: #008000;
 }
 
 img.sort {
@@ -392,11 +392,11 @@ tr.row-even td.tree span.treeLabel {
 }
 
 .taskopen {
-    color: #f60;
+    color: #ff8c00;
 }
 
 .taskclosed, .repoready {
-    color: #0c0;
+    color: #008000;
 }
 
 .taskcanceled, .repoexpired {
@@ -408,7 +408,7 @@ tr.row-even td.tree span.treeLabel {
 }
 
 .taskfailed, .repodeleted, .repoproblem {
-    color: #c00;
+    color: #ff0000;
 }
 
 a.help {
