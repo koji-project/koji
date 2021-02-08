@@ -5557,7 +5557,7 @@ class CreaterepoTask(BaseTaskHandler):
         # generate repo url list, starting with our local premerge repo
         repos = ['file://' + localdir + '/']
         for repo in external_repos:
-            if repo['arches'] and arch not in repo['arches'].split():
+            if repo.get('arches') and arch not in repo['arches'].split():
                 # ignore external repo with non-relevant archlist
                 continue
             ext_url = repo['url']
