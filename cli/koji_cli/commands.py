@@ -4023,15 +4023,23 @@ def anon_handle_list_targets(goptions, session, args):
     parser.add_option("--quiet", action="store_true", default=goptions.quiet,
                       help=_("Do not print the header information"))
     (options, args) = parser.parse_args(args)
+
     if len(args) != 0:
         parser.error(_("This command takes no arguments"))
     ensure_connection(session)
+
+    targets = session.getBuildTargets(options.name)
+    if len(targets) == 0:
+        if options.name:
+            parser.error(_('Target "%s" does not exist' % options.name))
+        else:
+            parser.error(_('No Targets were found'))
 
     fmt = "%(name)-30s %(build_tag_name)-30s %(dest_tag_name)-30s"
     if not options.quiet:
         print("%-30s %-30s %-30s" % ('Name', 'Buildroot', 'Destination'))
         print("-" * 93)
-    tmp_list = sorted([(x['name'], x) for x in session.getBuildTargets(options.name)])
+    tmp_list = sorted([(x['name'], x) for x in targets])
     targets = [x[1] for x in tmp_list]
     for target in targets:
         print(fmt % target)
