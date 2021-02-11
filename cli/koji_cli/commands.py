@@ -3179,7 +3179,8 @@ def anon_handle_rpminfo(goptions, session, args):
         if not info.get('external_repo_id', 0):
             headers = session.getRPMHeaders(rpmID=info['id'],
                                             headers=["license"])
-            print("License: %(license)s" % headers)
+            if 'license' in headers:
+                print("License: %(license)s" % headers)
             print("Build ID: %(build_id)s" % info)
         if info['buildroot_id'] is None:
             print("No buildroot data available")
