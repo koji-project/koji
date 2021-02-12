@@ -310,7 +310,7 @@ class BuildRoot(object):
         output = koji.genMockConfig(self.name, self.br_arch, managed=True, **opts)
 
         # write config
-        with open(configfile, 'wt', encoding='utf-8') as fo:
+        with koji._open_text_file(configfile, 'wt') as fo:
             fo.write(output)
 
     def _repositoryEntries(self, pi, plugin=False):
@@ -409,8 +409,8 @@ class BuildRoot(object):
 </settings>
 """
         settings = settings % locals()
-        with open(self.rootdir() + destfile, 'wt') as fo:
-            fo.write(settings, encoding='utf-8')
+        with koji._open_text_file(self.rootdir() + destfile, 'wt') as fo:
+            fo.write(settings)
 
     def mock(self, args):
         """Run mock"""
@@ -456,13 +456,13 @@ class BuildRoot(object):
                             ts_name = '%s-ts.log' % fname
                             fpath = os.path.join(resultdir, ts_name)
                             if os.path.exists(fpath):
-                                with open(fpath, 'rt', encoding='utf-8') as ts_file:
+                                with koji._open_text_file(fpath) as ts_file:
                                     lines = ts_file.readlines()
                                     if lines:
                                         last = int(lines[-1].split()[1])
                                         ts_offsets[fname] = last
                             else:
-                                with open(fpath, 'at', encoding='utf-8') as ts_file:
+                                with koji._open_text_file(fpath, 'at') as ts_file:
                                     ts_file.write('%.0f 0\n' % time.time())
                             logs[ts_name] = (None, None, 0, fpath)
                 if workdir and mocklog not in logs:
@@ -473,13 +473,13 @@ class BuildRoot(object):
                             ts_name = '%s-ts.log' % mocklog
                             fpath = os.path.join(workdir, ts_name)
                             if os.path.exists(fpath):
-                                with open(fpath, 'rt', encoding='utf-8') as ts_file:
+                                with koji._open_text_file(fpath) as ts_file:
                                     lines = ts_file.readlines()
                                     if lines:
                                         last = int(lines[-1].split()[1])
                                         ts_offsets[mocklog] = last
                             else:
-                                with open(fpath, 'at', encoding='utf-8') as ts_file:
+                                with koji._open_text_file(fpath, 'at') as ts_file:
                                     ts_file.write('%.0f 0\n' % time.time())
                             logs[ts_name] = (None, None, 0, fpath)
 
@@ -510,7 +510,7 @@ class BuildRoot(object):
                         ts_offsets.setdefault(fname, 0)
                         if ts_offsets[fname] < position:
                             fpath = os.path.join(resultdir, '%s-ts.log' % fname)
-                            with open(fpath, 'at', encoding='utf-8') as ts_file:
+                            with koji._open_text_file(fpath, 'at') as ts_file:
                                 ts_file.write('%.0f %i\n' % (time.time(), position))
                             ts_offsets[fname] = position
                     incremental_upload(self.session, fname, fd, uploadpath, logger=self.logger)
@@ -1830,7 +1830,7 @@ class WrapperRPMTask(BaseBuildTask):
             tgt[field] = src.get(field)
 
     def spec_sanity_checks(self, filename):
-        spec = open(filename, encoding='utf-8').read()
+        spec = koji._open_text_file(filename).read()
         for tag in ("Packager", "Distribution", "Vendor"):
             if re.match("%s:" % tag, spec, re.M):
                 raise koji.BuildError("%s is not allowed to be set in spec file" % tag)
@@ -3055,7 +3055,7 @@ class ImageTask(BaseTaskHandler):
         kskoji = os.path.join(broot.tmpdir(), 'koji-image-%s-%i.ks' %
                               (target_info['build_tag_name'], self.id))
         koji.ensuredir(broot.tmpdir())
-        with open(kskoji, 'wt', encoding='utf-8') as outfile:
+        with koji._open_text_file(kskoji, 'wt') as outfile:
             outfile.write(str(self.ks.handler))
 
         # put the new ksfile in the output directory
@@ -3253,7 +3253,7 @@ class LiveCDTask(ImageTask):
         Using iso9660 from pycdio, get the file manifest of the given image,
         and save it to the text file manifile.
         """
-        fd = open(manifile, 'wt', encoding='utf-8')
+        fd = koji._open_text_file(manifile, 'wt')
         if not fd:
             raise koji.GenericError(
                 'Unable to open manifest file (%s) for writing!' % manifile)
@@ -3442,7 +3442,7 @@ class LiveMediaTask(ImageTask):
         Using iso9660 from pycdio, get the file manifest of the given image,
         and save it to the text file manifile.
         """
-        fd = open(manifile, 'wt', encoding='utf-8')
+        fd = koji._open_text_file(manifile, 'wt')
         if not fd:
             raise koji.GenericError(
                 'Unable to open manifest file (%s) for writing!' % manifile)
@@ -3775,7 +3775,7 @@ class OzImageTask(BaseTaskHandler):
             an absolute path to the kickstart file we wrote
         """
         kspath = os.path.join(self.workdir, ksname)
-        with open(kspath, 'wt', encoding='utf-8') as outfile:
+        with koji._open_text_file(kspath, 'wt') as outfile:
             outfile.write(str(ksobj.handler))
 
         # put the new ksfile in the output directory
@@ -3909,7 +3909,7 @@ class OzImageTask(BaseTaskHandler):
         edriver = newxml.getElementsByTagName('driver')[0]
         edriver.setAttribute('type', format)
         xml_path = os.path.join(self.workdir, filename)
-        with open(xml_path, 'wt', encoding='utf-8') as xmlfd:
+        with koji._open_text_file(xml_path, 'wt') as xmlfd:
             xmlfd.write(newxml.toprettyxml())
         return xml_path
 
@@ -4359,7 +4359,7 @@ class BaseImageTask(OzImageTask):
         ApplicationConfiguration(configuration=config)
 
         tdl_path = os.path.join(self.workdir, 'tdl-%s.xml' % self.arch)
-        with open(tdl_path, 'wt', encoding='utf-8') as tdl:
+        with koji._open_text_file(tdl_path, 'wt') as tdl:
             tdl.write(template)
         self.uploadFile(tdl_path)
 
@@ -4563,7 +4563,7 @@ class BuildIndirectionImageTask(OzImageTask):
             # Factory doesn't attempt to modify a disk image after it is COMPLETE so
             # this will work safely on read-only NFS mounts
             factory_base_image.data = diskimage_full
-            factory_base_image.template = open(tdl_full, encoding='utf-8').read()
+            factory_base_image.template = koji._open_text_file(tdl_full).read()
             factory_base_image.status = 'COMPLETE'
             # Now save it
             pim.save_image(factory_base_image)
@@ -4615,7 +4615,7 @@ class BuildIndirectionImageTask(OzImageTask):
             # Factory doesn't attempt to modify a disk image after it is COMPLETE so
             # this will work safely on read-only NFS mounts
             factory_base_image.data = diskimage_full
-            factory_base_image.template = open(tdl_full, encoding='utf-8').read()
+            factory_base_image.template = koji._open_text_file(tdl_full).read()
             factory_base_image.status = 'COMPLETE'
             # Now save it
             pim.save_image(factory_base_image)
@@ -4705,7 +4705,7 @@ class BuildIndirectionImageTask(OzImageTask):
         rm = ReservationManager()
         rm._listen_port = rm.MIN_PORT + self.id % (rm.MAX_PORT - rm.MIN_PORT)
 
-        utility_customizations = open(indirection_template, encoding='utf-8').read()
+        utility_customizations = koji._open_text_file(indirection_template).read()
         results_loc = opts.get('results_loc', None)
         if results_loc[0] != "/":
             results_loc = "/" + results_loc
@@ -4723,7 +4723,7 @@ class BuildIndirectionImageTask(OzImageTask):
                     pim = PersistentImageManager.default_manager()
                     pim.add_image(target_image)
                     target.target_image = target_image
-                    with open(target_image.data, "wt", encoding='utf-8') as f:
+                    with koji._open_text_file(target_image.data, "wt") as f:
                         f.write("Mock build from task ID: %s" % self.id)
                     target_image.status = 'COMPLETE'
                 else:
@@ -4883,7 +4883,7 @@ class BuildSRPMFromSCMTask(BaseBuildTask):
     _taskWeight = 1.0
 
     def spec_sanity_checks(self, filename):
-        spec = open(filename, encoding='utf-8').read()
+        spec = koji._open_text_file(filename).read()
         for tag in ("Packager", "Distribution", "Vendor"):
             if re.match("%s:" % tag, spec, re.M):
                 raise koji.BuildError("%s is not allowed to be set in spec file" % tag)
@@ -5928,7 +5928,7 @@ enabled=1
 
         # step 3: proceed with dnf config and set up
         yconfig_path = os.path.join(dnfdir, 'dnf.conf-koji-%s' % arch)
-        with open(yconfig_path, 'wt', encoding='utf-8') as f:
+        with koji._open_text_file(yconfig_path, 'wt') as f:
             f.write(dnfconfig)
         self.session.uploadWrapper(yconfig_path, self.uploadpath,
                                    os.path.basename(yconfig_path))
@@ -5965,7 +5965,7 @@ enabled=1
 
         if len(fs_missing) > 0:
             missing_log = os.path.join(self.workdir, 'missing_multilib.log')
-            with open(missing_log, 'wt', encoding='utf-8') as outfile:
+            with koji._open_text_file(missing_log, 'wt') as outfile:
                 outfile.write('The following multilib files were missing:\n')
                 for ml_path in fs_missing:
                     outfile.write(ml_path + '\n')
@@ -6068,7 +6068,7 @@ enabled=1
         # report problems
         if len(fs_missing) > 0:
             missing_log = os.path.join(self.workdir, 'missing_files.log')
-            with open(missing_log, 'wt', encoding='utf-8') as outfile:
+            with koji._open_text_file(missing_log, 'wt') as outfile:
                 outfile.write('Some rpm files were missing.\n'
                               'Most likely, you want to create these signed copies.\n\n'
                               'Missing files:\n')
@@ -6081,7 +6081,7 @@ enabled=1
         if sig_missing:
             # log missing signatures and possibly error
             missing_log = os.path.join(self.workdir, 'missing_signatures.log')
-            with open(missing_log, 'wt', encoding='utf-8') as outfile:
+            with koji._open_text_file(missing_log, 'wt') as outfile:
                 outfile.write('Some rpms were missing requested signatures.\n')
                 if opts['skip_missing_signatures']:
                     outfile.write('The skip_missing_signatures option was specified, so '
@@ -6130,12 +6130,12 @@ enabled=1
             else:
                 pkgs.append('Packages/%s/%s\n' % (bnplet, bnp))
 
-        with open('%s/pkglist' % self.repodir, 'wt', encoding='utf-8') as fo:
+        with koji._open_text_file('%s/pkglist' % self.repodir, 'wt') as fo:
             for line in pkgs:
                 fo.write(line)
         for subrepo in subrepo_pkgs:
             koji.ensuredir('%s/%s' % (self.repodir, subrepo))
-            with open('%s/%s/pkglist' % (self.repodir, subrepo), 'wt', encoding='utf-8') as fo:
+            with koji._open_text_file('%s/%s/pkglist' % (self.repodir, subrepo), 'wt') as fo:
                 for line in subrepo_pkgs[subrepo]:
                     fo.write(line)
 

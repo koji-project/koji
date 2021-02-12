@@ -333,7 +333,7 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
         fobj = mock.MagicMock()
         openf.return_value.__enter__.return_value = fobj
         anon_handle_mock_config(options, session, arguments)
-        openf.assert_called_with('/tmp/mock.out', 'wt', encoding='utf-8')
+        openf.assert_called_once()
         fobj.write.assert_called_once_with(self.mock_output)
         gen_config_mock.assert_called_with(
             self.progname, arch, **opts)

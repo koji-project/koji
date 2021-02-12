@@ -49,6 +49,7 @@ import warnings
 import weakref
 import xml.sax
 import xml.sax.handler
+from contextlib import contextmanager
 from fnmatch import fnmatch
 
 import dateutil.parser
@@ -1266,6 +1267,15 @@ class POMHandler(xml.sax.handler.ContentHandler):
         self.values.clear()
 
 
+# BEGIN kojikamid dup #
+def _open_text_file(path, mode='rt'):
+    # enforce utf-8 encoding for py3
+    if six.PY2:
+        return open(path, mode)
+    else:
+        return open(path, mode, encoding='utf-8')
+# END kojikamid dup $
+
 ENTITY_RE = re.compile(r'&[A-Za-z0-9]+;')
 
 
@@ -1283,8 +1293,7 @@ def parse_pom(path=None, contents=None):
     values = {}
     handler = POMHandler(values, fields)
     if path:
-        with open(path, encoding='utf-8') as fd:
-            contents = fd.read()
+        contents = _open_text_file(path).read()
 
     if not contents:
         raise GenericError(
@@ -1355,12 +1364,12 @@ def hex_string(s):
 
 def load_json(filepath):
     """Loads json from file"""
-    return json.load(open(filepath, 'rt', encoding='utf-8'))
+    return json.load(_open_text_file(filepath))
 
 
 def dump_json(filepath, data, indent=4, sort_keys=False):
     """Write json to file"""
-    json.dump(data, open(filepath, 'wt', encoding='utf-8'), indent=indent, sort_keys=sort_keys)
+    json.dump(data, _open_text_file(filepath, 'wt'), indent=indent, sort_keys=sort_keys)
 
 
 def make_groups_spec(grplist, name='buildsys-build', buildgroup=None):
@@ -1621,7 +1630,7 @@ def genMockConfig(name, arch, managed=False, repoid=None, tag_name=None, **opts)
     if opts.get('use_host_resolv', False) and os.path.exists('/etc/hosts'):
         # if we're setting up DNS,
         # also copy /etc/hosts from the host
-        files['etc/hosts'] = open('/etc/hosts', 'rt', encoding='utf-8').read()
+        files['etc/hosts'] = _open_text_file('/etc/hosts').read()
     mavenrc = ''
     if opts.get('maven_opts'):
         mavenrc = 'export MAVEN_OPTS="%s"\n' % ' '.join(opts['maven_opts'])
