@@ -428,6 +428,11 @@ def lazysetattr(object, name, func, args, kwargs=None, cache=False):
     setattr(object, name, value)
 
 
+class _RetryRmtree(Exception):
+    """This exception is used internally by rmtree"""
+    # We raise this exception only when it makes sense for rmtree to retry from the top
+
+
 def rmtree(path, logger=None):
     """Delete a directory tree without crossing fs boundaries"""
     # implemented to avoid forming long paths
@@ -442,78 +447,89 @@ def rmtree(path, logger=None):
         raise koji.GenericError("Not a directory: %s" % path)
     dev = st.st_dev
     cwd = os.getcwd()
-    root = os.path.abspath(path)
+
     try:
-        try:
-            os.chdir(path)
-        except OSError as e:
-            if e.errno not in (errno.ENOENT, errno.ESTALE):
-                return
-            raise
-        _rmtree(dev, root)
+        # retry loop
+        while True:
+            try:
+                os.chdir(path)
+            except OSError as e:
+                if e.errno not in (errno.ENOENT, errno.ESTALE):
+                    return
+                raise
+            try:
+                _rmtree(dev)
+            except _RetryRmtree as e:
+                # reset and retry
+                os.chdir(cwd)
+                continue
+            break
     finally:
         os.chdir(cwd)
+
+    # a successful _rmtree call should leave us with an empty directory
     try:
         os.rmdir(path)
     except OSError as e:
-        if e.errno == errno.ENOTEMPTY:
-            logger.warning('%s path is not empty, but it may be a phantom error caused by some'
-                           ' race condition', path, exc_info=True)
-        elif e.errno != errno.ENOENT:
+        if e.errno != errno.ENOENT:
             raise
 
 
-def _rmtree(dev, root):
+def _rmtree(dev):
+    """Remove all contents of CWD"""
+    # This implementation avoids forming long paths and recursion. Otherwise
+    # we will have errors with very deep directory trees.
+    # - to avoid forming long paths we change directory as we go
+    # - to avoid recursion we maintain our own stack
     dirstack = []
+    # Each entry in dirstack is a list of subdirs for that level
+    # As we descend into the tree, we append a new entry to dirstack
+    # When we ascend back up after removal, we pop them off
     while True:
         dirs = _stripcwd(dev)
-        # if no dirs, walk back up until we find some
+
+        # if cwd has no subdirs, walk back up until we find some
         while not dirs and dirstack:
             try:
                 os.chdir('..')
-                dirs = dirstack.pop()
-                empty_dir = dirs.pop()
-                try:
-                    os.rmdir(empty_dir)
-                except OSError:
-                    # we'll still fail at the top level
-                    pass
             except OSError as e:
                 if e.errno in (errno.ENOENT, errno.ESTALE):
-                    # go back to root if chdir fails
-                    dirstack = []
-                    dirs = _stripcwd(dev)
-                    try:
-                        os.chdir(root)
-                    except OSError as e:
-                        # root has been deleted
-                        if e.errno == errno.ENOENT:
-                            return
-                        raise
-                else:
-                    raise
+                    # likely in a race with another rmtree
+                    # however, we cannot proceed from here, so we return to the top
+                    raise _RetryRmtree(str(e))
+                raise
+            dirs = dirstack.pop()
+
+            # now that we've ascended back up by one, the first dir entry is
+            # one we've just cleared, so we should remove it
+            empty_dir = dirs.pop()
+            try:
+                os.rmdir(empty_dir)
+            except OSError:
+                # If this happens, either something else is writing to the dir,
+                # or there is a bug in our code.
+                # For now, we ignore this and proceed, but we'll still fail at
+                # the top level rmdir
+                pass
+
         if not dirs:
             # we are done
             break
-        # otherwise go deeper
+
+        # otherwise we descend into the next subdir
         subdir = dirs[-1]
         # note: we do not pop here because we need to remember to remove subdir later
-        dirstack.append(dirs)
         try:
             os.chdir(subdir)
         except OSError as e:
-            # go back to root if subdir doesn't exist
             if e.errno == errno.ENOENT:
-                dirstack = []
-                try:
-                    os.chdir(root)
-                except OSError as e:
-                    # root has been deleted
-                    if e.errno == errno.ENOENT:
-                        return
-                    raise
-            else:
-                raise
+                # likely in a race with another rmtree
+                # we'll ignore this and continue
+                # since subdir doesn't exist, we'll pop it off and forget about it
+                dirs.pop()
+                continue  # with dirstack unchanged
+            raise
+        dirstack.append(dirs)
 
 
 def _stripcwd(dev):
@@ -525,6 +541,7 @@ def _stripcwd(dev):
         # cwd has been removed by others, just return an empty list
         if e.errno in (errno.ENOENT, errno.ESTALE):
             return dirs
+        raise
     for fn in fdirs:
         try:
             st = os.lstat(fn)
