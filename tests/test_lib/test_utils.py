@@ -10,6 +10,8 @@ import resource
 import six.moves.configparser
 import time
 import six
+import shutil
+import tempfile
 import unittest
 
 import requests_mock
@@ -1278,7 +1280,7 @@ class TestRmtree(unittest.TestCase):
 
         self.assertEquals(koji.util.rmtree(path), None)
         chdir.assert_called_with('cwd')
-        _rmtree.assert_called_once_with('dev', path)
+        _rmtree.assert_called_once_with('dev')
         rmdir.assert_called_once_with(path)
 
     @patch('koji.util._rmtree')
@@ -1309,7 +1311,7 @@ class TestRmtree(unittest.TestCase):
         dev = 'dev'
         stripcwd.return_value = []
 
-        koji.util._rmtree(dev, 'any')
+        koji.util._rmtree(dev)
 
         stripcwd.assert_called_once_with(dev)
         rmdir.assert_not_called()
@@ -1322,7 +1324,7 @@ class TestRmtree(unittest.TestCase):
         dev = 'dev'
         stripcwd.side_effect = (['a', 'b'], [], [])
 
-        koji.util._rmtree(dev, 'any')
+        koji.util._rmtree(dev)
 
         stripcwd.assert_has_calls([call(dev), call(dev), call(dev)])
         rmdir.assert_has_calls([call('b'), call('a')])
@@ -1337,7 +1339,7 @@ class TestRmtree(unittest.TestCase):
         rmdir.side_effect = OSError()
 
         # don't fail on anything
-        koji.util._rmtree(dev, 'any')
+        koji.util._rmtree(dev)
 
         stripcwd.assert_has_calls([call(dev), call(dev), call(dev)])
         rmdir.assert_has_calls([call('b'), call('a')])
@@ -1347,7 +1349,7 @@ class TestRmtree(unittest.TestCase):
     @patch('os.lstat')
     @patch('stat.S_ISDIR')
     @patch('os.unlink')
-    def test_stripcwd_empty(dev, unlink, isdir, lstat, listdir):
+    def test_stripcwd_empty(self, unlink, isdir, lstat, listdir):
         # simple empty directory
         dev = 'dev'
         listdir.return_value = []
@@ -1363,7 +1365,7 @@ class TestRmtree(unittest.TestCase):
     @patch('os.lstat')
     @patch('stat.S_ISDIR')
     @patch('os.unlink')
-    def test_stripcwd_all(dev, unlink, isdir, lstat, listdir):
+    def test_stripcwd_all(self, unlink, isdir, lstat, listdir):
         # test valid file + dir
         dev = 'dev'
         listdir.return_value = ['a', 'b']
@@ -1384,7 +1386,7 @@ class TestRmtree(unittest.TestCase):
     @patch('os.lstat')
     @patch('stat.S_ISDIR')
     @patch('os.unlink')
-    def test_stripcwd_diffdev(dev, unlink, isdir, lstat, listdir):
+    def test_stripcwd_diffdev(self, unlink, isdir, lstat, listdir):
         # ignore files on different devices
         dev = 'dev'
         listdir.return_value = ['a', 'b']
@@ -1408,7 +1410,7 @@ class TestRmtree(unittest.TestCase):
     @patch('os.lstat')
     @patch('stat.S_ISDIR')
     @patch('os.unlink')
-    def test_stripcwd_fails(dev, unlink, isdir, lstat, listdir):
+    def test_stripcwd_fails(self, unlink, isdir, lstat, listdir):
         # ignore all unlink errors
         dev = 'dev'
         listdir.return_value = ['a', 'b']
@@ -1430,7 +1432,7 @@ class TestRmtree(unittest.TestCase):
     @patch('os.lstat')
     @patch('stat.S_ISDIR')
     @patch('os.unlink')
-    def test_stripcwd_stat_fail(dev, unlink, isdir, lstat, listdir):
+    def test_stripcwd_stat_fail(self, unlink, isdir, lstat, listdir):
         # something else deletes a file in the middle of _stripcwd()
         dev = 'dev'
         listdir.return_value = ['will-not-exist.txt']
@@ -1442,6 +1444,86 @@ class TestRmtree(unittest.TestCase):
         lstat.assert_called_once_with('will-not-exist.txt')
         unlink.assert_not_called()
         isdir.assert_not_called()
+
+
+class TestRmtree2(unittest.TestCase):
+
+    def setUp(self):
+        self.tempdir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.tempdir)
+
+    def test_rmtree_parallel_chdir_down_failure(self):
+        dirname = '%s/some-dir/' % self.tempdir
+        os.makedirs('%s/a/b/c/d/e/f/g/h/i/j/k' % dirname)
+        mock_data = {'n': 0, 'removed': False}
+        os_chdir = os.chdir
+        def my_chdir(*a, **kw):
+            # after 4 calls, remove the tree
+            # this should happen during the descent
+            # rmtree should gracefully handle this
+            mock_data['n'] += 1
+            if mock_data['n'] == 4:
+                shutil.rmtree(dirname)
+                mock_data['removed'] = True
+            return os_chdir(*a, **kw)
+        with mock.patch('os.chdir', new=my_chdir):
+            koji.util.rmtree(dirname)
+        if not mock_data['removed']:
+            raise Exception('mocked call not working')
+        if os.path.exists(dirname):
+            raise Exception('test directory not removed')
+
+    def test_rmtree_parallel_chdir_up_failure(self):
+        dirname = '%s/some-dir/' % self.tempdir
+        os.makedirs('%s/a/b/c/d/e/f/g/h/i/j/k' % dirname)
+        mock_data = {'n': 0, 'removed': False}
+        os_chdir = os.chdir
+        def my_chdir(path):
+            # remove the tree when we start ascending
+            # rmtree should gracefully handle this
+            mock_data['n'] += 1
+            if path == '..' and not mock_data['removed']:
+                shutil.rmtree(dirname)
+                mock_data['removed'] = True
+                # os.chdir('..') might not error on normal filesystems
+                # we'll raise ESTALE to simulate the nfs case
+                e = OSError()
+                e.errno = errno.ESTALE
+                raise e
+            return os_chdir(path)
+        with mock.patch('os.chdir', new=my_chdir):
+            koji.util.rmtree(dirname)
+        if not mock_data['removed']:
+            raise Exception('mocked call not working')
+        if os.path.exists(dirname):
+            raise Exception('test directory not removed')
+
+    def test_rmtree_parallel_listdir_fails(self):
+        dirname = '%s/some-dir/' % self.tempdir
+        os.makedirs('%s/a/b/c/d/e/f/g/h/i/j/k' % dirname)
+        mock_data = {'n': 0, 'removed': False}
+        os_listdir = os.listdir
+        def my_listdir(*a, **kw):
+            # after 4 calls, remove the tree
+            # rmtree should gracefully handle this
+            mock_data['n'] += 1
+            if mock_data['n'] == 4:
+                shutil.rmtree(dirname)
+                mock_data['removed'] = True
+                # os.listdir('.') might not error on normal filesystems
+                # we'll raise ESTALE to simulate the nfs case
+                e = OSError()
+                e.errno = errno.ESTALE
+                raise e
+            return os_listdir(*a, **kw)
+        with mock.patch('os.listdir', new=my_listdir):
+            koji.util.rmtree(dirname)
+        if not mock_data['removed']:
+            raise Exception('mocked call not working')
+        if os.path.exists(dirname):
+            raise Exception('test directory not removed')
 
 
 class TestMoveAndSymlink(unittest.TestCase):
