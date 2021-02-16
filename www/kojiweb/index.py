@@ -1461,6 +1461,7 @@ def userinfo(environ, userID, packageOrder='package_name', packageStart=None,
 # headers shown in rpminfo and buildinfo pages
 RPM_HEADERS = ['summary', 'description', 'license', 'disturl', 'vcs']
 
+
 def rpminfo(environ, rpmID, fileOrder='name', fileStart=None, buildrootOrder='-id',
             buildrootStart=None):
     values = _initValues(environ, 'RPM Info', 'builds')

@@ -49,7 +49,6 @@ import warnings
 import weakref
 import xml.sax
 import xml.sax.handler
-from contextlib import contextmanager
 from fnmatch import fnmatch
 
 import dateutil.parser
@@ -1275,6 +1274,7 @@ def _open_text_file(path, mode='rt'):
     else:
         return open(path, mode, encoding='utf-8')
 # END kojikamid dup $
+
 
 ENTITY_RE = re.compile(r'&[A-Za-z0-9]+;')
 
