@@ -1241,7 +1241,7 @@ def buildinfo(environ, buildID):
     if 'src' in rpmsByArch:
         srpm = rpmsByArch['src'][0]
         headers = ('summary', 'description', 'disturl', 'vcs')
-        result = server.getRPMHeaders(rpm['id'], headers=headers)
+        result = server.getRPMHeaders(srpm['id'], headers=headers)
         for header in headers:
             values[header] = koji.fixEncoding(result.get(header))
         values['changelog'] = server.getChangelogEntries(build['id'])
