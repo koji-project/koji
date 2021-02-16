@@ -99,6 +99,7 @@ Requires: python-libcomps
 %endif
 BuildRequires: systemd
 BuildRequires: pkgconfig
+BuildRequires: make
 
 %description
 Koji is a system for building and tracking RPMS.  The base package
