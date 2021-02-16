@@ -454,7 +454,9 @@ def rmtree(path, logger=None):
             try:
                 os.chdir(path)
             except OSError as e:
-                if e.errno not in (errno.ENOENT, errno.ESTALE):
+                if e.errno in (errno.ENOENT, errno.ESTALE):
+                    # likely racing with another rmtree
+                    # if the dir doesn't exist, we're done
                     return
                 raise
             try:
