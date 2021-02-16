@@ -1240,9 +1240,8 @@ def buildinfo(environ, buildID):
 
     if 'src' in rpmsByArch:
         srpm = rpmsByArch['src'][0]
-        headers = ('summary', 'description', 'disturl', 'vcs')
-        result = server.getRPMHeaders(srpm['id'], headers=headers)
-        for header in headers:
+        result = server.getRPMHeaders(srpm['id'], headers=RPM_HEADERS)
+        for header in RPM_HEADERS:
             values[header] = koji.fixEncoding(result.get(header))
         values['changelog'] = server.getChangelogEntries(build['id'])
 
@@ -1264,10 +1263,10 @@ def buildinfo(environ, buildID):
                     if srpm_path:
                         srpm_headers = server.getRPMHeaders(taskID=srpm_task['id'],
                                                             filepath=srpm_path,
-                                                            headers=['summary', 'description'])
+                                                            headers=RPM_HEADERS)
                         if srpm_headers:
-                            values['summary'] = koji.fixEncoding(srpm_headers['summary'])
-                            values['description'] = koji.fixEncoding(srpm_headers['description'])
+                            for header in RPM_HEADERS:
+                                values[header] = koji.fixEncoding(srpm_headers.get(header))
                         changelog = server.getChangelogEntries(taskID=srpm_task['id'],
                                                                filepath=srpm_path)
                         if changelog:
@@ -1297,9 +1296,9 @@ def buildinfo(environ, buildID):
         values['perms'] = server.getUserPerms(environ['koji.currentUser']['id'])
     else:
         values['perms'] = []
-    for field in ['summary', 'description', 'changelog']:
-        if field not in values:
-            values[field] = None
+    for header in RPM_HEADERS + ['changelog']:
+        if header not in values:
+            values[header] = None
 
     # We added the start_time field in 2015 as part of Koji's content
     # generator feature. Builds before that point have a null value for
@@ -1459,6 +1458,9 @@ def userinfo(environ, userID, packageOrder='package_name', packageStart=None,
     return _genHTML(environ, 'userinfo.chtml')
 
 
+# headers shown in rpminfo and buildinfo pages
+RPM_HEADERS = ['summary', 'description', 'license', 'disturl', 'vcs']
+
 def rpminfo(environ, rpmID, fileOrder='name', fileStart=None, buildrootOrder='-id',
             buildrootStart=None):
     values = _initValues(environ, 'RPM Info', 'builds')
@@ -1497,9 +1499,8 @@ def rpminfo(environ, rpmID, fileOrder='name', fileStart=None, buildrootOrder='-i
         for dep_type in dep_names:
             values[dep_names[dep_type]] = [d for d in deps if d['type'] == dep_type]
             values[dep_names[dep_type]].sort(key=_sortbyname)
-        headers = ('summary', 'description', 'license', 'disturl', 'vcs')
-        result = server.getRPMHeaders(rpm['id'], headers=headers)
-        for header in headers:
+        result = server.getRPMHeaders(rpm['id'], headers=RPM_HEADERS)
+        for header in RPM_HEADERS:
             values[header] = koji.fixEncoding(result.get(header))
     buildroots = kojiweb.util.paginateMethod(server, values, 'listBuildroots',
                                              kw={'rpmID': rpm['id']},
