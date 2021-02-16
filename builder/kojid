@@ -5458,7 +5458,8 @@ class CreaterepoTask(BaseTaskHandler):
             with open(os.path.join(self.datadir, "EMPTY_REPO"), 'wt') as fo:
                 fo.write("This repo is empty because its tag has no content for this arch\n")
 
-        tag = self.session.getTag(rinfo['tag_id'], event=rinfo['create_event'], strict=True)['name']
+        tag = self.session.getTag(rinfo['tag_id'], event=rinfo['create_event'],
+                                  strict=True)['name']
         self.run_callbacks('postCreateRepo', tag=tag, repodir=self.outdir,
                            repo_id=self.repo_id, arch=arch)
 
