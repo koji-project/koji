@@ -1475,6 +1475,31 @@ class TestRmtree2(unittest.TestCase):
         if os.path.exists(dirname):
             raise Exception('test directory not removed')
 
+    def test_rmtree_parallel_chdir_down_complex(self):
+        dirname = '%s/some-dir/' % self.tempdir
+        # For this test, we make a complex tree to remove
+        # We remove a subtree partway through to verify that the error is
+        # ignored without breaking the remaining traversal
+        for i in range(8):
+            for j in range(8):
+                for k in range(8):
+                    os.makedirs('%s/a/%s/c/d/%s/e/f/%s/g/h' % (dirname, i, j, k))
+        mock_data = {'n': 0, 'removed': False}
+        os_chdir = os.chdir
+        def my_chdir(path):
+            mock_data['n'] += 1
+            if path == 'f':
+                # when we hit the first f, remove the subtree
+                shutil.rmtree(os.path.abspath(path))
+                mock_data['removed'] = True
+            return os_chdir(path)
+        with mock.patch('os.chdir', new=my_chdir):
+            koji.util.rmtree(dirname)
+        if not mock_data['removed']:
+            raise Exception('mocked call not working')
+        if os.path.exists(dirname):
+            raise Exception('test directory not removed')
+
     def test_rmtree_parallel_chdir_up_failure(self):
         dirname = '%s/some-dir/' % self.tempdir
         os.makedirs('%s/a/b/c/d/e/f/g/h/i/j/k' % dirname)
@@ -1524,6 +1549,26 @@ class TestRmtree2(unittest.TestCase):
             raise Exception('mocked call not working')
         if os.path.exists(dirname):
             raise Exception('test directory not removed')
+
+    def test_rmtree_parallel_new_file(self):
+        # Testing case where a separate process adds new files during after we have stripped a directory
+        # This should cause rmtree to fail
+        dirname = '%s/some-dir/' % self.tempdir
+        os.makedirs('%s/a/b/c/d/e/f/g/h/i/j/k' % dirname)
+        os_listdir = os.listdir
+        mock_data = {}
+        def my_listdir(path):
+            ret = os_listdir(path)
+            if 'b' in ret:
+                mock_data['ping'] = 1
+                with open('extra_file', 'w') as fo:
+                    fo.write('hello world\n')
+            return ret  # does not contain extra_file
+        with mock.patch('os.listdir', new=my_listdir):
+            with self.assertRaises(OSError):
+                koji.util.rmtree(dirname)
+        if not mock_data.get('ping'):
+            raise Exception('mocked call not working')
 
 
 class TestMoveAndSymlink(unittest.TestCase):
