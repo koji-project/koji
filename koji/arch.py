@@ -383,7 +383,7 @@ def getCanonX86_64Arch(arch):
 def getCanonArch(skipRpmPlatform=0):
     if not skipRpmPlatform and os.access("/etc/rpm/platform", os.R_OK):
         try:
-            with open("/etc/rpm/platform", "rt", encoding='utf-8') as f:
+            with open("/etc/rpm/platform", "rt") as f:
                 line = f.readline()
             (arch, vendor, opersys) = line.split("-", 2)
             return arch

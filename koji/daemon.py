@@ -790,7 +790,7 @@ class TaskManager(object):
             fn = "%s/%s" % (configdir, f)
             if not os.path.isfile(fn):
                 continue
-            fo = open(fn, 'rt', encoding='utf-8')
+            fo = koji._open_text_file(fn)
             id = None
             name = None
             for n in range(10):
@@ -1089,7 +1089,7 @@ class TaskManager(object):
             proc_path = '/proc/%i/stat' % pid
             if not os.path.isfile(proc_path):
                 return None
-            proc_file = open(proc_path, 'rt', encoding='utf-8')
+            proc_file = koji._open_text_file(proc_path)
             procstats = [not field.isdigit() and field or int(field)
                          for field in proc_file.read().split()]
             proc_file.close()
@@ -1097,7 +1097,7 @@ class TaskManager(object):
             cmd_path = '/proc/%i/cmdline' % pid
             if not os.path.isfile(cmd_path):
                 return None
-            cmd_file = open(cmd_path, 'rt', encoding='utf-8')
+            cmd_file = koji._open_text_file(cmd_path)
             procstats[1] = cmd_file.read().replace('\0', ' ').strip()
             cmd_file.close()
             if not procstats[1]:

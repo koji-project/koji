@@ -331,7 +331,7 @@ class WindowsBuild(object):
                 raise BuildError('Unknown checksum type %s for %s' % (  # noqa: F821
                                  checksum_type,
                                  os.path.basename(fileinfo['localpath'])))
-        with open(destpath, 'wt', encoding='utf-8') as destfile:
+        with _open_text_file(destpath, 'wt') as destfile:
             offset = 0
             while True:
                 encoded = self.server.getFile(buildinfo, fileinfo, encode_int(offset), 1048576,
@@ -412,7 +412,7 @@ class WindowsBuild(object):
         """Do the build: run the execute line(s) with cmd.exe"""
         tmpfd, tmpname = tempfile.mkstemp(prefix='koji-tmp', suffix='.bat',
                                           dir='/cygdrive/c/Windows/Temp')
-        script = os.fdopen(tmpfd, 'wt', encoding='utf-8')
+        script = _open_text_file(tmpfd, 'wt')
         for attr in ['source_dir', 'spec_dir', 'patches_dir']:
             val = getattr(self, attr)
             if val:
@@ -449,7 +449,7 @@ class WindowsBuild(object):
     def bashBuild(self):
         """Do the build: run the execute line(s) with bash"""
         tmpfd, tmpname = tempfile.mkstemp(prefix='koji-tmp.', dir='/tmp')
-        script = os.fdopen(tmpfd, 'wt', encoding='utf-8')
+        script = _open_text_file(tmpfd, 'wt')
         script.write("export source_dir='%s'\n" % self.source_dir)
         script.write("export spec_dir='%s'\n" % self.spec_dir)
         if self.patches_dir:
@@ -657,7 +657,7 @@ def setup_logging(opts):
     if opts.debug:
         level = logging.DEBUG
     logger.setLevel(level)
-    logfd = open(logfile, 'wt', encoding='utf-8')
+    logfd = _open_text_file(logfile, 'wt')
     handler = logging.StreamHandler(logfd)
     handler.setLevel(level)
     handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s'))

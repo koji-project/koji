@@ -34,6 +34,8 @@ import rpmUtils.miscutils
 import yum
 import yum.misc
 
+import koji
+
 # Expand a canonical arch to the full list of
 # arches that should be included in the repo.
 # Basically the inverse of koji.canonArch().
@@ -252,7 +254,7 @@ class RepoMerge(object):
                     include_srpms[srpm_name] = (pkg.sourcerpm, pkg.repoid)
 
         pkgorigins = os.path.join(self.yumbase.conf.cachedir, 'pkgorigins')
-        origins = open(pkgorigins, 'wt', encoding='utf-8')
+        origins = koji._open_text_file(pkgorigins, 'wt')
 
         seen_rpms = {}
         for repo in repos:
@@ -307,7 +309,7 @@ class RepoMerge(object):
                     pkg._return_remote_location = make_const_func(loc)
 
         pkgorigins = os.path.join(self.yumbase.conf.cachedir, 'pkgorigins')
-        origins = open(pkgorigins, 'wt', encoding='utf-8')
+        origins = koji._open_text_file(pkgorigins, 'wt')
 
         seen_rpms = {}
         for repo in repos:
@@ -348,7 +350,7 @@ def main(args):
     opts = parse_args(args)
 
     if opts.blocked:
-        with open(opts.blocked, encoding='utf-8') as blocked_fo:
+        with koji._open_text_file(opts.blocked) as blocked_fo:
             blocked_list = blocked_fo.readlines()
         blocked = dict([(b.strip(), 1) for b in blocked_list])
     else:

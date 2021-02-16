@@ -267,7 +267,7 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
         self.logger.info('New runroot')
         self.logger.info("Runroot mounts: %s" % mounts)
         fn = '%s/tmp/runroot_mounts' % rootdir
-        with open(fn, 'at', encoding='utf-8') as fslog:
+        with koji._open_text_file(fn, 'at') as fslog:
             logfile = "%s/do_mounts.log" % self.workdir
             uploadpath = self.getUploadDir()
             error = None
@@ -309,7 +309,7 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
         mounts = set()
         fn = '%s/tmp/runroot_mounts' % rootdir
         if os.path.exists(fn):
-            with open(fn, 'rt', encoding='utf-8') as fslog:
+            with koji._open_text_file(fn) as fslog:
                 for line in fslog.readlines():
                     mounts.add(line.strip())
         # also, check /proc/mounts just in case

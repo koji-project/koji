@@ -13,14 +13,6 @@ __main__.BuildRoot = kojid.BuildRoot
 import koji
 import runroot
 
-def mock_open():
-    """Return the right patch decorator for open"""
-    if six.PY2:
-        return mock.patch('__builtin__.open')
-    else:
-        return mock.patch('builtins.open')
-
-
 if six.PY2:
     CONFIG_PARSER = 'six.moves.configparser.SafeConfigParser'
 else:
@@ -192,7 +184,7 @@ class TestMounts(unittest.TestCase):
         self.assertEqual(self.t._get_path_params('/mnt/archive', 'rw'),
             ('archive.org:/vol/archive/', '/mnt/archive', 'nfs', 'rw,hard,intr,nosuid,nodev,noatime,tcp'))
 
-    @mock_open()
+    @mock.patch('koji._open_text_file')
     @mock.patch('os.path.isdir')
     @mock.patch('runroot.log_output')
     def test_do_mounts(self, log_output, is_dir, open_mock):
@@ -293,7 +285,7 @@ class TestMounts(unittest.TestCase):
         self.t.do_mounts.assert_not_called()
 
 
-    @mock_open()
+    @mock.patch('koji._open_text_file')
     @mock.patch('runroot.scan_mounts')
     @mock.patch('os.unlink')
     @mock.patch('subprocess.Popen')
