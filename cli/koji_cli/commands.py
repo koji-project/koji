@@ -2611,6 +2611,9 @@ def anon_handle_list_untagged(goptions, session, args):
         package = args[0]
     opts = {}
     if package:
+        package_id = session.getPackageID(package)
+        if package_id is None:
+            error("No such package: %s" % package)
         opts['name'] = package
     pathinfo = koji.PathInfo()
 
@@ -2640,7 +2643,6 @@ def anon_handle_list_untagged(goptions, session, args):
         fmt = "%(name)s-%(version)s-%(release)s"
     if options.show_references:
         fmt = fmt + "  %(refs)s"
-
     output = sorted([fmt % x for x in data])
     for line in output:
         print(line)
