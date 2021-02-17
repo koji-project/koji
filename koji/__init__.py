@@ -1273,7 +1273,7 @@ def _open_text_file(path, mode='rt'):
         return open(path, mode)
     else:
         return open(path, mode, encoding='utf-8')
-# END kojikamid dup $
+# END kojikamid dup #
 
 
 ENTITY_RE = re.compile(r'&[A-Za-z0-9]+;')
