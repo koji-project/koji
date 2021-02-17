@@ -4227,8 +4227,28 @@ def get_build_logs(build):
 
 
 def get_next_release(build_info):
-    """find the last successful or deleted build of this N-V. If building is
-    specified, skip also builds in progress"""
+    """
+    Find the next release for a package's version.
+
+    This method searches the latest building, successful, or deleted build and
+    returns the "next" release value for that version.
+
+    Examples:
+
+      None becomes "1"
+      "123" becomes "124"
+      "123.el8" becomes "124.el8"
+      "123.snapshot.456" becomes "123.snapshot.457"
+
+    All other formats will raise koji.BuildError.
+
+    :param dict build_info: a dict with two keys: a package "name" and
+                            "version" of the builds to search. For example,
+                            {"name": "bash", "version": "4.4.19"}
+    :returns: a release string for this package, for example "15.el8".
+    :raises: BuildError if the latest build uses a release value that Koji
+             does not know how to increment.
+    """
     values = {
         'name': build_info['name'],
         'version': build_info['version'],
