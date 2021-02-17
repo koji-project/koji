@@ -91,7 +91,7 @@ Notification blocks
 
         self.maxDiff=None
         self.assertMultiLineEqual(actual, expected)
-        ensure_connection_mock.assert_called_once_with(self.session)
+        ensure_connection_mock.assert_called_once_with(self.session, self.options)
         self.session.getTag.assert_has_calls([mock.call(1), mock.call(1)])
         self.session.getPackage.assert_has_calls([mock.call(11), mock.call(11)])
         self.session.getUser.assert_called_once_with('random_name')

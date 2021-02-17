@@ -135,11 +135,15 @@ def get_usage_str(usage):
     return usage + _("\n(Specify the --help global option for a list of other help options)")
 
 
-def ensure_connection(session):
+def ensure_connection(session, options=None):
     try:
         ret = session.getAPIVersion()
-    except requests.exceptions.ConnectionError:
-        error(_("Error: Unable to connect to server"))
+    except requests.exceptions.ConnectionError as ex:
+        warn(_("Error: Unable to connect to server"))
+        if options and getattr(options, 'debug', False):
+            error(str(ex))
+        else:
+            error()
     if ret != koji.API_VERSION:
         warn(_("WARNING: The server is at API version %d and "
                "the client is at %d" % (ret, koji.API_VERSION)))
