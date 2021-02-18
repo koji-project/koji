@@ -13853,7 +13853,7 @@ class HostExports(object):
             'build': build_info,
             'package': build_info['name'],
             'import': True,
-            'import_type': 'maven',
+            'import_type': 'image',
         }
         policy_data.update(policy_data_from_task(task_id))
         vol = check_volume_policy(policy_data, strict=False, default='DEFAULT')
