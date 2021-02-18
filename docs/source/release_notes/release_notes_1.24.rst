@@ -20,17 +20,18 @@ None
 Client Changes
 --------------
 
-**support download-build --type=remote-sources**
+**support download-build \\-\\-type=remote-sources**
 
 | PR: https://pagure.io/koji/pull-request/2608
 
-This wasn't possible via CLI before. Extensions for downloading additional artifact type.
+This wasn't possible via CLI before. The command has been extended for
+downloading this additional artifact type.
 
-**hide import-sig --write option**
+**hide import-sig \\-\\-write option**
 
 | PR: https://pagure.io/koji/pull-request/2654
 
-Option is not used anymore. We're hiding it from the user.
+This option is not used anymore. We're hiding it from the user.
 
 **return error if add/remove-tag-inheritance can't be applied**
 
@@ -45,35 +46,35 @@ it is returning an error-code so it has better problem visibility in scripts.
 
 More verbose error when downloading unsupported archives.
 
-**list-tasks --after/--before/--all**
+**list-tasks \\-\\-after/\\-\\-before/\\-\\-all**
 
 | PR: https://pagure.io/koji/pull-request/2566
 
-New options for list-tasks. Formerly only running tasks could have been
-displayed. Now also closed tasks can be displayed with ``--all`` and
-``--after``/``--before`` options. Anyway, use it wisely - returning all tasks
+New options for list-tasks. Formerly only running tasks could be
+displayed. Now closed tasks can also be displayed with ``--all`` and
+``--after``/``--before`` options. Use it wisely -- querying all tasks
 can hurt the hub's performance.
 
 **list-hosts can display description/comment**
 
 | PR: https://pagure.io/koji/pull-request/2562
 
-``--comment`` and ``--description`` options could be used to display additional
-info in listing command. They are not enabled by default.
+The new ``--comment`` and ``--description`` options can be used to display
+additional info in host list.
 
-**allow removal of unused external repo even with --alltags**
+**allow removal of unused external repo even with \\-\\-alltags**
 
 | PR: https://pagure.io/koji/pull-request/2560
 
-Fixed confusing behaviour when if ``--altags`` was used when removing external
-repo repo itself wasn't deleted.
+Fixed confusing behaviour for ``koji remove-external-repo --alltags``
+when the given external repo is not associated with any tags.
 
-**history query by key**
+**history query by extra key**
 
 | PR: https://pagure.io/koji/pull-request/2589
 
-Additional filter option ``--xkey`` for list-history limiting history records
-only for given extra key.
+The additional filter option ``--xkey`` for list-history limits the results to
+history records that affected the given extra key for some tag.
 
 
 Library Changes
@@ -82,8 +83,10 @@ Library Changes
 
 | PR: https://pagure.io/koji/pull-request/2598
 
-Fix of py3 migration regression. Even printable data were base64-encoded. If it
-is a printable unicode string it is printed directly as in py2 version.
+This fixes an unfortunate display bug introduced by the python3 migration.
+The ``--debug-xmlrpc`` feature shows details of the xmlrpc calls to the hub,
+but most of the data was shown base64-encoded, regardless of whether it was
+printable. Now the client will only result to base64 when it is necessary.
 
 API Changes
 -----------
@@ -92,10 +95,6 @@ API Changes
 | PR: https://pagure.io/koji/pull-request/2655
 
 Deprecation of unused options.
-
-**backward compatible hub call**
-
-| PR: https://pagure.io/koji/pull-request/2649
 
 **fix nightly getNextRelease format**
 
@@ -107,8 +106,11 @@ Additional format allowed for ``getNextRelease`` - ``{str}.{str}.{id}``.
 
 | PR: https://pagure.io/koji/pull-request/2555
 
-``listBuilds`` now can have ``pattern`` glob option which is used in same way
-like in ``search`` call.
+The ``list-builds`` command now accepts a ``--pattern`` option that
+filters the NVRs using the given glob pattern.
+
+The underlying ``listBuilds`` api call on the hub now accepts a ``pattern``
+argument that applies the filtration.
 
 Builder Changes
 ---------------
@@ -116,14 +118,14 @@ Builder Changes
 
 | PR: https://pagure.io/koji/pull-request/2571
 
-``--ksrepo`` option for livemedia task. If specified, repos in kickstart are not
-overriden by koji.
+The new ``--ksrepo`` option tells the builder to not override the repos
+given in the kickstart files for livemedia builds.
 
 **Add nomacboot option for spin-livemedia**
 
 | PR: https://pagure.io/koji/pull-request/2540
 
-``--nomacboot`` option could be passed to livemedia-creator.
+The new ``--nomacboot`` option is passed through to livemedia-creator.
 
 System Changes
 --------------
@@ -147,8 +149,8 @@ Spec file now provides python3dist(koji) provides.
 
 | PR: https://pagure.io/koji/pull-request/2647
 
-In some mod_wsgi configuration hub can raise error because of non-default
-encoding usage when opening text files. This was now unified to force UTF-8
+In some mod_wsgi configurations, the hub can raise an error because of non-default
+encoding when opening text files. The code has been modified to force UTF-8
 everywhere.
 
 **Lower default multicall batch values**
@@ -156,17 +158,18 @@ everywhere.
 | PR: https://pagure.io/koji/pull-request/2644
 
 In high-load environments long-running transactions can lead even to db
-deadlocks. We suggest to use lower batches for multicalls and lowered all
-default we currently have in the code. Rule of thumb is that everything running
-longer than two minutes should be split into smaller batches. Anyway, you'll
-always need to think about transaction consistency in the particular usecase.
+deadlocks. We suggest using lower batches for multicalls and have lowered the
+default batch sizes we currently have in the code.
+
+If individual multicalls are running longer than a minute or two, we recommend
+splitting them into smaller batches.
 
 **require gssapi-requests 1.22**
 
 | PR: https://pagure.io/koji/pull-request/2584
 
-Older versions of library have a bug which break the gsaapi login for builders.
-Upgrading to this versions solves the problem.
+Older versions of library have a bug which breaks the gsaapi login for builders.
+Upgrading to this version solves the problem.
 
 **limit CGImport to allow only one CG per import**
 
@@ -184,13 +187,14 @@ work with this value, etc.
 
 Some external repositories can have split architectures (e.g. primary
 architectures in one repo and secondary in the second). On the other hand tags
-expect that external repo has all the architectures as the tag has. New option
-can define that external repo contain only subset of tag's architectures.
+expect that external repo has all the architectures as the tag has.
+We've added a new option to tell Koji that an external repo only contains a
+subset of tag's architectures.
 Multiple external repos with different architectures can then be attached to the
 tag. This behaviour can be tuned by ``--arches`` option in ``add-external-repo``
 and ``edit-external-repo`` commands.
 
-**remove deprecated --ca option**
+**remove deprecated \\-\\-ca option**
 
 | PR: https://pagure.io/koji/pull-request/2529
 
@@ -219,14 +223,14 @@ alphabetically these days compared to previous *importance* ordering.
 
 | PR: https://pagure.io/koji/pull-request/2653
 
-For higher accessibilit we've changed a bit colors corresponding to task and
-build states. We've also added more informative icons to taskinfo page.
+For higher accessibility we've slightly changed the colors corresponding to task and
+build states. We've also added more informative icons to the taskinfo page.
 
 **display VCS/DistURL rpm tags**
 
 | PR: https://pagure.io/koji/pull-request/2683
 
-Buildinfo and rpminfo pages now display also VCS and DistURL tags if they are
+The buildinfo and rpminfo pages now display also VCS and DistURL tags if they are
 present in rpm (srpm for buildinfo page).
 
 Plugins
@@ -235,7 +239,7 @@ Plugins
 
 | PR: https://pagure.io/koji/pull-request/2633
 
-These functions couldn't have been used for methods provided by plugins and
+These functions couldn't be used for methods provided by plugins or
 methods which returned generators. This is now fixed.
 
 **plugin hooks for repo modification**
@@ -256,9 +260,9 @@ Kojira
 
 | PR: https://pagure.io/koji/pull-request/2140
 
-We've moved checking running ``newRepo`` tasks to different place. Now, number
-of running tasks should be more close to set capacity as kojira will check
-finished tasks just before spawning new ones, so estimation should be better.
+We've moved checking running ``newRepo`` tasks to different place. Now, the number
+of running tasks should be closer to set capacity as kojira will check
+finished tasks just before spawning new ones.
 
 Documentation
 -------------
