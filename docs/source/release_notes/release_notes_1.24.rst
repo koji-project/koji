@@ -20,14 +20,14 @@ None
 Client Changes
 --------------
 
-**support download-build \\-\\-type=remote-sources**
+**support download-build \-\-type=remote-sources**
 
 | PR: https://pagure.io/koji/pull-request/2608
 
 This wasn't possible via CLI before. The command has been extended for
 downloading this additional artifact type.
 
-**hide import-sig \\-\\-write option**
+**hide import-sig \-\-write option**
 
 | PR: https://pagure.io/koji/pull-request/2654
 
@@ -46,7 +46,7 @@ it is returning an error-code so it has better problem visibility in scripts.
 
 More verbose error when downloading unsupported archives.
 
-**list-tasks \\-\\-after/\\-\\-before/\\-\\-all**
+**list-tasks \-\-after/\-\-before/\-\-all**
 
 | PR: https://pagure.io/koji/pull-request/2566
 
@@ -62,7 +62,7 @@ can hurt the hub's performance.
 The new ``--comment`` and ``--description`` options can be used to display
 additional info in host list.
 
-**allow removal of unused external repo even with \\-\\-alltags**
+**allow removal of unused external repo even with \-\-alltags**
 
 | PR: https://pagure.io/koji/pull-request/2560
 
@@ -194,7 +194,7 @@ Multiple external repos with different architectures can then be attached to the
 tag. This behaviour can be tuned by ``--arches`` option in ``add-external-repo``
 and ``edit-external-repo`` commands.
 
-**remove deprecated \\-\\-ca option**
+**remove deprecated \-\-ca option**
 
 | PR: https://pagure.io/koji/pull-request/2529
 
