@@ -948,6 +948,8 @@ def anon_handle_mock_config(goptions, session, args):
         except ValueError:
             parser.error(_("Buildroot id must be an integer"))
         brootinfo = session.getBuildroot(br_id)
+        if brootinfo is None:
+            error(_("No such buildroot: %r") % br_id)
         if options.latest:
             opts['repoid'] = 'latest'
         else:

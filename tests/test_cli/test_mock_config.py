@@ -113,6 +113,16 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
         gen_config_mock.assert_called_with(
             self.progname, buildroot_info['arch'], **opts)
 
+        # if buildroot is not existing
+        buildroot_id = '999999'
+        arguments = ['--buildroot', buildroot_id]
+        expected = "No such buildroot: %s" % buildroot_id + "\n"
+        session.getBuildroot.return_value = None
+        with self.assertRaises(SystemExit) as ex:
+            anon_handle_mock_config(options, session, arguments)
+        self.assertExitCode(ex, 1)
+        self.assert_console_message(stderr, expected)
+
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji.genMockConfig')
