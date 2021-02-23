@@ -1122,6 +1122,9 @@ value that you've configured for Koji clients (above)::
     # The URL for the file access
     topurl=http://koji-filesystem.example.com/kojifiles
 
+If the "topurl" setting uses an HTTPS URL with a cert signed by a custom CA,
+the Koji builder must trust the CA system-wide.
+
 You may change "workdir", but it may not be the same as KojiDir on the
 ``kojihub.conf`` file. It can be something under KojiDir, just not the same as
 KojiDir.
