@@ -7180,6 +7180,12 @@ def new_win_build(build_info, win_info):
     win_info must contain a 'platform' key.
     """
     build_id = build_info['id']
+    if not isinstance(win_info, dict):
+        raise koji.GenericError('Invalid type for win_info: %s' % type(win_info))
+    if win_info == {}:
+        raise koji.GenericError("Windows info is empty")
+    if 'platform' not in win_info.keys():
+        raise koji.GenericError("Windows info doesn't have mandatory platform key")
     current = get_win_build(build_id, strict=False)
     if current:
         if current['platform'] != win_info['platform']:
@@ -10781,16 +10787,31 @@ class RootExports(object):
 
     def createWinBuild(self, build_info, win_info):
         """
-        Associate Windows metadata with an existing build.  The build must
-        not already have associated Windows metadata.  win_info must be a dict
-        containing a platform entry.
+        Associate Windows metadata with an existing build. When build isn`t existing, creates
+        a build. The build must not already have associated Windows metadata.  win_info must be
+        a dict containing a platform entry.
+        :param build_info: a str (build name) if build is existing
+                           or a dict:
+                               - name: build name
+                               - version: build version
+                               - release: build release
+                               - epoch: build epoch
+        :param dict win_info:
+                               - platform: build platform
+        :raises: GenericError if type for build_info is not dict, when build isn`t existing.
+        :raises: GenericError if build info doesn't have mandatory keys.
         """
         context.session.assertPerm('win-import')
         if not context.opts.get('EnableWin'):
             raise koji.GenericError("Windows support not enabled")
         build = get_build(build_info)
         if not build:
-            build_id = new_build(dslice(build_info, ('name', 'version', 'release', 'epoch')))
+            if not isinstance(build_info, dict):
+                raise koji.GenericError('Invalid type for build_info: %s' % type(build_info))
+            try:
+                build_id = new_build(dslice(build_info, ('name', 'version', 'release', 'epoch')))
+            except KeyError as cm:
+                raise koji.GenericError("Build info doesn't have mandatory %s key" % cm)
             build = get_build(build_id, strict=True)
         new_win_build(build, win_info)
 
