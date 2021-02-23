@@ -4525,6 +4525,14 @@ def anon_handle_list_history(goptions, session, args):
         kwargs['afterEvent'] = options.after_event
     if options.active is not None:
         kwargs['active'] = options.active
+    if options.host:
+        hostinfo = session.getHost(options.host)
+        if not hostinfo:
+            error("No such host: %s" % options.host)
+    if options.channel:
+        channelinfo = session.getChannel(options.channel)
+        if not channelinfo:
+            error("No such channel: %s" % options.channel)
     tables = None
     if options.show:
         tables = []
