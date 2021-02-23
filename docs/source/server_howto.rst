@@ -1105,38 +1105,35 @@ builder uses.
 /etc/kojid/kojid.conf
 ^^^^^^^^^^^^^^^^^^^^^
 
-The configuration file for each koji builder must be edited so that the line
-below points to the URL for the koji hub. The user tag must also be edited to
-point to the username used to add the koji builder.
-
-::
+Edit each koji builder's ``kojid.conf`` file to point at the Koji hub::
 
     ; The URL for the xmlrpc server
     server=http://hub.example.com/kojihub
 
-    ; the username has to be the same as what you used with add-host
-    ; in this example follow as below
+Set the "user" value to the FQDN of the builder host. For example, if you
+added the host with ``koji add-host kojibuilder1.example.com``, set "user" to
+kojibuilder1.example.com::
+
     user = kojibuilder1.example.com
 
-The koji filesystem may also be needed over http.  Set this as it was
-configured about.
-
-::
+The builder must reach the filesystem over HTTP. Set "topurl" to the same
+value that you've configured for Koji clients (above)::
 
     # The URL for the file access
     topurl=http://koji-filesystem.example.com/kojifiles
 
-This item may be changed, but may not be the same as KojiDir on the
-``kojihub.conf`` file (although it can be something under KojiDir, just not
-the same as KojiDir)
+You may change "workdir", but it may not be the same as KojiDir on the
+``kojihub.conf`` file. It can be something under KojiDir, just not the same as
+KojiDir.
 
 ::
 
     ; The directory root for temporary storage
     workdir=/tmp/koji
 
-The root of the koji build directory (i.e., ``/mnt/koji``) must be mounted on the
-builder. A Read-Only NFS mount is the easiest way to handle this.
+The root of the koji build directory (i.e., ``/mnt/koji``) must be mounted on
+the builder and configured as "topdir". A Read-Only NFS mount is the easiest
+way to handle this.
 
 ::
 
@@ -1149,7 +1146,7 @@ Authentication Configuration (SSL certificates)
 /etc/kojid/kojid.conf
 ^^^^^^^^^^^^^^^^^^^^^
 
-If you are using SSL, these settings need to be edited to point to the
+If you are using SSL, edit these settings to point to the
 certificates you generated at the beginning of the setup process.
 
 ::
@@ -1165,11 +1162,9 @@ certificates you generated at the beginning of the setup process.
     ;certificate of the CA that issued the HTTP server certificate
     serverca = /etc/kojid/koji_ca_cert.crt
 
-It is important to note that if your builders are hosted on separate machines
-from koji hub and koji web, you will need to scp the certificates mentioned in
-the above configuration file from the ``/etc/kojid/`` directory on koji hub to
-the ``/etc/koji/`` directory on the local machine so that the builder can be
-authenticated.
+Every unique builder host must have its own unique keypair (PEM file) in
+``/etc/kojid/``. If you generated the certificates on another host, move them
+to each builder.
 
 Authentication Configuration (Kerberos)
 ---------------------------------------
