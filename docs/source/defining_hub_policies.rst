@@ -146,7 +146,7 @@ Actions
 Most of the policies are simply allow/deny policies. They have two possible
 actions: ``allow`` or ``deny``.
 
-The channel policy is used to determine the channel for a task. It supports
+The **channel** policy is used to determine the channel for a task. It supports
 the following actions:
 
 ``use <channel>``
@@ -162,14 +162,23 @@ the following actions:
     * only valid for child tasks
     * recommend using the ``is_child_task`` test to be sure
 
-The priority policy is used to alter task's priority. In most cases you should
-manage priorities by different channels and builders assigned to them. There is
-nevertheless few corner-cases which can benefit from altering task's priority.
+The **priority** policy is used to alter task's priority. In most cases you
+should manage priorities by different channels and builders assigned to them.
+There is nevertheless few corner-cases which can benefit from altering task's
+priority.
+
 Note, that you can easily get to deadlock situation if this is not handled with
 caution (lower priority tasks will get assigned only if there is no higher
 priority task for given channel).
 
-Technically it is very similar to ``channel`` policy. Only actions are
+.. note::
+    For example OSBS use this mechanism to propagate higher priority tasks to
+    its plugin.  Deadlock problem is here mitigated by limiting policy to
+    ``buildContainer`` tasks only. These tasks are consumed only by dedicated
+    builders/channel, so they will not take priority over other types of tasks
+    (e.g. ``newRepo`` or ``tagBuild`` tasks which could be blocked otherwise.
+
+Technically it is very similar to **channel** policy. Only actions are
 different:
 
 ``stay``
