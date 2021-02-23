@@ -899,9 +899,6 @@ For a simple test, all we need is the ``server`` and authentication sections.
     ;client certificate
     cert = ~/.koji/client.crt
 
-    ;certificate of the CA that issued the client certificate
-    ca = ~/.koji/clientca.crt
-
     ;certificate of the CA that issued the HTTP server certificate
     serverca = ~/.koji/serverca.crt
 
@@ -1159,9 +1156,6 @@ certificates you generated at the beginning of the setup process.
     ; ALSO NOTE: This is the PEM file, NOT the crt
     cert = /etc/kojid/kojid.pem
 
-    ;certificate of the CA that issued the client certificate
-    ca = /etc/kojid/koji_ca_cert.crt
-
     ;certificate of the CA that issued the HTTP server certificate
     serverca = /etc/kojid/koji_ca_cert.crt
 
@@ -1347,9 +1341,6 @@ Authentication Configuration
     ;client certificate
     ; This should reference the kojira certificate we created above
     cert = /etc/pki/koji/kojira.pem
-
-    ;certificate of the CA that issued the client certificate
-    ca = /etc/pki/koji/koji_ca_cert.crt
 
     ;certificate of the CA that issued the HTTP server certificate
     serverca = /etc/pki/koji/koji_ca_cert.crt
