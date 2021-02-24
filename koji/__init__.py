@@ -2563,7 +2563,7 @@ class ClientSession(object):
         cert = cert or self.opts.get('cert')
         serverca = serverca or self.opts.get('serverca')
         if cert is None:
-            raise AuthError('No certification provided')
+            raise AuthError('No client cert provided')
         if not os.access(cert, os.R_OK):
             raise AuthError("Certificate %s doesn't exist or is not accessible" % cert)
         if serverca and not os.access(serverca, os.R_OK):
