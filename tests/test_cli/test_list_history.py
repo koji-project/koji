@@ -205,11 +205,11 @@ class TestListHistory(utils.CliTestCase):
 
     @mock.patch('sys.stderr', new_callable=StringIO)
     def test_list_history_without_option(self, stderr):
-        expected = "Usage: python -m nose list-history [options]\n" \
+        expected = "Usage: %s list-history [options]\n" \
                    "(Specify the --help global option for a list of other " \
                    "help options)\n\n" \
-                   "python -m nose: error: Please specify an option to limit " \
-                   "the query\n"
+                   "%s: error: Please specify an option to limit " \
+                   "the query\n" %(self.progname, self.progname)
         self.session.getChannel.return_value = None
         with self.assertRaises(SystemExit) as ex:
             anon_handle_list_history(self.options, self.session, [])
