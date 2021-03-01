@@ -33,15 +33,26 @@ def handle_add_sidetag(options, session, args):
     parser.add_argument(
         "--debuginfo", action="store_true", help=_("Buildroot repo will contain debuginfos")
     )
+    parser.add_argument(
+        "--suffix", actions="store", help=_("Suffix from hub-supported ones")
+    )
 
     opts = parser.parse_args(args)
 
     activate_session(session, options)
 
+    kwargs = {"debuginfo": opts.debuginfo}
+    if opts.suffix:
+        kwargs['suffix'] = opts.suffix
     try:
-        tag = session.createSideTag(opts.basetag, debuginfo=opts.debuginfo)
+        tag = session.createSideTag(opts.basetag, **kwargs)
     except koji.ActionNotAllowed:
         parser.error(_("Policy violation"))
+    except koji.ParameterError as ex:
+        if 'suffix' in str(ex):
+            parser.error(_("Hub is older and doesn't support --suffix, please run it without it"))
+        else:
+            raise
 
     if not opts.quiet:
         print(tag["name"])
