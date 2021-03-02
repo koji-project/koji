@@ -59,14 +59,14 @@ class TestListApi(utils.CliTestCase):
         anon_handle_list_api(options, session, [])
         self.assert_console_message(stdout, expected)
 
-        # Case 2. unknown method
+        # Case 2. non-existent fake method
         session.system.methodHelp.return_value = None
-        expected = self.format_error_message("Unknown method: unknown method")
+        expected = self.format_error_message("Unknown method: non-existent-fake-method")
         self.assert_system_exit(
             anon_handle_list_api,
             options,
             session,
-            ['unknown method'],
+            ['non-existent-fake-method'],
             stderr=expected,
             activate_session=None)
 
