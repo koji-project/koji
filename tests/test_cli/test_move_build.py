@@ -1,7 +1,9 @@
 from __future__ import absolute_import
+
+import unittest
+
 import mock
 import six
-import unittest
 
 from koji_cli.commands import handle_move_build
 from . import utils
@@ -48,7 +50,7 @@ class TestMoveBuild(utils.CliTestCase):
         ]
         self.session.moveBuild.side_effect = tasks
 
-        expected = 'Invalid build %s, skipping.' % 'pkg_c-2.2-2fc26' + "\n"
+        expected = 'No such build: %s, skipping.' % 'pkg_c-2.2-2fc26' + "\n"
         for i, t in enumerate(tasks):
             expected += "Created task %d, moving %s" % (t, pkgs[i]) + "\n"
 
@@ -103,7 +105,7 @@ class TestMoveBuild(utils.CliTestCase):
             [500, 501, 502], [601, 602, 603]
         ]
 
-        expected = 'Invalid package name %s, skipping.' % 'pkg_c-2.2-2fc26' + "\n"
+        expected = 'No such package: %s, skipping.' % 'pkg_c-2.2-2fc26' + "\n"
         with mock.patch('sys.stdout', new_callable=six.StringIO) as stdout:
             rv = handle_move_build(self.options, self.session, arguments)
 
@@ -118,7 +120,8 @@ class TestMoveBuild(utils.CliTestCase):
 
         # Case 1. without --all option
         expected = self.format_error_message(
-            "This command takes at least three arguments: two tags and one or more package n-v-r's")
+            "This command takes at least three arguments: "
+            "two tags and one or more package n-v-r's")
         for arg in [[], ['tag1'], ['tag1', 'tag2']]:
             self.assert_system_exit(
                 handle_move_build,
@@ -130,7 +133,8 @@ class TestMoveBuild(utils.CliTestCase):
 
         # Case 2. with --all option
         expected = self.format_error_message(
-            "This command, with --all, takes at least three arguments: two tags and one or more package names")
+            "This command, with --all, takes at least three arguments: "
+            "two tags and one or more package names")
         for arg in [['--all', 'tag1'], ['--all', 'tag1', 'tag2']]:
             self.assert_system_exit(
                 handle_move_build,

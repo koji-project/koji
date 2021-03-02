@@ -1,10 +1,11 @@
 from __future__ import absolute_import
+
 import mock
-from mock import call
 import six
 
-from . import utils
 from koji_cli.commands import anon_handle_download_logs
+from . import utils
+
 
 class TestDownloadLogs(utils.CliTestCase):
     def mock_builtin_open(self, filepath, *args):
@@ -19,7 +20,8 @@ class TestDownloadLogs(utils.CliTestCase):
         self.options.topurl = 'https://topurl'
         # Mock out the xmlrpc server
         self.session = mock.MagicMock()
-        self.list_task_output_all_volumes = mock.patch('koji_cli.commands.list_task_output_all_volumes').start()
+        self.list_task_output_all_volumes = mock.patch(
+            'koji_cli.commands.list_task_output_all_volumes').start()
         self.ensuredir = mock.patch('koji.ensuredir').start()
         self.download_file = mock.patch('koji_cli.commands.download_file').start()
         self.activate_session = mock.patch('koji_cli.commands.activate_session').start()
@@ -104,3 +106,12 @@ class TestDownloadLogs(utils.CliTestCase):
             mock.call(123456, 'file1.log', offset=5, size=102400, volume='volume1'),
         ])
 
+    def test_anon_handle_download_logs_task_not_found(self):
+        task_id = '123333'
+        self.session.getTaskInfo.return_value = None
+        with self.assertRaises(SystemExit) as ex:
+            anon_handle_download_logs(self.options, self.session, [task_id])
+        self.assertExitCode(ex, 1)
+        actual = self.stderr.getvalue()
+        expected = 'No such task: %s\n' % task_id
+        self.assertMultiLineEqual(actual, expected)

@@ -262,7 +262,7 @@ Options:
        %s maven-build --ini=CONFIG... [options] <target>
 (Specify the --help global option for a list of other help options)
 
-%s: error: Unknown build target: target
+%s: error: No such build target: target
 """ % (progname, progname, progname)
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
@@ -307,7 +307,7 @@ Options:
        %s maven-build --ini=CONFIG... [options] <target>
 (Specify the --help global option for a list of other help options)
 
-%s: error: Unknown destination tag: dest_tag
+%s: error: No such destination tag: dest_tag
 """ % (progname, progname, progname)
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
@@ -536,7 +536,7 @@ Task info: weburl/taskinfo?taskID=1
        %s maven-build --ini=CONFIG... [options] <target>
 (Specify the --help global option for a list of other help options)
 
-%s: error: Invalid SCM URL: badscm
+%s: error: No such SCM URL: badscm
 """ % (progname, progname, progname)
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.

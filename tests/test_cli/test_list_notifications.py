@@ -1,11 +1,13 @@
 from __future__ import absolute_import
-import mock
+
 import unittest
+
+import mock
 from six.moves import StringIO
 
 import koji
-
 from koji_cli.commands import anon_handle_list_notifications
+
 
 class TestListNotifications(unittest.TestCase):
     def setUp(self):
@@ -29,7 +31,7 @@ class TestListNotifications(unittest.TestCase):
         anon_handle_list_notifications(self.options, self.session, ['--mine'])
 
         actual = stdout.getvalue()
-        expected =  '''\
+        expected = '''\
 Notifications
     ID Tag                       Package                   E-mail               Success-only
 --------------------------------------------------------------------------------------------
@@ -40,7 +42,7 @@ Notifications
 No notification blocks
 '''
 
-        self.maxDiff=None
+        self.maxDiff = None
         self.assertMultiLineEqual(actual, expected)
         activate_session_mock.assert_called_once()
         self.session.getTag.assert_has_calls([mock.call(1), mock.call(1)])
@@ -74,7 +76,7 @@ No notification blocks
         anon_handle_list_notifications(self.options, self.session, ['--user', 'random_name'])
 
         actual = stdout.getvalue()
-        expected =  '''\
+        expected = '''\
 Notifications
     ID Tag                       Package                   E-mail               Success-only
 --------------------------------------------------------------------------------------------
@@ -89,7 +91,7 @@ Notification blocks
     12 *                         *                        
 '''
 
-        self.maxDiff=None
+        self.maxDiff = None
         self.assertMultiLineEqual(actual, expected)
         ensure_connection_mock.assert_called_once_with(self.session, self.options)
         self.session.getTag.assert_has_calls([mock.call(1), mock.call(1)])
@@ -110,7 +112,6 @@ Notification blocks
         self.session.getTag.assert_not_called()
         self.session.getPackage.assert_not_called()
 
-
     @mock.patch('sys.exit')
     @mock.patch('sys.stderr', new_callable=StringIO)
     def test_handle_list_notifications_no_args(self, sys_stderr, sys_exit):
@@ -120,3 +121,18 @@ Notification blocks
             anon_handle_list_notifications(self.options, self.session, [])
 
         self.session.getBuildNotifications.assert_not_called()
+
+    @mock.patch('sys.stderr', new_callable=StringIO)
+    def test_list_notifications_user_non_exist_user(self, stderr):
+        username = 'random_name'
+        self.session.getUser.return_value = None
+
+        with self.assertRaises(SystemExit):
+            anon_handle_list_notifications(self.options, self.session,
+                                           ['--user', username])
+        actual = stderr.getvalue()
+        expected = 'No such user: %s\n' % username
+        self.assertMultiLineEqual(actual, expected)
+        self.session.getBuildNotifications.assert_not_called()
+        self.session.getTag.assert_not_called()
+        self.session.getPackage.assert_not_called()

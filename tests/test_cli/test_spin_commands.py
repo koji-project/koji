@@ -224,7 +224,7 @@ class TestBuildImage(utils.CliTestCase):
         # Case 2. target not found error
         self.activate_session.reset_mock()
         self.session.getBuildTarget.return_value = {}
-        expected = "Unknown build target: %s" % self.arguments[2]
+        expected = "No such build target: %s" % self.arguments[2]
         args[-1] = img_type
         with self.assertRaises(koji.GenericError) as cm:
             _build_image(*args)
@@ -235,7 +235,7 @@ class TestBuildImage(utils.CliTestCase):
         self.activate_session.reset_mock()
         self.session.getBuildTarget.return_value = self.build_target
         self.session.getTag.return_value = {}
-        expected = "Unknown destination tag: %s" % self.build_target['dest_tag_name']
+        expected = "No such destination tag: %s" % self.build_target['dest_tag_name']
         args[-1] = img_type
         with self.assertRaises(koji.GenericError) as cm:
             _build_image(*args)

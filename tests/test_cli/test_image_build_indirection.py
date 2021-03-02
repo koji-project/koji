@@ -158,7 +158,7 @@ class TestBuildImageIndirection(utils.CliTestCase):
 
         # Case 4. target not found error
         self.session.getBuildTarget.return_value = {}
-        expected = "Unknown build target: %s" % {}
+        expected = "No such build target: %s" % {}
         with self.assertRaises(koji.GenericError) as cm:
             _build_image_indirection(
                 self.options, self.task_opts, self.session, [])
@@ -168,7 +168,7 @@ class TestBuildImageIndirection(utils.CliTestCase):
         # Case 5. tag not found error
         self.session.getBuildTarget.return_value = self.build_target
         self.session.getTag.return_value = {}
-        expected = "Unknown destination tag: %s" % self.build_target['dest_tag_name']
+        expected = "No such destination tag: %s" % self.build_target['dest_tag_name']
         with self.assertRaises(koji.GenericError) as cm:
             _build_image_indirection(
                 self.options, self.task_opts, self.session, [])

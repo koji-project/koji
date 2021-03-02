@@ -19,9 +19,12 @@ class TestImportRPM(unittest.TestCase):
         # Touch a file
         with open(self.src_filename, 'w'):
             pass
+        self.context = mock.patch('kojihub.context').start()
+        self.cursor = mock.MagicMock()
 
         self.rpm_header_retval = {
             'filename': 'name-version-release.arch.rpm',
+            'sourcepackage': 2,
             1000: 'name',
             1001: 'version',
             1002: 'release',
@@ -164,6 +167,36 @@ class TestImportRPM(unittest.TestCase):
         }
         _dml.assert_called_once_with(statement, values)
 
+    @mock.patch('os.path.exists')
+    def test_non_exist_file(self, os_path_exist):
+        exports = kojihub.RootExports()
+        basename = 'rpm-1-34'
+        uploadpath = koji.pathinfo.work()
+        filepath = '%s/%s/%s' % (uploadpath, self.filename, basename)
+        os_path_exist.return_value = False
+        with self.assertRaises(koji.GenericError) as cm:
+            exports.importRPM(self.filename, basename)
+        self.assertEqual("No such file: %s" % filepath, str(cm.exception))
+
+    @mock.patch('koji.get_rpm_header')
+    @mock.patch('os.path.exists')
+    @mock.patch('os.path.basename')
+    def test_non_exist_file(self, os_path_basename, os_path_exist, get_rpm_header):
+        self.cursor.fetchone.return_value = None
+        self.context.cnx.cursor.return_value = self.cursor
+        retval = copy.copy(self.rpm_header_retval)
+        retval.update({
+            'filename': 'name-version-release.arch.rpm',
+            'sourcepackage': 2
+        })
+        get_rpm_header.return_value = retval
+        os_path_exist.return_value = True
+        os_path_basename.return_value = 'name-version-release.arch.rpm'
+        kojihub.get_build.return_value = None
+        with self.assertRaises(koji.GenericError) as cm:
+            kojihub.import_rpm(self.src_filename)
+        self.assertEqual("No such build", str(cm.exception))
+
 
 class TestImportBuild(unittest.TestCase):
     def setUp(self):
@@ -283,3 +316,12 @@ class TestImportBuild(unittest.TestCase):
             'id': mock.ANY,
         }
         _dml.assert_called_once_with(statement, values)
+
+    @mock.patch('os.path.exists')
+    def test_import_build_non_exist_file(self, os_path_exists):
+        uploadpath = koji.pathinfo.work()
+        os_path_exists.return_value = False
+        with self.assertRaises(koji.GenericError) as cm:
+            kojihub.import_build(self.src_filename, [self.filename])
+        self.assertEqual("No such file: %s/%s" % (uploadpath, self.src_filename),
+                         str(cm.exception))

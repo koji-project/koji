@@ -1,9 +1,11 @@
 from __future__ import absolute_import
-import mock
-from mock import call
+
 import os
-import six
 import sys
+
+import mock
+import six
+from mock import call
 
 from koji_cli.commands import anon_handle_download_task
 from . import utils
@@ -34,7 +36,7 @@ class TestDownloadTask(utils.CliTestCase):
             if target.endswith('.log') and arch is not None:
                 target = "%s.%s.log" % (target.rstrip(".log"), arch)
             calls.append(call(url, target, quiet=None, noprogress=None,
-                size=total, num=i + 1))
+                              size=total, num=i + 1))
         return calls
 
     def setUp(self):
@@ -44,7 +46,8 @@ class TestDownloadTask(utils.CliTestCase):
         self.options.topurl = 'https://topurl'
         # Mock out the xmlrpc server
         self.session = mock.MagicMock()
-        self.list_task_output_all_volumes = mock.patch('koji_cli.commands.list_task_output_all_volumes').start()
+        self.list_task_output_all_volumes = mock.patch(
+            'koji_cli.commands.list_task_output_all_volumes').start()
         self.ensuredir = mock.patch('koji.ensuredir').start()
         self.download_file = mock.patch('koji_cli.commands.download_file').start()
         self.ensure_connection = mock.patch('koji_cli.commands.ensure_connection').start()
@@ -102,7 +105,7 @@ class TestDownloadTask(utils.CliTestCase):
         expected = ''
         self.assertMultiLineEqual(actual, expected)
         actual = self.stderr.getvalue()
-        expected = 'No such task: #123333\n'
+        expected = 'No such task: %s\n' % task_id
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
         self.ensure_connection.assert_called_once_with(self.session, self.options)

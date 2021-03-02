@@ -31,7 +31,7 @@ class TestGetPackageID(DBQueryTestCase):
                                           'strict': True,
                                           'self': mock.ANY})
         self.assertEqual(cm.exception.args[0],
-                         'Invalid package name: invalidpkg')
+                         'No such package name: invalidpkg')
 
     def test_getPackageID_None(self):
         rv = kojihub.RootExports().getPackageID('invalidpkg')

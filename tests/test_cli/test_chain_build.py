@@ -202,7 +202,7 @@ Options:
         expected = """Usage: %s chain-build [options] <target> <URL> [<URL> [:] <URL> [:] <URL> ...]
 (Specify the --help global option for a list of other help options)
 
-%s: error: Unknown build target: target
+%s: error: No such build target: target
 """ % (progname, progname)
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.

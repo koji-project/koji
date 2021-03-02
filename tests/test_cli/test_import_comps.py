@@ -1,10 +1,13 @@
 from __future__ import absolute_import
-import json
-import mock
+
 import os
-import six
 import sys
 import unittest
+import json
+
+import mock
+import six
+from nose.plugins.skip import SkipTest
 
 try:
     import libcomps
@@ -15,12 +18,10 @@ try:
 except ImportError:
     yumcomps = None
 
-from nose.plugins.skip import SkipTest
-
 import koji_cli.commands
-from koji_cli.commands import handle_import_comps, _import_comps,\
-                              _import_comps_alt
+from koji_cli.commands import handle_import_comps, _import_comps, _import_comps_alt
 from . import utils
+
 
 class TestImportComps(utils.CliTestCase):
     # Show long diffs in error output...
@@ -172,7 +173,7 @@ class TestImportComps(utils.CliTestCase):
             handle_import_comps(options, session, args)
         self.assertExitCode(ex, 1)
         actual = stderr.getvalue()
-        expected = 'No such tag: tag\n'
+        expected = 'No such tag: %s\n' % tag
         self.assertMultiLineEqual(actual, expected)
 
         # Finally, assert that things were called as we expected.

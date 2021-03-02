@@ -61,7 +61,7 @@ Available search types: package, build, tag, target, user, host, rpm, maven, win
             {'argument': [], 'error': 'Please specify search type'},
             {'argument': [s_type], 'error': 'Please specify search pattern'},
             {'argument': [s_type, s_patt],
-             'error': 'Unknown search type: %s' % s_type}
+             'error': 'No such search type: %s' % s_type}
         ]
 
         for case in cases:

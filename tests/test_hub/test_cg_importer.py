@@ -33,13 +33,16 @@ class TestCGImporter(unittest.TestCase):
 
     def test_get_metadata_is_not_instance(self):
         x = kojihub.CG_Importer()
-        with self.assertRaises(GenericError):
-            x.get_metadata(42, '')
+        metadata = 42
+        with self.assertRaises(GenericError) as ex:
+            x.get_metadata(metadata, '')
+        self.assertEqual('Invalid type for metadata value: %s' % type(metadata), str(ex.exception))
 
     def test_get_metadata_is_none(self):
         x = kojihub.CG_Importer()
-        with self.assertRaises(GenericError):
+        with self.assertRaises(GenericError) as ex:
             x.get_metadata(None, '')
+        self.assertEqual('No such file: metadata.json', str(ex.exception))
 
     @mock.patch("koji.pathinfo.work")
     def test_get_metadata_missing_json_file(self, work):
@@ -169,6 +172,30 @@ class TestCGImporter(unittest.TestCase):
         x = kojihub.CG_Importer()
         x.get_metadata('default.json', 'cg_importer_json')
         x.import_metadata()
+
+    @mock.patch("kojihub.CG_Importer.get_metadata")
+    def test_do_import_no_such_metadata(self, get_metadata):
+        x = kojihub.CG_Importer()
+        metadata = {'metadata_version': 99,
+                    'build': {
+                        'name': 'f32-build-n2j8',
+                        'version': '1.1',
+                        'release': '1',
+                        'epoch': 0,
+                        'owner': 'kojiadmin'}
+                    }
+        get_metadata.return_value = metadata
+        with self.assertRaises(koji.GenericError) as ex:
+            x.do_import(metadata, '/test/dir')
+        self.assertEqual('No such metadata version: %s' % metadata['metadata_version'],
+                         str(ex.exception))
+
+    def test_match_componemt_wrong_component(self):
+        x = kojihub.CG_Importer()
+        components = [{'type': 'type'}]
+        with self.assertRaises(koji.GenericError) as ex:
+            x.match_components(components)
+        self.assertEqual('No such component type: %s' % components[0]['type'], str(ex.exception))
 
 
 class TestMatchKojiFile(unittest.TestCase):

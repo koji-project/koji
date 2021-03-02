@@ -1,4 +1,3 @@
-import sys
 import os
 import time
 
@@ -177,8 +176,7 @@ class TestCliListTagged(utils.CliTestCase):
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji.util.eventFromOpts', return_value=None)
     @mock.patch('koji_cli.commands.ensure_connection')
-    def test_list_tagged_type_paths(self, ensure_connection_mock,
-                              event_from_opts_mock, stdout):
+    def test_list_tagged_type_paths(self, ensure_connection_mock, event_from_opts_mock, stdout):
         args = ['tag', 'pkg', '--latest-n=3', '--type=maven', '--paths']
         self.session.listTagged.return_value = [{'id': 1,
                                                  'name': 'packagename',

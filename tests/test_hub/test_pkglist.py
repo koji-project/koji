@@ -257,14 +257,26 @@ class TestPkglistBlock(unittest.TestCase):
         readPackageList.return_value = {}
 
         # package needs to be name, not dict
-        with self.assertRaises(koji.GenericError):
+        with self.assertRaises(koji.GenericError) as ex:
             kojihub._direct_pkglist_add(tag['name'], pkg,
                 user['name'], block=block, extra_arches=extra_arches,
                 force=force, update=update, policy=policy)
+        self.assertEqual("No such package: %s" % pkg, str(ex.exception))
 
-        lookup_package.assert_called_once_with(pkg, strict=False)
-        self.assertEqual(self.run_callbacks.call_count, 0)
-        _pkglist_add.assert_not_called()
+    @mock.patch('kojihub.get_tag')
+    @mock.patch('kojihub.lookup_package')
+    def test_direct_pkglist_add_pkginfo_dict(self, lookup_package, get_tag):
+        pkg = {'id': 2, 'name': 'pkg', 'owner_id': 3}
+        user = 'user'
+        tag = {'id': 1, 'name': 'tag'}
+        expected = "Invalid type for id lookup: %s" % pkg
+
+        get_tag.return_value = tag
+        lookup_package.side_effect = koji.GenericError(expected)
+        with self.assertRaises(koji.GenericError) as ex:
+            kojihub._direct_pkglist_add(tag['name'], pkg, user, block=False, extra_arches='arch',
+                force=False, update=True)
+        self.assertEqual(expected, str(ex.exception))
 
     @mock.patch('kojihub._pkglist_add')
     @mock.patch('kojihub.readPackageList')
