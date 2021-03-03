@@ -10771,13 +10771,27 @@ class RootExports(object):
 
     def createImageBuild(self, build_info):
         """
-        Associate image metadata with an existing build. The build must not
-        already have associated image metadata.
+        Associate image metadata with an existing build. When build isn`t existing, creates a
+        build. The build must not already have associated image metadata.
+
+        :param build_info: a str (build name) if build is existing
+                           or a dict:
+                               - name: build name
+                               - version: build version
+                               - release: build release
+                               - epoch: build epoch
+        :raises: GenericError if type for build_info is not dict, when build isn`t existing.
+        :raises: GenericError if build info doesn't have mandatory keys.
         """
         context.session.assertPerm('image-import')
         build = get_build(build_info)
         if not build:
-            build_id = new_build(dslice(build_info, ('name', 'version', 'release', 'epoch')))
+            if not isinstance(build_info, dict):
+                raise koji.GenericError('Invalid type for build_info: %s' % type(build_info))
+            try:
+                build_id = new_build(dslice(build_info, ('name', 'version', 'release', 'epoch')))
+            except KeyError as cm:
+                raise koji.GenericError("Build info doesn't have mandatory %s key" % cm)
             build = get_build(build_id, strict=True)
         new_image_build(build)
 
