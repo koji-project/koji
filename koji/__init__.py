@@ -2465,6 +2465,7 @@ class ClientSession(object):
         old_env = {}
         old_opts = self.opts
         self.opts = old_opts.copy()
+        e_str = None
         try:
             # temporary timeout value during login
             self.opts['timeout'] = self.opts.get('auth_timeout',
@@ -2492,7 +2493,8 @@ class ClientSession(object):
                 sinfo = self._callMethod('sslLogin', [proxyuser], retry=False)
             except Exception as e:
                 e_str = ''.join(traceback.format_exception_only(type(e), e))
-                self.logger.debug('gssapi auth failed: %s', e_str)
+                e_str = 'gssapi auth failed: %s' % e_str
+                self.logger.debug(e_str)
                 # Auth with https didn't work. Restore for the next attempt.
                 self.baseurl = old_baseurl
         finally:
@@ -2503,7 +2505,10 @@ class ClientSession(object):
                 else:
                     os.environ[key] = old_env[key]
         if not sinfo:
-            raise AuthError('unable to obtain a session')
+            err = 'unable to obtain a session'
+            if e_str:
+                err += ' (%s)' % e_str
+            raise AuthError(err)
 
         self.setSession(sinfo)
 
@@ -2537,12 +2542,20 @@ class ClientSession(object):
                                              DEFAULT_AUTH_TIMEOUT)
         self.opts['cert'] = cert
         self.opts['serverca'] = serverca
+        e_str = None
         try:
             sinfo = self.callMethod('sslLogin', proxyuser)
+        except Exception as ex:
+            e_str = ''.join(traceback.format_exception_only(type(ex), ex))
+            e_str = 'ssl auth failed: %s' % e_str
+            self.logger.debug(e_str)
         finally:
             self.opts = old_opts
         if not sinfo:
-            raise AuthError('unable to obtain a session')
+            err = 'unable to obtain a session'
+            if e_str:
+                err += ' (%s)' % e_str
+            raise AuthError(err)
 
         self.opts['cert'] = cert
         self.opts['serverca'] = serverca
