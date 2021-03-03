@@ -26,6 +26,7 @@ from kojihub import (  # noqa: E402
 
 CONFIG_FILE = "/etc/koji-hub/plugins/sidetag.conf"
 CONFIG = None
+ALLOWED_SUFFIXES = []
 
 
 def is_sidetag(taginfo, raise_error=False):
@@ -70,7 +71,7 @@ class SidetagOwnerTest(koji.policy.MatchTest):
 
 # API calls
 @export
-def createSideTag(basetag, debuginfo=False):
+def createSideTag(basetag, debuginfo=False, suffix=None):
     """Create a side tag.
 
     :param basetag: name or ID of base tag
@@ -78,7 +79,16 @@ def createSideTag(basetag, debuginfo=False):
 
     :param debuginfo: should buildroot repos contain debuginfo?
     :type debuginfo: bool
+
+    :param suffix: suffix which will be appended to generated sidetag name
+                   List of allowed suffixes needs to be defined in config.
+    :type suffix: str
+
+    :returns dict: sidetag name + id
     """
+
+    if suffix and suffix not in ALLOWED_SUFFIXES:
+        raise koji.GenericError("%s suffix is not allowed for sidetag" % suffix)
 
     # Any logged-in user is able to request creation of side tags,
     # as long the request meets the policy.
@@ -109,6 +119,8 @@ def createSideTag(basetag, debuginfo=False):
     # id assigned by _create_tag
     tag_id = nextval("tag_id_seq") + 1
     sidetag_name = "%s-side-%s" % (basetag["name"], tag_id)
+    if suffix:
+        sidetag_name += '-%s' % suffix
     extra = {
         "sidetag": True,
         "sidetag_user": user["name"],
@@ -306,3 +318,5 @@ if not CONFIG:
         "sidetag", "remove_empty"
     ):
         handle_sidetag_untag = callback("postUntag")(handle_sidetag_untag)
+    if CONFIG.has_option("sidetag", "allowed_suffixes"):
+        ALLOWED_SUFFIXES = CONFIG.get("sidetag", "allowed_suffixes").split(',')
