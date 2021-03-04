@@ -34,7 +34,7 @@ def handle_add_sidetag(options, session, args):
         "--debuginfo", action="store_true", help=_("Buildroot repo will contain debuginfos")
     )
     parser.add_argument(
-        "--suffix", actions="store", help=_("Suffix from hub-supported ones")
+        "--suffix", action="store", help=_("Suffix from hub-supported ones")
     )
 
     opts = parser.parse_args(args)
