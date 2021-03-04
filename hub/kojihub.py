@@ -7149,6 +7149,8 @@ def new_maven_build(build, maven_info):
     maven_info must contain the 'group_id',
     'artifact_id', and 'version' keys.
     """
+    if not isinstance(maven_info, dict):
+        raise koji.GenericError('Invalid type for maven_info: %s' % type(maven_info))
     maven_info = maven_info.copy()
 
     current_maven_info = get_maven_build(build)
@@ -7159,8 +7161,13 @@ def new_maven_build(build, maven_info):
                 raise koji.BuildError('%s mismatch (current: %s, new: %s)' %
                                       (field, current_maven_info[field], maven_info[field]))
     else:
+        if maven_info == {}:
+            raise koji.GenericError("Maven info is empty")
         maven_info['build_id'] = build['id']
-        data = dslice(maven_info, ['build_id', 'group_id', 'artifact_id', 'version'])
+        try:
+            data = dslice(maven_info, ['build_id', 'group_id', 'artifact_id', 'version'])
+        except KeyError as cm:
+            raise koji.GenericError("Maven info doesn't have mandatory %s key" % cm)
         insert = InsertProcessor('maven_builds', data=data)
         insert.execute()
         # also add build_types entry
@@ -10741,16 +10748,34 @@ class RootExports(object):
 
     def createMavenBuild(self, build_info, maven_info):
         """
-        Associate Maven metadata with an existing build.  The build must
-        not already have associated Maven metadata.  maven_info must be a dict
-        containing group_id, artifact_id, and version entries.
+        Associate Maven metadata with an existing build. When build isn`t existing, creates a
+        build. The build must not already have associated Maven metadata.  maven_info must be
+        a dict containing group_id, artifact_id, and version entries.
+
+        :param build_info: a str (build name) if build is existing
+                           or a dict:
+                               - name: build name
+                               - version: build version
+                               - release: build release
+                               - epoch: build epoch
+        :param dict maven_info:
+                               - group_id: Group's ID
+                               - artifact_id: Artifact's ID
+                               - version: version
+        :raises: GenericError if type for build_info is not dict, when build isn`t existing.
+        :raises: GenericError if build info doesn't have mandatory keys.
         """
         context.session.assertPerm('maven-import')
         if not context.opts.get('EnableMaven'):
             raise koji.GenericError("Maven support not enabled")
         build = get_build(build_info)
         if not build:
-            build_id = new_build(dslice(build_info, ('name', 'version', 'release', 'epoch')))
+            if not isinstance(build_info, dict):
+                raise koji.GenericError('Invalid type for build_info: %s' % type(build_info))
+            try:
+                build_id = new_build(dslice(build_info, ('name', 'version', 'release', 'epoch')))
+            except KeyError as cm:
+                raise koji.GenericError("Build info doesn't have mandatory %s key" % cm)
             build = get_build(build_id, strict=True)
         new_maven_build(build, maven_info)
 

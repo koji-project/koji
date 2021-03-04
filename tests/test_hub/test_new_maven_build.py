@@ -1,0 +1,78 @@
+import unittest
+
+import mock
+
+import koji
+import kojihub
+
+IP = kojihub.InsertProcessor
+
+
+class TestNewMavenBuild(unittest.TestCase):
+    def setUp(self):
+        self.InsertProcessor = mock.patch('kojihub.InsertProcessor',
+                                          side_effect=self.getInsert).start()
+        self.inserts = []
+        self.insert_execute = mock.MagicMock()
+        self.get_maven_build = mock.patch('kojihub.get_maven_build').start()
+        self.get_maven_build.return_value = None
+        self.build_info = {
+            'id': 100,
+            'name': 'test_name',
+            'version': 'test_version',
+            'release': 'test_release',
+            'epoch': 'test_epoch',
+            'owner': 'test_owner',
+            'build_id': 2,
+        }
+
+    def getInsert(self, *args, **kwargs):
+        insert = IP(*args, **kwargs)
+        insert.execute = self.insert_execute
+        self.inserts.append(insert)
+        return insert
+
+    def test_empty_maven_info(self):
+        maven_info = {}
+        with self.assertRaises(koji.GenericError) as cm:
+            kojihub.new_maven_build(self.build_info, maven_info)
+        self.assertEqual("Maven info is empty", str(cm.exception))
+        self.assertEqual(len(self.inserts), 0)
+
+    def test_maven_info_without_some_key(self):
+        # maven_info without group_id
+        maven_info = {
+            'artifact_id': '99',
+            'version': '33'
+        }
+        with self.assertRaises(koji.GenericError) as cm:
+            kojihub.new_maven_build(self.build_info, maven_info)
+        self.assertEqual("Maven info doesn't have mandatory 'group_id' key", str(cm.exception))
+        self.assertEqual(len(self.inserts), 0)
+
+        # maven_info without artifact_id
+        maven_info = {
+            'group_id': '11',
+            'version': '33'
+        }
+        with self.assertRaises(koji.GenericError) as cm:
+            kojihub.new_maven_build(self.build_info, maven_info)
+        self.assertEqual("Maven info doesn't have mandatory 'artifact_id' key", str(cm.exception))
+        self.assertEqual(len(self.inserts), 0)
+
+        # maven_info without version
+        maven_info = {
+            'group_id': '11',
+            'artifact_id': '99',
+        }
+        with self.assertRaises(koji.GenericError) as cm:
+            kojihub.new_maven_build(self.build_info, maven_info)
+        self.assertEqual("Maven info doesn't have mandatory 'version' key", str(cm.exception))
+        self.assertEqual(len(self.inserts), 0)
+
+    def test_wrong_format_maven_info(self):
+        maven_info = 'test-maven-info'
+        with self.assertRaises(koji.GenericError) as cm:
+            kojihub.new_maven_build(self.build_info, maven_info)
+        self.assertEqual('Invalid type for maven_info: %s' % type(maven_info), str(cm.exception))
+        self.assertEqual(len(self.inserts), 0)
