@@ -871,9 +871,10 @@ def handle_resubmit(goptions, session, args):
 def handle_call(goptions, session, args):
     "Execute an arbitrary XML-RPC call"
     usage = _("""\
-        usage: %prog call [options] <name> [<arg> ...]")
+        usage: %prog call [options] <name> [<arg> ...]
 
         Note, that you can use global option --noauth for anonymous calls here""")
+    usage = textwrap.dedent(usage)
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--python", action="store_true", help=_("Use python syntax for values"))
     parser.add_option("--kwargs",

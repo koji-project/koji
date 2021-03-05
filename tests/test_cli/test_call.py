@@ -15,6 +15,8 @@ class TestCall(utils.CliTestCase):
 
     def setUp(self):
         self.error_format = """Usage: %s call [options] <name> [<arg> ...]
+
+Note, that you can use global option --noauth for anonymous calls here
 (Specify the --help global option for a list of other help options)
 
 %s: error: {message}
@@ -130,6 +132,8 @@ class TestCall(utils.CliTestCase):
         self.assert_help(
             handle_call,
             """Usage: %s call [options] <name> [<arg> ...]
+
+Note, that you can use global option --noauth for anonymous calls here
 (Specify the --help global option for a list of other help options)
 
 Options:
