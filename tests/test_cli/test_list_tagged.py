@@ -70,7 +70,7 @@ class TestCliListTagged(utils.CliTestCase):
         args = ['tag', 'pkg', '--latest', '--inherit', '--event=1000']
 
         anon_handle_list_tagged(self.options, self.session, args)
-        ensure_connection_mock.assert_called_once_with(self.session)
+        ensure_connection_mock.assert_called_once_with(self.session, self.options)
         self.session.getTag.assert_called_once_with('tag', event=1000)
         self.session.listTagged.assert_called_once_with('tag',
                                                         event=1000,
@@ -106,7 +106,7 @@ class TestCliListTagged(utils.CliTestCase):
                 '--arch=x86_64', '--arch=noarch']
 
         anon_handle_list_tagged(self.options, self.session, args)
-        ensure_connection_mock.assert_called_once_with(self.session)
+        ensure_connection_mock.assert_called_once_with(self.session, self.options)
         self.session.getTag.assert_called_once_with('tag', event=None)
         self.session.listTaggedRPMS.assert_called_once_with('tag',
                                                             package='pkg',
@@ -161,7 +161,7 @@ class TestCliListTagged(utils.CliTestCase):
                                                  'maven_artifact_id': 'artifact'}]
 
         anon_handle_list_tagged(self.options, self.session, args)
-        ensure_connection_mock.assert_called_once_with(self.session)
+        ensure_connection_mock.assert_called_once_with(self.session, self.options)
         self.session.getTag.assert_called_once_with('tag', event=None)
         self.session.listTagged.assert_called_once_with('tag',
                                                         package='pkg',
