@@ -1,6 +1,7 @@
 FROM fedora:32
 RUN \
-  dnf install -y \
+  dnf -y update --nodocs --setopt=install_weak_deps=False && \
+  dnf install -y --nodocs --setopt=install_weak_deps=False \
   'dnf-command(download)' \
   gcc \
   git \
@@ -8,6 +9,7 @@ RUN \
   glibc-langpack-en \
   krb5-devel \
   libffi-devel \
+  python3-librepo \
   libxml2-devel \
   make \
   openssl-devel \
@@ -19,4 +21,5 @@ RUN \
   rpm-build \
   rpm-devel \
   sqlite-devel \
-  yum-utils
+  yum-utils && \
+  dnf clean all
