@@ -266,6 +266,44 @@ class ManagedRepo(object):
         return self.state == koji.REPO_PROBLEM
 
 
+class LoggingLockManager(object):
+    """A context manager that acquires all the logging locks"""
+
+    # This lock business is a workaround for https://pagure.io/koji/issue/2714
+
+    def __enter__(self):
+        self.acquire_locks()
+        return self
+
+    def __exit__(self, exc_type, exc_val, traceback):
+        # we want to free the locks regardless of what happend inside the with statement
+        self.release_locks()
+        return False  # don't eat exceptions
+
+    def acquire_locks(self):
+        # init
+        self.locks = []
+        self.module_lock = False
+        toplogger = logging.getLogger('koji')
+
+        # module level lock
+        if hasattr(logging, '_acquireLock'):
+            logging._acquireLock()
+            self.module_lock = True
+
+        # also each handler can have its own lock
+        # in kojira, the we should only have handlers attached to the koji logger
+        self.locks = [h.lock for h in toplogger.handlers if h.lock]
+        for lock in self.locks:
+            lock.acquire()
+
+    def release_locks(self):
+        if self.module_lock:
+            logging._releaseLock()
+        for lock in self.locks:
+            lock.release()
+
+
 class RepoManager(object):
 
     def __init__(self, options, session):
@@ -334,7 +372,8 @@ class RepoManager(object):
         return False
 
     def _rmtree(self, path):
-        pid = os.fork()
+        with LoggingLockManager():
+            pid = os.fork()
         if pid:
             return pid
         # no return
