@@ -11,7 +11,6 @@ def get_install_requires():
 
     requires = [
         'python-dateutil',
-        'pyOpenSSL',
         'requests',
         'requests-gssapi',
         'six',

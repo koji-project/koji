@@ -36,17 +36,6 @@ import koji
 import koji.tasks
 
 
-class NoSuchException(Exception):
-    pass
-
-
-try:
-    # pyOpenSSL might not be around
-    from OpenSSL.SSL import Error as SSL_Error
-except Exception:
-    SSL_Error = NoSuchException
-
-
 themeInfo = {}
 themeCache = {}
 

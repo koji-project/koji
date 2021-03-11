@@ -68,15 +68,6 @@ from . import _version
 __version__ = _version.__version__
 __version_info__ = _version.__version_info__
 
-SSL_Error = None
-try:
-    from OpenSSL.SSL import Error as SSL_Error
-except Exception:  # pragma: no cover
-    # the hub imports koji, and sometimes this import fails there
-    # see: https://cryptography.io/en/latest/faq/#starting-cryptography-using-mod-wsgi-produces-an-internalerror-during-a-call-in-register-osrandom-engine  # noqa: E501
-    # unfortunately the workaround at the above link does not always work, so
-    # we ignore it here
-    pass
 try:
     import requests_gssapi as reqgssapi
 except ImportError:  # pragma: no cover
@@ -2275,46 +2266,6 @@ def is_requests_cert_error(e):
     return False
 
 
-def is_cert_error(e):
-    """Determine if an OpenSSL error is due to a bad cert"""
-
-    if SSL_Error is None:  # pragma: no cover
-        # import failed, so we can't determine
-        raise Exception("OpenSSL library did not load")
-    if not isinstance(e, SSL_Error):
-        return False
-
-    # pyOpenSSL doesn't use different exception
-    # subclasses, we have to actually parse the args
-    for arg in e.args:
-        # First, check to see if 'arg' is iterable because
-        # it can be anything..
-        try:
-            iter(arg)
-        except TypeError:
-            continue
-
-        # We do all this so that we can detect cert expiry
-        # so we can avoid retrying those over and over.
-        for items in arg:
-            try:
-                iter(items)
-            except TypeError:
-                continue
-
-            if len(items) != 3:
-                continue
-
-            _, _, ssl_reason = items
-
-            if ('certificate revoked' in ssl_reason or
-                    'certificate expired' in ssl_reason):
-                return True
-
-    # otherwise
-    return False
-
-
 def is_conn_error(e):
     """Determine if an error seems to be from a dropped connection"""
     # This is intended for the case where e is a socket error.
@@ -2806,7 +2757,7 @@ class ClientSession(object):
                     tb_str = ''.join(traceback.format_exception(*sys.exc_info()))
                     self.new_session()
 
-                    if is_cert_error(e) or is_requests_cert_error(e):
+                    if is_requests_cert_error(e):
                         # There's no point in retrying for this
                         raise
 
