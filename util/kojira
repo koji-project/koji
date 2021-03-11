@@ -249,10 +249,8 @@ class ManagedRepo(object):
                 logger.error('Unable to remove volume link: %s', path)
         else:
             realpath = path
-        try:
-            self.manager.rmtree(realpath)
-        except BaseException:
-            logger.error(''.join(traceback.format_exception(*sys.exc_info())))
+
+        self.manager.rmtree(realpath)
 
         return True
 
@@ -340,7 +338,8 @@ class RepoManager(object):
     def rmtree(self, path):
         """Spawn (or queue) and rmtree job"""
         self.logger.info("Queuing rmtree job for %s", path)
-        self.delete_queue.append(path)
+        if path not in self.delete_queue:
+            self.delete_queue.append(path)
 
     def checkQueue(self):
         finished = [pid for pid in self.delete_pids if self.waitPid(pid)]
