@@ -523,6 +523,16 @@ def formatThousands(value):
     return '{:,}'.format(value)
 
 
+def formatLink(url):
+    """Turn a string into an HTML link if it looks vaguely like a URL.
+    If it doesn't, just return it properly escaped."""
+    url = escapeHTML(url.strip())
+    m = re.match(r'(https?|ssh|git|obs)://.*', url, flags=re.IGNORECASE)
+    if m:
+        return '<a href="{}">{}</a>'.format(url, url)
+
+    return url
+
 def rowToggle(template):
     """If the value of template._rowNum is even, return 'row-even';
     if it is odd, return 'row-odd'.  Increment the value before checking it.

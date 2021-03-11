@@ -1,6 +1,6 @@
 import unittest
 
-from kojiweb.util import formatMode
+from kojiweb.util import formatMode, formatLink
 
 class TestFormatMode(unittest.TestCase):
     def test_format_mode(self):
@@ -16,3 +16,21 @@ class TestFormatMode(unittest.TestCase):
 
         for s, mode in formats:
             self.assertEqual(formatMode(mode), s)
+
+    def test_format_link(self):
+        formats = (
+            ('test me', 'test me'),
+            ('  test ', 'test'),
+            ('<script>hack</script>', '&lt;script&gt;hack&lt;/script&gt;'),
+            ('not://valid', 'not://valid'),
+            ('https://foo.com', '<a href="https://foo.com">https://foo.com</a>'),
+            ('http://bar.com/', '<a href="http://bar.com/">http://bar.com/</a>'),
+            ('HTtP://BaR.CoM/', '<a href="HTtP://BaR.CoM/">HTtP://BaR.CoM/</a>'),
+            ('https://baz.com/baz&t=1', '<a href="https://baz.com/baz&amp;t=1">https://baz.com/baz&amp;t=1</a>'),
+            ('ssh://git@pagure.io/foo', '<a href="ssh://git@pagure.io/foo">ssh://git@pagure.io/foo</a>'),
+            ('git://git@pagure.io/foo', '<a href="git://git@pagure.io/foo">git://git@pagure.io/foo</a>'),
+            ('obs://build.opensuse.org/foo', '<a href="obs://build.opensuse.org/foo">obs://build.opensuse.org/foo</a>'),
+        )
+
+        for input, output in formats:
+            self.assertEqual(formatLink(input), output)

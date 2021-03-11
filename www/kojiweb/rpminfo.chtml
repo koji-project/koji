@@ -70,12 +70,12 @@
     </tr>
     #if $vcs
     <tr>
-        <th><label title="Package source code VCS location">VCS</label></th><td>$util.escapeHTML($vcs)</td>
+        <th><label title="Package source code VCS location">VCS</label></th><td>$util.formatLink($vcs)</td>
     </tr>
     #end if
     #if $disturl
     <tr>
-        <th>DistURL</th><td>$util.escapeHTML($disturl)</td>
+        <th>DistURL</th><td>$util.formatLink($disturl)</td>
     </tr>
     #end if
     #end if
