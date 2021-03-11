@@ -1,15 +1,14 @@
 Unit tests in Fedora's Jenkins
 ==============================
 
-We're using Fedora's `Jenkins <https://jenkins.fedorainfracloud.org/job/koji>`_
-infrastructure for automatically running unit tests for new commits in
-master branch.
+We're using CentOS's `Jenkins
+<https://jenkins-fedora-infra.apps.ocp.ci.centos.org/job/koji>`_ infrastructure
+for automatically running unit tests for new commits in master branch.
 
-Current setup uses periodical checking of koji's git and when new commits are
-seen, tests are run. Normal developer needn't to care about his workflow, but can
-use it for his advantage as it can run tests for him with platforms he has no
-access to. Currently are tests run on Fedora 24, Fedora 25 and CentOS 6
-platforms.
+Pagure triggers tests for any new pull request. It can be also triggered
+manually by pressing "Rerun CI" button in PR.
+
+Currently we run tests on Fedora 33/34/rawhide and CentOS 7/8 platforms.
 
 Usage
 -----
@@ -18,31 +17,18 @@ If you need any change in jenkins setup, please file a pagure issue. As part
 of solving issue, this documentation must be updated to reflect current state
 in jenkins.
 
-If you want to run tests against specific repo (your or official branch), log
-in to jenkins (via FAS unified login), navigate to `Build with parameters
-<https://jenkins.fedorainfracloud.org/job/koji/build?delay=0sec>`_ and put
-your repository url to ``REPO`` and name of branch to ``BRANCH``.
-``BRANCH_TO`` could be left blank as it is default set to *master*. Pressing
-``BUILD`` should give you link to running build in all supported
-environments.
-
-
 Configuration
 -------------
 
 - Public access is for everyone with no need to log in to jenkins.
-- Admin access is via same interface and currently tkopecek and mikem have
+- Admin access is via same interface and currently tkopecek have
    access there. If you need access for yourself (you're probably part of
-   brew/koji team) create jira in BREW project requesting this.
-   Prerequisite for this is Fedora account (probably same one you are using
-   for work in pagure).
+   brew/koji team) create ticket in https://pagure.io/centos-infra requesting this.
+   Prerequisite for this is CentOS account.
 
 - Setup - Following items are set-up via
-   https://jenkins.fedorainfracloud.org/job/koji/configure
+   https://jenkins-fedora-infra.apps.ocp.ci.centos.org/job/koji/configure
 
-- Please don't change access rules (*Enable project-based security*
-   fields) unless you've a corresponding jira for that, so every change of
-   access is tracked there.
 - *Job notifications* - when jenkins job finishes, it will send some info to
    pagure. Such call will add a comment to PR. For this REST hook needs to
    be configured:
@@ -70,8 +56,10 @@ Configuration
 
 - *Disable build* - it could be used if a lot of failing build happens with
     no vision of early recovery - temporarily suspend jenkins jobs
-- *Execute concurrent builds if necessary* - We currently have no need of this
-- *Restrict where this project can be run* - Fedora 24 is used for now which means 'F24' value
+- *Restrict where this project can be run* - F33 is the only used agent now.
+    Basically we need an agent which supports podman as all the tests are run in
+    docker images managed by podman.
+
 - *Source Code Management*
 
   * Git
@@ -91,70 +79,47 @@ Configuration
 
     * Schedule: H/5 * * * *
 
-- *Build* - most important part - script which runs tests itself. Here you can also add missing requirements which will get installed via pip (not via rpms from F24!)
+- *Build* - most important part - script which runs tests itself. Basically we
+  run tests in containers, last one also run flake8 and is used for coverage
+  report.
 
 
 .. code-block:: shell
+    # merge PR into main repository  
+    if [ -n "$REPO" -a -n "$BRANCH" ]; then  
+        git config --global user.email "test@example.com"  
+        git config --global user.name "Tester"
+        git remote rm proposed || true  
+        git remote add proposed "$REPO"  
+        git fetch proposed   
+        git checkout "origin/${BRANCH_TO:-master}"  
+        git merge --no-ff "proposed/$BRANCH" -m "Merge PR"  
+    fi  
 
-  # setup virtual environment
-  rm -rf kojienv
-  if [ -x /usr/bin/python3 ] ; then
-      python3 -m venv --system-site-packages kojienv
-  else
-      virtualenv --system-site-packages kojienv
-  fi
-  source kojienv/bin/activate
+    # centos:7
+    rm -rf .tox
+    podman run --rm --pull=always -v $PWD:/koji --security-opt label=disable --name koji-centos-test-7 quay.io/tkopecek/koji-centos-test:7 bash -c "cd /koji && tox -e py2"
+    podman rmi quay.io/tkopecek/koji-centos-test:7
 
-  # install python requirements via pip, you can also specify exact versions here
-  if [ $NODE_NAME == "EL6" ] ; then
-      pip install "psycopg2<2.7" "urllib3<1.24" "requests<2.20" "requests-mock<1.5" \
-                  "Markdown<3.1" "mock<3.0.0" nose python-qpid-proton coverage \
-                  python-multilib Cheetah --upgrade --ignore-installed
-  else
-      pip install pip packaging --upgrade --ignore-installed
-      pip install setuptools --upgrade --ignore-installed
-      pip install psycopg2 requests-mock nose python-qpid-proton mock coverage \
-                  python-multilib flake8 --upgrade --ignore-installed
-      if [ -x /usr/bin/python3 ] ; then
-          pip install Cheetah3 nose-cover3 --upgrade --ignore-installed
-      else
-          pip install Cheetah --upgrade --ignore-installed
-      fi
-  fi
+    # centos:8
+    rm -rf .tox
+    podman run --rm --pull=always -v $PWD:/koji --security-opt label=disable --name koji-centos-test-8 quay.io/tkopecek/koji-centos-test:8 bash -c "cd /koji && tox -e py3"
+    podman rmi quay.io/tkopecek/koji-centos-test:8
 
+    # fedora:32
+    rm -rf .tox
+    podman run --rm --pull=always -v $PWD:/koji --security-opt label=disable --name koji-fedora-test-32 quay.io/tkopecek/koji-fedora-test:32 bash -c "cd /koji && tox -e py3"
+    podman rmi quay.io/tkopecek/koji-fedora-test:32
 
-  # rehash package to be sure updated versions are used
-  hash -r
+    # fedora:33
+    rm -rf .tox
+    podman run --rm --pull=always -v $PWD:/koji --security-opt label=disable --name koji-fedora-test-33 quay.io/tkopecek/koji-fedora-test:33 bash -c "cd /koji && tox -e py3"
+    podman rmi quay.io/tkopecek/koji-fedora-test:33
 
-  # merge PR into main repository
-  if [ -n "$REPO" -a -n "$BRANCH" ]; then
-      git config --global user.email "test@example.com"
-      git config --global user.name "Tester"
-      git remote rm proposed || true
-      git remote add proposed "$REPO"
-      git fetch proposed
-      git checkout "origin/${BRANCH_TO:-master}"
-      git merge --no-ff "proposed/$BRANCH" -m "Merge PR"
-  fi
-
-  # remove possible coverage output and run tests
-  coverage erase
-  PYTHONPATH=hub/.:plugins/hub/.:plugins/builder/.:cli/plugins/cli/.:cli/.:www/lib/. nosetests --with-coverage --cover-package .
-  coverage xml --omit 'kojienv/*'
-
-  # run additional tests if configured
-  #pylint . > pylint_report.txt
-  #pep8 . > pep8_report.txt
-
-  if [ $NODE_NAME == "EL6" ] ; then
-      # fake report, flake8 is not available for old python
-      echo > flake8_report.txt
-  else
-      flake8 cli hub builder plugins koji util www vm devtools tests --output-file flake8_report.txt
-  fi
-
-  # kill virtual environment
-  deactivate
+    # fedora:rawhide
+    rm -rf .tox
+    podman run --rm --pull=always -v $PWD:/koji --security-opt label=disable --name koji-fedora-test-rawhide quay.io/tkopecek/koji-fedora-test:rawhide bash -c "cd /koji && tox -e flake8,py3"
+    podman rmi quay.io/tkopecek/koji-fedora-test:rawhide
 
 - *Post-build actions*
 
@@ -162,7 +127,7 @@ Configuration
   * *Report Violations* - *pep8*: flake8_report.txt
   * *E-mail notification*:
 
-    * Recipients: tkopecek@redhat.com brew-devel@redhat.com
+    * Recipients: tkopecek@redhat.com exd-sp-rhel-build-alerts@redhat.com
     * Send separate e-mails to individuals who broke the build
 
 - *Send messages to fedmsg*
