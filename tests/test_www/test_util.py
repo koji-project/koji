@@ -1,6 +1,6 @@
 import unittest
 
-from kojiweb.util import formatMode, formatLink
+from kojiweb.util import formatMode, formatLink, escapeHTML
 
 class TestFormatMode(unittest.TestCase):
     def test_format_mode(self):
@@ -34,3 +34,14 @@ class TestFormatMode(unittest.TestCase):
 
         for input, output in formats:
             self.assertEqual(formatLink(input), output)
+
+    def test_escape_html(self):
+        tests = (
+            ('test me', 'test me'),
+            ('test <danger>', 'test &lt;danger&gt;'),
+            ('test <danger="true">', 'test &lt;danger=&quot;true&quot;&gt;'),
+            ("test <danger='true'>", 'test &lt;danger=&#x27;true&#x27;&gt;'),
+        )
+
+        for input, output in tests:
+            self.assertEqual(escapeHTML(input), output)
