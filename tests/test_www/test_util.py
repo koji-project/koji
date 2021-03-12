@@ -41,6 +41,8 @@ class TestFormatMode(unittest.TestCase):
             ('test <danger>', 'test &lt;danger&gt;'),
             ('test <danger="true">', 'test &lt;danger=&quot;true&quot;&gt;'),
             ("test <danger='true'>", 'test &lt;danger=&#x27;true&#x27;&gt;'),
+            ('test&test', 'test&amp;test'),
+            ('test&amp;test', 'test&amp;test'),
         )
 
         for input, output in tests:

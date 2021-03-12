@@ -106,12 +106,7 @@ class DecodeUTF8(Cheetah.Filters.Filter):
 class XHTMLFilter(DecodeUTF8):
     def filter(self, *args, **kw):
         result = super(XHTMLFilter, self).filter(*args, **kw)
-        result = result.replace('&', '&amp;')
-        result = result.replace('&amp;amp;', '&amp;')
-        result = result.replace('&amp;nbsp;', '&nbsp;')
-        result = result.replace('&amp;lt;', '&lt;')
-        result = result.replace('&amp;gt;', '&gt;')
-        return result
+        return re.sub(r'&(?![a-zA-Z0-9#]+;)', '&amp;', result)
 
 
 TEMPLATES = {}
@@ -600,7 +595,7 @@ def escapeHTML(value):
         return value
 
     value = koji.fixEncoding(value)
-    return value.replace('&', '&amp;').\
+    return re.sub(r'&(?![a-zA-Z0-9#]+;)', '&amp;', value).\
         replace('<', '&lt;').\
         replace('>', '&gt;').\
         replace('"', '&quot;').\
