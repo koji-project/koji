@@ -9,6 +9,7 @@ QP = kojihub.QueryProcessor
 class DBQueryTestCase(unittest.TestCase):
 
     def setUp(self):
+        mock.patch.stopall()
         self.qp_execute_return_value = []
         self.qp_execute_side_effect = None
         self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
