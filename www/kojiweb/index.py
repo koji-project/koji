@@ -1637,7 +1637,7 @@ def hosts(environ, state='enabled', start=None, order='name'):
 
     server.multicall = True
     for host in hosts:
-        server.getLastHostUpdate(host['id'])
+        server.getLastHostUpdate(host['id'], ts=True)
     updates = server.multiCall()
     for host, [lastUpdate] in zip(hosts, updates):
         host['last_update'] = lastUpdate
@@ -1680,7 +1680,7 @@ def hostinfo(environ, hostID=None, userID=None):
     values['host'] = host
     values['channels'] = channels
     values['buildroots'] = buildroots
-    values['lastUpdate'] = server.getLastHostUpdate(host['id'])
+    values['lastUpdate'] = server.getLastHostUpdate(host['id'], ts=True)
     if environ['koji.currentUser']:
         values['perms'] = server.getUserPerms(environ['koji.currentUser']['id'])
     else:
