@@ -146,3 +146,33 @@ class TestTagBuild(unittest.TestCase):
         self.assertEqual(update.data, data)
         self.assertEqual(update.values, values)
         update = self.updates[0]
+
+
+class TestGetTag(unittest.TestCase):
+
+    def getQuery(self, *args, **kwargs):
+        query = QP(*args, **kwargs)
+        query.execute = mock.MagicMock()
+        query.executeOne = self.query_executeOne
+        query.iterate = mock.MagicMock()
+        self.queries.append(query)
+        return query
+
+    def setUp(self):
+        self.query_executeOne = mock.MagicMock()
+        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
+                                         side_effect=self.getQuery).start()
+        self.queries = []
+
+    def test_get_tag_invalid_taginfo(self):
+        taginfo = {'test-tag': 'value'}
+        with self.assertRaises(koji.GenericError) as ex:
+            kojihub.get_tag(taginfo, strict=True)
+        self.assertEqual("Invalid type for tagInfo: %s" % type(taginfo), str(ex.exception))
+
+    def test_get_tag_non_exist_tag(self):
+        taginfo = 'test-tag'
+        self.query_executeOne.return_value = None
+        with self.assertRaises(koji.GenericError) as ex:
+            kojihub.get_tag(taginfo, strict=True)
+        self.assertEqual("No such tagInfo: '%s'" % taginfo, str(ex.exception))

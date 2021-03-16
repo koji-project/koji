@@ -36,7 +36,7 @@ class TestBlockGroup(utils.CliTestCase):
             handle_block_group(options, session, arguments)
         self.assertExitCode(ex, 1)
         actual = stderr.getvalue()
-        expected = 'Unknown tag: %s\n' % tag
+        expected = 'No such tag: %s\n' % tag
         self.assertMultiLineEqual(actual, expected)
 
         # Finally, assert that things were called as we expected.

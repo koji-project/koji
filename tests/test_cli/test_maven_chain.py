@@ -60,7 +60,7 @@ class TestMavenChain(utils.CliTestCase):
 
         # Unknonw target test
         expected = self.format_error_message(
-            "Unknown build target: %s" % self.target)
+            "No such build target: %s" % self.target)
         self.assert_system_exit(
             handle_maven_chain,
             options,
@@ -71,7 +71,7 @@ class TestMavenChain(utils.CliTestCase):
         # Unknow destination tag test
         session.getBuildTarget.return_value = target_info
         expected = self.format_error_message(
-            "Unknown destination tag: %s" % target_info['dest_tag_name'])
+            "No such destination tag: %s" % target_info['dest_tag_name'])
         self.assert_system_exit(
             handle_maven_chain,
             options,

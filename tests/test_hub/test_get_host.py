@@ -1,5 +1,6 @@
-import mock
 import unittest
+
+import mock
 
 import koji
 import kojihub
@@ -17,7 +18,7 @@ class TestSetHostEnabled(unittest.TestCase):
 
     def setUp(self):
         self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
-                                          side_effect=self.getQuery).start()
+                                         side_effect=self.getQuery).start()
         self.queries = []
         self.context = mock.patch('kojihub.context').start()
         # It seems MagicMock will not automatically handle attributes that
@@ -33,12 +34,12 @@ class TestSetHostEnabled(unittest.TestCase):
         self.assertEqual(len(self.queries), 1)
         query = self.queries[0]
         columns = ['host.id', 'host.user_id', 'host.name', 'host.ready',
-                'host.task_load', 'host_config.arches',
-                'host_config.capacity', 'host_config.description',
-                'host_config.comment', 'host_config.enabled']
+                   'host.task_load', 'host_config.arches',
+                   'host_config.capacity', 'host_config.description',
+                   'host_config.comment', 'host_config.enabled']
         joins = ['host ON host.id = host_config.host_id']
         aliases = ['id', 'user_id', 'name', 'ready', 'task_load',
-                'arches', 'capacity', 'description', 'comment', 'enabled']
+                   'arches', 'capacity', 'description', 'comment', 'enabled']
         clauses = ['(host_config.active = TRUE)', 'host.name = %(hostInfo)s']
         values = {'hostInfo': 'hostname'}
         self.assertEqual(query.tables, ['host_config'])
@@ -54,14 +55,15 @@ class TestSetHostEnabled(unittest.TestCase):
         self.assertEqual(len(self.queries), 1)
         query = self.queries[0]
         columns = ['host.id', 'host.user_id', 'host.name', 'host.ready',
-                'host.task_load', 'host_config.arches',
-                'host_config.capacity', 'host_config.description',
-                'host_config.comment', 'host_config.enabled']
+                   'host.task_load', 'host_config.arches',
+                   'host_config.capacity', 'host_config.description',
+                   'host_config.comment', 'host_config.enabled']
         joins = ['host ON host.id = host_config.host_id']
         aliases = ['id', 'user_id', 'name', 'ready', 'task_load',
-                'arches', 'capacity', 'description', 'comment', 'enabled']
-        clauses = ['(host_config.create_event <= 345 AND ( host_config.revoke_event IS NULL OR 345 < host_config.revoke_event ))',
-                'host.id = %(hostInfo)i']
+                   'arches', 'capacity', 'description', 'comment', 'enabled']
+        clauses = ['(host_config.create_event <= 345 AND ( host_config.revoke_event IS NULL '
+                   'OR 345 < host_config.revoke_event ))',
+                   'host.id = %(hostInfo)i']
         values = {'hostInfo': 123}
         self.assertEqual(query.tables, ['host_config'])
         self.assertEqual(query.joins, joins)
@@ -77,19 +79,21 @@ class TestSetHostEnabled(unittest.TestCase):
 
     def test_get_host_missing(self):
         self.QueryProcessor.side_effect = self.getQueryMissing
-
-        r = self.exports.getHost(123)
+        host_id = 123
+        r = self.exports.getHost(host_id)
         self.assertEqual(r, None)
 
-        with self.assertRaises(koji.GenericError):
-            self.exports.getHost(123, strict=True)
+        with self.assertRaises(koji.GenericError) as cm:
+            self.exports.getHost(host_id, strict=True)
+        self.assertEqual("Invalid hostInfo: %s" % host_id, str(cm.exception))
 
         self.assertEqual(len(self.queries), 2)
 
         self.QueryProcessor.side_effect = self.getQuery
 
     def test_get_host_invalid_hostinfo(self):
-        with self.assertRaises(koji.GenericError):
-            self.exports.getHost({'host_id': 567})
-
+        host_info = {'host_id': 567}
+        with self.assertRaises(koji.GenericError) as cm:
+            self.exports.getHost(host_info)
+        self.assertEqual("Invalid type for hostInfo: %s" % type(host_info), str(cm.exception))
         self.assertEqual(len(self.queries), 0)

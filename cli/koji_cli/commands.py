@@ -82,7 +82,7 @@ def handle_add_group(goptions, session, args):
 
     dsttag = session.getTag(tag)
     if not dsttag:
-        error("Unknown tag: %s" % tag)
+        error("No such tag: %s" % tag)
 
     groups = dict([(p['name'], p['group_id']) for p in session.getTagGroups(tag, inherit=False)])
     group_id = groups.get(group, None)
@@ -108,7 +108,7 @@ def handle_block_group(goptions, session, args):
 
     dsttag = session.getTag(tag)
     if not dsttag:
-        error("Unknown tag: %s" % tag)
+        error("No such tag: %s" % tag)
 
     groups = dict([(p['name'], p['group_id']) for p in session.getTagGroups(tag, inherit=False)])
     group_id = groups.get(group, None)
@@ -134,7 +134,7 @@ def handle_remove_group(goptions, session, args):
 
     dsttag = session.getTag(tag)
     if not dsttag:
-        error(_("Unknown tag: %s" % tag))
+        error(_("No such tag: %s") % tag)
 
     groups = dict([(p['name'], p['group_id']) for p in session.getTagGroups(tag, inherit=False)])
     group_id = groups.get(group, None)
@@ -341,7 +341,7 @@ def handle_add_pkg(goptions, session, args):
     if not options.owner:
         parser.error(_("Please specify an owner for the package(s)"))
     if not session.getUser(options.owner):
-        error("User %s does not exist" % options.owner)
+        error("No such user: %s" % options.owner)
     activate_session(session, goptions)
     tag = args[0]
     opts = {}
@@ -498,12 +498,12 @@ def handle_build(options, session, args):
     else:
         build_target = session.getBuildTarget(target)
         if not build_target:
-            parser.error(_("Unknown build target: %s" % target))
+            parser.error(_("No such build target: %s") % target)
         dest_tag = session.getTag(build_target['dest_tag'])
         if not dest_tag:
-            parser.error(_("Unknown destination tag: %s" % build_target['dest_tag_name']))
+            parser.error(_("No such destination tag: %s") % build_target['dest_tag_name'])
         if dest_tag['locked'] and not build_opts.scratch:
-            parser.error(_("Destination tag %s is locked" % dest_tag['name']))
+            parser.error(_("Destination tag %s is locked") % dest_tag['name'])
     source = args[1]
     opts = {}
     if build_opts.arch_override:
@@ -558,10 +558,10 @@ def handle_chain_build(options, session, args):
     target = args[0]
     build_target = session.getBuildTarget(target)
     if not build_target:
-        parser.error(_("Unknown build target: %s" % target))
+        parser.error(_("No such build target: %s") % target)
     dest_tag = session.getTag(build_target['dest_tag'], strict=True)
     if dest_tag['locked']:
-        parser.error(_("Destination tag %s is locked" % dest_tag['name']))
+        parser.error(_("Destination tag %s is locked") % dest_tag['name'])
 
     # check that the destination tag is in the inheritance tree of the build tag
     # otherwise there is no way that a chain-build can work
@@ -674,12 +674,12 @@ def handle_maven_build(options, session, args):
     target = args[0]
     build_target = session.getBuildTarget(target)
     if not build_target:
-        parser.error(_("Unknown build target: %s" % target))
+        parser.error(_("No such build target: %s") % target)
     dest_tag = session.getTag(build_target['dest_tag'])
     if not dest_tag:
-        parser.error(_("Unknown destination tag: %s" % build_target['dest_tag_name']))
+        parser.error(_("No such destination tag: %s") % build_target['dest_tag_name'])
     if dest_tag['locked'] and not build_opts.scratch:
-        parser.error(_("Destination tag %s is locked" % dest_tag['name']))
+        parser.error(_("Destination tag %s is locked") % dest_tag['name'])
     if build_opts.inis:
         try:
             params = koji.util.parse_maven_param(build_opts.inis, scratch=build_opts.scratch,
@@ -695,7 +695,7 @@ def handle_maven_build(options, session, args):
         source = args[1]
         opts = koji.util.maven_opts(build_opts, scratch=build_opts.scratch)
     if '://' not in source:
-        parser.error(_("Invalid SCM URL: %s" % source))
+        parser.error(_("No such SCM URL: %s") % source)
     if build_opts.debug:
         opts.setdefault('maven_options', []).append('--debug')
     if build_opts.skip_tag:
@@ -811,10 +811,10 @@ def handle_maven_chain(options, session, args):
     target = args[0]
     build_target = session.getBuildTarget(target)
     if not build_target:
-        parser.error(_("Unknown build target: %s") % target)
+        parser.error(_("No such build target: %s") % target)
     dest_tag = session.getTag(build_target['dest_tag'])
     if not dest_tag:
-        parser.error(_("Unknown destination tag: %s") % build_target['dest_tag_name'])
+        parser.error(_("No such destination tag: %s") % build_target['dest_tag_name'])
     if dest_tag['locked'] and not build_opts.scratch:
         parser.error(_("Destination tag %s is locked") % dest_tag['name'])
     opts = {}
@@ -984,7 +984,7 @@ def anon_handle_mock_config(goptions, session, args):
             error(_("Please specify an arch"))
         tag = session.getTag(options.tag)
         if not tag:
-            parser.error(_("Invalid tag: %s" % options.tag))
+            parser.error(_("No such tag: %s") % options.tag)
         arch = options.arch
         config = session.getBuildConfig(tag['id'])
         if not config:
@@ -1003,7 +1003,7 @@ def anon_handle_mock_config(goptions, session, args):
         arch = options.arch
         target = session.getBuildTarget(options.target)
         if not target:
-            parser.error(_("Invalid target: %s" % options.target))
+            parser.error(_("No such build target: %s") % options.target)
         opts['tag_name'] = target['build_tag_name']
         if options.latest:
             opts['repoid'] = 'latest'
@@ -1645,7 +1645,7 @@ def handle_prune_signed_copies(goptions, session, args):
             if x['active']:
                 fmt += " [still active]"
         else:
-            raise koji.GenericError("unknown event: (%r, %r)" % (event_id, x))
+            raise koji.GenericError("No such event: (%r, %r)" % (event_id, x))
         time_str = time.asctime(time.localtime(ts))
         return "%s: %s" % (time_str, fmt % x)
     for nvr, binfo in builds:
@@ -2214,7 +2214,7 @@ def handle_import_archive(options, session, args):
         image_info = {'arch': suboptions.type_info}
         suboptions.type_info = image_info
     else:
-        parser.error(_("Unsupported archive type: %s" % suboptions.type))
+        parser.error(_("Unsupported archive type: %s") % suboptions.type)
 
     buildinfo = session.getBuild(arg_filter(args[0]))
     if not buildinfo:
@@ -2273,7 +2273,7 @@ def handle_grant_permission(goptions, session, args):
     for n in names:
         user = session.getUser(n)
         if user is None:
-            parser.error(_("No such user: %s" % n))
+            parser.error(_("No such user: %s") % n)
         users.append(user)
     kwargs = {}
     if options.new:
@@ -2296,7 +2296,7 @@ def handle_revoke_permission(goptions, session, args):
     for n in names:
         user = session.getUser(n)
         if user is None:
-            parser.error(_("No such user: %s" % n))
+            parser.error(_("No such user: %s") % n)
         users.append(user)
     for user in users:
         session.revokePermission(user['name'], perm)
@@ -2315,7 +2315,7 @@ def handle_grant_cg_access(goptions, session, args):
     cg = args[1]
     uinfo = session.getUser(user)
     if uinfo is None:
-        parser.error(_("No such user: %s" % user))
+        parser.error(_("No such user: %s") % user)
     kwargs = {}
     if options.new:
         kwargs['create'] = True
@@ -2334,7 +2334,7 @@ def handle_revoke_cg_access(goptions, session, args):
     cg = args[1]
     uinfo = session.getUser(user)
     if uinfo is None:
-        parser.error(_("No such user: %s" % user))
+        parser.error(_("No such user: %s") % user)
     session.revokeCGAccess(uinfo['name'], cg)
 
 
@@ -2512,7 +2512,7 @@ def anon_handle_list_tagged(goptions, session, args):
     # check if tag exist(s|ed)
     taginfo = session.getTag(tag, event=event_id)
     if not taginfo:
-        parser.error(_("No such tag: %s" % tag))
+        parser.error(_("No such tag: %s") % tag)
 
     if options.rpms:
         rpms, builds = session.listTaggedRPMS(tag, **opts)
@@ -2860,7 +2860,7 @@ def anon_handle_list_hosts(goptions, session, args):
     if options.channel:
         channel = session.getChannel(options.channel)
         if not channel:
-            parser.error(_('Unknown channel: %s' % options.channel))
+            parser.error(_('No such channel: %s') % options.channel)
         opts['channelID'] = channel['id']
     if options.ready is not None:
         opts['ready'] = options.ready
@@ -2960,12 +2960,12 @@ def anon_handle_list_pkgs(goptions, session, args):
     if options.owner:
         user = session.getUser(options.owner)
         if user is None:
-            parser.error(_("Invalid user"))
+            parser.error(_("No such user: %s") % options.owner)
         opts['userID'] = user['id']
     if options.tag:
         tag = session.getTag(options.tag)
         if tag is None:
-            parser.error(_("Invalid tag"))
+            parser.error(_("No such tag: %s") % options.tag)
         opts['tagID'] = tag['id']
     if options.package:
         opts['pkgID'] = options.package
@@ -3061,7 +3061,7 @@ def anon_handle_list_builds(goptions, session, args):
         except ValueError:
             package = session.getPackageID(options.package)
             if package is None:
-                parser.error(_("Invalid package"))
+                parser.error(_("No such package: %s") % options.package)
             opts['packageID'] = package
     if options.owner:
         try:
@@ -3069,7 +3069,7 @@ def anon_handle_list_builds(goptions, session, args):
         except ValueError:
             user = session.getUser(options.owner)
             if user is None:
-                parser.error(_("Invalid owner"))
+                parser.error(_("No such user: %s") % options.owner)
             opts['userID'] = user['id']
     if options.volume:
         try:
@@ -3081,19 +3081,19 @@ def anon_handle_list_builds(goptions, session, args):
                 if options.volume == volume['name']:
                     volumeID = volume['id']
             if volumeID is None:
-                parser.error(_("Invalid volume"))
+                parser.error(_("No such volume: %s") % options.volume)
             opts['volumeID'] = volumeID
     if options.state:
         try:
             state = int(options.state)
             if state > 4 or state < 0:
-                parser.error(_("Invalid state"))
+                parser.error(_("Invalid state: %s") % options.state)
             opts['state'] = state
         except ValueError:
             try:
                 opts['state'] = koji.BUILD_STATES[options.state]
             except KeyError:
-                parser.error(_("Invalid state"))
+                parser.error(_("Invalid state: %s") % options.state)
     if options.before:
         opts['completeBefore'] = options.before
     if options.after:
@@ -3112,7 +3112,7 @@ def anon_handle_list_builds(goptions, session, args):
             buildid = options.buildid
         data = [session.getBuild(buildid)]
         if data[0] is None:
-            parser.error(_("No build with ID '%s'" % buildid))
+            parser.error(_("No such build: '%s'") % buildid)
     else:
         # Check filter exists
         if any(opts):
@@ -3447,10 +3447,10 @@ def handle_clone_tag(goptions, session, args):
     try:
         srctag = session.getBuildConfig(args[0], event=event.get('id'))
     except koji.GenericError:
-        parser.error(_("Unknown src-tag: %s" % args[0]))
+        parser.error(_("No such src-tag: %s") % args[0])
     dsttag = session.getTag(args[1])
     if not srctag:
-        parser.error(_("Unknown src-tag: %s" % args[0]))
+        parser.error(_("No such src-tag: %s") % args[0])
     if (srctag['locked'] and not options.force) \
             or (dsttag and dsttag['locked'] and not options.force):
         parser.error(_("Error: You are attempting to clone from or to a tag which is locked.\n"
@@ -3931,11 +3931,11 @@ def handle_add_target(goptions, session, args):
     chkbuildtag = session.getTag(build_tag)
     chkdesttag = session.getTag(dest_tag)
     if not chkbuildtag:
-        error("Build tag does not exist: %s" % build_tag)
+        error("No such tag: %s" % build_tag)
     if not chkbuildtag.get("arches", None):
         error("Build tag has no arches: %s" % build_tag)
     if not chkdesttag:
-        error("Destination tag does not exist: %s" % dest_tag)
+        error("No such destination tag: %s" % dest_tag)
 
     session.createBuildTarget(name, build_tag, dest_tag)
 
@@ -3959,7 +3959,7 @@ def handle_edit_target(goptions, session, args):
 
     targetInfo = session.getBuildTarget(args[0])
     if targetInfo is None:
-        raise koji.GenericError("No build target with the name or id '%s'" % args[0])
+        raise koji.GenericError("No such build target: %s" % args[0])
 
     targetInfo['orig_name'] = targetInfo['name']
 
@@ -3975,7 +3975,7 @@ def handle_edit_target(goptions, session, args):
     if options.dest_tag:
         chkdesttag = session.getTag(options.dest_tag)
         if not chkdesttag:
-            error("Destination tag does not exist: %s" % options.dest_tag)
+            error("No such destination tag: %s" % options.dest_tag)
         targetInfo['dest_tag_name'] = options.dest_tag
 
     session.editBuildTarget(targetInfo['orig_name'], targetInfo['name'],
@@ -3998,7 +3998,7 @@ def handle_remove_target(goptions, session, args):
     target = args[0]
     target_info = session.getBuildTarget(target)
     if not target_info:
-        error("Build target %s does not exist" % target)
+        error("No such build target: %s" % target)
 
     session.deleteBuildTarget(target_info['id'])
 
@@ -4019,7 +4019,7 @@ def handle_remove_tag(goptions, session, args):
     tag = args[0]
     tag_info = session.getTag(tag)
     if not tag_info:
-        error("Tag %s does not exist" % tag)
+        error("No such tag: %s" % tag)
 
     session.deleteTag(tag_info['id'])
 
@@ -4040,9 +4040,9 @@ def anon_handle_list_targets(goptions, session, args):
     targets = session.getBuildTargets(options.name)
     if len(targets) == 0:
         if options.name:
-            parser.error(_('Target "%s" does not exist' % options.name))
+            parser.error(_('No such build target: %s') % options.name)
         else:
-            parser.error(_('No Targets were found'))
+            parser.error(_('No targets were found'))
 
     fmt = "%(name)-30s %(build_tag_name)-30s %(dest_tag_name)-30s"
     if not options.quiet:
@@ -4134,7 +4134,7 @@ def anon_handle_list_tag_inheritance(goptions, session, args):
     else:
         tag = session.getTag(args[0])
     if not tag:
-        parser.error(_("Unknown tag: %s" % args[0]))
+        parser.error(_("No such tag: %s") % args[0])
 
     opts = {}
     opts['reverse'] = options.reverse or False
@@ -4149,17 +4149,17 @@ def anon_handle_list_tag_inheritance(goptions, session, args):
         if match:
             tag1 = session.getTagID(match.group(1))
             if not tag1:
-                parser.error(_("Unknown tag: %s" % match.group(1)))
+                parser.error(_("No such tag: %s") % match.group(1))
             tag2 = session.getTagID(match.group(2))
             if not tag2:
-                parser.error(_("Unknown tag: %s" % match.group(2)))
+                parser.error(_("No such tag: %s") % match.group(2))
             opts['jumps'][str(tag1)] = tag2
 
     if options.stop:
         deprecated("--stop option is deprecated and will be removed in 1.26")
         tag1 = session.getTagID(options.stop)
         if not tag1:
-            parser.error(_("Unknown tag: %s" % options.stop))
+            parser.error(_("No such tag: %s") % options.stop)
         opts['stops'] = {str(tag1): 1}
 
     sys.stdout.write('     %s (%i)\n' % (tag['name'], tag['id']))
@@ -4185,12 +4185,12 @@ def anon_handle_list_tags(goptions, session, args):
     if options.package:
         pkginfo = session.getPackage(options.package)
         if not pkginfo:
-            parser.error(_("Invalid package %s" % options.package))
+            parser.error(_("No such package: %s") % options.package)
 
     if options.build:
         buildinfo = session.getBuild(options.build)
         if not buildinfo:
-            parser.error(_("Invalid build %s" % options.build))
+            parser.error(_("No such build: %s") % options.build)
 
     if not args:
         # list everything if no pattern is supplied
@@ -4905,8 +4905,7 @@ def anon_handle_taginfo(goptions, session, args):
             except ValueError:
                 info = None
             if info is None:
-                print("No such tag: %s" % tag)
-                sys.exit(1)
+                parser.error(_('No such tag: %s') % tag)
         tags.append(info)
 
     for n, info in enumerate(tags):
@@ -5194,11 +5193,11 @@ def handle_add_tag_inheritance(goptions, session, args):
 
     tag = session.getTag(args[0])
     if not tag:
-        parser.error(_("Invalid tag: %s" % args[0]))
+        parser.error(_("No such tag: %s") % args[0])
 
     parent = session.getTag(args[1])
     if not parent:
-        parser.error(_("Invalid tag: %s" % args[1]))
+        parser.error(_("No such tag: %s") % args[1])
 
     inheritanceData = session.getInheritanceData(tag['id'])
     priority = options.priority and int(options.priority) or 0
@@ -5251,14 +5250,14 @@ def handle_edit_tag_inheritance(goptions, session, args):
 
     tag = session.getTag(args[0])
     if not tag:
-        parser.error(_("Invalid tag: %s" % args[0]))
+        parser.error(_("No such tag: %s") % args[0])
 
     parent = None
     priority = None
     if len(args) > 1:
         parent = session.getTag(args[1])
         if not parent:
-            parser.error(_("Invalid tag: %s" % args[1]))
+            parser.error(_("No such tag: %s") % args[1])
         if len(args) > 2:
             priority = args[2]
 
@@ -5327,14 +5326,14 @@ def handle_remove_tag_inheritance(goptions, session, args):
 
     tag = session.getTag(args[0])
     if not tag:
-        parser.error(_("Invalid tag: %s" % args[0]))
+        parser.error(_("No such tag: %s") % args[0])
 
     parent = None
     priority = None
     if len(args) > 1:
         parent = session.getTag(args[1])
         if not parent:
-            parser.error(_("Invalid tag: %s" % args[1]))
+            parser.error(_("No such tag: %s") % args[1])
         if len(args) > 2:
             priority = args[2]
 
@@ -5899,11 +5898,10 @@ def _build_image_indirection(options, task_opts, session, args):
 
     tmp_target = session.getBuildTarget(task_opts.target)
     if not tmp_target:
-        raise koji.GenericError(_("Unknown build target: %s" % tmp_target))
+        raise koji.GenericError(_("No such build target: %s") % tmp_target)
     dest_tag = session.getTag(tmp_target['dest_tag'])
     if not dest_tag:
-        raise koji.GenericError(_("Unknown destination tag: %s" %
-                                  tmp_target['dest_tag_name']))
+        raise koji.GenericError(_("No such destination tag: %s") % tmp_target['dest_tag_name'])
 
     # Set the architecture
     task_opts.arch = koji.canonArch(task_opts.arch)
@@ -6012,7 +6010,7 @@ def handle_image_build(options, session, args):
         section = 'image-build'
         config = koji.read_config_files([(task_options.config, True)])
         if not config.has_section(section):
-            parser.error(_("single section called [%s] is required" % section))
+            parser.error(_("single section called [%s] is required") % section)
         # pluck out the positional arguments first
         args = []
         for arg in ('name', 'version', 'target', 'install_tree'):
@@ -6087,11 +6085,10 @@ def _build_image(options, task_opts, session, args, img_type):
     target = args[2]
     tmp_target = session.getBuildTarget(target)
     if not tmp_target:
-        raise koji.GenericError(_("Unknown build target: %s" % target))
+        raise koji.GenericError(_("No such build target: %s") % target)
     dest_tag = session.getTag(tmp_target['dest_tag'])
     if not dest_tag:
-        raise koji.GenericError(_("Unknown destination tag: %s" %
-                                  tmp_target['dest_tag_name']))
+        raise koji.GenericError(_("No such destination tag: %s") % tmp_target['dest_tag_name'])
 
     # Set the architecture
     if img_type == 'livemedia':
@@ -6161,11 +6158,10 @@ def _build_image_oz(options, task_opts, session, args):
     target = args[2]
     tmp_target = session.getBuildTarget(target)
     if not tmp_target:
-        raise koji.GenericError(_("Unknown build target: %s" % target))
+        raise koji.GenericError(_("No such build target: %s") % target)
     dest_tag = session.getTag(tmp_target['dest_tag'])
     if not dest_tag:
-        raise koji.GenericError(_("Unknown destination tag: %s" %
-                                  tmp_target['dest_tag_name']))
+        raise koji.GenericError(_("No such destination tag: %s") % tmp_target['dest_tag_name'])
 
     # Set the architectures
     arches = []
@@ -6254,12 +6250,12 @@ def handle_win_build(options, session, args):
     else:
         build_target = session.getBuildTarget(target)
         if not build_target:
-            parser.error(_("Unknown build target: %s" % target))
+            parser.error(_("No such build target: %s") % target)
         dest_tag = session.getTag(build_target['dest_tag'])
         if not dest_tag:
-            parser.error(_("Unknown destination tag: %s" % build_target['dest_tag_name']))
+            parser.error(_("No such destination tag: %s") % build_target['dest_tag_name'])
         if dest_tag['locked'] and not build_opts.scratch:
-            parser.error(_("Destination tag %s is locked" % dest_tag['name']))
+            parser.error(_("Destination tag %s is locked") % dest_tag['name'])
     scmurl = args[1]
     vm_name = args[2]
     opts = {}
@@ -6654,7 +6650,7 @@ def handle_move_build(opts, session, args):
         for arg in args[2:]:
             pkg = session.getPackage(arg)
             if not pkg:
-                print(_("Invalid package name %s, skipping." % arg))
+                print(_("No such package: %s, skipping.") % arg)
                 continue
             tasklist = session.moveAllBuilds(args[0], args[1], arg, options.force)
             tasks.extend(tasklist)
@@ -6662,7 +6658,7 @@ def handle_move_build(opts, session, args):
         for arg in args[2:]:
             build = session.getBuild(arg)
             if not build:
-                print(_("Invalid build %s, skipping." % arg))
+                print(_("No such build: %s, skipping.") % arg)
                 continue
             if build not in builds:
                 builds.append(build)
@@ -6701,7 +6697,7 @@ def handle_untag_build(goptions, session, args):
     activate_session(session, goptions)
     tag = session.getTag(args[0])
     if not tag:
-        parser.error(_("Invalid tag: %s" % args[0]))
+        parser.error(_("No such tag: %s") % args[0])
     if options.all:
         builds = []
         for pkg in args[1:]:
@@ -6949,7 +6945,7 @@ def anon_handle_download_logs(options, session, args):
         assert task_id == int(task_id), "Task id must be number: %r" % task_id
         task_info = session.getTaskInfo(task_id)
         if task_info is None:
-            error(_("No such task id: %i" % task_id))
+            error(_("No such task: %d" % task_id))
         files = list_task_output_all_volumes(session, task_id)
         logs = []  # list of tuples (filename, volume)
         for filename in files:
@@ -7033,7 +7029,7 @@ def anon_handle_download_task(options, session, args):
 
     base_task = session.getTaskInfo(base_task_id)
     if not base_task:
-        error(_('No such task: #%i') % base_task_id)
+        error(_('No such task: %d') % base_task_id)
 
     if suboptions.wait and base_task['state'] not in (
             koji.TASK_STATES['CLOSED'],
@@ -7130,13 +7126,13 @@ def anon_handle_wait_repo(options, session, args):
     if suboptions.target:
         target_info = session.getBuildTarget(tag)
         if not target_info:
-            parser.error(_("Invalid build target: %s") % tag)
+            parser.error(_("No such build target: %s") % tag)
         tag = target_info['build_tag_name']
         tag_id = target_info['build_tag']
     else:
         tag_info = session.getTag(tag)
         if not tag_info:
-            parser.error(_("Invalid tag: %s") % tag)
+            parser.error(_("No such tag: %s") % tag)
         targets = session.getBuildTargets(buildTagID=tag_info['id'])
         if not targets:
             warn("%(name)s is not a build tag for any target" % tag_info)
@@ -7219,13 +7215,13 @@ def handle_regen_repo(options, session, args):
     if suboptions.target:
         info = session.getBuildTarget(tag)
         if not info:
-            parser.error(_("No matching build target: " + tag))
+            parser.error(_("No such build target: %s") % tag)
         tag = info['build_tag_name']
         info = session.getTag(tag, strict=True)
     else:
         info = session.getTag(tag)
         if not info:
-            parser.error(_("No matching tag: " + tag))
+            parser.error(_("No such tag: %s") % tag)
         tag = info['name']
         targets = session.getBuildTargets(buildTagID=info['id'])
         if not targets:
@@ -7334,7 +7330,7 @@ def handle_dist_repo(options, session, args):
     keys = args[1:]
     taginfo = session.getTag(tag)
     if not taginfo:
-        parser.error(_('unknown tag %s') % tag)
+        parser.error(_('No such tag: %s') % tag)
     if len(task_opts.arch) == 0:
         arches = taginfo['arches'] or ''
         task_opts.arch = arches.split()
@@ -7407,7 +7403,7 @@ def anon_handle_search(options, session, args):
         parser.error(_("Please specify search pattern"))
     type = args[0]
     if type not in _search_types:
-        parser.error(_("Unknown search type: %s") % type)
+        parser.error(_("No such search type: %s") % type)
     pattern = args[1]
     matchType = 'glob'
     if options.regex:
@@ -7462,7 +7458,7 @@ def anon_handle_list_notifications(goptions, session, args):
         ensure_connection(session, goptions)
         user = session.getUser(options.user)
         if not user:
-            error("User %s does not exist" % options.user)
+            error("No such user: %s" % options.user)
         user_id = user['id']
     else:
         activate_session(session, goptions)
@@ -7546,7 +7542,7 @@ def handle_add_notification(goptions, session, args):
     if options.package:
         package_id = session.getPackageID(options.package)
         if package_id is None:
-            parser.error(_("Unknown package: %s") % options.package)
+            parser.error(_("No such package: %s") % options.package)
     else:
         package_id = None
 
@@ -7554,7 +7550,7 @@ def handle_add_notification(goptions, session, args):
         try:
             tag_id = session.getTagID(options.tag, strict=True)
         except koji.GenericError:
-            parser.error(_("Unknown tag: %s") % options.tag)
+            parser.error(_("No such tag: %s") % options.tag)
     else:
         tag_id = None
 
@@ -7618,7 +7614,7 @@ def handle_edit_notification(goptions, session, args):
     elif options.package:
         package_id = session.getPackageID(options.package)
         if package_id is None:
-            parser.error(_("Unknown package: %s") % options.package)
+            parser.error(_("No such package: %s") % options.package)
     else:
         package_id = old['package_id']
 
@@ -7628,7 +7624,7 @@ def handle_edit_notification(goptions, session, args):
         try:
             tag_id = session.getTagID(options.tag, strict=True)
         except koji.GenericError:
-            parser.error(_("Unknown tag: %s") % options.tag)
+            parser.error(_("No such tag: %s") % options.tag)
     else:
         tag_id = old['tag_id']
 
@@ -7673,7 +7669,7 @@ def handle_block_notification(goptions, session, args):
     if options.package:
         package_id = session.getPackageID(options.package)
         if package_id is None:
-            parser.error(_("Unknown package: %s") % options.package)
+            parser.error(_("No such package: %s") % options.package)
     else:
         package_id = None
 
@@ -7681,7 +7677,7 @@ def handle_block_notification(goptions, session, args):
         try:
             tag_id = session.getTagID(options.tag, strict=True)
         except koji.GenericError:
-            parser.error(_("Unknown tag: %s") % options.tag)
+            parser.error(_("No such tag: %s") % options.tag)
     else:
         tag_id = None
 

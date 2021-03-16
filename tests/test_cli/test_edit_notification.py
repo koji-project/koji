@@ -5,8 +5,10 @@ import unittest
 from six.moves import StringIO
 
 from koji_cli.commands import handle_edit_notification
+from . import utils
 
-class TestEditNotification(unittest.TestCase):
+
+class TestEditNotification(utils.CliTestCase):
     def setUp(self):
         self.options = mock.MagicMock()
         self.options.debug = False
@@ -87,3 +89,33 @@ class TestEditNotification(unittest.TestCase):
             handle_edit_notification(self.options, self.session, ['123'])
 
         self.session.updateNotification.assert_not_called()
+
+    @mock.patch('sys.stderr', new_callable=StringIO)
+    def test_handle_edit_notification_non_exist_tag(self, stderr):
+        tag = 'test-tag'
+        expected = "Usage: %s edit-notification [options] <notification_id>\n" \
+                   "(Specify the --help global option for a list of other help options)\n\n" \
+                   "%s: error: No such tag: %s\n" % (self.progname, self.progname, tag)
+
+        self.session.getBuildNotification.return_value = \
+            {'id': 2345, 'package_id': 135, 'success_only': False}
+        self.session.getTagID.side_effect = koji.GenericError
+        with self.assertRaises(SystemExit) as ex:
+            handle_edit_notification(self.options, self.session, ['--tag', tag, '2345'])
+        self.assertExitCode(ex, 2)
+        self.assert_console_message(stderr, expected)
+
+    @mock.patch('sys.stderr', new_callable=StringIO)
+    def test_handle_edit_notification_non_exist_pkg(self, stderr):
+        pkg = 'test-pkg'
+        expected = "Usage: %s edit-notification [options] <notification_id>\n" \
+                   "(Specify the --help global option for a list of other help options)\n\n" \
+                   "%s: error: No such package: %s\n" % (self.progname, self.progname, pkg)
+        self.session.getBuildNotification.return_value = \
+            {'id': 2345, 'package_id': 135, 'success_only': False}
+        self.session.getPackageID.return_value = None
+
+        with self.assertRaises(SystemExit) as ex:
+            handle_edit_notification(self.options, self.session, ['--package', pkg, '2345'])
+        self.assertExitCode(ex, 2)
+        self.assert_console_message(stderr, expected)

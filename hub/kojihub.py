@@ -505,7 +505,7 @@ class Task(object):
                 info['result'] = self.getResult()
             new_val = info[attr]
         else:
-            raise koji.GenericError('unknown callback type: %s' % cbtype)
+            raise koji.GenericError('No such callback type: %s' % cbtype)
         old_val = old_info[attr]
         if attr == 'state':
             # state is passed in as an integer, but we want to use the string
@@ -971,7 +971,7 @@ def _direct_pkglist_add(taginfo, pkginfo, owner, block, extra_arches, force,
     pkg = lookup_package(pkginfo, strict=False)
     if not pkg:
         if not isinstance(pkginfo, str):
-            raise koji.GenericError("Invalid package: %s" % pkginfo)
+            raise koji.GenericError("No such package: %s" % pkginfo)
     if owner is not None:
         owner = get_user(owner, strict=True)['id']
     action = 'add'
@@ -1263,7 +1263,7 @@ def list_tags(build=None, package=None, perms=True, queryOpts=None, pattern=None
         # lookup build id
         buildinfo = get_build(build)
         if not buildinfo:
-            raise koji.GenericError('invalid build: %s' % build)
+            raise koji.GenericError('No such build: %s' % build)
         joins.append('tag_listing ON tag.id = tag_listing.tag_id')
         clauses.append('tag_listing.active = true')
         clauses.append('tag_listing.build_id = %(buildID)i')
@@ -1271,7 +1271,7 @@ def list_tags(build=None, package=None, perms=True, queryOpts=None, pattern=None
     elif package is not None:
         packageinfo = lookup_package(package)
         if not packageinfo:
-            raise koji.GenericError('invalid package: %s' % package)
+            raise koji.GenericError('No such package: %s' % package)
         fields.extend(
             ['users.id', 'users.name', 'tag_packages.blocked', 'tag_packages.extra_arches'])
         aliases.extend(['owner_id', 'owner_name', 'blocked', 'extra_arches'])
@@ -1463,7 +1463,7 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None, inherit=False, late
         elif isinstance(arch, (list, tuple)):
             clauses.append('rpminfo.arch IN %(arch)s')
         else:
-            raise koji.GenericError('invalid arch option: %s' % arch)
+            raise koji.GenericError('Invalid type for arch option: %s' % type(arch))
 
     fields, aliases = zip(*fields)
     query = QueryProcessor(tables=tables, joins=joins, clauses=clauses,
@@ -2941,7 +2941,7 @@ def set_tag_update(tag_id, utype, event_id=None, user_id=None):
     """Record a non-versioned tag update"""
     utype_id = koji.TAG_UPDATE_TYPES.getnum(utype)
     if utype_id is None:
-        raise koji.GenericError("Invalid update type: %s" % utype)
+        raise koji.GenericError("No such update type: %s" % utype)
     if event_id is None:
         event_id = get_event()
     if user_id is None:
@@ -3010,7 +3010,7 @@ def _edit_build_target(buildTargetInfo, name, build_tag, dest_tag):
 
     target = lookup_build_target(buildTargetInfo)
     if not target:
-        raise koji.GenericError('invalid build target: %s' % buildTargetInfo)
+        raise koji.GenericError('No such build target: %s' % buildTargetInfo)
 
     buildTargetID = target['id']
 
@@ -3060,7 +3060,7 @@ def _delete_build_target(buildTargetInfo):
     """Delete build target, no access checks"""
     target = lookup_build_target(buildTargetInfo)
     if not target:
-        raise koji.GenericError('invalid build target: %s' % buildTargetInfo)
+        raise koji.GenericError('No such build target: %s' % buildTargetInfo)
 
     targetID = target['id']
 
@@ -3095,7 +3095,7 @@ def get_build_targets(info=None, event=None, buildTagID=None, destTagID=None, qu
         elif isinstance(info, int):
             clauses.append('build_target.id = %(info)i')
         else:
-            raise koji.GenericError('invalid type for lookup: %s' % type(info))
+            raise koji.GenericError('Invalid type for lookup: %s' % type(info))
     if buildTagID is not None:
         clauses.append('build_tag = %(buildTagID)i')
     if destTagID is not None:
@@ -3114,7 +3114,7 @@ def get_build_target(info, event=None, strict=False):
     if len(targets) == 1:
         return targets[0]
     elif strict:
-        raise koji.GenericError('No matching build target found: %s' % info)
+        raise koji.GenericError('No such build target: %s' % info)
     else:
         return None
 
@@ -3142,7 +3142,7 @@ def lookup_name(table, info, strict=False, create=False):
     elif isinstance(info, str):
         q = """SELECT id,name FROM %s WHERE name=%%(info)s""" % table
     else:
-        raise koji.GenericError('invalid type for id lookup: %s' % type(info))
+        raise koji.GenericError('Invalid type for id lookup: %s' % type(info))
     ret = _singleRow(q, locals(), fields, strict=False)
     if ret is None:
         if strict:
@@ -3336,7 +3336,7 @@ def get_tag(tagInfo, strict=False, event=None, blocked=False):
     elif isinstance(tagInfo, str):
         clauses.append("tag.name = %(tagInfo)s")
     else:
-        raise koji.GenericError('invalid type for tagInfo: %s' % type(tagInfo))
+        raise koji.GenericError('Invalid type for tagInfo: %s' % type(tagInfo))
 
     data = {'tagInfo': tagInfo}
     fields, aliases = zip(*fields.items())
@@ -3345,7 +3345,7 @@ def get_tag(tagInfo, strict=False, event=None, blocked=False):
     result = query.executeOne()
     if not result:
         if strict:
-            raise koji.GenericError("Invalid tagInfo: %r" % tagInfo)
+            raise koji.GenericError("No such tagInfo: %r" % tagInfo)
         return None
     result['extra'] = get_tag_extra(result, event, blocked=blocked)
     return result
@@ -3364,7 +3364,7 @@ def get_tag_extra(tagInfo, event=None, blocked=False):
     result = {}
     for h in query.execute():
         if h['value'] is not None:
-            h['value'] = parse_json(h['value'], errstr="Invalid tag extra data: %s" % h['key'])
+            h['value'] = parse_json(h['value'], errstr="No such tag extra data: %s" % h['key'])
         if blocked:
             result[h['key']] = (h['blocked'], h['value'])
         else:
@@ -3613,7 +3613,7 @@ def get_external_repos(info=None, url=None, event=None, queryOpts=None):
         elif isinstance(info, int):
             clauses.append('id = %(info)i')
         else:
-            raise koji.GenericError('invalid type for lookup: %s' % type(info))
+            raise koji.GenericError('Invalid type for lookup: %s' % type(info))
     if url:
         clauses.append('url = %(url)s')
 
@@ -3642,7 +3642,7 @@ def get_external_repo(info, strict=False, event=None):
         return repos[0]
     else:
         if strict:
-            raise koji.GenericError('invalid repo info: %s' % info)
+            raise koji.GenericError('No such repo: %s' % info)
         else:
             return None
 
@@ -3714,7 +3714,7 @@ def add_external_repo_to_tag(tag_info, repo_info, priority, merge_mode='koji', a
     if merge_mode is None:
         merge_mode = 'koji'
     if merge_mode not in koji.REPO_MERGE_MODES:
-        raise koji.GenericError('Invalid merge mode: %s' % merge_mode)
+        raise koji.GenericError('No such merge mode: %s' % merge_mode)
 
     tag = get_tag(tag_info, strict=True)
     tag_id = tag['id']
@@ -3920,8 +3920,7 @@ def get_user(userInfo=None, strict=False, krb_princs=True):
         data = {'info': userInfo}
         clauses = ['krb_principal = %(info)s OR name = %(info)s']
     else:
-        raise koji.GenericError('invalid type for userInfo: %s'
-                                % type(userInfo))
+        raise koji.GenericError('Invalid type for userInfo: %s' % type(userInfo))
     if isinstance(data, dict) and not data.get('info'):
         clauses = []
         uid = data.get('id')
@@ -3929,23 +3928,20 @@ def get_user(userInfo=None, strict=False, krb_princs=True):
             if isinstance(uid, int):
                 clauses.append('users.id = %(id)i')
             else:
-                raise koji.GenericError('invalid type for userid: %s'
-                                        % type(uid))
+                raise koji.GenericError('Invalid type for userid: %s' % type(uid))
         username = data.get('name')
         if username:
             if isinstance(username, str):
                 clauses.append('users.name = %(name)s')
             else:
-                raise koji.GenericError('invalid type for username: %s'
-                                        % type(username))
+                raise koji.GenericError('Invalid type for username: %s' % type(username))
         krb_principal = data.get('krb_principal')
         if krb_principal:
             if isinstance(krb_principal, str):
                 clauses.append('user_krb_principals.krb_principal'
                                ' = %(krb_principal)s')
             else:
-                raise koji.GenericError('invalid type for krb_principal: %s'
-                                        % type(krb_principal))
+                raise koji.GenericError('Invalid type for krb_principal: %s' % type(krb_principal))
 
     query = QueryProcessor(tables=['users'], columns=fields,
                            joins=['LEFT JOIN user_krb_principals'
@@ -4063,8 +4059,7 @@ def list_user_krb_principals(user_info=None):
         joins = ['users ON users.id = user_krb_principals.user_id']
         clauses = ['name = %(info)s']
     else:
-        raise koji.GenericError('invalid type for user_info: %s'
-                                % type(user_info))
+        raise koji.GenericError('Invalid type for user_info: %s' % type(user_info))
     query = QueryProcessor(tables=['user_krb_principals'],
                            columns=fields, joins=joins,
                            clauses=clauses, values=data,
@@ -4088,8 +4083,7 @@ def get_user_by_krb_principal(krb_principal, strict=False, krb_princs=True):
     if krb_principal is None:
         raise koji.GenericError("No kerberos principal provided")
     if not isinstance(krb_principal, str):
-        raise koji.GenericError("invalid type for krb_principal: %s"
-                                % type(krb_principal))
+        raise koji.GenericError("Invalid type for krb_principal: %s" % type(krb_principal))
     return get_user({'krb_principal': krb_principal}, strict=strict,
                     krb_princs=krb_princs)
 
@@ -4108,7 +4102,7 @@ def find_build_id(X, strict=False):
     elif isinstance(X, dict):
         data = X
     else:
-        raise koji.GenericError("Invalid argument: %r" % X)
+        raise koji.GenericError("Invalid type for argument: %r" % type(X))
 
     if not ('name' in data and 'version' in data and 'release' in data):
         raise koji.GenericError('did not provide name, version, and release')
@@ -4125,7 +4119,7 @@ def find_build_id(X, strict=False):
     # log_error("%r" % r )
     if not r:
         if strict:
-            raise koji.GenericError('No matching build found: %r' % X)
+            raise koji.GenericError('No such build: %r' % X)
         else:
             return None
     return r[0]
@@ -4211,7 +4205,7 @@ def get_build(buildInfo, strict=False):
 
     if not result:
         if strict:
-            raise koji.GenericError('No matching build found: %s' % buildInfo)
+            raise koji.GenericError('No such build: %s' % buildInfo)
         else:
             return None
     if result['cg_id']:
@@ -4384,7 +4378,7 @@ def get_rpm(rpminfo, strict=False, multi=False):
     elif isinstance(rpminfo, dict):
         data = rpminfo.copy()
     else:
-        raise koji.GenericError("Invalid argument: %r" % rpminfo)
+        raise koji.GenericError("Invalid type for rpminfo: %r" % type(rpminfo))
     clauses = []
     if 'id' in data:
         clauses.append("rpminfo.id=%(id)s")
@@ -4495,7 +4489,7 @@ def list_rpms(buildID=None, buildrootID=None, imageID=None, componentBuildrootID
         elif isinstance(arches, str):
             clauses.append('rpminfo.arch = %(arches)s')
         else:
-            raise koji.GenericError('invalid type for "arches" parameter: %s' % type(arches))
+            raise koji.GenericError('Invalid type for "arches" parameter: %s' % type(arches))
 
     fields, aliases = zip(*fields)
     query = QueryProcessor(columns=fields, aliases=aliases,
@@ -5272,7 +5266,7 @@ def get_host(hostInfo, strict=False, event=None):
     elif isinstance(hostInfo, str):
         clauses.append("host.name = %(hostInfo)s")
     else:
-        raise koji.GenericError('invalid type for hostInfo: %s' % type(hostInfo))
+        raise koji.GenericError('Invalid type for hostInfo: %s' % type(hostInfo))
 
     data = {'hostInfo': hostInfo}
     fields, aliases = zip(*fields.items())
@@ -5349,7 +5343,7 @@ def get_channel(channelInfo, strict=False):
     elif isinstance(channelInfo, str):
         query += """name = %(channelInfo)s"""
     else:
-        raise koji.GenericError('invalid type for channelInfo: %s' % type(channelInfo))
+        raise koji.GenericError('Invalid type for channelInfo: %s' % type(channelInfo))
 
     return _singleRow(query, locals(), fields, strict)
 
@@ -5722,9 +5716,8 @@ def check_volume_policy(data, strict=False, default=None):
             return vol
         # otherwise
         if strict:
-            raise koji.GenericError("Policy returned invalid volume: %s"
-                                    % result)
-        logger.error('Volume policy returned unknown volume %s', result)
+            raise koji.GenericError("Policy returned no such volume: %s" % result)
+        logger.error('Volume policy returned no such volume %s', result)
     # fall back to default
     if default is not None:
         vol = lookup_name('volume', default)
@@ -5789,7 +5782,7 @@ def new_build(data, strict=False):
         try:
             data['extra'] = json.dumps(data['extra'])
         except Exception:
-            raise koji.GenericError("Invalid build extra data: %(extra)r" % data)
+            raise koji.GenericError("No such build extra data: %(extra)r" % data)
     else:
         data['extra'] = None
 
@@ -5957,7 +5950,7 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
     for relpath in [srpm] + rpms:
         fn = "%s/%s" % (uploadpath, relpath)
         if not os.path.exists(fn):
-            raise koji.GenericError("no such file: %s" % fn)
+            raise koji.GenericError("No such file: %s" % fn)
 
     rpms = check_noarch_rpms(uploadpath, rpms, logs=logs)
 
@@ -6048,7 +6041,7 @@ def import_rpm(fn, buildinfo=None, brootid=None, wrapper=False, fileinfo=None):
     Designed to be called from import_build.
     """
     if not os.path.exists(fn):
-        raise koji.GenericError("no such file: %s" % fn)
+        raise koji.GenericError("No such file: %s" % fn)
 
     # read rpm info
     hdr = koji.get_rpm_header(fn)
@@ -6078,7 +6071,7 @@ def import_rpm(fn, buildinfo=None, brootid=None, wrapper=False, fileinfo=None):
             if buildinfo is None:
                 # XXX - handle case where package is not a source rpm
                 #      and we still need to create a new build
-                raise koji.GenericError('No matching build')
+                raise koji.GenericError('No such build')
             state = koji.BUILD_STATES[buildinfo['state']]
             if state in ('FAILED', 'CANCELED', 'DELETED'):
                 nvr = "%(name)s-%(version)s-%(release)s" % buildinfo
@@ -6274,7 +6267,7 @@ class CG_Importer(object):
 
         metaver = metadata['metadata_version']
         if metaver != 0:
-            raise koji.GenericError("Unknown metadata version: %r" % metaver)
+            raise koji.GenericError("No such metadata version: %r" % metaver)
 
         # TODO: basic metadata sanity check (use jsonschema?)
 
@@ -6322,7 +6315,7 @@ class CG_Importer(object):
             # default to looking for uploaded file
             metadata = 'metadata.json'
         if not isinstance(metadata, str):
-            raise koji.GenericError("Invalid metadata value: %r" % metadata)
+            raise koji.GenericError("Invalid type for metadata value: %r" % type(metadata))
         if metadata.endswith('.json'):
             # handle uploaded metadata
             workdir = koji.pathinfo.work()
@@ -6608,7 +6601,7 @@ class CG_Importer(object):
                 if match:
                     files.append(match)
             else:
-                raise koji.GenericError("Unknown component type: %(type)s" % comp)
+                raise koji.GenericError("No such component type: %(type)s" % comp)
         return rpms, files
 
     def match_rpm(self, comp):
@@ -6951,7 +6944,7 @@ def merge_scratch(task_id):
     try:
         task_info = task.getInfo(request=True)
     except koji.GenericError:
-        raise koji.ImportError('invalid task: %s' % task_id)
+        raise koji.ImportError('No such task: %s' % task_id)
     task_params = koji.tasks.parse_task_params(task_info['method'], task_info['request'])
     if task_info['state'] != koji.TASK_STATES['CLOSED']:
         raise koji.ImportError('task %s did not complete successfully' % task_id)
@@ -7140,7 +7133,7 @@ def add_archive_type(name, description, extensions):
     # No invalid or duplicate extensions
     for ext in extensions.split(' '):
         if not ext.replace('.', '').isalnum():
-            raise koji.GenericError('invalid %s file extension' % ext)
+            raise koji.GenericError('No such %s file extension' % ext)
         select = r"""SELECT id FROM archivetypes
                       WHERE extensions ~* E'(\\s|^)%s(\\s|$)'""" % ext
         results = _multiRow(select, {}, ('id',))
@@ -7265,7 +7258,7 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
     if metadata_only:
         filepath = None
     elif not os.path.exists(filepath):
-        raise koji.GenericError('no such file: %s' % filepath)
+        raise koji.GenericError('No such file: %s' % filepath)
 
     archiveinfo = {'buildroot_id': buildroot_id}
     archiveinfo['build_id'] = buildinfo['id']
@@ -7725,7 +7718,7 @@ def query_history(tables=None, **kwargs):
     else:
         for table in tables:
             if table not in table_fields:
-                raise koji.GenericError("Unknown history table: %s" % table)
+                raise koji.GenericError("No such history table: %s" % table)
     ret = {}
     for table in tables:
         fields = {}
@@ -8541,7 +8534,7 @@ def drop_group_member(group, user):
     user = get_user(user, strict=True)
     ginfo = get_user(group)
     if not ginfo or ginfo['usertype'] != koji.USERTYPES['GROUP']:
-        raise koji.GenericError("No such group: %s" % group)
+        raise koji.GenericError("Not a group: %s" % group)
     if user['id'] not in [u['id'] for u in get_group_members(group)]:
         raise koji.GenericError("No such user in group: %s" % group)
     data = {'user_id': user['id'], 'group_id': ginfo['id']}
@@ -8556,7 +8549,7 @@ def get_group_members(group):
     context.session.assertPerm('admin')
     ginfo = get_user(group)
     if not ginfo or ginfo['usertype'] != koji.USERTYPES['GROUP']:
-        raise koji.GenericError("Not a group: %s" % group)
+        raise koji.GenericError("No such group: %s" % group)
     group_id = ginfo['id']
     columns = ('id', 'name', 'usertype', 'array_agg(krb_principal)')
     aliases = ('id', 'name', 'usertype', 'krb_principals')
@@ -8580,7 +8573,7 @@ def get_group_members(group):
 def set_user_status(user, status):
     context.session.assertPerm('admin')
     if not koji.USER_STATUS.get(status):
-        raise koji.GenericError('invalid status: %s' % status)
+        raise koji.GenericError('No such status: %s' % status)
     if user['status'] == status:
         # nothing to do
         return
@@ -8589,7 +8582,7 @@ def set_user_status(user, status):
     rows = _dml(update, locals())
     # sanity check
     if rows == 0:
-        raise koji.GenericError('invalid user ID: %i' % user_id)
+        raise koji.GenericError('No such user ID: %i' % user_id)
 
 
 def list_cgs():
@@ -8673,7 +8666,7 @@ def assert_cg(cg, user=None):
     cg = lookup_name('content_generator', cg, strict=True)
     if user is None:
         if not context.session.logged_in:
-            raise koji.AuthError("Not logged in")
+            raise koji.AuthError("Not logged-in")
         user = context.session.user_id
     user = get_user(user, strict=True)
     clauses = ['active = TRUE', 'user_id = %(user_id)s', 'cg_id = %(cg_id)s']
@@ -9144,7 +9137,7 @@ SELECT %(col_str)s
                 elif order in self.columns:
                     orderCol = order
                 else:
-                    raise Exception('invalid order: ' + order)
+                    raise Exception('Invalid order: ' + order)
                 order_exprs.append(orderCol + direction)
             return 'ORDER BY ' + ', '.join(order_exprs)
         else:
@@ -9320,7 +9313,7 @@ def policy_get_pkg(data):
             if isinstance(data['package'], str):
                 return {'id': None, 'name': data['package']}
             else:
-                raise koji.GenericError("Invalid package: %s" % data['package'])
+                raise koji.GenericError("No such package: %s" % data['package'])
         return pkginfo
     if 'build' in data:
         binfo = get_build(data['build'], strict=True)
@@ -10420,7 +10413,7 @@ class RootExports(object):
         q = """SELECT id, EXTRACT(EPOCH FROM time) FROM events"""
         if before is not None:
             if not isinstance(before, NUMERIC_TYPES):
-                raise koji.GenericError('invalid type for before: %s' % type(before))
+                raise koji.GenericError('Invalid type for before: %s' % type(before))
             # use the repr() conversion because it retains more precision than the
             # string conversion
             q += """ WHERE EXTRACT(EPOCH FROM time) < %(before)r"""
@@ -10571,7 +10564,7 @@ class RootExports(object):
                 chksum = get_verify_class(verify)()
                 if tail is not None:
                     if tail < 0:
-                        raise koji.GenericError("invalid tail value: %r" % tail)
+                        raise koji.GenericError("Invalid tail value: %r" % tail)
                     offset = max(st.st_size - tail, 0)
                     os.lseek(fd, offset, 0)
                 length = 0
@@ -11080,7 +11073,7 @@ class RootExports(object):
             build_info = get_build(buildID)
             if not build_info:
                 if strict:
-                    raise koji.GenericError("Build %s doesn't exist" % buildID)
+                    raise koji.GenericError("No such build: %s" % buildID)
                 return _applyQueryOpts([], queryOpts)
             srpms = self.listRPMs(buildID=build_info['id'], arches='src')
             if not srpms:
@@ -11093,7 +11086,7 @@ class RootExports(object):
             if not filepath:
                 raise koji.GenericError('filepath must be specified with taskID')
             if filepath.startswith('/') or '../' in filepath:
-                raise koji.GenericError('invalid filepath: %s' % filepath)
+                raise koji.GenericError('Invalid filepath: %s' % filepath)
             srpm_path = joinpath(koji.pathinfo.work(),
                                  koji.pathinfo.taskrelpath(taskID),
                                  filepath)
@@ -11114,7 +11107,7 @@ class RootExports(object):
             elif isinstance(before, int):
                 pass
             else:
-                raise koji.GenericError('invalid type for before: %s' % type(before))
+                raise koji.GenericError('Invalid type for before: %s' % type(before))
 
         if after:
             if isinstance(after, datetime.datetime):
@@ -11124,7 +11117,7 @@ class RootExports(object):
             elif isinstance(after, int):
                 pass
             else:
-                raise koji.GenericError('invalid type for after: %s' % type(after))
+                raise koji.GenericError('Invalid type for after: %s' % type(after))
 
         results = []
 
@@ -11754,7 +11747,7 @@ class RootExports(object):
             if not filepath:
                 raise koji.GenericError('filepath must be specified with taskID')
             if filepath.startswith('/') or '../' in filepath:
-                raise koji.GenericError('invalid filepath: %s' % filepath)
+                raise koji.GenericError('Invalid filepath: %s' % filepath)
             rpm_path = joinpath(koji.pathinfo.work(),
                                 koji.pathinfo.taskrelpath(taskID),
                                 filepath)
@@ -11795,7 +11788,7 @@ class RootExports(object):
         r = query.executeOne()
         if not r:
             if strict:
-                raise koji.GenericError('Invalid package name: %s' % name)
+                raise koji.GenericError('No such package name: %s' % name)
             return None
         return r['id']
 
@@ -11976,14 +11969,14 @@ class RootExports(object):
         """Enable logins by the specified user"""
         user = get_user(username)
         if not user:
-            raise koji.GenericError('unknown user: %s' % username)
+            raise koji.GenericError('No such user: %s' % username)
         set_user_status(user, koji.USER_STATUS['NORMAL'])
 
     def disableUser(self, username):
         """Disable logins by the specified user"""
         user = get_user(username)
         if not user:
-            raise koji.GenericError('unknown user: %s' % username)
+            raise koji.GenericError('No such user: %s' % username)
         set_user_status(user, koji.USER_STATUS['BLOCKED'])
 
     listCGs = staticmethod(list_cgs)
@@ -12877,7 +12870,7 @@ class RootExports(object):
         owner or the notification or an admin, raise a GenericError."""
         currentUser = self.getLoggedInUser()
         if not currentUser:
-            raise koji.GenericError('not logged-in')
+            raise koji.GenericError('Not logged-in')
 
         orig_notif = self.getBuildNotification(id, strict=True)
         if not (orig_notif['user_id'] == currentUser['id'] or self.hasPerm('admin')):
@@ -12908,11 +12901,11 @@ class RootExports(object):
         and the currently logged-in user is not an admin, raise a GenericError."""
         currentUser = self.getLoggedInUser()
         if not currentUser:
-            raise koji.GenericError('not logged in')
+            raise koji.GenericError('Not logged-in')
 
         notificationUser = self.getUser(user_id)
         if not notificationUser:
-            raise koji.GenericError('invalid user ID: %s' % user_id)
+            raise koji.GenericError('No such user ID: %s' % user_id)
 
         if not (notificationUser['id'] == currentUser['id'] or self.hasPerm('admin')):
             raise koji.GenericError('user %s cannot create notifications for user %s' %
@@ -12946,7 +12939,7 @@ class RootExports(object):
         notification = self.getBuildNotification(id, strict=True)
         currentUser = self.getLoggedInUser()
         if not currentUser:
-            raise koji.GenericError('not logged-in')
+            raise koji.GenericError('Not logged-in')
 
         if not (notification['user_id'] == currentUser['id'] or
                 self.hasPerm('admin')):
@@ -12961,11 +12954,11 @@ class RootExports(object):
         admin, raise a GenericError."""
         currentUser = self.getLoggedInUser()
         if not currentUser:
-            raise koji.GenericError('not logged in')
+            raise koji.GenericError('Not logged-in')
 
         notificationUser = self.getUser(user_id)
         if not notificationUser:
-            raise koji.GenericError('invalid user ID: %s' % user_id)
+            raise koji.GenericError('No such user ID: %s' % user_id)
 
         if not (notificationUser['id'] == currentUser['id'] or self.hasPerm('admin')):
             raise koji.GenericError('user %s cannot create notification blocks for user %s' %
@@ -12993,7 +12986,7 @@ class RootExports(object):
         block = self.getBuildNotificationBlock(id, strict=True)
         currentUser = self.getLoggedInUser()
         if not currentUser:
-            raise koji.GenericError('not logged-in')
+            raise koji.GenericError('Not logged-in')
 
         if not (block['user_id'] == currentUser['id'] or
                 self.hasPerm('admin')):
@@ -13054,7 +13047,7 @@ class RootExports(object):
             return _applyQueryOpts([], queryOpts)
         table = self._searchTables.get(type)
         if not table:
-            raise koji.GenericError('unknown search type: %s' % type)
+            raise koji.GenericError('No such search type: %s' % type)
 
         if matchType == 'glob':
             oper = 'ilike'
@@ -13396,7 +13389,7 @@ class Host(object):
             if context.session.logged_in:
                 raise koji.AuthError("User %i is not a host" % context.session.user_id)
             else:
-                raise koji.AuthError("Not logged in")
+                raise koji.AuthError("Not logged-in")
         self.id = id
         self.same_host = (id == remote_id)
 
@@ -13742,7 +13735,7 @@ class HostExports(object):
         for relpath in [srpm] + rpms:
             fn = "%s/%s" % (uploadpath, relpath)
             if not os.path.exists(fn):
-                raise koji.GenericError("no such file: %s" % fn)
+                raise koji.GenericError("No such file: %s" % fn)
 
         rpms = check_noarch_rpms(uploadpath, rpms, logs=logs)
 
@@ -14519,7 +14512,7 @@ class HostExports(object):
                     pass
                 else:
                     if not ignore_unknown:
-                        logger.error("Unknown file for %(group_id)s:%(artifact_id)s:%(version)s",
+                        logger.error("No such file for %(group_id)s:%(artifact_id)s:%(version)s",
                                      maven_info)
                         if build_id:
                             build = get_build(build_id)
@@ -14530,7 +14523,7 @@ class HostExports(object):
                             logger.error("Size mismatch, br: %i, db: %i",
                                          fileinfo['size'], tag_archive['size'])
                         raise koji.BuildrootError(
-                            'Unknown file in build environment: %s, size: %s' %
+                            'No such file in build environment: %s, size: %s' %
                             ('%s/%s' % (fileinfo['path'], fileinfo['filename']), fileinfo['size']))
 
         return br.updateArchiveList(archives, project)

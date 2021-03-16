@@ -1,14 +1,16 @@
 from __future__ import absolute_import
-import mock
+
 import os
-import six
 import sys
 import unittest
 
+import mock
+import six
 from mock import call
 
 from koji_cli.commands import handle_remove_pkg
 from . import utils
+
 
 class TestRemovePkg(utils.CliTestCase):
 
@@ -180,7 +182,7 @@ class TestRemovePkg(utils.CliTestCase):
             handle_remove_pkg(options, session, args)
         self.assertExitCode(ex, 1)
         actual = stderr.getvalue()
-        expected = 'No such tag: tag\n'
+        expected = 'No such tag: %s\n' % tag
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
         activate_session_mock.assert_called_once_with(session, options)

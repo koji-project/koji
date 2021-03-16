@@ -94,7 +94,7 @@ clone-tag will create the destination tag if it does not already exist
             self.options,
             self.session,
             args,
-            stderr=self.format_error_message("Unknown src-tag: src-tag"),
+            stderr=self.format_error_message("No such src-tag: src-tag"),
             activate_session=None)
         self.activate_session.assert_called_once()
         self.activate_session.getTag.has_called([call('src-tag'),

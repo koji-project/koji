@@ -192,7 +192,7 @@ class TestBuildImageOz(utils.CliTestCase):
             _build_image_oz(
                 self.options, self.task_options, self.session, self.args)
         self.assertEqual(
-            str(cm.exception), 'Unknown build target: %s' % self.args[2])
+            str(cm.exception), 'No such build target: %s' % self.args[2])
 
         self.session.getBuildTarget.return_value = self.target_info
         self.session.getTag.return_value = {}
@@ -201,7 +201,7 @@ class TestBuildImageOz(utils.CliTestCase):
                 self.options, self.task_options, self.session, self.args)
         self.assertEqual(
             str(cm.exception),
-            'Unknown destination tag: %s' % self.target_info['dest_tag_name'])
+            'No such destination tag: %s' % self.target_info['dest_tag_name'])
 
         self.session.getTag.return_value = self.tag_info
         with self.assertRaises(koji.GenericError) as cm:

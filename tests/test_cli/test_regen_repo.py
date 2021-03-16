@@ -1,9 +1,11 @@
 from __future__ import absolute_import
 from __future__ import print_function
+
+import unittest
 import copy
+
 import mock
 import six
-import unittest
 
 from koji_cli.commands import handle_regen_repo
 from . import utils
@@ -25,7 +27,7 @@ class TestRegenRepo(utils.CliTestCase):
         'arches': 'x86_64',
         'maven_include_all': False,
         'perm_id': None
-     }
+    }
 
     def setUp(self):
         self.task_id = 1001
@@ -85,7 +87,7 @@ class TestRegenRepo(utils.CliTestCase):
 
         # show error if tag is not exist
         self.session.getTag.return_value = {}
-        expected = self.format_error_message("No matching tag: " + self.tag_name)
+        expected = self.format_error_message("No such tag: %s" % self.tag_name)
         self.assert_system_exit(
             handle_regen_repo,
             self.options,
@@ -115,7 +117,7 @@ class TestRegenRepo(utils.CliTestCase):
 
         # show error if target is not matched
         self.session.getBuildTarget.return_value = {}
-        expected = self.format_error_message("No matching build target: " + self.tag_name)
+        expected = self.format_error_message("No such build target: " + self.tag_name)
         self.assert_system_exit(
             handle_regen_repo,
             self.options,
@@ -143,8 +145,10 @@ class TestRegenRepo(utils.CliTestCase):
         tests = [
             # [ arguments, error_string ]
             [[], self.format_error_message("A tag name must be specified")],
-            [['tag1', 'tag2'], self.format_error_message("Only a single tag name may be specified")],
-            [['tag1', 'tag2', '--target'], self.format_error_message("Only a single target may be specified")],
+            [['tag1', 'tag2'],
+             self.format_error_message("Only a single tag name may be specified")],
+            [['tag1', 'tag2', '--target'],
+             self.format_error_message("Only a single target may be specified")],
         ]
 
         for test in tests:

@@ -1,16 +1,14 @@
 import os
 import re
 import time
-import unittest
 from optparse import Values
 
 import six
-import koji
 import mock
 
-from . import utils
+import koji
 from koji_cli.commands import anon_handle_list_targets
-
+from . import utils
 
 _mock_targets = [
     {
@@ -41,7 +39,8 @@ class TestCliListTargets(utils.CliTestCase):
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
     def test_list_targets_error_args(self, ensure_connection_mock, stderr):
-        session = mock.MagicMock(getAPIVersion=lambda: koji.API_VERSION, getBuildTargets=lambda n: [])
+        session = mock.MagicMock(getAPIVersion=lambda: koji.API_VERSION,
+                                 getBuildTargets=lambda n: [])
         options = mock.MagicMock(quiet=False)
         with self.assertRaises(SystemExit) as ex:
             anon_handle_list_targets(options, session, ['aaa'])
@@ -50,28 +49,32 @@ class TestCliListTargets(utils.CliTestCase):
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
     def test_list_targets_error_all_not_found(self, ensure_connection_mock, stderr):
-        session = mock.MagicMock(getAPIVersion=lambda: koji.API_VERSION, getBuildTargets=lambda n: [])
+        session = mock.MagicMock(getAPIVersion=lambda: koji.API_VERSION,
+                                 getBuildTargets=lambda n: [])
         options = mock.MagicMock(quiet=False)
         with self.assertRaises(SystemExit) as ex:
             anon_handle_list_targets(options, session, [])
         self.assertExitCode(ex, 2)
-        self.assertTrue('No Targets were found' in stderr.getvalue())
+        self.assertTrue('No targets were found' in stderr.getvalue())
 
-    @mock.patch('optparse.OptionParser.parse_args', return_value=(Values({'quiet': False, 'name': 'f50'}), []))
+    @mock.patch('optparse.OptionParser.parse_args',
+                return_value=(Values({'quiet': False, 'name': 'f50'}), []))
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
     def test_list_targets_error_name_not_found(self, ensure_connection_mock, stderr, opt):
-        session = mock.MagicMock(getAPIVersion=lambda: koji.API_VERSION, getBuildTargets=lambda n: [])
+        session = mock.MagicMock(getAPIVersion=lambda: koji.API_VERSION,
+                                 getBuildTargets=lambda n: [])
         options = mock.MagicMock(quiet=False)
         with self.assertRaises(SystemExit) as ex:
             anon_handle_list_targets(options, session, [])
         self.assertExitCode(ex, 2)
-        self.assertTrue('Target "f50" does not exist' in stderr.getvalue())
+        self.assertTrue('No such build target:' in stderr.getvalue())
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
     def test_list_targets_all(self, ensure_connection_mock, stdout):
-        session = mock.MagicMock(getAPIVersion=lambda: koji.API_VERSION, getBuildTargets=lambda n: _mock_targets)
+        session = mock.MagicMock(getAPIVersion=lambda: koji.API_VERSION,
+                                 getBuildTargets=lambda n: _mock_targets)
         options = mock.MagicMock(quiet=False)
         anon_handle_list_targets(options, session, [])
         expected = [
@@ -82,11 +85,13 @@ class TestCliListTargets(utils.CliTestCase):
         ]
         self.assertEqual(expected, [re.sub(' +', '|', l) for l in stdout.getvalue().split('\n')])
 
-    @mock.patch('optparse.OptionParser.parse_args', return_value=(Values({'quiet': False, 'name': 'f50'}), []))
+    @mock.patch('optparse.OptionParser.parse_args',
+                return_value=(Values({'quiet': False, 'name': 'f50'}), []))
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
     def test_list_targets_one(self, ensure_connection_mock, stdout, opt):
-        session = mock.MagicMock(getAPIVersion=lambda: koji.API_VERSION, getBuildTargets=lambda n: _mock_targets)
+        session = mock.MagicMock(getAPIVersion=lambda: koji.API_VERSION,
+                                 getBuildTargets=lambda n: _mock_targets)
         options = mock.MagicMock(quiet=False)
         anon_handle_list_targets(options, session, [])
         expected = [

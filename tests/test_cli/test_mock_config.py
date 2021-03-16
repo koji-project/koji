@@ -1,7 +1,9 @@
 from __future__ import absolute_import
+
+import unittest
+
 import mock
 import six
-import unittest
 
 from koji_cli.commands import anon_handle_mock_config
 from . import utils
@@ -210,7 +212,7 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
         self.assert_console_message(stderr, expected)
 
         arguments = ['--tag', tag['name'], '--arch', tag['arch']]
-        expected = self.format_error_message("Invalid tag: %s" % tag['name'])
+        expected = self.format_error_message("No such tag: %s" % tag['name'])
         self.assert_system_exit(
             anon_handle_mock_config,
             options,
@@ -303,8 +305,7 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
 
         arguments = ['--target', target['name'],
                      '--arch', arch]
-        expected = self.format_error_message(
-                "Invalid target: %s" % target['name'])
+        expected = self.format_error_message("No such build target: %s" % target['name'])
         self.assert_system_exit(
             anon_handle_mock_config,
             options,
@@ -361,7 +362,7 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
         # Run it and check immediate output
         # argument is empty
         expected = self.format_error_message(
-                "Please specify one of: --tag, --target, --task, --buildroot")
+            "Please specify one of: --tag, --target, --task, --buildroot")
         self.assert_system_exit(
             anon_handle_mock_config,
             options,
@@ -372,8 +373,7 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
 
         # name is specified twice case
         arguments = [self.progname, '--name', 'name']
-        expected = self.format_error_message(
-                "Name already specified via option")
+        expected = self.format_error_message("Name already specified via option")
         self.assert_system_exit(
             anon_handle_mock_config,
             options,

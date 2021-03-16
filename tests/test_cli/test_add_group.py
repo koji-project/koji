@@ -155,7 +155,7 @@ class TestAddGroup(utils.CliTestCase):
             handle_add_group(options, session, arguments)
         self.assertExitCode(ex, 1)
         actual = stderr.getvalue()
-        expected = 'Unknown tag: tag\n'
+        expected = 'No such tag: tag\n'
         self.assertMultiLineEqual(actual, expected)
 
         # Finally, assert that things were called as we expected.

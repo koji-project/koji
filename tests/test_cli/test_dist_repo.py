@@ -1,10 +1,11 @@
 from __future__ import absolute_import
 from __future__ import print_function
+
+import unittest
 import copy
+
 import mock
 import six
-import unittest
-
 
 from koji_cli.commands import handle_dist_repo
 from . import utils
@@ -26,7 +27,7 @@ class TestDistRepo(utils.CliTestCase):
         'arches': 'x86_64',
         'maven_include_all': False,
         'perm_id': None
-     }
+    }
 
     def setUp(self):
         self.task_id = 1001
@@ -91,10 +92,10 @@ via 'koji edit-tag -x distrepo.cancel_others=True'
         arguments = [self.tag_name, self.fake_key]
         self.__run_test_handle_dist_repo(arguments, True)
         self.watch_tasks.assert_called_with(
-                self.session,
-                [self.task_id],
-                quiet=self.options.quiet,
-                poll_interval=self.options.poll_interval, topurl=self.options.topurl)
+            self.session,
+            [self.task_id],
+            quiet=self.options.quiet,
+            poll_interval=self.options.poll_interval, topurl=self.options.topurl)
 
     def test_handle_dist_repo_nowait(self):
         arguments = [self.tag_name, self.fake_key, '--nowait']
@@ -120,7 +121,8 @@ via 'koji edit-tag -x distrepo.cancel_others=True'
                     '--allow-missing-signatures',
                     '--skip-missing-signatures'
                 ],
-                'err_str': 'allow_missing_signatures and skip_missing_signatures are mutually exclusive'
+                'err_str': 'allow_missing_signatures and skip_missing_signatures are mutually '
+                           'exclusive'
             }
         ]
 
@@ -137,7 +139,7 @@ via 'koji edit-tag -x distrepo.cancel_others=True'
 
         # Case 2. Tag Error
         self.session.getTag.return_value = {}
-        expected = self.format_error_message('unknown tag %s' % self.tag_name)
+        expected = self.format_error_message('No such tag: %s' % self.tag_name)
         self.assert_system_exit(
             handle_dist_repo,
             self.options,
@@ -218,7 +220,7 @@ via 'koji edit-tag -x distrepo.cancel_others=True'
                 stderr=expected)
 
         # normal case
-        self.session.uploadWrapper = lambda *args, **kwargs: print ('uploadWrapper ...')
+        self.session.uploadWrapper = lambda *args, **kwargs: print('uploadWrapper ...')
         self.session.getTag.return_value.update({'arches': 'x86_64, i686'})
         expected = 'uploadWrapper ...\n\n'
         arguments += ['--arch', 'x86_64', '--arch', 'i686']
@@ -234,11 +236,11 @@ via 'koji edit-tag -x distrepo.cancel_others=True'
         self.session.getRepo.return_value = {}
         expected = self.format_error_message("Can't find repo for tag: %s" % "test-repo1")
         self.assert_system_exit(
-                handle_dist_repo,
-                self.options,
-                self.session,
-                arguments,
-                stderr=expected)
+            handle_dist_repo,
+            self.options,
+            self.session,
+            arguments,
+            stderr=expected)
 
         # Normal case, assume test-repo2 is expired
         self.session.getRepo.side_effect = [

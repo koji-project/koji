@@ -1,9 +1,12 @@
 from __future__ import absolute_import
+from __future__ import absolute_import
 from __future__ import print_function
+
+import unittest
 import copy
+
 import mock
 import six
-import unittest
 
 from koji_cli.commands import anon_handle_wait_repo
 from . import utils
@@ -25,7 +28,7 @@ class TestWaitRepo(utils.CliTestCase):
         'arches': 'x86_64',
         'maven_include_all': False,
         'perm_id': None
-     }
+    }
 
     def setUp(self):
         self.task_id = 1001
@@ -106,7 +109,8 @@ class TestWaitRepo(utils.CliTestCase):
         arguments = [self.tag_name, '--target']
 
         self.options.quiet = False
-        self.session.getBuildTarget.return_value = {'build_tag_name': self.tag_name, 'build_tag': 1}
+        self.session.getBuildTarget.return_value = {'build_tag_name': self.tag_name,
+                                                    'build_tag': 1}
         self.session.getRepo.side_effect = [{}, {}, {'id': 1, 'name': 'DEFAULT'}]
         expected = 'Successfully waited 0:03 for a new %s repo' % self.tag_name + '\n'
         self.__test_wait_repo(arguments, expected)
@@ -143,7 +147,8 @@ class TestWaitRepo(utils.CliTestCase):
         expected = 'Warning: nvr %s is not current in tag %s\n  latest build in %s is %s' % \
                    (builds[0], self.tag_name, self.tag_name, new_ver) + "\n"
         expected += 'Warning: package sed is not in tag %s' % self.tag_name + '\n'
-        expected += 'Successfully waited 0:03 for %s to appear in the %s repo' % (pkgs, self.tag_name) + '\n'
+        expected += 'Successfully waited 0:03 for %s to appear in the ' \
+                    '%s repo\n' % (pkgs, self.tag_name)
         self.__test_wait_repo(arguments, expected)
 
     def test_anon_handle_wait_repo_with_build_timeout(self):
@@ -163,7 +168,8 @@ class TestWaitRepo(utils.CliTestCase):
         ]
         self.checkForBuilds.return_value = True
         self.session.getRepo.return_value = {}
-        expected = 'Unsuccessfully waited 1:02 for %s to appear in the %s repo' % (pkgs, self.tag_name) + '\n'
+        expected = 'Unsuccessfully waited 1:02 for %s to appear in the %s ' \
+                   'repo\n' % (pkgs, self.tag_name)
         self.__test_wait_repo_timeout(arguments, expected, ret_code=1)
 
     def test_anon_handle_wait_repo_errors(self):
@@ -172,8 +178,8 @@ class TestWaitRepo(utils.CliTestCase):
             # [ arguments, error_string ]
             [[], "Please specify a tag name"],
             [['tag1', 'tag2'], "Only one tag may be specified"],
-            [[self.tag_name], "Invalid tag: %s" % self.tag_name],
-            [[self.tag_name, '--target'], "Invalid build target: %s" % self.tag_name],
+            [[self.tag_name], "No such tag: %s" % self.tag_name],
+            [[self.tag_name, '--target'], "No such build target: %s" % self.tag_name],
         ]
 
         self.session.getBuildTarget.return_value = {}

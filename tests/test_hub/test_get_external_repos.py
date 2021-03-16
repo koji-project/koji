@@ -144,3 +144,9 @@ class TestGetExternalRepos(DBQueryTestCase):
         self.assertEqual(rv, [{'id': 1,
                                'name': 'ext_repo_1',
                                'url': 'http://example.com/repo/'}])
+
+    def test_get_external_repos_wrong_type(self):
+        info = {'info_key': 'info_value'}
+        with self.assertRaises(koji.GenericError) as cm:
+            kojihub.get_external_repos(info=info)
+        self.assertEqual("Invalid type for lookup: %s" % type(info), str(cm.exception))

@@ -357,7 +357,7 @@ Task info: weburl/taskinfo?taskID=1
             handle_build(self.options, self.session, args)
         self.assertExitCode(ex, 2)
         actual = stderr.getvalue()
-        expected = self.format_error_message( "Unknown build target: target")
+        expected = self.format_error_message( "No such build target: target")
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
         activate_session_mock.assert_called_once_with(self.session, self.options)
@@ -401,7 +401,7 @@ Task info: weburl/taskinfo?taskID=1
             handle_build(self.options, self.session, args)
         self.assertExitCode(ex, 2)
         actual = stderr.getvalue()
-        expected = self.format_error_message("Unknown destination tag: dest_tag_name")
+        expected = self.format_error_message("No such destination tag: dest_tag_name")
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
         activate_session_mock.assert_called_once_with(self.session, self.options)

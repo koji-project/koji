@@ -1,12 +1,12 @@
 from __future__ import absolute_import
 import koji
 import mock
-import unittest
 from six.moves import StringIO
 
 from koji_cli.commands import handle_add_notification
+from . import utils
 
-class TestAddNotification(unittest.TestCase):
+class TestAddNotification(utils.CliTestCase):
     def setUp(self):
         self.options = mock.MagicMock()
         self.options.quiet = True
@@ -114,3 +114,29 @@ class TestAddNotification(unittest.TestCase):
             handle_add_notification(self.options, self.session, ['bogus'])
 
         self.session.createNotification.assert_not_called()
+
+    @mock.patch('sys.stderr', new_callable=StringIO)
+    def test_handle_add_notification_non_exist_tag(self, stderr):
+        tag = 'tag_a'
+        expected = "Usage: %s add-notification [options]\n" \
+                   "(Specify the --help global option for a list of other help options)\n\n" \
+                   "%s: error: No such tag: %s\n" % (self.progname, self.progname, tag)
+
+        self.session.getTagID.side_effect = koji.GenericError
+        with self.assertRaises(SystemExit) as ex:
+            handle_add_notification(self.options, self.session, ['--tag', tag])
+        self.assertExitCode(ex, 2)
+        self.assert_console_message(stderr, expected)
+
+    @mock.patch('sys.stderr', new_callable=StringIO)
+    def test_handle_add_notification_non_exist_pkg(self, stderr):
+        pkg = 'pkg_a'
+        expected = "Usage: %s add-notification [options]\n" \
+                   "(Specify the --help global option for a list of other help options)\n\n" \
+                   "%s: error: No such package: %s\n" % (self.progname, self.progname, pkg)
+
+        self.session.getPackageID.return_value = None
+        with self.assertRaises(SystemExit) as ex:
+            handle_add_notification(self.options, self.session, ['--package', pkg])
+        self.assertExitCode(ex, 2)
+        self.assert_console_message(stderr, expected)

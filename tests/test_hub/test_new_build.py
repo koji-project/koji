@@ -151,7 +151,8 @@ class TestNewBuild(unittest.TestCase):
             'extra': {'extra_key': CantDoJSON()},
         }
 
-        with self.assertRaises(koji.GenericError):
+        with self.assertRaises(koji.GenericError) as cm:
             kojihub.new_build(data)
 
         self.assertEqual(len(self.inserts), 0)
+        self.assertEqual("No such build extra data: %(extra)r" % data, str(cm.exception))
