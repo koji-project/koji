@@ -42,6 +42,14 @@ from koji.util import deprecated, parseStatus, rmtree, to_list
 tag_cache = {}
 
 
+def prefillTagCache(session):
+    tags = session.listTags()
+    now = time.time()
+    for tag in tags:
+        tag_cache[(tag['id'], None)] = (now, tag)
+        tag_cache[(tag['name'], None)] = (now, tag)
+
+
 def getTag(session, tag, event=None):
     """A caching version of the hub call"""
     cache = tag_cache
@@ -80,13 +88,18 @@ class ManagedRepo(object):
             self._find_expire_time(repodata)
             # TODO use hub data to find the actual expiration time
         self.first_seen = time.time()
-        if self.current:
+        self._taglist = None
+
+    @property
+    def taglist(self):
+        if not self._taglist:
             order = self.session.getFullInheritance(self.tag_id, event=self.event_id)
             # order may contain same tag more than once
             tags = {self.tag_id: 1}
             for x in order:
                 tags[x['parent_id']] = 1
-            self.taglist = to_list(tags.keys())
+            self._taglist = to_list(tags.keys())
+        return self._taglist
 
     def _find_expire_time(self, repodata):
         # find all newer repos for same tag and set oldest as expire_ts for our repo
@@ -402,6 +415,8 @@ class RepoManager(object):
         self.logger.debug("Reading current repo data")
         repodata = self.session.getActiveRepos()
         self.logger.debug("Repo data: %r" % repodata)
+        prefillTagCache(self.session)
+        self.logger.debug("Preloaded %d tags" % len(tag_cache.keys()))
 
         for data in repodata:
             repo_id = data['id']
