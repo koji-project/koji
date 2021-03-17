@@ -3325,12 +3325,14 @@ def anon_handle_hostinfo(goptions, session, args):
     if len(args) < 1:
         parser.error(_("Please specify a host"))
     ensure_connection(session, goptions)
+    error_hit = False
     for host in args:
         if host.isdigit():
             host = int(host)
         info = session.getHost(host)
         if info is None:
             warn("No such host: %s\n" % host)
+            error_hit = True
             continue
         print("Name: %(name)s" % info)
         print("ID: %(id)d" % info)
@@ -3373,6 +3375,8 @@ def anon_handle_hostinfo(goptions, session, args):
                 print("%-50s %-10s %-20s" % row)
         else:
             print("None")
+    if error_hit:
+        error()
 
 
 def _multicall_with_check(session, batch_size):
