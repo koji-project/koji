@@ -3150,10 +3150,12 @@ def anon_handle_rpminfo(goptions, session, args):
     if len(args) < 1:
         parser.error(_("Please specify an RPM"))
     ensure_connection(session, goptions)
+    error_hit = False
     for rpm in args:
         info = session.getRPM(rpm)
         if info is None:
-            print("No such rpm: %s\n" % rpm)
+            warn("No such rpm: %s\n" % rpm)
+            error_hit = True
             continue
         if info['epoch'] is None:
             info['epoch'] = ""
@@ -3211,6 +3213,8 @@ def anon_handle_rpminfo(goptions, session, args):
                 print("  %s %s %s %s" % ('-' * 8, '-' * 28, '-' * 8, '-' * 29))
             for br_info in br_list:
                 print("  %(id)8i %(tag_name)-28s %(arch)-8s %(host_name)-29s" % br_info)
+    if error_hit:
+        error()
 
 
 def anon_handle_buildinfo(goptions, session, args):
