@@ -461,7 +461,7 @@ def rmtree(path, logger=None):
                 raise
             try:
                 _rmtree(dev)
-            except _RetryRmtree as e:
+            except _RetryRmtree:
                 # reset and retry
                 os.chdir(cwd)
                 continue
