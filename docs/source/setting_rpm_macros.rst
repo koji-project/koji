@@ -26,7 +26,7 @@ Setting rpm macros with a build
 
 Prior to Koji 1.18, this was the only way to set rpm macros in Koji.
 This method is still valid, and in some cases preferred.
-However, values set this way can be overridden my ``rpm.macro.*`` values set for the build tag.
+However, values set this way can be overridden by ``rpm.macro.*`` values set for the build tag.
 
 In short, this method involves:
 
