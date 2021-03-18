@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 import koji
+import locale
 import mock
 import os
 import time
@@ -11,6 +12,8 @@ from . import utils
 
 class TestRpminfo(utils.CliTestCase):
     def setUp(self):
+        # force locale to compare 'expect' value
+        locale.setlocale(locale.LC_ALL, ('en_US', 'UTF-8'))
         self.maxDiff = None
         self.options = mock.MagicMock()
         self.options.quiet = True
@@ -52,6 +55,7 @@ class TestRpminfo(utils.CliTestCase):
                            'size': 7030}
 
     def tearDown(self):
+        locale.resetlocale()
         if self.original_timezone is None:
             del os.environ['TZ']
         else:

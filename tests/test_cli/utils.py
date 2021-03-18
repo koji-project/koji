@@ -192,8 +192,8 @@ class CliTestCase(unittest.TestCase):
     @mock.patch('koji_cli.commands.activate_session')
     def assert_help(self, callableObj, message, activate_session_mock):
         # optarse uses gettext directly and it is driven by LANGUAGE
-        # we need engligsh to get comparable strings
-        os.environ['LANGUAGE'] = 'en_GB'
+        # we need english to get comparable strings
+        os.environ['LANGUAGE'] = 'C'
         self.assert_system_exit(
             callableObj,
             mock.MagicMock(),
