@@ -6326,19 +6326,30 @@ def handle_cancel(goptions, session, args):
                 blist.append(arg)
             except koji.GenericError:
                 parser.error(_("please specify only task ids (integer) or builds (n-v-r)"))
-    if tlist:
-        opts = {}
-        remote_fn = session.cancelTask
-        if options.justone:
-            opts['recurse'] = False
-        elif options.full:
-            remote_fn = session.cancelTaskFull
-            if options.force:
-                opts['strict'] = False
-        for task_id in tlist:
-            remote_fn(task_id, **opts)
-    for build in blist:
-        session.cancelBuild(build)
+
+    results = []
+    with session.multicall(strict=False, batch=100) as m:
+        if tlist:
+            opts = {}
+            remote_fn = m.cancelTask
+            if options.justone:
+                opts['recurse'] = False
+            elif options.full:
+                remote_fn = m.cancelTaskFull
+                if options.force:
+                    opts['strict'] = False
+            for task_id in tlist:
+                results.append(remote_fn(task_id, **opts))
+        for build in blist:
+            results.append(m.cancelBuild(build))
+
+    err = False
+    for r in results:
+        if isinstance(r.result, dict):
+            warn(r.result['faultString'])
+            err = True
+    if err:
+        return 1
 
 
 def handle_set_task_priority(goptions, session, args):
