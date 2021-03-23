@@ -675,9 +675,18 @@ class RepoManager(object):
                                 self.rmtree(repodir)
                     continue
                 if rinfo['tag_name'] != tag:
-                    self.logger.warning(
-                        "Tag name mismatch (rename?): %s vs %s", tag, rinfo['tag_name'])
-                    continue
+                    try:
+                        # possible rename of tag, repo.json should exist and contain tag id
+                        repo_json = koji.load_json(os.path.join(repodir, 'repo.json'))
+                        if rinfo['tag_id'] != repo_json['tag_id']:
+                            self.logger.warning(
+                                "Tag name/id mismatch: directory: %s, name: %s, id: %s",
+                                tag, rinfo['tag_name'], repo_json['tag_id'])
+                            continue
+                    except Exception:
+                        self.logger.warning(
+                            "Tag name mismatch (rename?): %s vs %s", tag, rinfo['tag_name'])
+                        continue
                 if rinfo['state'] in (koji.REPO_DELETED, koji.REPO_PROBLEM):
                     age = time.time() - max(rinfo['create_ts'], dir_ts)
                     self.logger.debug("potential removal candidate: %s; age: %s" % (repodir, age))
