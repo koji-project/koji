@@ -710,8 +710,6 @@ def _writeInheritanceData(tag_id, changes, clear=False):
     fields = ('parent_id', 'priority', 'maxdepth', 'intransitive', 'noconfig', 'pkg_filter')
     if isinstance(changes, dict):
         changes = [changes]
-    # duplicated parent_id should not be contained in changes
-    parent_ids = set()
     for link in changes:
         check_fields = fields
         if link.get('delete link'):
@@ -720,11 +718,6 @@ def _writeInheritanceData(tag_id, changes, clear=False):
             if f not in link:
                 raise koji.GenericError("No value for %s" % f)
         parent_id = link['parent_id']
-        if parent_id in parent_ids:
-            raise koji.GenericError("Changes should not contain duplicated"
-                                    " parent_id(%i)" % parent_id)
-        else:
-            parent_ids.add(parent_id)
         # check existence of parent
         get_tag(parent_id, strict=True)
     # read current data and index
@@ -735,7 +728,7 @@ def _writeInheritanceData(tag_id, changes, clear=False):
         orig = data.get(parent_id)
         if link.get('delete link'):
             if orig:
-                data[parent_id] = link
+                data[parent_id] = dslice(link, ['delete link', 'is_update', 'parent_id'])
         elif not orig or clear:
             data[parent_id] = link
         else:
