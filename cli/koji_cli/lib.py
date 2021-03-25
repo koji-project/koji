@@ -454,7 +454,7 @@ def list_task_output_all_volumes(session, task_id):
     """List task output with all volumes, or fake it"""
     try:
         return session.listTaskOutput(task_id, all_volumes=True)
-    except koji.GenericError as e:
+    except koji.ParameterError as e:
         if 'got an unexpected keyword argument' not in str(e):
             raise
     # otherwise leave off the option and fake it
