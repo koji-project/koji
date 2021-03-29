@@ -2888,14 +2888,14 @@ def anon_handle_list_hosts(goptions, session, args):
     # pull in the last update using multicall to speed it up a bit
     session.multicall = True
     for host in hosts:
-        session.getLastHostUpdate(host['id'])
+        session.getLastHostUpdate(host['id'], ts=True)
     updateList = session.multiCall()
 
     for host, [update] in zip(hosts, updateList):
         if update is None:
             host['update'] = '-'
         else:
-            host['update'] = update.split('.')[0]
+            host['update'] = koji.formatTimeLong(update)
         host['enabled'] = yesno(host['enabled'])
         host['ready'] = yesno(host['ready'])
         host['arches'] = ','.join(host['arches'].split())
@@ -3355,11 +3355,11 @@ def anon_handle_hostinfo(goptions, session, args):
             print("Comment:")
         print("Enabled: %s" % (info['enabled'] and 'yes' or 'no'))
         print("Ready: %s" % (info['ready'] and 'yes' or 'no'))
-        update = session.getLastHostUpdate(info['id'])
+        update = session.getLastHostUpdate(info['id'], ts=True)
         if update is None:
             update = "never"
         else:
-            update = update[:update.find('.')]
+            update = koji.formatTimeLong(update)
         print("Last Update: %s" % update)
         print("Channels: %s" % ' '.join([c['name']
                                          for c in session.listChannels(hostID=info['id'])]))

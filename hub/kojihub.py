@@ -12629,8 +12629,8 @@ class RootExports(object):
                                tables=tables, joins=joins, clauses=clauses, values=locals())
         return query.execute()
 
-    def getLastHostUpdate(self, hostID):
-        """Return the latest update timestampt for the host
+    def getLastHostUpdate(self, hostID, ts=False):
+        """Return the latest update timestamp for the host
 
         The timestamp represents the last time the host with the given
         ID contacted the hub. Returns None if the host has never contacted
@@ -12641,7 +12641,11 @@ class RootExports(object):
         ORDER BY update_time DESC
         LIMIT 1
         """
-        return _singleValue(query, locals(), strict=False)
+        date = _singleValue(query, locals(), strict=False)
+        if ts and date is not None:
+            return date.timestamp()
+        else:
+            return date
 
     getAllArches = staticmethod(get_all_arches)
 
