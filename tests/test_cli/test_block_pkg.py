@@ -42,7 +42,7 @@ class TestBlockPkg(utils.CliTestCase):
         activate_session_mock.assert_called_once_with(session, options)
         session.getTag.assert_called_once_with(tag)
         session.listPackages.assert_called_once_with(
-            tagID=dsttag['id'], inherited=True)
+            tagID=dsttag['id'], inherited=True, with_owners=False)
         session.packageListBlock.assert_called_once_with(
             tag, package, force=True)
         session.multiCall.assert_called_once_with(strict=True)
@@ -79,7 +79,7 @@ class TestBlockPkg(utils.CliTestCase):
         self.assertEqual(
             session.mock_calls, [
                 call.getTag(tag),
-                call.listPackages(tagID=dsttag['id'], inherited=True),
+                call.listPackages(tagID=dsttag['id'], inherited=True, with_owners=False),
                 call.packageListBlock(tag, packages[0]),
                 call.packageListBlock(tag, packages[1]),
                 call.packageListBlock(tag, packages[2]),
@@ -116,7 +116,7 @@ class TestBlockPkg(utils.CliTestCase):
         activate_session_mock.assert_called_once_with(session, options)
         session.getTag.assert_called_once_with(tag)
         session.listPackages.assert_called_once_with(
-            tagID=dsttag['id'], inherited=True)
+            tagID=dsttag['id'], inherited=True, with_owners=False)
         session.packageListBlock.assert_not_called()
         session.multiCall.assert_not_called()
 

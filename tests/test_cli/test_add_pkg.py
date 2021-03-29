@@ -56,7 +56,7 @@ class TestAddPkg(utils.CliTestCase):
         activate_session_mock.assert_called_once_with(session, options)
         session.getUser.assert_called_once_with(owner)
         session.getTag.assert_called_once_with(tag)
-        session.listPackages.assert_called_once_with(tagID=dsttag['id'])
+        session.listPackages.assert_called_once_with(tagID=dsttag['id'], with_owners=False)
         session.packageListAdd.assert_called_once_with(
             tag, package, owner, **kwargs)
         session.multiCall.assert_called_once_with(strict=True)
@@ -100,7 +100,7 @@ class TestAddPkg(utils.CliTestCase):
         self.assertEqual(session.mock_calls,
                          [call.getUser(owner),
                           call.getTag(tag),
-                          call.listPackages(tagID=dsttag['id']),
+                          call.listPackages(tagID=dsttag['id'], with_owners=False),
                           call.packageListAdd(tag, packages[0], owner, **kwargs),
                           call.packageListAdd(tag, packages[2], owner, **kwargs),
                           call.multiCall(strict=True)])

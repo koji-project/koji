@@ -43,8 +43,7 @@ class TestRemovePkg(utils.CliTestCase):
         # Finally, assert that things were called as we expected.
         activate_session_mock.assert_called_once_with(session, options)
         session.getTag.assert_called_once_with(tag)
-        session.listPackages.assert_called_once_with(
-            tagID=dsttag['id'])
+        session.listPackages.assert_called_once_with(tagID=dsttag['id'], with_owners=False)
         session.packageListRemove.assert_called_once_with(
             tag, package, **kwargs)
         session.multiCall.assert_called_once_with(strict=True)
@@ -80,12 +79,14 @@ class TestRemovePkg(utils.CliTestCase):
         activate_session_mock.assert_called_once_with(session, options)
         self.assertEqual(
             session.mock_calls, [
-                call.getTag(tag), call.listPackages(
-                    tagID=dsttag['id']), call.packageListRemove(
-                    tag, packages[0], **kwargs), call.packageListRemove(
-                    tag, packages[1], **kwargs), call.packageListRemove(
-                        tag, packages[2], **kwargs), call.multiCall(
-                            strict=True)])
+                call.getTag(tag),
+                call.listPackages(tagID=dsttag['id'], with_owners=False),
+                call.packageListRemove(tag, packages[0], **kwargs),
+                call.packageListRemove(tag, packages[1], **kwargs),
+                call.packageListRemove(tag, packages[2], **kwargs),
+                call.multiCall( strict=True)
+            ]
+        )
         self.assertNotEqual(rv, 1)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
@@ -119,12 +120,14 @@ class TestRemovePkg(utils.CliTestCase):
         activate_session_mock.assert_called_once_with(session, options)
         self.assertEqual(
             session.mock_calls, [
-                call.getTag(tag), call.listPackages(
-                    tagID=dsttag['id']), call.packageListRemove(
-                    tag, packages[0], **kwargs), call.packageListRemove(
-                    tag, packages[1], **kwargs), call.packageListRemove(
-                        tag, packages[2], **kwargs), call.multiCall(
-                            strict=True)])
+                call.getTag(tag),
+                call.listPackages(tagID=dsttag['id'], with_owners=False),
+                call.packageListRemove(tag, packages[0], **kwargs),
+                call.packageListRemove(tag, packages[1], **kwargs),
+                call.packageListRemove(tag, packages[2], **kwargs),
+                call.multiCall(strict=True)
+            ]
+        )
         self.assertNotEqual(rv, 1)
 
     @mock.patch('sys.stderr', new_callable=six.StringIO)
@@ -156,8 +159,7 @@ class TestRemovePkg(utils.CliTestCase):
         # Finally, assert that things were called as we expected.
         activate_session_mock.assert_called_once_with(session, options)
         session.getTag.assert_called_once_with(tag)
-        session.listPackages.assert_called_once_with(
-            tagID=dsttag['id'])
+        session.listPackages.assert_called_once_with(tagID=dsttag['id'], with_owners=False)
         session.packageListRemove.assert_not_called()
         session.multiCall.assert_not_called()
 
