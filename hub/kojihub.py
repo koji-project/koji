@@ -1124,7 +1124,7 @@ def pkglist_setarches(taginfo, pkginfo, arches, force=False):
 
 
 def readPackageList(tagID=None, userID=None, pkgID=None, event=None, inherit=False,
-                    with_dups=False):
+                    with_dups=False, with_owners=True):
     """Returns the package list for the specified tag or user.
 
     One of (tagID,userID,pkgID) must be specified
@@ -1134,41 +1134,39 @@ def readPackageList(tagID=None, userID=None, pkgID=None, event=None, inherit=Fal
     if tagID is None and userID is None and pkgID is None:
         raise koji.GenericError('tag,user, and/or pkg must be specified')
 
-    packages = {}
-    fields = (('package.id', 'package_id'), ('package.name', 'package_name'),
-              ('tag.id', 'tag_id'), ('tag.name', 'tag_name'),
-              ('users.id', 'owner_id'), ('users.name', 'owner_name'),
-              ('extra_arches', 'extra_arches'),
-              ('tag_packages.blocked', 'blocked'))
-    flist = ', '.join([pair[0] for pair in fields])
-    cond1 = eventCondition(event, table='tag_packages')
-    cond2 = eventCondition(event, table='tag_package_owners')
-    q = """
-    SELECT %(flist)s
-    FROM tag_packages
-    JOIN tag on tag.id = tag_packages.tag_id
-    JOIN package ON package.id = tag_packages.package_id
-    JOIN tag_package_owners ON
-        tag_packages.tag_id = tag_package_owners.tag_id AND
-        tag_packages.package_id = tag_package_owners.package_id
-    JOIN users ON users.id = tag_package_owners.owner
-    WHERE %(cond1)s AND %(cond2)s"""
+    if userID and not with_owners:
+        raise koji.GenericError("userID and with_owners=False can't be used together")
+
+    tables = ['tag_packages']
+    fields = ['package.id', 'package.name', 'tag.id', 'tag.name', 'extra_arches',
+              'tag_packages.blocked']
+    aliases = ['package_id', 'package_name', 'tag_id', 'tag_name', 'extra_arches', 'blocked']
+    joins = ['tag ON tag.id = tag_packages.tag_id',
+             'package ON package.id = tag_packages.package_id']
+    clauses = [eventCondition(event, table='tag_packages')]
     if tagID is not None:
-        q += """
-        AND tag.id = %%(tagID)i"""
+        clauses.append('tag.id = %(tagID)i')
     if userID is not None:
-        q += """
-        AND users.id = %%(userID)i"""
+        clauses.append('users.id = %(userID)i')
     if pkgID is not None:
         if isinstance(pkgID, int):
-            q += """
-            AND package.id = %%(pkgID)i"""
+            clauses.append('package.id = %(pkgID)i')
         else:
-            q += """
-            AND package.name = %%(pkgID)s"""
+            clauses.append('package.name = %(pkgID)s')
+    if with_owners:
+        fields += ['users.id', 'users.name']
+        aliases += ['owner_id', 'owner_name']
+        joins += [
+            'tag_package_owners ON tag_packages.tag_id = tag_package_owners.tag_id AND \
+                                   tag_packages.package_id = tag_package_owners.package_id',
+            'users ON users.id = tag_package_owners.owner'
+        ]
+        clauses.append(eventCondition(event, table='tag_package_owners'))
+    query = QueryProcessor(columns=fields, aliases=aliases, tables=tables, joins=joins,
+                           clauses=clauses, values=locals())
 
-    q = q % locals()
-    for p in _multiRow(q, locals(), [pair[1] for pair in fields]):
+    packages = {}
+    for p in query.execute():
         # things are simpler for the first tag
         pkgid = p['package_id']
         if with_dups:
@@ -1194,7 +1192,8 @@ def readPackageList(tagID=None, userID=None, pkgID=None, event=None, inherit=Fal
                 re_cache[pat] = prog
             re_list.append(prog)
         # same query as before, with different params
-        for p in _multiRow(q, locals(), [pair[1] for pair in fields]):
+        query.values['tagID'] = tagID
+        for p in query.execute():
             pkgid = p['package_id']
             if not with_dups and pkgid in packages:
                 # previous data supercedes
