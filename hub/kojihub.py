@@ -1301,7 +1301,7 @@ def list_tags(build=None, package=None, perms=True, queryOpts=None, pattern=None
 
 
 def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None, owner=None,
-                     type=None):
+                     type=None, with_owners=True):
     """Returns a list of builds for specified tag
 
     set inherit=True to follow inheritance
@@ -1315,6 +1315,9 @@ def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None,
     # build - id pkg_id version release epoch
     # tag_listing - id build_id tag_id
 
+    if owner and not with_owners:
+        raise koji.GenericError("owner and with_owners=False can't be used together")
+
     if not isinstance(latest, NUMERIC_TYPES):
         latest = bool(latest)
 
@@ -1327,6 +1330,8 @@ def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None,
     packages = readPackageList(tagID=tag, event=event, inherit=True, pkgID=package,
                                with_owners=False)
 
+    st_complete = koji.BUILD_STATES['COMPLETE']
+    tables = ['tag_listing']
     # these values are used for each iteration
     fields = [('tag.id', 'tag_id'), ('tag.name', 'tag_name'), ('build.id', 'id'),
               ('build.id', 'build_id'), ('build.version', 'version'), ('build.release', 'release'),
@@ -1338,60 +1343,59 @@ def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None,
               ('volume.id', 'volume_id'), ('volume.name', 'volume_name'),
               ('package.id', 'package_id'), ('package.name', 'package_name'),
               ('package.name', 'name'),
-              ("package.name || '-' || build.version || '-' || build.release", 'nvr'),
-              ('users.id', 'owner_id'), ('users.name', 'owner_name')]
-    st_complete = koji.BUILD_STATES['COMPLETE']
+              ("package.name || '-' || build.version || '-' || build.release", 'nvr')]
+    joins = [
+        'tag ON tag.id = tag_listing.tag_id',
+        'build ON build.id = tag_listing.build_id',
+        'events ON events.id = build.create_event',
+        'package ON package.id = build.pkg_id',
+        'volume ON volume.id = build.volume_id',
+    ]
+    if with_owners:
+        fields += [('users.id', 'owner_id'), ('users.name', 'owner_name')]
+        joins.append('users ON users.id = build.owner')
 
-    type_join = ''
     if type is None:
         pass
     elif type == 'maven':
-        type_join = 'JOIN maven_builds ON maven_builds.build_id = tag_listing.build_id'
+        joins.append('maven_builds ON maven_builds.build_id = tag_listing.build_id')
         fields.extend([('maven_builds.group_id', 'maven_group_id'),
                        ('maven_builds.artifact_id', 'maven_artifact_id'),
                        ('maven_builds.version', 'maven_version')])
     elif type == 'win':
-        type_join = 'JOIN win_builds ON win_builds.build_id = tag_listing.build_id'
+        joins.append('win_builds ON win_builds.build_id = tag_listing.build_id')
         fields.append(('win_builds.platform', 'platform'))
     elif type == 'image':
-        type_join = 'JOIN image_builds ON image_builds.build_id = tag_listing.build_id'
+        joins.append('image_builds ON image_builds.build_id = tag_listing.build_id')
         fields.append(('image_builds.build_id', 'build_id'))
     else:
         btype = lookup_name('btype', type, strict=False)
         if not btype:
             raise koji.GenericError('unsupported build type: %s' % type)
         btype_id = btype['id']
-        type_join = ('JOIN build_types ON build.id = build_types.build_id '
-                     'AND btype_id = %(btype_id)s')
+        joins += ['build_types ON build.id = build_types.build_id',
+                  'btype_id = %(btype_id)s']
 
-    q = """SELECT %s
-    FROM tag_listing
-    JOIN tag ON tag.id = tag_listing.tag_id
-    JOIN build ON build.id = tag_listing.build_id
-    %s
-    JOIN users ON users.id = build.owner
-    JOIN events ON events.id = build.create_event
-    JOIN package ON package.id = build.pkg_id
-    JOIN volume ON volume.id = build.volume_id
-    WHERE %s AND tag_id=%%(tagid)s
-        AND build.state=%%(st_complete)i
-    """ % (', '.join([pair[0] for pair in fields]), type_join,
-           eventCondition(event, 'tag_listing'))
+    clauses = [
+        eventCondition(event, 'tag_listing'),
+        'tag_id = %(tagid)s',
+        'build.state = %(st_complete)i'
+    ]
     if package:
-        q += """AND package.name = %(package)s
-        """
+        clauses.append('package.name = %(package)s')
     if owner:
-        q += """AND users.name = %(owner)s
-        """
-    q += """ORDER BY tag_listing.create_event DESC
-    """
-    # i.e. latest first
+        clauses.append('users.name = %(owner)s')
+    queryOpts = {'order': '-tag_listing.create_event'}  # latest first
+    query = QueryProcessor(columns=[x[0] for x in fields], aliases=[x[1] for x in fields],
+                           tables=tables, joins=joins, clauses=clauses, values=locals(),
+                           opts=queryOpts)
 
     builds = []
     seen = {}   # used to enforce the 'latest' option
     for tagid in taglist:
         # log_error(koji.db._quoteparams(q,locals()))
-        for build in _multiRow(q, locals(), [pair[1] for pair in fields]):
+        query.values['tagid'] = tagid
+        for build in query.execute():
             pkgid = build['package_id']
             pinfo = packages.get(pkgid, None)
             if pinfo is None or pinfo['blocked']:
