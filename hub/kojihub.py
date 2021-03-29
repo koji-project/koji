@@ -1304,13 +1304,17 @@ def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None,
                      type=None, with_owners=True):
     """Returns a list of builds for specified tag
 
-    set inherit=True to follow inheritance
-    set event to query at a time in the past
-    set latest=True to get only the latest build per package
-    set latest=N to get only the N latest tagged RPMs
-
-    If type is not None, restrict the list to builds of the given type.  Currently the supported
-    types are 'maven', 'win', and 'image'.
+    :param int tag: tag ID
+    :param int event: query at a time in the past
+    :param bool inherit: follow inheritance
+    :param bool|int latest: True for latest build per package, N to get N latest builds per package
+    :param int package: filter on package name
+    :param str owner: filter on user name
+    :param str type: restrict the list to builds of the given type.  Currently the supported
+                     types are 'maven', 'win', and 'image'.
+    :param bool with_owners: set to False for faster query (owner_id and owner_name will be
+                             missing in the result)
+    :returns [dict]: list of buildinfo dicts
     """
     # build - id pkg_id version release epoch
     # tag_listing - id build_id tag_id
