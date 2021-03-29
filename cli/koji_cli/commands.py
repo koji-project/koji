@@ -3227,12 +3227,14 @@ def anon_handle_buildinfo(goptions, session, args):
     if len(args) < 1:
         parser.error(_("Please specify a build"))
     ensure_connection(session, goptions)
+    error_hit = False
     for build in args:
         if build.isdigit():
             build = int(build)
         info = session.getBuild(build)
         if info is None:
             warn("No such build: %s\n" % build)
+            error_hit = True
             continue
         task = None
         if info['task_id']:
@@ -3315,6 +3317,8 @@ def anon_handle_buildinfo(goptions, session, args):
             if changelog:
                 print("Changelog:")
                 print(koji.util.formatChangelog(changelog))
+    if error_hit:
+        error()
 
 
 def anon_handle_hostinfo(goptions, session, args):
