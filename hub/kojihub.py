@@ -1130,6 +1130,18 @@ def readPackageList(tagID=None, userID=None, pkgID=None, event=None, inherit=Fal
     One of (tagID,userID,pkgID) must be specified
 
     Note that the returned data includes blocked entries
+
+    :param int tagID: filter on tag
+    :param int userID: filter on package owner
+    :param int pkgID: filter on package
+    :param int event: filter on event
+    :param bool inherit: return also inherited packages
+    :param bool with_dups: possible duplicates from inheritance, makes no sense
+                           with inherit=False
+    :param bool with_owners: return also owner info. It needs to be set to True
+                             if userID is not None
+
+    :returns [dict]: list of dicts with package info
     """
     if tagID is None and userID is None and pkgID is None:
         raise koji.GenericError('tag,user, and/or pkg must be specified')
