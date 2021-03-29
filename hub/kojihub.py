@@ -11289,12 +11289,12 @@ class RootExports(object):
         task.setPriority(priority, recurse=recurse)
 
     def listTagged(self, tag, event=None, inherit=False, prefix=None, latest=False, package=None,
-                   owner=None, type=None):
+                   owner=None, type=None, with_owners=True):
         """List builds tagged with tag"""
         # lookup tag id
         tag = get_tag(tag, strict=True, event=event)['id']
         results = readTaggedBuilds(tag, event, inherit=inherit, latest=latest, package=package,
-                                   owner=owner, type=type)
+                                   owner=owner, type=type, with_owners=with_owners)
         if prefix:
             prefix = prefix.lower()
             results = [build for build in results

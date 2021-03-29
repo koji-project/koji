@@ -188,7 +188,7 @@ def clean_empty(tags):
     deleted = []
     session.multicall = True
     for tag in tags:
-        session.listTagged(tag['id'])
+        session.listTagged(tag['id'], with_owners=False)
     for tag, tagged in zip(tags, session.multiCall()):
         if len(tagged[0]) == 0:
             candidates.append(tag)
