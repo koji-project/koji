@@ -1069,7 +1069,7 @@ def pkglist_block(taginfo, pkginfo, force=False):
     # check pkg list existence
     tag = get_tag(taginfo, strict=True)
     pkg = lookup_package(pkginfo, strict=True)
-    if not readPackageList(tag['id'], pkgID=pkg['id'], inherit=True):
+    if not readPackageList(tag['id'], pkgID=pkg['id'], inherit=True, with_owners=False):
         raise koji.GenericError("Package %s is not in tag listing for %s" %
                                 (pkg['name'], tag['name']))
     pkglist_add(taginfo, pkginfo, block=True, force=force)
@@ -1312,7 +1312,8 @@ def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None,
 
     # regardless of inherit setting, we need to use inheritance to read the
     # package list
-    packages = readPackageList(tagID=tag, event=event, inherit=True, pkgID=package)
+    packages = readPackageList(tagID=tag, event=event, inherit=True, pkgID=package,
+                               with_owners=False)
 
     # these values are used for each iteration
     fields = [('tag.id', 'tag_id'), ('tag.name', 'tag_name'), ('build.id', 'id'),
@@ -2430,7 +2431,7 @@ def maven_tag_archives(tag_id, event_id=None, inherit=True):
     For any parent tags where 'maven_include_all' is true, include all versions
     of a given groupId:artifactId, not just the most-recently-tagged.
     """
-    packages = readPackageList(tagID=tag_id, event=event_id, inherit=True)
+    packages = readPackageList(tagID=tag_id, event=event_id, inherit=True, with_owners=False)
     taglist = [tag_id]
     if inherit:
         taglist.extend([link['parent_id'] for link in readFullInheritance(tag_id, event_id)])
@@ -2559,9 +2560,11 @@ def repo_init(tag, task_id=None, with_src=False, with_debuginfo=False, event=Non
     latest = not tinfo['extra'].get('repo_include_all', False)
     # Note: the repo_include_all option is not recommended for common use
     #       see https://pagure.io/koji/issue/588 for background
-    rpms, builds = readTaggedRPMS(tag_id, event=event_id, inherit=True, latest=latest)
+    rpms, builds = readTaggedRPMS(tag_id, event=event_id, inherit=True, latest=latest,
+                                  with_owners=False)
     groups = readTagGroups(tag_id, event=event_id, inherit=True)
-    blocks = [pkg for pkg in readPackageList(tag_id, event=event_id, inherit=True).values()
+    blocks = [pkg for pkg in readPackageList(tag_id, event=event_id, inherit=True,
+                                             with_owners=False).values()
               if pkg['blocked']]
     repodir = koji.pathinfo.repo(repo_id, tinfo['name'])
     os.makedirs(repodir)  # should not already exist
@@ -10951,7 +10954,7 @@ class RootExports(object):
         if fromtag:
             assert_tag_access(fromtag_id, user_id=None, force=force)
         # package list check
-        pkgs = readPackageList(tagID=tag_id, pkgID=pkg_id, inherit=True)
+        pkgs = readPackageList(tagID=tag_id, pkgID=pkg_id, inherit=True, with_owners=False)
         pkg_error = None
         if pkg_id not in pkgs:
             pkg_error = "Package %s not in list for %s" % (build['name'], tag['name'])
@@ -11034,7 +11037,7 @@ class RootExports(object):
         # note: we're just running the quick checks now so we can fail
         #       early if appropriate, rather then waiting for the task
         # Make sure package is on the list for the tag we're adding it to
-        pkgs = readPackageList(tagID=tag2_id, pkgID=pkg_id, inherit=True)
+        pkgs = readPackageList(tagID=tag2_id, pkgID=pkg_id, inherit=True, with_owners=False)
         pkg_error = None
         if pkg_id not in pkgs:
             pkg_error = "Package %s not in list for tag %s" % (package, tag2)
@@ -11854,7 +11857,7 @@ class RootExports(object):
     getPackage = staticmethod(lookup_package)
 
     def listPackages(self, tagID=None, userID=None, pkgID=None, prefix=None, inherited=False,
-                     with_dups=False, event=None, queryOpts=None):
+                     with_dups=False, event=None, queryOpts=None, with_owners=True):
         """List if tagID and/or userID is specified, limit the
         list to packages belonging to the given user or with the
         given tag.
@@ -11886,7 +11889,7 @@ class RootExports(object):
                 pkgID = get_package_id(pkgID, strict=True)
             result_list = list(readPackageList(tagID=tagID, userID=userID, pkgID=pkgID,
                                                inherit=inherited, with_dups=with_dups,
-                                               event=event).values())
+                                               event=event, with_owners=with_owners).values())
             if with_dups:
                 # when with_dups=True, readPackageList returns a list of list of dicts
                 # convert it to a list of dicts for consistency
@@ -11934,7 +11937,7 @@ class RootExports(object):
         pkg_id = get_package_id(pkg, strict=False)
         if pkg_id is None or tag_id is None:
             return False
-        pkgs = readPackageList(tagID=tag_id, pkgID=pkg_id, inherit=True)
+        pkgs = readPackageList(tagID=tag_id, pkgID=pkg_id, inherit=True, with_owners=False)
         if pkg_id not in pkgs:
             return False
         else:
@@ -14332,7 +14335,7 @@ class HostExports(object):
         # don't check policy for admins using force
         assert_policy('tag', policy_data, force=force)
         # package list check
-        pkgs = readPackageList(tagID=tag_id, pkgID=pkg_id, inherit=True)
+        pkgs = readPackageList(tagID=tag_id, pkgID=pkg_id, inherit=True, with_owners=False)
         pkg_error = None
         if pkg_id not in pkgs:
             pkg_error = "Package %s not in list for %s" % (build['name'], tag)

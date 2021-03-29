@@ -353,7 +353,7 @@ def handle_add_pkg(goptions, session, args):
         print("No such tag: %s" % tag)
         sys.exit(1)
     pkglist = dict([(p['package_name'], p['package_id'])
-                    for p in session.listPackages(tagID=dsttag['id'])])
+                    for p in session.listPackages(tagID=dsttag['id'], with_owners=False)])
     to_add = []
     for package in args[1:]:
         package_id = pkglist.get(package, None)
@@ -388,7 +388,8 @@ def handle_block_pkg(goptions, session, args):
     if dsttag is None:
         error("No such tag: %s" % tag)
     pkglist = dict([(p['package_name'], p['package_id'])
-                    for p in session.listPackages(tagID=dsttag['id'], inherited=True)])
+                    for p in session.listPackages(tagID=dsttag['id'], inherited=True,
+                                                  with_owners=False)])
     ret = 0
     for package in args[1:]:
         package_id = pkglist.get(package, None)
@@ -425,7 +426,7 @@ def handle_remove_pkg(goptions, session, args):
     if dsttag is None:
         error("No such tag: %s" % tag)
     pkglist = dict([(p['package_name'], p['package_id'])
-                    for p in session.listPackages(tagID=dsttag['id'])])
+                    for p in session.listPackages(tagID=dsttag['id'], with_owners=False)])
     ret = 0
     for package in args[1:]:
         package_id = pkglist.get(package, None)
