@@ -282,7 +282,8 @@ def prep_repo_init(cbtype, *args, **kws):
     address = 'repo.init'
     props = {'type': cbtype[4:],
              'tag': kws['tag']['name'],
-             'repo_id': kws['repo_id']}
+             'repo_id': kws['repo_id'],
+             'task_id': kws['task_id']}
     queue_msg(address, props, kws)
 
 
@@ -293,6 +294,7 @@ def prep_repo_done(cbtype, *args, **kws):
     props = {'type': cbtype[4:],
              'tag': kws['repo']['tag_name'],
              'repo_id': kws['repo']['id'],
+             'task_id': kws['repo']['task_id'],
              'expire': kws['expire']}
     queue_msg(address, props, kws)
 

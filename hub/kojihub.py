@@ -2521,7 +2521,8 @@ def maven_tag_archives(tag_id, event_id=None, inherit=True):
     return _iter_archives()
 
 
-def repo_init(tag, with_src=False, with_debuginfo=False, event=None, with_separate_src=False):
+def repo_init(tag, task_id=None, with_src=False, with_debuginfo=False, event=None,
+              with_separate_src=False):
     """Create a new repo entry in the INIT state, return full repo data
 
     Returns a dictionary containing
@@ -2532,7 +2533,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None, with_separa
     tinfo = get_tag(tag, strict=True, event=event)
     koji.plugin.run_callbacks('preRepoInit', tag=tinfo, with_src=with_src,
                               with_debuginfo=with_debuginfo, event=event, repo_id=None,
-                              with_separate_src=with_separate_src)
+                              with_separate_src=with_separate_src, task_id=task_id)
     tag_id = tinfo['id']
     repo_arches = {}
     if with_separate_src:
@@ -2552,7 +2553,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None, with_separa
         event_time = _singleValue(q, locals(), strict=True)
         event_id = event
     insert = InsertProcessor('repo')
-    insert.set(id=repo_id, create_event=event_id, tag_id=tag_id, state=state)
+    insert.set(id=repo_id, create_event=event_id, tag_id=tag_id, state=state, task_id=task_id)
     insert.execute()
     # Need to pass event_id because even though this is a single transaction,
     # it is possible to see the results of other committed transactions
@@ -2578,6 +2579,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None, with_separa
         'id': repo_id,
         'tag': tinfo['name'],
         'tag_id': tinfo['id'],
+        'task_id': task_id,
         'event_id': event_id,
         'with_src': with_src,
         'with_separate_src': with_separate_src,
@@ -2671,7 +2673,7 @@ def repo_init(tag, with_src=False, with_debuginfo=False, event=None, with_separa
 
     koji.plugin.run_callbacks('postRepoInit', tag=tinfo, with_src=with_src,
                               with_debuginfo=with_debuginfo, event=event, repo_id=repo_id,
-                              with_separate_src=with_separate_src)
+                              with_separate_src=with_separate_src, task_id=task_id)
     return [repo_id, event_id]
 
 
@@ -2785,6 +2787,7 @@ def repo_info(repo_id, strict=False):
     fields = (
         ('repo.id', 'id'),
         ('repo.state', 'state'),
+        ('repo.task_id', 'task_id'),
         ('repo.create_event', 'create_event'),
         ('events.time', 'creation_time'),  # for compatibility with getRepo
         ('EXTRACT(EPOCH FROM events.time)', 'create_ts'),
@@ -2874,6 +2877,7 @@ def get_active_repos():
     fields = (
         ('repo.id', 'id'),
         ('repo.state', 'state'),
+        ('repo.task_id', 'task_id'),
         ('repo.create_event', 'create_event'),
         ('EXTRACT(EPOCH FROM events.time)', 'create_ts'),
         ('repo.tag_id', 'tag_id'),
@@ -12119,9 +12123,9 @@ class RootExports(object):
         else:
             id = get_tag_id(tag, strict=True)
 
-        fields = ['repo.id', 'repo.state', 'repo.create_event', 'events.time',
+        fields = ['repo.id', 'repo.state', 'repo.task_id', 'repo.create_event', 'events.time',
                   'EXTRACT(EPOCH FROM events.time)', 'repo.dist']
-        aliases = ['id', 'state', 'create_event', 'creation_time', 'create_ts', 'dist']
+        aliases = ['id', 'state', 'task_id', 'create_event', 'creation_time', 'create_ts', 'dist']
         joins = ['events ON repo.create_event = events.id']
         clauses = ['repo.tag_id = %(id)i']
         if dist:
@@ -14588,13 +14592,13 @@ class HostExports(object):
 
         return br.updateArchiveList(archives, project)
 
-    def repoInit(self, tag, with_src=False, with_debuginfo=False, event=None,
+    def repoInit(self, tag, task_id=None, with_src=False, with_debuginfo=False, event=None,
                  with_separate_src=False):
         """Initialize a new repo for tag"""
         host = Host()
         host.verify()
-        return repo_init(tag, with_src=with_src, with_debuginfo=with_debuginfo, event=event,
-                         with_separate_src=with_separate_src)
+        return repo_init(tag, task_id=task_id, with_src=with_src, with_debuginfo=with_debuginfo,
+                         event=event, with_separate_src=with_separate_src)
 
     def repoDone(self, repo_id, data, expire=False):
         """Finalize a repo
