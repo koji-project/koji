@@ -15,6 +15,7 @@ class TestMockConfig(utils.CliTestCase):
     maxDiff = None
 
     def setUp(self):
+        self.maxDiff = None
         self.common_args = [
             '--distribution', 'fedora',
             '--topdir', '/top-dir',
@@ -237,7 +238,8 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
                 'rpm.macro.random_macro2': 'random_macro_content2',
                 'mock.package_manager': 'yum',
                 'mock.yum.module_hotfixes': 1,
-            }
+            },
+            'arches': 'x86_64',
         }
         expected = "Could not get a repo for tag: %(name)s\n" % tag
         with self.assertRaises(SystemExit) as ex:
@@ -272,6 +274,36 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
             stdout, "%s\n" % gen_config_mock.return_value)
         gen_config_mock.assert_called_with(
             self.progname, tag['arch'], **opts)
+
+        # return arch warning and config
+        arch = 'test'
+        warn_msg = '%s is not in the list of tag arches' % arch
+        gen_config_mock.return_value = self.mock_output
+        arguments = self.common_args + ['--tag', tag['name'], '--arch', arch,
+                                        '--name', self.progname, '--latest']
+        anon_handle_mock_config(options, session, arguments)
+        self.assert_console_message(stdout, "%s\n" % gen_config_mock.return_value)
+        self.assert_console_message(stderr, "%s\n" % warn_msg)
+
+        # return warning that tag arch is empty
+        session.getBuildConfig.return_value = {
+            'id': 301,
+            'extra': {
+                'rpm.macro.random_macro1': 'random_macro_content1',
+                'rpm.macro.random_macro2': 'random_macro_content2',
+                'mock.package_manager': 'yum',
+                'mock.yum.module_hotfixes': 1,
+            },
+            'arches': None,
+        }
+        arch = 'test'
+        warn_msg = 'Tag %s has an empty arch list' % tag['name']
+        gen_config_mock.return_value = self.mock_output
+        arguments = self.common_args + ['--tag', tag['name'], '--arch', arch,
+                                        '--name', self.progname, '--latest']
+        anon_handle_mock_config(options, session, arguments)
+        self.assert_console_message(stdout, "%s\n" % gen_config_mock.return_value)
+        self.assert_console_message(stderr, "%s\n" % warn_msg)
 
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('sys.stdout', new_callable=six.StringIO)
@@ -315,6 +347,7 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
             activate_session=None)
 
         session.getBuildTarget.return_value = target
+        session.getBuildConfig.return_value = {'arches': 'x86_64', 'extra': {}}
         expected = "Could not get a repo for tag: %s\n" % target['build_tag_name']
         with self.assertRaises(SystemExit) as ex:
             anon_handle_mock_config(options, session, arguments)
@@ -348,6 +381,17 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
         fobj.write.assert_called_once_with(self.mock_output)
         gen_config_mock.assert_called_with(
             self.progname, arch, **opts)
+
+        # return arch warning and config
+        arch = 'test'
+        arguments = self.common_args + ['--target', target['name'],
+                                        '--arch', arch,
+                                        '--name', self.progname]
+        warn_msg = '%s is not in the list of tag arches' % arch
+        gen_config_mock.return_value = self.mock_output
+        anon_handle_mock_config(options, session, arguments)
+        self.assert_console_message(stdout, "%s\n" % gen_config_mock.return_value)
+        self.assert_console_message(stderr, "%s\n" % warn_msg)
 
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.ensure_connection')
