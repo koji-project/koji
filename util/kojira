@@ -460,7 +460,7 @@ class RepoManager(object):
                 r = requests.get(arch_url, timeout=5)
                 root = ElementTree.fromstring(r.text)
                 ts_elements = root.iter('{http://linux.duke.edu/metadata/repo}timestamp')
-                arch_ts = max([int(child.text) for child in ts_elements])
+                arch_ts = max([round(float(child.text)) for child in ts_elements])
                 self.external_repo_ts[arch_url] = arch_ts
                 max_ts = max(max_ts, arch_ts)
             except Exception:
