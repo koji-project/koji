@@ -2548,6 +2548,7 @@ class ClientSession(object):
             e_str = ''.join(traceback.format_exception_only(type(ex), ex))
             e_str = 'ssl auth failed: %s' % e_str
             self.logger.debug(e_str)
+            sinfo = None
         finally:
             self.opts = old_opts
         if not sinfo:
