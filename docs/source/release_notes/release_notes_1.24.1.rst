@@ -18,7 +18,7 @@ System Changes
 --------------
 **drop PyOpenSSL usage**
 
-Library is no more needed (superseded by ``requests``).
+Library is no longer needed (superseded by ``requests``).
 
 | PR: https://pagure.io/koji/pull-request/2753
 
@@ -35,7 +35,7 @@ CLI changes
 -----------
 **adding check for the license header key**
 
-CLI can sometimes fail on missing header key. Not happening anymore.
+The CLI could sometimes fail on a missing header key. This no longer happens.
 
 | PR: https://pagure.io/koji/pull-request/2692
 
@@ -57,8 +57,8 @@ Web page correctly escapes these URLs now.
 
 **optional KojiHubCA usage**
 
-1.24 created a regression that ``KojiHubCA`` option is required even in case
-when no SSL auth is used for web. Fixed.
+Koji 1.24 introduced a bug where the ``KojiHubCA`` option was required even in
+cases when SSL auth was not used for web. Fixed.
 
 | PR: https://pagure.io/koji/pull-request/2749
 
@@ -66,8 +66,9 @@ Utilities Changes
 -----------------
 **repo removal improvements**
 
-Few bugs related to kojira's repo removal could have caused stalling delete
-thread or even not deleting old repos at all.
+A few bugs related to kojira's repo removal have been fixed. In some cases,
+these bugs could have stalled delete threads or even blocked repo deletions
+altogether.
 
 | PR: https://pagure.io/koji/pull-request/2755
 | PR: https://pagure.io/koji/pull-request/2715
