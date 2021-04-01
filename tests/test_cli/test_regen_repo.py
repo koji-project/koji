@@ -72,14 +72,17 @@ class TestRegenRepo(utils.CliTestCase):
     def tearDown(self):
         mock.patch.stopall()
 
-    def __run_test_handle_regen_repo(self, arguments, return_value=None, expected=''):
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    def __run_test_handle_regen_repo(self, arguments, stdout, stderr, return_value=None,
+                                     expected='', expected_warn=''):
         expected += "Regenerating repo for tag: %s" % self.tag_name + "\n"
         expected += "Created task: %d" % self.task_id + "\n"
         expected += "Task info: %s/taskinfo?taskID=%s" % (self.options.weburl, self.task_id) + "\n"
-        with mock.patch('sys.stdout', new_callable=six.StringIO) as stdout:
-            rv = handle_regen_repo(self.options, self.session, arguments)
-            self.assertEqual(rv, return_value)
+        rv = handle_regen_repo(self.options, self.session, arguments)
+        self.assertEqual(rv, return_value)
         self.assert_console_message(stdout, expected)
+        self.assert_console_message(stderr, expected_warn)
         self.activate_session.assert_called_with(self.session, self.options)
 
     def test_handle_regen_repo(self):
@@ -100,16 +103,18 @@ class TestRegenRepo(utils.CliTestCase):
         # show warning if tag is not a build tag
         self.session.getTag.return_value = copy.copy(self.TAG)
         self.session.getBuildTargets.return_value = []
-        expected = "Warning: %s is not a build tag" % self.tag_name + "\n"
-        self.__run_test_handle_regen_repo([self.tag_name], True, expected=expected)
+        expected_warn = "%s is not a build tag" % self.tag_name + "\n"
+        self.__run_test_handle_regen_repo([self.tag_name], return_value=True,
+                                          expected_warn=expected_warn)
 
         self.resetMocks()
         # show warning message if arch is empty
         noarch_tag = copy.copy(self.TAG)
         noarch_tag.update({'arches': ''})
         self.session.getTag.return_value = noarch_tag
-        expected += "Warning: tag %s has an empty arch list" % noarch_tag['name'] + "\n"
-        self.__run_test_handle_regen_repo([self.tag_name], True, expected=expected)
+        expected_warn += "Tag %s has an empty arch list" % noarch_tag['name'] + "\n"
+        self.__run_test_handle_regen_repo([self.tag_name], return_value=True,
+                                          expected_warn=expected_warn)
 
     def test_handle_regen_repo_with_target_opt(self):
         """Test handle_regen_repo function with --target option"""
@@ -128,16 +133,17 @@ class TestRegenRepo(utils.CliTestCase):
         self.resetMocks()
 
         self.session.getBuildTarget.return_value = {'build_tag_name': self.tag_name}
-        self.__run_test_handle_regen_repo(arguments, True)
+        self.__run_test_handle_regen_repo(arguments, return_value=True)
 
     def test_handle_regen_repo_with_other_opts(self):
         """Test handle_regen_repo function with options"""
         # --nowait
-        self.__run_test_handle_regen_repo([self.tag_name, '--nowait'], None)
+        self.__run_test_handle_regen_repo([self.tag_name, '--nowait'], return_value=None)
         self.resetMocks()
 
         # --source && --debuginfo
-        self.__run_test_handle_regen_repo([self.tag_name, '--source', '--debuginfo'], True)
+        self.__run_test_handle_regen_repo([self.tag_name, '--source', '--debuginfo'],
+                                          return_value=True)
         self.session.newRepo.assert_called_with(self.tag_name, **{'debuginfo': True, 'src': True})
 
     def test_handle_regen_repo_errors(self):

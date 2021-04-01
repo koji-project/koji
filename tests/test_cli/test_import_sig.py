@@ -70,6 +70,7 @@ class TestImportSIG(utils.CliTestCase):
 %s: error: {message}
 """ % (self.progname, self.progname)
 
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji.rip_rpm_sighdr')
     @mock.patch('koji.get_sigpacket_key_id')
@@ -81,7 +82,7 @@ class TestImportSIG(utils.CliTestCase):
             get_header_fields_mock,
             get_sigpacket_key_id_mock,
             rip_rpm_sighdr_mock,
-            stdout):
+            stdout, stderr):
         """Test handle_import_sig function"""
         arguments = ['/path/to/bash', '/path/to/less', '/path/to/sed']
         options = mock.MagicMock()
@@ -176,9 +177,10 @@ class TestImportSIG(utils.CliTestCase):
                 expected += "Signature already imported: %s" % pkg + "\n"
             else:
                 sigRpm.append([{'sighash': self.md5sum('wrong-sig-case')}])
-                expected += "Warning: signature mismatch: %s" % pkg + "\n"
-                expected += "  The system already has a signature for this rpm with key %s" % fake_sigkey + "\n"
-                expected += "  The two signature headers are not the same" + "\n"
+                expected_warn = "signature mismatch: %s" % pkg + "\n"
+                expected_warn += "  The system already has a signature for this rpm with key %s" \
+                                 % fake_sigkey + "\n"
+                expected_warn += "  The two signature headers are not the same" + "\n"
 
         rinfo = copy.deepcopy(self.rpm_headers)
         for i, data in enumerate(rinfo):
@@ -194,6 +196,7 @@ class TestImportSIG(utils.CliTestCase):
         handle_import_sig(options, session, arguments)
 
         self.assert_console_message(stdout, expected)
+        self.assert_console_message(stderr, expected_warn)
 
         # Case 5, --test options test
         # result: everything works fine and addRPMSig/writeSignedRPM should

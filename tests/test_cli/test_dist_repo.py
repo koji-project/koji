@@ -80,17 +80,20 @@ via 'koji edit-tag -x distrepo.cancel_others=True'
     def tearDown(self):
         mock.patch.stopall()
 
-    def __run_test_handle_dist_repo(self, arguments, return_value=None, expected=''):
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    def __run_test_handle_dist_repo(self, arguments, stdout, stderr, return_value=None,
+                                    expected='', expected_warn=''):
         expected = expected + "Creating dist repo for tag " + self.tag_name + "\n"
-        with mock.patch('sys.stdout', new_callable=six.StringIO) as stdout:
-            rv = handle_dist_repo(self.options, self.session, arguments)
-            self.assertEqual(rv, return_value)
+        rv = handle_dist_repo(self.options, self.session, arguments)
+        self.assertEqual(rv, return_value)
         self.assert_console_message(stdout, expected)
+        self.assert_console_message(stderr, expected_warn)
         self.activate_session.assert_called_with(self.session, self.options)
 
     def test_handle_dist_repo(self):
         arguments = [self.tag_name, self.fake_key]
-        self.__run_test_handle_dist_repo(arguments, True)
+        self.__run_test_handle_dist_repo(arguments, return_value=True)
         self.watch_tasks.assert_called_with(
             self.session,
             [self.task_id],
@@ -99,7 +102,7 @@ via 'koji edit-tag -x distrepo.cancel_others=True'
 
     def test_handle_dist_repo_nowait(self):
         arguments = [self.tag_name, self.fake_key, '--nowait']
-        self.__run_test_handle_dist_repo(arguments, None)
+        self.__run_test_handle_dist_repo(arguments, return_value=None)
         self.activate_session.assert_called_with(self.session, self.options)
         self.watch_tasks.assert_not_called()
 
@@ -177,7 +180,7 @@ via 'koji edit-tag -x distrepo.cancel_others=True'
         self.session.uploadWrapper = lambda *args, **kwargs: print('uploadWrapper ...')
         expected = 'uploadWrapper ...\n\n'
         with mock.patch('os.path.exists', return_value=True):
-            self.__run_test_handle_dist_repo(arguments, True, expected)
+            self.__run_test_handle_dist_repo(arguments, return_value=True, expected=expected)
 
     def test_handle_dist_repo_with_multiarch_opt(self):
         arches = ['i386', 'x86_64', 'ppc', 'src']
@@ -185,10 +188,21 @@ via 'koji edit-tag -x distrepo.cancel_others=True'
         for a in arches:
             arguments += ['--arch', a]
 
-        expected = 'Warning: %s is not in the list of tag arches' % arches[0] + "\n"
-        expected += 'Warning: %s is not in the list of tag arches' % arches[2] + "\n"
-        expected += 'Warning: %s is not in the list of tag arches' % arches[3] + "\n"
-        self.__run_test_handle_dist_repo(arguments, True, expected)
+        expected_warn = '%s is not in the list of tag arches' % arches[0] + "\n"
+        expected_warn += '%s is not in the list of tag arches' % arches[2] + "\n"
+        expected_warn += '%s is not in the list of tag arches' % arches[3] + "\n"
+        self.__run_test_handle_dist_repo(arguments, return_value=True, expected_warn=expected_warn)
+
+    def test_handle_dist_repo_with_arch_tag_without_arch(self):
+        arches = ['i386', 'x86_64']
+        arguments = [self.tag_name, self.fake_key]
+        for a in arches:
+            arguments += ['--arch', a]
+        self.session.getTag.return_value = {'arches': '', 'id': 1, 'name': self.tag_name}
+        expected_warn = 'Tag tag_name has an empty arch list\n'
+        expected_warn += 'Tag tag_name has an empty arch list\n'
+
+        self.__run_test_handle_dist_repo(arguments, return_value=True, expected_warn=expected_warn)
 
     @mock.patch('os.path.exists')
     def test_handle_dist_repo_with_multilib_opt(self, path_mock):
@@ -210,7 +224,10 @@ via 'koji edit-tag -x distrepo.cancel_others=True'
         path_mock.return_value = True
         arches = [('x86_64', 'i686'), ('s390x', 's390'), ('ppc64', 'ppc')]
         for arch in arches:
-            expected = self.format_error_message(
+            expected = ''
+            if arch[0] not in self.TAG['arches']:
+                expected += '%s is not in the list of tag arches' % arch[0] + "\n"
+            expected += self.format_error_message(
                 'The multilib arch (%s) must be included' % arch[1])
             self.assert_system_exit(
                 handle_dist_repo,
@@ -224,7 +241,7 @@ via 'koji edit-tag -x distrepo.cancel_others=True'
         self.session.getTag.return_value.update({'arches': 'x86_64, i686'})
         expected = 'uploadWrapper ...\n\n'
         arguments += ['--arch', 'x86_64', '--arch', 'i686']
-        self.__run_test_handle_dist_repo(arguments, True, expected)
+        self.__run_test_handle_dist_repo(arguments, return_value=True, expected=expected)
 
     def test_handle_dist_repo_with_delta_rpms_opt(self):
         repos = ['test-repo1', 'test-repo2', '3']
@@ -248,7 +265,7 @@ via 'koji edit-tag -x distrepo.cancel_others=True'
             None,
             {'id': 2, 'name': 'test-repo2'},   # state is exprired repo
         ]
-        self.__run_test_handle_dist_repo(arguments, True)
+        self.__run_test_handle_dist_repo(arguments, return_value=True)
 
     def test_handle_dist_repo_help(self):
         """Test handle_dist_repo help message"""
