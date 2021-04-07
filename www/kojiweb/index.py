@@ -57,7 +57,7 @@ def _validate_arch(arch):
     elif _VALID_ARCH_RE.match(arch):
         return arch
     else:
-        raise koji.GenericError("Invalid arch: %r" % arch)
+        raise koji.GenericError("No such arch: %r" % arch)
 
 
 def _validate_name_or_id(value):
@@ -632,7 +632,7 @@ def taskinfo(environ, taskID):
     taskID = int(taskID)
     task = server.getTaskInfo(taskID, request=True)
     if not task:
-        raise koji.GenericError('invalid task ID: %s' % taskID)
+        raise koji.GenericError('No such task ID: %s' % taskID)
 
     values['title'] = koji.taskLabel(task) + ' | Task Info'
 
@@ -940,7 +940,7 @@ def packageinfo(environ, packageID, tagOrder='name', tagStart=None, buildOrder='
     packageID = _validate_name_or_id(packageID)
     package = server.getPackage(packageID)
     if package is None:
-        raise koji.GenericError('invalid package ID: %s' % packageID)
+        raise koji.GenericError('No such package ID: %s' % packageID)
 
     values['title'] = package['name'] + ' | Package Info'
 
@@ -1197,7 +1197,7 @@ def buildinfo(environ, buildID):
     try:
         build = server.getBuild(buildID, strict=True)
     except koji.GenericError:
-        raise koji.GenericError("Invalid build ID: %i" % buildID)
+        raise koji.GenericError("No such build ID: %i" % buildID)
 
     values['title'] = koji.buildLabel(build) + ' | Build Info'
 
@@ -1471,7 +1471,7 @@ def rpminfo(environ, rpmID, fileOrder='name', fileStart=None, buildrootOrder='-i
     try:
         rpm = server.getRPM(rpmID, strict=True)
     except koji.GenericError:
-        raise koji.GenericError('invalid RPM ID: %i' % rpmID)
+        raise koji.GenericError('No such RPM ID: %i' % rpmID)
 
     values['title'] = '%(name)s-%%s%(version)s-%(release)s.%(arch)s.rpm' % rpm + ' | RPM Info'
     epochStr = ''
@@ -1577,7 +1577,7 @@ def fileinfo(environ, filename, rpmID=None, archiveID=None):
         rpmID = int(rpmID)
         rpm = server.getRPM(rpmID)
         if not rpm:
-            raise koji.GenericError('invalid RPM ID: %i' % rpmID)
+            raise koji.GenericError('No such RPM ID: %i' % rpmID)
         file = server.getRPMFile(rpm['id'], filename)
         if not file:
             raise koji.GenericError('no file %s in RPM %i' % (filename, rpmID))
@@ -1586,7 +1586,7 @@ def fileinfo(environ, filename, rpmID=None, archiveID=None):
         archiveID = int(archiveID)
         archive = server.getArchive(archiveID)
         if not archive:
-            raise koji.GenericError('invalid archive ID: %i' % archiveID)
+            raise koji.GenericError('No such archive ID: %i' % archiveID)
         file = server.getArchiveFile(archive['id'], filename)
         if not file:
             raise koji.GenericError('no file %s in archive %i' % (filename, archiveID))
@@ -1656,7 +1656,7 @@ def hostinfo(environ, hostID=None, userID=None):
         hostID = _validate_name_or_id(hostID)
         host = server.getHost(hostID)
         if host is None:
-            raise koji.GenericError('invalid host ID: %s' % hostID)
+            raise koji.GenericError('No such host ID: %s' % hostID)
     elif userID:
         userID = int(userID)
         hosts = server.listHosts(userID=userID)
@@ -1664,7 +1664,7 @@ def hostinfo(environ, hostID=None, userID=None):
         if hosts:
             host = hosts[0]
         if host is None:
-            raise koji.GenericError('invalid host ID: %s' % userID)
+            raise koji.GenericError('No such host for user ID: %s' % userID)
     else:
         raise koji.GenericError('hostID or userID must be provided')
 
@@ -1767,8 +1767,9 @@ def channelinfo(environ, channelID):
 
     channelID = int(channelID)
     channel = server.getChannel(channelID)
+    print(channel)
     if channel is None:
-        raise koji.GenericError('invalid channel ID: %i' % channelID)
+        raise koji.GenericError('No such channel ID: %i' % channelID)
 
     values['title'] = channel['name'] + ' | Channel Info'
 
@@ -1936,7 +1937,7 @@ def buildtargetinfo(environ, targetID=None, name=None):
         target = server.getBuildTarget(name)
 
     if target is None:
-        raise koji.GenericError('invalid build target: %s' % (targetID or name))
+        raise koji.GenericError('No such build target: %s' % (targetID or name))
 
     values['title'] = target['name'] + ' | Build Target Info'
 
@@ -1962,7 +1963,7 @@ def buildtargetedit(environ, targetID):
 
     target = server.getBuildTarget(targetID)
     if target is None:
-        raise koji.GenericError('invalid build target: %s' % targetID)
+        raise koji.GenericError('No such build target: %s' % targetID)
 
     form = environ['koji.form']
 
@@ -1971,12 +1972,12 @@ def buildtargetedit(environ, targetID):
         buildTagID = int(form.getfirst('buildTag'))
         buildTag = server.getTag(buildTagID)
         if buildTag is None:
-            raise koji.GenericError('invalid tag ID: %i' % buildTagID)
+            raise koji.GenericError('No such tag ID: %i' % buildTagID)
 
         destTagID = int(form.getfirst('destTag'))
         destTag = server.getTag(destTagID)
         if destTag is None:
-            raise koji.GenericError('invalid tag ID: %i' % destTagID)
+            raise koji.GenericError('No such tag ID: %i' % destTagID)
 
         server.editBuildTarget(target['id'], name, buildTag['id'], destTag['id'])
 
@@ -2037,7 +2038,7 @@ def buildtargetdelete(environ, targetID):
 
     target = server.getBuildTarget(targetID)
     if target is None:
-        raise koji.GenericError('invalid build target: %i' % targetID)
+        raise koji.GenericError('No such build target: %i' % targetID)
 
     server.deleteBuildTarget(target['id'])
 
@@ -2468,7 +2469,7 @@ def search(environ, start=None, order=None):
         values['match'] = match
 
         if match not in ('glob', 'regexp', 'exact'):
-            raise koji.GenericError("Invalid match type: %r" % match)
+            raise koji.GenericError("No such match type: %r" % match)
 
         if not _VALID_SEARCH_RE.match(terms):
             values['error'] = 'Invalid search terms<br/>' + \

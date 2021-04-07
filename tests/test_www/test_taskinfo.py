@@ -155,7 +155,7 @@ class TestTaskInfo(unittest.TestCase):
         with self.assertRaises(koji.GenericError) as cm:
             webidx.taskinfo(self.environ, self.task_id)
         self.assertEqual(
-            str(cm.exception), 'invalid task ID: %s' % self.task_id)
+            str(cm.exception), 'No such task ID: %s' % self.task_id)
 
     def test_taskinfo_getTaskResult_exception(self):
         """Test taskinfo function with exception raised from getTaskResult"""
