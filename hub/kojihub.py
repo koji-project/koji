@@ -1146,13 +1146,18 @@ def readPackageList(tagID=None, userID=None, pkgID=None, event=None, inherit=Fal
     if tagID is None and userID is None and pkgID is None:
         raise koji.GenericError('tag,user, and/or pkg must be specified')
 
-    if userID and not with_owners:
+    if userID is not None and not with_owners:
         raise koji.GenericError("userID and with_owners=False can't be used together")
 
     tables = ['tag_packages']
-    fields = ['package.id', 'package.name', 'tag.id', 'tag.name', 'extra_arches',
-              'tag_packages.blocked']
-    aliases = ['package_id', 'package_name', 'tag_id', 'tag_name', 'extra_arches', 'blocked']
+    fields = [
+        ('package.id', 'package_id'),
+        ('package.name', 'package_name'),
+        ('tag.id', 'tag_id'),
+        ('tag.name', 'tag_name'),
+        ('extra_arches', 'extra_arches'),
+        ('tag_packages.blocked', 'blocked'),
+    ]
     joins = ['tag ON tag.id = tag_packages.tag_id',
              'package ON package.id = tag_packages.package_id']
     clauses = [eventCondition(event, table='tag_packages')]
@@ -1166,14 +1171,14 @@ def readPackageList(tagID=None, userID=None, pkgID=None, event=None, inherit=Fal
         else:
             clauses.append('package.name = %(pkgID)s')
     if with_owners:
-        fields += ['users.id', 'users.name']
-        aliases += ['owner_id', 'owner_name']
+        fields += [('users.id', 'owner_id'), ('users.name', 'owner_name')]
         joins += [
             'tag_package_owners ON tag_packages.tag_id = tag_package_owners.tag_id AND \
                                    tag_packages.package_id = tag_package_owners.package_id',
             'users ON users.id = tag_package_owners.owner'
         ]
         clauses.append(eventCondition(event, table='tag_package_owners'))
+    fields, aliases = zip(*fields)
     query = QueryProcessor(columns=fields, aliases=aliases, tables=tables, joins=joins,
                            clauses=clauses, values=locals())
 
@@ -1301,7 +1306,7 @@ def list_tags(build=None, package=None, perms=True, queryOpts=None, pattern=None
 
 
 def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None, owner=None,
-                     type=None, with_owners=True):
+                     type=None):
     """Returns a list of builds for specified tag
 
     :param int tag: tag ID
@@ -1312,15 +1317,10 @@ def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None,
     :param str owner: filter on user name
     :param str type: restrict the list to builds of the given type.  Currently the supported
                      types are 'maven', 'win', and 'image'.
-    :param bool with_owners: set to False for faster query (owner_id and owner_name will be
-                             missing in the result)
     :returns [dict]: list of buildinfo dicts
     """
     # build - id pkg_id version release epoch
     # tag_listing - id build_id tag_id
-
-    if owner and not with_owners:
-        raise koji.GenericError("owner and with_owners=False can't be used together")
 
     if not isinstance(latest, NUMERIC_TYPES):
         latest = bool(latest)
@@ -1343,6 +1343,7 @@ def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None,
               ('build.completion_time', 'completion_time'),
               ('build.start_time', 'start_time'),
               ('build.task_id', 'task_id'),
+              ('users.id', 'owner_id'), ('users.name', 'owner_name'),
               ('events.id', 'creation_event_id'), ('events.time', 'creation_time'),
               ('volume.id', 'volume_id'), ('volume.name', 'volume_name'),
               ('package.id', 'package_id'), ('package.name', 'package_name'),
@@ -1355,10 +1356,8 @@ def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None,
         'events ON events.id = build.create_event',
         'package ON package.id = build.pkg_id',
         'volume ON volume.id = build.volume_id',
+        'users ON users.id = build.owner',
     ]
-    if with_owners:
-        fields += [('users.id', 'owner_id'), ('users.name', 'owner_name')]
-        joins.append('users ON users.id = build.owner')
 
     if type is None:
         pass
