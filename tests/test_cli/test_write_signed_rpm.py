@@ -121,6 +121,15 @@ class TestWriteSignedRPM(utils.CliTestCase):
         arguments = [fake_sigkey]
         options = mock.MagicMock()
         session = mock.MagicMock()
+        mcall = session.multicall.return_value.__enter__.return_value
+
+        def vm(result):
+            m = koji.VirtualCall('mcall_method', [], {})
+            if isinstance(result, dict) and result.get('faultCode'):
+                m._result = result
+            else:
+                m._result = (result,)
+            return m
 
         def get_expect_data(rpm_data):
             expected = ''
@@ -135,36 +144,38 @@ class TestWriteSignedRPM(utils.CliTestCase):
         # result: write sigkey to specified RPMs
         rpm_data = [GET_RPM_RESULTS[0], GET_RPM_RESULTS[3]]
 
-        session.getRPM.side_effect = [
-            rpm_data[0],            # bash-4.4.12-5.fc26.src
-            koji.GenericError       # bash-4.4.12-5.fc26
+        mcall.getRPM.side_effect = [
+            vm(rpm_data[0]),            # bash-4.4.12-5.fc26.src
+            vm(None),                   # bash-4.4.12-5.fc26
         ]
-        session.getBuild.return_value = {
+        mcall.getBuild.return_value = vm({
             'package_name': 'bash',
             'id': 1,
             'version': '4.4.12',
             'nvr': 'bash-4.4.12-5.fc26',
             'name': 'bash',
             'release': '5.fc26'
-        }
-        session.listRPMs.return_value = [rpm_data[1]]   # bash-4.4.12-5.fc26
+        })
+        mcall.listRPMs.return_value = vm([rpm_data[1]])   # bash-4.4.12-5.fc26
         args = arguments + ['bash-4.4.12-5.fc26.src', 'bash-4.4.12-5.fc26']
         expect_msg, expect_calls = get_expect_data(rpm_data)
 
         handle_write_signed_rpm(options, session, args)
         self.assert_console_message(stdout, expect_msg)
-        session.writeSignedRPM.assert_has_calls(expect_calls)
+        mcall.writeSignedRPM.assert_has_calls(expect_calls)
         session.queryRPMSigs.assert_not_called()
 
         # Case 2, with --all option
         # result: write sigkey to all RPMS
         session.queryRPMSigs.return_value = QUERY_RPM_RESULTS
-        session.getRPM.side_effect = GET_RPM_RESULTS
+        #session.getRPM.side_effect = GET_RPM_RESULTS
+        mcall.getRPM.side_effect = [vm(x) for x in GET_RPM_RESULTS]
+        mcall.writeSignedRPM.reset_mock()
         expect_msg, expect_calls = get_expect_data(GET_RPM_RESULTS)
 
         handle_write_signed_rpm(options, session, arguments + ['--all'])
         self.assert_console_message(stdout, expect_msg)
-        session.writeSignedRPM.assert_has_calls(expect_calls)
+        mcall.writeSignedRPM.assert_has_calls(expect_calls)
         session.queryRPMSigs.assert_called_with(sigkey=fake_sigkey)
 
         session.queryRPMSigs.reset_mock()
@@ -176,20 +187,23 @@ class TestWriteSignedRPM(utils.CliTestCase):
             GET_RPM_RESULTS[3]]     # build_id = 1
         session.listRPMs.return_value = rpm_data
         expect_msg, expect_calls = get_expect_data(rpm_data)
+        session.writeSignedRPM.reset_mock()
 
         handle_write_signed_rpm(options, session, arguments + ['--buildid', '1'])
         self.assert_console_message(stdout, expect_msg)
         session.listRPMs.assert_called_with(1)
         session.queryRPMSigs.assert_not_called()
-        session.writeSignedRPM.assert_has_calls(expect_calls)
+        mcall.writeSignedRPM.assert_has_calls(expect_calls)
 
         session.listRPM.reset_mock()
         session.writeSignedRPM.reset_mock()
 
         # Case 4, RPM not exist
         # result: raise koji.GenericError
-        session.getRPM.side_effect = koji.GenericError('fake-get-rpm-error')
-        session.getBuild.return_value = None
+        mcall.writeSignedRPM.reset_mock()
+        mcall.getRPM.side_effect = None
+        mcall.getRPM.return_value = vm(None)
+        mcall.getBuild.return_value = vm({'faultCode': 1000, 'faultString': 'x'})
 
         args = arguments + ['gawk-4.1.4-3.fc26.x86_64']
         with self.assertRaises(koji.GenericError) as cm:
@@ -200,7 +214,7 @@ class TestWriteSignedRPM(utils.CliTestCase):
 
         session.listRPM.assert_not_called()
         session.queryRPMSigs.assert_not_called()
-        session.writeSignedRPM.assert_not_called()
+        mcall.writeSignedRPM.assert_not_called()
 
     def test_handle_write_signed_rpm_argument_test(self):
         """Test handle_write_signed_rpm function without arguments"""
