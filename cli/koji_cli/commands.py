@@ -2888,7 +2888,11 @@ def anon_handle_list_hosts(goptions, session, args):
     # pull in the last update using multicall to speed it up a bit
     session.multicall = True
     for host in hosts:
-        session.getLastHostUpdate(host['id'], ts=True)
+        try:
+            session.getLastHostUpdate(host['id'], ts=True)
+        except koji.ParameterError:
+            # Hubs prior to v1.25.0 do not have a "ts" parameter for getLastHostUpdate
+            session.getLastHostUpdate(host['id'])
     updateList = session.multiCall()
 
     for host, [update] in zip(hosts, updateList):
@@ -3359,7 +3363,11 @@ def anon_handle_hostinfo(goptions, session, args):
             print("Comment:")
         print("Enabled: %s" % (info['enabled'] and 'yes' or 'no'))
         print("Ready: %s" % (info['ready'] and 'yes' or 'no'))
-        update = session.getLastHostUpdate(info['id'], ts=True)
+        try:
+            update = session.getLastHostUpdate(info['id'], ts=True)
+        except koji.ParameterError:
+            # Hubs prior to v1.25.0 do not have a "ts" parameter for getLastHostUpdate
+            update = session.getLastHostUpdate(info['id'])
         if update is None:
             update = "never"
         else:
