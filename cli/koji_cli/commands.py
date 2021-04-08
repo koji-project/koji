@@ -2885,17 +2885,21 @@ def anon_handle_list_hosts(goptions, session, args):
         else:
             return ''
 
-    # pull in the last update using multicall to speed it up a bit
-    session.multicall = True
-    for host in hosts:
-        try:
-            session.getLastHostUpdate(host['id'], ts=True)
-        except koji.ParameterError:
-            # Hubs prior to v1.25.0 do not have a "ts" parameter for getLastHostUpdate
-            session.getLastHostUpdate(host['id'])
-    updateList = session.multiCall()
 
-    for host, [update] in zip(hosts, updateList):
+    try:
+        first = session.getLastHostUpdate(hosts[0]['id'], ts=True)
+        opts = {'ts': True}
+    except koji.ParameterError:
+        # Hubs prior to v1.25.0 do not have a "ts" parameter for getLastHostUpdate
+        first = session.getLastHostUpdate(hosts[0]['id'])
+        opts = {}
+
+    # pull in the last update using multicall to speed it up a bit
+    with session.multicall() as m:
+        result = [m.getLastHostUpdate(host['id'], **opts) for host in hosts[1:]]
+    updateList = [first] + [x.result for x in result]
+
+    for host, update in zip(hosts, updateList):
         if update is None:
             host['update'] = '-'
         else:
