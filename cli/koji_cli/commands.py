@@ -6760,14 +6760,14 @@ def handle_untag_build(goptions, session, args):
     if options.all:
         builds = []
         for pkg in args[1:]:
-            builds.extend(session.listTagged(args[0], package=pkg, with_owners=False))
+            builds.extend(session.listTagged(args[0], package=pkg))
     elif options.non_latest:
         if options.force and len(args) == 1:
-            tagged = session.listTagged(args[0], with_owners=False)
+            tagged = session.listTagged(args[0])
         else:
             tagged = []
             for pkg in args[1:]:
-                tagged.extend(session.listTagged(args[0], package=pkg, with_owners=False))
+                tagged.extend(session.listTagged(args[0], package=pkg))
         # listTagged orders entries latest first
         seen_pkg = {}
         builds = []
@@ -6785,7 +6785,7 @@ def handle_untag_build(goptions, session, args):
         tagged = []
         with session.multicall() as m:
             for pkg in pkgs:
-                tagged.append(m.listTagged(args[0], package=pkg, with_owners=False))
+                tagged.append(m.listTagged(args[0], package=pkg))
         # flatten
         tagged = list(itertools.chain(*[t.result for t in tagged]))
         idx = dict([(b['nvr'], b) for b in tagged])

@@ -118,8 +118,7 @@ def checkForBuilds(session, tag, builds, event, latest=False):
         if latest:
             tagged_list = session.getLatestBuilds(tag, event=event, package=build['name'])
         else:
-            tagged_list = session.listTagged(tag, event=event, package=build['name'],
-                                             inherit=True, with_owners=False)
+            tagged_list = session.listTagged(tag, event=event, package=build['name'], inherit=True)
         for tagged in tagged_list:
             if tagged['version'] == build['version'] and tagged['release'] == build['release']:
                 break

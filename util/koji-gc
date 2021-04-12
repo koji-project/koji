@@ -626,7 +626,7 @@ def handle_delete(just_salvage=False):
     """
     print("Getting list of builds in trash...")
     trashcan_tag = options.trashcan_tag
-    trash = sorted([(b['nvr'], b) for b in session.listTagged(trashcan_tag, with_owners=False)])
+    trash = sorted([(b['nvr'], b) for b in session.listTagged(trashcan_tag)])
     print("...got %i builds" % len(trash))
     # XXX - it would be better if there were more appropriate server calls for this
     grace_period = options.grace_period
