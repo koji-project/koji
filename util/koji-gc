@@ -119,6 +119,8 @@ def get_options():
     # List of values read from config file to update default parser values
     cfgmap = [
         # name, alias, type
+        ['test', None, 'boolean'],
+        ['debug', None, 'boolean'],
         ['keytab', None, 'string'],
         ['principal', None, 'string'],
         ['runas', None, 'string'],
@@ -133,15 +135,20 @@ def get_options():
         ['smtp_user', None, 'string'],
         ['smtp_pass', None, 'string'],
         ['from_addr', None, 'string'],
-        ['cc_addr', None, 'string'],
-        ['bcc_addr', None, 'string'],
+        ['cc_addr', None, 'list'],
+        ['bcc_addr', None, 'list'],
         ['email_template', None, 'string'],
         ['email_domain', None, 'string'],
         ['mail', None, 'boolean'],
         ['delay', None, 'string'],
         ['unprotected_keys', None, 'string'],
+        ['tag_filter', None, 'list'],
+        ['ignore_tags', None, 'list'],
+        ['pkg_filter', None, 'list'],
+        ['bypass_locks', None, 'list'],
         ['grace_period', None, 'string'],
         ['trashcan_tag', None, 'string'],
+        ['purge', None, 'boolean'],
         ['no_ssl_verify', None, 'boolean'],
         ['timeout', None, 'integer'],
         ['lock_file', None, 'string'],
@@ -157,12 +164,13 @@ def get_options():
                 setattr(defaults, name, config.getint(*alias))
             elif type == 'boolean':
                 setattr(defaults, name, config.getboolean(*alias))
+            elif type == 'list':
+                val = config.get(*alias)
+                if val is not None:
+                    val = val.split(',')
+                setattr(defaults, name, val)
             else:
                 setattr(defaults, name, config.get(*alias))
-    if config.has_option('main', 'cc_addr'):
-        setattr(defaults, 'cc_addr', config.get('main', 'cc_addr').split(','))
-    if config.has_option('main', 'bcc_addr'):
-        setattr(defaults, 'bcc_addr', config.get('main', 'bcc_addr').split(','))
     # parse again with defaults
     (options, args) = parser.parse_args(values=defaults)
     options.config = config
