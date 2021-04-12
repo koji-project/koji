@@ -26,7 +26,8 @@ class TestBuildinfo(utils.CliTestCase):
         time.tzset()
         self.taskinfo = {'arch': 'noarch',
                          'id': 8,
-                         'method': 'build'}
+                         'method': 'build',
+                         'request': ['src', 'target', 'opts']}
         self.buildinfo = {'build_id': 1,
                           'id': 1,
                           'name': 'test-build',
@@ -60,7 +61,7 @@ class TestBuildinfo(utils.CliTestCase):
 State: COMPLETE
 Built by: kojiadmin
 Volume: DEFAULT
-Task: 8 build (noarch)
+Task: 8 build (target, src)
 Finished: Thu, 04 Mar 2021 14:45:40 UTC
 Tags: 
 """

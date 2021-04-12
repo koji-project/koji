@@ -121,7 +121,7 @@ class TestParseTaskParams(utils.CliTestCase):
                     'id': 1,
                     'method': 'wrapperRPM',
                     'arch': 'x86_64',
-                    'request': [1, {'name': target}, self.build_templ]
+                    'request': [1, {'name': target}, self.build_templ, 'task', 'opts']
                   },
                   {'wrapRPM-test': True}]
         expect = ["Spec File URL: %s" % params[0]]

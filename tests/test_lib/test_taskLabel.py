@@ -149,6 +149,17 @@ class TestTaskLabel(unittest.TestCase):
                  'request': [123, {'name': 'hostname'}],
                 }, 'restartVerify (hostname)'
             ],
+            [
+                {'method': 'vmExec', 'arch': 'x86_64',
+                 'request': ['name', 'task_info', 'opts'],
+                 }, 'vmExec (name)'
+            ],
+            [
+                {'method': 'winbuild', 'arch': 'x86_64',
+                 'request': ['name', 'source_url', 'target', 'opts'],
+                 }, 'winbuild (target, :source_url)'
+            ],
+
         ]
 
         for input, output in test_data:
