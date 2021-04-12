@@ -2885,7 +2885,6 @@ def anon_handle_list_hosts(goptions, session, args):
         else:
             return ''
 
-
     try:
         first = session.getLastHostUpdate(hosts[0]['id'], ts=True)
         opts = {'ts': True}
