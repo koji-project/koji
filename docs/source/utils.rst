@@ -168,6 +168,7 @@ comments.
       # stuff to protect
       # note that tags with master lock engaged are already protected
       tag *-updates :: keep
+      hastag no-gc :: skip
       age < 1 day :: skip
       sig fedora-gold :: skip
       sig fedora-test && age < 12 weeks :: keep
