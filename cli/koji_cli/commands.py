@@ -352,8 +352,12 @@ def handle_add_pkg(goptions, session, args):
     if dsttag is None:
         print("No such tag: %s" % tag)
         sys.exit(1)
-    pkglist = dict([(p['package_name'], p['package_id'])
-                    for p in session.listPackages(tagID=dsttag['id'], with_owners=False)])
+    try:
+        pkglist = session.listPackages(tagID=dsttag['id'], with_owners=False)
+    except koji.ParameterError:
+        # performance option added in 1.25
+        pkglist = session.listPackages(tagID=dsttag['id'])
+    pkglist = dict([(p['package_name'], p['package_id']) for p in pkglist])
     to_add = []
     for package in args[1:]:
         package_id = pkglist.get(package, None)
@@ -387,9 +391,12 @@ def handle_block_pkg(goptions, session, args):
     dsttag = session.getTag(tag)
     if dsttag is None:
         error("No such tag: %s" % tag)
-    pkglist = dict([(p['package_name'], p['package_id'])
-                    for p in session.listPackages(tagID=dsttag['id'], inherited=True,
-                                                  with_owners=False)])
+    try:
+        pkglist = session.listPackages(tagID=dsttag['id'], inherited=True, with_owners=False)
+    except koji.ParameterError:
+        # performance option added in 1.25
+        pkglist = session.listPackages(tagID=dsttag['id'], inherited=True)
+    pkglist = dict([(p['package_name'], p['package_id']) for p in pkglist])
     ret = 0
     for package in args[1:]:
         package_id = pkglist.get(package, None)
@@ -425,8 +432,12 @@ def handle_remove_pkg(goptions, session, args):
     dsttag = session.getTag(tag)
     if dsttag is None:
         error("No such tag: %s" % tag)
-    pkglist = dict([(p['package_name'], p['package_id'])
-                    for p in session.listPackages(tagID=dsttag['id'], with_owners=False)])
+    try:
+        pkglist = session.listPackages(tagID=dsttag['id'], with_owners=False)
+    except koji.ParameterError:
+        # performance option added in 1.25
+        pkglist = session.listPackages(tagID=dsttag['id'])
+    pkglist = dict([(p['package_name'], p['package_id']) for p in pkglist])
     ret = 0
     for package in args[1:]:
         package_id = pkglist.get(package, None)
