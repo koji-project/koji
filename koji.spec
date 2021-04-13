@@ -115,6 +115,8 @@ BuildRequires: python2-devel
 %else
 BuildRequires: python-devel
 %endif
+BuildRequires: python2-pip
+BuildRequires: python2-wheel
 %if 0%{?fedora} || 0%{?rhel} >= 8
 Requires: python2-rpm
 %else
@@ -134,6 +136,8 @@ desc
 Summary: Build system tools python library
 %{?python_provide:%python_provide python%{python3_pkgversion}-%{name}}
 BuildRequires: python%{python3_pkgversion}-devel
+BuildRequires: python3-pip
+BuildRequires: python3-wheel
 %if 0%{?fedora} || 0%{?rhel} >= 8
 Requires: python%{python3_pkgversion}-rpm
 %else
@@ -466,12 +470,13 @@ done
 rm -rf $RPM_BUILD_ROOT
 
 %files
-%{_bindir}/*
 %config(noreplace) /etc/koji.conf
 %dir /etc/koji.conf.d
 %doc docs Authors COPYING LGPL
 
 %if 0%{py2_support}
+%{_bindir}/*
+%{_sbindir}/*
 %files -n python2-%{name}
 %{python2_sitelib}/%{name}
 %{python2_sitelib}/%{name}-%{version}.*-info
@@ -479,6 +484,7 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %if 0%{py3_support}
+%{_bindir}/*
 %files -n python%{python3_pkgversion}-koji
 %{python3_sitelib}/%{name}
 %{python3_sitelib}/%{name}-%{version}.*-info
