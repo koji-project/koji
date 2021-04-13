@@ -2756,7 +2756,7 @@ def dist_repo_init(tag, keys, task_opts):
     koji.plugin.run_callbacks('postRepoInit', tag=tinfo, with_src=False,
                               with_debuginfo=False, event=event, repo_id=repo_id,
                               dist=True, keys=keys, arches=arches, task_opts=task_opts,
-                              repodir=repodir, with_reparate_src=False)
+                              repodir=repodir, with_separate_src=False)
     return repo_id, event
 
 
