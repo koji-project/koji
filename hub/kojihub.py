@@ -1343,7 +1343,8 @@ def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None,
               ('volume.id', 'volume_id'), ('volume.name', 'volume_name'),
               ('package.id', 'package_id'), ('package.name', 'package_name'),
               ('package.name', 'name'),
-              ("package.name || '-' || build.version || '-' || build.release", 'nvr')]
+              ("package.name || '-' || build.version || '-' || build.release", 'nvr'),
+              ('tag_listing.create_event', 'create_event')]
     joins = [
         'tag ON tag.id = tag_listing.tag_id',
         'build ON build.id = tag_listing.build_id',
@@ -1385,7 +1386,7 @@ def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None,
         clauses.append('package.name = %(package)s')
     if owner:
         clauses.append('users.name = %(owner)s')
-    queryOpts = {'order': '-tag_listing.create_event'}  # latest first
+    queryOpts = {'order': '-create_event'}  # latest first
     query = QueryProcessor(columns=[x[0] for x in fields], aliases=[x[1] for x in fields],
                            tables=tables, joins=joins, clauses=clauses, values=locals(),
                            opts=queryOpts)
