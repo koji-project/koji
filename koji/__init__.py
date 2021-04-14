@@ -2274,17 +2274,13 @@ def is_conn_error(e):
     # these values, this is a connection error.
     if getattr(e, 'errno', None) in (errno.ECONNRESET, errno.ECONNABORTED, errno.EPIPE):
         return True
-    if isinstance(e, six.moves.http_client.BadStatusLine):
+    if 'BadStatusLine' in str(e):
+        # we see errors like this in keep alive timeout races
+        # ConnectionError(ProtocolError('Connection aborted.', BadStatusLine("''",)),)
         return True
     try:
         if isinstance(e, requests.exceptions.ConnectionError):
-            # we see errors like this in keep alive timeout races
-            # ConnectionError(ProtocolError('Connection aborted.', BadStatusLine("''",)),)
             e2 = getattr(e, 'args', [None])[0]
-            if isinstance(e2, requests.packages.urllib3.exceptions.ProtocolError):
-                e3 = getattr(e2, 'args', [None, None])[1]
-                if isinstance(e3, six.moves.http_client.BadStatusLine):
-                    return True
             # same check as unwrapped socket error
             if getattr(e2, 'errno', None) in (errno.ECONNRESET, errno.ECONNABORTED, errno.EPIPE):
                 return True
