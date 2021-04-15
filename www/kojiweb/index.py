@@ -277,10 +277,10 @@ def login(environ, page=None):
     # This matches the original behaviour
     webauth = options['WebAuth']
     if not webauth:
-        if options['WebCert']:
-            webauth = 'ssl'
         if options['WebPrincipal']:
             webauth = 'kerberos'
+        if options['WebCert']:
+            webauth = 'ssl'
 
     if not webauth:
         raise koji.AuthError(
