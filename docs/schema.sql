@@ -454,7 +454,8 @@ CREATE TABLE repo (
 	create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
 	tag_id INTEGER NOT NULL REFERENCES tag(id),
 	state INTEGER,
-	dist BOOLEAN DEFAULT 'false'
+	dist BOOLEAN DEFAULT 'false',
+	task_id INTEGER NULL REFERENCES task(id)
 ) WITHOUT OIDS;
 
 -- external yum repos

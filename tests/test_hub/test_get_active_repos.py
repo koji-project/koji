@@ -32,9 +32,10 @@ class TestGetActiveRepos(unittest.TestCase):
         # make sure the following does not error
         str(query)
         self.assertEqual(query.tables, ['repo'])
-        columns = ['repo.id', 'repo.state', 'repo.create_event',
-                   'EXTRACT(EPOCH FROM events.time)', 'repo.tag_id',
-                   'repo.dist','tag.name']
+        columns = ['repo.id', 'repo.state', 'repo.task_id', 'repo.create_event',
+                   'EXTRACT(EPOCH FROM events.time)', 'repo.tag_id', 'repo.dist', 'tag.name']
         self.assertEqual(set(query.columns), set(columns))
         self.assertEqual(query.clauses, ['repo.state != %(st_deleted)s'])
+        self.assertEqual(query.joins, ['tag ON repo.tag_id=tag.id',
+                                       'events ON repo.create_event = events.id'])
         self.assertEqual(query.values['st_deleted'], koji.REPO_DELETED)

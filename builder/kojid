@@ -5374,7 +5374,7 @@ class NewRepoTask(BaseTaskHandler):
         # generate debuginfo repo if requested or if specified in sidetag's extra
         if debuginfo or tinfo['extra'].get('with_debuginfo'):
             kwargs['with_debuginfo'] = True
-        repo_id, event_id = self.session.host.repoInit(tinfo['id'], **kwargs)
+        repo_id, event_id = self.session.host.repoInit(tinfo['id'], task_id=self.id, **kwargs)
         path = koji.pathinfo.repo(repo_id, tinfo['name'])
         if not os.path.isdir(path):
             raise koji.GenericError("Repo directory missing: %s" % path)

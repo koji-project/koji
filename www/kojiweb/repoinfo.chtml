@@ -9,6 +9,9 @@
 <table>
   <tr><th>ID</th><td>$repo.id</td><th></tr>
   <tr><th>Tag</th><td><a href="taginfo?tagID=$repo.tag_id">$repo.tag_name</a></td></tr>
+  #if $repo.task_id
+  <tr><th>Task ID</th><td><a href="taskinfo?taskID=$repo.task_id">$repo.task_id</a></td></tr>
+  #end if
   #set $state = $util.repoState($repo.state)
   <tr><th>State</th><td class="repo$state">$state</td></tr>
   <tr><th>Event</th><td>$repo.create_event ($util.formatTimeLong($repo.create_ts))</td></tr>

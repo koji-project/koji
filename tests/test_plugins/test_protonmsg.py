@@ -186,13 +186,15 @@ extra_limit = 2048
 
     def test_prep_repo_init(self):
         protonmsg.prep_repo_init('postRepoInit', tag={'name': 'test-tag',
-            'arches': set(['x86_64', 'i386'])}, repo_id=1234)
-        self.assertMsg('repo.init', type='RepoInit', tag='test-tag', repo_id=1234)
+            'arches': set(['x86_64', 'i386'])}, repo_id=1234, task_id=25)
+        self.assertMsg('repo.init', type='RepoInit', tag='test-tag', repo_id=1234, task_id=25)
 
     def test_prep_repo_done(self):
-        protonmsg.prep_repo_done('postRepoDone', repo={'tag_name': 'test-tag', 'id': 1234},
+        protonmsg.prep_repo_done('postRepoDone',
+                                 repo={'tag_name': 'test-tag', 'id': 1234, 'task_id': 25},
                                  expire=False)
-        self.assertMsg('repo.done', type='RepoDone', tag='test-tag', repo_id=1234, expire=False)
+        self.assertMsg('repo.done', type='RepoDone', tag='test-tag', repo_id=1234,
+                       task_id=25, expire=False)
 
     @patch('protonmsg.Container')
     def test_send_queued_msgs_none(self, Container):
