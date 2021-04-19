@@ -106,12 +106,7 @@ class DecodeUTF8(Cheetah.Filters.Filter):
 class XHTMLFilter(DecodeUTF8):
     def filter(self, *args, **kw):
         result = super(XHTMLFilter, self).filter(*args, **kw)
-        result = result.replace('&', '&amp;')
-        result = result.replace('&amp;amp;', '&amp;')
-        result = result.replace('&amp;nbsp;', '&nbsp;')
-        result = result.replace('&amp;lt;', '&lt;')
-        result = result.replace('&amp;gt;', '&gt;')
-        return result
+        return re.sub(r'&(?![a-zA-Z0-9#]+;)', '&amp;', result)
 
 
 TEMPLATES = {}
@@ -523,6 +518,17 @@ def formatThousands(value):
     return '{:,}'.format(value)
 
 
+def formatLink(url):
+    """Turn a string into an HTML link if it looks vaguely like a URL.
+    If it doesn't, just return it properly escaped."""
+    url = escapeHTML(url.strip())
+    m = re.match(r'(https?|ssh|git|obs)://.*', url, flags=re.IGNORECASE)
+    if m:
+        return '<a href="{}">{}</a>'.format(url, url)
+
+    return url
+
+
 def rowToggle(template):
     """If the value of template._rowNum is even, return 'row-even';
     if it is odd, return 'row-odd'.  Increment the value before checking it.
@@ -583,14 +589,18 @@ def escapeHTML(value):
     < : &lt;
     > : &gt;
     & : &amp;
+    " : &quot;
+    ' : &#x27;
     """
     if not value:
         return value
 
     value = koji.fixEncoding(value)
-    return value.replace('&', '&amp;').\
+    return re.sub(r'&(?![a-zA-Z0-9#]+;)', '&amp;', value).\
         replace('<', '&lt;').\
-        replace('>', '&gt;')
+        replace('>', '&gt;').\
+        replace('"', '&quot;').\
+        replace("'", '&#x27;')
 
 
 def authToken(template, first=False, form=False):
