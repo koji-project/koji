@@ -1222,9 +1222,9 @@ def handle_import(goptions, session, args):
             if prev['payloadhash'] == koji.hex_string(data['sigmd5']):
                 print(_("RPM already imported: %s") % path)
             else:
-                print(_("WARNING: md5sum mismatch for %s") % path)
-                print(_("  A different rpm with the same name has already been imported"))
-                print(_("  Existing sigmd5 is %r, your import has %r") % (
+                warn("md5sum mismatch for %s" % path)
+                warn("  A different rpm with the same name has already been imported")
+                warn("  Existing sigmd5 is %r, your import has %r" % (
                     prev['payloadhash'], koji.hex_string(data['sigmd5'])))
             print(_("Skipping import"))
             return
@@ -1510,9 +1510,9 @@ def handle_import_sig(goptions, session, args):
                 print(_("Signature already imported: %s") % path)
                 continue
             else:
-                print(_("Warning: signature mismatch: %s") % path)
-                print(_("  The system already has a signature for this rpm with key %s") % sigkey)
-                print(_("  The two signature headers are not the same"))
+                warn("signature mismatch: %s" % path)
+                warn("  The system already has a signature for this rpm with key %s" % sigkey)
+                warn("  The two signature headers are not the same")
                 continue
         print(_("Importing signature [key %s] from %s...") % (sigkey, path))
         if not options.test:
@@ -1914,7 +1914,7 @@ def handle_prune_signed_copies(goptions, session, args):
                     except OSError as e:
                         print("Error removing %s: %s" % (signedpath, e))
             elif len(sigdirs) > 1:
-                print("Warning: more than one signature dir for %s: %r" % (sigkey, sigdirs))
+                warn("More than one signature dir for %s: %r" % (sigkey, sigdirs))
         if build_files:
             total_files += build_files
             total_space += build_space
@@ -4302,8 +4302,7 @@ def _print_histline(entry, **kwargs):
         if event_id != other[0]:
             bad_edit = "non-matching"
         if bad_edit:
-            print("Warning: unusual edit at event %i in table %s (%s)" %
-                  (event_id, table, bad_edit))
+            warn("Unusual edit at event %i in table %s (%s)" % (event_id, table, bad_edit))
             # we'll simply treat them as separate events
             pprint.pprint(entry)
             pprint.pprint(edit)
@@ -7024,7 +7023,7 @@ def anon_handle_download_logs(options, session, args):
                 write_fail_log(task_log_dir, task_id)
                 count += 1
         elif state not in ['CLOSED', 'CANCELED']:
-            warn(_("Warning: task %s is %s\n") % (task_id, state))
+            warn(_("Task %s is %s\n") % (task_id, state))
 
         for log_filename, log_volume in logs:
             download_log(task_log_dir, task_id, log_filename, volume=log_volume)
@@ -7206,13 +7205,12 @@ def anon_handle_wait_repo(options, session, args):
     for nvr in builds:
         data = session.getLatestBuilds(tag_id, package=nvr["name"])
         if len(data) == 0:
-            print("Warning: package %s is not in tag %s" % (nvr["name"], tag))
+            warn("Package %s is not in tag %s" % (nvr["name"], tag))
         else:
             present_nvr = [x["nvr"] for x in data][0]
             if present_nvr != "%s-%s-%s" % (nvr["name"], nvr["version"], nvr["release"]):
-                print(
-                    "Warning: nvr %s-%s-%s is not current in tag %s\n  latest build in %s is %s" %
-                    (nvr["name"], nvr["version"], nvr["release"], tag, tag, present_nvr))
+                warn("nvr %s-%s-%s is not current in tag %s\n  latest build in %s is %s" %
+                     (nvr["name"], nvr["version"], nvr["release"], tag, tag, present_nvr))
 
     last_repo = None
     repo = session.getRepo(tag_id)
@@ -7284,9 +7282,9 @@ def handle_regen_repo(options, session, args):
         tag = info['name']
         targets = session.getBuildTargets(buildTagID=info['id'])
         if not targets:
-            print("Warning: %s is not a build tag" % tag)
+            warn("%s is not a build tag" % tag)
     if not info['arches']:
-        print("Warning: tag %s has an empty arch list" % info['name'])
+        warn("Tag %s has an empty arch list" % info['name'])
     if suboptions.debuginfo:
         repo_opts['debuginfo'] = True
     if suboptions.source:
@@ -7397,8 +7395,10 @@ def handle_dist_repo(options, session, args):
             parser.error(_('No arches given and no arches associated with tag'))
     else:
         for a in task_opts.arch:
-            if not taginfo['arches'] or a not in taginfo['arches']:
-                print(_('Warning: %s is not in the list of tag arches') % a)
+            if not taginfo['arches']:
+                warn('Tag %s has an empty arch list' % taginfo['name'])
+            elif a not in taginfo['arches']:
+                warn('%s is not in the list of tag arches' % a)
     if task_opts.multilib:
         if not os.path.exists(task_opts.multilib):
             parser.error(_('could not find %s') % task_opts.multilib)

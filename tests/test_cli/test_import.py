@@ -129,18 +129,22 @@ class TestImport(utils.CliTestCase):
         session.getRPM.reset_mock()
         session.importRPM.reset_mock()
 
-    def __skip_import_test(self, options, session, arguments, **kwargs):
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
+    @mock.patch('koji_cli.commands.activate_session')
+    def __skip_import_test(self, options, session, arguments, activate_session_mock,
+                           stderr, stdout,  **kwargs):
         expected = kwargs.get('expected', None)
+        expected_warn = kwargs.get('expected_warn', None)
         rpm_header = kwargs.get('rpm_header', {})
 
         with mock.patch('koji.get_header_fields') as get_header_fields_mock:
-            with mock.patch('koji_cli.commands.activate_session') as activate_session_mock:
-                with mock.patch('sys.stdout', new_callable=six.StringIO) as stdout:
-                    get_header_fields_mock.return_value = rpm_header
-                    handle_import(options, session, arguments)
+            get_header_fields_mock.return_value = rpm_header
+            handle_import(options, session, arguments)
 
         # check output message
         self.assert_console_message(stdout, expected)
+        self.assert_console_message(stderr, expected_warn)
 
         # check mock calls
         activate_session_mock.assert_called_with(session, options)
@@ -271,14 +275,14 @@ class TestImport(utils.CliTestCase):
         # Case 2: build exists and status is 'COMPLETE', md5 mismatched
         # reseult: import skipped
         session.getRPM.return_value['payloadhash'] = false_md5
-        expected = "WARNING: md5sum mismatch for %s\n" % arguments[0]
-        expected += "  A different rpm with the same name has already been imported\n"
-        expected += "  Existing sigmd5 is %r, your import has %r\n" % (false_md5, self.md5)
-        expected += "Skipping import\n"
+        expected_warn = "md5sum mismatch for %s\n" % arguments[0]
+        expected_warn += "  A different rpm with the same name has already been imported\n"
+        expected_warn += "  Existing sigmd5 is %r, your import has %r\n" % (false_md5, self.md5)
+        expected = "Skipping import\n"
         self.__skip_import_test(
             options, session, arguments,
             rpm_header=self.srpm_header,
-            expected=expected)
+            expected=expected, expected_warn=expected_warn)
 
         # Case 3: build exists and status is 'COMPLETE', has external_repo_id
         # reseult: import will be performed

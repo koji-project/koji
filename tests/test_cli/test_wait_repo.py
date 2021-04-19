@@ -62,7 +62,8 @@ class TestWaitRepo(utils.CliTestCase):
     @mock.patch('time.time')
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)
-    def __test_wait_repo(self, args, expected, stderr, stdout, time_mock, ret_code=0):
+    def __test_wait_repo(self, args, expected, stderr, stdout, time_mock, ret_code=0,
+                         expected_warn=''):
         self.options.quiet = False
         time_mock.side_effect = [0, 1, 2, 3]
         if ret_code:
@@ -74,7 +75,7 @@ class TestWaitRepo(utils.CliTestCase):
         else:
             rv = anon_handle_wait_repo(self.options, self.session, args)
             self.assert_console_message(stdout, expected)
-            self.assert_console_message(stderr, '')
+            self.assert_console_message(stderr, expected_warn)
             self.assertIn(rv, [0, None])
 
     @mock.patch('time.time')
@@ -144,12 +145,12 @@ class TestWaitRepo(utils.CliTestCase):
         self.session.getRepo.side_effect = [
             {}, {}, {'id': 1, 'name': 'DEFAULT', 'create_event': 1}
         ]
-        expected = 'Warning: nvr %s is not current in tag %s\n  latest build in %s is %s' % \
+        expected_warn = 'nvr %s is not current in tag %s\n  latest build in %s is %s' % \
                    (builds[0], self.tag_name, self.tag_name, new_ver) + "\n"
-        expected += 'Warning: package sed is not in tag %s' % self.tag_name + '\n'
-        expected += 'Successfully waited 0:03 for %s to appear in the ' \
+        expected_warn += 'Package sed is not in tag %s' % self.tag_name + '\n'
+        expected = 'Successfully waited 0:03 for %s to appear in the ' \
                     '%s repo\n' % (pkgs, self.tag_name)
-        self.__test_wait_repo(arguments, expected)
+        self.__test_wait_repo(arguments, expected, expected_warn=expected_warn)
 
     def test_anon_handle_wait_repo_with_build_timeout(self):
         """Test anon_handle_wait_repo function with --build options on timeout cases"""
