@@ -1538,30 +1538,44 @@ def handle_write_signed_rpm(goptions, session, args):
     activate_session(session, goptions)
     if options.all:
         rpms = session.queryRPMSigs(sigkey=key)
-        rpms = [session.getRPM(r['rpm_id']) for r in rpms]
+        with session.multicall() as m:
+            results = [m.getRPM(r['rpm_id']) for r in rpms]
+        rpms = [x.result for x in results]
     elif options.buildid:
         rpms = session.listRPMs(int(options.buildid))
     else:
+        nvrs = []
         rpms = []
-        bad = []
-        for nvra in args:
-            try:
-                koji.parse_NVRA(nvra)
-                rinfo = session.getRPM(nvra, strict=True)
-                if rinfo:
-                    rpms.append(rinfo)
-            except koji.GenericError:
-                bad.append(nvra)
+
+        with session.multicall() as m:
+            result = [m.getRPM(nvra, strict=False) for nvra in args]
+        for rpm, nvra in zip(result, args):
+            rpm = rpm.result
+            if rpm:
+                rpms.append(rpm)
+            else:
+                nvrs.append(nvra)
+
         # for historical reasons, we also accept nvrs
-        for nvr in bad:
-            build = session.getBuild(nvr)
-            if not build:
+        with session.multicall() as m:
+            result = [m.getBuild(nvr, strict=True) for nvr in nvrs]
+        builds = []
+        for nvr, build in zip(nvrs, result):
+            try:
+                builds.append(build.result['id'])
+            except koji.GenericError as ex:
                 raise koji.GenericError("No such rpm or build: %s" % nvr)
-            rpms.extend(session.listRPMs(buildID=build['id']))
-    for i, rpminfo in enumerate(rpms):
-        nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" % rpminfo
-        print("[%d/%d] %s" % (i + 1, len(rpms), nvra))
-        session.writeSignedRPM(rpminfo['id'], key)
+
+        with session.multicall() as m:
+            rpm_lists = [m.listRPMs(buildID=build_id) for build_id in builds]
+        for rpm_list in rpm_lists:
+            rpms.extend(rpm_list.result)
+
+    with session.multicall() as m:
+        for i, rpminfo in enumerate(rpms):
+            nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" % rpminfo
+            print("[%d/%d] %s" % (i + 1, len(rpms), nvra))
+            m.writeSignedRPM(rpminfo['id'], key)
 
 
 def handle_prune_signed_copies(goptions, session, args):
