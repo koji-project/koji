@@ -10708,7 +10708,10 @@ class RootExports(object):
         volume, or None if no match.
         If strict is true, raises an error if no match.
         """
-        return lookup_name('volume', volume, strict=strict)
+        result = lookup_name('volume', volume)
+        if not result and strict:
+            raise koji.GenericError("No such volume: %s" % volume)
+        return result
 
     def applyVolumePolicy(self, build, strict=False):
         """Apply the volume policy to a given build
