@@ -1575,7 +1575,7 @@ def handle_write_signed_rpm(goptions, session, args):
         for nvr, build in zip(nvrs, result):
             try:
                 builds.append(build.result['id'])
-            except koji.GenericError as ex:
+            except koji.GenericError:
                 raise koji.GenericError("No such rpm or build: %s" % nvr)
 
         with session.multicall() as m:
