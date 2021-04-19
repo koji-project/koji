@@ -3048,7 +3048,8 @@ def anon_handle_list_builds(goptions, session, args):
     parser.add_option("--owner", help=_("List builds built by this owner"))
     parser.add_option("--volume", help=_("List builds by volume ID"))
     parser.add_option("-k", "--sort-key", action="append", metavar='FIELD',
-                      default=[], help=_("Sort the list by the named field"))
+                      default=[], help=_("Sort the list by the named field. Allowed sort keys: "
+                                         "nvr, owner_name, state"))
     parser.add_option("-r", "--reverse", action="store_true", default=False,
                       help=_("Print the list in reverse order"))
     parser.add_option("--quiet", action="store_true", default=goptions.quiet,
@@ -3133,6 +3134,11 @@ def anon_handle_list_builds(goptions, session, args):
             parser.error(_("Filter must be provided for list"))
     if not options.sort_key:
         options.sort_key = ['nvr']
+    else:
+        for s_key in options.sort_key:
+            if s_key not in ['nvr', 'owner_name', 'state']:
+                warn("Invalid sort_key: %s." % s_key)
+
     data = sorted(data, key=lambda b: [b.get(k) for k in options.sort_key],
                   reverse=options.reverse)
     for build in data:
