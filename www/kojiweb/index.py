@@ -968,7 +968,7 @@ def taginfo(environ, tagID, all='0', packageOrder='package_name', packageStart=N
 
     all = int(all)
 
-    numPackages = server.count('listPackages', tagID=tag['id'], inherited=True)
+    numPackages = server.count('listPackages', tagID=tag['id'], inherited=True, with_owners=False)
     numBuilds = server.count('listTagged', tag=tag['id'], inherit=True)
     values['numPackages'] = numPackages
     values['numBuilds'] = numBuilds

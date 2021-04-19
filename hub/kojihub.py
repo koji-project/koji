@@ -1069,7 +1069,7 @@ def pkglist_block(taginfo, pkginfo, force=False):
     # check pkg list existence
     tag = get_tag(taginfo, strict=True)
     pkg = lookup_package(pkginfo, strict=True)
-    if not readPackageList(tag['id'], pkgID=pkg['id'], inherit=True):
+    if not readPackageList(tag['id'], pkgID=pkg['id'], inherit=True, with_owners=False):
         raise koji.GenericError("Package %s is not in tag listing for %s" %
                                 (pkg['name'], tag['name']))
     pkglist_add(taginfo, pkginfo, block=True, force=force)
@@ -1124,51 +1124,66 @@ def pkglist_setarches(taginfo, pkginfo, arches, force=False):
 
 
 def readPackageList(tagID=None, userID=None, pkgID=None, event=None, inherit=False,
-                    with_dups=False):
+                    with_dups=False, with_owners=True):
     """Returns the package list for the specified tag or user.
 
     One of (tagID,userID,pkgID) must be specified
 
     Note that the returned data includes blocked entries
+
+    :param int tagID: filter on tag
+    :param int userID: filter on package owner
+    :param int pkgID: filter on package
+    :param int event: filter on event
+    :param bool inherit: return also inherited packages
+    :param bool with_dups: possible duplicates from inheritance, makes no sense
+                           with inherit=False
+    :param bool with_owners: return also owner info. It needs to be set to True
+                             if userID is not None
+
+    :returns [dict]: list of dicts with package info
     """
     if tagID is None and userID is None and pkgID is None:
         raise koji.GenericError('tag,user, and/or pkg must be specified')
 
-    packages = {}
-    fields = (('package.id', 'package_id'), ('package.name', 'package_name'),
-              ('tag.id', 'tag_id'), ('tag.name', 'tag_name'),
-              ('users.id', 'owner_id'), ('users.name', 'owner_name'),
-              ('extra_arches', 'extra_arches'),
-              ('tag_packages.blocked', 'blocked'))
-    flist = ', '.join([pair[0] for pair in fields])
-    cond1 = eventCondition(event, table='tag_packages')
-    cond2 = eventCondition(event, table='tag_package_owners')
-    q = """
-    SELECT %(flist)s
-    FROM tag_packages
-    JOIN tag on tag.id = tag_packages.tag_id
-    JOIN package ON package.id = tag_packages.package_id
-    JOIN tag_package_owners ON
-        tag_packages.tag_id = tag_package_owners.tag_id AND
-        tag_packages.package_id = tag_package_owners.package_id
-    JOIN users ON users.id = tag_package_owners.owner
-    WHERE %(cond1)s AND %(cond2)s"""
+    if userID is not None and not with_owners:
+        raise koji.GenericError("userID and with_owners=False can't be used together")
+
+    tables = ['tag_packages']
+    fields = [
+        ('package.id', 'package_id'),
+        ('package.name', 'package_name'),
+        ('tag.id', 'tag_id'),
+        ('tag.name', 'tag_name'),
+        ('extra_arches', 'extra_arches'),
+        ('tag_packages.blocked', 'blocked'),
+    ]
+    joins = ['tag ON tag.id = tag_packages.tag_id',
+             'package ON package.id = tag_packages.package_id']
+    clauses = [eventCondition(event, table='tag_packages')]
     if tagID is not None:
-        q += """
-        AND tag.id = %%(tagID)i"""
+        clauses.append('tag.id = %(tagID)i')
     if userID is not None:
-        q += """
-        AND users.id = %%(userID)i"""
+        clauses.append('users.id = %(userID)i')
     if pkgID is not None:
         if isinstance(pkgID, int):
-            q += """
-            AND package.id = %%(pkgID)i"""
+            clauses.append('package.id = %(pkgID)i')
         else:
-            q += """
-            AND package.name = %%(pkgID)s"""
+            clauses.append('package.name = %(pkgID)s')
+    if with_owners:
+        fields += [('users.id', 'owner_id'), ('users.name', 'owner_name')]
+        joins += [
+            'tag_package_owners ON tag_packages.tag_id = tag_package_owners.tag_id AND \
+                                   tag_packages.package_id = tag_package_owners.package_id',
+            'users ON users.id = tag_package_owners.owner'
+        ]
+        clauses.append(eventCondition(event, table='tag_package_owners'))
+    fields, aliases = zip(*fields)
+    query = QueryProcessor(columns=fields, aliases=aliases, tables=tables, joins=joins,
+                           clauses=clauses, values=locals())
 
-    q = q % locals()
-    for p in _multiRow(q, locals(), [pair[1] for pair in fields]):
+    packages = {}
+    for p in query.execute():
         # things are simpler for the first tag
         pkgid = p['package_id']
         if with_dups:
@@ -1194,7 +1209,8 @@ def readPackageList(tagID=None, userID=None, pkgID=None, event=None, inherit=Fal
                 re_cache[pat] = prog
             re_list.append(prog)
         # same query as before, with different params
-        for p in _multiRow(q, locals(), [pair[1] for pair in fields]):
+        query.values['tagID'] = tagID
+        for p in query.execute():
             pkgid = p['package_id']
             if not with_dups and pkgid in packages:
                 # previous data supercedes
@@ -1293,13 +1309,15 @@ def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None,
                      type=None):
     """Returns a list of builds for specified tag
 
-    set inherit=True to follow inheritance
-    set event to query at a time in the past
-    set latest=True to get only the latest build per package
-    set latest=N to get only the N latest tagged RPMs
-
-    If type is not None, restrict the list to builds of the given type.  Currently the supported
-    types are 'maven', 'win', and 'image'.
+    :param int tag: tag ID
+    :param int event: query at a time in the past
+    :param bool inherit: follow inheritance
+    :param bool|int latest: True for latest build per package, N to get N latest builds per package
+    :param int package: filter on package name
+    :param str owner: filter on user name
+    :param str type: restrict the list to builds of the given type.  Currently the supported
+                     types are 'maven', 'win', and 'image'.
+    :returns [dict]: list of buildinfo dicts
     """
     # build - id pkg_id version release epoch
     # tag_listing - id build_id tag_id
@@ -1313,8 +1331,11 @@ def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None,
 
     # regardless of inherit setting, we need to use inheritance to read the
     # package list
-    packages = readPackageList(tagID=tag, event=event, inherit=True, pkgID=package)
+    packages = readPackageList(tagID=tag, event=event, inherit=True, pkgID=package,
+                               with_owners=False)
 
+    st_complete = koji.BUILD_STATES['COMPLETE']
+    tables = ['tag_listing']
     # these values are used for each iteration
     fields = [('tag.id', 'tag_id'), ('tag.name', 'tag_name'), ('build.id', 'id'),
               ('build.id', 'build_id'), ('build.version', 'version'), ('build.release', 'release'),
@@ -1322,64 +1343,63 @@ def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None,
               ('build.completion_time', 'completion_time'),
               ('build.start_time', 'start_time'),
               ('build.task_id', 'task_id'),
+              ('users.id', 'owner_id'), ('users.name', 'owner_name'),
               ('events.id', 'creation_event_id'), ('events.time', 'creation_time'),
               ('volume.id', 'volume_id'), ('volume.name', 'volume_name'),
               ('package.id', 'package_id'), ('package.name', 'package_name'),
               ('package.name', 'name'),
               ("package.name || '-' || build.version || '-' || build.release", 'nvr'),
-              ('users.id', 'owner_id'), ('users.name', 'owner_name')]
-    st_complete = koji.BUILD_STATES['COMPLETE']
+              ('tag_listing.create_event', 'create_event')]
+    joins = [
+        'tag ON tag.id = tag_listing.tag_id',
+        'build ON build.id = tag_listing.build_id',
+        'events ON events.id = build.create_event',
+        'package ON package.id = build.pkg_id',
+        'volume ON volume.id = build.volume_id',
+        'users ON users.id = build.owner',
+    ]
 
-    type_join = ''
     if type is None:
         pass
     elif type == 'maven':
-        type_join = 'JOIN maven_builds ON maven_builds.build_id = tag_listing.build_id'
+        joins.append('maven_builds ON maven_builds.build_id = tag_listing.build_id')
         fields.extend([('maven_builds.group_id', 'maven_group_id'),
                        ('maven_builds.artifact_id', 'maven_artifact_id'),
                        ('maven_builds.version', 'maven_version')])
     elif type == 'win':
-        type_join = 'JOIN win_builds ON win_builds.build_id = tag_listing.build_id'
+        joins.append('win_builds ON win_builds.build_id = tag_listing.build_id')
         fields.append(('win_builds.platform', 'platform'))
     elif type == 'image':
-        type_join = 'JOIN image_builds ON image_builds.build_id = tag_listing.build_id'
+        joins.append('image_builds ON image_builds.build_id = tag_listing.build_id')
         fields.append(('image_builds.build_id', 'build_id'))
     else:
         btype = lookup_name('btype', type, strict=False)
         if not btype:
             raise koji.GenericError('unsupported build type: %s' % type)
         btype_id = btype['id']
-        type_join = ('JOIN build_types ON build.id = build_types.build_id '
-                     'AND btype_id = %(btype_id)s')
+        joins += ['build_types ON build.id = build_types.build_id',
+                  'btype_id = %(btype_id)s']
 
-    q = """SELECT %s
-    FROM tag_listing
-    JOIN tag ON tag.id = tag_listing.tag_id
-    JOIN build ON build.id = tag_listing.build_id
-    %s
-    JOIN users ON users.id = build.owner
-    JOIN events ON events.id = build.create_event
-    JOIN package ON package.id = build.pkg_id
-    JOIN volume ON volume.id = build.volume_id
-    WHERE %s AND tag_id=%%(tagid)s
-        AND build.state=%%(st_complete)i
-    """ % (', '.join([pair[0] for pair in fields]), type_join,
-           eventCondition(event, 'tag_listing'))
+    clauses = [
+        eventCondition(event, 'tag_listing'),
+        'tag_id = %(tagid)s',
+        'build.state = %(st_complete)i'
+    ]
     if package:
-        q += """AND package.name = %(package)s
-        """
+        clauses.append('package.name = %(package)s')
     if owner:
-        q += """AND users.name = %(owner)s
-        """
-    q += """ORDER BY tag_listing.create_event DESC
-    """
-    # i.e. latest first
+        clauses.append('users.name = %(owner)s')
+    queryOpts = {'order': '-create_event'}  # latest first
+    query = QueryProcessor(columns=[x[0] for x in fields], aliases=[x[1] for x in fields],
+                           tables=tables, joins=joins, clauses=clauses, values=locals(),
+                           opts=queryOpts)
 
     builds = []
     seen = {}   # used to enforce the 'latest' option
     for tagid in taglist:
         # log_error(koji.db._quoteparams(q,locals()))
-        for build in _multiRow(q, locals(), [pair[1] for pair in fields]):
+        query.values['tagid'] = tagid
+        for build in query.execute():
             pkgid = build['package_id']
             pinfo = packages.get(pkgid, None)
             if pinfo is None or pinfo['blocked']:
@@ -2431,7 +2451,7 @@ def maven_tag_archives(tag_id, event_id=None, inherit=True):
     For any parent tags where 'maven_include_all' is true, include all versions
     of a given groupId:artifactId, not just the most-recently-tagged.
     """
-    packages = readPackageList(tagID=tag_id, event=event_id, inherit=True)
+    packages = readPackageList(tagID=tag_id, event=event_id, inherit=True, with_owners=False)
     taglist = [tag_id]
     if inherit:
         taglist.extend([link['parent_id'] for link in readFullInheritance(tag_id, event_id)])
@@ -2562,7 +2582,8 @@ def repo_init(tag, task_id=None, with_src=False, with_debuginfo=False, event=Non
     #       see https://pagure.io/koji/issue/588 for background
     rpms, builds = readTaggedRPMS(tag_id, event=event_id, inherit=True, latest=latest)
     groups = readTagGroups(tag_id, event=event_id, inherit=True)
-    blocks = [pkg for pkg in readPackageList(tag_id, event=event_id, inherit=True).values()
+    blocks = [pkg for pkg in readPackageList(tag_id, event=event_id, inherit=True,
+                                             with_owners=False).values()
               if pkg['blocked']]
     repodir = koji.pathinfo.repo(repo_id, tinfo['name'])
     os.makedirs(repodir)  # should not already exist
@@ -10952,7 +10973,7 @@ class RootExports(object):
         if fromtag:
             assert_tag_access(fromtag_id, user_id=None, force=force)
         # package list check
-        pkgs = readPackageList(tagID=tag_id, pkgID=pkg_id, inherit=True)
+        pkgs = readPackageList(tagID=tag_id, pkgID=pkg_id, inherit=True, with_owners=False)
         pkg_error = None
         if pkg_id not in pkgs:
             pkg_error = "Package %s not in list for %s" % (build['name'], tag['name'])
@@ -11035,7 +11056,7 @@ class RootExports(object):
         # note: we're just running the quick checks now so we can fail
         #       early if appropriate, rather then waiting for the task
         # Make sure package is on the list for the tag we're adding it to
-        pkgs = readPackageList(tagID=tag2_id, pkgID=pkg_id, inherit=True)
+        pkgs = readPackageList(tagID=tag2_id, pkgID=pkg_id, inherit=True, with_owners=False)
         pkg_error = None
         if pkg_id not in pkgs:
             pkg_error = "Package %s not in list for tag %s" % (package, tag2)
@@ -11855,7 +11876,7 @@ class RootExports(object):
     getPackage = staticmethod(lookup_package)
 
     def listPackages(self, tagID=None, userID=None, pkgID=None, prefix=None, inherited=False,
-                     with_dups=False, event=None, queryOpts=None):
+                     with_dups=False, event=None, queryOpts=None, with_owners=True):
         """List if tagID and/or userID is specified, limit the
         list to packages belonging to the given user or with the
         given tag.
@@ -11887,7 +11908,7 @@ class RootExports(object):
                 pkgID = get_package_id(pkgID, strict=True)
             result_list = list(readPackageList(tagID=tagID, userID=userID, pkgID=pkgID,
                                                inherit=inherited, with_dups=with_dups,
-                                               event=event).values())
+                                               event=event, with_owners=with_owners).values())
             if with_dups:
                 # when with_dups=True, readPackageList returns a list of list of dicts
                 # convert it to a list of dicts for consistency
@@ -11935,7 +11956,7 @@ class RootExports(object):
         pkg_id = get_package_id(pkg, strict=False)
         if pkg_id is None or tag_id is None:
             return False
-        pkgs = readPackageList(tagID=tag_id, pkgID=pkg_id, inherit=True)
+        pkgs = readPackageList(tagID=tag_id, pkgID=pkg_id, inherit=True, with_owners=False)
         if pkg_id not in pkgs:
             return False
         else:
@@ -14333,7 +14354,7 @@ class HostExports(object):
         # don't check policy for admins using force
         assert_policy('tag', policy_data, force=force)
         # package list check
-        pkgs = readPackageList(tagID=tag_id, pkgID=pkg_id, inherit=True)
+        pkgs = readPackageList(tagID=tag_id, pkgID=pkg_id, inherit=True, with_owners=False)
         pkg_error = None
         if pkg_id not in pkgs:
             pkg_error = "Package %s not in list for %s" % (build['name'], tag)
