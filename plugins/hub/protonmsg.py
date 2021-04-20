@@ -279,6 +279,7 @@ def prep_untag(cbtype, *args, **kws):
 @convert_datetime
 @callback('postRepoInit')
 def prep_repo_init(cbtype, *args, **kws):
+    kws['task_id'] = kws.get('task_id')
     address = 'repo.init'
     props = {'type': cbtype[4:],
              'tag': kws['tag']['name'],
@@ -290,6 +291,7 @@ def prep_repo_init(cbtype, *args, **kws):
 @convert_datetime
 @callback('postRepoDone')
 def prep_repo_done(cbtype, *args, **kws):
+    kws['task_id'] = kws.get('task_id')
     address = 'repo.done'
     props = {'type': cbtype[4:],
              'tag': kws['repo']['tag_name'],
