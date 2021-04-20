@@ -2275,7 +2275,11 @@ def is_conn_error(e):
     # these values, this is a connection error.
     if getattr(e, 'errno', None) in (errno.ECONNRESET, errno.ECONNABORTED, errno.EPIPE):
         return True
-    if 'BadStatusLine' in str(e):
+    str_e = str(e)
+    if 'BadStatusLine' in str_e or \
+       'RemoteDisconnected' in str_e or \
+       'ConnectionReset' in str_e or \
+       'IncompleteRead' in str_e:
         # we see errors like this in keep alive timeout races
         # ConnectionError(ProtocolError('Connection aborted.', BadStatusLine("''",)),)
         return True
