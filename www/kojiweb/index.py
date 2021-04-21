@@ -612,7 +612,8 @@ def tasks(environ, owner=None, state='active', view='tree', method='all', hostID
     values['order'] = order
 
     tasks = kojiweb.util.paginateMethod(server, values, 'listTasks', kw={'opts': opts},
-                                        start=start, dataName='tasks', prefix='task', order=order)
+                                        start=start, dataName='tasks', prefix='task',
+                                        order=order, first_page_count=False)
 
     if view == 'tree':
         server.multicall = True
