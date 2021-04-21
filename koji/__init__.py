@@ -416,6 +416,11 @@ class LiveMediaError(GenericError):
     faultCode = 1022
 
 
+class GSSAPIAuthError(AuthError):
+    """Raised when GSSAPI issue in authentication"""
+    faultCode = 1023
+
+
 class MultiCallInProgress(object):
     """
     Placeholder class to be returned by method calls when in the process of
@@ -2492,9 +2497,11 @@ class ClientSession(object):
                 # will fail with a handshake failure, which is retried by default.
                 sinfo = self._callMethod('sslLogin', [proxyuser], retry=False)
             except Exception as e:
-                e_str = ''.join(traceback.format_exception_only(type(e), e))
-                e_str = 'gssapi auth failed: %s' % e_str
-                self.logger.debug(e_str)
+                e_str = ''.join(traceback.format_exception_only(type(e), e)).strip('\n')
+                e_str = '(gssapi auth failed: %s)\n' % e_str
+                e_str += 'Use following documentation to debug kerberos/gssapi auth issues. ' \
+                         'https://docs.pagure.org/koji/kerberos_gssapi_debug/'
+                self.logger.error(e_str)
                 # Auth with https didn't work. Restore for the next attempt.
                 self.baseurl = old_baseurl
         finally:
@@ -2507,8 +2514,8 @@ class ClientSession(object):
         if not sinfo:
             err = 'unable to obtain a session'
             if e_str:
-                err += ' (%s)' % e_str
-            raise AuthError(err)
+                err += ' %s' % e_str
+            raise GSSAPIAuthError(err)
 
         self.setSession(sinfo)
 

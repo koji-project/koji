@@ -25,6 +25,7 @@ Contents
     access_controls
     permissions
     defining_hub_policies
+    kerberos_gssapi_debug
     external_repo_server_bootstrap
     image_build
     winbuild

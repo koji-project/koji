@@ -82,7 +82,7 @@ class TestGSSAPI(unittest.TestCase):
     def test_gssapi_login_error(self):
         old_environ = dict(**os.environ)
         self.session._callMethod.side_effect = Exception('login failed')
-        with self.assertRaises(koji.AuthError):
+        with self.assertRaises(koji.GSSAPIAuthError):
             self.session.gssapi_login()
         self.session._callMethod.assert_called_once_with('sslLogin', [None],
                                                          retry=False)
@@ -101,7 +101,7 @@ class TestGSSAPI(unittest.TestCase):
         # failed gssapi auth should leave the url alone
         self.session.baseurl = url1
         self.session._callMethod.side_effect = Exception('login failed')
-        with self.assertRaises(koji.AuthError):
+        with self.assertRaises(koji.GSSAPIAuthError):
             self.session.gssapi_login()
         self.assertEqual(self.session.baseurl, url1)
         self.assertEqual(old_environ, dict(**os.environ))
