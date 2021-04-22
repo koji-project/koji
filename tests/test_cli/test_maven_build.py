@@ -12,7 +12,7 @@ from . import utils
 
 EMPTY_BUILD_OPTS = {
     'specfile': None,
-    'nowait': None,
+    'wait': None,
     'patches': None,
     'envs': [],
     'scratch': None,
@@ -215,6 +215,7 @@ Options:
                         wrapper RPMs
   --skip-tag            Do not attempt to tag package
   --scratch             Perform a scratch build
+  --wait                Wait on build, even if running in the background
   --nowait              Don't wait on build
   --quiet               Do not print the task information
   --background          Run the build at a lower priority
@@ -726,12 +727,10 @@ Task info: weburl/taskinfo?taskID=1
     @mock.patch('koji_cli.commands.activate_session')
     @mock.patch('koji.util.parse_maven_param')
     @mock.patch('koji.util.maven_opts', return_value={})
-    @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
     @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
     def test_handle_maven_build_nowait(
             self,
             watch_tasks_mock,
-            running_in_bg_mock,
             maven_opts_mock,
             parse_maven_param_mock,
             activate_session_mock,
@@ -745,7 +744,7 @@ Task info: weburl/taskinfo?taskID=1
         task_id = 1
         args = ['--nowait', target, source]
         build_opts = EMPTY_BUILD_OPTS.copy()
-        build_opts['nowait'] = True
+        build_opts['wait'] = False
         opts = {}
         priority = None
         scratch = None
@@ -770,7 +769,6 @@ Task info: weburl/taskinfo?taskID=1
         maven_opts_mock.assert_called_once_with(build_opts, scratch=scratch)
         self.session.mavenBuild.assert_called_once_with(
             source, target, opts, priority=priority)
-        running_in_bg_mock.assert_called_once()
         self.session.logout.assert_not_called()
         watch_tasks_mock.assert_not_called()
         self.assertIsNone(rv)

@@ -205,7 +205,8 @@ class TestWrapperRpm(utils.CliTestCase):
 
         # Run it and check immediate output
         expected = self.format_error_message(
-            "You must provide a build target, a build ID or NVR, and a SCM URL to a specfile fragment")
+            "You must provide a build target, a build ID or NVR, and a SCM URL to "
+            "a specfile fragment")
         self.assert_system_exit(
             handle_wrapper_rpm,
             options,
@@ -233,6 +234,7 @@ Options:
                         Get build parameters from this section of the .ini
   --skip-tag            If creating a new build, don't tag it
   --scratch             Perform a scratch build
+  --wait                Wait on build, even if running in the background
   --nowait              Don't wait on build
   --background          Run the build at a lower priority
 """ % self.progname)

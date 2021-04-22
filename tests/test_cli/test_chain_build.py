@@ -9,6 +9,7 @@ import unittest
 from koji_cli.commands import handle_chain_build
 from . import utils
 
+
 class TestChainBuild(utils.CliTestCase):
     # Show long diffs in error output...
     maxDiff = None
@@ -148,6 +149,7 @@ Task info: weburl/taskinfo?taskID=1
 
 Options:
   -h, --help    show this help message and exit
+  --wait        Wait on build, even if running in the background
   --nowait      Don't wait on build
   --quiet       Do not print the task information
   --background  Run the build at a lower priority
@@ -655,12 +657,10 @@ Task info: weburl/taskinfo?taskID=1
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
-    @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
     @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
     def test_handle_chain_build_nowait(
             self,
             watch_tasks_mock,
-            running_in_bg_mock,
             activate_session_mock,
             stdout):
         target = 'target'
@@ -710,7 +710,6 @@ Task info: weburl/taskinfo?taskID=1
         self.session.getFullInheritance.assert_called_once_with(build_tag_id)
         self.session.chainBuild.assert_called_once_with(
             sources, target, priority=priority)
-        running_in_bg_mock.assert_called_once()
         self.session.logout.assert_not_called()
         watch_tasks_mock.assert_not_called()
         self.assertIsNone(rv)

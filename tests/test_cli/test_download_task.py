@@ -342,7 +342,9 @@ Options:
   --logs        Also download build logs
   --topurl=URL  URL under which Koji files are accessible
   --noprogress  Do not display progress meter
-  --wait        Wait for running tasks to finish
+  --wait        Wait for running tasks to finish, even if running in the
+                background
+  --nowait      Do not wait for running tasks to finish
   -q, --quiet   Suppress output
 """ % progname
         self.assertMultiLineEqual(actual, expected)

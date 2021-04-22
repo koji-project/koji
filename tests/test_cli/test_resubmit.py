@@ -126,10 +126,12 @@ Log Files:
 
 Options:
   -h, --help  show this help message and exit
+  --wait      Wait on task, even if running in the background
   --nowait    Don't wait on task
   --nowatch   An alias for --nowait
   --quiet     Do not print the task information
 """ % self.progname)
+
 
 if __name__ == '__main__':
     unittest.main()
