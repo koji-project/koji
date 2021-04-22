@@ -2517,6 +2517,7 @@ def api(environ):
     values = _initValues(environ, 'API', 'api')
     server = _getServer(environ)
 
+    values['koji_hub_url'] = environ['koji.options']['KojiHubURL']
     values['methods'] = sorted(server._listapi(), key=lambda x: x['name'])
     try:
         values['koji_version'] = server.getKojiVersion()
