@@ -13,7 +13,7 @@ class TestListApi(utils.CliTestCase):
     maxDiff = None
 
     def setUp(self):
-        self.error_format = """Usage: %s list-api [options] [method_name]
+        self.error_format = """Usage: %s list-api [options] [method_name ...]
 (Specify the --help global option for a list of other help options)
 
 %s: error: {message}
@@ -81,7 +81,7 @@ class TestListApi(utils.CliTestCase):
     def test_anon_handle_list_api_help(self):
         self.assert_help(
             anon_handle_list_api,
-            """Usage: %s list-api [options] [method_name]
+            """Usage: %s list-api [options] [method_name ...]
 (Specify the --help global option for a list of other help options)
 
 Options:
