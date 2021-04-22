@@ -13,7 +13,7 @@ class TestListApi(utils.CliTestCase):
     maxDiff = None
 
     def setUp(self):
-        self.error_format = """Usage: %s list-api [options]
+        self.error_format = """Usage: %s list-api [options] [method_name]
 (Specify the --help global option for a list of other help options)
 
 %s: error: {message}
@@ -29,18 +29,7 @@ class TestListApi(utils.CliTestCase):
         session = mock.MagicMock()
         options = mock.MagicMock()
 
-        # Case 1. argument error
-        expected = self.format_error_message(
-            "This command takes no arguments")
-        self.assert_system_exit(
-            anon_handle_list_api,
-            options,
-            session,
-            ['arg'],
-            stderr=expected,
-            activate_session=None)
-
-        # Case 2.
+        # Case 1. list all methods
         session._listapi.return_value = [
             {
                 'argdesc': '(tagInfo, **kwargs)',
@@ -70,10 +59,29 @@ class TestListApi(utils.CliTestCase):
         anon_handle_list_api(options, session, [])
         self.assert_console_message(stdout, expected)
 
+        # Case 2. non-existent fake method
+        session.system.methodHelp.return_value = None
+        expected = self.format_error_message("Unknown method: non-existent-fake-method")
+        self.assert_system_exit(
+            anon_handle_list_api,
+            options,
+            session,
+            ['non-existent-fake-method'],
+            stderr=expected,
+            activate_session=None)
+
+        # Case 3. known method
+        session.system.methodHelp.return_value = "editTag2(tagInfo, **kwargs)\n" \
+                                          "  description: Edit information for an existing tag."
+        anon_handle_list_api(options, session, ['editTag2'])
+        expected = "editTag2(tagInfo, **kwargs)\n"
+        expected += "  description: Edit information for an existing tag.\n"
+        self.assert_console_message(stdout, expected)
+
     def test_anon_handle_list_api_help(self):
         self.assert_help(
             anon_handle_list_api,
-            """Usage: %s list-api [options]
+            """Usage: %s list-api [options] [method_name]
 (Specify the --help global option for a list of other help options)
 
 Options:
