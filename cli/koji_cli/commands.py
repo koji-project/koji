@@ -5796,6 +5796,10 @@ def handle_spin_livemedia(options, session, args):
                       help=_("Pass the nomacboot option to livemedia-creator"))
     parser.add_option('--ksrepo', action="store_true",
                       help=_("Do not overwrite repos in the kickstart"))
+    parser.add_option('--squashfs-only', action="store_true",
+                      help=_("Use a plain squashfs filesystem."))
+    parser.add_option('--compress-arg', action="append", default=[], metavar="ARG OPT",
+                      help=_("List of compressions."))
     (task_options, args) = parser.parse_args(args)
 
     # Make sure the target and kickstart is specified.
@@ -6177,6 +6181,7 @@ def _build_image(options, task_opts, session, args, img_type):
         'ksversion', 'release', 'repo', 'scratch', 'skip_tag',
         'specfile', 'vcpu', 'vmem', 'volid', 'optional_arches',
         'lorax_dir', 'lorax_url', 'nomacboot', 'ksrepo',
+        'squashfs_only', 'compress_arg',
     ]
     for opt in passthru_opts:
         val = getattr(task_opts, opt, None)
@@ -6185,7 +6190,6 @@ def _build_image(options, task_opts, session, args, img_type):
 
     if 'optional_arches' in hub_opts:
         hub_opts['optional_arches'] = hub_opts['optional_arches'].split(',')
-
     # finally, create the task.
     task_id = session.buildImage(args[0], args[1], arch, target, ksfile,
                                  img_type, opts=hub_opts, priority=priority)
@@ -6253,7 +6257,6 @@ def _build_image_oz(options, task_opts, session, args):
         val = getattr(task_opts, opt, None)
         if val is not None:
             hub_opts[opt] = val
-
     # finally, create the task.
     task_id = session.buildImageOz(args[0], args[1], arches, target, args[3],
                                    opts=hub_opts, priority=priority)

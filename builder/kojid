@@ -3569,6 +3569,12 @@ class LiveMediaTask(ImageTask):
             templates_dir = self.fetch_lorax_templates_from_scm(broot)
             cmd.extend(['--lorax-templates', templates_dir])
 
+        if self.opts.get('squashfs_only'):
+            cmd.append('--squashfs-only')
+
+        if isinstance(self.opts.get('compress_arg'), (list, tuple)):
+            for com_arg in self.opts['compress_arg']:
+                cmd.extend(['--compress-arg', com_arg])
         # Run livemedia-creator
         rv = broot.mock(['--cwd', broot.tmpdir(within=True), '--chroot', '--'] + cmd)
 
