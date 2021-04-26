@@ -190,7 +190,8 @@ class TestCliListTasks(utils.CliTestCase):
                 'method': 'createrepo',
                 'parent': 3,
                 'priority': 14,
-                'arch': 'noarch'
+                'arch': 'noarch',
+                'request': ['tag'],
             },
             {
                 'children':
@@ -203,7 +204,8 @@ class TestCliListTasks(utils.CliTestCase):
                         'method': 'createrepo',
                         'parent': 3,
                         'priority': 14,
-                        'arch': 'noarch'
+                        'arch': 'noarch',
+                        'request': ['repo_id', 'noarch', 'oldrepo'],
                     },
                 ],
                 'id': 3,
@@ -212,13 +214,14 @@ class TestCliListTasks(utils.CliTestCase):
                 'method': 'newRepo',
                 'priority': 15,
                 'arch': 'noarch',
+                'request': ['tag'],
             }
         ]
 
         header = \
             "ID       Pri  Owner                State    Arch       Name\n"
         task_output = \
-            "3        15   kojiadmin            FREE     noarch     newRepo (noarch)\n" + \
+            "3        15   kojiadmin            FREE     noarch     newRepo (tag)\n" + \
             "5        14   kojiadmin            FREE     noarch      +createrepo (noarch)\n"
 
         expected = self.format_error_message(

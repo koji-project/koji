@@ -276,6 +276,12 @@ LEGACY_SIGNATURES = {
     'saveFailedTree': [
         [['buildrootID', 'full'], None, None, (False,)],
     ],
+    'vmExec': [
+        [['name', 'task_info', 'opts'], None, None, None],
+    ],
+    'winbuild': [
+        [['name', 'source_url', 'target', 'opts'], None, None, None],
+    ],
 }
 
 
