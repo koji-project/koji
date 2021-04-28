@@ -776,6 +776,18 @@ class AgePruneTest(koji.policy.BaseSimpleTest):
         return self.func(time.time() - data['ts'], self.span)
 
 
+class HasTagPruneTest(koji.policy.BaseSimpleTest):
+    name = 'hastag'
+
+    def run(self, data):
+        patterns = self.str.split()[1:]
+        for tag in data['tags']:
+            for pattern in patterns:
+                if fnmatch.fnmatch(tag['name'], pattern):
+                    return True
+        return False
+
+
 def read_policies(fn=None):
     """Read tag gc policies from file
 
@@ -907,6 +919,7 @@ def handle_prune():
                 data['keys'] = LazyValue(get_build_sigs, (entry['build_id'],), {'cache': True})
                 data['volname'] = LazyValue(lambda x: session.getBuild(x).get('volume_name'),
                                             (entry['build_id'],), cache=True)
+                data['tags'] = LazyValue(session.listTags, (entry['build_id'],), cache=True)
                 build_ids[nvr] = entry['build_id']
                 action = policies.apply(data)
                 if action is None:
