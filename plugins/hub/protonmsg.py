@@ -351,9 +351,10 @@ def handle_db_msgs(urls, CONFIG):
                                columns=('id', 'address', 'props', 'body'),
                                opts={'order': 'id', 'limit': limit})
         msgs = list(query.execute())
+        if not msgs:
+            return
         if CONFIG.getboolean('broker', 'test_mode', fallback=False):
-            if msgs:
-                LOG.debug('test mode: skipping send for %i messages from db', len(msgs))
+            LOG.debug('test mode: skipping send for %i messages from db', len(msgs))
             unsent = []
         else:
             unsent = {m['id'] for m in _send_msgs(urls, msgs, CONFIG)}
