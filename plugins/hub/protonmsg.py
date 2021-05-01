@@ -327,9 +327,6 @@ def store_to_db(msgs):
         props = json.dumps(msg['props'])
         insert = InsertProcessor(table='proton_queue')
         insert.set(address=address, props=props, body=body)
-        if 'id' in msg:
-            # if we've something from db, we should store it in correct order
-            insert.set(id=msg['db_id'])
         insert.execute()
     c.execute('COMMIT')
 
