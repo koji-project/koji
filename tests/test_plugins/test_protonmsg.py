@@ -36,13 +36,13 @@ extra_limit = 2048
         self.assertTrue(hasattr(context, 'protonmsg_msgs'))
         self.assertEqual(len(context.protonmsg_msgs), 1)
         msg = context.protonmsg_msgs[0]
-        self.assertEqual(msg[0], topic)
+        self.assertEqual(msg['address'], topic)
         for kw in kws:
-            self.assertTrue(kw in msg[1])
-            self.assertEqual(msg[1][kw], kws[kw])
-        self.assertEqual(len(msg[1]), len(kws))
+            self.assertTrue(kw in msg['props'])
+            self.assertEqual(msg['props'][kw], kws[kw])
+        self.assertEqual(len(msg['props']), len(kws))
         if body:
-            self.assertEqual(msg[2], body)
+            self.assertEqual(msg['body'], body)
 
     def test_queue_msg(self):
         protonmsg.queue_msg('test.msg', {'testheader': 1}, 'test body')
@@ -207,7 +207,8 @@ extra_limit = 2048
 
     @patch('protonmsg.Container')
     def test_send_queued_msgs_fail(self, Container):
-        context.protonmsg_msgs = [('test.topic', {'testheader': 1}, 'test body')]
+        context.protonmsg_msgs = [{'address': 'test.topic', 'props': {'testheader': 1},
+                                   'body': 'test body'}]
         protonmsg.send_queued_msgs('postCommit')
 
         log = protonmsg.LOG
@@ -219,7 +220,8 @@ extra_limit = 2048
 
     @patch('protonmsg.Container')
     def test_send_queued_msgs_success(self, Container):
-        context.protonmsg_msgs = [('test.topic', {'testheader': 1}, 'test body')]
+        context.protonmsg_msgs = [{'address': 'test.topic', 'props': {'testheader': 1},
+                                   'body': 'test body'}]
         def clear_msgs():
             del context.protonmsg_msgs[:]
         Container.return_value.run.side_effect = clear_msgs
@@ -231,7 +233,8 @@ extra_limit = 2048
 
     @patch('protonmsg.Container')
     def test_send_queued_msgs_test_mode(self, Container):
-        context.protonmsg_msgs = [('test.topic', {'testheader': 1}, 'test body')]
+        context.protonmsg_msgs = [{'address': 'test.topic', 'props': {'testheader': 1},
+                                   'body': 'test body'}]
         conf = tempfile.NamedTemporaryFile()
         conf.write(six.b("""[broker]
 urls = amqps://broker1.example.com:5671 amqps://broker2.example.com:5671
@@ -336,7 +339,8 @@ send_timeout = 60
     def test_send_msgs(self, SSLDomain, Message):
         event = MagicMock()
         self.handler.on_start(event)
-        self.handler.msgs = [('testtopic', {'testheader': 1}, '"test body"')]
+        self.handler.msgs = [{'address': 'testtopic', 'props': {'testheader': 1},
+                              'body': '"test body"'}]
         self.handler.on_connection_opened(event)
         event.container.create_sender.assert_called_once_with(event.connection,
                                                               target='topic://koji.testtopic')
@@ -349,8 +353,10 @@ send_timeout = 60
     def test_update_pending(self, SSLDomain, Message):
         event = MagicMock()
         self.handler.on_start(event)
-        self.handler.msgs = [('testtopic', {'testheader': 1}, '"test body"'),
-                             ('testtopic', {'testheader': 2}, '"test body"')]
+        self.handler.msgs = [{'address': 'testtopic', 'props': {'testheader': 1},
+                              'body': '"test body"'},
+                             {'address': 'testtopic', 'props': {'testheader': 2},
+                              'body': '"test body"'}]
         delivery0 = MagicMock()
         delivery1 = MagicMock()
         sender = event.container.create_sender.return_value
@@ -378,7 +384,8 @@ send_timeout = 60
     def test_on_settled(self, SSLDomain, Message):
         event = MagicMock()
         self.handler.on_start(event)
-        self.handler.msgs = [('testtopic', {'testheader': 1}, '"test body"')]
+        self.handler.msgs = [{'address': 'testtopic', 'props': {'testheader': 1},
+                              'body': '"test body"'}]
         self.handler.on_connection_opened(event)
         delivery = event.container.create_sender.return_value.send.return_value
         self.assertTrue(delivery in self.handler.pending)
@@ -392,7 +399,8 @@ send_timeout = 60
     def test_on_rejected(self, SSLDomain, Message):
         event = MagicMock()
         self.handler.on_start(event)
-        self.handler.msgs = [('testtopic', {'testheader': 1}, '"test body"')]
+        self.handler.msgs = [{'address': 'testtopic', 'props': {'testheader': 1},
+                              'body': '"test body"'}]
         self.handler.on_connection_opened(event)
         delivery = event.container.create_sender.return_value.send.return_value
         self.assertTrue(delivery in self.handler.pending)
@@ -406,7 +414,8 @@ send_timeout = 60
     def test_on_released(self, SSLDomain, Message):
         event = MagicMock()
         self.handler.on_start(event)
-        self.handler.msgs = [('testtopic', {'testheader': 1}, '"test body"')]
+        self.handler.msgs = [{'address': 'testtopic', 'props': {'testheader': 1},
+                              'body': '"test body"'}]
         self.handler.on_connection_opened(event)
         delivery = event.container.create_sender.return_value.send.return_value
         self.assertTrue(delivery in self.handler.pending)
