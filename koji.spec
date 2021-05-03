@@ -100,6 +100,7 @@ Requires: python-libcomps
 BuildRequires: systemd
 BuildRequires: pkgconfig
 BuildRequires: make
+BuildRequires: sed
 
 %description
 Koji is a system for building and tracking RPMS.  The base package
@@ -114,6 +115,8 @@ BuildRequires: python2-devel
 %else
 BuildRequires: python-devel
 %endif
+BuildRequires: python2-pip
+BuildRequires: python2-wheel
 %if 0%{?fedora} || 0%{?rhel} >= 8
 Requires: python2-rpm
 %else
@@ -133,6 +136,8 @@ desc
 Summary: Build system tools python library
 %{?python_provide:%python_provide python%{python3_pkgversion}-%{name}}
 BuildRequires: python%{python3_pkgversion}-devel
+BuildRequires: python3-pip
+BuildRequires: python3-wheel
 %if 0%{?fedora} || 0%{?rhel} >= 8
 Requires: python%{python3_pkgversion}-rpm
 %else
@@ -356,8 +361,17 @@ koji-web is a web UI to the Koji system.
 
 %prep
 %autosetup -p1
+# we'll be packaging these separately and don't want them registered
+# to the wheel we will produce.
+sed -e '/util\/koji/g' -e '/koji_cli_plugins/g' -i setup.py
 
 %build
+%if 0%{py2_support}
+%py2_build_wheel
+%endif
+%if 0%{py3_support}
+%py3_build_wheel
+%endif
 
 %install
 rm -rf $RPM_BUILD_ROOT
@@ -368,22 +382,43 @@ exit 1
 %endif
 
 # python2 build
-%if 0%{py2_support} > 1
-make DESTDIR=$RPM_BUILD_ROOT PYTHON=%{__python2} install
-%else
 %if 0%{py2_support}
-for d in koji cli plugins ; do
-    pushd $d
-    make DESTDIR=$RPM_BUILD_ROOT KOJI_MINIMAL=1 PYTHON=%{__python2} install
+%py2_install_wheel %{name}-%{version}-py2-none-any.whl
+mkdir -p %{buildroot}/etc/koji.conf.d
+cp cli/koji.conf %{buildroot}/etc/koji.conf
+%endif
+%if 0%{py2_support} == 1
+pushd plugins
+make DESTDIR=$RPM_BUILD_ROOT KOJI_MINIMAL=1 PYTHON=%{__python2} install
+popd
+%endif
+%if 0%{py2_support} > 1
+for D in hub builder plugins util www vm ; do
+    pushd $D
+    make DESTDIR=$RPM_BUILD_ROOT PYTHON=%{__python2} install
     popd
 done
-%endif
 %endif
 
 
 # python3 build
+%if 0%{py3_support}
+%py3_install_wheel %{name}-%{version}-py3-none-any.whl
+mkdir -p %{buildroot}/etc/koji.conf.d
+cp cli/koji.conf %{buildroot}/etc/koji.conf
+%endif
+%if 0%{py3_support} == 1
+pushd plugins
+make DESTDIR=$RPM_BUILD_ROOT KOJI_MINIMAL=1 PYTHON=%{__python3} install
+popd
+%endif
 %if 0%{py3_support} > 1
-make DESTDIR=$RPM_BUILD_ROOT PYTHON=%{__python3} install
+for D in hub builder plugins util www vm ; do
+    pushd $D
+    make DESTDIR=$RPM_BUILD_ROOT PYTHON=%{__python3} install
+    popd
+done
+
 # alter python interpreter in koji CLI
 scripts='%{_bindir}/koji %{_sbindir}/kojid %{_sbindir}/kojira %{_sbindir}/koji-shadow
          %{_sbindir}/koji-gc %{_sbindir}/kojivmd %{_sbindir}/koji-sweep-db
@@ -391,17 +426,6 @@ scripts='%{_bindir}/koji %{_sbindir}/kojid %{_sbindir}/kojira %{_sbindir}/koji-s
 for fn in $scripts ; do
     sed -i 's|#!/usr/bin/python2|#!/usr/bin/python3|' $RPM_BUILD_ROOT$fn
 done
-%else
-%if 0%{py3_support}
-# minimal
-for d in koji cli plugins ; do
-    pushd $d
-    make DESTDIR=$RPM_BUILD_ROOT KOJI_MINIMAL=1 PYTHON=%{__python3} install
-    popd
-done
-# alter python interpreter in koji CLI
-sed -i 's|#!/usr/bin/python2|#!/usr/bin/python3|' $RPM_BUILD_ROOT/usr/bin/koji
-%endif
 %endif
 
 %if 0%{?fedora}
@@ -446,20 +470,24 @@ done
 rm -rf $RPM_BUILD_ROOT
 
 %files
-%{_bindir}/*
 %config(noreplace) /etc/koji.conf
 %dir /etc/koji.conf.d
 %doc docs Authors COPYING LGPL
 
 %if 0%{py2_support}
+%{_bindir}/*
+%{_sbindir}/*
 %files -n python2-%{name}
 %{python2_sitelib}/%{name}
+%{python2_sitelib}/%{name}-%{version}.*-info
 %{python2_sitelib}/koji_cli
 %endif
 
 %if 0%{py3_support}
+%{_bindir}/*
 %files -n python%{python3_pkgversion}-koji
 %{python3_sitelib}/%{name}
+%{python3_sitelib}/%{name}-%{version}.*-info
 %{python3_sitelib}/koji_cli
 %endif
 
