@@ -126,6 +126,7 @@ All
         <a href="tasks?start=#echo $taskStart + $taskRange#$util.passthrough_except($self)">&gt;&gt;&gt;</a>
         #end if
         #else
+        <strong>Tasks #echo $taskStart + 1 # through #echo $taskStart + $taskCount#</strong>
         <a href="tasks?start=$taskRange$util.passthrough_except($self)">&gt;&gt;&gt;</a>
         #end if
       </td>
@@ -189,6 +190,7 @@ All
         <a href="tasks?start=#echo $taskStart + $taskRange#$util.passthrough_except($self)">&gt;&gt;&gt;</a>
         #end if
         #else
+        <strong>Tasks #echo $taskStart + 1 # through #echo $taskStart + $taskCount#</strong>
         <a href="tasks?start=$taskRange$util.passthrough_except($self)">&gt;&gt;&gt;</a>
         #end if
       </td>
