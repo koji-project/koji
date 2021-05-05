@@ -6941,6 +6941,16 @@ def anon_handle_download_build(options, session, args):
                 continue
             rpms.append(rpm)
 
+    if suboptions.key:
+        with session.multicall() as m:
+            results = [m.queryRPMSigs(rpm_id=r['id'], sigkey=suboptions.key) for r in rpms]
+        rpm_keys = [x.result for x in results]
+        for rpm, rpm_key in list(zip(rpms, rpm_keys)):
+            if not rpm_key:
+                nvra = "%(nvr)s-%(arch)s.rpm" % rpm
+                warn(_("No such sigkey %s for rpm %s" % (suboptions.key, nvra)))
+                rpms.remove(rpm)
+
     # run the download
     for rpm in rpms:
         download_rpm(info, rpm, suboptions.topurl, sigkey=suboptions.key,
