@@ -773,26 +773,15 @@ def _writeInheritanceData(tag_id, changes, clear=False):
         insert.execute()
 
 
-def readFullInheritance(tag_id, event=None, reverse=False, stops=None, jumps=None):
+def readFullInheritance(tag_id, event=None, reverse=False):
     """Returns a list representing the full, ordered inheritance from tag"""
-    if not stops:
-        stops = {}
-    else:
-        logger.warning(
-            "readFullInheritance stops option is deprecated and will be removed in 1.26")
-    if not jumps:
-        jumps = {}
-    else:
-        logger.warning(
-            "readFullInheritance jumps option is deprecated and will be removed in 1.26")
     order = []
-    readFullInheritanceRecurse(tag_id, event, order, stops, {}, {}, 0, None, False, [], reverse,
-                               jumps)
+    readFullInheritanceRecurse(tag_id, event, order, {}, {}, 0, None, False, [], reverse)
     return order
 
 
-def readFullInheritanceRecurse(tag_id, event, order, prunes, top, hist, currdepth, maxdepth,
-                               noconfig, pfilter, reverse, jumps):
+def readFullInheritanceRecurse(tag_id, event, order, top, hist, currdepth, maxdepth, noconfig,
+                               pfilter, reverse):
     if maxdepth is not None and maxdepth < 1:
         return
     # note: maxdepth is relative to where we are, but currdepth is absolute from
@@ -809,8 +798,6 @@ def readFullInheritanceRecurse(tag_id, event, order, prunes, top, hist, currdept
             id = link['tag_id']
         else:
             id = link['parent_id']
-        if id in jumps:
-            id = jumps[id]
         if id in top:
             # LOOP!
             if event is None:
@@ -818,15 +805,8 @@ def readFullInheritanceRecurse(tag_id, event, order, prunes, top, hist, currdept
                 log_error("Warning: INHERITANCE LOOP detected at %s -> %s, pruning" % (tag_id, id))
             # auto prune
             continue
-        if id in prunes:
-            # ignore pruned tags
-            continue
         if link['intransitive'] and len(top) > 1 and not reverse:
             # ignore intransitive inheritance links, except at root
-            continue
-        if link['priority'] < 0:
-            # negative priority indicates pruning, rather than inheritance
-            prunes[id] = 1
             continue
         if reverse:
             # maxdepth logic is different in this case. no propagation
@@ -884,8 +864,8 @@ def readFullInheritanceRecurse(tag_id, event, order, prunes, top, hist, currdept
         if link['intransitive'] and reverse:
             # add link, but don't follow it
             continue
-        readFullInheritanceRecurse(id, event, order, prunes, top, hist, currdepth, nextdepth,
-                                   noconfig, filter, reverse, jumps)
+        readFullInheritanceRecurse(id, event, order, top, hist, currdepth, nextdepth, noconfig,
+                                   filter, reverse)
 
 # tag-package operations
 #       add
@@ -11612,28 +11592,19 @@ class RootExports(object):
         context.session.assertPerm('tag')
         return writeInheritanceData(tag, data, clear=clear)
 
-    def getFullInheritance(self, tag, event=None, reverse=False, stops=None, jumps=None):
+    def getFullInheritance(self, tag, event=None, reverse=False):
         """
         :param int|str tag: tag ID | name
         :param int event: event ID
         :param bool reverse: return reversed tree (descendants instead of
                              parents)
-        :param dict stops: dict of tag ids which should be ignored
-        :param dict jumps: dict of tag ids which should be skipped
 
         :returns: list of node dicts
         """
-        if stops is None:
-            stops = {}
-        if jumps is None:
-            jumps = {}
         if not isinstance(tag, int):
             # lookup tag id
             tag = get_tag_id(tag, strict=True)
-        for mapping in [stops, jumps]:
-            for key in list(mapping.keys()):
-                mapping[int(key)] = mapping[key]
-        return readFullInheritance(tag, event, reverse, stops, jumps)
+        return readFullInheritance(tag, event, reverse)
 
     listRPMs = staticmethod(list_rpms)
 
