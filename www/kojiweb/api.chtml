@@ -3,6 +3,26 @@
 
 <h4>API reference <small>(hub version: $koji_version, web version: $koji.__version__)</small></h4>
 
+Various constants used in API calls can be found in first part of <a
+href="https://pagure.io/koji/blob/master/f/koji/__init__.py">koji module</a>.
+Exceptions which can be raised in python client are just after constants section.
+
+Basic anonymous client in python would look like this:
+
+<pre>
+import koji
+
+mytag = "mytag"
+session = koji.ClientSession("$koji_hub_url")
+try:
+    repo_info = session.getRepo(mytag, koji.REPO_STATES["READY"], dist=True)
+    if not repo_info:
+        print(f"There is no active dist repo for {mytag}")
+except koji.GenericError:
+    print(f"Tag {mytag} doesn't exist")
+</pre>
+
+<h4>List of API calls</h4>
 <ul>
 #for method in $methods
   <li>
