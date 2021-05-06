@@ -354,9 +354,10 @@ def handle_db_msgs(urls, CONFIG):
             LOG.debug('test mode: skipping send for %i messages from db', len(msgs))
             unsent = []
         else:
-            unsent = {m['id'] for m in _send_msgs(urls, msgs, CONFIG)}
+            # we pass a copy of msgs because _send_msgs modifies it
+            unsent = {m['id'] for m in _send_msgs(urls, list(msgs), CONFIG)}
         sent = [m for m in msgs if m['id'] not in unsent]
-        if msgs:
+        if sent:
             c.execute('DELETE FROM proton_queue WHERE id IN %(ids)s',
                       {'ids': [msg['id'] for msg in sent]})
     finally:
