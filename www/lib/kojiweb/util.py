@@ -303,10 +303,15 @@ def paginateList(values, data, start, dataName, prefix=None, order=None, noneGre
 
 
 def paginateMethod(server, values, methodName, args=None, kw=None,
-                   start=None, dataName=None, prefix=None, order=None, pageSize=50):
+                   start=None, dataName=None, prefix=None, order=None, pageSize=50,
+                   first_page_count=True):
     """Paginate the results of the method with the given name when called with the given args and
     kws. The method must support the queryOpts keyword parameter, and pagination is done in the
-    database."""
+    database.
+
+    :param bool first_page_count: If set to False, count is not returned for first page
+                                  to speedup default page.
+    """
     if args is None:
         args = []
     if kw is None:
@@ -320,14 +325,21 @@ def paginateMethod(server, values, methodName, args=None, kw=None,
     if not RE_ORDER.match(order):
         raise ValueError("Ordering is not alphanumeric: %r" % order)
 
-    kw['queryOpts'] = {'countOnly': True}
-    totalRows = getattr(server, methodName)(*args, **kw)
+    if start == 0 and not first_page_count:
+        totalRows = None
+    else:
+        kw['queryOpts'] = {'countOnly': True}
+        totalRows = getattr(server, methodName)(*args, **kw)
 
     kw['queryOpts'] = {'order': order,
                        'offset': start,
                        'limit': pageSize}
     data = getattr(server, methodName)(*args, **kw)
     count = len(data)
+
+    if start == 0 and count < pageSize:
+        # we've got everything on the first page
+        totalRows = count
 
     _populateValues(values, dataName, prefix, data, totalRows, start, count, pageSize, order)
 
@@ -370,7 +382,6 @@ def _populateValues(values, dataName, prefix, data, totalRows, start, count, pag
     values[dataName] = data
     # Don't use capitalize() to title() here, they mess up
     # mixed-case name
-    values['total' + dataName[0].upper() + dataName[1:]] = totalRows
     # Possibly prepend a prefix to the numeric parameters, to avoid namespace collisions
     # when there is more than one list on the same page
     values[(prefix and prefix + 'Start' or 'start')] = start
@@ -379,12 +390,16 @@ def _populateValues(values, dataName, prefix, data, totalRows, start, count, pag
     values[(prefix and prefix + 'Order' or 'order')] = order
     currentPage = start // pageSize
     values[(prefix and prefix + 'CurrentPage' or 'currentPage')] = currentPage
-    totalPages = int(totalRows // pageSize)
-    if totalRows % pageSize > 0:
-        totalPages += 1
-    pages = [page for page in range(0, totalPages)
-             if (abs(page - currentPage) < 100 or ((page + 1) % 100 == 0))]
-    values[(prefix and prefix + 'Pages') or 'pages'] = pages
+    values['total' + dataName[0].upper() + dataName[1:]] = totalRows
+    if totalRows is not None:
+        totalPages = int(totalRows // pageSize)
+        if totalRows % pageSize > 0:
+            totalPages += 1
+        pages = [page for page in range(0, totalPages)
+                 if (abs(page - currentPage) < 100 or ((page + 1) % 100 == 0))]
+        values[(prefix and prefix + 'Pages') or 'pages'] = pages
+    else:
+        values[(prefix and prefix + 'Pages') or 'pages'] = None
 
 
 def stateName(stateID):

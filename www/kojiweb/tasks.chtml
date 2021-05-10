@@ -105,6 +105,7 @@ All
     </tr>
     <tr>
       <td class="paginate" colspan="6">
+        #if $taskPages is not None
         #if $len($taskPages) > 1
         <form class="pageJump" action="">
           Page:
@@ -123,6 +124,10 @@ All
         #end if
         #if $taskStart + $taskCount < $totalTasks
         <a href="tasks?start=#echo $taskStart + $taskRange#$util.passthrough_except($self)">&gt;&gt;&gt;</a>
+        #end if
+        #else
+        <strong>Tasks #echo $taskStart + 1 # through #echo $taskStart + $taskCount#</strong>
+        <a href="tasks?start=$taskRange$util.passthrough_except($self)">&gt;&gt;&gt;</a>
         #end if
       </td>
     </tr>
@@ -164,6 +169,7 @@ All
     #end if
     <tr>
       <td class="paginate" colspan="6">
+        #if $taskPages is not None
         #if $len($taskPages) > 1
         <form class="pageJump" action="">
           Page:
@@ -182,6 +188,10 @@ All
         #end if
         #if $taskStart + $taskCount < $totalTasks
         <a href="tasks?start=#echo $taskStart + $taskRange#$util.passthrough_except($self)">&gt;&gt;&gt;</a>
+        #end if
+        #else
+        <strong>Tasks #echo $taskStart + 1 # through #echo $taskStart + $taskCount#</strong>
+        <a href="tasks?start=$taskRange$util.passthrough_except($self)">&gt;&gt;&gt;</a>
         #end if
       </td>
     </tr>
