@@ -154,7 +154,8 @@ class TestMoveBuild(utils.CliTestCase):
 Options:
   -h, --help  show this help message and exit
   --force     force operation
-  --nowait    do not wait on tasks
+  --wait      Wait on tasks, even if running in the background
+  --nowait    Do not wait on tasks
   --all       move all instances of a package, <pkg>'s are package names
 """ % self.progname)
 

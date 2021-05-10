@@ -301,6 +301,8 @@ Options:
   --multilib=CONFIG     Include multilib packages in the repository using the
                         given config file
   --noinherit           Do not consider tag inheritance
+  --wait                Wait for the task to complete, even if running in the
+                        background
   --nowait              Do not wait for the task to complete
   --skip-missing-signatures
                         Skip RPMs not signed with the desired key(s)

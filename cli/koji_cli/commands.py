@@ -557,8 +557,9 @@ def handle_chain_build(options, session, args):
     "[build] Build one or more packages from source"
     usage = _("usage: %prog chain-build [options] <target> <URL> [<URL> [:] <URL> [:] <URL> ...]")
     parser = OptionParser(usage=get_usage_str(usage))
-    parser.add_option("--nowait", action="store_true",
-                      help=_("Don't wait on build"))
+    parser.add_option("--wait", action="store_true",
+                      help=_("Wait on build, even if running in the background"))
+    parser.add_option("--nowait", action="store_false", dest="wait", help=_("Don't wait on build"))
     parser.add_option("--quiet", action="store_true",
                       help=_("Do not print the task information"), default=options.quiet)
     parser.add_option("--background", action="store_true",
@@ -619,9 +620,7 @@ def handle_chain_build(options, session, args):
     if not build_opts.quiet:
         print("Created task: %d" % task_id)
         print("Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id))
-    if _running_in_bg() or build_opts.nowait:
-        return
-    else:
+    if build_opts.wait or (build_opts.wait is None and not _running_in_bg()):
         session.logout()
         return watch_tasks(session, [task_id], quiet=build_opts.quiet,
                            poll_interval=options.poll_interval, topurl=options.topurl)
@@ -669,8 +668,9 @@ def handle_maven_build(options, session, args):
                       help=_("Do not attempt to tag package"))
     parser.add_option("--scratch", action="store_true",
                       help=_("Perform a scratch build"))
-    parser.add_option("--nowait", action="store_true",
-                      help=_("Don't wait on build"))
+    parser.add_option("--wait", action="store_true",
+                      help=_("Wait on build, even if running in the background"))
+    parser.add_option("--nowait", action="store_false", dest="wait", help=_("Don't wait on build"))
     parser.add_option("--quiet", action="store_true",
                       help=_("Do not print the task information"), default=options.quiet)
     parser.add_option("--background", action="store_true",
@@ -720,9 +720,7 @@ def handle_maven_build(options, session, args):
     if not build_opts.quiet:
         print("Created task: %d" % task_id)
         print("Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id))
-    if _running_in_bg() or build_opts.nowait:
-        return
-    else:
+    if build_opts.wait or (build_opts.wait is None and not _running_in_bg()):
         session.logout()
         return watch_tasks(session, [task_id], quiet=build_opts.quiet,
                            poll_interval=options.poll_interval, topurl=options.topurl)
@@ -742,7 +740,9 @@ def handle_wrapper_rpm(options, session, args):
     parser.add_option("--skip-tag", action="store_true",
                       help=_("If creating a new build, don't tag it"))
     parser.add_option("--scratch", action="store_true", help=_("Perform a scratch build"))
-    parser.add_option("--nowait", action="store_true", help=_("Don't wait on build"))
+    parser.add_option("--wait", action="store_true",
+                      help=_("Wait on build, even if running in the background"))
+    parser.add_option("--nowait", action="store_false", dest="wait", help=_("Don't wait on build"))
     parser.add_option("--background", action="store_true",
                       help=_("Run the build at a lower priority"))
 
@@ -792,9 +792,7 @@ def handle_wrapper_rpm(options, session, args):
     task_id = session.wrapperRPM(build_id, url, target, priority, opts=opts)
     print("Created task: %d" % task_id)
     print("Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id))
-    if _running_in_bg() or build_opts.nowait:
-        return
-    else:
+    if build_opts.wait or (build_opts.wait is None and not _running_in_bg()):
         session.logout()
         return watch_tasks(session, [task_id], quiet=options.quiet,
                            poll_interval=options.poll_interval, topurl=options.topurl)
@@ -812,8 +810,9 @@ def handle_maven_chain(options, session, args):
                       help=_("Run Maven build in debug mode"))
     parser.add_option("--force", action="store_true",
                       help=_("Force rebuilds of all packages"))
-    parser.add_option("--nowait", action="store_true",
-                      help=_("Don't wait on build"))
+    parser.add_option("--wait", action="store_true",
+                      help=_("Wait on build, even if running in the background"))
+    parser.add_option("--nowait", action="store_false", dest="wait", help=_("Don't wait on build"))
     parser.add_option("--background", action="store_true",
                       help=_("Run the build at a lower priority"))
     (build_opts, args) = parser.parse_args(args)
@@ -844,9 +843,7 @@ def handle_maven_chain(options, session, args):
     task_id = session.chainMaven(builds, target, opts, priority=priority)
     print("Created task: %d" % task_id)
     print("Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id))
-    if _running_in_bg() or build_opts.nowait:
-        return
-    else:
+    if build_opts.wait or (build_opts.wait is None and not _running_in_bg()):
         session.logout()
         return watch_tasks(session, [task_id], quiet=options.quiet,
                            poll_interval=options.poll_interval, topurl=options.topurl)
@@ -856,7 +853,9 @@ def handle_resubmit(goptions, session, args):
     """[build] Retry a canceled or failed task, using the same parameter as the original task."""
     usage = _("usage: %prog resubmit [options] <task_id>")
     parser = OptionParser(usage=get_usage_str(usage))
-    parser.add_option("--nowait", action="store_true", help=_("Don't wait on task"))
+    parser.add_option("--wait", action="store_true",
+                      help=_("Wait on task, even if running in the background"))
+    parser.add_option("--nowait", action="store_false", dest="wait", help=_("Don't wait on task"))
     parser.add_option("--nowatch", action="store_true", dest="nowait",
                       help=_("An alias for --nowait"))
     parser.add_option("--quiet", action="store_true", default=goptions.quiet,
@@ -872,9 +871,7 @@ def handle_resubmit(goptions, session, args):
     newID = session.resubmitTask(taskID)
     if not options.quiet:
         print("Resubmitted task %s as new task %s" % (taskID, newID))
-    if _running_in_bg() or options.nowait:
-        return
-    else:
+    if options.wait or (options.wait is None and not _running_in_bg()):
         session.logout()
         return watch_tasks(session, [newID], quiet=options.quiet,
                            poll_interval=goptions.poll_interval, topurl=goptions.topurl)
@@ -5912,6 +5909,8 @@ def handle_image_build_indirection(options, session, args):
                       help=_("Create a scratch image"))
     parser.add_option("--wait", action="store_true",
                       help=_("Wait on the image creation, even if running in the background"))
+    parser.add_option("--nowait", action="store_false", dest="wait",
+                      help=_("Do not wait on the image creation"))
     parser.add_option("--noprogress", action="store_true",
                       help=_("Do not display progress of the upload"))
 
@@ -6681,7 +6680,9 @@ def handle_tag_build(opts, session, args):
     usage = _("usage: %prog tag-build [options] <tag> <pkg> [<pkg> ...]")
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--force", action="store_true", help=_("force operation"))
-    parser.add_option("--nowait", action="store_true", help=_("Do not wait on task"))
+    parser.add_option("--wait", action="store_true",
+                      help=_("Wait on task, even if running in the background"))
+    parser.add_option("--nowait", action="store_false", dest="wait", help=_("Do not wait on task"))
     (options, args) = parser.parse_args(args)
     if len(args) < 2:
         parser.error(
@@ -6694,9 +6695,7 @@ def handle_tag_build(opts, session, args):
         # XXX - wait on task
         tasks.append(task_id)
         print("Created task %d" % task_id)
-    if _running_in_bg() or options.nowait:
-        return
-    else:
+    if options.wait or (options.wait is None and not _running_in_bg()):
         session.logout()
         return watch_tasks(session, tasks, quiet=opts.quiet,
                            poll_interval=opts.poll_interval, topurl=opts.topurl)
@@ -6707,7 +6706,10 @@ def handle_move_build(opts, session, args):
     usage = _("usage: %prog move-build [options] <tag1> <tag2> <pkg> [<pkg> ...]")
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--force", action="store_true", help=_("force operation"))
-    parser.add_option("--nowait", action="store_true", help=_("do not wait on tasks"))
+    parser.add_option("--wait", action="store_true",
+                      help=_("Wait on tasks, even if running in the background"))
+    parser.add_option("--nowait", action="store_false", dest="wait",
+                      help=_("Do not wait on tasks"))
     parser.add_option("--all", action="store_true",
                       help=_("move all instances of a package, <pkg>'s are package names"))
     (options, args) = parser.parse_args(args)
@@ -6745,9 +6747,7 @@ def handle_move_build(opts, session, args):
             task_id = session.moveBuild(args[0], args[1], build['id'], options.force)
             tasks.append(task_id)
             print("Created task %d, moving %s" % (task_id, koji.buildLabel(build)))
-    if _running_in_bg() or options.nowait:
-        return
-    else:
+    if options.wait or (options.wait is None and not _running_in_bg()):
         session.logout()
         return watch_tasks(session, tasks, quiet=opts.quiet,
                            poll_interval=opts.poll_interval, topurl=opts.topurl)
@@ -7087,7 +7087,10 @@ def anon_handle_download_task(options, session, args):
     parser.add_option("--noprogress", action="store_true",
                       help=_("Do not display progress meter"))
     parser.add_option("--wait", action="store_true",
-                      help=_("Wait for running tasks to finish"))
+                      help=_("Wait for running tasks to finish, "
+                             "even if running in the background"))
+    parser.add_option("--nowait", action="store_false", dest="wait",
+                      help=_("Do not wait for running tasks to finish"))
     parser.add_option("-q", "--quiet", action="store_true",
                       help=_("Suppress output"), default=options.quiet)
 
@@ -7109,7 +7112,8 @@ def anon_handle_download_task(options, session, args):
     if not base_task:
         error(_('No such task: %d') % base_task_id)
 
-    if suboptions.wait and base_task['state'] not in (
+    if (suboptions.wait or (suboptions.wait is None and not _running_in_bg())) and \
+            base_task['state'] not in (
             koji.TASK_STATES['CLOSED'],
             koji.TASK_STATES['CANCELED'],
             koji.TASK_STATES['FAILED']):
@@ -7272,7 +7276,10 @@ def handle_regen_repo(options, session, args):
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--target", action="store_true",
                       help=_("Interpret the argument as a build target name"))
-    parser.add_option("--nowait", action="store_true", help=_("Don't wait on for regen to finish"))
+    parser.add_option("--wait", action="store_true",
+                      help=_("Wait on for regen to finish, even if running in the background"))
+    parser.add_option("--nowait", action="store_false", dest="wait",
+                      help=_("Don't wait on for regen to finish"))
     parser.add_option("--debuginfo", action="store_true", help=_("Include debuginfo rpms in repo"))
     parser.add_option("--source", "--src", action="store_true",
                       help=_("Include source rpms in each of repos"))
@@ -7315,9 +7322,7 @@ def handle_regen_repo(options, session, args):
     print("Regenerating repo for tag: %s" % tag)
     print("Created task: %d" % task_id)
     print("Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id))
-    if _running_in_bg() or suboptions.nowait:
-        return
-    else:
+    if suboptions.wait or (suboptions.wait is None and not _running_in_bg()):
         session.logout()
         return watch_tasks(session, [task_id], quiet=options.quiet,
                            poll_interval=options.poll_interval, topurl=options.topurl)
@@ -7360,8 +7365,10 @@ def handle_dist_repo(options, session, args):
                              'config file'))
     parser.add_option("--noinherit", action='store_true', default=False,
                       help=_('Do not consider tag inheritance'))
-    parser.add_option("--nowait", action='store_true', default=False,
-                      help=_('Do not wait for the task to complete'))
+    parser.add_option("--wait", action="store_true",
+                      help=_("Wait for the task to complete, even if running in the background"))
+    parser.add_option("--nowait", action="store_false", dest="wait",
+                      help=_("Do not wait for the task to complete"))
     parser.add_option('--skip-missing-signatures', action='store_true', default=False,
                       help=_('Skip RPMs not signed with the desired key(s)'))
     parser.add_option('--zck', action='store_true', default=False,
@@ -7456,9 +7463,7 @@ def handle_dist_repo(options, session, args):
     }
     task_id = session.distRepo(tag, keys, **opts)
     print("Creating dist repo for tag " + tag)
-    if _running_in_bg() or task_opts.nowait:
-        return
-    else:
+    if task_opts.wait or (task_opts.wait is None and not _running_in_bg()):
         session.logout()
         return watch_tasks(session, [task_id], quiet=options.quiet,
                            poll_interval=options.poll_interval, topurl=options.topurl)

@@ -147,7 +147,7 @@ class TestBuildImageIndirection(utils.CliTestCase):
             expected = "Missing the following required options: "
             expected += "--" + r.replace('_', '-') + "\n"
             with self.assertRaises(koji.GenericError) as cm:
-                with  mock.patch('sys.stdout', new_callable=six.StringIO) as stdout:
+                with mock.patch('sys.stdout', new_callable=six.StringIO) as stdout:
                     _build_image_indirection(
                         self.options, self.task_opts, self.session, [])
             self.assert_console_message(stdout, expected)
@@ -255,6 +255,7 @@ Options:
   --scratch             Create a scratch image
   --wait                Wait on the image creation, even if running in the
                         background
+  --nowait              Do not wait on the image creation
   --noprogress          Do not display progress of the upload
 """ % (self.progname, self.progname))
 

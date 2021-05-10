@@ -177,6 +177,8 @@ class TestRegenRepo(utils.CliTestCase):
 Options:
   -h, --help            show this help message and exit
   --target              Interpret the argument as a build target name
+  --wait                Wait on for regen to finish, even if running in the
+                        background
   --nowait              Don't wait on for regen to finish
   --debuginfo           Include debuginfo rpms in repo
   --source, --src       Include source rpms in each of repos

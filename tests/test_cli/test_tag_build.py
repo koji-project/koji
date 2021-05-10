@@ -73,7 +73,8 @@ class TestTagBuild(utils.CliTestCase):
     def test_handle_tag_build_argument_error(self):
         """Test handle_tag_build function with error argument"""
         expected = self.format_error_message(
-            "This command takes at least two arguments: a tag name/ID and one or more package n-v-r's")
+            "This command takes at least two arguments: a tag name/ID and one or "
+            "more package n-v-r's")
         for arg in [[], ['tag']]:
             self.assert_system_exit(
                 handle_tag_build,
@@ -92,6 +93,7 @@ class TestTagBuild(utils.CliTestCase):
 Options:
   -h, --help  show this help message and exit
   --force     force operation
+  --wait      Wait on task, even if running in the background
   --nowait    Do not wait on task
 """ % self.progname)
 
