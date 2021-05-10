@@ -78,7 +78,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.24.1
+Version: 1.25.0
 Release: %{release}%{?dist}
 License: LGPLv2 and GPLv2+
 # the included arch lib from yum's rpmUtils is GPLv2+
@@ -616,6 +616,88 @@ rm -rf $RPM_BUILD_ROOT
 %systemd_postun kojira.service
 
 %changelog
+* Mon May 10 2021 Tomas Kopecek <tkopecek at redhat.com> - 1.25.0-1
+- PR#2844: protonmsg: use consistent data format for messages
+- PR#2764: kojira: faster startup
+- PR#2831: Add wait/nowait to tag-build, image-build-indirection
+- PR#2827: web: don't use count(*) on first tasks page
+- PR#2833: Add squashfs-only and compress-arg options to livemedia
+- PR#2828: web: additional info on API page
+- PR#2826: Add kerberos debug message
+- PR#2821: Python egginfo
+- PR#2843: update dockerfiles for f34
+- PR#2824: lib: is_conn_error catch more exceptions
+- PR#2823: Add default task ID to prep_repo_init/done
+- PR#2816: koji-gc: Allow specifying all CLI options in config
+- PR#2817: koji-gc: Implement hastag policy for koji-gc
+- PR#2771: lib: use parse_task_params for taskLabel
+- PR#2829: fix tests for changed helpstring
+- PR#2688: cli: list-api method
+- PR#2791: with_owners options for readPackageList and readTaggedBuilds
+- PR#2802: Repo info with task id
+- PR#2803: unify warn messages
+- PR#2808: cli: multicalls for write-signed-rpm
+- PR#2796: api: getVolume with strict
+- PR#2792: cli: mock-config check arch
+- PR#2790: cli: list-builds sort-key warning
+- PR#2756: Show VCS and DistURL tags as links when appropriate
+- PR#2819: lib: more portable BadStatusLine checking
+- PR#2818: hub: Fix typo in postRepoInit callback from distRepo
+- PR#2779: 1.24.1 release notes
+- PR#2810: cli: fix multicall usage in list_hosts
+- PR#2798: Fix list-hosts and hostinfo for older hub
+- PR#2773: unify error messages for web
+- PR#2799: kojid.conf: fix linewrapped comment
+- PR#2794: lib: set sinfo=None for failed ssl_login
+- PR#2689: lib: missing default values in read_config
+- PR#2784: Tolerate floats in metadata timestamps
+- PR#2787: Revert "requests exception"
+- PR#2770: cli: buildinfo returns error for non exist build
+- PR#2766: api getLastHostUpdate returns timestamp
+- PR#2735: lib: more verbose conn AuthError for ssl/gssapi
+- PR#2782: Be tolerant with duplicate parents in _writeInheritanceData
+- PR#2615: cli: catch koji.ParameterError in list_task_output_all_volumes
+- PR#2749: web: optional KojiHubCA usage
+- PR#2753: drop PyOpenSSL usage
+- PR#2765: kojira: check repo.json before deleting
+- PR#2777: docs: fix Fedora's koji URL
+- PR#2722: cli: use multicall for cancel command
+- PR#2772: Fix small documentation typo
+- PR#2699: Fix race handling in rmtree
+- PR#2755: kojira: check rm queue before adding new path
+- PR#2769: cli: hostinfo with non-exist host
+- PR#2768: tests: fix locale setting
+- PR#2721: API: createWinBuild with wrong win/build info
+- PR#2761: cli: rpminfo with non-exist rpm
+- PR#2736: api: createMavenBuild wrong buildinfo/maveninfo
+- PR#2732: api: createImageBuild non-existing build wrong buildinfo
+- PR#2733: Unify error messages
+- PR#2759: tests: stop mock in DBQueryTest
+- PR#2754: doc: jenkins fedora -> centos migration
+- PR#2744: devtools: updated Dockerfiles
+- PR#2715: acquire logging locks before forking
+- PR#2747: Escape vcs and disturl
+- PR#2705: cli: show connection exception
+- PR#2703: cli: list-untagged returns error non-exist package
+- PR#2738: cli: fix help message formatting
+- PR#2737: plugins: fix typo
+- PR#2734: cli: --no-auth for 'call' command
+- PR#2711: Task priority policy
+- PR#2730: configurable sidetags suffixes
+- PR#2678: support modules and other btypes in download-build
+- PR#2731: web: set WSGIProcessGroup inside Directory
+- PR#2727: Fix progname
+- PR#2717: doc: Additional docs for CVE-CVE-2020-15856
+- PR#2723: better ssl_login() error message when cert is None
+- PR#2725: doc: remove "ca" option from server howto
+- PR#2724: doc: update kojid steps in server howto
+- PR#2692: adding check for the license header key
+- PR#2702: cli: list-history error non-exist channel, host
+- PR#2706: hub: document getNextRelease method
+- PR#2709: cli: mock-config error for non existing buildroot
+- PR#2694: adding invalid target name error message
+- PR#2713: set correct import_type for volume policy in completeImageBuild
+
 * Thu Feb  4 2021 Tomas Kopecek <tkopecek at redhat.com> - 1.24.0-1
 - PR#2637: plugin hooks for repo modification
 - PR#2680: fix the mode of tarfile.open
