@@ -5,7 +5,8 @@ import six
 import unittest
 
 import koji
-from koji_cli.commands import handle_spin_livecd, handle_spin_livemedia, handle_spin_appliance, _build_image
+from koji_cli.commands import handle_spin_livecd, handle_spin_livemedia, handle_spin_appliance, \
+    _build_image
 from . import utils
 
 
@@ -41,6 +42,8 @@ LIVEMEDIA_OPTIONS = {
     "ksrepo": False,
     "optional_arches": None,
     "volid": None,
+    "squashfs_only": None,
+    "compress_arg": None,
 }
 
 APPLIANCE_OPTIONS = {
@@ -352,6 +355,7 @@ class TestSpinLiveMedia(utils.CliTestCase):
         args, kwargs = build_image_mock.call_args
         empty_opts = dict((k, None) for k in LIVEMEDIA_OPTIONS)
         empty_opts['optional_arches'] = ''
+        empty_opts['compress_arg'] = []
         self.assertDictEqual(empty_opts, args[1].__dict__)
         self.assertEqual(args[-1], 'livemedia')
 
@@ -426,6 +430,9 @@ Options:
                         templates.
   --nomacboot           Pass the nomacboot option to livemedia-creator
   --ksrepo              Do not overwrite repos in the kickstart
+  --squashfs-only       Use a plain squashfs filesystem.
+  --compress-arg=ARG OPT
+                        List of compressions.
 """ % (self.progname))
 
 
