@@ -2902,6 +2902,10 @@ def anon_handle_list_hosts(goptions, session, args):
     tmp_list = sorted([(x['name'], x) for x in session.listHosts(**opts)])
     hosts = [x[1] for x in tmp_list]
 
+    if not hosts:
+        warn("No hosts found.")
+        return
+
     def yesno(x):
         if x:
             return 'Y'
