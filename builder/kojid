@@ -27,6 +27,7 @@ import copy
 import glob
 import grp
 import io
+import json
 import logging
 import logging.handlers
 import os
@@ -962,6 +963,18 @@ class BuildTask(BaseTaskHandler):
             repo_info = None
             # we'll wait for a repo later (self.getRepo)
             self.event_id = None
+
+        if opts.get('custom_user_metadata'):
+            if not isinstance(opts['custom_user_metadata'], dict):
+                raise koji.BuildError('custom_user_metadata must be serializable to a JSON object')
+
+            try:
+                json.dumps(opts['custom_user_metadata'])
+            except TypeError:
+                error_msg = 'custom_user_metadata is not JSON serializable'
+                self.logger.exception(error_msg)
+                raise koji.BuildError(error_msg)
+
         task_info = self.session.getTaskInfo(self.id)
         target_info = None
         if target:
@@ -1018,6 +1031,10 @@ class BuildTask(BaseTaskHandler):
         if getattr(self, 'source', False):
             data['source'] = self.source['source']
             data['extra'] = {'source': {'original_url': self.source['url']}}
+
+        if opts.get('custom_user_metadata'):
+            data.setdefault('extra', {})
+            data['extra']['custom_user_metadata'] = opts['custom_user_metadata']
 
         extra_arches = None
         self.logger.info("Reading package config for %(name)s" % data)

@@ -494,6 +494,9 @@ def handle_build(options, session, args):
                       help=_("Do not display progress of the upload"))
     parser.add_option("--background", action="store_true",
                       help=_("Run the build at a lower priority"))
+    parser.add_option("--custom-user-metadata", type="str",
+                      help=_("Provide a JSON string of custom metadata to be deserialized and "
+                             "stored under the build's extra.custom_user_metadata field"))
     (build_opts, args) = parser.parse_args(args)
     if len(args) != 2:
         parser.error(_("Exactly two arguments (a build target and a SCM URL or srpm file) are "
@@ -502,6 +505,17 @@ def handle_build(options, session, args):
         parser.error(_("--no-/rebuild-srpm is only allowed for --scratch builds"))
     if build_opts.arch_override and not build_opts.scratch:
         parser.error(_("--arch_override is only allowed for --scratch builds"))
+    custom_user_metadata = {}
+    if build_opts.custom_user_metadata:
+        try:
+            custom_user_metadata = json.loads(build_opts.custom_user_metadata)
+        # Use ValueError instead of json.JSONDecodeError for Python 2 and 3 compatibility
+        except ValueError:
+            parser.error(_("--custom-user-metadata is not valid JSON"))
+
+    if not isinstance(custom_user_metadata, dict):
+        parser.error(_("--custom-user-metadata must be a JSON object"))
+
     activate_session(session, options)
     target = args[0]
     if target.lower() == "none" and build_opts.repo_id:
@@ -525,6 +539,7 @@ def handle_build(options, session, args):
         val = getattr(build_opts, key)
         if val is not None:
             opts[key] = val
+    opts["custom_user_metadata"] = custom_user_metadata
     priority = None
     if build_opts.background:
         # relative to koji.PRIO_DEFAULT

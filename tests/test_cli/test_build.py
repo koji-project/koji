@@ -52,7 +52,7 @@ https://docs.pagure.org/koji/HOWTO/#package-organization
         source = 'srpm'
         task_id = 1
         args = [target, source]
-        opts = {'wait_builds': []}
+        opts = {'custom_user_metadata': {}, 'wait_builds': []}
         priority = None
 
         self.session.getBuildTarget.return_value = target_info
@@ -105,7 +105,7 @@ Task info: weburl/taskinfo?taskID=1
         source = 'http://scm'
         task_id = 1
         args = [target, source]
-        opts = {'wait_builds': []}
+        opts = {'custom_user_metadata': {}, 'wait_builds': []}
         priority = None
 
         self.session.getBuildTarget.return_value = target_info
@@ -226,8 +226,141 @@ Options:
   --repo-id=REPO_ID     Use a specific repo
   --noprogress          Do not display progress of the upload
   --background          Run the build at a lower priority
+  --custom-user-metadata=CUSTOM_USER_METADATA
+                        Provide a JSON string of custom metadata to be
+                        deserialized and stored under the build's
+                        extra.custom_user_metadata field
 """ % (progname, progname)
         expected_stderr = ''
+        self.assertMultiLineEqual(actual_stdout, expected_stdout)
+        self.assertMultiLineEqual(actual_stderr, expected_stderr)
+
+        # Finally, assert that things were called as we expected.
+        activate_session_mock.assert_not_called()
+        self.session.getBuildTarget.assert_not_called()
+        self.session.getTag.assert_not_called()
+        unique_path_mock.assert_not_called()
+        running_in_bg_mock.assert_not_called()
+        self.session.uploadWrapper.assert_not_called()
+        self.session.build.assert_not_called()
+        self.session.logout.assert_not_called()
+        watch_tasks_mock.assert_not_called()
+
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('koji_cli.commands.activate_session')
+    @mock.patch('koji_cli.commands.unique_path', return_value='random_path')
+    @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
+    @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
+    def test_handle_build_custom_user_metadata(
+            self,
+            watch_tasks_mock,
+            running_in_bg_mock,
+            unique_path_mock,
+            activate_session_mock,
+            stdout):
+        target = 'target'
+        dest_tag = 'dest_tag'
+        target_info = {'dest_tag': dest_tag}
+        dest_tag_info = {'locked': False}
+        source = 'http://scm'
+        task_id = 1
+        args = ['--custom-user-metadata={"automation-triggered-by": "yoda"}', target, source]
+        opts = {'custom_user_metadata': {'automation-triggered-by': 'yoda'}, 'wait_builds': []}
+        priority = None
+
+        self.session.getBuildTarget.return_value = target_info
+        self.session.getTag.return_value = dest_tag_info
+        self.session.build.return_value = task_id
+        # Run it and check immediate output
+        # args: target, http://scm
+        # expected: success
+        rv = handle_build(self.options, self.session, args)
+        actual = stdout.getvalue()
+        expected = """Created task: 1
+Task info: weburl/taskinfo?taskID=1
+"""
+        self.assertMultiLineEqual(actual, expected)
+        # Finally, assert that things were called as we expected.
+        activate_session_mock.assert_called_once_with(self.session, self.options)
+        self.session.getBuildTarget.assert_called_once_with(target)
+        self.session.getTag.assert_called_once_with(dest_tag)
+        unique_path_mock.assert_not_called()
+        running_in_bg_mock.assert_called_once()
+        self.session.uploadWrapper.assert_not_called()
+        self.session.build.assert_called_once_with(
+            source, target, opts, priority=priority)
+        self.session.logout.assert_called()
+        watch_tasks_mock.assert_called_once_with(
+            self.session, [task_id], quiet=self.options.quiet,
+            poll_interval=self.options.poll_interval, topurl=self.options.topurl)
+        self.assertEqual(rv, 0)
+
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
+    @mock.patch('koji_cli.commands.activate_session')
+    @mock.patch('koji_cli.commands.unique_path', return_value='random_path')
+    @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
+    @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
+    def test_handle_build_custom_user_metadata_invalid_json(
+            self,
+            watch_tasks_mock,
+            running_in_bg_mock,
+            unique_path_mock,
+            activate_session_mock,
+            stderr,
+            stdout):
+        target = 'target'
+        source = 'http://scm'
+        args = [target, source, '--custom-user-metadata={Do or do not. There is no try.}']
+
+        # Run it and check immediate output
+        with self.assertRaises(SystemExit) as ex:
+            handle_build(self.options, self.session, args)
+        self.assertExitCode(ex, 2)
+        actual_stdout = stdout.getvalue()
+        actual_stderr = stderr.getvalue()
+        expected_stdout = ''
+        expected_stderr = self.format_error_message("--custom-user-metadata is not valid JSON")
+        self.assertMultiLineEqual(actual_stdout, expected_stdout)
+        self.assertMultiLineEqual(actual_stderr, expected_stderr)
+
+        # Finally, assert that things were called as we expected.
+        activate_session_mock.assert_not_called()
+        self.session.getBuildTarget.assert_not_called()
+        self.session.getTag.assert_not_called()
+        unique_path_mock.assert_not_called()
+        running_in_bg_mock.assert_not_called()
+        self.session.uploadWrapper.assert_not_called()
+        self.session.build.assert_not_called()
+        self.session.logout.assert_not_called()
+        watch_tasks_mock.assert_not_called()
+
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
+    @mock.patch('koji_cli.commands.activate_session')
+    @mock.patch('koji_cli.commands.unique_path', return_value='random_path')
+    @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
+    @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
+    def test_handle_build_custom_user_metadata_not_json_object(
+            self,
+            watch_tasks_mock,
+            running_in_bg_mock,
+            unique_path_mock,
+            activate_session_mock,
+            stderr,
+            stdout):
+        target = 'target'
+        source = 'http://scm'
+        args = [target, source, '--custom-user-metadata="Do or do not. There is no try."']
+
+        # Run it and check immediate output
+        with self.assertRaises(SystemExit) as ex:
+            handle_build(self.options, self.session, args)
+        self.assertExitCode(ex, 2)
+        actual_stdout = stdout.getvalue()
+        actual_stderr = stderr.getvalue()
+        expected_stdout = ''
+        expected_stderr = self.format_error_message("--custom-user-metadata must be a JSON object")
         self.assertMultiLineEqual(actual_stdout, expected_stdout)
         self.assertMultiLineEqual(actual_stderr, expected_stderr)
 
@@ -301,7 +434,9 @@ Options:
         task_id = 1
         repo_id = 2
         args = ['--repo-id=' + str(repo_id), target, source]
-        opts = {'repo_id': repo_id, 'skip_tag': True, 'wait_builds': []}
+        opts = {
+            'repo_id': repo_id, 'skip_tag': True, 'wait_builds': [], 'custom_user_metadata': {}
+        }
         priority = None
 
         self.session.build.return_value = task_id
@@ -483,7 +618,12 @@ Task info: weburl/taskinfo?taskID=1
             '--scratch',
             target,
             source]
-        opts = {'arch_override': arch_override, 'scratch': True, 'wait_builds': []}
+        opts = {
+            'arch_override': arch_override,
+            'custom_user_metadata': {},
+            'scratch': True,
+            'wait_builds': [],
+        }
         priority = None
 
         self.session.getBuildTarget.return_value = target_info
@@ -534,7 +674,7 @@ Task info: weburl/taskinfo?taskID=1
         task_id = 1
         args = ['--background', target, source]
         priority = 5
-        opts = {'wait_builds': []}
+        opts = {'custom_user_metadata': {}, 'wait_builds': []}
 
         self.session.getBuildTarget.return_value = target_info
         self.session.getTag.return_value = dest_tag_info
@@ -582,7 +722,7 @@ Task info: weburl/taskinfo?taskID=1
         source = 'srpm'
         task_id = 1
         args = [target, source]
-        opts = {'wait_builds': []}
+        opts = {'custom_user_metadata': {}, 'wait_builds': []}
         priority = None
 
         self.session.getBuildTarget.return_value = target_info
@@ -633,7 +773,7 @@ Task info: weburl/taskinfo?taskID=1
         source = 'srpm'
         task_id = 1
         args = ['--noprogress', target, source]
-        opts = {'wait_builds': []}
+        opts = {'custom_user_metadata': {}, 'wait_builds': []}
         priority = None
 
         self.session.getBuildTarget.return_value = target_info
@@ -687,7 +827,7 @@ Task info: weburl/taskinfo?taskID=1
         task_id = 1
         quiet = True
         args = ['--quiet', target, source]
-        opts = {'wait_builds': []}
+        opts = {'custom_user_metadata': {}, 'wait_builds': []}
         priority = None
 
         self.session.getBuildTarget.return_value = target_info
@@ -737,7 +877,7 @@ Task info: weburl/taskinfo?taskID=1
         task_id = 1
         quiet = None
         args = ['--wait', target, source]
-        opts = {'wait_builds': []}
+        opts = {'custom_user_metadata': {}, 'wait_builds': []}
         priority = None
 
         self.session.getBuildTarget.return_value = target_info
@@ -790,7 +930,7 @@ Task info: weburl/taskinfo?taskID=1
         source = 'srpm'
         task_id = 1
         args = ['--nowait', target, source]
-        opts = {'wait_builds': []}
+        opts = {'custom_user_metadata': {}, 'wait_builds': []}
         priority = None
 
         self.session.getBuildTarget.return_value = target_info
