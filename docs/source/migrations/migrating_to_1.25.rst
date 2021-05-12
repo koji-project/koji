@@ -8,8 +8,8 @@ DB Updates
 
 This release includes one schema change.
 
-Each repo now contains link to task which was used to create it (`Issue #888
-<https://pagure.io/koji/issue/888>`_)/
+Each repo now contains a link to the task which was used to create it (`Issue #888
+<https://pagure.io/koji/issue/888>`_)
 
 
 As in previous releases, we provide a migration script that updates the database.
