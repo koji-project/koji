@@ -21,7 +21,6 @@
 
 from __future__ import absolute_import
 
-import imp
 import logging
 import sys
 import traceback
@@ -30,6 +29,14 @@ import six
 
 import koji
 from koji.util import encode_datetime_recurse
+
+try:
+    import importlib
+    import importlib.machinery
+except ImportError:  # pragma: no cover
+    # importlib not available for PY2, so we fall back to using imp
+    import imp as imp
+    importlib = None
 
 # the available callback hooks and a list
 # of functions to be called for each event
@@ -86,15 +93,24 @@ class PluginTracker(object):
             path = self.searchpath
         if path is None:
             raise koji.PluginError("empty module search path")
-        file, pathname, description = imp.find_module(name, self.pathlist(path))
+        file = None
         try:
-            plugin = imp.load_module(mod_name, file, pathname, description)
+            if importlib:
+                orig_spec = importlib.machinery.PathFinder().find_spec(name, self.pathlist(path))
+                plugin_spec = importlib.util.spec_from_file_location(mod_name, orig_spec.origin)
+                plugin = importlib.util.module_from_spec(plugin_spec)
+                sys.modules[mod_name] = plugin
+                plugin_spec.loader.exec_module(plugin)
+            else:
+                file, pathname, description = imp.find_module(name, self.pathlist(path))
+                plugin = imp.load_module(mod_name, file, pathname, description)
         except Exception:
             msg = 'Loading plugin %s failed' % name
             logging.getLogger('koji.plugin').error(msg)
             raise
         finally:
-            file.close()
+            if file:
+                file.close()
         self.plugins[name] = plugin
         return plugin
 

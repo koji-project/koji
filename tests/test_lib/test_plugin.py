@@ -3,7 +3,15 @@ import copy
 import datetime
 import mock
 from six.moves import range
+import sys
 import unittest
+
+try:
+    import importlib
+    imp = None
+except ImportError:
+    import imp
+    importlib = None
 
 import koji
 import koji.util
@@ -14,7 +22,7 @@ class TestCallbackDecorators(unittest.TestCase):
 
     def test_callback_decorator(self):
         def myfunc(a, b, c=None):
-            return [a,b,c]
+            return [a, b, c]
         callbacks = ('preImport', 'postImport')
         newfunc = koji.plugin.callback(*callbacks)(myfunc)
         self.assertEqual(newfunc.callbacks, callbacks)
@@ -23,7 +31,7 @@ class TestCallbackDecorators(unittest.TestCase):
 
     def test_ignore_error_decorator(self):
         def myfunc(a, b, c=None):
-            return [a,b,c]
+            return [a, b, c]
         newfunc = koji.plugin.ignore_error(myfunc)
         self.assertEqual(newfunc.failure_is_an_option, True)
         self.assertEqual(newfunc(1, 2), [1, 2, None])
@@ -31,7 +39,7 @@ class TestCallbackDecorators(unittest.TestCase):
 
     def test_export_decorator(self):
         def myfunc(a, b, c=None):
-            return [a,b,c]
+            return [a, b, c]
         newfunc = koji.plugin.export(myfunc)
         self.assertEqual(newfunc.exported, True)
         self.assertEqual(newfunc(1, 2), [1, 2, None])
@@ -39,7 +47,7 @@ class TestCallbackDecorators(unittest.TestCase):
 
     def test_export_cli_decorator(self):
         def myfunc(a, b, c=None):
-            return [a,b,c]
+            return [a, b, c]
         newfunc = koji.plugin.export_cli(myfunc)
         self.assertEqual(newfunc.exported_cli, True)
         self.assertEqual(newfunc(1, 2), [1, 2, None])
@@ -47,7 +55,7 @@ class TestCallbackDecorators(unittest.TestCase):
 
     def test_export_as_decorator(self):
         def myfunc(a, b, c=None):
-            return [a,b,c]
+            return [a, b, c]
         alias = "ALIAS"
         newfunc = koji.plugin.export_as(alias)(myfunc)
         self.assertEqual(newfunc.exported, True)
@@ -57,7 +65,7 @@ class TestCallbackDecorators(unittest.TestCase):
 
     def test_export_in_decorator_with_alias(self):
         def myfunc(a, b, c=None):
-            return [a,b,c]
+            return [a, b, c]
         newfunc = koji.plugin.export_in('MODULE', 'ALIAS')(myfunc)
         self.assertEqual(newfunc.exported, True)
         self.assertEqual(newfunc.export_alias, 'MODULE.ALIAS')
@@ -67,7 +75,7 @@ class TestCallbackDecorators(unittest.TestCase):
 
     def test_export_in_decorator_no_alias(self):
         def myfunc(a, b, c=None):
-            return [a,b,c]
+            return [a, b, c]
         newfunc = koji.plugin.export_in('MODULE')(myfunc)
         self.assertEqual(newfunc.exported, True)
         self.assertEqual(newfunc.export_alias, 'MODULE.myfunc')
@@ -141,8 +149,8 @@ class TestCallbacks(unittest.TestCase):
 
     def test_datetime_callback(self):
         dt1 = datetime.datetime.now()
-        dt2 = datetime.datetime(2001,1,1)
-        args = (dt1,"2",["three"], {4: dt2},)
+        dt2 = datetime.datetime(2001, 1, 1)
+        args = (dt1, "2", ["three"], {4: dt2},)
         kwargs = {'foo': [dt1, dt2]}
         cbtype = 'preTag'
         koji.plugin.register_callback(cbtype, self.datetime_callback)
@@ -154,8 +162,8 @@ class TestCallbacks(unittest.TestCase):
 
     def test_multiple_datetime_callback(self):
         dt1 = datetime.datetime.now()
-        dt2 = datetime.datetime(2001,1,1)
-        args = (dt1,"2",["three"], {4: dt2},)
+        dt2 = datetime.datetime(2001, 1, 1)
+        args = (dt1, "2", ["three"], {4: dt2},)
         kwargs = {'foo': [dt1, dt2]}
         cbtype = 'preTag'
         koji.plugin.register_callback(cbtype, self.datetime_callback)
@@ -195,70 +203,105 @@ class TestCallbacks(unittest.TestCase):
 class TestPluginTracker(unittest.TestCase):
 
     def setUp(self):
-        self.find_module = mock.patch('imp.find_module').start()
-        self.modfile = mock.MagicMock()
-        self.modpath = mock.MagicMock()
-        self.moddesc = mock.MagicMock()
-        self.find_module.return_value = (self.modfile, self.modpath,
-                self.moddesc)
-        self.load_module = mock.patch('imp.load_module').start()
+        self.tracker = koji.plugin.PluginTracker(path='/MODPATH')
+        if imp:
+            self.modfile = mock.MagicMock()
+            self.modpath = mock.MagicMock()
+            self.moddesc = mock.MagicMock()
+            self.find_module = mock.patch('imp.find_module').start()
+
+            self.find_module.return_value = (self.modfile, self.modpath, self.moddesc)
+
+            self.load_module = mock.patch('imp.load_module').start()
+        else:
+            self.finder = mock.patch('importlib.machinery.PathFinder').start()
+            self.find_spec = self.finder.return_value.find_spec
+            self.find_spec.return_value = mock.MagicMock()
+            self.spec_from_file_location = mock.patch(
+                'importlib.util.spec_from_file_location').start()
+            self.module_from_spec = mock.patch('importlib.util.module_from_spec').start()
 
     def tearDown(self):
         mock.patch.stopall()
+        for key in ['hello', 'hey', 'dup_module']:
+            if '_koji_plugin__' + key in sys.modules:
+                del sys.modules['_koji_plugin__' + key]
+        del self.tracker
+
+    def _set_returned_module(self, mod):
+        if imp:
+            self.load_module.return_value = mod
+        else:
+            self.module_from_spec.return_value = mod
+
+    def _set_module_side_effect(self, se):
+        if imp:
+            self.load_module.side_effect = se
+        else:
+            self.module_from_spec.side_effect = se
 
     def test_tracked_plugin(self):
-        tracker = koji.plugin.PluginTracker(path='/MODPATH')
-        self.load_module.return_value = 'MODULE!'
-        tracker.load('hello')
-        self.assertEqual(tracker.get('hello'), 'MODULE!')
-        self.find_module.assert_called_once_with('hello', ['/MODPATH'])
+        self._set_returned_module('MODULE!')
+        self.tracker.load('hello')
+        self.assertEqual(self.tracker.get('hello'), 'MODULE!')
+        if imp:
+            self.find_module.assert_called_once_with('hello', ['/MODPATH'])
+        else:
+            self.find_spec.assert_called_once_with('hello', ['/MODPATH'])
 
     def test_plugin_reload(self):
-        tracker = koji.plugin.PluginTracker(path='/MODPATH')
-        self.load_module.return_value = 'MODULE!'
-        tracker.load('hello')
-        self.assertEqual(tracker.get('hello'), 'MODULE!')
+        self._set_returned_module('MODULE!')
+        self.tracker.load('hello')
+        self.assertEqual(self.tracker.get('hello'), 'MODULE!')
 
         # should not reload if we don't ask
-        self.load_module.return_value = 'DUPLICATE!'
-        tracker.load('hello')
-        self.assertEqual(tracker.get('hello'), 'MODULE!')
+        self._set_returned_module('DUPLICATE!')
+        self.tracker.load('hello')
+        self.assertEqual(self.tracker.get('hello'), 'MODULE!')
 
         # should reload if we do ask
-        tracker.load('hello', reload=True)
-        self.assertEqual(tracker.get('hello'), 'DUPLICATE!')
+        self.tracker.load('hello', reload=True)
+        self.assertEqual(self.tracker.get('hello'), 'DUPLICATE!')
 
         # should throw exception if not reloading and duplicate in sys.modules
         module_mock = mock.MagicMock()
         with mock.patch.dict('sys.modules', _koji_plugin__dup_module=module_mock):
             with self.assertRaises(koji.PluginError):
-                tracker.load('dup_module')
+                self.tracker.load('dup_module')
 
     def test_no_plugin_path(self):
         tracker = koji.plugin.PluginTracker()
         with self.assertRaises(koji.PluginError):
             tracker.load('hello')
-        self.load_module.assert_not_called()
+        if imp:
+            self.load_module.assert_not_called()
+        else:
+            self.module_from_spec.assert_not_called()
         self.assertEqual(tracker.get('hello'), None)
 
     def test_plugin_path_list(self):
-        tracker = koji.plugin.PluginTracker(path='/MODPATH')
-        self.load_module.return_value = 'MODULE!'
-        tracker.load('hello', path=['/PATH1', '/PATH2'])
-        self.assertEqual(tracker.get('hello'), 'MODULE!')
-        self.find_module.assert_called_once_with('hello', ['/PATH1', '/PATH2'])
+        self._set_returned_module('MODULE!')
+        self.tracker.load('hello', path=['/PATH1', '/PATH2'])
+        self.assertEqual(self.tracker.get('hello'), 'MODULE!')
+        if imp:
+            self.find_module.assert_called_once_with('hello', ['/PATH1', '/PATH2'])
+            self.find_module.reset_mock()
+        else:
+            self.find_spec.assert_called_once_with('hello', ['/PATH1', '/PATH2'])
+            self.find_spec.reset_mock()
 
-        self.find_module.reset_mock()
-        tracker.load('hey', path='/PATH1')
-        self.assertEqual(tracker.get('hey'), 'MODULE!')
-        self.find_module.assert_called_once_with('hey', ['/PATH1'])
+        self.tracker.load('hey', path='/PATH1')
+        self.assertEqual(self.tracker.get('hey'), 'MODULE!')
+        if imp:
+            self.find_module.assert_called_once_with('hey', ['/PATH1'])
+        else:
+            self.find_spec.assert_called_once_with('hey', ['/PATH1'])
 
     @mock.patch('logging.getLogger')
     def test_bad_plugin(self, getLogger):
-        tracker = koji.plugin.PluginTracker(path='/MODPATH')
-        self.load_module.side_effect = TestError
+        self._set_module_side_effect(TestError)
         with self.assertRaises(TestError):
-            tracker.load('hello')
-        self.assertEqual(tracker.get('hello'), None)
+            self.tracker.load('hello')
+        self.assertEqual(self.tracker.get('hello'), None)
         getLogger.assert_called_once()
         getLogger.return_value.error.assert_called_once()

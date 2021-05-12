@@ -3,14 +3,25 @@ import os
 import six
 import subprocess
 import unittest
+import sys
+
+try:
+    import importlib.util
+except ImportError:  # pragma: no cover
+    import imp as imp
+    importlib = None
 
 # docs version lives in docs/source/conf.py
 TOPDIR = os.path.dirname(__file__) + '/..'
 SPHINX_CONF = TOPDIR + '/docs/source/conf.py'
 
-import imp
-import os
-sphinx_conf = imp.load_source('sphinx_conf', SPHINX_CONF)
+if importlib:
+    spec = importlib.util.spec_from_file_location("sphinx_conf", SPHINX_CONF)
+    sphinx_conf = importlib.util.module_from_spec(spec)
+    sys.modules["sphinx_conf"] = sphinx_conf
+    spec.loader.exec_module(sphinx_conf)
+else:
+    sphinx_conf = imp.load_source('sphinx_conf', SPHINX_CONF)
 
 
 class TestDocsVersion(unittest.TestCase):
@@ -35,4 +46,3 @@ class TestDocsVersion(unittest.TestCase):
         # docs 'version' is x.y instead of x.y.z
         dver = '.'.join(koji_version.split('.')[:-1])
         self.assertEqual(dver, sphinx_conf.version)
-
