@@ -203,9 +203,9 @@ class TestEditHost(utils.CliTestCase):
             handle_edit_host(options, session, args)
         self.assertExitCode(ex, 1)
         actual = stderr.getvalue()
-        expected = """Host host does not exist
+        expected = """No such host: %s
 No changes made, please correct the command line
-"""
+""" % host
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
         activate_session_mock.assert_called_once_with(session, options)

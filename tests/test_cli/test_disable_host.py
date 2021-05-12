@@ -68,7 +68,7 @@ class TestDisableHost(utils.CliTestCase):
         session.editHost.assert_not_called()
         expect = ''
         for host in arguments:
-            expect += "Host %s does not exist\n" % host
+            expect += "No such host: %s\n" % host
         self.assert_console_message(stdout, expect)
         self.assert_console_message(stderr, "No changes made. Please correct the command line.\n")
 

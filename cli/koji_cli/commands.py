@@ -233,7 +233,7 @@ def handle_edit_host(options, session, args):
     error_hit = False
     for host, [info] in zip(args, session.multiCall(strict=True)):
         if not info:
-            warn(_("Host %s does not exist") % host)
+            warn(_("No such host: %s") % host)
             error_hit = True
 
     if error_hit:
@@ -1078,7 +1078,7 @@ def handle_disable_host(goptions, session, args):
     error_hit = False
     for host, [id] in zip(args, session.multiCall(strict=True)):
         if not id:
-            print("Host %s does not exist" % host)
+            print("No such host: %s" % host)
             error_hit = True
     if error_hit:
         error("No changes made. Please correct the command line.")
@@ -1107,7 +1107,7 @@ def handle_enable_host(goptions, session, args):
     error_hit = False
     for host, [id] in zip(args, session.multiCall(strict=True)):
         if not id:
-            print("Host %s does not exist" % host)
+            print("No such host: %s" % host)
             error_hit = True
     if error_hit:
         error("No changes made. Please correct the command line.")
@@ -2004,7 +2004,7 @@ def handle_list_permissions(goptions, session, args):
     if options.user:
         user = session.getUser(options.user)
         if not user:
-            error("User %s does not exist" % options.user)
+            error("No such user: %s" % options.user)
         perms = session.getUserPerms(user['id'])
     elif options.mine:
         perms = session.getPerms()
@@ -4035,7 +4035,7 @@ def handle_edit_target(goptions, session, args):
         targetInfo['build_tag_name'] = options.build_tag
         chkbuildtag = session.getTag(options.build_tag)
         if not chkbuildtag:
-            error("Build tag does not exist: %s" % options.build_tag)
+            error("No such tag: %s" % options.build_tag)
         if not chkbuildtag.get("arches", None):
             error("Build tag has no arches: %s" % options.build_tag)
     if options.dest_tag:

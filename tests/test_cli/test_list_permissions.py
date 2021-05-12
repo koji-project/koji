@@ -51,7 +51,7 @@ class TestListPermissions(utils.CliTestCase):
             activate_session=None)
 
         # case 2. user does not exists
-        expected = "User %s does not exist" % user + "\n"
+        expected = "No such user: %s" % user + "\n"
         session.getUser.return_value = None
         with self.assertRaises(SystemExit) as ex:
             handle_list_permissions(options, session, ['--user', user])
