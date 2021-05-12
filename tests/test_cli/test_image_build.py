@@ -33,6 +33,7 @@ TASK_OPTIONS = {
     "ksurl": "git://git.fedorahosted.org/git/spin-kickstarts.git?fedora26#68c40eb7",
     "ksversion": "DEVEL",
     "noprogress": None,
+    "noverifyssl": None,
     "optional_arches": [
         "ppc",
         "arm64"
@@ -356,6 +357,9 @@ Options:
   --ksurl=SCMURL        The URL to the SCM containing the kickstart file
   --ksversion=VERSION   The syntax version used in the kickstart file
   --noprogress          Do not display progress of the upload
+  --noverifyssl         Use the noverifyssl option for the install tree and
+                        all repos. This option is only allowed if enabled on
+                        the builder.
   --nowait              Don't wait on image creation
   --ova-option=OVA_OPTION
                         Override a value in the OVA description XML. Provide a

@@ -3763,6 +3763,10 @@ class OzImageTask(BaseTaskHandler):
         # repo associated with the target passed in initially.
         ks.handler.repo.repoList = []  # delete whatever the ks file told us
         repo_class = kscontrol.dataMap[ks.version]['RepoData']
+        # only use noverifyssl if allowed in kojid.conf
+        if self.opts.get('noverifyssl') and not self.options.allow_noverifyssl:
+            raise koji.BuildError("noverifyssl option is not enabled")
+        noverifyssl = self.options.allow_noverifyssl and self.opts.get('noverifyssl')
         # TODO: sensibly use "url" and "repo" commands in kickstart
         if self.opts.get('repo'):
             # the user used --repo at least once
@@ -3771,7 +3775,8 @@ class OzImageTask(BaseTaskHandler):
             for user_repo in user_repos:
                 repo_url = user_repo.replace('$arch', self.arch)
                 ks.handler.repo.repoList.append(repo_class(
-                    baseurl=repo_url, name='koji-override-%i' % index))
+                    baseurl=repo_url, name='koji-override-%i' % index,
+                    noverifyssl=noverifyssl))
                 index += 1
         else:
             # --repo was not given, so we use the target's build repo
@@ -3781,9 +3786,10 @@ class OzImageTask(BaseTaskHandler):
             baseurl = '%s/%s' % (repopath, self.arch)
             self.logger.debug('BASEURL: %s' % baseurl)
             ks.handler.repo.repoList.append(repo_class(
-                baseurl=baseurl, name='koji-override-0'))
+                baseurl=baseurl, name='koji-override-0',
+                noverifyssl=noverifyssl))
         # inject the URL of the install tree into the kickstart
-        ks.handler.url(url=install_tree)
+        ks.handler.url(url=install_tree, noverifyssl=noverifyssl)
         return ks
 
     def writeKickstart(self, ksobj, ksname):
@@ -6362,7 +6368,8 @@ def get_options():
                 'xz_options': '-z6T0',
                 'task_avail_delay': 300,
                 'cert': None,
-                'serverca': None}
+                'serverca': None,
+                'allow_noverifyssl': False}
     if config.has_section('kojid'):
         for name, value in config.items('kojid'):
             if name in ['sleeptime', 'maxjobs', 'minspace', 'retry_interval',
@@ -6376,7 +6383,8 @@ def get_options():
                     quit("value for %s option must be a valid integer" % name)
             elif name in ['offline_retry', 'use_createrepo_c', 'createrepo_skip_stat',
                           'createrepo_update', 'use_fast_upload', 'support_rpm_source_layout',
-                          'build_arch_can_fail', 'no_ssl_verify', 'log_timestamps']:
+                          'build_arch_can_fail', 'no_ssl_verify', 'log_timestamps',
+                          'allow_noverifyssl']:
                 defaults[name] = config.getboolean('kojid', name)
             elif name in ['plugin', 'plugins']:
                 defaults['plugin'] = value.split()
