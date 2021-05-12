@@ -66,3 +66,12 @@ class TestListHosts(utils.CliTestCase):
             anon_handle_list_hosts(self.options, self.session, ['--channel', channel])
         self.assertExitCode(ex, 2)
         self.assert_console_message(stderr, expected)
+
+    @mock.patch('sys.stderr', new_callable=StringIO)
+    @mock.patch('koji_cli.commands.ensure_connection')
+    def test_list_hosts_empty(self, ensure_connection, stderr):
+        expected = "No hosts found.\n"
+        self.session.listHosts.return_value = []
+        anon_handle_list_hosts(self.options, self.session, [])
+        self.assert_console_message(stderr, expected)
+        self.session.listHosts.assert_called_once_with()
