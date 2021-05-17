@@ -309,10 +309,19 @@ class LoggingLockManager(object):
             lock.acquire()
 
     def release_locks(self):
+        # Only parent process should have locked locks in 3.9+, child ones will
+        # be reinitilized to free state
+        # In older pythons, state could be random (and no module_lock)
         if self.module_lock:
-            logging._releaseLock()
+            try:
+                logging._releaseLock()
+            except RuntimeError:
+                pass
         for lock in self.locks:
-            lock.release()
+            try:
+                lock.release()
+            except RuntimeError:
+                pass
 
 
 class RepoManager(object):
