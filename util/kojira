@@ -1025,7 +1025,13 @@ class RepoManager(object):
             if repo.expired():
                 # try to delete
                 if repo.tryDelete(self.delete_logger):
-                    del self.repos[repo.repo_id]
+                    try:
+                        del self.repos[repo.repo_id]
+                    except KeyError:
+                        # during tryDelete repo record is deleted on hub
+                        # if readCurrentRepos is called meanwhile, it could have
+                        # cleaned self.repos already
+                        pass
                     n += 1
         self.delete_logger.debug("Ending delete repos (queued for deletion: %s)" % n)
 
