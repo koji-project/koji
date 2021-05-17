@@ -280,6 +280,16 @@ delete more directories.
 External repositories sometimes can use float timestamp. We now correctly parse
 that.
 
+**Fix fork-related issues**
+
+| PR: https://pagure.io/koji/pull-request/2853
+| PR: https://pagure.io/koji/pull-request/2855
+| PR: https://pagure.io/koji/pull-request/2856
+
+Forking while deleting is causing some issues (mostly with loggign module)
+especially with the latest python.  These can result in kojira not deleting
+repos at all.
+
 Garbage Collector
 .................
 **Allow specifying all CLI options in config**
