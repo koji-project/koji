@@ -70,7 +70,6 @@ class ManagedRepo(object):
 
     def __init__(self, manager, data, repodata=None):
         self.manager = manager
-        self.session = manager.session
         self.options = manager.options
         self.logger = logging.getLogger("koji.repo")
         self.current = True
@@ -89,6 +88,11 @@ class ManagedRepo(object):
             # TODO use hub data to find the actual expiration time
         self.first_seen = time.time()
         self._taglist = None
+
+    @property
+    def session(self):
+        # return actual thread session object
+        return self.manager.session
 
     @property
     def taglist(self):
