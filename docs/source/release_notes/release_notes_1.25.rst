@@ -22,21 +22,22 @@ Client Changes
 **More verbose error/warning messages**
 
 | PR: https://pagure.io/koji/pull-request/2615
+| PR: https://pagure.io/koji/pull-request/2694
 | PR: https://pagure.io/koji/pull-request/2702
 | PR: https://pagure.io/koji/pull-request/2703
+| PR: https://pagure.io/koji/pull-request/2709
+| PR: https://pagure.io/koji/pull-request/2727
+| PR: https://pagure.io/koji/pull-request/2733
+| PR: https://pagure.io/koji/pull-request/2738
 | PR: https://pagure.io/koji/pull-request/2761
 | PR: https://pagure.io/koji/pull-request/2769
 | PR: https://pagure.io/koji/pull-request/2770
-| PR: https://pagure.io/koji/pull-request/2733
-| PR: https://pagure.io/koji/pull-request/2803
-| PR: https://pagure.io/koji/pull-request/2694
-| PR: https://pagure.io/koji/pull-request/2709
-| PR: https://pagure.io/koji/pull-request/2829
-| PR: https://pagure.io/koji/pull-request/2738
+| PR: https://pagure.io/koji/pull-request/2773
 | PR: https://pagure.io/koji/pull-request/2790
 | PR: https://pagure.io/koji/pull-request/2792
-| PR: https://pagure.io/koji/pull-request/2727
-| PR: https://pagure.io/koji/pull-request/2773
+| PR: https://pagure.io/koji/pull-request/2803
+| PR: https://pagure.io/koji/pull-request/2829
+| PR: https://pagure.io/koji/pull-request/2850
 
 We've revised many calls which previously returned empty results to raise more
 meaningful errors. For example, ``koji list-untagged package_x`` previously did
@@ -101,10 +102,10 @@ Library Changes
 ---------------
 **Better failed authentication/connections**
 
-| PR: https://pagure.io/koji/pull-request/2735
-| PR: https://pagure.io/koji/pull-request/2824
-| PR: https://pagure.io/koji/pull-request/2794
 | PR: https://pagure.io/koji/pull-request/2723
+| PR: https://pagure.io/koji/pull-request/2735
+| PR: https://pagure.io/koji/pull-request/2794
+| PR: https://pagure.io/koji/pull-request/2824
 | PR: https://pagure.io/koji/pull-request/2826
 
 Connection errors now provide a bit more information for debugging.
@@ -335,7 +336,7 @@ Documentation
 | PR: https://pagure.io/koji/pull-request/2724
 | PR: https://pagure.io/koji/pull-request/2725
 | PR: https://pagure.io/koji/pull-request/2772
-| PR: https://pagure.io/koji/pull-request/2843
 | PR: https://pagure.io/koji/pull-request/2799
+| PR: https://pagure.io/koji/pull-request/2843
 
 Numerous small updates.
