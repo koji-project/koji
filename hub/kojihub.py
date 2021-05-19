@@ -9410,7 +9410,8 @@ def policy_get_cgs(data):
     return cgs
 
 
-def policy_get_build_tags(data):
+def policy_get_build_tags(data, taginfo=False):
+    """If taginfo is set, return list of taginfos, else list of names only"""
     if 'build_tag' in data:
         return [get_tag(data['build_tag'], strict=True)['name']]
     elif 'build_tags' in data:
@@ -9424,12 +9425,18 @@ def policy_get_build_tags(data):
             return [target['build_tag_name']]
 
     # otherwise look at buildroots
-    tags = set()
+    tags = {}
     for br_id in policy_get_brs(data):
         if br_id is None:
-            tags.add(None)
+            tags[None] = None
         else:
-            tags.add(get_buildroot(br_id, strict=True)['tag_name'])
+            tinfo = get_buildroot(br_id, strict=True)
+            tags[tinfo['tag_name']] = tinfo
+
+    if taginfo:
+        tags = tags.values()
+    else:
+        tags = tags.keys()
     return tags
 
 
@@ -9627,6 +9634,25 @@ class BuildTagTest(koji.policy.BaseSimpleTest):
                 continue
             if multi_fnmatch(tagname, args):
                 return True
+        # otherwise...
+        return False
+
+
+class BuildTagInheritsFromTest(koji.policy.BaseSimpleTest):
+    """Check all parents of buildtag (without child tag)"""
+    name = 'buildtag_inherits_from'
+
+    def run(self, data):
+        test_name, *args = self.str.split()
+        assert(test_name == self.name)
+        for tinfo in policy_get_build_tags(data, taginfo=True):
+            if tinfo is None:
+                # content generator buildroots might not have tag info
+                continue
+
+            for tag in readFullInheritance(tinfo['tag_id']):
+                if multi_fnmatch(tag['name'], args):
+                    return True
         # otherwise...
         return False
 
