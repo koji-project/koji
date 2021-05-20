@@ -85,6 +85,7 @@ Configuration
 
 
 .. code-block:: shell
+
     # merge PR into main repository  
     if [ -n "$REPO" -a -n "$BRANCH" ]; then  
         git config --global user.email "test@example.com"  
