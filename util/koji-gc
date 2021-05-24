@@ -882,8 +882,8 @@ def handle_prune():
         pprint.pprint(policies.ruleset)
 
     # get user info
-    user_perms = session.getPerms() #JOE
-    user = session.getLoggedInUser() #JOE
+    user_perms = session.getPerms()
+    user = session.getLoggedInUser()
     username = user['name']
 
     # get tags
@@ -927,7 +927,7 @@ def handle_prune():
 
             required_perms = '"{}"{}'.format(
                 perm if perm is not None else 'tag',
-                ' or "admin"' if not is_admin and perm != "admin"  else '')
+                ' or "admin"' if not is_admin and perm != "admin" else '')
             print("Skipping tag "
                   "'{}' which requires {} but not found for user '{}'".format(
                       taginfo['name'],
