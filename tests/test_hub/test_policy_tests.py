@@ -259,6 +259,64 @@ class TestHasTagTest(unittest.TestCase):
         self.assertFalse(obj.run(data))
 
 
+class TestBuildTagInheritsFromTest(unittest.TestCase):
+
+    def setUp(self):
+        self.policy_get_build_tags = mock.patch('kojihub.policy_get_build_tags').start()
+        self.readFullInheritance = mock.patch('kojihub.readFullInheritance').start()
+
+    def tearDown(self):
+        mock.patch.stopall()
+
+    def test_wrong_test_name(self):
+        obj = kojihub.BuildTagInheritsFromTest('buildtag_inherits_from_type foo*')
+        data = {}
+        self.policy_get_build_tags.return_value = {None}
+        with self.assertRaises(AssertionError):
+            obj.run(data)
+
+    def test_no_buildtag(self):
+        obj = kojihub.BuildTagInheritsFromTest('buildtag_inherits_from foo*')
+        data = {}
+        self.policy_get_build_tags.return_value = {None}
+        self.assertFalse(obj.run(data))
+        self.policy_get_build_tags.assert_called_once_with(data, taginfo=True)
+        self.readFullInheritance.assert_not_called()
+
+    def test_no_inheritance(self):
+        obj = kojihub.BuildTagInheritsFromTest('buildtag_inherits_from foo*')
+        data = {}
+        self.policy_get_build_tags.return_value = [{'tag_id': 123, 'tag_name': 'foox'}]
+        self.readFullInheritance.return_value = []
+        self.assertFalse(obj.run(data))
+        self.policy_get_build_tags.assert_called_once_with(data, taginfo=True)
+        self.readFullInheritance.assert_called_once_with(123)
+
+    def test_inheritance_pass(self):
+        obj = kojihub.BuildTagInheritsFromTest('buildtag_inherits_from foo*')
+        data = {}
+        self.policy_get_build_tags.return_value = [{'tag_id': 123, 'tag_name': 'wrong'}]
+        self.readFullInheritance.return_value = [
+            {'name': 'still-wrong'},
+            {'name': 'foox'},
+        ]
+        self.assertTrue(obj.run(data))
+        self.policy_get_build_tags.assert_called_once_with(data, taginfo=True)
+        self.readFullInheritance.assert_called_once_with(123)
+
+    def test_inheritance_fail(self):
+        obj = kojihub.BuildTagInheritsFromTest('buildtag_inherits_from foo*')
+        data = {}
+        self.policy_get_build_tags.return_value = [{'tag_id': 123, 'tag_name': 'wrong'}]
+        self.readFullInheritance.return_value = [
+            {'name': 'still-wrong'},
+            {'name': 'still-still-wrong'},
+        ]
+        self.assertFalse(obj.run(data))
+        self.policy_get_build_tags.assert_called_once_with(data, taginfo=True)
+        self.readFullInheritance.assert_called_once_with(123)
+
+
 class TestBuildTypeTest(unittest.TestCase):
     def setUp(self):
         self.get_build_type = mock.patch('kojihub.get_build_type').start()
