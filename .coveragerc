@@ -4,6 +4,8 @@ data_file = .coverage2
 omit =
     setup.py
     /usr/*
+    hub/*
+    plugins/hub/*
     tests/*
     .tox/*
 
