@@ -2715,7 +2715,10 @@ class BuildLiveCDTask(BuildImageTask):
         # build the image
         bld_info = None
         try:
-            release = opts.get('release')
+            if opts.get('release') is None:
+                release = self.session.getNextRelease({'name': name, 'version': version})
+            else:
+                release = opts.get('release')
             if not opts.get('scratch'):
                 bld_info = self.initImageBuild(name, version, release,
                                                target_info, opts)
