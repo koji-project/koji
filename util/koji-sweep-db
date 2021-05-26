@@ -2,7 +2,6 @@
 
 import os
 import xmlrpc.client
-from configparser import RawConfigParser
 from optparse import OptionParser
 
 import koji.db
@@ -131,6 +130,8 @@ if __name__ == "__main__":
                       help="Don't delete anything, print estimations (implies -v)")
     parser.add_option('-c', '--conf', default='/etc/koji-hub/hub.conf',
                       action='store', help="Path to koji's hub.conf")
+    parser.add_option('--config-dir', default='/etc/koji-hub/hub.conf.d',
+                      action='store', help="Path to koji's hub.conf directory")
     parser.add_option('--no-vacuum', action="store_false", dest="vacuum",
                       default=True,
                       help="Don't run vacuum on affected tables")
@@ -167,8 +168,7 @@ if __name__ == "__main__":
     if not os.path.exists(options.conf):
         parser.error("Config file doesn't exist")
 
-    config = RawConfigParser()
-    config.read(options.conf)
+    config = koji.read_config_files([options.config_dir, (options.conf, True)], raw=True)
 
     cfgmap = [
         # option, type, default
