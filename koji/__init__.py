@@ -28,7 +28,6 @@ import base64
 import datetime
 import errno
 import hashlib
-import imp
 import json
 import logging
 import logging.handlers
@@ -49,6 +48,13 @@ import warnings
 import weakref
 import xml.sax
 import xml.sax.handler
+try:
+    import importlib
+    import importlib.machinery
+except ImportError:  # pragma: no cover
+    # importlib not available for PY2, so we fall back to using imp
+    import imp as imp
+    importlib = None
 from fnmatch import fnmatch
 
 import dateutil.parser
@@ -2030,18 +2036,24 @@ def get_profile_module(profile_name, config=None):
     # Prepare module name
     mod_name = "__%s__%s" % (__name__, profile_name)
 
-    imp.acquire_lock()
+    if not importlib:
+        imp.acquire_lock()
+
     try:
         # Check if profile module exists and if so return it
         if mod_name in PROFILE_MODULES:
             return PROFILE_MODULES[mod_name]
 
         # Load current module under a new name
-        koji_module_loc = imp.find_module(__name__)
-        mod = imp.load_module(mod_name,
-                              None,
-                              koji_module_loc[1],
-                              koji_module_loc[2])
+        if importlib:
+            koji_spec = importlib.util.find_spec(__name__)
+            mod_spec = importlib.util.spec_from_file_location(mod_name, koji_spec.origin)
+            mod = importlib.util.module_from_spec(mod_spec)
+            sys.modules[mod_name] = mod
+            mod_spec.loader.exec_module(mod)
+        else:
+            koji_module_loc = imp.find_module(__name__)
+            mod = imp.load_module(mod_name, None, koji_module_loc[1], koji_module_loc[2])
 
         # Tweak config of the new module
         mod.config = config
@@ -2053,7 +2065,8 @@ def get_profile_module(profile_name, config=None):
 
         PROFILE_MODULES[mod_name] = mod
     finally:
-        imp.release_lock()
+        if not importlib:
+            imp.release_lock()
 
     return mod
 

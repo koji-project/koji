@@ -1,9 +1,20 @@
 import os
-import imp
+import sys
 
-# We have to do this craziness because 'import koji' is ambiguous.  Is it the
-# koji module, or the koji cli module.  Jump through hoops accordingly.
-# https://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path
+try:
+    import importlib
+    import importlib.machinery
+except ImportError:
+    import imp
+    importlib = None
+
+INDEX_MOD = "index_fake"
 INDEX_FILENAME = os.path.dirname(__file__) + "/../../www/kojiweb/index.py"
 
-webidx = imp.load_source('index_fake', INDEX_FILENAME)
+if importlib:
+    spec = importlib.util.spec_from_file_location(INDEX_MOD, INDEX_FILENAME)
+    webidx = importlib.util.module_from_spec(spec)
+    sys.modules[INDEX_MOD] = webidx
+    spec.loader.exec_module(webidx)
+else:
+    cli = imp.load_source(INDEX_MOD, INDEX_FILENAME)
