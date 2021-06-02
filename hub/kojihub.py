@@ -654,20 +654,6 @@ def eventCondition(event, table=None):
         raise koji.GenericError("Invalid event: %r" % event)
 
 
-def readGlobalInheritance(event=None):
-    logger.warning("The getGlobalInheritance call is deprecated and will be removed in 1.25.")
-    c = context.cnx.cursor()
-    fields = ('tag_id', 'parent_id', 'name', 'priority', 'maxdepth', 'intransitive',
-              'noconfig', 'pkg_filter')
-    q = """SELECT %s FROM tag_inheritance JOIN tag ON parent_id = id
-    WHERE %s
-    ORDER BY priority
-    """ % (",".join(fields), eventCondition(event))
-    c.execute(q, locals())
-    # convert list of lists into a list of dictionaries
-    return [dict(zip(fields, x)) for x in c.fetchall()]
-
-
 def readInheritanceData(tag_id, event=None):
     c = context.cnx.cursor()
     fields = ('parent_id', 'name', 'priority', 'maxdepth', 'intransitive', 'noconfig',
@@ -11599,8 +11585,6 @@ class RootExports(object):
     getTagGroups = staticmethod(readTagGroups)
 
     checkTagAccess = staticmethod(check_tag_access)
-
-    getGlobalInheritance = staticmethod(readGlobalInheritance)
 
     def getInheritanceData(self, tag, event=None):
         """Return inheritance data for tag"""
