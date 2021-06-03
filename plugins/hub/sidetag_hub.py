@@ -314,7 +314,6 @@ def handle_sidetag_untag(cbtype, *args, **kws):
 # read config and register
 if not CONFIG:
     CONFIG = koji.read_config_files(CONFIG_FILE, raw=True)
-    print(open(CONFIG_FILE).read())
     if CONFIG.has_option("sidetag", "remove_empty") and CONFIG.getboolean(
         "sidetag", "remove_empty"
     ):
