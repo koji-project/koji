@@ -130,9 +130,20 @@ Now Sidetag Koji plugin should be installed.  To verify that, run
 as one of available API calls.
 
 Plugin has also its own configuration file
-``/etc/koji-hub/plugins/sidetag.conf`` which for now contains the only boolean
-option ``remove_empty``. If it is set, sidetag is automatically deleted when
-last package is untagged from there.
+``/etc/koji-hub/plugins/sidetag.conf`` which contains following options:
+
+.. glossary::
+   remove_empty = off
+       If this is set, sidetag is automatically deleted when
+       last package is untagged from there.
+
+   allowed_suffixes =
+       List of strings delimited by commas. These suffixes are then allowed to
+       be requested via ``createSideTag``
+
+   name_template = {basetag}s-side-{tag_id}d
+       Python string template to be used for generation of sidetag name. It needs
+       to contain both basetag/tag_id placeholders.
 
 CLI
 ---
