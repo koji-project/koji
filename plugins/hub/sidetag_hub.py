@@ -118,7 +118,7 @@ def createSideTag(basetag, debuginfo=False, suffix=None):
     # ugly, it will waste one number in tag_id_seq, but result will match with
     # id assigned by _create_tag
     tag_id = nextval("tag_id_seq") + 1
-    sidetag_name = "%s-side-%s" % (basetag["name"], tag_id)
+    sidetag_name = NAME_TEMPLATE.format(basetag=basetag["name"], tag_id=tag_id)
     if suffix:
         sidetag_name += '-%s' % suffix
     extra = {
@@ -313,10 +313,14 @@ def handle_sidetag_untag(cbtype, *args, **kws):
 
 # read config and register
 if not CONFIG:
-    CONFIG = koji.read_config_files(CONFIG_FILE)
+    CONFIG = koji.read_config_files(CONFIG_FILE, raw=True)
     if CONFIG.has_option("sidetag", "remove_empty") and CONFIG.getboolean(
         "sidetag", "remove_empty"
     ):
         handle_sidetag_untag = callback("postUntag")(handle_sidetag_untag)
     if CONFIG.has_option("sidetag", "allowed_suffixes"):
         ALLOWED_SUFFIXES = CONFIG.get("sidetag", "allowed_suffixes").split(',')
+    if CONFIG.has_option("sidetag", "name_template"):
+        NAME_TEMPLATE = CONFIG.get("sidetag", "name_template")
+    else:
+        NAME_TEMPLATE = '{basetag}-side-{tag_id}'
