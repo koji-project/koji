@@ -1377,8 +1377,7 @@ def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None,
         if not btype:
             raise koji.GenericError('unsupported build type: %s' % type)
         btype_id = btype['id']
-        joins += ['build_types ON build.id = build_types.build_id',
-                  'btype_id = %(btype_id)s']
+        joins += ['build_types ON build.id = build_types.build_id AND btype_id = %(btype_id)s']
 
     clauses = [
         eventCondition(event, 'tag_listing'),
