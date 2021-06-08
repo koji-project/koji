@@ -11315,79 +11315,78 @@ class RootExports(object):
                    createdBefore=None, createdAfter=None,
                    completeBefore=None, completeAfter=None, type=None, typeInfo=None,
                    queryOpts=None, pattern=None):
-        """Return a list of builds that match the given parameters
+        """
+        Return a list of builds that match the given parameters
 
         Filter parameters
-            - packageID: only builds of the specified package (numeric id)
-            - userID: only builds owned by the given user (numeric id)
-            - taskID: only builds with the given task ID
-                If taskID is -1, only builds with a non-null task id
-            - volumeID: only builds stored on the given volume (numeric id)
-            - source: only builds where the source field matches (glob pattern)
-            - prefix: only builds whose package name starts with that prefix
-            - pattern: only builds whose nvr matches the glob pattern
-            - state: only builds in the given state (numeric value)
+        :param int|str packageID: only builds of the specified package
+        :param int|str userID: only builds owned by the given user
+        :param int taskID: only builds with the given task ID
+            If taskID is -1, only builds with a non-null task id
+        :param int volumeID: only builds stored on the given volume
+        :param str source: only builds where the source field matches (glob pattern)
+        :param str prefix: only builds whose package name starts with that prefix
+        :param str pattern: only builds whose nvr matches the glob pattern
+        :param int stage: only builds in the given state
 
         Timestamp filter parameters
             - these limit the results to builds where the corresponding
                 timestamp is before or after the given time
             - the time value may be specified as seconds since the epoch or
                 in ISO format ('YYYY-MM-DD HH24:MI:SS')
-            - filters for creation_time:
-                - createdBefore
-                - createdAfter
-            - filters for completion_time:
-                - completeBefore
-                - completeAfter
+        :param str|timestamp createdBefore: filter for creation_time
+        :param str|timestamp createdAfter: filter for creation_time
+        :param str|timestamp completeBefore: filter for completion_time
+        :param str|timestamp completeAfter: filter for completion_time
 
         Build type parameters:
-            - type: only builds of the given btype (such as maven or image)
-            - typeInfo: only builds with matching type-specific info (given
-                as a dictionary). Can only be used in conjunction with the
-                type parameter. Only limited types are supported.
+        :param str type: only builds of the given btype (such as maven or image)
+        :param dict typeInfo: only builds with matching type-specific info (given
+            as a dictionary). Can only be used in conjunction with the
+            type parameter. Only limited types are supported.
 
-                For type=maven, the provided group_id, artifact_id, and/or version
-                fields are matched
+            For type=maven, the provided group_id, artifact_id, and/or version
+            fields are matched
 
-                For type=win, the provided platform fields are matched
+            For type=win, the provided platform fields are matched
 
-        Returns a list of maps.  Each map contains the following keys:
+        :returns: Returns a list of maps.  Each map contains the following keys:
 
-          - build_id
-          - version
-          - release
-          - epoch
-          - state
-          - package_id
-          - package_name
-          - name (same as package_name)
-          - nvr (synthesized for sorting purposes)
-          - owner_id
-          - owner_name
-          - volume_id
-          - volume_name
-          - source
-          - creation_event_id
-          - creation_time
-          - creation_ts
-          - start_time
-          - start_ts
-          - completion_time
-          - completion_ts
-          - task_id
-          - extra
+              - build_id
+              - version
+              - release
+              - epoch
+              - state
+              - package_id
+              - package_name
+              - name (same as package_name)
+              - nvr (synthesized for sorting purposes)
+              - owner_id
+              - owner_name
+              - volume_id
+              - volume_name
+              - source
+              - creation_event_id
+              - creation_time
+              - creation_ts
+              - start_time
+              - start_ts
+              - completion_time
+              - completion_ts
+              - task_id
+              - extra
 
-        If type == 'maven', each map will also contain the following keys:
+            If type == 'maven', each map will also contain the following keys:
 
-          - maven_group_id
-          - maven_artifact_id
-          - maven_version
+              - maven_group_id
+              - maven_artifact_id
+              - maven_version
 
-        If type == 'win', each map will also contain the following key:
+            If type == 'win', each map will also contain the following key:
 
-            - platform
+                - platform
 
-        If no builds match, an empty list is returned.
+            If no builds match, an empty list is returned.
         """
         fields = [('build.id', 'build_id'), ('build.version', 'version'),
                   ('build.release', 'release'),
@@ -11414,8 +11413,10 @@ class RootExports(object):
                  'LEFT JOIN users ON build.owner = users.id']
         clauses = []
         if packageID is not None:
+            packageID = get_package_id(packageID, strict=True)
             clauses.append('package.id = %(packageID)i')
         if userID is not None:
+            userID = get_user(userID, strict=True)['id']
             clauses.append('users.id = %(userID)i')
         if volumeID is not None:
             clauses.append('volume.id = %(volumeID)i')
