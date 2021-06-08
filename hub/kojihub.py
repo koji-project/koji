@@ -27,7 +27,6 @@ from __future__ import absolute_import
 import base64
 import calendar
 import datetime
-import errno
 import fcntl
 import fnmatch
 import functools
@@ -10506,11 +10505,8 @@ class RootExports(object):
         fn = get_upload_path(path, name, create=True, volume=volume)
         try:
             st = os.lstat(fn)
-        except OSError as e:
-            if e.errno == errno.ENOENT:
-                pass
-            else:
-                raise
+        except FileNotFoundError:
+            pass
         else:
             if not stat.S_ISREG(st.st_mode):
                 raise koji.GenericError("destination not a file: %s" % fn)
@@ -10576,11 +10572,8 @@ class RootExports(object):
         data = {}
         try:
             fd = os.open(fn, os.O_RDONLY)
-        except OSError as e:
-            if e.errno == errno.ENOENT:
-                return None
-            else:
-                raise
+        except FileNotFoundError:
+            return None
         try:
             try:
                 fcntl.lockf(fd, fcntl.LOCK_SH | fcntl.LOCK_NB)
