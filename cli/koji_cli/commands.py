@@ -8,7 +8,6 @@ import logging
 import os
 import pprint
 import random
-import re
 import stat
 import sys
 import textwrap
@@ -22,7 +21,7 @@ import six.moves.xmlrpc_client
 from six.moves import filter, map, range, zip
 
 import koji
-from koji.util import base64encode, md5_constructor, to_list, deprecated
+from koji.util import base64encode, md5_constructor, to_list
 from koji_cli.lib import (
     TimeOption,
     _,
@@ -4196,8 +4195,8 @@ def anon_handle_list_tag_inheritance(goptions, session, args):
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--reverse", action="store_true",
                       help=_("Process tag's children instead of its parents"))
-    parser.add_option("--stop", help=_("Stop processing inheritance at this tag"))
-    parser.add_option("--jump", help=_("Jump from one tag to another when processing inheritance"))
+    parser.add_option("--stop", help=SUPPRESS_HELP)
+    parser.add_option("--jump", help=SUPPRESS_HELP)
     parser.add_option("--event", type='int', metavar="EVENT#", help=_("query at event"))
     parser.add_option("--ts", type='int', metavar="TIMESTAMP",
                       help=_("query at last event before timestamp"))
@@ -4219,29 +4218,8 @@ def anon_handle_list_tag_inheritance(goptions, session, args):
 
     opts = {}
     opts['reverse'] = options.reverse or False
-    opts['stops'] = {}
-    opts['jumps'] = {}
     if event:
         opts['event'] = event['id']
-
-    if options.jump:
-        deprecated("--jump option is deprecated and will be removed in 1.26")
-        match = re.match(r'^(.*)/(.*)$', options.jump)
-        if match:
-            tag1 = session.getTagID(match.group(1))
-            if not tag1:
-                parser.error(_("No such tag: %s") % match.group(1))
-            tag2 = session.getTagID(match.group(2))
-            if not tag2:
-                parser.error(_("No such tag: %s") % match.group(2))
-            opts['jumps'][str(tag1)] = tag2
-
-    if options.stop:
-        deprecated("--stop option is deprecated and will be removed in 1.26")
-        tag1 = session.getTagID(options.stop)
-        if not tag1:
-            parser.error(_("No such tag: %s") % options.stop)
-        opts['stops'] = {str(tag1): 1}
 
     sys.stdout.write('     %s (%i)\n' % (tag['name'], tag['id']))
     data = session.getFullInheritance(tag['id'], **opts)

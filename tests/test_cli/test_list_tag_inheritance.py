@@ -55,3 +55,27 @@ class TestListTagInheritance(utils.CliTestCase):
             anon_handle_list_tag_inheritance(self.options, self.session, [self.tag])
         self.assertExitCode(ex, 2)
         self.assert_console_message(stderr, expected)
+
+    def test_help(self):
+        self.assert_help(
+            anon_handle_list_tag_inheritance,
+            """Usage: %s list-tag-inheritance [options] <tag>
+
+Prints tag inheritance with basic information about links.
+Four flags could be seen in the output:
+ M - maxdepth - limits inheritance to n-levels
+ F - package filter (packages ignored for inheritance)
+ I - intransitive link - inheritance immediately stops here
+ N - noconfig - if tag is used in buildroot, its configuration values will not be used
+
+Exact values for maxdepth and package filter can be inquired by taginfo command.
+
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help      show this help message and exit
+  --reverse       Process tag's children instead of its parents
+  --event=EVENT#  query at event
+  --ts=TIMESTAMP  query at last event before timestamp
+  --repo=REPO#    query at event for a repo
+""" % self.progname)
