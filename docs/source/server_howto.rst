@@ -1008,7 +1008,6 @@ override all these values. So, you can use e.g.
 
     ## SSL authentication options
     ; WebCert = /etc/pki/koji/koji-web.pem
-    ; ClientCA = /etc/pki/koji/ca_cert.crt
     ; KojiHubCA = /etc/pki/koji/ca_cert.crt
 
     LoginTimeout = 72
