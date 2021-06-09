@@ -1,9 +1,9 @@
-FROM centos:8
+FROM registry.centos.org/centos:8
 
 RUN \
   dnf -y update --nodocs --setopt=install_weak_deps=False && \
-  dnf install -y epel-release && \
-  dnf install -y \
+  dnf install -y --nodocs --setopt=install_weak_deps=False epel-release && \
+  dnf install -y --nodocs --setopt=install_weak_deps=False \
   'dnf-command(download)' \
   gcc \
   git \
