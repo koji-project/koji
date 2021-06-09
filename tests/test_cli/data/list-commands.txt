@@ -1,6 +1,7 @@
 Available commands:
 
 admin commands:
+        add-channel               Add a channel
         add-external-repo         Create an external repo and/or add one to a tag
         add-group                 Add a group to a tag
         add-group-pkg             Add a package to a group's package listing
@@ -21,6 +22,7 @@ admin commands:
         clone-tag                 Duplicate the contents of one tag onto another tag
         disable-host              Mark one or more hosts as disabled
         disable-user              Disable logins by a user
+        edit-channel              Edit a channel
         edit-external-repo        Edit data for an external repo
         edit-host                 Edit a host
         edit-tag                  Alter tag information

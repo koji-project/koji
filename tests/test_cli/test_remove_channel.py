@@ -1,9 +1,9 @@
 from __future__ import absolute_import
-import mock
-import os
-import six
-import sys
+
 import unittest
+
+import six
+import mock
 
 from koji_cli.commands import handle_remove_channel
 from . import utils
@@ -11,102 +11,68 @@ from . import utils
 
 class TestRemoveChannel(utils.CliTestCase):
 
-    # Show long diffs in error output...
-    maxDiff = None
+    def setUp(self):
+        self.options = mock.MagicMock()
+        self.session = mock.MagicMock()
+        self.channel_name = 'test-channel'
+        self.description = 'description'
+        self.channel_info = {
+            'id': 123,
+            'name': self.channel_name,
+            'description': self.description,
+        }
+        self.maxDiff = None
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
     def test_handle_remove_channel(self, activate_session_mock, stdout):
-        channel = 'channel'
-        channel_info = mock.ANY
-        args = [channel]
-        options = mock.MagicMock()
-
-        # Mock out the xmlrpc server
-        session = mock.MagicMock()
-
-        session.getChannel.return_value = channel_info
-        # Run it and check immediate output
-        # args: channel
-        # expected: success
-        rv = handle_remove_channel(options, session, args)
+        self.session.getChannel.return_value = self.channel_info
+        rv = handle_remove_channel(self.options, self.session, [self.channel_name])
         actual = stdout.getvalue()
         expected = ''
         self.assertMultiLineEqual(actual, expected)
-        # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(session, options)
-        session.getChannel.assert_called_once_with(channel)
-        session.removeChannel.assert_called_once_with(channel, force=None)
+        activate_session_mock.assert_called_once_with(self.session, self.options)
+        self.session.getChannel.assert_called_once_with(self.channel_name)
+        self.session.removeChannel.assert_called_once_with(self.channel_name, force=None)
         self.assertNotEqual(rv, 1)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
     def test_handle_remove_channel_force(self, activate_session_mock, stdout):
-        channel = 'channel'
-        channel_info = mock.ANY
-        force_arg = '--force'
-        args = [force_arg, channel]
-        options = mock.MagicMock()
-
-        # Mock out the xmlrpc server
-        session = mock.MagicMock()
-
-        session.getChannel.return_value = channel_info
-        # Run it and check immediate output
-        # args: --force, channel
-        # expected: success
-        rv = handle_remove_channel(options, session, args)
+        self.session.getChannel.return_value = self.channel_info
+        rv = handle_remove_channel(self.options, self.session, ['--force', self.channel_name])
         actual = stdout.getvalue()
         expected = ''
         self.assertMultiLineEqual(actual, expected)
-        # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(session, options)
-        session.getChannel.assert_called_once_with(channel)
-        session.removeChannel.assert_called_once_with(channel, force=True)
+        activate_session_mock.assert_called_once_with(self.session, self.options)
+        self.session.getChannel.assert_called_once_with(self.channel_name)
+        self.session.removeChannel.assert_called_once_with(self.channel_name, force=True)
         self.assertNotEqual(rv, 1)
 
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
     def test_handle_remove_channel_no_channel(
             self, activate_session_mock, stderr):
-        channel = 'channel'
         channel_info = None
-        args = [channel]
-        options = mock.MagicMock()
 
-        # Mock out the xmlrpc server
-        session = mock.MagicMock()
-
-        session.getChannel.return_value = channel_info
-        # Run it and check immediate output
-        # args: channel
-        # expected: failed: no such channel
+        self.session.getChannel.return_value = channel_info
         with self.assertRaises(SystemExit) as ex:
-            handle_remove_channel(options, session, args)
+            handle_remove_channel(self.options, self.session, [self.channel_name])
         self.assertExitCode(ex, 1)
         actual = stderr.getvalue()
-        expected = 'No such channel: channel\n'
+        expected = 'No such channel: %s\n' % self.channel_name
         self.assertMultiLineEqual(actual, expected)
-        # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(session, options)
-        session.getChannel.assert_called_once_with(channel)
-        session.removeChannel.assert_not_called()
+        activate_session_mock.assert_called_once_with(self.session, self.options)
+        self.session.getChannel.assert_called_once_with(self.channel_name)
+        self.session.removeChannel.assert_not_called()
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
     def test_handle_remove_channel_help(
             self, activate_session_mock, stderr, stdout):
-        args = []
-        options = mock.MagicMock()
-        progname = os.path.basename(sys.argv[0]) or 'koji'
-
-        # Mock out the xmlrpc server
-        session = mock.MagicMock()
-
-        # Run it and check immediate output
         with self.assertRaises(SystemExit) as ex:
-            handle_remove_channel(options, session, args)
+            handle_remove_channel(self.options, self.session, [])
         self.assertExitCode(ex, 2)
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
@@ -115,14 +81,12 @@ class TestRemoveChannel(utils.CliTestCase):
 (Specify the --help global option for a list of other help options)
 
 %s: error: Incorrect number of arguments
-""" % (progname, progname)
+""" % (self.progname, self.progname)
         self.assertMultiLineEqual(actual_stdout, expected_stdout)
         self.assertMultiLineEqual(actual_stderr, expected_stderr)
-
-        # Finally, assert that things were called as we expected.
         activate_session_mock.assert_not_called()
-        session.getChannel.assert_not_called()
-        session.removeChannel.assert_not_called()
+        self.session.getChannel.assert_not_called()
+        self.session.removeChannel.assert_not_called()
 
 
 if __name__ == '__main__':

@@ -135,7 +135,8 @@ CREATE INDEX sessions_expired ON sessions(expired);
 -- listening to.
 CREATE TABLE channels (
 	id SERIAL NOT NULL PRIMARY KEY,
-	name VARCHAR(128) UNIQUE NOT NULL
+	name VARCHAR(128) UNIQUE NOT NULL,
+	description TEXT
 ) WITHOUT OIDS;
 
 -- create default channel
