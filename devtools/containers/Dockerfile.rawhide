@@ -1,4 +1,4 @@
-FROM fedora:rawhide
+FROM registry.fedoraproject.org/fedora:rawhide
 RUN \
   dnf -y update --nodocs --setopt=install_weak_deps=False && \
   dnf install -y --nodocs --setopt=install_weak_deps=False \
