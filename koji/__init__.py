@@ -3363,7 +3363,14 @@ def _taskLabel(taskInfo):
     method = taskInfo['method']
     request = taskInfo['request']
     arch = taskInfo['arch']
-    params = parse_task_params(method, request)
+    try:
+        params = parse_task_params(method, request)
+    except TypeError:
+        # for external hub plugins which are not known
+        # at this place (e.g. client without knowledge of such signatures)
+        # it should still display at least "method (arch)"
+        params = None
+
     extra = ''
     if method in ('build', 'maven'):
         src = params.get('src') or params.get('url')
