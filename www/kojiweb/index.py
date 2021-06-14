@@ -30,6 +30,7 @@ import os.path
 import re
 import sys
 import time
+import itertools
 
 import koji
 import kojiweb.util
@@ -1621,30 +1622,62 @@ def cancelbuild(environ, buildID):
     _redirect(environ, 'buildinfo?buildID=%i' % build['id'])
 
 
-def hosts(environ, state='enabled', start=None, order='name'):
+def hosts(environ, state='enabled', start=None, order='name', ready='all', channel='all',
+          arch='all'):
     values = _initValues(environ, 'Hosts', 'hosts')
     server = _getServer(environ)
 
     values['order'] = order
 
-    args = {}
+    hosts = server.listHosts()
+    values['arches'] = sorted(set(itertools.chain(*[host['arches'].split() for host in hosts])))
 
     if state == 'enabled':
-        args['enabled'] = True
+        hosts = [x for x in hosts if x['enabled']]
     elif state == 'disabled':
-        args['enabled'] = False
+        hosts = [x for x in hosts if not x['enabled']]
     else:
         state = 'all'
     values['state'] = state
 
-    hosts = server.listHosts(**args)
+    if ready == 'yes':
+        hosts = [x for x in hosts if x['ready']]
+    elif ready == 'no':
+        hosts = [x for x in hosts if not x['ready']]
+    else:
+        ready = 'all'
+    values['ready'] = ready
 
-    server.multicall = True
-    for host in hosts:
-        server.getLastHostUpdate(host['id'], ts=True)
-    updates = server.multiCall()
-    for host, [lastUpdate] in zip(hosts, updates):
-        host['last_update'] = lastUpdate
+    if arch != 'all':
+        arch = _validate_arch(arch)
+        if arch:
+            hosts = [x for x in hosts if arch in x['arches']]
+    else:
+        arch = 'all'
+    values['arch'] = arch
+
+    with server.multicall() as m:
+        list_channels = [m.listChannels(hostID=host['id']) for host in hosts]
+    for host, channels in zip(hosts, list_channels):
+        host['channels'] = []
+        host['channels_id'] = []
+        for chan in channels.result:
+            host['channels'].append(chan['name'])
+            host['channels_id'].append(chan['id'])
+
+    if channel != 'all':
+        hosts = [x for x in hosts if channel in x['channels']]
+    else:
+        channel = 'all'
+    values['channel'] = channel
+
+    values['channels'] = server.listChannels()
+
+    with server.multicall() as m:
+        updates = [m.getLastHostUpdate(host['id'], ts=True) for host in hosts]
+
+    for host, lastUpdate in zip(hosts, updates):
+        host['last_update'] = lastUpdate.result
 
     # Paginate after retrieving last update info so we can sort on it
     kojiweb.util.paginateList(values, hosts, start, 'hosts', 'host', order)
