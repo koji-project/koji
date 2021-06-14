@@ -129,7 +129,7 @@ Options:
   -a ARCH, --arch=ARCH  Only download packages for this arch (may be used
                         multiple times)
   --type=TYPE           Download archives of the given type, rather than rpms
-                        (maven, win, image, remote-source)
+                        (maven, win, image, remote-sources)
   --latestfrom=LATESTFROM
                         Download the latest build from this tag
   --debuginfo           Also download -debuginfo rpms
