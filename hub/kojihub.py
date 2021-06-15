@@ -48,6 +48,7 @@ import xmlrpc.client
 import zipfile
 
 import rpm
+from psycopg2._psycopg import IntegrityError
 
 import koji
 import koji.auth
@@ -7523,14 +7524,18 @@ def add_rpm_sig(an_rpm, sighdr):
     # - db entry
     q = """SELECT sighash FROM rpmsigs WHERE rpm_id=%(rpm_id)i AND sigkey=%(sigkey)s"""
     rows = _fetchMulti(q, locals())
+    nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" % rinfo
+    sig_error = "Signature already exists for package %s, key %s" % (nvra, sigkey)
     if rows:
         # TODO[?] - if sighash is the same, handle more gracefully
-        nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" % rinfo
-        raise koji.GenericError("Signature already exists for package %s, key %s" % (nvra, sigkey))
+        raise koji.GenericError(sig_error)
     koji.plugin.run_callbacks('preRPMSign', sigkey=sigkey, sighash=sighash, build=binfo, rpm=rinfo)
-    insert = """INSERT INTO rpmsigs(rpm_id, sigkey, sighash)
-    VALUES (%(rpm_id)s, %(sigkey)s, %(sighash)s)"""
-    _dml(insert, locals())
+    insert = InsertProcessor('rpmsigs')
+    insert.set(rpm_id=rpm_id, sigkey=sigkey, sighash=sighash)
+    try:
+        insert.execute()
+    except IntegrityError:
+        raise koji.GenericError(sig_error)
     # - write to fs
     sigpath = "%s/%s" % (builddir, koji.pathinfo.sighdr(rinfo, sigkey))
     koji.ensuredir(os.path.dirname(sigpath))
