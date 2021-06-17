@@ -6040,6 +6040,9 @@ def handle_image_build(options, session, args):
                       help=_("The syntax version used in the kickstart file"))
     parser.add_option("--noprogress", action="store_true",
                       help=_("Do not display progress of the upload"))
+    parser.add_option("--noverifyssl", action="store_true",
+                      help=_("Use the noverifyssl option for the install tree and all repos. "
+                             "This option is only allowed if enabled on the builder."))
     parser.add_option("--nowait", action="store_false", dest="wait",
                       help=_("Don't wait on image creation"))
     parser.add_option("--ova-option", action="append",
