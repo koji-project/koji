@@ -9362,7 +9362,7 @@ def policy_get_cgs(data):
     # pull cg info out
     # note that br_id will be None if a component had no buildroot
     if 'cg_list' in data:
-        cgs = [lookup_name('content_generator', cg, strict=True)
+        cgs = [lookup_name('content_generator', cg, strict=True)['name']
                for cg in data['cg_list']]
         return set(cgs)
     # otherwise try buildroot data
