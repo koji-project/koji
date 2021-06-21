@@ -3,6 +3,7 @@ import mock
 import unittest
 import datetime
 import psycopg2
+import psycopg2.tz
 
 import koji
 import kojihub
