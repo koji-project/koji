@@ -56,6 +56,7 @@ import koji.plugin
 import koji.policy
 import koji.rpmdiff
 import koji.tasks
+from koji.tasks import parse_task_params
 import koji.xmlrpcplus
 from koji.context import context
 from koji.daemon import SCM
@@ -9772,18 +9773,26 @@ class SourceTest(koji.policy.MatchTest):
             else:
                 # crack open the build task
                 task = Task(build['task_id'])
-                info = task.getInfo()
-                params = task.getRequest()
+                info = task.getInfo(request=True)
+                method = info['method']
+                request = info['request']
+                params = parse_task_params(method, request)
                 # signatures:
                 # build - (src, target, opts=None)
                 # maven - (url, target, opts=None)
                 # winbuild - (name, source_url, target, opts=None)
                 if info['method'] == 'winbuild':
-                    data[self.field] = params[1]
+                    data[self.field] = params['source_url']
                 elif info['method'] == 'indirectionimage':
                     return False
+                elif 'src' in params:
+                    data[self.field] = params['src']
+                elif 'url' in params:
+                    data[self.field] = params['url']
                 else:
-                    data[self.field] = params[0]
+                    print("Unable to determine source from task '{}'".format(
+                        build['task_id']))
+                    return False
         else:
             return False
         return super(SourceTest, self).run(data)
