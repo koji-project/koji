@@ -137,6 +137,8 @@
             <td></td>
             #if $rpm.metadata_only
             <td>$rpmfile (<a href="rpminfo?rpmID=$rpm.id">info</a>) (metadata only)</td>
+            #elif $build.state == $koji.BUILD_STATES.DELETED
+            <td>$rpmfile (<a href="rpminfo?rpmID=$rpm.id">info</a>)
             #else
             <td>$rpmfile (<a href="rpminfo?rpmID=$rpm.id">info</a>) (<a href="$nvrpath/$rpmpath">download</a>)</td>
             #end if
@@ -157,7 +159,11 @@
             #set $rpmpath = $pathinfo.rpm($rpm)
             <td></td>
             <td>
+              #if $build.state != $koji.BUILD_STATES.DELETED
               $rpmfile (<a href="rpminfo?rpmID=$rpm.id">info</a>) (<a href="$nvrpath/$rpmpath">download</a>)
+              #else
+              $rpmfile (<a href="rpminfo?rpmID=$rpm.id">info</a>)
+              #end if
             </td>
           </tr>
           #end for
@@ -186,7 +192,7 @@
           <tr>
             <td/>
             <td>
-            #if $archive.metadata_only
+            #if $archive.metadata_only or $build.state == $koji.BUILD_STATES.DELETED
             $archive.display (<a href="archiveinfo?archiveID=$archive.id">info</a>)
             #else
             $archive.display (<a href="archiveinfo?archiveID=$archive.id">info</a>) (<a href="$archive.dl_url">download</a>)
