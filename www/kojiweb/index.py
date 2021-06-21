@@ -685,10 +685,13 @@ def taskinfo(environ, taskID):
 
     if task['method'] in ('buildArch', 'buildMaven', 'buildSRPMFromSCM'):
         if len(params) > 1:
+            tag_id = params[1]
+            if isinstance(tag_id, dict):
+                tag_id = tag_id.get('id')
             try:
-                values['buildTag'] = server.getTag(params[1], strict=True)
+                values['buildTag'] = server.getTag(tag_id, strict=True)
             except koji.GenericError:
-                values['buildTag'] = {'name': "%d (deleted)" % params[1], 'id': None}
+                values['buildTag'] = {'name': "%d (deleted)" % tag_id, 'id': None}
     elif task['method'] == 'tagBuild':
         destTag = server.getTag(params[0])
         build = server.getBuild(params[1])
