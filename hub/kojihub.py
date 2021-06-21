@@ -4636,10 +4636,12 @@ def get_build_type(buildInfo, strict=False):
     Returns a dictionary whose keys are type names and whose values are
     the type info corresponding to that type
     """
-
-    binfo = get_build(buildInfo, strict=strict)
-    if not binfo:
-        return None
+    if not isinstance(buildInfo, dict) or 'extra' not in buildInfo:
+        binfo = get_build(buildInfo, strict=strict)
+        if not binfo:
+            return None
+    else:
+        binfo = buildInfo
 
     query = QueryProcessor(
         tables=['btype'],

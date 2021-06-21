@@ -17,7 +17,7 @@ from proton.reactor import Container
 import koji
 from koji.context import context
 from koji.plugin import callback, convert_datetime, ignore_error
-from kojihub import QueryProcessor, InsertProcessor
+from kojihub import QueryProcessor, InsertProcessor, get_build_type
 
 CONFIG_FILE = '/etc/koji-hub/plugins/protonmsg.conf'
 CONFIG = None
@@ -210,11 +210,13 @@ def prep_build_state_change(cbtype, *args, **kws):
         old = koji.BUILD_STATES[old]
     new = koji.BUILD_STATES[kws['new']]
     address = 'build.' + new.lower()
+    btypeinfo = get_build_type(kws['info'])
     kws['info'] = _strip_extra(kws['info'])
     props = {'type': cbtype[4:],
              'name': kws['info']['name'],
              'version': kws['info']['version'],
              'release': kws['info']['release'],
+             'btypes': btypeinfo,
              'attribute': kws['attribute'],
              'old': old,
              'new': new}
