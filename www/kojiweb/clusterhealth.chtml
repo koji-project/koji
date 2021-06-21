@@ -60,6 +60,9 @@
     <tr>
       <th>
           <a href="channelinfo?channelID=$channel['id']">$channel['name']</a>
+          #if not $channel['enabled_channel']
+          [disabled]
+          #end if
       </th>
       <td width="$graphWidth" class="graph">
         #if $channel['capacityPerc']

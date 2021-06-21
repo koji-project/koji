@@ -33,10 +33,12 @@ class TestListChannels(unittest.TestCase):
         self.assertEqual(len(self.queries), 1)
         query = self.queries[0]
         self.assertEqual(query.tables, ['channels'])
-        self.assertEqual(query.aliases, ['description', 'id', 'name'])
+        self.assertEqual(query.aliases, ['comment', 'description', 'enabled', 'id',
+                                         'name'])
         self.assertEqual(query.joins, None)
         self.assertEqual(query.values, {})
-        self.assertEqual(query.columns, ['channels.description', 'channels.id', 'channels.name'])
+        self.assertEqual(query.columns, ['channels.comment', 'channels.description',
+                                         'channels.enabled', 'channels.id', 'channels.name'])
         self.assertEqual(query.clauses, None)
 
     def test_host(self):
@@ -50,10 +52,12 @@ class TestListChannels(unittest.TestCase):
             'host_channels.host_id = %(host_id)s'
         ]
         self.assertEqual(query.tables, ['host_channels'])
-        self.assertEqual(query.aliases, ['description', 'id', 'name'])
+        self.assertEqual(query.aliases, ['comment', 'description', 'enabled', 'id',
+                                         'name'])
         self.assertEqual(query.joins, joins)
         self.assertEqual(query.values, {'host_id': 1234})
-        self.assertEqual(query.columns, ['channels.description', 'channels.id', 'channels.name'])
+        self.assertEqual(query.columns, ['channels.comment', 'channels.description',
+                                         'channels.enabled', 'channels.id', 'channels.name'])
         self.assertEqual(query.clauses, clauses)
 
     def test_host_and_event(self):
@@ -68,10 +72,12 @@ class TestListChannels(unittest.TestCase):
             'host_channels.host_id = %(host_id)s',
         ]
         self.assertEqual(query.tables, ['host_channels'])
-        self.assertEqual(query.aliases, ['description', 'id', 'name'])
+        self.assertEqual(query.aliases, ['comment', 'description', 'enabled', 'id',
+                                         'name'])
         self.assertEqual(query.joins, joins)
         self.assertEqual(query.values, {'host_id': 1234})
-        self.assertEqual(query.columns, ['channels.description', 'channels.id', 'channels.name'])
+        self.assertEqual(query.columns, ['channels.comment', 'channels.description',
+                                         'channels.enabled', 'channels.id', 'channels.name'])
         self.assertEqual(query.clauses, clauses)
 
     def test_event_only(self):

@@ -9,6 +9,7 @@ import unittest
 from koji_cli.commands import handle_add_host_to_channel
 from . import utils
 
+
 class TestAddHostToChannel(utils.CliTestCase):
 
     # Show long diffs in error output...
@@ -80,7 +81,6 @@ class TestAddHostToChannel(utils.CliTestCase):
         channel = 'channel'
         new_arg = '--new'
         args = [host, channel, new_arg]
-        kwargs = {'create': True}
         options = mock.MagicMock()
 
         # Mock out the xmlrpc server
@@ -98,8 +98,7 @@ class TestAddHostToChannel(utils.CliTestCase):
         activate_session_mock.assert_called_once_with(session, options)
         session.getChannel.assert_not_called()
         session.getHost.assert_called_once_with(host)
-        session.addHostToChannel.assert_called_once_with(
-            host, channel, **kwargs)
+        session.addHostToChannel.assert_called_once_with(host, channel, create=True)
         self.assertNotEqual(rv, 1)
 
     @mock.patch('sys.stderr', new_callable=six.StringIO)

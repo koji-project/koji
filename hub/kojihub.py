@@ -2237,7 +2237,7 @@ def set_host_enabled(hostname, enabled=True):
     insert.execute()
 
 
-def add_host_to_channel(hostname, channel_name, create=False):
+def add_host_to_channel(hostname, channel_name, create=False, force=False):
     """Add the host to the specified channel
 
     Channel must already exist unless create option is specified
@@ -2250,6 +2250,9 @@ def add_host_to_channel(hostname, channel_name, create=False):
     channel_id = get_channel_id(channel_name, create=create)
     if channel_id is None:
         raise koji.GenericError('channel does not exist: %s' % channel_name)
+    if not force:
+        if not get_channel(channel_id)['enabled']:
+            raise koji.GenericError('channel %s is disabled' % channel_name)
     channels = list_channels(host_id)
     for channel in channels:
         if channel['id'] == channel_id:
@@ -2307,33 +2310,41 @@ def rename_channel(old, new):
     update.execute()
 
 
-def edit_channel(channelInfo, name=None, description=None):
+def edit_channel(channelInfo, **kw):
     """Edit information for an existing channel.
 
     :param str/int channelInfo: channel name or ID
     :param str name: new channel name
     :param str description: description of channel
+    :param str comment: comment about channel
     """
     context.session.assertPerm('admin')
     channel = get_channel(channelInfo, strict=True)
 
-    if name:
-        if not isinstance(name, str):
+    fields = ('description', 'comment', 'name')
+    changes = []
+    for field in fields:
+        if field in kw and kw[field] != channel[field]:
+            changes.append(field)
+
+    if not changes:
+        return False
+
+    if kw.get('name'):
+        if not isinstance(kw['name'], str):
             raise koji.GenericError("new channel name must be a string")
-        dup_check = get_channel(name, strict=False)
+        dup_check = get_channel(kw['name'], strict=False)
         if dup_check:
             raise koji.GenericError("channel %(name)s already exists (id=%(id)i)" % dup_check)
 
     update = UpdateProcessor('channels',
                              values={'channelID': channel['id']},
                              clauses=['id = %(channelID)i'])
-    if name:
-        update.set(name=name)
-    if description:
-        update.set(description=description)
+    for change in changes:
+        update.set(**{change: kw[change]})
     update.execute()
 
-    return None
+    return True
 
 
 def remove_channel(channel_name, force=False):
@@ -2386,6 +2397,18 @@ def add_channel(channel_name, description=None):
     insert.set(id=channel_id, name=channel_name, description=description)
     insert.execute()
     return channel_id
+
+
+def set_channel_enabled(channelname, enabled=True, comment=None):
+    context.session.assertPerm('host')
+    channel = get_channel(channelname)
+    if not channel:
+        raise koji.GenericError('No such channel: %s' % channelname)
+    update = UpdateProcessor('channels', values=channel, clauses=['id = %(id)i'])
+    update.set(enabled=enabled)
+    if comment is not None:
+        update.set(comment=comment)
+    update.execute()
 
 
 def get_ready_hosts():
@@ -5372,7 +5395,7 @@ def get_channel(channelInfo, strict=False):
     :returns: dict of the channel ID and name, or None.
               For example, {'id': 20, 'name': 'container'}
     """
-    fields = ('id', 'name', 'description')
+    fields = ('id', 'name', 'description', 'enabled', 'comment')
     query = """SELECT %s FROM channels
     WHERE """ % ', '.join(fields)
     if isinstance(channelInfo, int):
@@ -5514,7 +5537,7 @@ def get_buildroot(buildrootID, strict=False):
     return result[0]
 
 
-def list_channels(hostID=None, event=None):
+def list_channels(hostID=None, event=None, enabled=None):
     """
     List builder channels.
 
@@ -5526,18 +5549,29 @@ def list_channels(hostID=None, event=None):
                       default behavior is to search for the "active" host
                       settings. You must specify a hostID parameter with this
                       option.
+    :param bool enabled: Enabled/disabled list of channels
     :returns: list of dicts, one per channel. For example,
-              [{'id': 20, 'name': 'container', 'description': 'container channel'}]
+              [{'comment': 'test channel', 'description': 'container channel',
+              'enabled': True, 'id': 20, 'name': 'container', 'container channel' }]
     """
-    fields = {'channels.id': 'id', 'channels.name': 'name',
-              'channels.description': 'description'}
+    fields = {'channels.id': 'id', 'channels.name': 'name', 'channels.description': 'description',
+              'channels.enabled': 'enabled', 'channels.comment': 'comment'}
     columns, aliases = zip(*fields.items())
+    if enabled is not None:
+        if enabled:
+            enable_clause = 'enabled IS TRUE'
+        else:
+            enable_clause = 'enabled IS FALSE'
     if hostID:
+        if isinstance(hostID, str):
+            hostID = get_host(hostID, strict=True)['id']
         tables = ['host_channels']
         joins = ['channels ON channels.id = host_channels.channel_id']
         clauses = [
             eventCondition(event, table='host_channels'),
             'host_channels.host_id = %(host_id)s']
+        if enabled is not None:
+            clauses.append(enable_clause)
         values = {'host_id': hostID}
         query = QueryProcessor(tables=tables, aliases=aliases,
                                columns=columns, joins=joins,
@@ -5546,8 +5580,12 @@ def list_channels(hostID=None, event=None):
         raise koji.GenericError('list_channels with event and '
                                 'not host is not allowed.')
     else:
+        if enabled is not None:
+            clauses = [enable_clause]
+        else:
+            clauses = None
         query = QueryProcessor(tables=['channels'], aliases=aliases,
-                               columns=columns)
+                               columns=columns, clauses=clauses)
     return query.execute()
 
 
@@ -12642,6 +12680,14 @@ class RootExports(object):
     def disableHost(self, hostname):
         """Mark a host as disabled"""
         set_host_enabled(hostname, False)
+
+    def enableChannel(self, channelname, comment=None):
+        """Mark a channel as enabled"""
+        set_channel_enabled(channelname, enabled=True, comment=comment)
+
+    def disableChannel(self, channelname, comment=None):
+        """Mark a channel as disabled"""
+        set_channel_enabled(channelname, enabled=False, comment=comment)
 
     getHost = staticmethod(get_host)
     editHost = staticmethod(edit_host)

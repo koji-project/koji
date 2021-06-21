@@ -20,6 +20,7 @@ admin commands:
         block-group-req           Block a group's requirement listing
         block-pkg                 Block a package in the listing for tag
         clone-tag                 Duplicate the contents of one tag onto another tag
+        disable-channel           Mark one or more channels as disabled
         disable-host              Mark one or more hosts as disabled
         disable-user              Disable logins by a user
         edit-channel              Edit a channel
@@ -29,6 +30,7 @@ admin commands:
         edit-tag-inheritance      Edit tag inheritance
         edit-target               Set the name, build_tag, and/or dest_tag of an existing build target to new values
         edit-user                 Alter user information
+        enable-channel            Mark one or more channels as enabled
         enable-host               Mark one or more hosts as enabled
         enable-user               Enable logins by a user
         free-task                 Free a task

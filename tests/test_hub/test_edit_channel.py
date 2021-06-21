@@ -84,7 +84,7 @@ class TestEditChannel(unittest.TestCase):
 
         r = self.exports.editChannel(self.channel_name, name=self.channel_name_new,
                                      description='description_new')
-        self.assertIsNone(r)
+        self.assertTrue(r)
         expected_calls = [mock.call(self.channel_name, strict=True),
                           mock.call(self.channel_name_new, strict=False)]
         get_channel.assert_has_calls(expected_calls)

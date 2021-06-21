@@ -31,19 +31,22 @@ class TestAddHostToChannel(unittest.TestCase):
     def tearDown(self):
         mock.patch.stopall()
 
+    @mock.patch('kojihub.get_channel')
     @mock.patch('kojihub.list_channels')
     @mock.patch('kojihub.get_channel_id')
     @mock.patch('kojihub.get_host')
-    def test_valid(self, get_host, get_channel_id, list_channels):
+    def test_valid(self, get_host, get_channel_id, list_channels, get_channel):
         name = 'hostname'
         cname = 'channel_name'
         get_host.return_value = {'id': 123, 'name': name}
         get_channel_id.return_value = 456
         list_channels.return_value = [{'id': 1, 'name': 'default'}]
+        get_channel.return_value = {'enabled': True}
 
         kojihub.add_host_to_channel(name, cname, create=False)
 
         get_host.assert_called_once_with(name)
+        get_channel.assert_called_once_with(456)
         get_channel_id.assert_called_once_with(cname, create=False)
         list_channels.assert_called_once_with(123)
 
@@ -88,19 +91,22 @@ class TestAddHostToChannel(unittest.TestCase):
         get_channel_id.assert_called_once_with(cname, create=False)
         self.assertEqual(len(self.inserts), 0)
 
+    @mock.patch('kojihub.get_channel')
     @mock.patch('kojihub.list_channels')
     @mock.patch('kojihub.get_channel_id')
     @mock.patch('kojihub.get_host')
-    def test_no_channel_create(self, get_host, get_channel_id, list_channels):
+    def test_no_channel_create(self, get_host, get_channel_id, list_channels, get_channel):
         name = 'hostname'
         cname = 'channel_name'
         get_host.return_value = {'id': 123, 'name': name}
         get_channel_id.return_value = 456
         list_channels.return_value = [{'id': 1, 'name': 'default'}]
+        get_channel.return_value = {'enabled': True}
 
         kojihub.add_host_to_channel(name, cname, create=True)
 
         get_host.assert_called_once_with(name)
+        get_channel.assert_called_once_with(456)
         get_channel_id.assert_called_once_with(cname, create=True)
         list_channels.assert_called_once_with(123)
 
@@ -116,20 +122,23 @@ class TestAddHostToChannel(unittest.TestCase):
         self.assertEqual(insert.data, data)
         self.assertEqual(insert.rawdata, {})
 
+    @mock.patch('kojihub.get_channel')
     @mock.patch('kojihub.list_channels')
     @mock.patch('kojihub.get_channel_id')
     @mock.patch('kojihub.get_host')
-    def test_exists(self, get_host, get_channel_id, list_channels):
+    def test_exists(self, get_host, get_channel_id, list_channels, get_channel):
         name = 'hostname'
         cname = 'channel_name'
         get_host.return_value = {'id': 123, 'name': name}
         get_channel_id.return_value = 456
         list_channels.return_value = [{'id': 456, 'name': cname}]
+        get_channel.return_value = {'enabled': True}
 
         with self.assertRaises(koji.GenericError):
             kojihub.add_host_to_channel(name, cname, create=False)
 
         get_host.assert_called_once_with(name)
+        get_channel.assert_called_once_with(456)
         get_channel_id.assert_called_once_with(cname, create=False)
         list_channels.assert_called_once_with(123)
         self.assertEqual(len(self.inserts), 0)

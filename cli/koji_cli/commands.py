@@ -45,7 +45,8 @@ from koji_cli.lib import (
     unique_path,
     warn,
     watch_logs,
-    watch_tasks
+    watch_tasks,
+    truncate_string
 )
 
 try:
@@ -254,6 +255,7 @@ def handle_add_host_to_channel(goptions, session, args):
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--list", action="store_true", help=SUPPRESS_HELP)
     parser.add_option("--new", action="store_true", help=_("Create channel if needed"))
+    parser.add_option("--force", action="store_true", help=_("force added, if possible"))
     (options, args) = parser.parse_args(args)
     if not options.list and len(args) != 2:
         parser.error(_("Please specify a hostname and a channel"))
@@ -267,6 +269,7 @@ def handle_add_host_to_channel(goptions, session, args):
         channelinfo = session.getChannel(channel)
         if not channelinfo:
             error("No such channel: %s" % channel)
+
     host = args[0]
     hostinfo = session.getHost(host)
     if not hostinfo:
@@ -274,6 +277,8 @@ def handle_add_host_to_channel(goptions, session, args):
     kwargs = {}
     if options.new:
         kwargs['create'] = True
+    if options.force:
+        kwargs['force'] = True
     session.addHostToChannel(host, channel, **kwargs)
 
 
@@ -348,11 +353,73 @@ def handle_edit_channel(goptions, session, args):
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--name", help=_("New channel name"))
     parser.add_option("--description", help=_("Description of channel"))
+    parser.add_option("--comment", help=_("Comment of channel"))
     (options, args) = parser.parse_args(args)
     if len(args) != 1:
         parser.error(_("Incorrect number of arguments"))
     activate_session(session, goptions)
-    session.editChannel(args[0], name=options.name, description=options.description)
+    vals = {}
+    for key, val in options.__dict__.items():
+        if val is not None:
+            vals[key] = val
+    cinfo = session.getChannel(args[0])
+    if not cinfo:
+        error("No such channel: %s" % args[0])
+    result = session.editChannel(args[0], **vals)
+    if not result:
+        error(_("No changes made, please correct the command line"))
+
+
+def handle_enable_channel(goptions, session, args):
+    "[admin] Mark one or more channels as enabled"
+    usage = _("usage: %prog enable-channel [options] <channelname> [<channelname> ...]")
+    parser = OptionParser(usage=get_usage_str(usage))
+    parser.add_option("--comment", help=_("Comment indicating why the channel(s) are being "
+                                          "enabled"))
+    (options, args) = parser.parse_args(args)
+
+    if not args:
+        parser.error(_("At least one channel must be specified"))
+
+    activate_session(session, goptions)
+    with session.multicall() as m:
+        result = [m.getChannel(channel, strict=False) for channel in args]
+    error_hit = False
+    for channel, id in zip(args, result):
+        if not id.result:
+            print("No such channel: %s" % channel)
+            error_hit = True
+    if error_hit:
+        error("No changes made. Please correct the command line.")
+
+    with session.multicall() as m:
+        [m.enableChannel(channel, comment=options.comment) for channel in args]
+
+
+def handle_disable_channel(goptions, session, args):
+    "[admin] Mark one or more channels as disabled"
+    usage = _("usage: %prog disable-channel [options] <channelname> [<channelname> ...]")
+    parser = OptionParser(usage=get_usage_str(usage))
+    parser.add_option("--comment", help=_("Comment indicating why the channel(s) are being "
+                                          "disabled"))
+    (options, args) = parser.parse_args(args)
+
+    if not args:
+        parser.error(_("At least one channel must be specified"))
+
+    activate_session(session, goptions)
+
+    with session.multicall() as m:
+        result = [m.getChannel(channel, strict=False) for channel in args]
+    error_hit = False
+    for channel, id in zip(args, result):
+        if not id.result:
+            print("No such channel: %s" % channel)
+            error_hit = True
+    if error_hit:
+        error("No changes made. Please correct the command line.")
+    with session.multicall() as m:
+        [m.disableChannel(channel, comment=options.comment) for channel in args]
 
 
 def handle_add_pkg(goptions, session, args):
@@ -2872,29 +2939,47 @@ def handle_unblock_group_req(goptions, session, args):
 
 def anon_handle_list_channels(goptions, session, args):
     "[info] Print channels listing"
-    usage = _("usage: %prog list-channels")
+    usage = _("usage: %prog list-channels [options]")
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--simple", action="store_true", default=False,
                       help=_("Print just list of channels without additional info"))
     parser.add_option("--quiet", action="store_true", default=goptions.quiet,
                       help=_("Do not print header information"))
+    parser.add_option("--comment", action="store_true", help=_("Show comments"))
+    parser.add_option("--description", action="store_true", help=_("Show descriptions"))
+    parser.add_option("--enabled", action="store_true", help=_("Limit to enabled channels"))
+    parser.add_option("--not-enabled", action="store_false", dest="enabled",
+                      help=_("Limit to not enabled channels"))
+    parser.add_option("--disabled", action="store_false", dest="enabled",
+                      help=_("Alias for --not-enabled"))
     (options, args) = parser.parse_args(args)
     ensure_connection(session, goptions)
-    channels = session.listChannels()
-    channels = sorted(channels, key=lambda x: x['name'])
+    opts = {}
+    if options.enabled is not None:
+        opts['enabled'] = options.enabled
+    channels = sorted([x for x in session.listChannels(**opts)], key=lambda x: x['name'])
+
     session.multicall = True
     for channel in channels:
         session.listHosts(channelID=channel['id'])
     for channel, [hosts] in zip(channels, session.multiCall()):
-        channel['enabled'] = len([x for x in hosts if x['enabled']])
-        channel['disabled'] = len(hosts) - channel['enabled']
+        channel['enabled_host'] = len([x for x in hosts if x['enabled']])
+        channel['disabled'] = len(hosts) - channel['enabled_host']
         channel['ready'] = len([x for x in hosts if x['ready']])
         channel['capacity'] = sum([x['capacity'] for x in hosts])
         channel['load'] = sum([x['task_load'] for x in hosts])
+        channel['comment'] = truncate_string(channel['comment'])
+        channel['description'] = truncate_string(channel['description'])
         if channel['capacity']:
             channel['perc_load'] = channel['load'] / channel['capacity'] * 100.0
         else:
             channel['perc_load'] = 0.0
+        if not channel['enabled']:
+            channel['name'] = channel['name'] + ' [disabled]'
+    if channels:
+        longest_channel = max([len(ch['name']) for ch in channels])
+    else:
+        longest_channel = 8
     if options.simple:
         if not options.quiet:
             print('Channel')
@@ -2902,10 +2987,22 @@ def anon_handle_list_channels(goptions, session, args):
             print(channel['name'])
     else:
         if not options.quiet:
-            print('Channel        Enabled  Ready Disbld   Load    Cap    Perc')
+            hdr = '{channame:<{longest_channel}}Enabled  Ready Disbld   Load    Cap   ' \
+                  'Perc    '
+            hdr = hdr.format(longest_channel=longest_channel, channame='Channel')
+            if options.description:
+                hdr += "Description".ljust(53)
+            if options.comment:
+                hdr += "Comment".ljust(53)
+            print(hdr)
+        mask = "%%(name)-%ss %%(enabled_host)6d %%(ready)6d %%(disabled)6d %%(load)6d %%(" \
+               "capacity)6d %%(perc_load)6d%%%%" % longest_channel
+        if options.description:
+            mask += "   %(description)-50s"
+        if options.comment:
+            mask += "   %(comment)-50s"
         for channel in channels:
-            print("%(name)-15s %(enabled)6d %(ready)6d %(disabled)6d %(load)6d %(capacity)6d "
-                  "%(perc_load)6d%%" % channel)
+            print(mask % channel)
 
 
 def anon_handle_list_hosts(goptions, session, args):
@@ -2954,16 +3051,6 @@ def anon_handle_list_hosts(goptions, session, args):
         else:
             return 'N'
 
-    def truncate(s):
-        if s:
-            s = s.replace('\n', ' ')
-            if len(s) > 47:
-                return s[:47] + '...'
-            else:
-                return s
-        else:
-            return ''
-
     try:
         first = session.getLastHostUpdate(hosts[0]['id'], ts=True)
         opts = {'ts': True}
@@ -2985,23 +3072,29 @@ def anon_handle_list_hosts(goptions, session, args):
         host['enabled'] = yesno(host['enabled'])
         host['ready'] = yesno(host['ready'])
         host['arches'] = ','.join(host['arches'].split())
-        host['description'] = truncate(host['description'])
-        host['comment'] = truncate(host['comment'])
+        host['description'] = truncate_string(host['description'])
+        host['comment'] = truncate_string(host['comment'])
 
     # pull hosts' channels
     if options.show_channels:
-        session.multicall = True
-        for host in hosts:
-            session.listChannels(host['id'])
-        for host, [channels] in zip(hosts, session.multiCall()):
-            host['channels'] = ','.join(sorted([c['name'] for c in channels]))
+        with session.multicall() as m:
+            result = [m.listChannels(host['id']) for host in hosts]
+        for host, channels in zip(hosts, result):
+            list_channels = []
+            for c in channels.result:
+                if c['enabled']:
+                    list_channels.append(c['name'])
+                else:
+                    list_channels.append('*' + c['name'])
+            host['channels'] = ','.join(sorted(list_channels))
 
     if hosts:
         longest_host = max([len(h['name']) for h in hosts])
     else:
         longest_host = 8
     if not options.quiet:
-        hdr = "{hostname:<{longest_host}} Enb Rdy Load/Cap  Arches           Last Update         "
+        hdr = "{hostname:<{longest_host}} Enb Rdy Load/Cap  Arches           " \
+              "Last Update                         "
         hdr = hdr.format(longest_host=longest_host, hostname='Hostname')
         if options.description:
             hdr += "Description".ljust(51)
@@ -3011,7 +3104,7 @@ def anon_handle_list_hosts(goptions, session, args):
             hdr += "Channels"
         print(hdr)
     mask = "%%(name)-%ss %%(enabled)-3s %%(ready)-3s %%(task_load)4.1f/%%(capacity)-4.1f " \
-           "%%(arches)-16s %%(update)-19s" % longest_host
+           "%%(arches)-16s %%(update)-35s" % longest_host
     if options.description:
         mask += " %(description)-50s"
     if options.comment:

@@ -34,6 +34,7 @@ Options:
   --name=NAME           New channel name
   --description=DESCRIPTION
                         Description of channel
+  --comment=COMMENT     Comment of channel
 """ % self.progname)
 
     @mock.patch('sys.stderr', new_callable=six.StringIO)

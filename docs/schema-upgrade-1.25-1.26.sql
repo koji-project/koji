@@ -5,5 +5,7 @@
 BEGIN;
 
 ALTER TABLE channels ADD COLUMN description TEXT;
+ALTER TABLE channels ADD COLUMN enabled BOOLEAN NOT NULL DEFAULT 'true';
+ALTER TABLE channels ADD COLUMN comment TEXT;
 
 COMMIT;

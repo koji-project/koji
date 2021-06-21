@@ -830,3 +830,15 @@ def format_inheritance_flags(parent):
         else:
             flags += '.'
     return flags
+
+
+def truncate_string(s, length=47):
+    """Return a truncated string when string length is longer than given length."""
+    if s:
+        s = s.replace('\n', ' ')
+        if len(s) > length:
+            return s[:length] + '...'
+        else:
+            return s
+    else:
+        return ''
