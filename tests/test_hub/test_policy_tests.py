@@ -136,11 +136,12 @@ class TestPolicyGetCGs(unittest.TestCase):
                 'build': 'whatever',
                 'buildroots': [],
                 }
+
         def my_lookup_name(table, info, strict=False, create=False):
             self.assertEqual(strict, True)
             self.assertEqual(create, False)
             self.assertEqual(table, 'content_generator')
-            return "cg %i" % info
+            return {'id': info, 'name': "cg %i" % info}
         self.lookup_name.side_effect = my_lookup_name
 
         result = kojihub.policy_get_cgs(data)
