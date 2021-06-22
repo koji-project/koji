@@ -11415,10 +11415,15 @@ class RootExports(object):
                  'LEFT JOIN users ON build.owner = users.id']
         clauses = []
         if packageID is not None:
-            packageID = get_package_id(packageID, strict=True)
+            packageID = get_package_id(packageID)
+            if not packageID:
+                return []
             clauses.append('package.id = %(packageID)i')
         if userID is not None:
-            userID = get_user(userID, strict=True)['id']
+            userinfo = get_user(userID)
+            if not userinfo:
+                return []
+            userID = userinfo['id']
             clauses.append('users.id = %(userID)i')
         if volumeID is not None:
             clauses.append('volume.id = %(volumeID)i')

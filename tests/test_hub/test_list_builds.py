@@ -2,7 +2,6 @@ import unittest
 
 import mock
 
-import koji
 import kojihub
 
 QP = kojihub.QueryProcessor
@@ -44,10 +43,9 @@ class TestListBuilds(unittest.TestCase):
 
     def test_wrong_package(self):
         package = 'test-package'
-        kojihub.get_package_id.return_value = package
-        with self.assertRaises(koji.GenericError) as cm:
-            self.exports.listBuilds(packageID=package)
-        self.assertEqual('No such entry in table package: %s' % package, str(cm.exception))
+        kojihub.get_package_id.return_value = None
+        rv = self.exports.listBuilds(packageID=package)
+        self.assertEquals(rv, [])
 
     @mock.patch('kojihub.get_package_id')
     def test_package_string(self, get_package_id):
@@ -80,7 +78,6 @@ class TestListBuilds(unittest.TestCase):
     @mock.patch('kojihub.get_user')
     def test_wrong_user(self, get_user):
         user = 'test-user'
-        get_user.side_effect = koji.GenericError('No such user: %s' % user)
-        with self.assertRaises(koji.GenericError) as cm:
-            self.exports.listBuilds(userID=user)
-        self.assertEqual('No such user: %s' % user, str(cm.exception))
+        get_user.return_value = None
+        rv = self.exports.listBuilds(userID=user)
+        self.assertEquals(rv, [])
