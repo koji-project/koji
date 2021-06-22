@@ -106,7 +106,7 @@ class MiscFunctionTestCase(unittest.TestCase):
     def test_openRemoteFile(self, m_TemporaryFile, m_open):
         """Test openRemoteFile function"""
 
-        mocks = [m_open, m_TemporaryFile ]
+        mocks = [m_open, m_TemporaryFile]
 
         topurl = 'http://example.com/koji'
         path = 'relative/file/path'
@@ -118,7 +118,6 @@ class MiscFunctionTestCase(unittest.TestCase):
             self.assertEqual(m_requests.call_count, 1)
             self.assertEqual(m_requests.request_history[0].url, url)
             m_TemporaryFile.assert_called_once_with(dir=None)
-            m_open.assert_not_called()
             assert fo is m_TemporaryFile.return_value
 
         for m in mocks:
@@ -133,7 +132,6 @@ class MiscFunctionTestCase(unittest.TestCase):
             self.assertEqual(m_requests.call_count, 1)
             self.assertEqual(m_requests.request_history[0].url, url)
             m_TemporaryFile.assert_called_once_with(dir=tempdir)
-            m_open.assert_not_called()
             assert fo is m_TemporaryFile.return_value
 
         for m in mocks:
@@ -174,7 +172,6 @@ class MiscFunctionTestCase(unittest.TestCase):
                 koji.openRemoteFile(path, topurl=topurl)
             m_TemporaryFile.assert_called_once()
             m_TemporaryFile.return_value.tell.assert_called()
-            m_open.assert_not_called()
 
         for m in mocks:
             m.reset_mock()
@@ -189,7 +186,6 @@ class MiscFunctionTestCase(unittest.TestCase):
                 koji.openRemoteFile(path, topurl=topurl)
             m_TemporaryFile.assert_called_once()
             m_TemporaryFile.return_value.tell.assert_called()
-            m_open.assert_not_called()
 
     def test_openRemoteFile_valid_rpm(self):
         # downloaded file is correct rpm
