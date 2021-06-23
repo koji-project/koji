@@ -1,13 +1,47 @@
 #from kojiweb import util
 
-#attr _PASSTHROUGH = ['state', 'order']
+#def headerState($state)
+  #if $state == 'enabled'
+Enabled hosts
+  #elif $state == 'disabled'
+Disabled hosts
+  #else
+Hosts
+  #end if
+#end def
+
+#def headerReady($ready)
+  #if $ready == 'ready'
+which are ready
+  #elif $ready == 'notready'
+which are not ready
+  #end if
+#end def
+
+#def headerArch($arch)
+  #if $arch == 'all'
+on all arches
+  #else
+on $arch arch
+  #end if
+#end def
+
+#def headerChannel($channel)
+  #if $channel == 'all'
+in all channels
+  #else
+in $channel channel
+  #end if
+#end def
+
+#attr _PASSTHROUGH = ['state', 'order', 'ready', 'channel', 'arch']
 
 #include "includes/header.chtml"
 
-  <h4>Hosts</h4>
+  <h4>$headerState($state) $headerReady($ready) $headerArch($arch) $headerChannel($channel)</h4>
   <table class="data-list">
     <tr>
-      <td colspan="6">
+      <td colspan="7">
         <table class="nested">
           <tr><td>
               <strong>State</strong>:
@@ -17,12 +51,41 @@
                 <option value="disabled" #if $state == 'disabled' then 'selected="selected"' else ''#>disabled</option>
                 <option value="all" #if $state == 'all' then 'selected="selected"' else ''#>all</option>
               </select>
+          </td>
+          <td>
+              <strong>Channels</strong>:
+          </td><td>
+              <select name="channel" class="filterlist" onchange="javascript: window.location = 'hosts?channel=' + this.value + '$util.passthrough_except($self, 'channel')';">
+                <option value="all" #if not $channel then 'selected="selected"' else ''#>all</option>
+                #for $chan in $channels
+                <option value="$chan.name" #if $chan.name == $channel then 'selected="selected"' else ''#>$chan.name</option>
+                #end for
+              </select>
+          </td>
+          </tr>
+          <tr><td>
+              <strong>Ready</strong>:
+          </td><td>
+              <select name="ready" class="filterlist" onchange="javascript: window.location = 'hosts?ready=' + this.value + '$util.passthrough_except($self, 'ready')';">
+                <option value="yes" #if $ready == 'yes' then 'selected="selected"' else ''#>yes</option>
+                <option value="no" #if $ready == 'no' then 'selected="selected"' else ''#>no</option>
+                <option value="all" #if $ready== 'all' then 'selected="selected"' else ''#>all</option>
+              </select>
+          </td><td>
+              <strong>Arches</strong>:
+          </td><td>
+              <select name="arch" class="filterlist" onchange="javascript: window.location = 'hosts?arch=' + this.value + '$util.passthrough_except($self, 'arch')';">
+                <option value="all" #if not $arch then 'selected="selected"' else ''#>all</option>
+                #for $arch_item in $arches
+                <option value="$arch_item" #if $arch_item == $arch then 'selected="selected"' else ''#>$arch_item</option>
+                #end for
+              </select>
           </td></tr>
         </table>
       </td>
     </tr>
     <tr>
-      <td class="paginate" colspan="6">
+      <td class="paginate" colspan="7">
         #if $len($hostPages) > 1
         <form class="pageJump" action="">
           Page:
@@ -48,6 +111,7 @@
       <th><a href="hosts?order=$util.toggleOrder($self, 'id')$util.passthrough_except($self, 'order')">ID</a> $util.sortImage($self, 'id')</th>
       <th><a href="hosts?order=$util.toggleOrder($self, 'name')$util.passthrough_except($self, 'order')">Name</a> $util.sortImage($self, 'name')</th>
       <th><a href="hosts?order=$util.toggleOrder($self, 'arches')$util.passthrough_except($self, 'order')">Arches</a> $util.sortImage($self, 'arches')</th>
+      <th><a href="hosts?order=$util.toggleOrder($self, 'channels')$util.passthrough_except($self, 'order')">Channels</a> $util.sortImage($self, 'channels')</th>
       <th><a href="hosts?order=$util.toggleOrder($self, 'enabled')$util.passthrough_except($self, 'order')">Enabled?</a> $util.sortImage($self, 'enabled')</th>
       <th><a href="hosts?order=$util.toggleOrder($self, 'ready')$util.passthrough_except($self, 'order')">Ready?</a> $util.sortImage($self, 'ready')</th>
       <th><a href="hosts?order=$util.toggleOrder($self, 'last_update')$util.passthrough_except($self, 'order')">Last Update</a> $util.sortImage($self, 'last_update')</th>
@@ -58,6 +122,11 @@
           <td>$host.id</td>
           <td><a href="hostinfo?hostID=$host.id">$host.name</a></td>
           <td>$host.arches</td>
+          <td>
+              #for $channame, $chan_id in zip($host.channels, $host.channels_id)
+                <a href="channelinfo?channelID=$chan_id">$channame</a>
+              #end for
+          </td>
           <td class="$str($bool($host.enabled)).lower()">#if $host.enabled then $util.imageTag('yes') else $util.imageTag('no')#</td>
           <td class="$str($bool($host.ready)).lower()">#if $host.ready then $util.imageTag('yes') else $util.imageTag('no')#</td>
           <td>$util.formatTime($host.last_update)</td>
@@ -65,11 +134,11 @@
       #end for
     #else
       <tr class="row-odd">
-        <td colspan="6">No hosts</td>
+        <td colspan="7">No hosts</td>
       </tr>
     #end if
     <tr>
-      <td class="paginate" colspan="6">
+      <td class="paginate" colspan="7">
         #if $len($hostPages) > 1
         <form class="pageJump" action="">
           Page:
