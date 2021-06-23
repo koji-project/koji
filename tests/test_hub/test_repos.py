@@ -2,8 +2,6 @@ import mock
 
 import unittest
 import datetime
-import psycopg2
-import psycopg2.tz
 
 import koji
 import kojihub
@@ -85,7 +83,7 @@ class TestRepoFunctions(unittest.TestCase):
                     'state': 0,
                     'task_id': 15,
                     'create_event': 32,
-                    'creation_time': datetime.datetime(2021, 3, 30, 12, 34, 5, 204023, tzinfo=psycopg2.tz.FixedOffsetTimezone(offset=0, name=None)),
+                    'creation_time': datetime.datetime(2021, 3, 30, 12, 34, 5, 204023, tzinfo=datetime.timezone.utc),
                     'create_ts': 1617107645.204023,
                     'tag_id': 3,
                     'tag_name': 'test-tag',
