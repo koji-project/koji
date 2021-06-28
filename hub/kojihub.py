@@ -3416,11 +3416,21 @@ def get_tag(tagInfo, strict=False, event=None, blocked=False):
     if event == "auto":
         # find active event or latest create_event
         opts = {'order': '-create_event', 'limit': 1}
-        query = QueryProcessor(tables=['tag_config'], columns=['create_event'],
+        query = QueryProcessor(tables=['tag_config'], columns=['create_event', 'revoke_event'],
                                joins=['tag on tag.id = tag_config.tag_id'],
                                clauses=clauses, values=data, opts=opts)
-        event = query.executeOne()['create_event']
-        fields['tag_config.revoke_event'] = 'revoke_event'
+        try:
+            event = query.executeOne(strict=True)['revoke_event']
+        except koji.GenericError:
+            event = None
+        if event is not None:
+            # query point instantly before the revoke_event
+            # (to get latest tag_config before deletion)
+            event -= 1
+            fields['tag_config.revoke_event'] = 'revoke_event'
+        else:
+            # if tag is not deleted, query event=None
+            pass
     clauses.append(eventCondition(event, table='tag_config'))
 
     fields, aliases = zip(*fields.items())
