@@ -298,6 +298,19 @@ def handle_remove_host_from_channel(goptions, session, args):
     session.removeHostFromChannel(host, channel)
 
 
+def handle_add_channel(goptions, session, args):
+    "[admin] Add a channel"
+    usage = _("usage: %prog add-channel [options] <channel_name>")
+    parser = OptionParser(usage=get_usage_str(usage))
+    parser.add_option("--description", help=_("Description of channel"))
+    (options, args) = parser.parse_args(args)
+    if len(args) != 1:
+        parser.error(_("Please specify one channel name"))
+    activate_session(session, goptions)
+    channel_id = session.addChannel(args[0], description=options.description)
+    print("%s added: id %d" % (args[0], channel_id))
+
+
 def handle_remove_channel(goptions, session, args):
     "[admin] Remove a channel entirely"
     usage = _("usage: %prog remove-channel [options] <channel>")
@@ -318,6 +331,8 @@ def handle_rename_channel(goptions, session, args):
     usage = _("usage: %prog rename-channel [options] <old-name> <new-name>")
     parser = OptionParser(usage=get_usage_str(usage))
     (options, args) = parser.parse_args(args)
+    print("rename-channel is deprecated and will be removed in 1.28, this call is replaced by "
+          "edit-channel")
     if len(args) != 2:
         parser.error(_("Incorrect number of arguments"))
     activate_session(session, goptions)
@@ -325,6 +340,19 @@ def handle_rename_channel(goptions, session, args):
     if not cinfo:
         error("No such channel: %s" % args[0])
     session.renameChannel(args[0], args[1])
+
+
+def handle_edit_channel(goptions, session, args):
+    "[admin] Edit a channel"
+    usage = _("usage: %prog edit-channel [options] <old-name>")
+    parser = OptionParser(usage=get_usage_str(usage))
+    parser.add_option("--name", help=_("New channel name"))
+    parser.add_option("--description", help=_("Description of channel"))
+    (options, args) = parser.parse_args(args)
+    if len(args) != 1:
+        parser.error(_("Incorrect number of arguments"))
+    activate_session(session, goptions)
+    session.editChannel(args[0], name=options.name, description=options.description)
 
 
 def handle_add_pkg(goptions, session, args):

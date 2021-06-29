@@ -2293,6 +2293,7 @@ def remove_host_from_channel(hostname, channel_name):
 
 def rename_channel(old, new):
     """Rename a channel"""
+    logger.warning("renameChannel call is deprecated and will be removed in 1.28")
     context.session.assertPerm('admin')
     if not isinstance(new, str):
         raise koji.GenericError("new channel name must be a string")
@@ -2305,8 +2306,40 @@ def rename_channel(old, new):
     update.execute()
 
 
+def edit_channel(channelInfo, name=None, description=None):
+    """Edit information for an existing channel.
+
+    :param str/int channelInfo: channel name or ID
+    :param str name: new channel name
+    :param str description: description of channel
+    """
+    context.session.assertPerm('admin')
+    channel = get_channel(channelInfo, strict=True)
+
+    if name:
+        if not isinstance(name, str):
+            raise koji.GenericError("new channel name must be a string")
+        dup_check = get_channel(name, strict=False)
+        if dup_check:
+            raise koji.GenericError("channel %(name)s already exists (id=%(id)i)" % dup_check)
+
+    update = UpdateProcessor('channels',
+                             values={'channelID': channel['id']},
+                             clauses=['id = %(channelID)i'])
+    if name:
+        update.set(name=name)
+    if description:
+        update.set(description=description)
+    update.execute()
+
+    return None
+
+
 def remove_channel(channel_name, force=False):
-    """Remove a channel
+    """Remove a channel.
+
+    :param str channel_name: channel name
+    :param bool force: remove channel which has hosts
 
     Channel must have no hosts, unless force is set to True
     If a channel has associated tasks, it cannot be removed
@@ -2332,6 +2365,26 @@ def remove_channel(channel_name, force=False):
         _dml(delete, locals())
     delete = """DELETE FROM channels WHERE id=%(channel_id)i"""
     _dml(delete, locals())
+
+
+def add_channel(channel_name, description=None):
+    """Add a channel.
+
+    :param str channel_name: channel name
+    :param str description: description of channel
+    """
+    context.session.assertPerm('admin')
+    if not isinstance(channel_name, str):
+        raise koji.GenericError("Channel name must be a string")
+    dup_check = get_channel(channel_name, strict=False)
+    if dup_check:
+        raise koji.GenericError("channel %(name)s already exists (id=%(id)i)" % dup_check)
+    table = 'channels'
+    channel_id = _singleValue("SELECT nextval('%s_id_seq')" % table, strict=True)
+    insert = InsertProcessor(table)
+    insert.set(id=channel_id, name=channel_name, description=description)
+    insert.execute()
+    return channel_id
 
 
 def get_ready_hosts():
@@ -5318,7 +5371,7 @@ def get_channel(channelInfo, strict=False):
     :returns: dict of the channel ID and name, or None.
               For example, {'id': 20, 'name': 'container'}
     """
-    fields = ('id', 'name')
+    fields = ('id', 'name', 'description')
     query = """SELECT %s FROM channels
     WHERE """ % ', '.join(fields)
     if isinstance(channelInfo, int):
@@ -5473,9 +5526,10 @@ def list_channels(hostID=None, event=None):
                       settings. You must specify a hostID parameter with this
                       option.
     :returns: list of dicts, one per channel. For example,
-              [{'id': 20, 'name': 'container'}]
+              [{'id': 20, 'name': 'container', 'description': 'container channel'}]
     """
-    fields = {'channels.id': 'id', 'channels.name': 'name'}
+    fields = {'channels.id': 'id', 'channels.name': 'name',
+              'channels.description': 'description'}
     columns, aliases = zip(*fields.items())
     if hostID:
         tables = ['host_channels']
@@ -12589,7 +12643,9 @@ class RootExports(object):
     addHostToChannel = staticmethod(add_host_to_channel)
     removeHostFromChannel = staticmethod(remove_host_from_channel)
     renameChannel = staticmethod(rename_channel)
+    editChannel = staticmethod(edit_channel)
     removeChannel = staticmethod(remove_channel)
+    addChannel = staticmethod(add_channel)
 
     def listHosts(self, arches=None, channelID=None, ready=None, enabled=None, userID=None,
                   queryOpts=None):

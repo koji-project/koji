@@ -1,12 +1,15 @@
 from __future__ import absolute_import
-import mock
+
 import os
-import six
 import sys
+
+import mock
+import six
 
 import koji
 from koji_cli.commands import handle_add_host
 from . import utils
+
 
 class TestAddHost(utils.CliTestCase):
 
@@ -101,7 +104,7 @@ class TestAddHost(utils.CliTestCase):
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_add_host_help(self, activate_session_mock, stderr, stdout):
+    def test_handle_add_host_without_args(self, activate_session_mock, stderr, stdout):
         arguments = []
         options = mock.MagicMock()
         progname = os.path.basename(sys.argv[0]) or 'koji'
@@ -129,6 +132,20 @@ class TestAddHost(utils.CliTestCase):
         session.hasHost.assert_not_called()
         session.addHost.assert_not_called()
 
+    def test_handle_add_host_help(self):
+        self.assert_help(
+            handle_add_host,
+            """Usage: %s add-host [options] <hostname> <arch> [<arch> ...]
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help            show this help message and exit
+  --krb-principal=KRB_PRINCIPAL
+                        set a non-default kerberos principal for the host
+  --force               if existing used is a regular user, convert it to a
+                        host
+""" % self.progname)
+
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
     def test_handle_add_host_failed(self, activate_session_mock, stderr):
@@ -148,7 +165,7 @@ class TestAddHost(utils.CliTestCase):
         # Run it and check immediate output
         # args: host, arch1, arch2, --krb-principal=krb
         # expected: failed
-        with self.assertRaises(koji.GenericError) as ex:
+        with self.assertRaises(koji.GenericError):
             handle_add_host(options, session, arguments)
         actual = stderr.getvalue()
         expected = ''
