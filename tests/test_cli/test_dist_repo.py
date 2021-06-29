@@ -28,6 +28,28 @@ class TestDistRepo(utils.CliTestCase):
         'maven_include_all': False,
         'perm_id': None
     }
+    TAG_2 = {
+        'maven_support': False,
+        'locked': False,
+        'name': 'fedora28-build',
+        'extra': {},
+        'perm': None,
+        'id': 3,
+        'arches': '',
+        'maven_include_all': False,
+        'perm_id': None
+    }
+    INHERITANCE = [{'child_id': 3,
+                    'currdepth': 1,
+                    'filter': [],
+                    'intransitive': False,
+                    'maxdepth': None,
+                    'name': 'fedora-26-build',
+                    'nextdepth': None,
+                    'noconfig': False,
+                    'parent_id': 2,
+                    'pkg_filter': '',
+                    'priority': 0}]
 
     def setUp(self):
         self.task_id = 1001
@@ -150,7 +172,7 @@ via 'koji edit-tag -x distrepo.cancel_others=True'
             [self.tag_name, self.fake_key],
             stderr=expected)
 
-        # Case 3. Arch field is empty in Tag
+        # Case 3. Arch field is empty in Tag (without inheritance)
         tag = copy.copy(self.TAG)
         tag.update({'arches': None})
         self.session.getTag.return_value = tag
@@ -161,6 +183,24 @@ via 'koji edit-tag -x distrepo.cancel_others=True'
             self.session,
             [self.tag_name, self.fake_key],
             stderr=expected)
+
+        # Case 4. Arch field is empty in Tag (with inheritance)
+        tag_1 = copy.copy(self.TAG)
+        tag_1.update({'arches': None})
+        tag_2 = copy.copy(self.TAG)
+        tag_2.update({'arches': None})
+        self.session.getTag.side_effect = [tag_2, tag_1]
+        self.session.getFullInheritance.return_value = self.INHERITANCE
+        expected = self.format_error_message('No arches given and no arches associated with tag')
+        self.assert_system_exit(
+            handle_dist_repo,
+            self.options,
+            self.session,
+            [tag_2['name'], self.fake_key],
+            stderr=expected)
+        expected_calls = [mock.call(tag_2['name']), mock.call(tag_1['id'])]
+        self.session.getTag.assert_has_calls(expected_calls)
+        self.session.getFullInheritance.assert_called_with(tag_2['name'])
 
     def test_handle_dist_repo_with_comp(self):
         comp_file = 'comp.xml'
@@ -188,6 +228,8 @@ via 'koji edit-tag -x distrepo.cancel_others=True'
         for a in arches:
             arguments += ['--arch', a]
 
+        self.session.getFullInheritance.return_value = []
+        self.session.getTag.return_value = {'arches': 'x86_64', 'id': 1, 'name': self.tag_name}
         expected_warn = '%s is not in the list of tag arches' % arches[0] + "\n"
         expected_warn += '%s is not in the list of tag arches' % arches[2] + "\n"
         expected_warn += '%s is not in the list of tag arches' % arches[3] + "\n"

@@ -7453,16 +7453,21 @@ def handle_dist_repo(options, session, args):
     taginfo = session.getTag(tag)
     if not taginfo:
         parser.error(_('No such tag: %s') % tag)
+    allowed_arches = taginfo['arches'] or ''
+    if not allowed_arches:
+        for tag_inh in session.getFullInheritance(tag):
+            allowed_arches = session.getTag(tag_inh['parent_id'])['arches'] or ''
+            if allowed_arches:
+                break
     if len(task_opts.arch) == 0:
-        arches = taginfo['arches'] or ''
-        task_opts.arch = arches.split()
+        task_opts.arch = allowed_arches.split()
         if not task_opts.arch:
             parser.error(_('No arches given and no arches associated with tag'))
     else:
         for a in task_opts.arch:
-            if not taginfo['arches']:
+            if not allowed_arches:
                 warn('Tag %s has an empty arch list' % taginfo['name'])
-            elif a not in taginfo['arches']:
+            elif a not in allowed_arches:
                 warn('%s is not in the list of tag arches' % a)
     if task_opts.multilib:
         if not os.path.exists(task_opts.multilib):
