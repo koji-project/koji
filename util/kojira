@@ -783,6 +783,12 @@ class RepoManager(object):
         for entry in self.needed_tags.values():
             self.setTagScore(entry)
 
+    def _delete_needed_tag(self, tag_id):
+        try:
+            del self.needed_tags[tag_id]
+        except KeyError:
+            pass
+
     def updateRepos(self):
         self.logger.debug("Updating repos")
 
@@ -826,11 +832,7 @@ class RepoManager(object):
             if tstate == 'CLOSED':
                 self.logger.info("Finished: newRepo task %s for tag %s", task_id, tag_id)
                 del self.tasks[task_id]
-                try:
-                    del self.needed_tags[tag_id]
-                except KeyError:
-                    # it could be already removed by checkNeeded
-                    pass
+                self._delete_needed_tag(tag_id)
             elif tstate in ('CANCELED', 'FAILED'):
                 self.logger.info(
                     "Problem: newRepo task %s for tag %s is %s", task_id, tag_id, tstate)
@@ -885,11 +887,7 @@ class RepoManager(object):
                     # no longer needed
                     self.logger.info("Tag %(name)s has a current or in "
                                      "progress repo", entry['taginfo'])
-                    try:
-                        del self.needed_tags[tag_id]
-                    except KeyError:
-                        # it could be already deleted by checkTasks
-                        pass
+                    self._delete_needed_tag(tag_id)
                 # if not covered, we already know
                 continue
             if covered:
@@ -928,7 +926,7 @@ class RepoManager(object):
             if tag_id not in build_tags:
                 self.logger.info("Tag %(name)s is no longer a build tag",
                                  entry['taginfo'])
-                del self.needed_tags[tag_id]
+                self._delete_needed_tag(tag_id)
         for tag_id, repolist in tag_repos.items():
             if tag_id not in build_tags and tag_id not in ignored_build_tags:
                 # repos for these tags are no longer required
@@ -999,7 +997,16 @@ class RepoManager(object):
             if maven:
                 if running_tasks_maven >= self.options.max_repo_tasks_maven:
                     continue
-            task_id = self.session.newRepo(tagname, **taskopts)
+            try:
+                task_id = self.session.newRepo(tagname, **taskopts)
+            except koji.GenericError:
+                # potentially deleted tag
+                if not self.session.getTag(tagname):
+                    self._delete_needed_tag(tag['taginfo']['id'])
+                    logger.debug('Needed tag %s (%d) was deleted meanwhile', tagname, tag['taginfo']['id'])
+                    continue
+                else:
+                    raise
             running_tasks += 1
             if maven:
                 running_tasks_maven += 1
