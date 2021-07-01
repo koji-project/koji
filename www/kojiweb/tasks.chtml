@@ -126,7 +126,14 @@ All
         <a href="tasks?start=#echo $taskStart + $taskRange#$util.passthrough_except($self)">&gt;&gt;&gt;</a>
         #end if
         #else
-        <strong>Tasks #echo $taskStart + 1 # through #echo $taskStart + $taskCount#</strong>
+        <form class="pageJump" action="">
+          Page:
+          <select onchange="javascript: window.location = 'tasks?start=' + this.value * $taskRange + '$util.passthrough_except($self)';">
+            <option value="0"#if 0 == $taskCurrentPage then ' selected="selected"' else ''#>#echo 1#</option>
+            <option value="1"#if 1 == $taskCurrentPage then ' selected="selected"' else ''#>#echo "load more"#</option>
+          </select>
+        </form>
+        <strong>Tasks #echo $taskStart + 1 # through #echo $taskStart + $taskCount# of ???</strong>
         <a href="tasks?start=$taskRange$util.passthrough_except($self)">&gt;&gt;&gt;</a>
         #end if
       </td>
@@ -190,7 +197,14 @@ All
         <a href="tasks?start=#echo $taskStart + $taskRange#$util.passthrough_except($self)">&gt;&gt;&gt;</a>
         #end if
         #else
-        <strong>Tasks #echo $taskStart + 1 # through #echo $taskStart + $taskCount#</strong>
+        <form class="pageJump" action="">
+          Page:
+          <select onchange="javascript: window.location = 'tasks?start=' + this.value * $taskRange + '$util.passthrough_except($self)';">
+            <option value="0"#if 0 == $taskCurrentPage then ' selected="selected"' else ''#>#echo 1#</option>
+            <option value="1"#if 1 == $taskCurrentPage then ' selected="selected"' else ''#>#echo "load more"#</option>
+          </select>
+        </form>
+        <strong>Tasks #echo $taskStart + 1 # through #echo $taskStart + $taskCount# of ???</strong>
         <a href="tasks?start=$taskRange$util.passthrough_except($self)">&gt;&gt;&gt;</a>
         #end if
       </td>
