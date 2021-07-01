@@ -78,7 +78,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.25.0
+Version: 1.25.1
 Release: %{release}%{?dist}
 License: LGPLv2 and GPLv2+
 # the included arch lib from yum's rpmUtils is GPLv2+
@@ -616,6 +616,18 @@ rm -rf $RPM_BUILD_ROOT
 %systemd_postun kojira.service
 
 %changelog
+* Mon Jun 06 2021 Tomas Kopecek <tkopecek at redhat.com> - 1.25.1-1
+- PR#2849 hub: replace with py3 exception
+- PR#2881 update .coveragerc to ignore p3 code
+- PR#2888 web: docs for KojiHubCA/ClientCA
+- PR#2889 kojihub - Use parse_task_params rather than manual task parsing
+- PR#2890 tests - Add support for running tox with specific test(s)
+- PR#2896 Drop download link from deleted build
+- PR#2898 hub: fix SQL condition
+- PR#2900 kojiweb - Fix getting tag ID for buildMaven taskinfo page.
+- PR#2906 lib: return taskLabel for unknown tasks
+- PR#2916 [policy] use "name" in result of lookup_name for CGs 
+
 * Mon May 10 2021 Tomas Kopecek <tkopecek at redhat.com> - 1.25.0-1
 - PR#2844: protonmsg: use consistent data format for messages
 - PR#2764: kojira: faster startup
