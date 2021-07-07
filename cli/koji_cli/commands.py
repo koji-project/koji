@@ -5168,7 +5168,7 @@ def handle_edit_tag(goptions, session, args):
 
 def handle_lock_tag(goptions, session, args):
     "[admin] Lock a tag"
-    usage = _("usage: %prog lock-tag [options] <tag> [<tag> ...] ")
+    usage = _("usage: %prog lock-tag [options] <tag> [<tag> ...]")
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--perm", help=_("Specify permission requirement"))
     parser.add_option("--glob", action="store_true", help=_("Treat args as glob patterns"))
@@ -5242,7 +5242,6 @@ def handle_unlock_tag(goptions, session, args):
             if tag is None:
                 parser.error(_("No such tag: %s") % name)
             selected.append(tag)
-        selected = [session.getTag(name) for name in args]
     for tag in selected:
         opts = {}
         if tag['locked']:
