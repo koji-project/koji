@@ -7585,6 +7585,75 @@ def add_rpm_sig(an_rpm, sighdr):
                               sigkey=sigkey, sighash=sighash, build=binfo, rpm=rinfo)
 
 
+def delete_rpm_sig(rpminfo, sigkey=None, all_sigs=False):
+    """Delete rpm signature
+
+    :param dict/str/id rpm: map containing 'name', 'version', 'release', and 'arch'
+                            string N-V-R.A
+                            int ID
+    :param str sigkey: Signature key.
+    :param bool all_sigs: Delete all signed copies for specified RPM.
+    """
+    if all_sigs:
+        sigkey = None
+    elif not sigkey:
+        raise koji.GenericError("No signature specified")
+    rinfo = get_rpm(rpminfo, strict=True)
+    if rinfo['external_repo_id']:
+        raise koji.GenericError("Not an internal rpm: %s (from %s)"
+                                % (rpminfo, rinfo['external_repo_name']))
+
+    rpm_query_result = query_rpm_sigs(rpm_id=rinfo['id'], sigkey=sigkey)
+    if not rpm_query_result:
+        nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" % rinfo
+        raise koji.GenericError("%s has no matching signatures to delete" % nvra)
+
+    clauses = ["rpm_id=%(rpm_id)i"]
+    if sigkey is not None:
+        clauses.append("sigkey=%(sigkey)s")
+    clauses_str = " AND ".join(clauses)
+    delete = """DELETE FROM rpmsigs WHERE %s""" % clauses_str
+    rpm_id = rinfo['id']
+    _dml(delete, locals())
+    binfo = get_build(rinfo['build_id'])
+    builddir = koji.pathinfo.build(binfo)
+    list_sigcaches = []
+    list_sighdrs = []
+    for rpmsig in rpm_query_result:
+        list_sigcaches.append(joinpath(builddir, koji.pathinfo.sighdr(rinfo, rpmsig['sigkey'])))
+        list_sighdrs.append(joinpath(builddir, koji.pathinfo.signed(rinfo, rpmsig['sigkey'])))
+    list_paths = list_sighdrs + list_sigcaches
+    count = 0
+    for file_path in list_paths:
+        try:
+            os.remove(file_path)
+            count += 1
+        except FileNotFoundError:
+            logger.info("File: %s has been deleted", file_path)
+        except Exception:
+            logger.error("An error happens when deleting %s, %s deleting are deleted, "
+                         "%s deleting are skipped, the original request is %s rpm "
+                         "and %s sigkey", file_path,
+                         list_paths[:count], list_paths[count:], rpminfo, sigkey, exc_info=True)
+            raise koji.GenericError("File %s cannot be deleted." % file_path)
+
+    for path in list_paths:
+        basedir = joinpath(builddir, os.path.dirname(path))
+        if os.path.isdir(basedir) and not os.listdir(basedir):
+            try:
+                os.rmdir(basedir)
+            except OSError:
+                logger.warning("An error happens when deleting %s directory",
+                               basedir, exc_info=True)
+        sigdir = os.path.dirname(basedir)
+        if os.path.isdir(sigdir) and not os.listdir(sigdir):
+            try:
+                os.rmdir(sigdir)
+            except OSError:
+                logger.warning("An error happens when deleting %s directory",
+                               sigdir, exc_info=True)
+
+
 def _scan_sighdr(sighdr, fn):
     """Splices sighdr with other headers from fn and queries (no payload)"""
     # This is hackish, but it works
@@ -11940,6 +12009,18 @@ class RootExports(object):
         """
         context.session.assertPerm('sign')
         return add_rpm_sig(an_rpm, base64.b64decode(data))
+
+    def deleteRPMSig(self, rpminfo, sigkey=None, all_sigs=False):
+        """Delete rpm signature
+
+        :param dict/str/id rpm: map containing 'name', 'version', 'release', and 'arch'
+                                string N-V-R.A
+                                int ID
+        :param str sigkey: Signature key.
+        :param bool all_sigs: Delete all signed copies for specified RPM.
+        """
+        context.session.assertPerm('admin')
+        return delete_rpm_sig(rpminfo, sigkey=sigkey, all_sigs=all_sigs)
 
     findBuildID = staticmethod(find_build_id)
     getTagID = staticmethod(get_tag_id)
