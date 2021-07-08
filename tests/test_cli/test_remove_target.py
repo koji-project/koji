@@ -35,3 +35,28 @@ class TestRemoveTarget(utils.CliTestCase):
             handle_remove_target(self.options, self.session, [target])
         self.assertExitCode(ex, 1)
         self.assert_console_message(stderr, expected)
+
+    def test_remove_target_valid(self):
+        build_target = {'build_tag': 2,
+                        'build_tag_name': 'test-tag',
+                        'dest_tag': 1,
+                        'dest_tag_name': 'test-dest-tag',
+                        'id': 1,
+                        'name': 'test-target'}
+
+        self.session.getBuildTarget.return_value = build_target
+        self.session.deleteBuildTarget.return_value = None
+        rv = handle_remove_target(self.options, self.session, [build_target['name']])
+        self.assertEqual(rv, None)
+        self.session.deleteBuildTarget.assert_called_once_with(build_target['id'])
+        self.session.getBuildTarget.assert_called_with(build_target['name'])
+
+    def test_remove_target_help(self):
+        self.assert_help(
+            handle_remove_target,
+            """Usage: %s remove-target [options] <name>
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help  show this help message and exit
+""" % self.progname)

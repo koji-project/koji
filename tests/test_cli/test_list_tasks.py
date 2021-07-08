@@ -1,7 +1,9 @@
 from __future__ import absolute_import
+
+import unittest
+
 import mock
 import six
-import unittest
 
 import koji
 from koji_cli.lib import _list_tasks
@@ -154,7 +156,7 @@ class TestListTasks(unittest.TestCase):
                 'id': 3,
                 'parent': 2,
                 'sub': True}
-            ])
+        ])
 
 
 class TestCliListTasks(utils.CliTestCase):
@@ -249,6 +251,17 @@ class TestCliListTasks(utils.CliTestCase):
         # Case 4. show task without header
         handle_list_tasks(options, session, ['--quiet'])
         self.assert_console_message(stdout, task_output)
+
+        # Case 5, argument error test.
+        expected = self.format_error_message(
+            "--all must be used with --after")
+        self.assert_system_exit(
+            handle_list_tasks,
+            options,
+            session,
+            ['--all'],
+            stderr=expected,
+            activate_session=None)
 
     def test_handle_list_tasks_help(self):
         self.assert_help(

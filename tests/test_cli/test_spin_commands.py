@@ -1,8 +1,9 @@
 from __future__ import absolute_import
-import mock
-import six
 
 import unittest
+
+import six
+import mock
 
 import koji
 from koji_cli.commands import handle_spin_livecd, handle_spin_livemedia, handle_spin_appliance, \
@@ -358,6 +359,20 @@ class TestSpinLiveMedia(utils.CliTestCase):
         empty_opts['compress_arg'] = []
         self.assertDictEqual(empty_opts, args[1].__dict__)
         self.assertEqual(args[-1], 'livemedia')
+
+    def test_handle_spin_livemedia_longer_volid(self):
+        """Test handle_spin_livemedia function"""
+        volid = 'extra-long-volid-in-spin-livemedia-cli-command'
+        expected = self.format_error_message(
+            'Volume ID has a maximum length of 32 characters')
+        args = ['name', 'version', 'target', 'arch', 'file.ks', '--volid', volid]
+        self.assert_system_exit(
+            handle_spin_livemedia,
+            self.options,
+            self.session,
+            args,
+            stderr=expected,
+            activate_session=None)
 
     @mock.patch('koji_cli.commands._build_image')
     def test_handle_spin_livemedia_argument_error(self, build_image_mock):

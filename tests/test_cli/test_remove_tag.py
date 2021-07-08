@@ -34,3 +34,30 @@ class TestRemoveTag(utils.CliTestCase):
             handle_remove_tag(self.options, self.session, [tag])
         self.assertExitCode(ex, 1)
         self.assert_console_message(stderr, expected)
+
+    def test_remove_tag_valid(self):
+        tag_info = {'arches': 'x86_64',
+                    'extra': {},
+                    'id': 1,
+                    'locked': False,
+                    'maven_include_all': False,
+                    'maven_support': False,
+                    'name': 'test-tag',
+                    'perm': None,
+                    'perm_id': None}
+
+        self.session.getTag.return_value = tag_info
+        rv = handle_remove_tag(self.options, self.session, [tag_info['name']])
+        self.assertEqual(rv, None)
+        self.session.deleteTag.assert_called_once_with(tag_info['id'])
+        self.session.getTag.assert_called_with(tag_info['name'])
+
+    def test_remove_tag_help(self):
+        self.assert_help(
+            handle_remove_tag,
+            """Usage: %s remove-tag [options] <name>
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help  show this help message and exit
+""" % self.progname)

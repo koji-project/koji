@@ -1,10 +1,12 @@
 from __future__ import absolute_import
+
 import mock
-import unittest
+from six.moves import StringIO
 
 import koji
 from koji_cli.commands import handle_cancel
 from . import utils
+
 
 class TestCancel(utils.CliTestCase):
     maxDiff = None
@@ -20,7 +22,6 @@ class TestCancel(utils.CliTestCase):
 
 %s: error: {message}
 """ % (self.progname, self.progname)
-
 
     @mock.patch('koji_cli.commands.activate_session')
     def test_anon_cancel(self, activate_session_mock):
@@ -115,4 +116,20 @@ class TestCancel(utils.CliTestCase):
 
         activate_session_mock.assert_called_once_with(self.session, self.options)
         self.session.cancelTaskFull.assert_called_once_with(123, strict=False)
+        self.session.cancelBuild.assert_not_called()
+
+    @mock.patch('sys.stderr', new_callable=StringIO)
+    def test_cancel_without_arguments(self, stderr):
+        expected = """Usage: %s cancel [options] <task_id|build> [<task_id|build> ...]
+(Specify the --help global option for a list of other help options)
+
+%s: error: You must specify at least one task id or build
+""" % (self.progname, self.progname)
+        with self.assertRaises(SystemExit) as ex:
+            handle_cancel(self.options, self.session, [])
+        self.assertExitCode(ex, 2)
+        self.assert_console_message(stderr, expected)
+
+        self.session.cancelTask.assert_not_called()
+        self.session.cancelTaskFull.assert_not_called()
         self.session.cancelBuild.assert_not_called()
