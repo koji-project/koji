@@ -347,7 +347,8 @@ def handle_db_msgs(urls, CONFIG):
         c.execute("DELETE FROM proton_queue WHERE created_ts < NOW() -'%s hours'::interval" %
                   CONFIG.getint('queue', 'age', fallback=24))
         query = QueryProcessor(tables=('proton_queue',),
-                               columns=('id', 'address', 'props', 'body'),
+                               columns=('id', 'address', 'props', 'body::TEXT'),
+                               aliases=('id', 'address', 'props', 'body'),
                                opts={'order': 'id', 'limit': limit})
         msgs = list(query.execute())
         if not msgs:
