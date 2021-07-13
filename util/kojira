@@ -445,6 +445,15 @@ class RepoManager(object):
                 self.logger.info('Found repo %s, state=%s'
                                  % (repo_id, koji.REPO_STATES[data['state']]))
                 repo = ManagedRepo(self, data, repodata)
+                if self.options.ignore_other_volumes:
+                    info = repo.get_info()
+                    volume = info.get('volume')
+                    if volume is not None and volume != 'DEFAULT':
+                        # Other volume
+                        self.logger.info("Skipping repo ({}) on other volume {}".format(
+                            repo_id, volume,
+                        ))
+                        continue
                 self.repos[repo_id] = repo
             if not getTag(self.session, repo.tag_id) and not repo.expired():
                 self.logger.info('Tag %d for repo %d disappeared, expiring.', repo.tag_id, repo_id)
@@ -635,9 +644,11 @@ class RepoManager(object):
 
     def pruneLocalRepos(self):
         for volinfo in self.session.listVolumes():
-            volumedir = pathinfo.volumedir(volinfo['name'])
-            repodir = "%s/repos" % volumedir
-            self._pruneLocalRepos(repodir, self.options.deleted_repo_lifetime)
+            volname = volinfo['name']
+            volumedir = pathinfo.volumedir(volname)
+            if volname == 'DEFAULT':  # currently the only path for non-dist repos.
+                repodir = "%s/repos" % volumedir
+                self._pruneLocalRepos(repodir, self.options.deleted_repo_lifetime)
             distrepodir = "%s/repos-dist" % volumedir
             self._pruneLocalRepos(distrepodir, self.options.dist_repo_lifetime)
 
@@ -1198,6 +1209,8 @@ def get_options():
     parser.add_option("--logfile", help="Specify logfile")
     parser.add_option("--queue-file",
                       help="If specified, queue is dumped to separate status file each cycle")
+    parser.add_option("--ignore-other-volumes", action="store_true",
+                      help="Ignore repos on other volumes")
     (options, args) = parser.parse_args()
 
     config = koji.read_config_files(options.configFile)
@@ -1235,6 +1248,7 @@ def get_options():
                 'cert': None,
                 'serverca': None,
                 'queue_file': None,
+                'ignore_other_volumes': False,
                 }
     if config.has_section(section):
         int_opts = ('deleted_repo_lifetime', 'max_repo_tasks', 'repo_tasks_limit',
@@ -1245,7 +1259,7 @@ def get_options():
                     'cert', 'serverca', 'debuginfo_tags', 'queue_file',
                     'source_tags', 'separate_source_tags', 'ignore_tags')
         bool_opts = ('verbose', 'debug', 'ignore_stray_repos', 'offline_retry',
-                     'no_ssl_verify', 'check_external_repos')
+                     'no_ssl_verify', 'check_external_repos', 'ignore_other_volumes')
         legacy_opts = ('with_src', 'delete_batch_size', 'recent_tasks_lifetime')
         for name in config.options(section):
             if name in int_opts:
