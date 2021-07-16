@@ -327,7 +327,16 @@ class SCM(object):
         # return parsed values
         return (scheme, user, netloc, path, query, fragment)
 
-    def assert_allowed(self, allowed):
+    def assert_allowed(self, allowed='', session=None, by_config=True, by_policy=False, opts=None):
+        if by_config:
+            self.assert_allowed_by_config(allowed or '')
+        if by_policy:
+            if session is None:
+                raise koji.ConfigurationError(
+                    'When allowed SCM assertion is by policy, session must be passed in.')
+            self.assert_allowed_by_policy(session, **(opts or {}))
+
+    def assert_allowed_by_config(self, allowed):
         """
         Check this scm against allowed list and apply options
 
@@ -395,6 +404,74 @@ class SCM(object):
         if not is_allowed:
             raise koji.BuildError(
                 '%s:%s is not in the list of allowed SCMs' % (self.host, self.repository))
+
+    def assert_allowed_by_policy(self, session, **opts):
+        """
+        Check this scm against hub policy: build_from_scm and apply options
+
+        The policy data is the combination of scminfo with scm prefix and kwargs.
+        It should at least contain following keys:
+
+            - scmurl
+            - scmscheme
+            - scmuser
+            - scmhost
+            - scmrepository
+            - scmmodule
+            - scmrevision
+            - scmtype
+
+        More keys could be added in opts. You can pass any reasonable data which could be handled
+        by policy tests, like:
+
+            - scratch (if the task is scratch)
+            - channel (which channel the task is assigned)
+            - user_id (the task owner)
+
+        The format of the action returned from build_from_scm could be one of following forms::
+
+            allow [use_common] [source_cmd]
+            deny [reason]
+
+        If use_common is not set, use_common property is False.
+        If source_cmd is none, it will be parsed as None. If it not set, the default value:
+        ['make', 'sources'], or the value set by :func:`~koji.daemon.SCM.assert_allowed_by_config`
+        will be set.
+
+        Policy example:
+
+            build_from_scm =
+                bool scratch :: allow none
+                match scmhost scm.example.com :: allow use_common make sources
+                match scmhost scm2.example.com :: allow
+                all :: deny
+
+
+        :param koji.ClientSession session: the session object to call hub xmlrpc APIs.
+                                           It should be a host session.
+
+        :raises koji.BuildError: if the scm is denied.
+        """
+        policy_data = {}
+        for k, v in six.iteritems(self.get_info()):
+            if not k.startswith('scm'):
+                k = 'scm' + k
+            policy_data[k] = v
+        policy_data.update(opts)
+        result = (session.host.evalPolicy('build_from_scm', policy_data) or '').split()
+        is_allowed = result and result[0].lower() in ('yes', 'true', 'allow', 'allowed')
+        if not is_allowed:
+            raise koji.BuildError(
+                'SCM: %s:%s is not allowed, reason: %s' % (self.host, self.repository,
+                                                           ' '.join(result[1:]) or None))
+        # Apply options when it's allowed
+        applied = result[1:]
+        self.use_common = len(applied) != 0 and applied[0].lower() == 'use_common'
+        idx = 1 if self.use_common else 0
+        self.source_cmd = applied[idx:] or self.source_cmd
+        if self.source_cmd is not None and len(self.source_cmd) > 0 \
+           and self.source_cmd[0].lower() == 'none':
+            self.source_cmd = None
 
     def checkout(self, scmdir, session=None, uploadpath=None, logfile=None):
         """

@@ -138,6 +138,8 @@ def get_options():
                 'offline_retry': True,
                 'offline_retry_interval': 120,
                 'allowed_scms': '',
+                'allowed_scms_by_config': True,
+                'allowed_scms_by_policy': False,
                 'cert': None,
                 'serverca': None}
     if config.has_section('kojivmd'):
@@ -149,7 +151,8 @@ def get_options():
                     defaults[name] = int(value)
                 except ValueError:
                     quit("value for %s option must be a valid integer" % name)
-            elif name in ['offline_retry', 'no_ssl_verify']:
+            elif name in ['offline_retry', 'no_ssl_verify', 'allowed_scms_by_config',
+                          'allowed_scms_by_policy']:
                 defaults[name] = config.getboolean('kojivmd', name)
             elif name in ['plugin', 'plugins']:
                 defaults['plugin'] = value.split()
@@ -325,8 +328,16 @@ class WinBuildTask(MultiPlatformTask):
         # verify the urls before passing them to the VM
         for url in [source_url] + koji.util.to_list(subopts.values()):
             scm = SCM(url)
-            scm.assert_allowed(self.options.allowed_scms)
-
+            scm.assert_allowed(allowed=self.options.allowed_scms,
+                               session=self.session,
+                               by_config=self.options.allowed_scms_use_config,
+                               by_policy=self.options.allowed_scms_use_policy,
+                               opts={
+                                   'user_id': self.taskinfo['owner'],
+                                   'channel': self.session.getChannel(self.taskinfo['channel_id'],
+                                                                      strict=True)['name'],
+                                   'scratch': opts.get('scratch')
+                               })
         task_info = self.session.getTaskInfo(self.id)
         target_info = self.session.getBuildTarget(target)
         if not target_info:

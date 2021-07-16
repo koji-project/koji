@@ -524,6 +524,13 @@ _default_policies = {
             has_perm admin :: allow
             all :: deny
             ''',
+    'build_from_scm': '''
+            has_perm admin :: allow
+            # match scmtype CVS CVS+SSH && match scmhost scm.example.com && match scmrepository /cvs/example :: allow
+            # match scmtype GIT GIT+SSH && match scmhost git.example.org && match scmrepository /example :: allow
+            # match scmtype SVN SVN+SSH && match scmhost svn.example.org && match scmrepository /users/* :: allow
+            all :: deny
+            ''',  # noqa: E501
     'package_list': '''
             has_perm admin :: allow
             has_perm tag :: allow

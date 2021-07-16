@@ -1633,7 +1633,17 @@ class BuildMavenTask(BaseBuildTask):
         self.opts = opts
 
         scm = SCM(url)
-        scm.assert_allowed(self.options.allowed_scms)
+        scm_policy_opts = {
+            'user_id': self.taskinfo['owner'],
+            'channel': self.session.getChannel(self.taskinfo['channel_id'],
+                                               strict=True)['name'],
+            'scratch': self.opts.get('scratch')
+        }
+        scm.assert_allowed(allowed=self.options.allowed_scms,
+                           session=self.session,
+                           by_config=self.options.allowed_scms_use_config,
+                           by_policy=self.options.allowed_scms_use_policy,
+                           opts=scm_policy_opts)
         repo_id = opts.get('repo_id')
         if not repo_id:
             raise koji.BuildError('A repo_id must be provided')
@@ -1707,7 +1717,11 @@ class BuildMavenTask(BaseBuildTask):
         if self.opts.get('patches'):
             patchlog = self.workdir + '/patches.log'
             patch_scm = SCM(self.opts.get('patches'))
-            patch_scm.assert_allowed(self.options.allowed_scms)
+            patch_scm.assert_allowed(allowed=self.options.allowed_scms,
+                                     session=self.session,
+                                     by_config=self.options.allowed_scms_use_config,
+                                     by_policy=self.options.allowed_scms_use_policy,
+                                     opts=scm_policy_opts)
             self.run_callbacks('preSCMCheckout', scminfo=patch_scm.get_info(),
                                build_tag=build_tag, scratch=opts.get('scratch'),
                                buildroot=buildroot)
@@ -1990,7 +2004,16 @@ class WrapperRPMTask(BaseBuildTask):
                 assert False  # pragma: no cover
 
         scm = SCM(spec_url)
-        scm.assert_allowed(self.options.allowed_scms)
+        scm.assert_allowed(allowed=self.options.allowed_scms,
+                           session=self.session,
+                           by_config=self.options.allowed_scms_use_config,
+                           by_policy=self.options.allowed_scms_use_policy,
+                           opts={
+                               'user_id': self.taskinfo['owner'],
+                               'channel': self.session.getChannel(self.taskinfo['channel_id'],
+                                                                  strict=True)['name'],
+                               'scratch': opts.get('scratch')
+                           })
 
         repo_id = opts.get('repo_id')
         if not repo_id:
@@ -2979,7 +3002,16 @@ class ImageTask(BaseTaskHandler):
         self.logger.debug("ksfile = %s" % ksfile)
         if self.opts.get('ksurl'):
             scm = SCM(self.opts['ksurl'])
-            scm.assert_allowed(self.options.allowed_scms)
+            scm.assert_allowed(allowed=self.options.allowed_scms,
+                               session=self.session,
+                               by_config=self.options.allowed_scms_use_config,
+                               by_policy=self.options.allowed_scms_use_policy,
+                               opts={
+                                   'user_id': self.taskinfo['owner'],
+                                   'channel': self.session.getChannel(self.taskinfo['channel_id'],
+                                                                      strict=True)['name'],
+                                   'scratch': self.opts.get('scratch')
+                               })
             logfile = os.path.join(self.workdir, 'checkout.log')
             self.run_callbacks('preSCMCheckout', scminfo=scm.get_info(),
                                build_tag=build_tag, scratch=self.opts.get('scratch'),
@@ -3453,7 +3485,16 @@ class LiveMediaTask(ImageTask):
             can find the checked out templates.
         """
         scm = SCM(self.opts['lorax_url'])
-        scm.assert_allowed(self.options.allowed_scms)
+        scm.assert_allowed(allowed=self.options.allowed_scms,
+                           session=self.session,
+                           by_config=self.options.allowed_scms_use_config,
+                           by_policy=self.options.allowed_scms_use_policy,
+                           opts={
+                               'user_id': self.taskinfo['owner'],
+                               'channel': self.session.getChannel(self.taskinfo['channel_id'],
+                                                                  strict=True)['name'],
+                               'scratch': self.opts.get('scratch')
+                           })
         logfile = os.path.join(self.workdir, 'lorax-templates-checkout.log')
         checkout_dir = scm.checkout(build_root.tmpdir(),
                                     self.session, self.getUploadDir(), logfile)
@@ -3700,7 +3741,16 @@ class OzImageTask(BaseTaskHandler):
         self.logger.debug("ksfile = %s" % ksfile)
         if self.opts.get('ksurl'):
             scm = SCM(self.opts['ksurl'])
-            scm.assert_allowed(self.options.allowed_scms)
+            scm.assert_allowed(allowed=self.options.allowed_scms,
+                               session=self.session,
+                               by_config=self.options.allowed_scms_use_config,
+                               by_policy=self.options.allowed_scms_use_policy,
+                               opts={
+                                   'user_id': self.taskinfo['owner'],
+                                   'channel': self.session.getChannel(self.taskinfo['channel_id'],
+                                                                      strict=True)['name'],
+                                   'scratch': self.opts.get('scratch')
+                               })
             logfile = os.path.join(self.workdir, 'checkout-%s.log' % self.arch)
             self.run_callbacks('preSCMCheckout', scminfo=scm.get_info(),
                                build_tag=build_tag, scratch=self.opts.get('scratch'))
@@ -4527,7 +4577,16 @@ class BuildIndirectionImageTask(OzImageTask):
         self.logger.debug("filepath = %s" % filepath)
         if fileurl:
             scm = SCM(fileurl)
-            scm.assert_allowed(self.options.allowed_scms)
+            scm.assert_allowed(allowed=self.options.allowed_scms,
+                               session=self.session,
+                               by_config=self.options.allowed_scms_use_config,
+                               by_policy=self.options.allowed_scms_use_policy,
+                               opts={
+                                   'user_id': self.taskinfo['owner'],
+                                   'channel': self.session.getChannel(self.taskinfo['channel_id'],
+                                                                      strict=True)['name'],
+                                   'scratch': self.opts.get('scratch')
+                               })
             self.run_callbacks('preSCMCheckout', scminfo=scm.get_info(),
                                build_tag=build_tag, scratch=self.opts.get('scratch'))
             logfile = os.path.join(self.workdir, 'checkout.log')
@@ -4935,12 +4994,20 @@ class BuildSRPMFromSCMTask(BaseBuildTask):
         return self.checkHostArch(tag, hostdata)
 
     def handler(self, url, build_tag, opts=None):
-        # will throw a BuildError if the url is invalid
-        scm = SCM(url)
-        scm.assert_allowed(self.options.allowed_scms)
-
         if opts is None:
             opts = {}
+        # will throw a BuildError if the url is invalid
+        scm = SCM(url)
+        scm.assert_allowed(allowed=self.options.allowed_scms,
+                           session=self.session,
+                           by_config=self.options.allowed_scms_use_config,
+                           by_policy=self.options.allowed_scms_use_policy,
+                           opts={
+                               'user_id': self.taskinfo['owner'],
+                               'channel': self.session.getChannel(self.taskinfo['channel_id'],
+                                                                  strict=True)['name'],
+                               'scratch': opts.get('scratch')
+                           })
         repo_id = opts.get('repo_id')
         if not repo_id:
             raise koji.BuildError("A repo id must be provided")
@@ -6362,6 +6429,8 @@ def get_options():
                 'mock_bootstrap_image': False,
                 'pkgurl': None,
                 'allowed_scms': '',
+                'allowed_scms_by_config': True,
+                'allowed_scms_by_policy': False,
                 'scm_credentials_dir': None,
                 'support_rpm_source_layout': True,
                 'yum_proxy': None,
@@ -6390,7 +6459,7 @@ def get_options():
             elif name in ['offline_retry', 'use_createrepo_c', 'createrepo_skip_stat',
                           'createrepo_update', 'use_fast_upload', 'support_rpm_source_layout',
                           'build_arch_can_fail', 'no_ssl_verify', 'log_timestamps',
-                          'allow_noverifyssl']:
+                          'allow_noverifyssl', 'allowed_scms_by_config', 'allowed_scms_by_policy']:
                 defaults[name] = config.getboolean('kojid', name)
             elif name in ['plugin', 'plugins']:
                 defaults['plugin'] = value.split()
