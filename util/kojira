@@ -661,9 +661,17 @@ class RepoManager(object):
             if not os.path.isdir(tagdir):
                 self.logger.debug("%s is not a directory, skipping", tagdir)
                 continue
+
+            # Remember where latest symlink points to (if exists)
+            repo_latest_path = "%s/latest" % tagdir
+            repo_latest_id = (
+                os.readlink(repo_latest_path)
+                if os.path.isdir(repo_latest_path)
+                else None
+            )
             for repo_id in os.listdir(tagdir):
-                if repo_id == 'latest':
-                    # ignore latest symlinks
+                if repo_id == 'latest' or repo_id == repo_latest_id:
+                    # ignore latest symlinks or repo where one points to
                     continue
                 try:
                     repo_id = int(repo_id)
@@ -931,6 +939,9 @@ class RepoManager(object):
             if tag_id not in build_tags and tag_id not in ignored_build_tags:
                 # repos for these tags are no longer required
                 for repo in repolist:
+                    if repo.dist:
+                        # Dist repos should expire only basd on the time
+                        continue
                     if repo.ready():
                         repo.expire()
 
