@@ -7115,11 +7115,15 @@ def anon_handle_download_build(options, session, args):
 
 
 def anon_handle_download_logs(options, session, args):
-    "[download] Download a logs for package"
+    "[download] Download logs for task"
 
     FAIL_LOG = "task_failed.log"
     usage = _("usage: %prog download-logs [options] <task_id> [<task_id> ...]")
     usage += _("\n       %prog download-logs [options] --nvr <n-v-r> [<n-v-r> ...]")
+    usage += "\n"
+    usage += "\n"
+    usage += _("Note this command only downloads task logs, not build logs.")
+    usage += "\n"
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("-r", "--recurse", action="store_true",
                       help=_("Process children of this task as well"))
