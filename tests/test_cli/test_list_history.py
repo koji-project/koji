@@ -1,11 +1,13 @@
 from __future__ import absolute_import
-import mock
-import time
-import unittest
-from datetime import datetime
-import koji
-from six.moves import StringIO
 
+import time
+from datetime import datetime
+import unittest
+
+from six.moves import StringIO
+import mock
+
+import koji
 from koji_cli.commands import anon_handle_list_history
 from . import utils
 
@@ -209,7 +211,7 @@ class TestListHistory(utils.CliTestCase):
                    "(Specify the --help global option for a list of other " \
                    "help options)\n\n" \
                    "%s: error: Please specify an option to limit " \
-                   "the query\n" %(self.progname, self.progname)
+                   "the query\n" % (self.progname, self.progname)
         self.session.getChannel.return_value = None
         with self.assertRaises(SystemExit) as ex:
             anon_handle_list_history(self.options, self.session, [])
@@ -1085,6 +1087,19 @@ class TestListHistory(utils.CliTestCase):
 
         anon_handle_list_history(self.options, self.session, ['--xkey', xkey])
         self.assert_console_message(stdout, expected)
+
+    @mock.patch('sys.stderr', new_callable=StringIO)
+    @mock.patch('koji_cli.commands.ensure_connection')
+    def test_list_history_without_arguments(self, ensure_connection_mock, stderr):
+        expected = """Usage: %s list-history [options]
+(Specify the --help global option for a list of other help options)
+
+%s: error: Please specify an option to limit the query
+""" % (self.progname, self.progname)
+        with self.assertRaises(SystemExit) as ex:
+            anon_handle_list_history(self.options, self.session, [])
+        self.assertExitCode(ex, 2)
+        self.assert_console_message(stderr, expected)
 
     def test_handle_list_history_help(self):
         self.assert_help(

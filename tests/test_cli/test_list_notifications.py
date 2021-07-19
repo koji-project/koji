@@ -1,15 +1,14 @@
 from __future__ import absolute_import
 
-import unittest
-
 import mock
 from six.moves import StringIO
 
 import koji
 from koji_cli.commands import anon_handle_list_notifications
+from . import utils
 
 
-class TestListNotifications(unittest.TestCase):
+class TestListNotifications(utils.CliTestCase):
     def setUp(self):
         self.options = mock.MagicMock()
         self.options.debug = False
@@ -20,9 +19,12 @@ class TestListNotifications(unittest.TestCase):
     @mock.patch('koji_cli.commands.activate_session')
     def test_list_notifications(self, activate_session_mock, stdout):
         self.session.getBuildNotifications.return_value = [
-            {'id': 1, 'tag_id': 1, 'package_id': 11, 'email': 'email@test.com', 'success_only': True},
-            {'id': 2, 'tag_id': None, 'package_id': 11, 'email': 'email@test.com', 'success_only': False},
-            {'id': 3, 'tag_id': 1, 'package_id': None, 'email': 'email@test.com', 'success_only': True},
+            {'id': 1, 'tag_id': 1, 'package_id': 11, 'email': 'email@test.com',
+             'success_only': True},
+            {'id': 2, 'tag_id': None, 'package_id': 11, 'email': 'email@test.com',
+             'success_only': False},
+            {'id': 3, 'tag_id': 1, 'package_id': None, 'email': 'email@test.com',
+             'success_only': True},
         ]
         self.session.getBuildNotificationBlocks.return_value = []
         self.session.getTag.return_value = {'id': 1, 'name': 'tag'}
@@ -54,9 +56,12 @@ No notification blocks
     @mock.patch('koji_cli.commands.ensure_connection')
     def test_list_notifications_user(self, ensure_connection_mock, stdout):
         self.session.getBuildNotifications.return_value = [
-            {'id': 1, 'tag_id': 1, 'package_id': 11, 'email': 'email@test.com', 'success_only': True},
-            {'id': 2, 'tag_id': None, 'package_id': 11, 'email': 'email@test.com', 'success_only': False},
-            {'id': 3, 'tag_id': 1, 'package_id': None, 'email': 'email@test.com', 'success_only': True},
+            {'id': 1, 'tag_id': 1, 'package_id': 11, 'email': 'email@test.com',
+             'success_only': True},
+            {'id': 2, 'tag_id': None, 'package_id': 11, 'email': 'email@test.com',
+             'success_only': False},
+            {'id': 3, 'tag_id': 1, 'package_id': None, 'email': 'email@test.com',
+             'success_only': True},
         ]
         self.session.getBuildNotificationBlocks.return_value = [
             {'id': 11, 'tag_id': None, 'package_id': 22},
@@ -99,28 +104,37 @@ Notification blocks
         self.session.getUser.assert_called_once_with('random_name')
         self.session.getBuildNotifications.assert_called_once_with(321)
 
-    @mock.patch('sys.exit')
     @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_list_notifications_missing_params(self, sys_stderr, sys_exit):
-        sys_exit.side_effect = SystemExit()
+    def test_handle_list_notifications_without_option(self, stderr):
+        expected = """Usage: %s list-notifications [options]
+(Specify the --help global option for a list of other help options)
 
-        with self.assertRaises(SystemExit):
+%s: error: Use --user or --mine.
+""" % (self.progname, self.progname)
+        with self.assertRaises(SystemExit) as ex:
             anon_handle_list_notifications(self.options, self.session, [])
-
-        self.session.getUser.assert_not_called()
+        self.assertExitCode(ex, 2)
+        self.assert_console_message(stderr, expected)
         self.session.getBuildNotifications.assert_not_called()
         self.session.getTag.assert_not_called()
         self.session.getPackage.assert_not_called()
+        self.session.getUser.assert_not_called()
 
-    @mock.patch('sys.exit')
     @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_handle_list_notifications_no_args(self, sys_stderr, sys_exit):
-        sys_exit.side_effect = SystemExit()
+    def test_handle_list_notifications_with_args(self, stderr):
+        expected = """Usage: %s list-notifications [options]
+(Specify the --help global option for a list of other help options)
 
-        with self.assertRaises(SystemExit):
-            anon_handle_list_notifications(self.options, self.session, [])
-
+%s: error: This command takes no arguments
+""" % (self.progname, self.progname)
+        with self.assertRaises(SystemExit) as ex:
+            anon_handle_list_notifications(self.options, self.session, ['test-argument'])
+        self.assertExitCode(ex, 2)
+        self.assert_console_message(stderr, expected)
         self.session.getBuildNotifications.assert_not_called()
+        self.session.getTag.assert_not_called()
+        self.session.getPackage.assert_not_called()
+        self.session.getUser.assert_not_called()
 
     @mock.patch('sys.stderr', new_callable=StringIO)
     def test_list_notifications_user_non_exist_user(self, stderr):
@@ -136,3 +150,29 @@ Notification blocks
         self.session.getBuildNotifications.assert_not_called()
         self.session.getTag.assert_not_called()
         self.session.getPackage.assert_not_called()
+
+    @mock.patch('sys.stdout', new_callable=StringIO)
+    @mock.patch('koji_cli.commands.ensure_connection')
+    def test_list_notifications_without_notification(self, ensure_connection_mock, stdout):
+        username = 'random_name'
+        self.session.getUser.return_value = {'id': 321}
+        self.session.getBuildNotifications.return_value = []
+        self.session.getBuildNotificationBlocks.return_value = [
+            {'id': 11, 'tag_id': 22, 'package_id': None}
+        ]
+        self.session.getTag.return_value = {'id': 22, 'name': 'tag'}
+        anon_handle_list_notifications(self.options, self.session, ['--user', username])
+        expected = """No notifications
+
+Notification blocks
+    ID Tag                       Package                  
+----------------------------------------------------------
+    11 tag                       *                        
+"""
+        actual = stdout.getvalue()
+        self.assertMultiLineEqual(actual, expected)
+        ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.session.getTag.assert_called_once_with(22)
+        self.session.getPackage.assert_not_called()
+        self.session.getUser.assert_called_once_with('random_name')
+        self.session.getBuildNotifications.assert_called_once_with(321)

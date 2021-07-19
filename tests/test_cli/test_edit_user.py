@@ -1,9 +1,11 @@
 from __future__ import absolute_import
-import mock
-import os
-import six
-import sys
+
 import unittest
+import os
+import sys
+
+import six
+import mock
 
 
 from koji_cli.commands import handle_edit_user
@@ -109,6 +111,36 @@ Options:
 (Specify the --help global option for a list of other help options)
 
 %(progname)s: error: You must specify the username of the user to edit
+""" % {'progname': progname}
+        self.assertMultiLineEqual(actual_stdout, expected_stdout)
+        self.assertMultiLineEqual(actual_stderr, expected_stderr)
+        # Finally, assert that things were called as we expected.
+        activate_session_mock.assert_not_called()
+        session.editUser.assert_not_called()
+
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
+    @mock.patch('koji_cli.commands.activate_session')
+    def test_handle_edit_user_more_arg(self, activate_session_mock, stderr, stdout):
+        args = ['user', 'user2']
+        options = mock.MagicMock()
+
+        # Mock out the xmlrpc server
+        session = mock.MagicMock()
+
+        # Run it and check immediate output
+        # args: --help
+        # expected: failed, help info shows
+        with self.assertRaises(SystemExit) as ex:
+            handle_edit_user(options, session, args)
+        self.assertExitCode(ex, 2)
+        actual_stdout = stdout.getvalue()
+        actual_stderr = stderr.getvalue()
+        expected_stdout = ''
+        expected_stderr = """Usage: %(progname)s edit-user <username> [options]
+(Specify the --help global option for a list of other help options)
+
+%(progname)s: error: This command only accepts one argument (username)
 """ % {'progname': progname}
         self.assertMultiLineEqual(actual_stdout, expected_stdout)
         self.assertMultiLineEqual(actual_stderr, expected_stderr)

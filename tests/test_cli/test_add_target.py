@@ -83,3 +83,56 @@ class TestAddTarget(utils.CliTestCase):
             handle_add_target(self.options, self.session, [target, tag, dest_tag])
         self.assertExitCode(ex, 1)
         self.assert_console_message(stderr, expected)
+
+    @mock.patch('sys.stderr', new_callable=StringIO)
+    def test_add_target_more_option(self, stderr):
+        args = ['test-target', 'tag', 'test-dest-tag', 'tag-2']
+        expected = "Usage: %s add-target <name> <build tag> <dest tag>\n" \
+                   "(Specify the --help global option for a list of other help options)\n\n" \
+                   "%s: error: Incorrect number of arguments\n" % (self.progname, self.progname)
+        with self.assertRaises(SystemExit) as ex:
+            handle_add_target(self.options, self.session, args)
+        self.assertExitCode(ex, 2)
+        self.assert_console_message(stderr, expected)
+
+    def test_add_target_valid(self):
+        side_effect_result = [{'arches': 'x86_64',
+                               'extra': {},
+                               'id': 1,
+                               'locked': False,
+                               'maven_include_all': False,
+                               'maven_support': False,
+                               'name': 'test-tag',
+                               'perm': None,
+                               'perm_id': None
+                               },
+                              {'arches': 'x86_64',
+                               'extra': {},
+                               'id': 2,
+                               'locked': False,
+                               'maven_include_all': False,
+                               'maven_support': False,
+                               'name': 'test-target',
+                               'perm': None,
+                               'perm_id': None
+                               },
+                              ]
+
+        target = 'test-target'
+        tag = 'test-tag'
+        self.session.getTag.side_effect = side_effect_result
+        self.session.createBuildTarget.return_value = None
+        rv = handle_add_target(self.options, self.session, [target, tag])
+        self.assertEqual(rv, None)
+        self.session.createBuildTarget.assert_called_once_with(target, tag, target)
+        self.session.getTag.assert_called_with(target)
+
+    def test_add_target_help(self):
+        self.assert_help(
+            handle_add_target,
+            """Usage: %s add-target <name> <build tag> <dest tag>
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help  show this help message and exit
+""" % self.progname)
