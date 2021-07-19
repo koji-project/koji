@@ -13,18 +13,22 @@
 # Default to building both fully
 %define py2_support 2
 %define py3_support 2
+%define wheel_support 1
 
 %if 0%{?rhel} >= 8
 # and no python2 on rhel8+
 %define py2_support 0
+%define wheel_support 1
 %else
 %if 0%{?rhel} >= 7
 # No python3 for older rhel
 %define py3_support 0
+%define wheel_support 0
 %else
 # don't build anything for rhel6
 %define py2_support 0
 %define py3_support 0
+%define wheel_support 0
 %endif
 %endif
 
@@ -32,6 +36,7 @@
 # no py2 after F33
 %define py2_support 0
 %define py3_support 2
+%define wheel_support 1
 %else
 %if 0%{?fedora} >= 30
 %define py2_support 1
@@ -115,8 +120,10 @@ BuildRequires: python2-devel
 %else
 BuildRequires: python-devel
 %endif
+%if 0%{wheel_support}
 BuildRequires: python2-pip
 BuildRequires: python2-wheel
+%endif
 %if 0%{?fedora} || 0%{?rhel} >= 8
 Requires: python2-rpm
 %else
@@ -366,11 +373,13 @@ koji-web is a web UI to the Koji system.
 sed -e '/util\/koji/g' -e '/koji_cli_plugins/g' -i setup.py
 
 %build
+%if 0%{wheel_support}
 %if 0%{py2_support}
 %py2_build_wheel
 %endif
 %if 0%{py3_support}
 %py3_build_wheel
+%endif
 %endif
 
 %install
@@ -382,6 +391,7 @@ exit 1
 %endif
 
 # python2 build
+%if 0%{wheel_support}
 %if 0%{py2_support}
 %py2_install_wheel %{name}-%{version}-py2-none-any.whl
 mkdir -p %{buildroot}/etc/koji.conf.d
@@ -398,6 +408,11 @@ for D in hub builder plugins util www vm ; do
     make DESTDIR=$RPM_BUILD_ROOT PYTHON=%{__python2} install
     popd
 done
+%endif
+%else
+%if 0%{py2_support}
+make DESTDIR=$RPM_BUILD_ROOT PYTHON=%{__python2} install
+%endif
 %endif
 
 
@@ -479,7 +494,9 @@ rm -rf $RPM_BUILD_ROOT
 %{_sbindir}/*
 %files -n python2-%{name}
 %{python2_sitelib}/%{name}
+%if 0%{wheel_support}
 %{python2_sitelib}/%{name}-%{version}.*-info
+%endif
 %{python2_sitelib}/koji_cli
 %endif
 
