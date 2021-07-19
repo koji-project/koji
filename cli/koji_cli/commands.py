@@ -6279,7 +6279,7 @@ def _build_image_oz(options, task_opts, session, args):
     for opt in ('ksurl', 'ksversion', 'kickstart', 'scratch', 'repo',
                 'release', 'skip_tag', 'specfile', 'distro', 'format',
                 'disk_size', 'ova_option', 'factory_parameter',
-                'optional_arches'):
+                'optional_arches', 'noverifyssl'):
         val = getattr(task_opts, opt, None)
         if val is not None:
             hub_opts[opt] = val
