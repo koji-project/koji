@@ -1,12 +1,16 @@
 from __future__ import absolute_import
-import six
-import protonmsg
+
 import tempfile
 import unittest
 
+import protonmsg
+import mock
+import six
 from mock import patch, MagicMock
-from koji.context import context
 from six.moves.configparser import ConfigParser, SafeConfigParser
+
+from koji.context import context
+
 
 class TestProtonMsg(unittest.TestCase):
     def setUp(self):
@@ -26,6 +30,7 @@ extra_limit = 2048
         protonmsg.CONFIG_FILE = self.conf.name
         protonmsg.CONFIG = None
         protonmsg.LOG = MagicMock()
+        self.get_build_type = mock.patch('protonmsg.get_build_type').start()
 
     def tearDown(self):
         if hasattr(context, 'protonmsg_msgs'):
@@ -122,18 +127,48 @@ extra_limit = 2048
     def test_prep_build_state_change(self):
         info = {'name': 'test-pkg',
                 'version': '1.0',
-                'release': '1'}
+                'release': '1',
+                'build_id': 1}
+        assert_info = {'name': 'test-pkg',
+                       'version': '1.0',
+                       'release': '1',
+                       'btypes': {'image': {'build_id': 1}}}
+        self.get_build_type.return_value = {'image': {'build_id': 1}}
         protonmsg.prep_build_state_change('postBuildStateChange',
                                           info=info, attribute='volume_id',
                                           old=0, new=1)
         # no messages should be created for callbacks where attribute != state
         self.assertFalse(hasattr(context, 'protonmsg_msgs'))
+        self.get_build_type.return_value = {'image': {'build_id': 1}}
         protonmsg.prep_build_state_change('postBuildStateChange',
                                           info=info, attribute='state',
                                           old=0, new=1)
         self.assertMsg('build.complete', type='BuildStateChange',
                        attribute='state', old='BUILDING', new='COMPLETE',
-                       **info)
+                       **assert_info)
+
+    def test_prep_build_state_change_with_empty_build_type(self):
+        info = {'name': 'test-pkg',
+                'version': '1.0',
+                'release': '1',
+                'build_id': 1}
+        assert_info = {'name': 'test-pkg',
+                       'version': '1.0',
+                       'release': '1',
+                       'btypes': {}}
+        self.get_build_type.return_value = {}
+        protonmsg.prep_build_state_change('postBuildStateChange',
+                                          info=info, attribute='volume_id',
+                                          old=0, new=1)
+        # no messages should be created for callbacks where attribute != state
+        self.assertFalse(hasattr(context, 'protonmsg_msgs'))
+        self.get_build_type.return_value = {}
+        protonmsg.prep_build_state_change('postBuildStateChange',
+                                          info=info, attribute='state',
+                                          old=0, new=1)
+        self.assertMsg('build.complete', type='BuildStateChange',
+                       attribute='state', old='BUILDING', new='COMPLETE',
+                       **assert_info)
 
     def test_prep_import(self):
         build = {'name': 'test-pkg', 'version': '1.0', 'release': '1'}
@@ -185,8 +220,9 @@ extra_limit = 2048
                        user='test-user', **build)
 
     def test_prep_repo_init(self):
-        protonmsg.prep_repo_init('postRepoInit', tag={'name': 'test-tag',
-            'arches': set(['x86_64', 'i386'])}, repo_id=1234, task_id=25)
+        protonmsg.prep_repo_init('postRepoInit',
+                                 tag={'name': 'test-tag', 'arches': set(['x86_64', 'i386'])},
+                                 repo_id=1234, task_id=25)
         self.assertMsg('repo.init', type='RepoInit', tag='test-tag', repo_id=1234, task_id=25)
 
     def test_prep_repo_done(self):
@@ -222,6 +258,7 @@ extra_limit = 2048
     def test_send_queued_msgs_success(self, Container):
         context.protonmsg_msgs = [{'address': 'test.topic', 'props': {'testheader': 1},
                                    'body': 'test body'}]
+
         def clear_msgs():
             del context.protonmsg_msgs[:]
         Container.return_value.run.side_effect = clear_msgs
@@ -248,6 +285,7 @@ test_mode = on
         conf.flush()
         protonmsg.CONFIG_FILE = conf.name
         protonmsg.CONFIG = None
+
         def clear_msgs():
             del context.protonmsg_msgs[:]
         Container.return_value.run.side_effect = clear_msgs
