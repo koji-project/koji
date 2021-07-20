@@ -136,7 +136,9 @@ CREATE INDEX sessions_expired ON sessions(expired);
 CREATE TABLE channels (
 	id SERIAL NOT NULL PRIMARY KEY,
 	name VARCHAR(128) UNIQUE NOT NULL,
-	description TEXT
+	description TEXT,
+	enabled BOOLEAN NOT NULL DEFAULT 'true',
+	comment TEXT
 ) WITHOUT OIDS;
 
 -- create default channel

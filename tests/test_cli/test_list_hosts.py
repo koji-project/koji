@@ -34,8 +34,8 @@ class TestListHosts(utils.CliTestCase):
     @mock.patch('koji_cli.commands.ensure_connection')
     def test_list_hosts_valid(self, ensure_connection, stdout):
         host_update = 1615875554.862938
-        expected = """kojibuilder Y   Y    0.0/2.0  x86_64           Tue, 16 Mar 2021 06:19:14 UTC
-"""
+        expected = "kojibuilder Y   Y    0.0/2.0  x86_64           " \
+                   "Tue, 16 Mar 2021 06:19:14 UTC      \n"
         list_hosts = [{'arches': 'x86_64',
                        'capacity': 2.0,
                        'comment': None,

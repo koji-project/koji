@@ -51,7 +51,7 @@
       <th>Channels</th>
       <td>
         #for $channel in $channels
-        <a href="channelinfo?channelID=$channel.id">$channel.name</a><br/>
+        <a href="channelinfo?channelID=$channel.id" class="$channel.enabled">$channel.name</a><br/>
         #end for
         #if not $channels
         No channels

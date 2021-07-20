@@ -1661,9 +1661,14 @@ def hosts(environ, state='enabled', start=None, order='name', ready='all', chann
     for host, channels in zip(hosts, list_channels):
         host['channels'] = []
         host['channels_id'] = []
+        host['channels_enabled'] = []
         for chan in channels.result:
             host['channels'].append(chan['name'])
             host['channels_id'].append(chan['id'])
+            if chan['enabled']:
+                host['channels_enabled'].append('enabled')
+            else:
+                host['channels_enabled'].append('disabled')
 
     if channel != 'all':
         hosts = [x for x in hosts if channel in x['channels']]
@@ -1709,6 +1714,11 @@ def hostinfo(environ, hostID=None, userID=None):
 
     channels = server.listChannels(host['id'])
     channels.sort(key=_sortbyname)
+    for chan in channels:
+        if chan['enabled']:
+            chan['enabled'] = 'enabled'
+        else:
+            chan['enabled'] = 'disabled'
     buildroots = server.listBuildroots(hostID=host['id'],
                                        state=[state[1] for state in koji.BR_STATES.items()
                                               if state[0] != 'EXPIRED'])
@@ -2359,6 +2369,7 @@ def clusterhealth(environ, arch='__all__'):
         for host in hosts:
             arches |= set(host['arches'].split())
         hosts = _filter_hosts_by_arch(hosts, arch)
+        channel['enabled_channel'] = channel['enabled']
         channel['enabled'] = len([x for x in hosts if x['enabled']])
         channel['disabled'] = len(hosts) - channel['enabled']
         channel['ready'] = len([x for x in hosts if x['ready']])

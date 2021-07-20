@@ -123,8 +123,8 @@ in $channel channel
           <td><a href="hostinfo?hostID=$host.id">$host.name</a></td>
           <td>$host.arches</td>
           <td>
-              #for $channame, $chan_id in zip($host.channels, $host.channels_id)
-                <a href="channelinfo?channelID=$chan_id">$channame</a>
+              #for $channame, $chan_id, $chan_enabled in zip($host.channels, $host.channels_id, $host.channels_enabled)
+                <a href="channelinfo?channelID=$chan_id" class="$chan_enabled">$channame</a>
               #end for
           </td>
           <td class="$str($bool($host.enabled)).lower()">#if $host.enabled then $util.imageTag('yes') else $util.imageTag('no')#</td>
