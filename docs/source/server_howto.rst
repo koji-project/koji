@@ -796,27 +796,10 @@ services configurations.
 If using SSL auth, these settings need to be valid and inline with other
 services configurations for kojiweb to allow logins.
 
-ProxyDNs should be set to the DN of the kojiweb certificate.  The exact format
-depends on your mod_ssl version.
-
-For mod_ssl < 2.3.11 use:
-
-::
-
-    DNUsernameComponent = CN
-    ProxyDNs = /C=US/ST=Massachusetts/O=Example Org/OU=kojiweb/CN=example/emailAddress=example@example.com
-
-However, for mod_ssl >= 2.3.11 use:
-
-::
+ProxyDNs should be set to the DN of the kojiweb certificate. For example::
 
     DNUsernameComponent = CN
     ProxyDNs = CN=example.com,OU=kojiweb,O=Example Org,ST=Massachusetts,C=US
-
-.. note::
-    More details on this format change, including handling of special
-    characters, can be found in the `Apache mod_ssl documentation`_.  See
-    LegacyDNStringFormat there.
 
 Koji filesystem skeleton
 ^^^^^^^^^^^^^^^^^^^^^^^^
