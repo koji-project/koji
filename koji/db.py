@@ -188,7 +188,10 @@ def connect():
     if opts is None:
         opts = {}
     try:
-        conn = psycopg2.connect(**opts)
+        if 'dsn' in opts:
+            conn = psycopg2.connect(dsn=opts['dsn'])
+        else:
+            conn = psycopg2.connect(**opts)
         conn.set_client_encoding('UTF8')
     except Exception:
         logger.error(''.join(traceback.format_exception(*sys.exc_info())))
