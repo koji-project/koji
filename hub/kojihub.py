@@ -7638,7 +7638,7 @@ def delete_rpm_sig(rpminfo, sigkey=None, all_sigs=False):
             raise koji.GenericError("File %s cannot be deleted." % file_path)
 
     for path in list_paths:
-        basedir = joinpath(builddir, os.path.dirname(path))
+        basedir = os.path.dirname(path)
         if os.path.isdir(basedir) and not os.listdir(basedir):
             try:
                 os.rmdir(basedir)
