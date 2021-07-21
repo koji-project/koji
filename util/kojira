@@ -1003,7 +1003,8 @@ class RepoManager(object):
                 # potentially deleted tag
                 if not self.session.getTag(tagname):
                     self._delete_needed_tag(tag['taginfo']['id'])
-                    logger.debug('Needed tag %s (%d) was deleted meanwhile', tagname, tag['taginfo']['id'])
+                    logger.debug('Needed tag %s (%d) was deleted meanwhile',
+                                 tagname, tag['taginfo']['id'])
                     continue
                 else:
                     raise
