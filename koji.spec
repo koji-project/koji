@@ -633,7 +633,7 @@ rm -rf $RPM_BUILD_ROOT
 %systemd_postun kojira.service
 
 %changelog
-* Mon Jun 06 2021 Tomas Kopecek <tkopecek at redhat.com> - 1.25.1-1
+* Mon Jun 21 2021 Tomas Kopecek <tkopecek at redhat.com> - 1.25.1-1
 - PR#2849 hub: replace with py3 exception
 - PR#2881 update .coveragerc to ignore p3 code
 - PR#2888 web: docs for KojiHubCA/ClientCA
