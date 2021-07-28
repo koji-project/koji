@@ -44,8 +44,15 @@ Options:
         rpm = '1234'
         expected = "No such rpm in system: %s\n" % rpm
         self.session.getRPM.return_value = None
-        handle_remove_sig(self.options, self.session, [rpm, '--all'])
-        self.assert_console_message(stdout, expected)
+
+        self.assert_system_exit(
+            handle_remove_sig,
+            self.options,
+            self.session,
+            [rpm, '--all'],
+            stderr=self.format_error_message(expected),
+            exit_code=1,
+            activate_session=None)
         self.session.getRPM.assert_called_with('1234')
         self.session.deleteRPMSig.assert_not_called()
 
@@ -70,4 +77,4 @@ Options:
         self.session.deleteRPMSig.return_value = None
         handle_remove_sig(self.options, self.session, [rpm, '--sigkey', 'testkey'])
         self.session.getRPM.assert_called_with('1')
-        self.session.deleteRPMSig.assert_called_with('1', sigkey='testkey')
+        self.session.deleteRPMSig.assert_called_with('1', sigkey='testkey', all_sigs=False)

@@ -1662,14 +1662,12 @@ def handle_remove_sig(goptions, session, args):
 
     rinfo = session.getRPM(rpminfo)
     if not rinfo:
-        print("No such rpm in system: %s" % rpminfo)
-        sys.exit(1)
+        error("No such rpm in system: %s" % rpminfo)
     else:
         try:
             session.deleteRPMSig(rpminfo, sigkey=options.sigkey, all_sigs=options.all)
         except koji.GenericError:
-            print("Signature %s for rpm %s does not exist" % (options.sigkey, rpminfo))
-            sys.exit(1)
+            error("Signature %s for rpm %s does not exist" % (options.sigkey, rpminfo))
 
 
 def handle_write_signed_rpm(goptions, session, args):
