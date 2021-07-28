@@ -1645,7 +1645,7 @@ def handle_remove_sig(goptions, session, args):
     usage = _("usage: %prog remove-sig [options] <rpm-id/n-v-r.a/rpminfo>")
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--sigkey", action="store", default=None, help=_("Specify signature key"))
-    parser.add_option("--all", action="store_true",
+    parser.add_option("--all", action="store_true", default=False,
                       help=_("Remove all signed copies for specified RPM"))
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
@@ -1663,11 +1663,13 @@ def handle_remove_sig(goptions, session, args):
     rinfo = session.getRPM(rpminfo)
     if not rinfo:
         print("No such rpm in system: %s" % rpminfo)
+        sys.exit(1)
     else:
         try:
-            session.deleteRPMSig(rpminfo, sigkey=options.sigkey)
+            session.deleteRPMSig(rpminfo, sigkey=options.sigkey, all_sigs=options.all)
         except koji.GenericError:
-            print("Signature %s for rpm %s does not existing" % (options.sigkey, rpminfo))
+            print("Signature %s for rpm %s does not exist" % (options.sigkey, rpminfo))
+            sys.exit(1)
 
 
 def handle_write_signed_rpm(goptions, session, args):
