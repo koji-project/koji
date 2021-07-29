@@ -43,7 +43,7 @@ Options:
     def test_delete_sig_non_exist_rpm(self, stdout):
         rpm = '1234'
         expected = "No such rpm in system: %s\n" % rpm
-        self.session.getRPM.return_value = None
+        self.session.deleteRPMSig.side_effect = koji.GenericError('No such rpm: DATA')
 
         self.assert_system_exit(
             handle_remove_sig,
@@ -53,28 +53,10 @@ Options:
             stderr=self.format_error_message(expected),
             exit_code=1,
             activate_session=None)
-        self.session.getRPM.assert_called_with('1234')
-        self.session.deleteRPMSig.assert_not_called()
+        self.session.deleteRPMSig.assert_called_with('1234', sigkey=None, all_sigs=True)
 
     def test_delete_sig_valid(self):
         rpm = '1'
-        rpminfo = {'arch': 'src',
-                   'build_id': 10,
-                   'buildroot_id': None,
-                   'buildtime': 1618361584,
-                   'epoch': None,
-                   'external_repo_id': 0,
-                   'external_repo_name': 'INTERNAL',
-                   'extra': None,
-                   'id': 1,
-                   'metadata_only': False,
-                   'name': 'koji',
-                   'payloadhash': 'c2b13f978c45e274c856e0a4599842a4',
-                   'release': '1.fc34',
-                   'size': 1178794,
-                   'version': '1.24.1'}
-        self.session.getRPM.return_value = rpminfo
         self.session.deleteRPMSig.return_value = None
         handle_remove_sig(self.options, self.session, [rpm, '--sigkey', 'testkey'])
-        self.session.getRPM.assert_called_with('1')
         self.session.deleteRPMSig.assert_called_with('1', sigkey='testkey', all_sigs=False)

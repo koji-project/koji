@@ -1660,14 +1660,15 @@ def handle_remove_sig(goptions, session, args):
     activate_session(session, goptions)
     rpminfo = args[0]
 
-    rinfo = session.getRPM(rpminfo)
-    if not rinfo:
-        error("No such rpm in system: %s" % rpminfo)
-    else:
-        try:
-            session.deleteRPMSig(rpminfo, sigkey=options.sigkey, all_sigs=options.all)
-        except koji.GenericError:
-            error("Signature %s for rpm %s does not exist" % (options.sigkey, rpminfo))
+    try:
+        session.deleteRPMSig(rpminfo, sigkey=options.sigkey, all_sigs=options.all)
+    except koji.GenericError as e:
+        msg = str(e)
+        if msg.startswith("No such rpm"):
+            # make this a little more readable than the hub error
+            error("No such rpm in system: %s" % rpminfo)
+        else:
+            error("Signature removal failed: %s" % msg)
 
 
 def handle_write_signed_rpm(goptions, session, args):
