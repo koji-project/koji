@@ -50,6 +50,7 @@ admin commands:
         remove-group              Remove group from tag
         remove-host-from-channel  Remove a host from a channel
         remove-pkg                Remove a package from the listing for tag
+        remove-sig                Remove signed RPMs from db and disk
         remove-tag                Remove a tag
         remove-tag-inheritance    Remove a tag inheritance link
         remove-target             Remove a build target

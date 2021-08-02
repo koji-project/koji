@@ -1640,6 +1640,37 @@ def handle_import_sig(goptions, session, args):
             session.writeSignedRPM(rinfo['id'], sigkey)
 
 
+def handle_remove_sig(goptions, session, args):
+    "[admin] Remove signed RPMs from db and disk"
+    usage = _("usage: %prog remove-sig [options] <rpm-id/n-v-r.a/rpminfo>")
+    parser = OptionParser(usage=get_usage_str(usage))
+    parser.add_option("--sigkey", action="store", default=None, help=_("Specify signature key"))
+    parser.add_option("--all", action="store_true", default=False,
+                      help=_("Remove all signed copies for specified RPM"))
+    (options, args) = parser.parse_args(args)
+    if len(args) < 1:
+        parser.error(_("Please specify an RPM"))
+
+    if not options.all and not options.sigkey:
+        error("Either --sigkey or --all options must be given")
+
+    if options.all and options.sigkey:
+        error("Conflicting options specified")
+
+    activate_session(session, goptions)
+    rpminfo = args[0]
+
+    try:
+        session.deleteRPMSig(rpminfo, sigkey=options.sigkey, all_sigs=options.all)
+    except koji.GenericError as e:
+        msg = str(e)
+        if msg.startswith("No such rpm"):
+            # make this a little more readable than the hub error
+            error("No such rpm in system: %s" % rpminfo)
+        else:
+            error("Signature removal failed: %s" % msg)
+
+
 def handle_write_signed_rpm(goptions, session, args):
     "[admin] Write signed RPMs to disk"
     usage = _("usage: %prog write-signed-rpm [options] <signature-key> <n-v-r> [<n-v-r> ...]")
