@@ -1,4 +1,4 @@
-PYVER := $(shell $(PYTHON) -c 'import sys; print("%.1s" %(sys.version))')
+PYVER_MAJOR := $(shell $(PYTHON) -c 'import sys; print(".".join(sys.version.split(".")[:1]))')
 
 BINFILES = kojid
 LIBEXECFILES = mergerepos
@@ -22,7 +22,7 @@ _install:
 	mkdir -p $(DESTDIR)/usr/sbin
 	install -p -m 755 $(BINFILES) $(DESTDIR)/usr/sbin
 
-	@if [ "$(PYVER)" -lt 3 ] ; then \
+	@if [ "$(PYVER_MAJOR)" -lt 3 ] ; then \
 		mkdir -p $(DESTDIR)/usr/libexec/kojid; \
 		install -p -m 755 $(LIBEXECFILES) $(DESTDIR)/usr/libexec/kojid; \
 	fi
