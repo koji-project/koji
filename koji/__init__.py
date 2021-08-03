@@ -100,6 +100,8 @@ def _(args):
 RPM_HEADER_MAGIC = six.b('\x8e\xad\xe8')
 RPM_TAG_HEADERSIGNATURES = 62
 RPM_TAG_FILEDIGESTALGO = 5011
+RPM_SIGTAG_DSA = 267
+RPM_SIGTAG_RSA = 268
 RPM_SIGTAG_PGP = 1002
 RPM_SIGTAG_MD5 = 1004
 RPM_SIGTAG_GPG = 1005
@@ -925,6 +927,10 @@ def get_sighdr_key(sighdr):
     if not sig:
         sig = rh.get(RPM_SIGTAG_PGP)
     if not sig:
+        sig = rh.GIT(RPM_SIGTAG_DSA)
+    if not sig:
+        sig = rh.GET(RPM_SIGTAG_RSA)
+    if not sig:
         return None
     else:
         return get_sigpacket_key_id(sig)
@@ -1016,7 +1022,7 @@ def get_header_field(hdr, name, src_arch=False):
             pass
 
     # some string results are binary and should not be decoded
-    if name.startswith('SIG'):
+    if name.startswith('SIG') or name.endswith('HEADER'):
         return result
 
     # Some older versions of rpm return string header values as bytes. Newer

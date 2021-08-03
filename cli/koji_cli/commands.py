@@ -1617,12 +1617,17 @@ def handle_import_sig(goptions, session, args):
     activate_session(session, goptions)
     for path in args:
         data = koji.get_header_fields(path, ('name', 'version', 'release', 'arch', 'siggpg',
-                                             'sigpgp', 'sourcepackage'))
+                                             'sigpgp', 'dsaheader', 'rsaheader',
+                                             'sourcepackage'))
         if data['sourcepackage']:
             data['arch'] = 'src'
         sigkey = data['siggpg']
         if not sigkey:
             sigkey = data['sigpgp']
+        if not sigkey:
+            sigkey = data['dsaheader']
+        if not sigkey:
+            sigkey = data['rsaheader']
         if not sigkey:
             sigkey = ""
             if not options.with_unsigned:
@@ -1632,6 +1637,8 @@ def handle_import_sig(goptions, session, args):
             sigkey = koji.get_sigpacket_key_id(sigkey)
         del data['siggpg']
         del data['sigpgp']
+        del data['dsaheader']
+        del data['rsaheader']
         rinfo = session.getRPM(data)
         if not rinfo:
             print("No such rpm in system: %(name)s-%(version)s-%(release)s.%(arch)s" % data)

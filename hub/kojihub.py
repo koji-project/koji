@@ -7575,6 +7575,10 @@ def add_rpm_sig(an_rpm, sighdr):
         sigkey = rawhdr.get(koji.RPM_SIGTAG_GPG)
         if not sigkey:
             sigkey = rawhdr.get(koji.RPM_SIGTAG_PGP)
+        if not sigkey:
+            sigkey = rawhdr.get(koji.RPM_SIGTAG_DSA)
+        if not sigkey:
+            sigkey = rawhdr.get(koji.RPM_SIGTAG_RSA)
     else:
         # In older rpms, this field in the signature header does not actually match
         # sigmd5 (I think rpmlib pulls it from SIGTAG_GPG). Anyway, this
@@ -7721,6 +7725,10 @@ def _scan_sighdr(sighdr, fn):
     sig = koji.get_header_field(hdr, 'siggpg')
     if not sig:
         sig = koji.get_header_field(hdr, 'sigpgp')
+    if not sig:
+        sig = koji.get_header_field(hdr, 'dsaheader')
+    if not sig:
+        sig = koji.get_header_field(hdr, 'rsaheader')
     return koji.get_header_field(hdr, 'sigmd5'), sig
 
 
@@ -7751,6 +7759,10 @@ def check_rpm_sig(an_rpm, sigkey, sighdr):
     raw_key = koji.get_header_field(hdr, 'siggpg')
     if not raw_key:
         raw_key = koji.get_header_field(hdr, 'sigpgp')
+    if not raw_key:
+        raw_key = koji.get_header_field(hdr, 'dsaheader')
+    if not raw_key:
+        raw_key = koji.get_header_field(hdr, 'rsaheader')
     if not raw_key:
         found_key = None
     else:
