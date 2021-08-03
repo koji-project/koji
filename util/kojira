@@ -672,6 +672,7 @@ class RepoManager(object):
             for repo_id in os.listdir(tagdir):
                 if repo_id == 'latest' or repo_id == repo_latest_id:
                     # ignore latest symlinks or repo where one points to
+                    self.logger.debug("%s is latest symlink or repo, skipping", tagdir)
                     continue
                 try:
                     repo_id = int(repo_id)
