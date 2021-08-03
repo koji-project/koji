@@ -1387,15 +1387,26 @@ def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None,
 
 def readTaggedRPMS(tag, package=None, arch=None, event=None, inherit=False, latest=True,
                    rpmsigs=False, owner=None, type=None):
-    """Returns a list of rpms for specified tag
+    """Returns a list of rpms and builds for specified tag
 
-    set inherit=True to follow inheritance
-    set event to query at a time in the past
-    set latest=False to get all tagged RPMS (not just from the latest builds)
-    set latest=N to get only the N latest tagged RPMs
-
-    If type is not None, restrict the list to rpms from builds of the given type.  Currently the
-    supported types are 'maven' and 'win'.
+    :param int|str tag: The tag name or ID to search
+    :param str package: Filter on a package name.
+    :param str|list arch: Filter on an architecture (eg "x86_64") or list of
+                          architectures.
+    :param int event: The event ID at which to search. If unspecified, the
+                      default behavior is to search for the "active" tag
+                      builds.
+    :param bool inherit: Follow tag inheritance (default: False)
+    :param bool|int latest: Set to "True" to get the single latest build. Set
+                            to an int "N" to get the latest "N" builds. If
+                            unspecified, the default value is "False", and
+                            Koji will list all builds in the tag.
+    :param str rpmsigs: Filter on an RPM signature key (eg "FD431D51")
+    :param str owner: Filter by build owner name
+    :param str type: Filter by build type. Supported types are 'maven',
+                     'win', and 'image'.
+    :returns: a two-element list. The first element is the list of RPMs, and
+              the second element is the list of builds.
     """
     taglist = [tag]
     if inherit:
