@@ -548,11 +548,11 @@ def run(cmd, chdir=None, fatal=False, log=True):
         logger = logging.getLogger('koji.vm')
         logger.info('$ %s', ' '.join(cmd))
         proc = subprocess.Popen(cmd, stdout=logfd, stderr=subprocess.STDOUT,
-                                close_fds=True)
+                                close_fds=True, text=True)
         ret = proc.wait()
     else:
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                close_fds=True)
+                                close_fds=True, text=True)
         output, dummy = proc.communicate()
         ret = proc.returncode
     if olddir:
