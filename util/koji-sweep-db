@@ -178,6 +178,7 @@ if __name__ == "__main__":
         ['DBhost', 'string', None],   # alias for backwards compatibility
         ['DBPort', 'integer', None],
         ['DBPass', 'string', None],
+        ['DBConnectionString', 'string', None],
     ]
 
     opts = {}
@@ -192,14 +193,17 @@ if __name__ == "__main__":
                 opts[name] = config.get(*key)
             continue
         opts[name] = default
-    if opts['DBHost'] is None:
-        opts['DBHost'] = opts['DBhost']
 
-    koji.db.provideDBopts(database=opts["DBName"],
-                          user=opts["DBUser"],
-                          password=opts.get("DBPass", None),
-                          host=opts.get("DBHost", None),
-                          port=opts.get("DBPort", None))
+    if opts.get('DBConnectionString'):
+        koji.db.provideDBopts(dsn=opts['DBConnectionString'])
+    else:
+        if opts['DBHost'] is None:
+            opts['DBHost'] = opts['DBhost']
+        koji.db.provideDBopts(database=opts["DBName"],
+                              user=opts["DBUser"],
+                              password=opts.get("DBPass", None),
+                              host=opts.get("DBHost", None),
+                              port=opts.get("DBPort", None))
 
     conn = koji.db.connect()
     conn.set_session(autocommit=True)

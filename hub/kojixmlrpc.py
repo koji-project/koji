@@ -410,6 +410,7 @@ def load_config(environ):
         ['DBhost', 'string', None],   # alias for backwards compatibility
         ['DBPort', 'integer', None],
         ['DBPass', 'string', None],
+        ['DBConnectionString', 'string', None],
         ['KojiDir', 'string', None],
 
         ['AuthPrincipal', 'string', None],
@@ -685,11 +686,14 @@ def server_setup(environ):
         plugins = load_plugins(opts)
         registry = get_registry(opts, plugins)
         policy = get_policy(opts, plugins)
-        koji.db.provideDBopts(database=opts["DBName"],
-                              user=opts["DBUser"],
-                              password=opts.get("DBPass", None),
-                              host=opts.get("DBHost", None),
-                              port=opts.get("DBPort", None))
+        if opts.get('DBConnectionString'):
+            koji.db.provideDBopts(dsn=opts['DBConnectionString'])
+        else:
+            koji.db.provideDBopts(database=opts["DBName"],
+                                  user=opts["DBUser"],
+                                  password=opts.get("DBPass", None),
+                                  host=opts.get("DBHost", None),
+                                  port=opts.get("DBPort", None))
     except Exception:
         tb_str = ''.join(traceback.format_exception(*sys.exc_info()))
         logger.error(tb_str)
