@@ -145,6 +145,7 @@ Summary: Build system tools python library
 BuildRequires: python%{python3_pkgversion}-devel
 BuildRequires: python3-pip
 BuildRequires: python3-wheel
+BuildRequires: python3-setuptools
 %if 0%{?fedora} || 0%{?rhel} >= 8
 Requires: python%{python3_pkgversion}-rpm
 %else
