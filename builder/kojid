@@ -2498,6 +2498,9 @@ class BuildBaseImageTask(BuildImageTask):
                 bld_info = self.initImageBuild(name, version, release,
                                                target_info, opts)
                 release = bld_info['release']
+            elif not release:
+                # scratch build should have some reasonable release
+                release = self.session.getNextRelease(dict(name=name, version=version))
 
             subtasks = {}
             self.logger.debug("Spawning jobs for image arches: %r" % (arches))
