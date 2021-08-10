@@ -3056,7 +3056,7 @@ class ImageTask(BaseTaskHandler):
                 if isinstance(user_repos, six.string_types):
                     user_repos = user_repos.split(',')
                 index = 0
-                for user_repo in user_repos:
+                for user_repo in set(user_repos):
                     self.ks.handler.repo.repoList.append(repo_class(
                         baseurl=user_repo, name='koji-override-%i' % index))
                     index += 1
@@ -3778,7 +3778,7 @@ class OzImageTask(BaseTaskHandler):
             # the user used --repo at least once
             user_repos = self.opts.get('repo')
             index = 0
-            for user_repo in user_repos:
+            for user_repo in set(user_repos):
                 repo_url = user_repo.replace('$arch', self.arch)
                 ks.handler.repo.repoList.append(repo_class(
                     baseurl=repo_url, name='koji-override-%i' % index,
