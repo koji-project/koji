@@ -981,7 +981,7 @@ class TaskManager(object):
 
         # determine our normalized bin rank
         for pos, cap in enumerate(bin_avail):
-            if our_avail >= cap:
+            if our_avail > cap:
                 break
         if len(bin_avail) > 1:
             rank = float(pos) / (len(bin_avail) - 1)
