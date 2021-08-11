@@ -480,7 +480,7 @@ class SCM(object):
         for k, v in six.iteritems(self.get_info()):
             policy_data[re.sub(r'^(scm_?)?', 'scm_', k)] = v
         policy_data.update(extra_data)
-        result = (session.host.evalPolicy('build_from_scm', policy_data) or '').split()
+        result = (session.evalPolicy('build_from_scm', policy_data) or '').split()
         is_allowed = result and result[0].lower() in ('yes', 'true', 'allow', 'allowed')
         if not is_allowed:
             raise koji.BuildError(

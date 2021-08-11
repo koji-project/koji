@@ -10099,6 +10099,20 @@ def check_policy(name, data, default='deny', strict=False, force=False):
     raise koji.ActionNotAllowed(err_str)
 
 
+def eval_policy(name, data):
+    """Evaluate named policy with given data and return the result
+
+    :param str name: the policy name
+    :param dict data: the policy data
+    :returns the action as a string
+    :raises koji.GenericError if the policy is empty or not found
+    """
+    ruleset = context.policy.get(name)
+    if not ruleset:
+        raise koji.GenericError("no such policy: %s" % name)
+    return ruleset.apply(data)
+
+
 def policy_data_from_task(task_id):
     """Calculate policy data from task id
 
@@ -10652,6 +10666,8 @@ class RootExports(object):
             values['before'] = before
         q += """ ORDER BY id DESC LIMIT 1"""
         return _singleRow(q, values, fields, strict=True)
+
+    evalPolicy = staticmethod(eval_policy)
 
     def makeTask(self, *args, **opts):
         """Creates task manually. This is mainly for debugging, only an admin
@@ -14622,10 +14638,7 @@ class HostExports(object):
         """Evaluate named policy with given data and return the result"""
         host = Host()
         host.verify()
-        ruleset = context.policy.get(name)
-        if not ruleset:
-            raise koji.GenericError("no such policy: %s" % name)
-        return ruleset.apply(data)
+        return eval_policy(name, data)
 
     def newBuildRoot(self, repo, arch, task_id=None):
         host = Host()

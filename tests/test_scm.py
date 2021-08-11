@@ -259,7 +259,7 @@ class TestSCM(unittest.TestCase):
             "git://maybeserver/..//badpath/project#1234",
             ]
         session = mock.MagicMock()
-        session.host.evalPolicy.side_effect = FakePolicy(policy['one']).evalPolicy
+        session.evalPolicy.side_effect = FakePolicy(policy['one']).evalPolicy
         for url in good:
             scm = SCM(url)
             scm.assert_allowed(session=session, by_config=False, by_policy=True)
@@ -271,7 +271,7 @@ class TestSCM(unittest.TestCase):
 
     def test_opts_by_policy(self):
         session = mock.MagicMock()
-        session.host.evalPolicy.side_effect = FakePolicy(policy['two']).evalPolicy
+        session.evalPolicy.side_effect = FakePolicy(policy['two']).evalPolicy
 
         url = "git://default/koji.git#1234"
         scm = SCM(url)
@@ -372,7 +372,7 @@ class TestSCM(unittest.TestCase):
             '''
 
         session = mock.MagicMock()
-        session.host.evalPolicy.side_effect = FakePolicy(policy['two']).evalPolicy
+        session.evalPolicy.side_effect = FakePolicy(policy['two']).evalPolicy
 
         url = "git://default/koji.git#1234"
         scm = SCM(url)
