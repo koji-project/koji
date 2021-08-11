@@ -460,12 +460,21 @@ If you your build needs to check out code from a Source Control Manager
 ``koji/daemon.py``. They take a specially formed URL as an argument to
 the constructor. Here's an example use. The second line is important, it
 makes sure the SCM is in the whitelist of SCMs allowed in
-``/etc/kojid/kojid.conf``.
+``/etc/kojid/kojid.conf`` or in ``build_from_scm`` section of hub policy.
 
 ::
 
     scm = SCM(url)
-    scm.assert_allowed(self.options.allowed_scms)
+    scm.assert_allowed(allowed=self.options.allowed_scms,
+                       session=self.session,
+                       by_config=self.options.allowed_scms_use_config,
+                       by_policy=self.options.allowed_scms_use_policy,
+                       policy_data={
+                           'user_id': self.taskinfo['owner'],
+                           'channel': self.session.getChannel(self.taskinfo['channel_id'],
+                                                              strict=True)['name'],
+                           'scratch': opts.get('scratch')
+                       }))
     directory = scm.checkout('/checkout/path', session, uploaddir, logfile)
 
 Checking out takes 4 arguments: where to checkout, a session object
