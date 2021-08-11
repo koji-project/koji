@@ -1643,7 +1643,7 @@ class BuildMavenTask(BaseBuildTask):
                            session=self.session,
                            by_config=self.options.allowed_scms_use_config,
                            by_policy=self.options.allowed_scms_use_policy,
-                           opts=scm_policy_opts)
+                           policy_data=scm_policy_opts)
         repo_id = opts.get('repo_id')
         if not repo_id:
             raise koji.BuildError('A repo_id must be provided')
@@ -1721,7 +1721,7 @@ class BuildMavenTask(BaseBuildTask):
                                      session=self.session,
                                      by_config=self.options.allowed_scms_use_config,
                                      by_policy=self.options.allowed_scms_use_policy,
-                                     opts=scm_policy_opts)
+                                     policy_data=scm_policy_opts)
             self.run_callbacks('preSCMCheckout', scminfo=patch_scm.get_info(),
                                build_tag=build_tag, scratch=opts.get('scratch'),
                                buildroot=buildroot)
@@ -2008,7 +2008,7 @@ class WrapperRPMTask(BaseBuildTask):
                            session=self.session,
                            by_config=self.options.allowed_scms_use_config,
                            by_policy=self.options.allowed_scms_use_policy,
-                           opts={
+                           policy_data={
                                'user_id': self.taskinfo['owner'],
                                'channel': self.session.getChannel(self.taskinfo['channel_id'],
                                                                   strict=True)['name'],
@@ -3006,7 +3006,7 @@ class ImageTask(BaseTaskHandler):
                                session=self.session,
                                by_config=self.options.allowed_scms_use_config,
                                by_policy=self.options.allowed_scms_use_policy,
-                               opts={
+                               policy_data={
                                    'user_id': self.taskinfo['owner'],
                                    'channel': self.session.getChannel(self.taskinfo['channel_id'],
                                                                       strict=True)['name'],
@@ -3489,7 +3489,7 @@ class LiveMediaTask(ImageTask):
                            session=self.session,
                            by_config=self.options.allowed_scms_use_config,
                            by_policy=self.options.allowed_scms_use_policy,
-                           opts={
+                           policy_data={
                                'user_id': self.taskinfo['owner'],
                                'channel': self.session.getChannel(self.taskinfo['channel_id'],
                                                                   strict=True)['name'],
@@ -3745,7 +3745,7 @@ class OzImageTask(BaseTaskHandler):
                                session=self.session,
                                by_config=self.options.allowed_scms_use_config,
                                by_policy=self.options.allowed_scms_use_policy,
-                               opts={
+                               policy_data={
                                    'user_id': self.taskinfo['owner'],
                                    'channel': self.session.getChannel(self.taskinfo['channel_id'],
                                                                       strict=True)['name'],
@@ -4581,7 +4581,7 @@ class BuildIndirectionImageTask(OzImageTask):
                                session=self.session,
                                by_config=self.options.allowed_scms_use_config,
                                by_policy=self.options.allowed_scms_use_policy,
-                               opts={
+                               policy_data={
                                    'user_id': self.taskinfo['owner'],
                                    'channel': self.session.getChannel(self.taskinfo['channel_id'],
                                                                       strict=True)['name'],
@@ -5002,7 +5002,7 @@ class BuildSRPMFromSCMTask(BaseBuildTask):
                            session=self.session,
                            by_config=self.options.allowed_scms_use_config,
                            by_policy=self.options.allowed_scms_use_policy,
-                           opts={
+                           policy_data={
                                'user_id': self.taskinfo['owner'],
                                'channel': self.session.getChannel(self.taskinfo['channel_id'],
                                                                   strict=True)['name'],

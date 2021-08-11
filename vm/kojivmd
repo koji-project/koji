@@ -332,7 +332,7 @@ class WinBuildTask(MultiPlatformTask):
                                session=self.session,
                                by_config=self.options.allowed_scms_use_config,
                                by_policy=self.options.allowed_scms_use_policy,
-                               opts={
+                               policy_data={
                                    'user_id': self.taskinfo['owner'],
                                    'channel': self.session.getChannel(self.taskinfo['channel_id'],
                                                                       strict=True)['name'],

@@ -327,14 +327,34 @@ class SCM(object):
         # return parsed values
         return (scheme, user, netloc, path, query, fragment)
 
-    def assert_allowed(self, allowed='', session=None, by_config=True, by_policy=False, opts=None):
+    def assert_allowed(self, allowed='', session=None, by_config=True, by_policy=False,
+                       policy_data=None):
+        """
+        Check whether this scm is allowed and apply options by either/both approach below:
+
+            - "allowed_scms" from config file, see
+              :func:`~koji.daemon.SCM.assert_allowed_by_config`
+            - "build_from_scm" hub policy, see :func:`~koji.daemon.SCM.assert_allowed_by_policy`
+
+        When both approaches are applied, the config one will be applied, then the policy one.
+
+        :param str allowed: The allowed_scms config content which is used for by-config approach
+        :param koji.ClientSession session: The allowed_scms config content which is used for
+                                           by-policy approach
+        :param bool by_config: Using config or not, Default: True
+        :param bool by_policy: Using policy or not, Default: False
+        :param dict policy_data: The policy data which will be merged with the generated scm info,
+                                 then will be passed to hub call for policy assertion when using
+                                 policy.
+        :raises koji.BuildError: if the scm is denied.
+        """
         if by_config:
             self.assert_allowed_by_config(allowed or '')
         if by_policy:
             if session is None:
                 raise koji.ConfigurationError(
                     'When allowed SCM assertion is by policy, session must be passed in.')
-            self.assert_allowed_by_policy(session, **(opts or {}))
+            self.assert_allowed_by_policy(session, **(policy_data or {}))
 
     def assert_allowed_by_config(self, allowed):
         """
@@ -405,7 +425,7 @@ class SCM(object):
             raise koji.BuildError(
                 '%s:%s is not in the list of allowed SCMs' % (self.host, self.repository))
 
-    def assert_allowed_by_policy(self, session, **opts):
+    def assert_allowed_by_policy(self, session, **extra_data):
         """
         Check this scm against hub policy: build_from_scm and apply options
 
@@ -421,12 +441,15 @@ class SCM(object):
             - scmrevision
             - scmtype
 
-        More keys could be added in opts. You can pass any reasonable data which could be handled
-        by policy tests, like:
+        More keys could be added as kwargs(extra_data). You can pass any reasonable data which
+        could be handled by policy tests, like:
 
             - scratch (if the task is scratch)
             - channel (which channel the task is assigned)
             - user_id (the task owner)
+
+        If the key in extra_data is one of scm_* listed above, it will override the one generated
+        from scminfo.
 
         The format of the action returned from build_from_scm could be one of following forms::
 
@@ -457,7 +480,7 @@ class SCM(object):
             if not k.startswith('scm'):
                 k = 'scm' + k
             policy_data[k] = v
-        policy_data.update(opts)
+        policy_data.update(extra_data)
         result = (session.host.evalPolicy('build_from_scm', policy_data) or '').split()
         is_allowed = result and result[0].lower() in ('yes', 'true', 'allow', 'allowed')
         if not is_allowed:
