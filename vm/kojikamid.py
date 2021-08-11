@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/python3
 
 # Koji daemon that runs in a Windows VM and executes commands associated
 # with a task.
@@ -32,6 +32,7 @@ import hashlib
 import logging
 import os
 import re
+import six # needed for imported code
 import subprocess
 import sys
 import tempfile
@@ -548,11 +549,11 @@ def run(cmd, chdir=None, fatal=False, log=True):
         logger = logging.getLogger('koji.vm')
         logger.info('$ %s', ' '.join(cmd))
         proc = subprocess.Popen(cmd, stdout=logfd, stderr=subprocess.STDOUT,
-                                close_fds=True)
+                                close_fds=True, text=True)
         ret = proc.wait()
     else:
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                close_fds=True)
+                                close_fds=True, text=True)
         output, dummy = proc.communicate()
         ret = proc.returncode
     if olddir:
@@ -607,7 +608,7 @@ def upload_file(server, prefix, path):
         data = fobj.read(131072)
         if not data:
             break
-        encoded = base64.b64encode(data)
+        encoded = base64.b64encode(data).decode()
         server.upload(path, encode_int(offset), encoded)
         offset += len(data)
         sum.update(data)
@@ -700,7 +701,7 @@ def stream_logs(server, handler, builds):
             contents = fd.read(65536)
             if contents:
                 size = len(contents)
-                data = base64.b64encode(contents)
+                data = base64.b64encode(contents).decode()
                 digest = hashlib.sha256(contents).hexdigest()
                 del contents
                 try:
