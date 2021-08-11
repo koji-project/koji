@@ -14,22 +14,22 @@ from koji.daemon import SCM
 
 policy = {
     'one': '''
-        match scmhost goodserver :: allow none
-        match scmhost badserver :: deny
-        match scmhost maybeserver && match scmrepository /badpath/* :: deny
+        match scm_host goodserver :: allow none
+        match scm_host badserver :: deny
+        match scm_host maybeserver && match scm_repository /badpath/* :: deny
         all :: allow
     ''',
     'two': '''
-        match scmhost default :: allow
-        match scmhost nocommon :: allow
-        match scmhost common :: allow use_common
-        match scmhost srccmd :: allow fedpkg sources
-        match scmhost nosrc :: allow none
-        match scmhost mixed && match scmrepository /foo/* :: allow
-        match scmhost mixed && match scmrepository /bar/* :: allow use_common
-        match scmhost mixed && match scmrepository /baz/* :: allow fedpkg sources
-        match scmhost mixed && match scmrepository /foobar/* :: allow use_common fedpkg sources
-        match scmhost mixed && match scmrepository /foobaz/* :: allow use_common none
+        match scm_host default :: allow
+        match scm_host nocommon :: allow
+        match scm_host common :: allow use_common
+        match scm_host srccmd :: allow fedpkg sources
+        match scm_host nosrc :: allow none
+        match scm_host mixed && match scm_repository /foo/* :: allow
+        match scm_host mixed && match scm_repository /bar/* :: allow use_common
+        match scm_host mixed && match scm_repository /baz/* :: allow fedpkg sources
+        match scm_host mixed && match scm_repository /foobar/* :: allow use_common fedpkg sources
+        match scm_host mixed && match scm_repository /foobaz/* :: allow use_common none
     '''
 }
 
@@ -376,42 +376,42 @@ class TestSCM(unittest.TestCase):
 
         url = "git://default/koji.git#1234"
         scm = SCM(url)
-        # match scmhost default :: allow
+        # match scm_host default :: allow
         scm.assert_allowed(allowed=config, session=session, by_config=True, by_policy=True)
         self.assertEqual(scm.use_common, False)
         self.assertIsNone(scm.source_cmd)
 
         url = "git://mixed/foo/koji.git#1234"
         scm = SCM(url)
-        # match scmhost mixed && match scmrepository /foo/* :: allow
+        # match scm_host mixed && match scm_repository /foo/* :: allow
         scm.assert_allowed(allowed=config, session=session, by_config=True, by_policy=True)
         self.assertEqual(scm.use_common, False)
         self.assertEqual(scm.source_cmd, ['make', 'sources'])
 
         url = "git://mixed/bar/koji.git#1234"
         scm = SCM(url)
-        # match scmhost mixed && match scmrepository /bar/* :: allow use_common
+        # match scm_host mixed && match scm_repository /bar/* :: allow use_common
         scm.assert_allowed(allowed=config, session=session, by_config=True, by_policy=True)
         self.assertEqual(scm.use_common, True)
         self.assertEqual(scm.source_cmd, ['make', 'sources'])
 
         url = "git://mixed/baz/koji.git#1234"
         scm = SCM(url)
-        # match scmhost mixed && match scmrepository /baz/* :: allow fedpkg sources
+        # match scm_host mixed && match scm_repository /baz/* :: allow fedpkg sources
         scm.assert_allowed(allowed=config, session=session, by_config=True, by_policy=True)
         self.assertEqual(scm.use_common, False)
         self.assertEqual(scm.source_cmd, ['fedpkg', 'sources'])
 
         url = "git://mixed/foobar/koji.git#1234"
         scm = SCM(url)
-        # match scmhost mixed && match scmrepository /foobar/* :: allow use_common fedpkg sources
+        # match scm_host mixed && match scm_repository /foobar/* :: allow use_common fedpkg sources
         scm.assert_allowed(allowed=config, session=session, by_config=True, by_policy=True)
         self.assertEqual(scm.use_common, True)
         self.assertEqual(scm.source_cmd, ['fedpkg', 'sources'])
 
         url = "git://mixed/foobaz/koji.git#1234"
         scm = SCM(url)
-        # match scmhost mixed && match scmrepository /foobaz/* :: allow use_common none
+        # match scm_host mixed && match scm_repository /foobaz/* :: allow use_common none
         scm.assert_allowed(allowed=config, session=session, by_config=True, by_policy=True)
         self.assertEqual(scm.use_common, True)
         self.assertIsNone(scm.source_cmd)

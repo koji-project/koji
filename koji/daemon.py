@@ -26,6 +26,7 @@ import errno
 import hashlib
 import logging
 import os
+import re
 import signal
 import subprocess
 import sys
@@ -429,17 +430,17 @@ class SCM(object):
         """
         Check this scm against hub policy: build_from_scm and apply options
 
-        The policy data is the combination of scminfo with scm prefix and kwargs.
+        The policy data is the combination of scminfo with scm_ prefix and kwargs.
         It should at least contain following keys:
 
-            - scmurl
-            - scmscheme
-            - scmuser
-            - scmhost
-            - scmrepository
-            - scmmodule
-            - scmrevision
-            - scmtype
+            - scm_url
+            - scm_scheme
+            - scm_user
+            - scm_host
+            - scm_repository
+            - scm_module
+            - scm_revision
+            - scm_type
 
         More keys could be added as kwargs(extra_data). You can pass any reasonable data which
         could be handled by policy tests, like:
@@ -465,8 +466,8 @@ class SCM(object):
 
             build_from_scm =
                 bool scratch :: allow none
-                match scmhost scm.example.com :: allow use_common make sources
-                match scmhost scm2.example.com :: allow
+                match scm_host scm.example.com :: allow use_common make sources
+                match scm_host scm2.example.com :: allow
                 all :: deny
 
 
@@ -477,9 +478,7 @@ class SCM(object):
         """
         policy_data = {}
         for k, v in six.iteritems(self.get_info()):
-            if not k.startswith('scm'):
-                k = 'scm' + k
-            policy_data[k] = v
+            policy_data[re.sub(r'^(scm_?)?', 'scm_', k)] = v
         policy_data.update(extra_data)
         result = (session.host.evalPolicy('build_from_scm', policy_data) or '').split()
         is_allowed = result and result[0].lower() in ('yes', 'true', 'allow', 'allowed')
