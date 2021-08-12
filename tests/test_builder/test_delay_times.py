@@ -26,7 +26,7 @@ class TestDelayTimes(unittest.TestCase):
         self.tm.skipped_tasks = {}
         self.time.return_value = start
         bin_avail = [10.0, 9.0, 8.0, 7.0]
-        our_avail = 10.0
+        our_avail = 10.1
         chk = self.tm.checkAvailDelay(task, bin_avail, our_avail)
         self.assertEqual(chk, False)
 
@@ -64,8 +64,8 @@ class TestDelayTimes(unittest.TestCase):
         self.tm.skipped_tasks = {task['id']: start}
         bin_avail = [10.0, 9.0, 8.0, 7.0, 6.0]
         our_avail = 8.0
-        # rank = 2/4 = 0.5, so adjusted delay is 250
-        self.time.return_value = start + 251
+        # rank = 3/4 = 0.75, so adjusted delay is 250
+        self.time.return_value = start + 476
         chk = self.tm.checkAvailDelay(task, bin_avail, our_avail)
         self.assertEqual(chk, False)
 
