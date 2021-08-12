@@ -3387,6 +3387,9 @@ def get_tag(tagInfo, strict=False, event=None, blocked=False):
     Note that in order for a tag to 'exist', it must have an active entry
     in tag_config. A tag whose name appears in the tag table but has no
     active tag_config entry is considered deleted.
+
+    event option can be either event_id or "auto" which will pick last
+    recorded create_event (option for getting deleted tags)
     """
 
     tables = ['tag_config']
@@ -3399,17 +3402,37 @@ def get_tag(tagInfo, strict=False, event=None, blocked=False):
               'tag_config.arches': 'arches',
               'tag_config.locked': 'locked',
               'tag_config.maven_support': 'maven_support',
-              'tag_config.maven_include_all': 'maven_include_all'
+              'tag_config.maven_include_all': 'maven_include_all',
               }
-    clauses = [eventCondition(event, table='tag_config')]
+    data = {'tagInfo': tagInfo}
+
+    clauses = []
     if isinstance(tagInfo, int):
         clauses.append("tag.id = %(tagInfo)i")
     elif isinstance(tagInfo, str):
         clauses.append("tag.name = %(tagInfo)s")
     else:
         raise koji.GenericError('Invalid type for tagInfo: %s' % type(tagInfo))
+    if event == "auto":
+        # find active event or latest create_event
+        opts = {'order': '-create_event', 'limit': 1}
+        query = QueryProcessor(tables=['tag_config'], columns=['create_event', 'revoke_event'],
+                               joins=['tag on tag.id = tag_config.tag_id'],
+                               clauses=clauses, values=data, opts=opts)
+        try:
+            event = query.executeOne(strict=True)['revoke_event']
+        except koji.GenericError:
+            event = None
+        if event is not None:
+            # query point instantly before the revoke_event
+            # (to get latest tag_config before deletion)
+            event -= 1
+            fields['tag_config.revoke_event'] = 'revoke_event'
+        else:
+            # if tag is not deleted, query event=None
+            pass
+    clauses.append(eventCondition(event, table='tag_config'))
 
-    data = {'tagInfo': tagInfo}
     fields, aliases = zip(*fields.items())
     query = QueryProcessor(columns=fields, aliases=aliases, tables=tables,
                            joins=joins, clauses=clauses, values=data)
