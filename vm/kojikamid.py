@@ -32,20 +32,22 @@ import hashlib
 import logging
 import os
 import re
-import six # needed for imported code
 import subprocess
 import sys
 import tempfile
 import threading
 import time
 import traceback
-import zipfile
-from optparse import OptionParser
 import xmlrpc.client
 # urllib is required by the SCM class which is substituted into this file
 # do not remove the import below
 import urllib  # noqa: F401
+import zipfile
 from configparser import RawConfigParser
+from optparse import OptionParser
+
+import six    # noqa: F401, needed for imported code
+
 
 MANAGER_PORT = 7000
 
