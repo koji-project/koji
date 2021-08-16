@@ -38,6 +38,7 @@ Contents
     runs_here
     server_bootstrap
     server_howto
+    signing
     database_howto
     kojid_conf
     using_the_koji_build_system
