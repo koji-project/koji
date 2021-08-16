@@ -7128,9 +7128,11 @@ def anon_handle_download_logs(options, session, args):
     parser.add_option("-r", "--recurse", action="store_true",
                       help=_("Process children of this task as well"))
     parser.add_option("--nvr", action="store_true",
-                      help=_("Get the logs for the task associated with this build Name-Version-Release."))
+                      help=_("Get the logs for the task associated with this build "
+                             "Name-Version-Release."))
     parser.add_option("-m", "--match", action="append", metavar="PATTERN",
-                      help=_("Get only log filenames matching PATTERN (fnmatch). May be used multiple times."))
+                      help=_("Get only log filenames matching PATTERN (fnmatch). "
+                             "May be used multiple times."))
     parser.add_option("-c", "--continue", action="store_true", dest="cont",
                       help=_("Continue previous download"))
     parser.add_option("-d", "--dir", metavar="DIRECTORY", default='kojilogs',
