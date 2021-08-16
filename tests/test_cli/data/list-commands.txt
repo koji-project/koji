@@ -92,7 +92,7 @@ build commands:
 
 download commands:
         download-build            Download a built package
-        download-logs             Download a logs for package
+        download-logs             Download logs for task
         download-task             Download the output of a build task
 
 info commands:
