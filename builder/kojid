@@ -6459,7 +6459,8 @@ def get_options():
             elif name in ['offline_retry', 'use_createrepo_c', 'createrepo_skip_stat',
                           'createrepo_update', 'use_fast_upload', 'support_rpm_source_layout',
                           'build_arch_can_fail', 'no_ssl_verify', 'log_timestamps',
-                          'allow_noverifyssl', 'allowed_scms_use_config', 'allowed_scms_use_policy']:
+                          'allow_noverifyssl', 'allowed_scms_use_config',
+                          'allowed_scms_use_policy']:
                 defaults[name] = config.getboolean('kojid', name)
             elif name in ['plugin', 'plugins']:
                 defaults['plugin'] = value.split()
