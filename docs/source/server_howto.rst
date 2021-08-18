@@ -1216,6 +1216,11 @@ SCM checkout can contain multiple spec files (checkouted or created by
 ``source_cmd``). In such case spec file named same as a checkout directory will
 be selected.
 
+.. note::
+    We provide ``build_from_scm`` hub policy as an equivalent in version 1.26.0.
+
+    For more details, please refer to :ref:`allowed-scms` and
+    :doc:`Defining Hub Policies <defining_hub_policies>`.
 
 Add the host to the createrepo channel
 --------------------------------------

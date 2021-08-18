@@ -7,6 +7,8 @@ in the system. At present, policy allows you to control:
 
 * tag/untag/move operations
 * allowing builds from srpm
+* allowing builds from SCM, and managing properties/behaviors related to the SCM
+  if it is allowed
 * allowing builds from expired repos
 * managing the package list for a tag
 * managing which channel a task goes to
@@ -19,6 +21,11 @@ Policy configuration is optional. If you don't define one, then by default:
 
 * tag/untag/move operations are governed by tag locks/permissions
 * builds from srpm are only allowed for admins
+* builds from any SCM are only allowed for admins. It's used when
+  ``allowed_scms_use_policy`` is ``true`` in ``/etc/kojid.conf`` of the builders
+  (``false`` by default). And the SCM's properies: ``use_common`` and
+  ``source_cmd`` are set to their default values: ``False`` and
+  ``['make', 'source']``
 * builds from expired repos are only allowed for admins
 * only admins and users with ``tag`` permission may modify package lists
 * tasks go to the default channel
@@ -126,6 +133,7 @@ The system currently looks for the following policies
 * ``tag``: checked during tag/untag/move operations
 * ``build_from_srpm``: checked when a build from srpm (not an SCM reference) is
   requested.
+* ``build_from_scm``: checked when a build task from SCM is executing on builder
 * ``build_from_repo_id``: checked when a build from a specified repo id is
   requested
 * ``package_list``: checked when the package list for a tag is modified
@@ -192,6 +200,23 @@ different:
 
 ``adjust -<int>``
     * decrement default priority
+
+The **build_from_scm** policy is used to assert if the SCM is allowed or not,
+like the basic allow/deny one. It is also used to manage the SCM's properties as
+the same as the ``allowed_scms`` option of the koji builder. The actions could
+be defined as:
+
+``allow [use_common] [<source_cmd>]``
+    * allow the SCM
+    * use(clone) the /common repo when ``use_common`` follows ``allow``
+    * ``<source_cmd>`` is a *optional* shell command for preparing the source
+      between checkout and srpm build. If it is omitted, it will follow the
+      default value: ``make source``. The explicit value: ``none`` means **No**
+      ``source_cmd`` is defined.
+
+``deny [<reason>]``
+    * disallow the SCM
+    * ``<reason>`` is the error message which is shown as the task result
 
 Available tests
 ===============

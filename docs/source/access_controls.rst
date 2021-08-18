@@ -15,6 +15,8 @@ username/password but it has its limitations which you should be aware of.
 
 Details can be found at :ref:`auth-config`
 
+.. _allowed-scms:
+
 Allowed SCMs
 ============
 
@@ -24,6 +26,13 @@ We recommend that every production environment choose a limited set of trusted s
 
 Details of the ``allowed_scms`` option are covered under :ref:`scm-config`
 
+We also provides ``build_from_scm`` hub policy for the same purpose, you can choose either/both
+of the two approaches by the switch options in ``/etc/kojid.conf`` per build:
+
+    * ``allowed_scms_use_config``, default: ``true``
+    * ``allowed_scms_use_policy``, default: ``false``
+
+For more details of the ``build_from_scm``, please read :doc:`defining_hub_policies`.
 
 Hub Policies
 ============
@@ -43,6 +52,7 @@ Examples of access control polices are:
 * vm: control which windows build tasks are allowed
 * dist_repo: control which distRepo tasks are allowed
 * build_from_srpm: control whether builds from srpm are allowed
+* build_from_scm: control whether builds from the SCM are allowed and the behavior of the SCM
 * build_from_repo_id: control whether builds from user-specified repos ids are allowed
 
 Note that not all policies are access control policies.

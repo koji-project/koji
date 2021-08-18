@@ -8,8 +8,39 @@ import unittest
 
 import koji
 import koji.daemon
+import koji.policy
 
 from koji.daemon import SCM
+
+policy = {
+    'one': '''
+        match scm_host goodserver :: allow none
+        match scm_host badserver :: deny
+        match scm_host maybeserver && match scm_repository /badpath/* :: deny
+        all :: allow
+    ''',
+    'two': '''
+        match scm_host default :: allow
+        match scm_host nocommon :: allow
+        match scm_host common :: allow use_common
+        match scm_host srccmd :: allow fedpkg sources
+        match scm_host nosrc :: allow none
+        match scm_host mixed && match scm_repository /foo/* :: allow
+        match scm_host mixed && match scm_repository /bar/* :: allow use_common
+        match scm_host mixed && match scm_repository /baz/* :: allow fedpkg sources
+        match scm_host mixed && match scm_repository /foobar/* :: allow use_common fedpkg sources
+        match scm_host mixed && match scm_repository /foobaz/* :: allow use_common none
+    '''
+}
+
+class FakePolicy(object):
+
+    def __init__(self, rule):
+        base_tests = koji.policy.findSimpleTests(vars(koji.policy))
+        self.ruleset = koji.policy.SimpleRuleSet(rule.splitlines(), base_tests)
+
+    def evalPolicy(self, name, data):
+        return self.ruleset.apply(data)
 
 
 class TestSCM(unittest.TestCase):
@@ -67,8 +98,22 @@ class TestSCM(unittest.TestCase):
         self.assertEqual(scm.source_cmd, ['make', 'sources'])
         self.assertEqual(scm.scmtype, 'GIT')
 
+    def test_assert_allowed_basic(self):
+        scm = SCM("git://scm.example.com/path1#1234")
+
+        # session must be passed
+        with self.assertRaises(koji.GenericError) as cm:
+            scm.assert_allowed(session=None, by_config=False, by_policy=True)
+        self.assertEqual(str(cm.exception),
+                         'When allowed SCM assertion is by policy, session must be passed in.')
+
+        # allowed could not be None
+        scm.assert_allowed_by_config = mock.MagicMock()
+        scm.assert_allowed(allowed=None, by_config=True, by_policy=False)
+        scm.assert_allowed_by_config.assert_called_once_with('')
+
     @mock.patch('logging.getLogger')
-    def test_allowed(self, getLogger):
+    def test_allowed_by_config(self, getLogger):
         config = '''
             goodserver:*:no
             !badserver:*
@@ -104,7 +149,7 @@ class TestSCM(unittest.TestCase):
                 raise AssertionError("allowed bad url: %s" % url)
 
     @mock.patch('logging.getLogger')
-    def test_badrule(self, getLogger):
+    def test_badrule_by_config(self, getLogger):
         config = '''
             bogus-entry-should-be-ignored
             goodserver:*:no
@@ -115,7 +160,7 @@ class TestSCM(unittest.TestCase):
         scm.assert_allowed(config)
 
     @mock.patch('logging.getLogger')
-    def test_opts(self, getLogger):
+    def test_opts_by_config(self, getLogger):
         config = '''
             default:*
             nocommon:*:no
@@ -195,6 +240,181 @@ class TestSCM(unittest.TestCase):
         scm = SCM(url)
         with self.assertRaises(koji.BuildError):
             scm.assert_allowed(config)
+
+    def test_allowed_by_policy(self):
+        good = [
+            "git://goodserver/path1#1234",
+            "git+ssh://maybeserver/path1#1234",
+            ]
+        bad = [
+            "cvs://badserver/projects/42#ref",
+            "svn://badserver/projects/42#ref",
+            "git://maybeserver/badpath/project#1234",
+            "git://maybeserver//badpath/project#1234",
+            "git://maybeserver////badpath/project#1234",
+            "git://maybeserver/./badpath/project#1234",
+            "git://maybeserver//.//badpath/project#1234",
+            "git://maybeserver/goodpath/../badpath/project#1234",
+            "git://maybeserver/goodpath/..//badpath/project#1234",
+            "git://maybeserver/..//badpath/project#1234",
+            ]
+        session = mock.MagicMock()
+        session.evalPolicy.side_effect = FakePolicy(policy['one']).evalPolicy
+        for url in good:
+            scm = SCM(url)
+            scm.assert_allowed(session=session, by_config=False, by_policy=True)
+        for url in bad:
+            scm = SCM(url)
+            with self.assertRaises(koji.BuildError) as cm:
+                scm.assert_allowed(session=session, by_config=False, by_policy=True)
+            self.assertRegexpMatches(str(cm.exception), '^SCM: .* is not allowed, reason: None$')
+
+    def test_opts_by_policy(self):
+        session = mock.MagicMock()
+        session.evalPolicy.side_effect = FakePolicy(policy['two']).evalPolicy
+
+        url = "git://default/koji.git#1234"
+        scm = SCM(url)
+        scm.assert_allowed_by_policy(session=session)
+        self.assertEqual(scm.use_common, False)
+        self.assertEqual(scm.source_cmd, ['make', 'sources'])
+
+        url = "git://nocommon/koji.git#1234"
+        scm = SCM(url)
+        scm.assert_allowed_by_policy(session=session)
+        self.assertEqual(scm.use_common, False)
+        self.assertEqual(scm.source_cmd, ['make', 'sources'])
+
+        url = "git://common/koji.git#1234"
+        scm = SCM(url)
+        scm.assert_allowed_by_policy(session=session)
+        self.assertEqual(scm.use_common, True)
+        self.assertEqual(scm.source_cmd, ['make', 'sources'])
+
+        url = "git://srccmd/koji.git#1234"
+        scm = SCM(url)
+        scm.assert_allowed_by_policy(session=session)
+        self.assertEqual(scm.use_common, False)
+        self.assertEqual(scm.source_cmd, ['fedpkg', 'sources'])
+
+        url = "git://nosrc/koji.git#1234"
+        scm = SCM(url)
+        scm.assert_allowed_by_policy(session=session)
+        self.assertEqual(scm.use_common, False)
+        self.assertEqual(scm.source_cmd, None)
+
+        url = "git://mixed/foo/koji.git#1234"
+        scm = SCM(url)
+        scm.assert_allowed_by_policy(session=session)
+        self.assertEqual(scm.use_common, False)
+        self.assertEqual(scm.source_cmd, ['make', 'sources'])
+
+        url = "git://mixed/bar/koji.git#1234"
+        scm = SCM(url)
+        scm.assert_allowed_by_policy(session=session)
+        self.assertEqual(scm.use_common, True)
+        self.assertEqual(scm.source_cmd, ['make', 'sources'])
+
+        url = "git://mixed/baz/koji.git#1234"
+        scm = SCM(url)
+        scm.assert_allowed_by_policy(session=session)
+        self.assertEqual(scm.use_common, False)
+        self.assertEqual(scm.source_cmd, ['fedpkg', 'sources'])
+
+        url = "git://mixed/koji.git#1234"
+        scm = SCM(url)
+        with self.assertRaises(koji.BuildError):
+            scm.assert_allowed_by_policy(session=session)
+
+        url = "git://mixed/foo/koji.git#1234"
+        scm = SCM(url)
+        scm.assert_allowed_by_policy(session=session)
+        self.assertEqual(scm.use_common, False)
+        self.assertEqual(scm.source_cmd, ['make', 'sources'])
+
+        url = "git://mixed/bar/koji.git#1234"
+        scm = SCM(url)
+        scm.assert_allowed_by_policy(session=session)
+        self.assertEqual(scm.use_common, True)
+        self.assertEqual(scm.source_cmd, ['make', 'sources'])
+
+        url = "git://mixed/baz/koji.git#1234"
+        scm = SCM(url)
+        scm.assert_allowed_by_policy(session=session)
+        self.assertEqual(scm.use_common, False)
+        self.assertEqual(scm.source_cmd, ['fedpkg', 'sources'])
+
+        url = "git://mixed/foobar/koji.git#1234"
+        scm = SCM(url)
+        scm.assert_allowed_by_policy(session=session)
+        self.assertEqual(scm.use_common, True)
+        self.assertEqual(scm.source_cmd, ['fedpkg', 'sources'])
+
+        url = "git://mixed/foobaz/koji.git#1234"
+        scm = SCM(url)
+        scm.assert_allowed_by_policy(session=session)
+        self.assertEqual(scm.use_common, True)
+        self.assertIsNone(scm.source_cmd)
+
+        url = "git://nomatch/koji.git#1234"
+        scm = SCM(url)
+        with self.assertRaises(koji.BuildError):
+            scm.assert_allowed_by_policy(session=session)
+
+    def test_assert_allowed_by_both(self):
+        config = '''
+            default:*:no:
+            mixed:/foo/*:yes
+            mixed:/bar/*:no
+            mixed:/baz/*:no:centpkg,sources
+            mixed:/foobar/*:no:
+            mixed:/foobaz/*:no:centpkg,sources
+            '''
+
+        session = mock.MagicMock()
+        session.evalPolicy.side_effect = FakePolicy(policy['two']).evalPolicy
+
+        url = "git://default/koji.git#1234"
+        scm = SCM(url)
+        # match scm_host default :: allow
+        scm.assert_allowed(allowed=config, session=session, by_config=True, by_policy=True)
+        self.assertEqual(scm.use_common, False)
+        self.assertIsNone(scm.source_cmd)
+
+        url = "git://mixed/foo/koji.git#1234"
+        scm = SCM(url)
+        # match scm_host mixed && match scm_repository /foo/* :: allow
+        scm.assert_allowed(allowed=config, session=session, by_config=True, by_policy=True)
+        self.assertEqual(scm.use_common, False)
+        self.assertEqual(scm.source_cmd, ['make', 'sources'])
+
+        url = "git://mixed/bar/koji.git#1234"
+        scm = SCM(url)
+        # match scm_host mixed && match scm_repository /bar/* :: allow use_common
+        scm.assert_allowed(allowed=config, session=session, by_config=True, by_policy=True)
+        self.assertEqual(scm.use_common, True)
+        self.assertEqual(scm.source_cmd, ['make', 'sources'])
+
+        url = "git://mixed/baz/koji.git#1234"
+        scm = SCM(url)
+        # match scm_host mixed && match scm_repository /baz/* :: allow fedpkg sources
+        scm.assert_allowed(allowed=config, session=session, by_config=True, by_policy=True)
+        self.assertEqual(scm.use_common, False)
+        self.assertEqual(scm.source_cmd, ['fedpkg', 'sources'])
+
+        url = "git://mixed/foobar/koji.git#1234"
+        scm = SCM(url)
+        # match scm_host mixed && match scm_repository /foobar/* :: allow use_common fedpkg sources
+        scm.assert_allowed(allowed=config, session=session, by_config=True, by_policy=True)
+        self.assertEqual(scm.use_common, True)
+        self.assertEqual(scm.source_cmd, ['fedpkg', 'sources'])
+
+        url = "git://mixed/foobaz/koji.git#1234"
+        scm = SCM(url)
+        # match scm_host mixed && match scm_repository /foobaz/* :: allow use_common none
+        scm.assert_allowed(allowed=config, session=session, by_config=True, by_policy=True)
+        self.assertEqual(scm.use_common, True)
+        self.assertIsNone(scm.source_cmd)
 
 
 class TestSCMCheckouts(unittest.TestCase):

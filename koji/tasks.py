@@ -312,6 +312,7 @@ class BaseTaskHandler(object):
         self.workdir = workdir
         self.logger = logging.getLogger("koji.build.BaseTaskHandler")
         self.manager = None
+        self.taskinfo = None
 
     def setManager(self, manager):
         """Set the manager attribute
@@ -597,14 +598,19 @@ class BaseTaskHandler(object):
 
     def run_callbacks(self, plugin, *args, **kwargs):
         if 'taskinfo' not in kwargs:
-            try:
-                taskinfo = self.taskinfo
-            except AttributeError:
-                self.taskinfo = self.session.getTaskInfo(self.id, request=True)
-                taskinfo = self.taskinfo
-            kwargs['taskinfo'] = taskinfo
+            kwargs['taskinfo'] = self.taskinfo
         kwargs['session'] = self.session
         koji.plugin.run_callbacks(plugin, *args, **kwargs)
+
+    @property
+    def taskinfo(self):
+        if not getattr(self, '_taskinfo', None):
+            self._taskinfo = self.session.getTaskInfo(self.id, request=True, strict=True)
+        return self._taskinfo
+
+    @taskinfo.setter
+    def taskinfo(self, taskinfo):
+        self._taskinfo = taskinfo
 
 
 class FakeTask(BaseTaskHandler):
