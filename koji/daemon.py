@@ -454,8 +454,8 @@ class SCM(object):
 
         The format of the action returned from build_from_scm could be one of following forms::
 
-            allow [use_common] [source_cmd]
-            deny [reason]
+            allow [use_common] [<source_cmd>]
+            deny [<reason>]
 
         If use_common is not set, use_common property is False.
         If source_cmd is none, it will be parsed as None. If it not set, the default value:
