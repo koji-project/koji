@@ -9588,16 +9588,27 @@ def policy_get_cgs(data):
 def policy_get_build_tags(data, taginfo=False):
     """If taginfo is set, return list of taginfos, else list of names only"""
     if 'build_tag' in data:
-        return [get_tag(data['build_tag'], strict=True)['name']]
+        buildtag = get_tag(data['build_tag'], strict=True, event="auto")
+        if taginfo:
+            return buildtag
+        else:
+            return buildtag['name']
     elif 'build_tags' in data:
-        return [get_tag(t, strict=True)['name'] for t in data['build_tags']]
+        build_tags = [get_tag(t, strict=True, event="auto") for t in data['build_tags']]
+        if taginfo:
+            return build_tags
+        else:
+            return [t['name'] for t in build_tags]
 
     # see if we have a target
     target = data.get('target')
     if target:
         target = get_build_target(target, strict=False)
         if target:
-            return [target['build_tag_name']]
+            if taginfo:
+                return [get_tag(target['build_tag'], strict=True, event="auto")]
+            else:
+                return [target['build_tag_name']]
 
     # otherwise look at buildroots
     tags = {}
@@ -9606,7 +9617,10 @@ def policy_get_build_tags(data, taginfo=False):
             tags[None] = None
         else:
             tinfo = get_buildroot(br_id, strict=True)
-            tags[tinfo['tag_name']] = tinfo
+            if taginfo:
+                tags[tinfo['tag_name']] = get_tag(tinfo, strict=True)
+            else:
+                tags[tinfo['tag_name']] = tinfo
 
     if taginfo:
         tags = tags.values()
