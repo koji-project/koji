@@ -312,7 +312,19 @@ def handle_add_channel(goptions, session, args):
     if len(args) != 1:
         parser.error(_("Please specify one channel name"))
     activate_session(session, goptions)
-    channel_id = session.addChannel(args[0], description=options.description)
+    channel_name = args[0]
+    try:
+        channel_id = session.addChannel(channel_name, description=options.description)
+    except koji.GenericError as ex:
+        msg = str(ex)
+        if 'channel %s already exists' % channel_name in msg:
+            error("channel %s already exists" % channel_name)
+        elif 'Invalid method:' in msg:
+            version = session.getKojiVersion()
+            error("addChannel is available on hub from Koji 1.26 version, your version is %s" %
+                  version)
+        else:
+            error(msg)
     print("%s added: id %d" % (args[0], channel_id))
 
 
@@ -365,7 +377,16 @@ def handle_edit_channel(goptions, session, args):
     cinfo = session.getChannel(args[0])
     if not cinfo:
         error("No such channel: %s" % args[0])
-    result = session.editChannel(args[0], **vals)
+    try:
+        result = session.editChannel(args[0], **vals)
+    except koji.GenericError as ex:
+        msg = str(ex)
+        if 'Invalid method:' in msg:
+            version = session.getKojiVersion()
+            error("editChannel is available on hub from Koji 1.26 version, your version is %s" %
+                  version)
+        else:
+            print(msg)
     if not result:
         error(_("No changes made, please correct the command line"))
 
@@ -2988,8 +3009,11 @@ def anon_handle_list_channels(goptions, session, args):
     opts = {}
     if options.enabled is not None:
         opts['enabled'] = options.enabled
-    channels = sorted([x for x in session.listChannels(**opts)], key=lambda x: x['name'])
-
+    try:
+        channels = sorted([x for x in session.listChannels(**opts)], key=lambda x: x['name'])
+    except koji.ParameterError:
+        channels = sorted([x for x in session.listChannels()], key=lambda x: x['name'])
+    first_item = channels[0]
     session.multicall = True
     for channel in channels:
         session.listHosts(channelID=channel['id'])
@@ -2999,14 +3023,17 @@ def anon_handle_list_channels(goptions, session, args):
         channel['ready'] = len([x for x in hosts if x['ready']])
         channel['capacity'] = sum([x['capacity'] for x in hosts])
         channel['load'] = sum([x['task_load'] for x in hosts])
-        channel['comment'] = truncate_string(channel['comment'])
-        channel['description'] = truncate_string(channel['description'])
+        if 'comment' in first_item:
+            channel['comment'] = truncate_string(channel['comment'])
+        if 'description' in first_item:
+            channel['description'] = truncate_string(channel['description'])
         if channel['capacity']:
             channel['perc_load'] = channel['load'] / channel['capacity'] * 100.0
         else:
             channel['perc_load'] = 0.0
-        if not channel['enabled']:
-            channel['name'] = channel['name'] + ' [disabled]'
+        if 'enabled' in first_item:
+            if not channel['enabled']:
+                channel['name'] = channel['name'] + ' [disabled]'
     if channels:
         longest_channel = max([len(ch['name']) for ch in channels])
     else:
@@ -3021,16 +3048,16 @@ def anon_handle_list_channels(goptions, session, args):
             hdr = '{channame:<{longest_channel}}Enabled  Ready Disbld   Load    Cap   ' \
                   'Perc    '
             hdr = hdr.format(longest_channel=longest_channel, channame='Channel')
-            if options.description:
+            if options.description and 'description' in first_item:
                 hdr += "Description".ljust(53)
-            if options.comment:
+            if options.comment and 'comment' in first_item:
                 hdr += "Comment".ljust(53)
             print(hdr)
         mask = "%%(name)-%ss %%(enabled_host)6d %%(ready)6d %%(disabled)6d %%(load)6d %%(" \
                "capacity)6d %%(perc_load)6d%%%%" % longest_channel
-        if options.description:
+        if options.description and 'description' in first_item:
             mask += "   %(description)-50s"
-        if options.comment:
+        if options.comment and 'comment' in first_item:
             mask += "   %(comment)-50s"
         for channel in channels:
             print(mask % channel)
@@ -3110,19 +3137,24 @@ def anon_handle_list_hosts(goptions, session, args):
     if options.show_channels:
         with session.multicall() as m:
             result = [m.listChannels(host['id']) for host in hosts]
+        first_line_channel = result[0].result
         for host, channels in zip(hosts, result):
             list_channels = []
             for c in channels.result:
-                if c['enabled']:
-                    list_channels.append(c['name'])
+                if 'enabled' in first_line_channel:
+                    if c['enabled']:
+                        list_channels.append(c['name'])
+                    else:
+                        list_channels.append('*' + c['name'])
                 else:
-                    list_channels.append('*' + c['name'])
+                    list_channels.append(c['name'])
             host['channels'] = ','.join(sorted(list_channels))
 
     if hosts:
         longest_host = max([len(h['name']) for h in hosts])
     else:
         longest_host = 8
+
     if not options.quiet:
         hdr = "{hostname:<{longest_host}} Enb Rdy Load/Cap  Arches           " \
               "Last Update                         "
@@ -7974,7 +8006,7 @@ def handle_version(goptions, session, args):
         version = session.getKojiVersion()
         print("Hub:    %s" % version)
     except koji.GenericError:
-        print("Hub:    Can' determine (older than 1.23)")
+        print("Hub:    Can't determine (older than 1.23)")
 
 
 def anon_handle_userinfo(goptions, session, args):
