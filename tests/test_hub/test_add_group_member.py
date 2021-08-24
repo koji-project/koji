@@ -25,7 +25,7 @@ class TestAddGroupMember(unittest.TestCase):
         self.get_user.side_effect = data
         with self.assertRaises(koji.GenericError) as cm:
             self.exports.addGroupMember(group, username)
-        self.assertEqual("Not an user: %s" % username, str(cm.exception))
+        self.assertEqual("Not a user: %s" % username, str(cm.exception))
 
     def test_non_exist_group(self):
         data = [None,

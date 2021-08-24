@@ -7978,7 +7978,7 @@ def handle_version(goptions, session, args):
 
 
 def anon_handle_userinfo(goptions, session, args):
-    """[admin] Show information about an user"""
+    """[admin] Show information about a user"""
     usage = _("usage: %prog userinfo [options] <username> [<username> ...]")
     parser = OptionParser(usage=get_usage_str(usage))
     (options, args) = parser.parse_args(args)
