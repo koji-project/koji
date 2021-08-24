@@ -55,3 +55,4 @@ Related Software
 * [Koji Tools](https://pagure.io/koji-tools): Various utilities for Koji
 * [Kojiji](https://github.com/release-engineering/kojiji): Koji Java Interface
 * [txkoji](https://github.com/ktdreyer/txkoji): Async interface to Koji, using Twisted
+* [koji-hs](https://hackage.haskell.org/package/koji): Koji Haskell Interface
