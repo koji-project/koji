@@ -81,7 +81,7 @@ should not simply sign the file directly under /mnt/koji, as this causes an
 inconsistency between the filesystem and the database (hence the copy step).
 
 In this example, we download an unsigned build from Koji, then sign it, and
-then upload the signed copy with ``kojidev import-sig``::
+then upload the signed copy with ``koji import-sig``::
 
     koji download-build --debuginfo bash-5.0.17-2.fc32
     rpmsign --define "_gpg_name security@example.com" --addsign *.rpm
