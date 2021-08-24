@@ -8706,7 +8706,7 @@ def add_group_member(group, user, strict=True):
     if not ginfo or ginfo['usertype'] != koji.USERTYPES['GROUP']:
         raise koji.GenericError("Not a group: %s" % group)
     if not uinfo:
-        raise koji.GenericError("Not an user: %s" % user)
+        raise koji.GenericError("Not a user: %s" % user)
     if uinfo['usertype'] == koji.USERTYPES['GROUP']:
         raise koji.GenericError("Groups cannot be members of other groups")
     # check to see if user is already a member

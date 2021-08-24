@@ -67,7 +67,7 @@ admin commands:
         unblock-group-req         Unblock a group's requirement listing
         unblock-pkg               Unblock a package in the listing for tag
         unlock-tag                Unlock a tag
-        userinfo                  Show information about an user
+        userinfo                  Show information about a user
         write-signed-rpm          Write signed RPMs to disk
 
 bind commands:
