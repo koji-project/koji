@@ -9839,7 +9839,9 @@ class BuildTagInheritsFromTest(koji.policy.BaseSimpleTest):
                 # content generator buildroots might not have tag info
                 continue
 
-            for tag in readFullInheritance(tinfo['tag_id']):
+            # for possibly deleted tags in inheritance chain
+            # we need to look into event from last known configuration
+            for tag in readFullInheritance(tinfo['id'], event=tinfo.get('revoke_event')):
                 if multi_fnmatch(tag['name'], args):
                     return True
         # otherwise...
