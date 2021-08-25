@@ -130,3 +130,57 @@ existing tables.
     SELECT partition_buildroot_listing();
     DROP FUNCTION partition_buildroot_listing();
   COMMIT;
+
+Using SSL with PostgreSQL
+-------------------------
+
+The basic :doc:`Koji server walkthrough <server_howto>` and sample
+configuration files instruct users to use plaintext TCP/IP connections to the
+postgresql server. This is not a good practice, and it is more secure to use
+SSL. You'll need to configure the postgresql server to accept SSL connections,
+and then configure the Koji Hub to only use a trusted SSL connection.
+
+Enabling SSL on the PostgreSQL server
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Edit ``/var/lib/pgsql/data/postgresql.conf``:
+
+ * Enable SSL with ``ssl = on``
+ * The ``listen_addresses`` option cannot be empty. ``listen_addresses = '*'``
+   will make postgres listen on every network interface (simpler), or you can
+   restrict it to only certain network interfaces.
+
+Create two files:
+
+ * ``/var/lib/pgsql/data/server.crt`` - This is the public signed certificate.
+   It should include the full chain (including the CA and any intermediates).
+ * ``/var/lib/pgsql/data/server.key`` - The private key.
+
+Set the ownership appropriately::
+
+  chown postgres:postgres /var/lib/pgsql/data/server.{crt,key}
+  chmod 0600 /var/lib/pgsql/data/server.key
+
+Restart postgresql for the new settings to take effect::
+
+  systemctl restart postgresql
+
+Configuring the Koji hub to use SSL to Postgres
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Once you've enabled SSL on the PostgreSQL server, you can test it with the
+CLI::
+
+  psql 'postgresql://koji:example_password@db.example.com/koji?sslmode=verify-full&sslrootcert=/etc/pki/tls/certs/ca-bundle.trust.crt'
+
+You should be able to list tables, run queries, etc.
+
+Edit ``/etc/koji-hub/hub.conf`` to use this connection string::
+
+  DBConnectionString = postgresql://koji:example_password@kojidev.example.com/koji?sslmode=verify-full&sslrootcert=/etc/pki/tls/certs/ca-bundle.trust.crt
+
+Restart the hub and verify the new ``DBConnectionString`` is working::
+
+  systemctl restart httpd
+
+  koji hello
