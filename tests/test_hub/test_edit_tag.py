@@ -1,6 +1,8 @@
 # coding: utf-8
-import mock
 import unittest
+
+import mock
+
 import koji
 import kojihub
 
@@ -32,6 +34,7 @@ class TestEditTag(unittest.TestCase):
         self._singleValue = mock.patch('kojihub._singleValue').start()
         self.get_tag = mock.patch('kojihub.get_tag').start()
         self.get_perm_id = mock.patch('kojihub.get_perm_id').start()
+        self.verify_name_internal = mock.patch('kojihub.verify_name_internal').start()
         self.context = mock.patch('kojihub.context').start()
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"
@@ -62,6 +65,7 @@ class TestEditTag(unittest.TestCase):
                                                'exC': 3,
                                                'exD': 4}}
         self._singleValue.return_value = None
+        self.verify_name_internal.return_value = None
         self.context.event_id = 42
         self.context.session.user_id = 23
         # no1 invoke
@@ -168,7 +172,8 @@ WHERE id = %(tagID)i""", {'name': 'newtag', 'tagID': 333})
 
         with self.assertRaises(koji.GenericError) as cm:
             kojihub._edit_tag('tag', **kwargs)
-        self.assertEqual(cm.exception.args[0], 'Can not both add/update and remove tag-extra: \'exC\'')
+        self.assertEqual(cm.exception.args[0],
+                         'Can not both add/update and remove tag-extra: \'exC\'')
 
         # no3 invoke
         kwargs = {
@@ -231,3 +236,35 @@ WHERE id = %(tagID)i""", {'name': 'newtag', 'tagID': 333})
         with self.assertRaises(koji.GenericError):
             kojihub._edit_tag('tag', **kwargs)
 
+    def test_edit_wrong_format_tag(self):
+        tag_name_new = 'new-test-tag+'
+        tag_name = 'tag'
+        self.get_tag.return_value = {'id': 333,
+                                     'perm_id': 1,
+                                     'name': tag_name,
+                                     'arches': 'arch1 arch3',
+                                     'locked': False,
+                                     'maven_support': False,
+                                     'maven_include_all': False,
+                                     'extra': {'exA': 1,
+                                               'exC': 3,
+                                               'exD': 4}}
+        kwargs = {
+            'perm': None,
+            'name': tag_name_new,
+            'arches': 'arch1 arch2',
+            'locked': True,
+            'maven_support': False,
+            'maven_include_all': False,
+            'extra': {},
+            'remove_extra': []
+        }
+        # name is longer as expected
+        self.verify_name_internal.side_effect = koji.GenericError
+        with self.assertRaises(koji.GenericError):
+            kojihub._edit_tag('tag', **kwargs)
+
+        # not except regex rules
+        self.verify_name_internal.side_effect = koji.GenericError
+        with self.assertRaises(koji.GenericError):
+            kojihub._edit_tag('tag', **kwargs)

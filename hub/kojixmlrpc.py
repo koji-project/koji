@@ -28,6 +28,7 @@ import sys
 import threading
 import time
 import traceback
+import re
 
 import koji
 import koji.auth
@@ -467,6 +468,10 @@ def load_config(environ):
         ['LockOut', 'boolean', False],
         ['ServerOffline', 'boolean', False],
         ['OfflineMessage', 'string', None],
+
+        ['MaxNameLengthInternal', 'integer', 256],
+        ['RegexNameInternal', 'string', r'^[A-Za-z0-9/_.+-]+$'],
+        ['RegexUserName', 'string', r'^[A-Za-z0-9/_.@-]+$']
     ]
     opts = {}
     for name, dtype, default in cfgmap:
@@ -495,6 +500,10 @@ def load_config(environ):
     if opts.get('KojiDir') is not None:
         koji.BASEDIR = opts['KojiDir']
         koji.pathinfo.topdir = opts['KojiDir']
+    if opts['RegexNameInternal'] != '':
+        opts['RegexNameInternal.compiled'] = re.compile(opts['RegexNameInternal'])
+    if opts['RegexUserName'] != '':
+        opts['RegexUserName.compiled'] = re.compile(opts['RegexUserName'])
     return opts
 
 

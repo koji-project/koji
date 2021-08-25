@@ -38,8 +38,9 @@ class TestEditChannel(unittest.TestCase):
     def tearDown(self):
         mock.patch.stopall()
 
+    @mock.patch('kojihub.verify_name_internal')
     @mock.patch('kojihub.get_channel')
-    def test_edit_channel_missing(self, get_channel):
+    def test_edit_channel_missing(self, get_channel, verify_name_internal):
         expected = 'Invalid type for channelInfo: %s' % self.channel_name
         get_channel.side_effect = koji.GenericError(expected)
         with self.assertRaises(koji.GenericError) as ex:
@@ -49,8 +50,10 @@ class TestEditChannel(unittest.TestCase):
         self.assertEqual(self.updates, [])
         self.assertEqual(expected, str(ex.exception))
 
+    @mock.patch('kojihub.verify_name_internal')
     @mock.patch('kojihub.get_channel')
-    def test_edit_channel_already_exists(self, get_channel):
+    def test_edit_channel_already_exists(self, get_channel, verify_name_internal):
+        verify_name_internal.return_value = None
         get_channel.side_effect = [
             {
                 'id': 123,
@@ -73,8 +76,10 @@ class TestEditChannel(unittest.TestCase):
         self.assertEqual('channel %s already exists (id=124)' % self.channel_name_new,
                          str(ex.exception))
 
+    @mock.patch('kojihub.verify_name_internal')
     @mock.patch('kojihub.get_channel')
-    def test_edit_channel_valid(self, get_channel):
+    def test_edit_channel_valid(self, get_channel, verify_name_internal):
+        verify_name_internal.return_value = None
         kojihub.get_channel.side_effect = [{
             'id': 123,
             'name': self.channel_name,
@@ -97,3 +102,22 @@ class TestEditChannel(unittest.TestCase):
         self.assertEqual(update.table, 'channels')
         self.assertEqual(update.values, values)
         self.assertEqual(update.clauses, clauses)
+
+    @mock.patch('kojihub.verify_name_internal')
+    @mock.patch('kojihub.get_channel')
+    def test_edit_channel_wrong_format(self, get_channel, verify_name_internal):
+        channel_name_new = 'test-channel+'
+        get_channel.return_value = {'id': 123,
+                                    'name': self.channel_name,
+                                    'description': 'description',
+                                    }
+
+        # name is longer as expected
+        verify_name_internal.side_effect = koji.GenericError
+        with self.assertRaises(koji.GenericError):
+            self.exports.editChannel(self.channel_name, name=channel_name_new)
+
+        # not except regex rules
+        verify_name_internal.side_effect = koji.GenericError
+        with self.assertRaises(koji.GenericError):
+            self.exports.editChannel(self.channel_name, name=channel_name_new)

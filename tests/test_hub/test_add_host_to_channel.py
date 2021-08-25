@@ -1,5 +1,6 @@
-import mock
 import unittest
+
+import mock
 
 import koji
 import kojihub
@@ -91,17 +92,20 @@ class TestAddHostToChannel(unittest.TestCase):
         get_channel_id.assert_called_once_with(cname, create=False)
         self.assertEqual(len(self.inserts), 0)
 
+    @mock.patch('kojihub.verify_name_internal')
     @mock.patch('kojihub.get_channel')
     @mock.patch('kojihub.list_channels')
     @mock.patch('kojihub.get_channel_id')
     @mock.patch('kojihub.get_host')
-    def test_no_channel_create(self, get_host, get_channel_id, list_channels, get_channel):
+    def test_no_channel_create(self, get_host, get_channel_id, list_channels, get_channel,
+                               verify_name_internal):
         name = 'hostname'
         cname = 'channel_name'
         get_host.return_value = {'id': 123, 'name': name}
         get_channel_id.return_value = 456
         list_channels.return_value = [{'id': 1, 'name': 'default'}]
         get_channel.return_value = {'enabled': True}
+        verify_name_internal.return_value = None
 
         kojihub.add_host_to_channel(name, cname, create=True)
 
@@ -142,3 +146,20 @@ class TestAddHostToChannel(unittest.TestCase):
         get_channel_id.assert_called_once_with(cname, create=False)
         list_channels.assert_called_once_with(123)
         self.assertEqual(len(self.inserts), 0)
+
+    @mock.patch('kojihub.verify_name_internal')
+    @mock.patch('kojihub.get_host')
+    def test_channel_wrong_format(self, get_host, verify_name_internal):
+        name = 'hostname'
+        channel_name = 'test-channel+'
+        get_host.return_value = {'id': 123, 'name': name}
+
+        # name is longer as expected
+        verify_name_internal.side_effect = koji.GenericError
+        with self.assertRaises(koji.GenericError):
+            kojihub.add_host_to_channel(name, channel_name, create=True)
+
+        # not except regex rules
+        verify_name_internal.side_effect = koji.GenericError
+        with self.assertRaises(koji.GenericError):
+            kojihub.add_host_to_channel(name, channel_name, create=True)

@@ -2290,6 +2290,8 @@ def add_host_to_channel(hostname, channel_name, create=False, force=False):
     if host is None:
         raise koji.GenericError('host does not exist: %s' % hostname)
     host_id = host['id']
+    if create:
+        verify_name_internal(channel_name)
     channel_id = get_channel_id(channel_name, create=create)
     if channel_id is None:
         raise koji.GenericError('channel does not exist: %s' % channel_name)
@@ -2344,6 +2346,7 @@ def rename_channel(old, new):
     context.session.assertPerm('admin')
     if not isinstance(new, str):
         raise koji.GenericError("new channel name must be a string")
+    verify_name_internal(new)
     cinfo = get_channel(old, strict=True)
     dup_check = get_channel(new, strict=False)
     if dup_check:
@@ -2376,6 +2379,7 @@ def edit_channel(channelInfo, **kw):
     if kw.get('name'):
         if not isinstance(kw['name'], str):
             raise koji.GenericError("new channel name must be a string")
+        verify_name_internal(kw['name'])
         dup_check = get_channel(kw['name'], strict=False)
         if dup_check:
             raise koji.GenericError("channel %(name)s already exists (id=%(id)i)" % dup_check)
@@ -2431,6 +2435,7 @@ def add_channel(channel_name, description=None):
     context.session.assertPerm('admin')
     if not isinstance(channel_name, str):
         raise koji.GenericError("Channel name must be a string")
+    verify_name_internal(channel_name)
     dup_check = get_channel(channel_name, strict=False)
     if dup_check:
         raise koji.GenericError("channel %(name)s already exists (id=%(id)i)" % dup_check)
@@ -3058,14 +3063,6 @@ def set_tag_update(tag_id, utype, event_id=None, user_id=None):
     insert.execute()
 
 
-def _validate_build_target_name(name):
-    """ A helper function that validates a build target name. """
-    max_name_length = 256
-    if len(name) > max_name_length:
-        raise koji.GenericError("Build target name %s is too long. Max length "
-                                "is %s characters" % (name, max_name_length))
-
-
 def create_build_target(name, build_tag, dest_tag):
     """Create a new build target"""
 
@@ -3075,7 +3072,7 @@ def create_build_target(name, build_tag, dest_tag):
 
 def _create_build_target(name, build_tag, dest_tag):
     """Create a new build target(no access check)"""
-    _validate_build_target_name(name)
+    verify_name_internal(name)
 
     # Does a target with this name already exist?
     if get_build_targets(info=name):
@@ -3111,7 +3108,7 @@ def edit_build_target(buildTargetInfo, name, build_tag, dest_tag):
 
 def _edit_build_target(buildTargetInfo, name, build_tag, dest_tag):
     """Edit build target parameters, w/ no access checks"""
-    _validate_build_target_name(name)
+    verify_name_internal(name)
 
     target = lookup_build_target(buildTargetInfo)
     if not target:
@@ -3343,11 +3340,7 @@ def create_tag(name, parent=None, arches=None, perm=None, locked=False, maven_su
 def _create_tag(name, parent=None, arches=None, perm=None, locked=False, maven_support=False,
                 maven_include_all=False, extra=None):
     """Create a new tag, without access check"""
-
-    max_name_length = 256
-    if len(name) > max_name_length:
-        raise koji.GenericError("Tag name %s is too long. Max length is %s characters",
-                                name, max_name_length)
+    verify_name_internal(name)
 
     arches = koji.parse_arches(arches, strict=True, allow_none=True)
 
@@ -3549,6 +3542,7 @@ def _edit_tag(tagInfo, **kwargs):
 
     name = kwargs.get('name')
     if name and tag['name'] != name:
+        verify_name_internal(name)
         # attempt to update tag name
         # XXX - I'm not sure we should allow this sort of renaming anyway.
         # while I can see the convenience, it is an untracked change (granted
@@ -3714,6 +3708,7 @@ def create_external_repo(name, url):
     of the new repo."""
 
     context.session.assertPerm('admin')
+    verify_name_internal(name)
 
     if get_external_repos(info=name):
         raise koji.GenericError('An external repo named "%s" already exists' % name)
@@ -3792,6 +3787,7 @@ def edit_external_repo(info, name=None, url=None):
     repo_id = repo['id']
 
     if name and name != repo['name']:
+        verify_name_internal(name)
         existing_id = _singleValue("""SELECT id FROM external_repo WHERE name = %(name)s""",
                                    locals(), strict=False)
         if existing_id is not None:
@@ -4127,6 +4123,7 @@ def _edit_user(userInfo, name=None, krb_principal_mappings=None):
     """Edit information for an existing user."""
     user = get_user(userInfo, strict=True)
     if name and user['name'] != name:
+        verify_name_user(name=name)
         # attempt to update user name
         values = {
             'name': name,
@@ -4151,6 +4148,7 @@ def _edit_user(userInfo, name=None, krb_principal_mappings=None):
             if old:
                 removed.add(old)
             if new:
+                verify_name_user(krb=new)
                 added.add(new)
         dups = added & removed
         if dups:
@@ -4820,6 +4818,7 @@ def list_btypes(query=None, queryOpts=None):
 def add_btype(name):
     """Add a new btype with the given name"""
     context.session.assertPerm('admin')
+    verify_name_internal(name)
     data = {'name': name}
     if list_btypes(data):
         raise koji.GenericError("btype already exists")
@@ -5734,6 +5733,7 @@ def new_package(name, strict=True):
 def add_volume(name, strict=True):
     """Add a new storage volume in the database"""
     context.session.assertPerm('admin')
+    verify_name_internal(name)
     voldir = koji.pathinfo.volumedir(name)
     if not os.path.isdir(voldir):
         raise koji.GenericError('please create the volume directory first')
@@ -7317,6 +7317,7 @@ def add_archive_type(name, description, extensions):
     :param str extensions: space-separated list of descriptions, eg. "yaml yml"
     """
     context.session.assertPerm('admin')
+    verify_name_internal(name)
     data = {'name': name,
             'description': description,
             'extensions': extensions,
@@ -8794,6 +8795,7 @@ def get_build_notification_blocks(user_id):
 def new_group(name):
     """Add a user group to the database"""
     context.session.assertPerm('admin')
+    verify_name_internal(name)
     if get_user(name):
         raise koji.GenericError('user/group already exists: %s' % name)
     return context.session.createUser(name, usertype=koji.USERTYPES['GROUP'])
@@ -12405,6 +12407,8 @@ class RootExports(object):
     def grantPermission(self, userinfo, permission, create=False):
         """Grant a permission to a user"""
         context.session.assertPerm('admin')
+        if create:
+            verify_name_internal(permission)
         user_id = get_user(userinfo, strict=True)['id']
         perm = lookup_perm(permission, strict=(not create), create=create)
         perm_id = perm['id']
@@ -12442,6 +12446,7 @@ class RootExports(object):
                  exists.
         """
         context.session.assertPerm('admin')
+        verify_name_user(username, krb_principal)
         if get_user(username):
             raise koji.GenericError('user already exists: %s' % username)
         if krb_principal and get_user_by_krb_principal(krb_principal):
@@ -12965,6 +12970,8 @@ class RootExports(object):
         from the HostPrincipalFormat setting (if available).
         """
         context.session.assertPerm('host')
+        verify_host_name(hostname)
+
         # validate arches
         arches = " ".join(arches)
         arches = koji.parse_arches(arches, strict=True)
@@ -15373,3 +15380,44 @@ def handle_upload(environ):
                 context.session.id, context.session.callnum,
                 time.time() - start, size, fn)
     return ret
+
+
+def verify_name_internal(name):
+    if not isinstance(name, str):
+        raise koji.GenericError("Name should be string")
+    max_name_length_internal = context.opts['MaxNameLengthInternal']
+    if max_name_length_internal != 0 and len(name) > max_name_length_internal:
+        raise koji.GenericError("Name %s is too long. Max length is %s characters"
+                                % (name, max_name_length_internal))
+    if context.opts.get('RegexNameInternal.compiled'):
+        regex_name_internal_compiled = context.opts['RegexNameInternal.compiled']
+        if not regex_name_internal_compiled.match(name):
+            raise koji.GenericError("Name %s does not match RegexNameInternal value" % name)
+
+
+def verify_name_user(name=None, krb=None):
+    if name and not isinstance(name, str):
+        raise koji.GenericError("Name should be string")
+    if krb and not isinstance(krb, str):
+        raise koji.GenericError("Kerberos principal should be string")
+    max_name_length_internal = context.opts['MaxNameLengthInternal']
+
+    if max_name_length_internal != 0:
+        if name and len(name) > max_name_length_internal:
+            raise koji.GenericError("Name %s is too long. Max length is %s characters"
+                                    % (name, max_name_length_internal))
+        if krb and len(krb) > max_name_length_internal:
+            raise koji.GenericError("Kerberos principal %s is too long. Max length is "
+                                    "%s characters" % (krb, max_name_length_internal))
+    if context.opts.get('RegexUserName.compiled'):
+        regex_user_name_compiled = context.opts['RegexUserName.compiled']
+        if (name is not None) and (not regex_user_name_compiled.match(name)):
+            raise koji.GenericError("Name %s does not match RegexUserName value" % name)
+        if (krb is not None) and (not regex_user_name_compiled.match(krb)):
+            raise koji.GenericError("Kerberos principal %s does not match RegexUserName "
+                                    "value" % krb)
+
+
+def verify_host_name(name):
+    verify_name_internal(name)
+    verify_name_user(name)

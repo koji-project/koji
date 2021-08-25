@@ -32,9 +32,11 @@ class TestAddChannel(unittest.TestCase):
         self.inserts.append(insert)
         return insert
 
+    @mock.patch('kojihub.verify_name_internal')
     @mock.patch('kojihub.get_channel')
     @mock.patch('kojihub._singleValue')
-    def test_add_channel_exists(self, _singleValue, get_channel):
+    def test_add_channel_exists(self, _singleValue, get_channel, verify_name_internal):
+        verify_name_internal.return_value = None
         get_channel.return_value = {'id': 123, 'name': self.channel_name}
         with self.assertRaises(koji.GenericError):
             self.exports.addChannel(self.channel_name)
@@ -42,11 +44,13 @@ class TestAddChannel(unittest.TestCase):
         _singleValue.assert_not_called()
         self.assertEqual(len(self.inserts), 0)
 
+    @mock.patch('kojihub.verify_name_internal')
     @mock.patch('kojihub.get_channel')
     @mock.patch('kojihub._singleValue')
-    def test_add_channel_valid(self, _singleValue, get_channel):
+    def test_add_channel_valid(self, _singleValue, get_channel, verify_name_internal):
         get_channel.return_value = {}
         _singleValue.side_effect = [12]
+        verify_name_internal.return_value = None
 
         r = self.exports.addChannel(self.channel_name, description=self.description)
         self.assertEqual(r, 12)
@@ -63,3 +67,16 @@ class TestAddChannel(unittest.TestCase):
         _singleValue.assert_has_calls([
             mock.call("SELECT nextval('channels_id_seq')", strict=True)
         ])
+
+    @mock.patch('kojihub.verify_name_internal')
+    def test_add_channel_wrong_format(self, verify_name_internal):
+        # name is longer as expected
+        channel_name = 'test-channel+'
+        verify_name_internal.side_effect = koji.GenericError
+        with self.assertRaises(koji.GenericError):
+            self.exports.addChannel(channel_name)
+
+        # not except regex rules
+        verify_name_internal.side_effect = koji.GenericError
+        with self.assertRaises(koji.GenericError):
+            self.exports.addChannel(channel_name)
