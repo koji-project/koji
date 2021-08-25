@@ -9618,9 +9618,9 @@ def policy_get_build_tags(data, taginfo=False):
         else:
             tinfo = get_buildroot(br_id, strict=True)
             if taginfo:
-                tags[tinfo['tag_name']] = get_tag(tinfo, strict=True)
+                tags[tinfo['tag_name']] = get_tag(tinfo['tag_name'], strict=True, event="auto")
             else:
-                tags[tinfo['tag_name']] = tinfo
+                tags[tinfo['tag_name']] = tinfo['tag_name']
 
     if taginfo:
         tags = tags.values()
