@@ -315,26 +315,22 @@ Requires: qemu-img
 koji-vm contains a supplemental build daemon that executes certain tasks in a
 virtual machine. This package is not required for most installations.
 
+%if 0%{py3_support} > 1
 %package utils
 Summary: Koji Utilities
 Group: Applications/Internet
 License: LGPLv2
 Requires: %{name} = %{version}-%{release}
-%if 0%{py3_support} > 1
 Requires: python%{python3_pkgversion}-psycopg2
 Obsoletes: python%{python3_pkgversion}-koji-sidetag-plugin-tools < %{version}-%{release}
 Provides: python%{python3_pkgversion}-koji-sidetag-plugin-tools = %{version}-%{release}
-%else
-Requires: python-psycopg2
-Obsoletes: python2-koji-sidetag-plugin-tools < %{version}-%{release}
-Provides: python2-koji-sidetag-plugin-tools = %{version}-%{release}
-%endif
 Requires(post): systemd
 Requires(preun): systemd
 Requires(postun): systemd
 
 %description utils
 Utilities for the Koji system
+%endif
 
 %if 0%{py3_support} > 1
 %package web
@@ -480,6 +476,17 @@ done
    rm -f %{buildroot}%{_prefix}/lib/systemd/system/koji-sweep-db.service
    rm -f %{buildroot}%{_prefix}/lib/systemd/system/koji-sweep-db.timer
    rm -f %{buildroot}%{_prefix}/sbin/koji-sweep-db
+   rm -f %{buildroot}/etc/koji-gc/email.tpl
+   rm -f %{buildroot}/etc/koji-gc/koji-gc.conf
+   rm -f %{buildroot}/etc/koji-shadow/koji-shadow.conf
+   rm -f %{buildroot}/etc/kojira/kojira.conf
+   rm -f %{buildroot}%{_prefix}/lib/systemd/system/koji-gc.service
+   rm -f %{buildroot}%{_prefix}/lib/systemd/system/koji-gc.timer
+   rm -f %{buildroot}%{_prefix}/lib/systemd/system/kojira.service
+   rm -f %{buildroot}%{_prefix}/sbin/koji-gc
+   rm -f %{buildroot}%{_prefix}/sbin/koji-shadow
+   rm -f %{buildroot}%{_prefix}/sbin/koji-sidetag-cleanup
+   rm -f %{buildroot}%{_prefix}/sbin/kojira
 %endif
 
 %clean
@@ -492,7 +499,6 @@ rm -rf $RPM_BUILD_ROOT
 
 %if 0%{py2_support}
 %{_bindir}/*
-%{_sbindir}/*
 %files -n python2-%{name}
 %{python2_sitelib}/%{name}
 %if 0%{wheel_support}
@@ -557,6 +563,7 @@ rm -rf $RPM_BUILD_ROOT
 %{_prefix}/lib/koji-builder-plugins/__pycache__
 %endif
 
+%if 0%{py3_support} > 1
 %files utils
 %{_sbindir}/kojira
 %{_unitdir}/koji-gc.service
@@ -572,6 +579,7 @@ rm -rf $RPM_BUILD_ROOT
 %dir /etc/koji-shadow
 %config(noreplace) /etc/koji-shadow/koji-shadow.conf
 %{_sbindir}/koji-sidetag-cleanup
+%endif
 
 %if 0%{py3_support} > 1
 %files web
@@ -624,6 +632,7 @@ rm -rf $RPM_BUILD_ROOT
 %postun vm
 %systemd_postun kojivmd.service
 
+%if 0%{py3_support} > 1
 %post utils
 %systemd_post kojira.service
 
@@ -632,6 +641,7 @@ rm -rf $RPM_BUILD_ROOT
 
 %postun utils
 %systemd_postun kojira.service
+%endif
 
 %changelog
 * Mon Jun 21 2021 Tomas Kopecek <tkopecek at redhat.com> - 1.25.1-1
