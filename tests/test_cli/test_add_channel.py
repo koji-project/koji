@@ -37,13 +37,35 @@ class TestAddChannel(utils.CliTestCase):
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
     def test_handle_add_channel_exist(self, activate_session_mock, stderr):
-        expected = 'channel %(name)s already exists (id=%(id)i)'
+        expected_api = 'channel %s already exists (id=%s)' % (self.channel_name, self.channel_id)
+        expected = 'channel %s already exists\n' % self.channel_name
 
-        self.session.addChannel.side_effect = koji.GenericError(expected)
-        with self.assertRaises(koji.GenericError) as ex:
+        self.session.addChannel.side_effect = koji.GenericError(expected_api)
+        with self.assertRaises(SystemExit) as ex:
             handle_add_channel(self.options, self.session,
                                ['--description', self.description, self.channel_name])
-        self.assertEqual(str(ex.exception), expected)
+        self.assertExitCode(ex, 1)
+        actual = stderr.getvalue()
+        self.assertMultiLineEqual(actual, expected)
+        activate_session_mock.assert_called_once_with(self.session, self.options)
+        self.session.addChannel.assert_called_once_with(self.channel_name,
+                                                        description=self.description)
+
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
+    @mock.patch('koji_cli.commands.activate_session')
+    def test_handle_add_channel_older_hub(self, activate_session_mock, stderr):
+        expected_api = 'Invalid method: addChannel'
+        expected = 'addChannel is available on hub from Koji 1.26 version, your version ' \
+                   'is 1.25.1\n'
+        self.session.getKojiVersion.return_value = '1.25.1'
+
+        self.session.addChannel.side_effect = koji.GenericError(expected_api)
+        with self.assertRaises(SystemExit) as ex:
+            handle_add_channel(self.options, self.session,
+                               ['--description', self.description, self.channel_name])
+        self.assertExitCode(ex, 1)
+        actual = stderr.getvalue()
+        self.assertMultiLineEqual(actual, expected)
         activate_session_mock.assert_called_once_with(self.session, self.options)
         self.session.addChannel.assert_called_once_with(self.channel_name,
                                                         description=self.description)
@@ -79,7 +101,7 @@ class TestAddChannel(utils.CliTestCase):
         self.assertMultiLineEqual(actual, expected_stderr)
         activate_session_mock.assert_not_called()
 
-    def test_handle_add_host_help(self):
+    def test_handle_add_channel_help(self):
         self.assert_help(
             handle_add_channel,
             """Usage: %s add-channel [options] <channel_name>

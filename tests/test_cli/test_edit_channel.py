@@ -6,6 +6,7 @@ import unittest
 import mock
 import six
 
+import koji
 from koji_cli.commands import handle_edit_channel
 from . import utils
 
@@ -57,6 +58,26 @@ Options:
         handle_edit_channel(self.options, self.session,
                             [self.channel_old, '--name', self.channel_new,
                              '--description', self.description])
+        activate_session_mock.assert_called_once_with(self.session, self.options)
+        self.session.editChannel.assert_called_once_with(self.channel_old, name=self.channel_new,
+                                                         description=self.description)
+
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
+    @mock.patch('koji_cli.commands.activate_session')
+    def test_handle_edit_channel_older_hub(self, activate_session_mock, stderr):
+        expected_api = 'Invalid method: editChannel'
+        expected = 'editChannel is available on hub from Koji 1.26 version, your version ' \
+                   'is 1.25.1\n'
+        self.session.getKojiVersion.return_value = '1.25.1'
+
+        self.session.editChannel.side_effect = koji.GenericError(expected_api)
+        with self.assertRaises(SystemExit) as ex:
+            handle_edit_channel(self.options, self.session,
+                                [self.channel_old, '--name', self.channel_new,
+                                 '--description', self.description])
+        self.assertExitCode(ex, 1)
+        actual = stderr.getvalue()
+        self.assertMultiLineEqual(actual, expected)
         activate_session_mock.assert_called_once_with(self.session, self.options)
         self.session.editChannel.assert_called_once_with(self.channel_old, name=self.channel_new,
                                                          description=self.description)
