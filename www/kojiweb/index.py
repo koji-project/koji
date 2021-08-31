@@ -151,17 +151,18 @@ def _gssapiLogin(environ, session, principal):
     wprinc = options['WebPrincipal']
     keytab = options['WebKeytab']
     ccache = options['WebCCache']
+    authtype = options['WebAuthType']
     return session.gssapi_login(principal=wprinc, keytab=keytab,
-                                ccache=ccache, proxyuser=principal)
+                                ccache=ccache, proxyuser=principal, proxyauthtype=authtype)
 
 
 def _sslLogin(environ, session, username):
     options = environ['koji.options']
     client_cert = options['WebCert']
     server_ca = options['KojiHubCA']
-
+    authtype = options['WebAuthType']
     return session.ssl_login(client_cert, None, server_ca,
-                             proxyuser=username)
+                             proxyuser=username, proxyauthtype=authtype)
 
 
 def _assertLogin(environ):
@@ -272,22 +273,7 @@ def login(environ, page=None):
     session = _getServer(environ)
     options = environ['koji.options']
 
-    # If 'WebAuth' is not set, then default it to
-    # match the method of authenticating to the hub.
-    # This matches the original behaviour
-    webauth = options['WebAuth']
-    if not webauth:
-        if options['WebPrincipal']:
-            webauth = 'kerberos'
-        if options['WebCert']:
-            webauth = 'ssl'
-
-    if not webauth:
-        raise koji.AuthError(
-            'KojiWeb is incorrectly configured for authentication, contact the system '
-            'administrator')
-
-    if webauth == 'ssl':
+    if options['WebAuthType'] == koji.AUTHTYPE_SSL:
         ## Clients authenticate to KojiWeb by SSL, so extract
         ## the username via the (verified) client certificate
         if environ['wsgi.url_scheme'] != 'https':
@@ -304,8 +290,7 @@ def login(environ, page=None):
         username = environ.get('SSL_CLIENT_S_DN_CN')
         if not username:
             raise koji.AuthError('unable to get user information from client certificate')
-
-    elif webauth == 'kerberos':
+    elif options['WebAuthType'] == koji.AUTHTYPE_GSSAPI:
         ## Clients authenticate to KojiWeb by Kerberos, so extract
         ## the username via the REMOTE_USER which will be the
         ## Kerberos principal
@@ -316,18 +301,9 @@ def login(environ, page=None):
                 'presenting this page')
 
         username = principal
-    else:
-        ## It is still possible to get here if someone explicitly
-        ## set WebAuth to an incorrect value in the configuration file
-        raise koji.AuthError(
-            'KojiWeb is incorrectly configured for authentication, contact the system '
-            'administrator')
 
     ## This now is how we proxy the user to the hub
     if options['WebCert']:
-        ## The username might be a principal user@REALM. Remove
-        ## any @REALM part here.
-        username = username.split('@', 1)[0]
         if not _sslLogin(environ, session, username):
             raise koji.AuthError('could not login %s using SSL certificates' % username)
 
