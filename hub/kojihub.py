@@ -9594,32 +9594,30 @@ def policy_get_build_tags(data, taginfo=False):
     tags = {}
     if 'build_tag' in data:
         buildtag = get_tag(data['build_tag'], strict=True, event="auto")
-        # only cases we don't return list
-        if taginfo:
-            return buildtag
-        else:
-            return buildtag['name']
+        tags[buildtag['name']] = buildtag
     elif 'build_tags' in data:
         build_tags = [get_tag(t, strict=True, event="auto") for t in data['build_tags']]
         for tag in build_tags:
             tags[tag['name']] = tag
 
-    # see if we have a target
-    target = data.get('target')
-    if target:
-        target = get_build_target(target, strict=False)
+    if not tags:
+        # see if we have a target
+        target = data.get('target')
         if target:
-            tags[target['build_tag_name']] = get_tag(target['build_tag'], strict=True,
-                                                     event="auto")
+            target = get_build_target(target, strict=False)
+            if target:
+                tags[target['build_tag_name']] = get_tag(target['build_tag'], strict=True,
+                                                         event="auto")
 
-    # otherwise look at buildroots
-    for br_id in policy_get_brs(data):
-        if br_id is None:
-            tags[None] = None
-        else:
-            tinfo = get_buildroot(br_id, strict=True)
-            tags[tinfo['tag_name']] = get_tag(tinfo['tag_name'], strict=True,
-                                              event=tinfo['repo_create_event_id'])
+    if not tags:
+        # otherwise look at buildroots
+        for br_id in policy_get_brs(data):
+            if br_id is None:
+                tags[None] = None
+            else:
+                tinfo = get_buildroot(br_id, strict=True)
+                tags[tinfo['tag_name']] = get_tag(tinfo['tag_name'], strict=True,
+                                                  event=tinfo['repo_create_event_id'])
 
     if taginfo:
         tags = tags.values()
@@ -9838,15 +9836,7 @@ class BuildTagInheritsFromTest(koji.policy.BaseSimpleTest):
                 # content generator buildroots might not have tag info
                 continue
 
-            if tinfo.get('query_event') == 'auto':
-                # in case of "auto" for deleted tag revoke_event is last known event
-                # in case of "auto" for non-deleted tag, None is a correct active value
-                event = tinfo.get('revoke_event')
-            else:
-                # if there is "query_event" other then "auto" we want to propagate it
-                # in rest of cases (non-existent "query_event" field), pass None
-                event = tinfo.get('query_event')
-            for tag in readFullInheritance(tinfo['id'], event=event):
+            for tag in readFullInheritance(tinfo['id'], event=tinfo.get('query_event')):
                 if multi_fnmatch(tag['name'], args):
                     return True
         # otherwise...
