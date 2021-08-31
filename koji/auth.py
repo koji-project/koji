@@ -315,7 +315,7 @@ class Session(object):
 
         return (local_ip, local_port, remote_ip, remote_port)
 
-    def sslLogin(self, proxyuser=None):
+    def sslLogin(self, proxyuser=None, proxyauthtype=None):
         if self.logged_in:
             raise koji.AuthError("Already logged in")
 
@@ -361,6 +361,10 @@ class Session(object):
                 username = proxyuser
             else:
                 raise koji.AuthError('%s is not authorized to login other users' % client_dn)
+
+        # in this point we can continue with proxied user in same way as if it is not proxied
+        if proxyauthtype is not None:
+            authtype = proxyauthtype
 
         if authtype == koji.AUTHTYPE_GSSAPI and '@' in username:
             user_id = self.getUserIdFromKerberos(username)
