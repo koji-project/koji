@@ -1942,6 +1942,7 @@ def read_config(profile_name, user_config=None):
         'debug_xmlrpc': False,
         'pyver': None,
         'plugin_paths': None,
+        'force_auth': False,
     }
 
     result = config_defaults.copy()
@@ -1978,7 +1979,7 @@ def read_config(profile_name, user_config=None):
             # not have a default value set in the option parser.
             if name in result:
                 if name in ('anon_retry', 'offline_retry', 'use_fast_upload',
-                            'debug', 'debug_xmlrpc'):
+                            'debug', 'debug_xmlrpc', 'force_auth'):
                     result[name] = config.getboolean(profile_name, name)
                 elif name in ('max_retries', 'retry_interval',
                               'offline_retry_interval', 'poll_interval',
