@@ -3293,6 +3293,8 @@ def anon_handle_list_builds(goptions, session, args):
     parser.add_option("--type", help=_("List builds of this type."))
     parser.add_option("--prefix", help=_("Only builds starting with this prefix"))
     parser.add_option("--pattern", help=_("Only list builds matching this GLOB pattern"))
+    parser.add_option("--cg",
+                      help=_("Only list builds imported by matching content generator name"))
     parser.add_option("--source", help=_("Only builds where the source field matches "
                                          "(glob pattern)"))
     parser.add_option("--owner", help=_("List builds built by this owner"))
@@ -3313,6 +3315,8 @@ def anon_handle_list_builds(goptions, session, args):
         value = getattr(options, key)
         if value is not None:
             opts[key] = value
+    if options.cg:
+        opts['cgID'] = options.cg
     if options.package:
         try:
             opts['packageID'] = int(options.package)
