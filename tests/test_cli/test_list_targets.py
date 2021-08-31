@@ -37,7 +37,7 @@ class TestCliListTargets(utils.CliTestCase):
         time.tzset()
 
     @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
+    @mock.patch('koji_cli.commands.ensure_connection')
     def test_list_targets_error_args(self, ensure_connection_mock, stderr):
         session = mock.MagicMock(getAPIVersion=lambda: koji.API_VERSION,
                                  getBuildTargets=lambda n: [])
@@ -47,7 +47,7 @@ class TestCliListTargets(utils.CliTestCase):
         self.assertExitCode(ex, 2)
 
     @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
+    @mock.patch('koji_cli.commands.ensure_connection')
     def test_list_targets_error_all_not_found(self, ensure_connection_mock, stderr):
         session = mock.MagicMock(getAPIVersion=lambda: koji.API_VERSION,
                                  getBuildTargets=lambda n: [])
@@ -60,7 +60,7 @@ class TestCliListTargets(utils.CliTestCase):
     @mock.patch('optparse.OptionParser.parse_args',
                 return_value=(Values({'quiet': False, 'name': 'f50'}), []))
     @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
+    @mock.patch('koji_cli.commands.ensure_connection')
     def test_list_targets_error_name_not_found(self, ensure_connection_mock, stderr, opt):
         session = mock.MagicMock(getAPIVersion=lambda: koji.API_VERSION,
                                  getBuildTargets=lambda n: [])
@@ -71,7 +71,7 @@ class TestCliListTargets(utils.CliTestCase):
         self.assertTrue('No such build target:' in stderr.getvalue())
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
+    @mock.patch('koji_cli.commands.ensure_connection')
     def test_list_targets_all(self, ensure_connection_mock, stdout):
         session = mock.MagicMock(getAPIVersion=lambda: koji.API_VERSION,
                                  getBuildTargets=lambda n: _mock_targets)
@@ -88,7 +88,7 @@ class TestCliListTargets(utils.CliTestCase):
     @mock.patch('optparse.OptionParser.parse_args',
                 return_value=(Values({'quiet': False, 'name': 'f50'}), []))
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
+    @mock.patch('koji_cli.commands.ensure_connection')
     def test_list_targets_one(self, ensure_connection_mock, stdout, opt):
         session = mock.MagicMock(getAPIVersion=lambda: koji.API_VERSION,
                                  getBuildTargets=lambda n: _mock_targets)

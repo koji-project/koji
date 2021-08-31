@@ -3,7 +3,7 @@ import mock
 import six
 import unittest
 
-from koji_cli.commands import handle_list_volumes
+from koji_cli.commands import anon_handle_list_volumes
 from . import utils
 
 
@@ -13,12 +13,12 @@ class TestListVolumes(utils.CliTestCase):
     maxDiff = None
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_list_volumes(
+    @mock.patch('koji_cli.commands.ensure_connection')
+    def test_anon_handle_list_volumes(
             self,
-            activate_session_mock,
+            ensure_connection_mock,
             stdout):
-        """Test handle_list_volumes function"""
+        """Test anon_handle_list_volumes function"""
         session = mock.MagicMock()
         options = mock.MagicMock()
         vol_info = [
@@ -29,12 +29,12 @@ class TestListVolumes(utils.CliTestCase):
 
         expected = "\n".join([v['name'] for v in vol_info]) + "\n"
         session.listVolumes.return_value = vol_info
-        handle_list_volumes(options, session, [])
+        anon_handle_list_volumes(options, session, [])
         self.assert_console_message(stdout, expected)
 
-    def test_handle_list_volumes_help(self):
+    def test_anon_handle_list_volumes_help(self):
         self.assert_help(
-            handle_list_volumes,
+            anon_handle_list_volumes,
             """Usage: %s list-volumes
 (Specify the --help global option for a list of other help options)
 

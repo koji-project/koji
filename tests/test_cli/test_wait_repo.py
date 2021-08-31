@@ -54,6 +54,7 @@ class TestWaitRepo(utils.CliTestCase):
 
     def setUpMocks(self):
         self.activate_session = mock.patch('koji_cli.commands.activate_session').start()
+        self.ensure_connection = mock.patch('koji_cli.commands.ensure_connection').start()
         self.checkForBuilds = mock.patch('koji.util.checkForBuilds').start()
 
     def tearDown(self):

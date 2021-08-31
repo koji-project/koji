@@ -1793,6 +1793,7 @@ def handle_prune_signed_copies(goptions, session, args):
     cutoff_ts = time.time() - options.days * 24 * 3600
     if options.debug:
         print("Cutoff date: %s" % time.asctime(time.localtime(cutoff_ts)))
+    activate_session(session, goptions)
     if not options.build:
         if options.verbose:
             print("Getting builds...")
@@ -2145,11 +2146,12 @@ def handle_add_volume(goptions, session, args):
     print("Added volume %(name)s with id %(id)i" % volinfo)
 
 
-def handle_list_volumes(options, session, args):
+def anon_handle_list_volumes(options, session, args):
     "[info] List storage volumes"
     usage = _("usage: %prog list-volumes")
     parser = OptionParser(usage=get_usage_str(usage))
     (options, args) = parser.parse_args(args)
+    ensure_connection(session, options)
     for volinfo in session.listVolumes():
         print(volinfo['name'])
 
@@ -7265,6 +7267,7 @@ def anon_handle_download_logs(options, session, args):
             for child_task in child_tasks:
                 save_logs(child_task['id'], match, task_log_dir, recurse)
 
+    ensure_connection(session, options)
     for arg in args:
         if suboptions.nvr:
             suboptions.recurse = True
@@ -7413,6 +7416,7 @@ def anon_handle_wait_repo(options, session, args):
 
     tag = args[0]
 
+    ensure_connection(session, options)
     if suboptions.target:
         target_info = session.getBuildTarget(tag)
         if not target_info:
@@ -7707,6 +7711,7 @@ def anon_handle_search(options, session, args):
         matchType = 'regexp'
     elif options.exact:
         matchType = 'exact'
+    ensure_connection(session, options)
     data = session.search(pattern, type, matchType)
     for row in data:
         print(row['name'])

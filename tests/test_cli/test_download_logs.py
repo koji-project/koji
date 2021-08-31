@@ -24,7 +24,7 @@ class TestDownloadLogs(utils.CliTestCase):
             'koji_cli.commands.list_task_output_all_volumes').start()
         self.ensuredir = mock.patch('koji.ensuredir').start()
         self.download_file = mock.patch('koji_cli.commands.download_file').start()
-        self.activate_session = mock.patch('koji_cli.commands.activate_session').start()
+        self.ensure_connection = mock.patch('koji_cli.commands.ensure_connection').start()
         self.stdout = mock.patch('sys.stdout', new_callable=six.StringIO).start()
         self.stderr = mock.patch('sys.stderr', new_callable=six.StringIO).start()
 
