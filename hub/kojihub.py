@@ -14340,10 +14340,10 @@ class HostExports(object):
             import_build_log(joinpath(maven_task_dir, log_path),
                              build_info, subdir='maven')
 
+        ensure_volume_symlink(build_info)
+
         if rpm_results:
             _import_wrapper(rpm_results['task_id'], build_info, rpm_results)
-
-        ensure_volume_symlink(build_info)
 
         # update build state
         st_complete = koji.BUILD_STATES['COMPLETE']
@@ -14493,10 +14493,10 @@ class HostExports(object):
             import_build_log(joinpath(task_dir, relpath),
                              build_info, subdir=subdir)
 
+        ensure_volume_symlink(build_info)
+
         if rpm_results:
             _import_wrapper(rpm_results['task_id'], build_info, rpm_results)
-
-        ensure_volume_symlink(build_info)
 
         # update build state
         st_old = build_info['state']
