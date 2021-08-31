@@ -108,7 +108,10 @@ class TestPolicyGetCGs(unittest.TestCase):
 
     def _fakebr(self, br_id, strict):
         self.assertEqual(strict, True)
-        return {'cg_name': self._cgname(br_id)}
+        return {
+            'cg_name': self._cgname(br_id),
+            'repo_create_event_id': 1234,
+        }
 
     def _cgname(self, br_id):
         if br_id is None:
@@ -176,7 +179,7 @@ class TestBuildTagTest(unittest.TestCase):
         self.list_rpms.assert_not_called()
         self.list_archives.assert_not_called()
         self.get_buildroot.assert_not_called()
-        self.get_tag.assert_called_once_with('TAGINFO', strict=True)
+        self.get_tag.assert_called_once_with('TAGINFO', event='auto', strict=True)
 
     def test_build_tag_given_alt(self):
         obj = kojihub.BuildTagTest('buildtag foo*')
@@ -206,7 +209,10 @@ class TestBuildTagTest(unittest.TestCase):
         self.get_buildroot.assert_not_called()
 
     def _fakebr(self, br_id, strict=None):
-        return {'tag_name': self._brtag(br_id)}
+        return {
+            'tag_name': self._brtag(br_id),
+            'repo_create_event_id': 123,
+        }
 
     def _brtag(self, br_id):
         if br_id == '':
@@ -228,7 +234,14 @@ class TestBuildTagTest(unittest.TestCase):
         data = {'build': 'BUILDINFO'}
         self.assertFalse(obj.run(data))
 
-        self.get_tag.assert_not_called()
+        self.get_tag.assert_has_calls([
+            mock.call('a', event=123, strict=True),
+            mock.call('b', event=123, strict=True),
+            mock.call('c', event=123, strict=True),
+            mock.call('d', event=123, strict=True),
+            mock.call('not-foo-5', event=123, strict=True),
+            mock.call('foo-3-build', event=123, strict=True),
+        ], any_order=True)
 
     def test_build_tag_no_info(self):
         obj = kojihub.BuildTagTest('buildtag foo*')
@@ -287,35 +300,35 @@ class TestBuildTagInheritsFromTest(unittest.TestCase):
     def test_no_inheritance(self):
         obj = kojihub.BuildTagInheritsFromTest('buildtag_inherits_from foo*')
         data = {}
-        self.policy_get_build_tags.return_value = [{'tag_id': 123, 'tag_name': 'foox'}]
+        self.policy_get_build_tags.return_value = [{'id': 123, 'tag_name': 'foox'}]
         self.readFullInheritance.return_value = []
         self.assertFalse(obj.run(data))
         self.policy_get_build_tags.assert_called_once_with(data, taginfo=True)
-        self.readFullInheritance.assert_called_once_with(123)
+        self.readFullInheritance.assert_called_once_with(123, event=None)
 
     def test_inheritance_pass(self):
         obj = kojihub.BuildTagInheritsFromTest('buildtag_inherits_from foo*')
         data = {}
-        self.policy_get_build_tags.return_value = [{'tag_id': 123, 'tag_name': 'wrong'}]
+        self.policy_get_build_tags.return_value = [{'id': 123, 'tag_name': 'wrong'}]
         self.readFullInheritance.return_value = [
             {'name': 'still-wrong'},
             {'name': 'foox'},
         ]
         self.assertTrue(obj.run(data))
         self.policy_get_build_tags.assert_called_once_with(data, taginfo=True)
-        self.readFullInheritance.assert_called_once_with(123)
+        self.readFullInheritance.assert_called_once_with(123, event=None)
 
     def test_inheritance_fail(self):
         obj = kojihub.BuildTagInheritsFromTest('buildtag_inherits_from foo*')
         data = {}
-        self.policy_get_build_tags.return_value = [{'tag_id': 123, 'tag_name': 'wrong'}]
+        self.policy_get_build_tags.return_value = [{'id': 123, 'tag_name': 'wrong'}]
         self.readFullInheritance.return_value = [
             {'name': 'still-wrong'},
             {'name': 'still-still-wrong'},
         ]
         self.assertFalse(obj.run(data))
         self.policy_get_build_tags.assert_called_once_with(data, taginfo=True)
-        self.readFullInheritance.assert_called_once_with(123)
+        self.readFullInheritance.assert_called_once_with(123, event=None)
 
 
 class TestBuildTypeTest(unittest.TestCase):
