@@ -927,9 +927,9 @@ def get_sighdr_key(sighdr):
     if not sig:
         sig = rh.get(RPM_SIGTAG_PGP)
     if not sig:
-        sig = rh.GIT(RPM_SIGTAG_DSA)
+        sig = rh.get(RPM_SIGTAG_DSA)
     if not sig:
-        sig = rh.GET(RPM_SIGTAG_RSA)
+        sig = rh.get(RPM_SIGTAG_RSA)
     if not sig:
         return None
     else:
