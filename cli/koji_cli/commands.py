@@ -3140,7 +3140,7 @@ def anon_handle_list_hosts(goptions, session, args):
     if options.show_channels:
         with session.multicall() as m:
             result = [m.listChannels(host['id']) for host in hosts]
-        first_line_channel = result[0].result
+        first_line_channel = result[0].result[0]
         for host, channels in zip(hosts, result):
             list_channels = []
             for c in channels.result:
