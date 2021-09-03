@@ -12833,11 +12833,28 @@ class RootExports(object):
 
     def listHosts(self, arches=None, channelID=None, ready=None, enabled=None, userID=None,
                   queryOpts=None):
-        """Get a list of hosts.  "arches" is a list of string architecture
-        names, e.g. ['i386', 'ppc64'].  If one of the arches associated with a given
-        host appears in the list, it will be included in the results.  If "ready" and "enabled"
-        are specified, only hosts with the given value for the respective field will
-        be included."""
+        """List builder hosts.
+
+        All parameters are optional.
+
+        :param list arches: a list of string architecture names, e.g.
+                            ['x86_64', 'ppc64le']. If one of the arches
+                            associated with a given host appears in the list,
+                            it will be included in the results.
+        :param int|str channelID: Channel name or ID to search. If specified,
+                                  Koji will return only the builder hosts
+                                  associated with this channel.
+        :param bool ready: If specified, only include hosts that are ready
+                           (True) or not ready (False).
+        :param bool enabled: If specified, only include hosts that are enabled
+                           (True) or not enabled (False).
+        :param int|str userID: If specified, only include hosts corresponding
+                               to a builder "user" account name or ID number.
+        :param queryOpts: query options used by the QueryProcessor.
+        :returns: A list of maps containing information about each builder
+                  host. If no matches are found, this method returns an empty
+                  list.
+        """
         clauses = ['host_config.active IS TRUE']
         joins = ['host ON host.id = host_config.host_id']
         if arches is not None:
