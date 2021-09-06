@@ -3013,7 +3013,10 @@ def anon_handle_list_channels(goptions, session, args):
         channels = sorted([x for x in session.listChannels(**opts)], key=lambda x: x['name'])
     except koji.ParameterError:
         channels = sorted([x for x in session.listChannels()], key=lambda x: x['name'])
-    first_item = channels[0]
+    if len(channels) > 0:
+        first_item = channels[0]
+    else:
+        first_item = {}
     session.multicall = True
     for channel in channels:
         session.listHosts(channelID=channel['id'])
@@ -3137,7 +3140,7 @@ def anon_handle_list_hosts(goptions, session, args):
     if options.show_channels:
         with session.multicall() as m:
             result = [m.listChannels(host['id']) for host in hosts]
-        first_line_channel = result[0].result
+        first_line_channel = result[0].result[0]
         for host, channels in zip(hosts, result):
             list_channels = []
             for c in channels.result:
