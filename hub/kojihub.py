@@ -4222,7 +4222,7 @@ def find_build_id(X, strict=False):
 def get_build(buildInfo, strict=False):
     """Return information about a build.
 
-    buildID may be either a int ID, a string NVR, or a map containing
+    buildInfo may be either a int ID, a string NVR, or a map containing
     'name', 'version' and 'release.
 
     A map will be returned containing the following keys*:
