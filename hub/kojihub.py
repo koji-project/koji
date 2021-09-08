@@ -1283,7 +1283,7 @@ def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None,
     :param int package: filter on package name
     :param str owner: filter on user name
     :param str type: restrict the list to builds of the given type.  Currently the supported
-                     types are 'maven', 'win', and 'image'.
+                     types are 'maven', 'win', 'image', or any custom content generator btypes.
     :returns [dict]: list of buildinfo dicts
     """
     # build - id pkg_id version release epoch

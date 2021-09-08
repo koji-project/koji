@@ -2550,7 +2550,8 @@ def anon_handle_latest_build(goptions, session, args):
     parser.add_option("--paths", action="store_true", help=_("Show the file paths"))
     parser.add_option("--type",
                       help=_("Show builds of the given type only. "
-                             "Currently supported types: maven"))
+                             "Currently supported types: maven, win, image, or any custom "
+                             "content generator btypes"))
     (options, args) = parser.parse_args(args)
     if len(args) == 0:
         parser.error(_("A tag name must be specified"))
