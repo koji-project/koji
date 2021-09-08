@@ -48,8 +48,18 @@ from fnmatch import fnmatch
 from gzip import GzipFile
 from optparse import SUPPRESS_HELP, OptionParser
 
-import Cheetah.Template
+try:
+    # Due to https://bugzilla.redhat.com/show_bug.cgi?id=1923971
+    # and https://pagure.io/koji/issue/2964
+    # guestfs needs to be imported before dnf, so json libraries will
+    # load in non-breaking order (guestfs would be otherwise imported
+    # by ImageFactory/Oz
+    import guestfs  # noqa: F401
+except ImportError:
+    pass
 import dnf
+
+import Cheetah.Template
 import librepo
 import requests
 import rpm
