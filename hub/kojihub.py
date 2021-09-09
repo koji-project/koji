@@ -8152,24 +8152,23 @@ def untagged_builds(name=None, queryOpts=None):
     fields = ('build.id', 'package.name', 'build.version', 'build.release')
     aliases = ('id', 'name', 'version', 'release')
     st_complete = koji.BUILD_STATES['COMPLETE']
-    tables = ('build',)
-    joins = []
-    if name is None:
-        joins.append("""package ON package.id = build.pkg_id""")
-    else:
-        joins.append("""package ON package.name=%(name)s AND package.id = build.pkg_id""")
-    joins.append("""LEFT OUTER JOIN tag_listing ON tag_listing.build_id = build.id
-                    AND tag_listing.active = TRUE""")
-    clauses = ["tag_listing.tag_id IS NULL", "build.state = %(st_complete)i"]
-    # q = """SELECT build.id, package.name, build.version, build.release
-    # FROM build
-    #    JOIN package on package.id = build.pkg_id
-    #    LEFT OUTER JOIN tag_listing ON tag_listing.build_id = build.id
-    #        AND tag_listing.active IS TRUE
-    # WHERE tag_listing.tag_id IS NULL AND build.state = %(st_complete)i"""
-    # return _multiRow(q, locals(), aliases)
+    # following can be achieved with simple query but with
+    # linear complexity while this one will be parallelized to
+    # full number of workers giving at least 2x speedup
+    tables = ('build', 'package')
+    clauses = [
+        """NOT EXISTS
+             (SELECT 1 FROM tag_listing
+              WHERE tag_listing.build_id = build.id
+                AND tag_listing.active IS TRUE)""",
+        "package.id = build.pkg_id",
+        "build.state = %(st_complete)i",
+    ]
+    if name is not None:
+        clauses.append('package.name = %(name)s')
+
     query = QueryProcessor(columns=fields, aliases=aliases, tables=tables,
-                           joins=joins, clauses=clauses, values=locals(),
+                           clauses=clauses, values=locals(),
                            opts=queryOpts)
     return query.iterate()
 
