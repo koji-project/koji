@@ -11547,7 +11547,7 @@ class RootExports(object):
         :param str source: only builds where the source field matches (glob pattern)
         :param str prefix: only builds whose package name starts with that prefix
         :param str pattern: only builds whose nvr matches the glob pattern
-        :param int stage: only builds in the given state
+        :param int state: only builds in the given state
 
         Timestamp filter parameters
             - these limit the results to builds where the corresponding
