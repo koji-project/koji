@@ -17,7 +17,7 @@ class TestRemoveSig(utils.CliTestCase):
         self.session = mock.MagicMock()
         self.session.getAPIVersion.return_value = koji.API_VERSION
 
-    def test_delete_sig_help(self):
+    def test_remove_sig_help(self):
         self.assert_help(
             handle_remove_sig,
             """Usage: %s remove-sig [options] <rpm-id/n-v-r.a/rpminfo>
@@ -33,7 +33,7 @@ Options:
 """ % self.progname)
 
     @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_delete_sig_without_option(self, stderr):
+    def test_remove_sig_without_option(self, stderr):
         expected = "Usage: %s remove-sig [options] <rpm-id/n-v-r.a/rpminfo>\n" \
                    "(Specify the --help global option for a list of other help options)\n\n" \
                    "%s: error: Please specify an RPM\n" % (self.progname, self.progname)
@@ -43,7 +43,7 @@ Options:
         self.assert_console_message(stderr, expected)
 
     @mock.patch('sys.stdout', new_callable=StringIO)
-    def test_delete_sig_non_exist_rpm(self, stdout):
+    def test_remove_sig_non_exist_rpm(self, stdout):
         rpm = '1234'
         expected = "No such rpm in system: %s\n" % rpm
         self.session.deleteRPMSig.side_effect = koji.GenericError('No such rpm: DATA')
@@ -58,8 +58,36 @@ Options:
             activate_session=None)
         self.session.deleteRPMSig.assert_called_with('1234', sigkey=None, all_sigs=True)
 
-    def test_delete_sig_valid(self):
+    def test_remove_sig_valid(self):
         rpm = '1'
         self.session.deleteRPMSig.return_value = None
         handle_remove_sig(self.options, self.session, [rpm, '--sigkey', 'testkey'])
         self.session.deleteRPMSig.assert_called_with('1', sigkey='testkey', all_sigs=False)
+
+    @mock.patch('sys.stdout', new_callable=StringIO)
+    def test_remove_sig_without_all_and_sigkey(self, stdout):
+        rpm = '1234'
+        expected = "Either --sigkey or --all options must be given\n"
+
+        self.assert_system_exit(
+            handle_remove_sig,
+            self.options,
+            self.session,
+            [rpm],
+            stderr=self.format_error_message(expected),
+            exit_code=1,
+            activate_session=None)
+
+    @mock.patch('sys.stdout', new_callable=StringIO)
+    def test_remove_sig_with_all_and_sigkey(self, stdout):
+        rpm = '1234'
+        expected = "Conflicting options specified\n"
+
+        self.assert_system_exit(
+            handle_remove_sig,
+            self.options,
+            self.session,
+            [rpm, '--all', '--sigkey', 'testkey'],
+            stderr=self.format_error_message(expected),
+            exit_code=1,
+            activate_session=None)
