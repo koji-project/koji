@@ -7622,6 +7622,9 @@ def add_rpm_sig(an_rpm, sighdr):
 def delete_rpm_sig(rpminfo, sigkey=None, all_sigs=False):
     """Delete rpm signature
 
+    Only use this method in extreme situations, because it goes against
+    Koji's design of immutable, auditable data.
+
     :param dict/str/id rpm: map containing 'name', 'version', 'release', and 'arch'
                             string N-V-R.A
                             int ID
@@ -12062,6 +12065,11 @@ class RootExports(object):
 
     def deleteRPMSig(self, rpminfo, sigkey=None, all_sigs=False):
         """Delete rpm signature
+
+        Only use this method in extreme situations, because it goes against
+        Koji's design of immutable, auditable data.
+
+        This call requires ``admin`` permission (``sign`` is not sufficient).
 
         :param dict/str/id rpm: map containing 'name', 'version', 'release', and 'arch'
                                 string N-V-R.A

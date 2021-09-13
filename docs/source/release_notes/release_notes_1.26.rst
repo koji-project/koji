@@ -146,9 +146,10 @@ connection string
 
 | PR: https://pagure.io/koji/pull-request/2965
 
-New call for removing signatures. This call should be used only in extreme
-situations as it is going partly against auditable nature of koji's date, so it
-is limited only for ``admin`` permission (``sign`` is not sufficient here).
+The ``deleteRPMSig`` hub call removes RPM signatures from Koji. Only use this
+method in extreme situations, because it goes against Koji's design of
+immutable, auditable data. This call requires ``admin`` permission (``sign``
+is not sufficient).
 
 VM
 --
