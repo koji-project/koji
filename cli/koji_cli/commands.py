@@ -1664,7 +1664,9 @@ def handle_import_sig(goptions, session, args):
 def handle_remove_sig(goptions, session, args):
     "[admin] Remove signed RPMs from db and disk"
     usage = _("usage: %prog remove-sig [options] <rpm-id/n-v-r.a/rpminfo>")
-    parser = OptionParser(usage=get_usage_str(usage))
+    description = _("Only use this method in extreme situations, because it ")
+    description += _("goes against Koji's design of immutable, auditable data.")
+    parser = OptionParser(usage=get_usage_str(usage), description=description)
     parser.add_option("--sigkey", action="store", default=None, help=_("Specify signature key"))
     parser.add_option("--all", action="store_true", default=False,
                       help=_("Remove all signed copies for specified RPM"))

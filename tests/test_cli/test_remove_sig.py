@@ -23,6 +23,9 @@ class TestRemoveSig(utils.CliTestCase):
             """Usage: %s remove-sig [options] <rpm-id/n-v-r.a/rpminfo>
 (Specify the --help global option for a list of other help options)
 
+Only use this method in extreme situations, because it goes against Koji's
+design of immutable, auditable data.
+
 Options:
   -h, --help       show this help message and exit
   --sigkey=SIGKEY  Specify signature key
