@@ -2146,12 +2146,12 @@ def handle_add_volume(goptions, session, args):
     print("Added volume %(name)s with id %(id)i" % volinfo)
 
 
-def anon_handle_list_volumes(options, session, args):
+def anon_handle_list_volumes(goptions, session, args):
     "[info] List storage volumes"
     usage = _("usage: %prog list-volumes")
     parser = OptionParser(usage=get_usage_str(usage))
     (options, args) = parser.parse_args(args)
-    ensure_connection(session, options)
+    ensure_connection(session, goptions)
     for volinfo in session.listVolumes():
         print(volinfo['name'])
 
@@ -7690,7 +7690,7 @@ _search_types = ('package', 'build', 'tag', 'target', 'user', 'host', 'rpm',
                  'maven', 'win')
 
 
-def anon_handle_search(options, session, args):
+def anon_handle_search(goptions, session, args):
     "[search] Search the system"
     usage = _("usage: %prog search [options] <search_type> <pattern>")
     usage += _('\nAvailable search types: %s') % ', '.join(_search_types)
@@ -7711,7 +7711,7 @@ def anon_handle_search(options, session, args):
         matchType = 'regexp'
     elif options.exact:
         matchType = 'exact'
-    ensure_connection(session, options)
+    ensure_connection(session, goptions)
     data = session.search(pattern, type, matchType)
     for row in data:
         print(row['name'])

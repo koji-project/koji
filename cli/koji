@@ -127,7 +127,7 @@ def get_options():
     parser.add_option("--password", help=_("specify password"))
     parser.add_option("--noauth", action="store_true", default=False,
                       help=_("do not authenticate"))
-    parser.add_option("--force-auth", action="store_true", default=False,
+    parser.add_option("--force-auth", action="store_true",  # default (False) comes from the config
                       help=_("authenticate even for read-only operations"))
     parser.add_option("--authtype", help=_("force use of a type of authentication, options: "
                                            "noauth, ssl, password, or kerberos"))
