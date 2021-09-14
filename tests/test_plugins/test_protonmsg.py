@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 
+import json
 import tempfile
 import unittest
 
@@ -47,11 +48,14 @@ extra_limit = 2048
             self.assertEqual(msg['props'][kw], kws[kw])
         self.assertEqual(len(msg['props']), len(kws))
         if body:
-            self.assertEqual(msg['body'], body)
+            if isinstance(body, str):
+                body = json.loads(body)
+            msg_body = json.loads(msg['body'])
+            self.assertDictEqual(msg_body, body)
 
     def test_queue_msg(self):
-        protonmsg.queue_msg('test.msg', {'testheader': 1}, 'test body')
-        self.assertMsg('test.msg', body='"test body"', testheader=1)
+        protonmsg.queue_msg('test.msg', {'testheader': 1}, {"test": "body"})
+        self.assertMsg('test.msg', body={"test": "body"}, testheader=1)
 
     def test_queue_msg_not_serializable(self):
         # mostly just testing that encoder does not error on data that cannot
@@ -131,8 +135,14 @@ extra_limit = 2048
                 'build_id': 1}
         assert_info = {'name': 'test-pkg',
                        'version': '1.0',
-                       'release': '1',
-                       'btypes': {'image': {'build_id': 1}}}
+                       'release': '1'}
+        msg_body = {
+            'info': info.copy(),
+            'btypes': {'image': {'build_id': 1}},
+            "attribute": "state",
+            "old": 0,
+            "new": 1,
+        }
         self.get_build_type.return_value = {'image': {'build_id': 1}}
         protonmsg.prep_build_state_change('postBuildStateChange',
                                           info=info, attribute='volume_id',
@@ -145,7 +155,7 @@ extra_limit = 2048
                                           old=0, new=1)
         self.assertMsg('build.complete', type='BuildStateChange',
                        attribute='state', old='BUILDING', new='COMPLETE',
-                       **assert_info)
+                       body = msg_body, **assert_info)
 
     def test_prep_build_state_change_with_empty_build_type(self):
         info = {'name': 'test-pkg',
@@ -154,8 +164,14 @@ extra_limit = 2048
                 'build_id': 1}
         assert_info = {'name': 'test-pkg',
                        'version': '1.0',
-                       'release': '1',
-                       'btypes': {}}
+                       'release': '1'}
+        msg_body = {
+            'info': info.copy(),
+            'btypes': {},
+            'attribute': 'state',
+            'old': 0,
+            'new': 1,
+        }
         self.get_build_type.return_value = {}
         protonmsg.prep_build_state_change('postBuildStateChange',
                                           info=info, attribute='volume_id',
@@ -168,7 +184,7 @@ extra_limit = 2048
                                           old=0, new=1)
         self.assertMsg('build.complete', type='BuildStateChange',
                        attribute='state', old='BUILDING', new='COMPLETE',
-                       **assert_info)
+                       body=msg_body, **assert_info)
 
     def test_prep_import(self):
         build = {'name': 'test-pkg', 'version': '1.0', 'release': '1'}
@@ -244,7 +260,7 @@ extra_limit = 2048
     @patch('protonmsg.Container')
     def test_send_queued_msgs_fail(self, Container):
         context.protonmsg_msgs = [{'address': 'test.topic', 'props': {'testheader': 1},
-                                   'body': 'test body'}]
+                                   'body': '{"test": "body"}'}]
         protonmsg.send_queued_msgs('postCommit')
 
         log = protonmsg.LOG
