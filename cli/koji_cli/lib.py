@@ -136,6 +136,10 @@ def get_usage_str(usage):
 
 
 def ensure_connection(session, options=None):
+    if options and options.force_auth:
+        # in such case we should act as a real activate_session
+        activate_session(session, options)
+        return
     try:
         ret = session.getAPIVersion()
     except requests.exceptions.ConnectionError as ex:
@@ -751,6 +755,8 @@ def activate_session(session, options):
             warn(_("Could not connect to Kerberos authentication service: %s") % e.args[1])
     if not noauth and not session.logged_in:
         error(_("Unable to log in, no authentication methods available"))
+    # don't add "options" to ensure_connection it would create loop in case of --force-auth
+    # when it calls activate_session
     ensure_connection(session)
     if getattr(options, 'debug', None):
         print("successfully connected to hub")
