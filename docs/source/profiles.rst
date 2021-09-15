@@ -1,74 +1,81 @@
 =============
 Koji Profiles
 =============
-This document describes how to work with koji profiles.
+
+Koji clients can connect to multiple Koji instances via "profiles". These are
+configuration sections that describe how to connect to different environments.
 
 
 Command Line Interface
 ======================
-Koji client allows connecting to multiple koji instances from CLI
-by using profiles. The default profile is given by executable file name,
-which is 'koji'.
 
-To change koji profile, you can:
+By default, the ``koji`` CLI will use a profile named ``koji``. (This profile
+is Fedora's production Koji environment.)
 
- * run koji with --profile=$profile_name argument
- * change executable file name by symlinking $profile_name -> koji
+You can choose a different profile on the CLI. For example, to choose CentOS's
+"cbs" profile instead:
 
+ * Run ``koji`` with ``--profile=cbs``, for example ``koji --profile cbs
+   list-hosts``.
+
+ * Symlink or alias the profile name to the ``koji`` executable. For example,
+   ``ln -s /usr/bin/koji /usr/bin/cbs`` or ``alias cbs=koji``. The CLI will
+   use the executable name as the profile name, so you can simply run ``cbs
+   list-hosts``.
 
 Configuration Files
 ===================
-Configuration files are located in following locations:
 
- * /etc/koji.conf
- * /etc/koji.conf.d/\*.conf
- * ~/.koji/config.d/\*.conf
- * user-specified config
+The Koji client searches for profile definitions in the following locations:
 
-Koji reads them, looking for [$profile_name] sections.
+ * ``/etc/koji.conf``
+ * ``/etc/koji.conf.d/*.conf``
+ * ``~/.koji/config.d/*.conf``
+ * The ``--config=FILE`` option on the CLI
 
+Koji reads all these files and searches for ``[$profile_name]`` sections. For
+example, if you use a profile named ``cbs``, the Koji client will search for a
+section titled ``[cbs]`` in the files.
 
 Using Koji Profiles in Python
 =============================
-Instead of using koji module directly,
-get profile specific module by calling::
 
-    >>> mod = koji.get_profile_module($profile_name)
+Instead of using the ``koji`` Python module directly, you can get a
+profile-specific module by calling::
 
-This module is clone of koji module with additional
-profile specific tweaks.
+    mykoji = koji.get_profile_module("cbs")
 
-Profile configuration is available via::
+This ``mykoji`` module is clone of the ``koji`` module with additional
+profile-specific tweaks.
 
-    >>> mod.config
+You can read all the settings in the profile configuration with the
+``.config`` property::
+
+    mykoji.config        # optparse.Values object
+    vars(mykoji.config)  # plain python dict
 
 
-Example
--------
+Examples
+--------
 
-Print configuration::
+Print configurations for multiple profiles::
 
     import koji
 
     fedora_koji = koji.get_profile_module("koji")
-    ppc_koji = koji.get_profile_module("ppc-koji")
+    stage_koji = koji.get_profile_module("stg")
 
-    for i in (fedora_koji, ppc_koji):
-        print("PROFILE: %s" % i.config.profile)
-        for key, value in sorted(i.config.__dict__.items()):
+    for this_koji in (fedora_koji, stage_koji):
+        print("PROFILE: %s" % this_koji.config.profile)
+        for key, value in sorted(vars(this_koji.config).items()):
             print("    %s = %s" % (key, value))
         print("")
 
 
-Use ClientSession::
+Use ``ClientSession`` to send RPCs to the hub::
 
     import koji
 
-    koji_module = koji.get_profile_module("koji")
-    client = koji_module.ClientSession(koji_module.config.server)
+    mykoji = koji.get_profile_module("koji")
+    client = mykoji.ClientSession(mykoji.config.server)
     print(client.listTags())
-
-
-TODO
-====
-* consider using pyxdg for user config locations
