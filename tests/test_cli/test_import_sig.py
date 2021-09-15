@@ -43,6 +43,8 @@ class TestImportSIG(utils.CliTestCase):
                 'arch': 'x86_64',
                 'siggpg': None,
                 'sigpgp': None,
+                'dsaheader': None,
+                'rsaheader': None,
             },
             {
                 'sourcepackage': 1,
@@ -52,6 +54,8 @@ class TestImportSIG(utils.CliTestCase):
                 'arch': 'x86_64',
                 'siggpg': None,
                 'sigpgp': None,
+                'dsaheader': None,
+                'rsaheader': None,
             },
             {
                 'sourcepackage': 1,
@@ -61,6 +65,8 @@ class TestImportSIG(utils.CliTestCase):
                 'arch': 'x86_64',
                 'siggpg': None,
                 'sigpgp': None,
+                'dsaheader': None,
+                'rsaheader': None,
             }
         ]
 
@@ -121,6 +127,8 @@ class TestImportSIG(utils.CliTestCase):
         for data in self.rpm_headers:
             data['siggpg'] = fake_sigkey
             data['sigpgp'] = fake_sigkey
+            data['dsaheader'] = fake_sigkey
+            data['rsaheader'] = fake_sigkey
             tmp = data.copy()
             tmp['arch'] = 'src' if tmp['sourcepackage'] else tmp['arch']
             expected += "No such rpm in system: %(name)s-%(version)s-%(release)s.%(arch)s" % \
@@ -239,6 +247,47 @@ class TestImportSIG(utils.CliTestCase):
 
         # restore os.path.exists patch
         os_path_exists_patch.stop()
+
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('koji_cli.commands.activate_session')
+    def test_handle_import_sig_sigkey_from_header_signed(
+            self,
+            activate_session_mock,
+            stdout, stderr):
+        """Test sigkey computation from header-only signed rpm in handle_import_sig function"""
+        data_path = os.path.abspath("tests/test_hub/data/rpms")
+        arguments = [os.path.join(data_path, 'header-signed.rpm')]
+        sigkey = '15f712be'
+
+        options = mock.MagicMock()
+        session = mock.MagicMock()
+        expected = ''
+
+        for pkg in arguments:
+            expected += "Importing signature [key %s] from %s..." % (sigkey, pkg) + "\n"
+            expected += "Writing signed copy" + "\n"
+
+        session.getRPM.side_effect = [
+            {
+                'sourcepackage': 0,
+                'name': 'testpkg',
+                'version': '1.0.0',
+                'release': '1',
+                'arch': 'x86_64',
+                'external_repo_id': 0,
+                'id': 1,
+            }
+        ]
+        session.queryRPMSigs.side_effect = None
+        session.queryRPMSigs.return_value = []
+
+        # Run
+        handle_import_sig(options, session, arguments + ['--test'])
+
+        self.assert_console_message(stdout, expected)
+        session.addRPMSig.assert_not_called()
+        session.writeSignedRPM.assert_not_called()
 
     def test_handle_import_sig_argument_test(self):
         """Test handle_import_sig function without arguments"""
