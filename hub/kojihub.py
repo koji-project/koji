@@ -3759,8 +3759,12 @@ def get_external_repo(info, strict=False, event=None):
     :returns: a map containing the id, name, and url of the repository.
     """
     repos = get_external_repos(info, event=event)
-    if repos:
+    if len(repos) == 1:
         return repos[0]
+    elif len(repos) > 1:
+        # a very defective situation which should never occur
+        # (name/id should be exact identification)
+        raise koji.GenericError('More than one repo in the result.')
     else:
         if strict:
             raise koji.GenericError('No such repo: %s' % info)
