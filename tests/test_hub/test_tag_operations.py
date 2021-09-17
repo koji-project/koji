@@ -33,14 +33,14 @@ class TestTagBuild(unittest.TestCase):
 
     def setUp(self):
         self.InsertProcessor = mock.patch('kojihub.InsertProcessor',
-                side_effect=self.getInsert).start()
+                                          side_effect=self.getInsert).start()
         self.inserts = []
         self.UpdateProcessor = mock.patch('kojihub.UpdateProcessor',
-                side_effect=self.getUpdate).start()
+                                          side_effect=self.getUpdate).start()
         self.updates = []
         self.query_executeOne = mock.MagicMock()
         self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
-                side_effect=self.getQuery).start()
+                                         side_effect=self.getQuery).start()
         self.queries = []
         self._dml = mock.patch('kojihub._dml').start()
         self.get_tag = mock.patch('kojihub.get_tag').start()
@@ -100,6 +100,48 @@ class TestTagBuild(unittest.TestCase):
         self.assertEqual(insert.rawdata, {})
         insert = self.inserts[0]
 
+    def test_simple_tag_with_user(self):
+        self.check_tag_access.return_value = (True, False, "")
+        self.get_build.return_value = {
+            'id': 1,
+            'name': 'name',
+            'version': 'version',
+            'release': 'release',
+            'state': koji.BUILD_STATES['COMPLETE'],
+        }
+        self.get_tag.return_value = {
+            'id': 777,
+            'name': 'tag',
+        }
+        self.get_user.return_value = {
+            'id': 999,
+            'name': 'user',
+        }
+        self.context.event_id = 42
+        # set return for the already tagged check
+        self.query_executeOne.return_value = None
+
+        # call it
+        kojihub._tag_build('sometag', 'name-version-release', user_id=999)
+
+        self.get_tag.called_once_with('sometag', strict=True)
+        self.get_user.called_one_with(999, strict=True)
+        self.get_build.called_once_with('name-version-release', strict=True)
+        self.context.session.assertPerm.assert_not_called()
+
+        # check the insert
+        self.assertEqual(len(self.inserts), 1)
+        insert = self.inserts[0]
+        self.assertEqual(insert.table, 'tag_listing')
+        values = {
+            'build_id': 1,
+            'create_event': 42,
+            'creator_id': 999,
+            'tag_id': 777
+        }
+        self.assertEqual(insert.data, values)
+        self.assertEqual(insert.rawdata, {})
+        insert = self.inserts[0]
 
     def test_simple_untag(self):
         self.check_tag_access.return_value = (True, False, "")
@@ -128,6 +170,53 @@ class TestTagBuild(unittest.TestCase):
         self.get_tag.called_once_with('sometag', strict=True)
         self.get_build.called_once_with('name-version-release', strict=True)
         self.context.session.assertPerm.called_with('admin')
+        self.assertEqual(len(self.inserts), 0)
+
+        # check the update
+        self.assertEqual(len(self.updates), 1)
+        update = self.updates[0]
+        self.assertEqual(update.table, 'tag_listing')
+        values = {
+            'build_id': 1,
+            'tag_id': 777
+        }
+        data = {
+            'revoke_event': 42,
+            'revoker_id': 999,
+        }
+        self.assertEqual(update.rawdata, {'active': 'NULL'})
+        self.assertEqual(update.data, data)
+        self.assertEqual(update.values, values)
+        update = self.updates[0]
+
+    def test_simple_untag_with_user(self):
+        self.check_tag_access.return_value = (True, False, "")
+        self.get_build.return_value = {
+            'id': 1,
+            'name': 'name',
+            'version': 'version',
+            'release': 'release',
+            'state': koji.BUILD_STATES['COMPLETE'],
+        }
+        self.get_tag.return_value = {
+            'id': 777,
+            'name': 'tag',
+        }
+        self.get_user.return_value = {
+            'id': 999,
+            'name': 'user',
+        }
+        self.context.event_id = 42
+        # set return for the already tagged check
+        self.query_executeOne.return_value = None
+
+        # call it
+        kojihub._untag_build('sometag', 'name-version-release', user_id=999)
+
+        self.get_tag.called_once_with('sometag', strict=True)
+        self.get_user.called_one_with(999, strict=True)
+        self.get_build.called_once_with('name-version-release', strict=True)
+        self.context.session.assertPerm.assert_not_called()
         self.assertEqual(len(self.inserts), 0)
 
         # check the update

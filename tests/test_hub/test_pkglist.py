@@ -4,6 +4,7 @@ import unittest
 import koji
 import kojihub
 
+
 def get_user_factory(data):
     def get_user(userInfo, strict=False):
         if isinstance(userInfo, int):
@@ -14,8 +15,10 @@ def get_user_factory(data):
             if ui[key] == userInfo:
                 return ui
         if strict:
+            user_id = 112233
             raise koji.GenericError(user_id)
     return get_user
+
 
 class TestPkglistBlock(unittest.TestCase):
     def setUp(self):
@@ -46,14 +49,37 @@ class TestPkglistBlock(unittest.TestCase):
         lookup_package.assert_called_once_with('pkg', strict=True)
         pkglist_add.assert_called_once_with('tag', 'pkg', block=True, force=force)
 
+    @mock.patch('kojihub.readPackageList')
+    @mock.patch('kojihub.lookup_package')
+    @mock.patch('kojihub.get_tag')
+    @mock.patch('kojihub.pkglist_add')
+    def test_pkglist_block_package_error(
+            self, pkglist_add, get_tag, lookup_package, readPackageList):
+        pkg_name = 'pkg'
+        tag_name = 'tag'
+        force = mock.MagicMock()
+        get_tag.return_value = {'name': tag_name, 'id': 123}
+        lookup_package.return_value = {'name': pkg_name, 'id': 321}
+        readPackageList.return_value = []
+
+        with self.assertRaises(koji.GenericError) as ex:
+            kojihub.pkglist_block('tag', 'pkg', force=force)
+        self.assertEqual("Package %s is not in tag listing for %s" % (pkg_name, tag_name),
+                         str(ex.exception))
+
+        get_tag.assert_called_once_with('tag', strict=True)
+        lookup_package.assert_called_once_with('pkg', strict=True)
+        pkglist_add.assert_not_called()
+
     @mock.patch('kojihub._pkglist_remove')
     @mock.patch('kojihub._pkglist_add')
     @mock.patch('kojihub.readPackageList')
     @mock.patch('kojihub.assert_policy')
     @mock.patch('kojihub.get_tag')
     @mock.patch('kojihub.lookup_package')
-    def test_pkglist_unblock(self, lookup_package, get_tag, assert_policy,
-            readPackageList, _pkglist_add, _pkglist_remove):
+    def test_pkglist_unblock(
+            self, lookup_package, get_tag, assert_policy, readPackageList, _pkglist_add,
+            _pkglist_remove):
         tag = {'id': 1, 'name': 'tag'}
         pkg = {'id': 2, 'name': 'package', 'owner_id': 3}
         get_tag.return_value = tag
@@ -68,8 +94,10 @@ class TestPkglistBlock(unittest.TestCase):
 
         get_tag.assert_called_once_with('tag', strict=True)
         lookup_package.assert_called_once_with('pkg', strict=True)
-        assert_policy.assert_called_once_with('package_list', {'tag': tag['id'],
-            'action': 'unblock', 'package': pkg['id'], 'force': False}, force=False)
+        assert_policy.assert_called_once_with(
+            'package_list', {'tag': tag['id'], 'action': 'unblock', 'package': pkg['id'],
+                             'force': False},
+            force=False)
         self.assertEqual(readPackageList.call_count, 2)
         readPackageList.assert_has_calls([
             mock.call(tag['id'], pkgID=pkg['id'], inherit=True),
@@ -89,8 +117,9 @@ class TestPkglistBlock(unittest.TestCase):
     @mock.patch('kojihub.assert_policy')
     @mock.patch('kojihub.get_tag')
     @mock.patch('kojihub.lookup_package')
-    def test_pkglist_unblock_inherited(self, lookup_package, get_tag, assert_policy,
-            readPackageList, _pkglist_add, _pkglist_remove):
+    def test_pkglist_unblock_inherited(
+            self, lookup_package, get_tag, assert_policy, readPackageList, _pkglist_add,
+            _pkglist_remove):
         tag_id, pkg_id, owner_id = 1, 2, 3
         get_tag.return_value = {'id': tag_id, 'name': 'tag'}
         lookup_package.return_value = {'id': pkg_id, 'name': 'pkg'}
@@ -104,8 +133,10 @@ class TestPkglistBlock(unittest.TestCase):
 
         get_tag.assert_called_once_with('tag', strict=True)
         lookup_package.assert_called_once_with('pkg', strict=True)
-        assert_policy.assert_called_once_with('package_list', {'tag': tag_id,
-            'action': 'unblock', 'package': pkg_id, 'force': False}, force=False)
+        assert_policy.assert_called_once_with(
+            'package_list', {'tag': tag_id, 'action': 'unblock', 'package': pkg_id,
+                             'force': False},
+            force=False)
         readPackageList.assert_called_once_with(tag_id, pkgID=pkg_id, inherit=True)
         _pkglist_add.assert_called_once_with(tag_id, pkg_id, owner_id, False, '')
         _pkglist_remove.assert_not_called()
@@ -116,8 +147,9 @@ class TestPkglistBlock(unittest.TestCase):
     @mock.patch('kojihub.assert_policy')
     @mock.patch('kojihub.get_tag')
     @mock.patch('kojihub.lookup_package')
-    def test_pkglist_unblock_not_present(self, lookup_package, get_tag, assert_policy,
-            readPackageList, _pkglist_add, _pkglist_remove):
+    def test_pkglist_unblock_not_present(
+            self, lookup_package, get_tag, assert_policy, readPackageList, _pkglist_add,
+            _pkglist_remove):
         tag_id, pkg_id = 1, 2
         get_tag.return_value = {'id': tag_id, 'name': 'tag'}
         lookup_package.return_value = {'id': pkg_id, 'name': 'pkg'}
@@ -128,8 +160,10 @@ class TestPkglistBlock(unittest.TestCase):
 
         get_tag.assert_called_once_with('tag', strict=True)
         lookup_package.assert_called_once_with('pkg', strict=True)
-        assert_policy.assert_called_once_with('package_list', {'tag': tag_id,
-            'action': 'unblock', 'package': pkg_id, 'force': False}, force=False)
+        assert_policy.assert_called_once_with(
+            'package_list', {'tag': tag_id, 'action': 'unblock', 'package': pkg_id,
+                             'force': False},
+            force=False)
         readPackageList.assert_called_once_with(tag_id, pkgID=pkg_id, inherit=True)
         _pkglist_add.assert_not_called()
         _pkglist_remove.assert_not_called()
@@ -140,8 +174,9 @@ class TestPkglistBlock(unittest.TestCase):
     @mock.patch('kojihub.assert_policy')
     @mock.patch('kojihub.get_tag')
     @mock.patch('kojihub.lookup_package')
-    def test_pkglist_unblock_not_blocked(self, lookup_package, get_tag, assert_policy,
-            readPackageList, _pkglist_add, _pkglist_remove):
+    def test_pkglist_unblock_not_blocked(
+            self, lookup_package, get_tag, assert_policy, readPackageList, _pkglist_add,
+            _pkglist_remove):
         tag_id, pkg_id, owner_id = 1, 2, 3
         get_tag.return_value = {'id': tag_id, 'name': 'tag'}
         lookup_package.return_value = {'id': pkg_id, 'name': 'pkg'}
@@ -151,14 +186,15 @@ class TestPkglistBlock(unittest.TestCase):
             'owner_id': owner_id,
             'extra_arches': ''}}
 
-
         with self.assertRaises(koji.GenericError):
             kojihub.pkglist_unblock('tag', 'pkg', force=False)
 
         get_tag.assert_called_once_with('tag', strict=True)
         lookup_package.assert_called_once_with('pkg', strict=True)
-        assert_policy.assert_called_once_with('package_list', {'tag': tag_id,
-            'action': 'unblock', 'package': pkg_id, 'force': False}, force=False)
+        assert_policy.assert_called_once_with(
+            'package_list', {'tag': tag_id, 'action': 'unblock', 'package': pkg_id,
+                             'force': False},
+            force=False)
         readPackageList.assert_called_once_with(tag_id, pkgID=pkg_id, inherit=True)
         _pkglist_add.assert_not_called()
         _pkglist_remove.assert_not_called()
@@ -173,15 +209,16 @@ class TestPkglistBlock(unittest.TestCase):
     def test_pkglist_setarches(self, pkglist_add):
         force = mock.MagicMock()
         kojihub.pkglist_setarches('tag', 'pkg', 'arches', force=force)
-        pkglist_add.assert_called_once_with('tag', 'pkg', extra_arches='arches', force=force, update=True)
+        pkglist_add.assert_called_once_with('tag', 'pkg', extra_arches='arches', force=force,
+                                            update=True)
 
     @mock.patch('kojihub._direct_pkglist_add')
     def test_pkglist_add(self, _direct_pkglist_add):
         # just transition of params + policy=True
         kojihub.pkglist_add('tag', 'pkg', owner='owner', block='block',
-            extra_arches='extra_arches', force='force', update='update')
-        _direct_pkglist_add.assert_called_once_with('tag', 'pkg', 'owner',
-            'block', 'extra_arches', 'force', 'update', policy=True)
+                            extra_arches='extra_arches', force='force', update='update')
+        _direct_pkglist_add.assert_called_once_with('tag', 'pkg', 'owner', 'block', 'extra_arches',
+                                                    'force', 'update', policy=True)
 
     @mock.patch('kojihub._pkglist_add')
     @mock.patch('kojihub.readPackageList')
@@ -189,13 +226,13 @@ class TestPkglistBlock(unittest.TestCase):
     @mock.patch('kojihub.get_user')
     @mock.patch('kojihub.get_tag')
     @mock.patch('kojihub.lookup_package')
-    def test_direct_pkglist_add(self, lookup_package, get_tag, get_user,
-            assert_policy, readPackageList, _pkglist_add):
+    def test_direct_pkglist_add(
+            self, lookup_package, get_tag, get_user, assert_policy, readPackageList, _pkglist_add):
         block = False
         extra_arches = 'arch123'
-        force=False
-        update=False
-        policy=True
+        force = False
+        update = False
+        policy = True
         tag = {'id': 1, 'name': 'tag'}
         pkg = {'id': 2, 'name': 'pkg', 'owner_id': 3}
         users = [
@@ -208,10 +245,9 @@ class TestPkglistBlock(unittest.TestCase):
         get_user.side_effect = get_user_factory(users)
         readPackageList.return_value = {}
 
-
-        kojihub._direct_pkglist_add(tag['name'], pkg['name'],
-            user['name'], block=block, extra_arches=extra_arches,
-            force=force, update=update, policy=policy)
+        kojihub._direct_pkglist_add(tag['name'], pkg['name'], user['name'], block=block,
+                                    extra_arches=extra_arches, force=force, update=update,
+                                    policy=policy)
 
         get_tag.assert_called_once_with(tag['name'], strict=True)
         lookup_package.assert_called_once_with(pkg['name'], strict=False)
@@ -219,21 +255,20 @@ class TestPkglistBlock(unittest.TestCase):
             mock.call(user['name'], strict=True),
             mock.call(112233),
         ])
-        assert_policy.assert_called_once_with('package_list', {'tag': tag['id'],
-            'action': 'add', 'package': pkg['name'], 'force': False}, force=False)
+        assert_policy.assert_called_once_with(
+            'package_list', {'tag': tag['id'], 'action': 'add', 'package': pkg['name'],
+                             'force': False},
+            force=False)
         self.assertEqual(self.run_callbacks.call_count, 2)
         self.run_callbacks.assert_has_calls([
-            mock.call('prePackageListChange', action='add', tag=tag,
-                package=pkg, owner=user['id'], block=block,
-                extra_arches=extra_arches, force=force, update=update,
-                user=users[1]),
-            mock.call('postPackageListChange', action='add', tag=tag,
-                package=pkg, owner=user['id'], block=block,
-                extra_arches=extra_arches, force=force, update=update,
-                user=users[1]),
+            mock.call('prePackageListChange', action='add', tag=tag, package=pkg, owner=user['id'],
+                      block=block, extra_arches=extra_arches, force=force, update=update,
+                      user=users[1]),
+            mock.call('postPackageListChange', action='add', tag=tag, package=pkg,
+                      owner=user['id'], block=block, extra_arches=extra_arches, force=force,
+                      update=update, user=users[1]),
         ])
-        _pkglist_add.assert_called_once_with(tag['id'], pkg['id'],
-            user['id'], block, extra_arches)
+        _pkglist_add.assert_called_once_with(tag['id'], pkg['id'], user['id'], block, extra_arches)
 
     @mock.patch('kojihub._pkglist_add')
     @mock.patch('kojihub.readPackageList')
@@ -241,13 +276,13 @@ class TestPkglistBlock(unittest.TestCase):
     @mock.patch('kojihub.get_user')
     @mock.patch('kojihub.get_tag')
     @mock.patch('kojihub.lookup_package')
-    def test_direct_pkglist_add_no_package(self, lookup_package,
-            get_tag, get_user, assert_policy, readPackageList, _pkglist_add):
+    def test_direct_pkglist_add_no_package(
+            self, lookup_package, get_tag, get_user, assert_policy, readPackageList, _pkglist_add):
         block = False
         extra_arches = 'arch123'
-        force=False
-        update=False
-        policy=True
+        force = False
+        update = False
+        policy = True
         tag = {'id': 1, 'name': 'tag'}
         pkg = {'id': 2, 'name': 'pkg', 'owner_id': 3}
         user = {'id': 3, 'name': 'user'}
@@ -258,9 +293,9 @@ class TestPkglistBlock(unittest.TestCase):
 
         # package needs to be name, not dict
         with self.assertRaises(koji.GenericError) as ex:
-            kojihub._direct_pkglist_add(tag['name'], pkg,
-                user['name'], block=block, extra_arches=extra_arches,
-                force=force, update=update, policy=policy)
+            kojihub._direct_pkglist_add(tag['name'], pkg, user['name'], block=block,
+                                        extra_arches=extra_arches, force=force, update=update,
+                                        policy=policy)
         self.assertEqual("No such package: %s" % pkg, str(ex.exception))
 
     @mock.patch('kojihub.get_tag')
@@ -275,7 +310,7 @@ class TestPkglistBlock(unittest.TestCase):
         lookup_package.side_effect = koji.GenericError(expected)
         with self.assertRaises(koji.GenericError) as ex:
             kojihub._direct_pkglist_add(tag['name'], pkg, user, block=False, extra_arches='arch',
-                force=False, update=True)
+                                        force=False, update=True)
         self.assertEqual(expected, str(ex.exception))
 
     @mock.patch('kojihub._pkglist_add')
@@ -284,13 +319,13 @@ class TestPkglistBlock(unittest.TestCase):
     @mock.patch('kojihub.get_user')
     @mock.patch('kojihub.get_tag')
     @mock.patch('kojihub.lookup_package')
-    def test_direct_pkglist_add_no_user(self, lookup_package,
-            get_tag, get_user, assert_policy, readPackageList, _pkglist_add):
+    def test_direct_pkglist_add_no_user(
+            self, lookup_package, get_tag, get_user, assert_policy, readPackageList, _pkglist_add):
         block = False
         extra_arches = 'arch123'
-        force=False
-        update=False
-        policy=True
+        force = False
+        update = False
+        policy = True
         tag = {'id': 1, 'name': 'tag'}
         pkg = {'id': 2, 'name': 'pkg', 'owner_id': 3}
         user = {'id': 3, 'name': 'user'}
@@ -300,9 +335,9 @@ class TestPkglistBlock(unittest.TestCase):
         readPackageList.return_value = {}
 
         with self.assertRaises(koji.GenericError):
-            kojihub._direct_pkglist_add(tag['name'], pkg,
-                user['name'], block=block, extra_arches=extra_arches,
-                force=force, update=update, policy=policy)
+            kojihub._direct_pkglist_add(tag['name'], pkg, user['name'], block=block,
+                                        extra_arches=extra_arches, force=force, update=update,
+                                        policy=policy)
 
         lookup_package.assert_called_once_with(pkg, strict=False)
         self.assertEqual(self.run_callbacks.call_count, 0)
@@ -314,13 +349,13 @@ class TestPkglistBlock(unittest.TestCase):
     @mock.patch('kojihub.get_user')
     @mock.patch('kojihub.get_tag')
     @mock.patch('kojihub.lookup_package')
-    def test_direct_pkglist_add_new_package(self, lookup_package, get_tag, get_user,
-            assert_policy, readPackageList, _pkglist_add):
+    def test_direct_pkglist_add_new_package(
+            self, lookup_package, get_tag, get_user, assert_policy, readPackageList, _pkglist_add):
         block = False
         extra_arches = 'arch123'
-        force=False
-        update=False
-        policy=True
+        force = False
+        update = False
+        policy = True
         tag = {'id': 1, 'name': 'tag'}
         pkg = {'id': 2, 'name': 'pkg', 'owner_id': 3}
         users = [
@@ -333,10 +368,9 @@ class TestPkglistBlock(unittest.TestCase):
         get_user.side_effect = get_user_factory(users)
         readPackageList.return_value = {}
 
-
-        kojihub._direct_pkglist_add(tag['name'], pkg['name'],
-            user['name'], block=block, extra_arches=extra_arches,
-            force=force, update=update, policy=policy)
+        kojihub._direct_pkglist_add(tag['name'], pkg['name'], user['name'], block=block,
+                                    extra_arches=extra_arches, force=force, update=update,
+                                    policy=policy)
 
         get_tag.assert_called_once_with(tag['name'], strict=True)
         self.assertEqual(lookup_package.call_count, 2)
@@ -348,21 +382,20 @@ class TestPkglistBlock(unittest.TestCase):
             mock.call(user['name'], strict=True),
             mock.call(112233),
         ])
-        assert_policy.assert_called_once_with('package_list', {'tag': tag['id'],
-            'action': 'add', 'package': pkg['name'], 'force': False}, force=False)
+        assert_policy.assert_called_once_with(
+            'package_list', {'tag': tag['id'], 'action': 'add', 'package': pkg['name'],
+                             'force': False},
+            force=False)
         self.assertEqual(self.run_callbacks.call_count, 2)
         self.run_callbacks.assert_has_calls([
-            mock.call('prePackageListChange', action='add', tag=tag,
-                package=pkg, owner=user['id'], block=block,
-                extra_arches=extra_arches, force=force, update=update,
-                user=users[1]),
-            mock.call('postPackageListChange', action='add', tag=tag,
-                package=pkg, owner=user['id'], block=block,
-                extra_arches=extra_arches, force=force, update=update,
-                user=users[1]),
+            mock.call('prePackageListChange', action='add', tag=tag, package=pkg, owner=user['id'],
+                      block=block, extra_arches=extra_arches, force=force, update=update,
+                      user=users[1]),
+            mock.call('postPackageListChange', action='add', tag=tag, package=pkg,
+                      owner=user['id'], block=block, extra_arches=extra_arches, force=force,
+                      update=update, user=users[1]),
         ])
-        _pkglist_add.assert_called_once_with(tag['id'], pkg['id'],
-            user['id'], block, extra_arches)
+        _pkglist_add.assert_called_once_with(tag['id'], pkg['id'], user['id'], block, extra_arches)
 
     @mock.patch('kojihub._pkglist_add')
     @mock.patch('kojihub.readPackageList')
@@ -370,18 +403,17 @@ class TestPkglistBlock(unittest.TestCase):
     @mock.patch('kojihub.get_user')
     @mock.patch('kojihub.get_tag')
     @mock.patch('kojihub.lookup_package')
-    def test_direct_pkglist_add_blocked_previously(self,
-            lookup_package, get_tag, get_user,
-            assert_policy, readPackageList, _pkglist_add):
+    def test_direct_pkglist_add_blocked_previously(
+            self, lookup_package, get_tag, get_user, assert_policy, readPackageList, _pkglist_add):
         block = False
         extra_arches = 'arch123'
-        force=False
-        update=False
-        policy=True
+        force = False
+        update = False
+        policy = True
         tag = {'id': 1, 'name': 'tag'}
         pkg = {'id': 2, 'name': 'pkg', 'owner_id': 3}
         users = [
-            {'id': 3, 'name': 'user',},
+            {'id': 3, 'name': 'user', },
             {'id': 112233, 'name': 'user1'},
         ]
         user = users[0]
@@ -395,9 +427,9 @@ class TestPkglistBlock(unittest.TestCase):
         }
 
         with self.assertRaises(koji.GenericError):
-            kojihub._direct_pkglist_add(tag['name'], pkg['name'],
-                user['name'], block=block, extra_arches=extra_arches,
-                force=force, update=update, policy=policy)
+            kojihub._direct_pkglist_add(tag['name'], pkg['name'], user['name'], block=block,
+                                        extra_arches=extra_arches, force=force, update=update,
+                                        policy=policy)
 
         get_tag.assert_called_once_with(tag['name'], strict=True)
         lookup_package.assert_called_once_with(pkg['name'], strict=False)
@@ -405,13 +437,13 @@ class TestPkglistBlock(unittest.TestCase):
             mock.call(user['name'], strict=True),
             mock.call(112233),
         ])
-        assert_policy.assert_called_once_with('package_list', {'tag': tag['id'],
-            'action': 'add', 'package': pkg['name'], 'force': False}, force=False)
+        assert_policy.assert_called_once_with(
+            'package_list', {'tag': tag['id'], 'action': 'add', 'package': pkg['name'],
+                             'force': False},
+            force=False)
         self.run_callbacks.assert_called_once_with(
-                'prePackageListChange', action='add', tag=tag,
-                package=pkg, owner=user['id'], block=block,
-                extra_arches=extra_arches, force=force, update=update,
-                user=users[1])
+            'prePackageListChange', action='add', tag=tag, package=pkg, owner=user['id'],
+            block=block, extra_arches=extra_arches, force=force, update=update, user=users[1])
         _pkglist_add.assert_not_called()
 
     @mock.patch('kojihub._pkglist_add')
@@ -420,18 +452,17 @@ class TestPkglistBlock(unittest.TestCase):
     @mock.patch('kojihub.get_user')
     @mock.patch('kojihub.get_tag')
     @mock.patch('kojihub.lookup_package')
-    def test_direct_pkglist_add_blocked_previously_force(self,
-            lookup_package, get_tag, get_user,
-            assert_policy, readPackageList, _pkglist_add):
+    def test_direct_pkglist_add_blocked_previously_force(
+            self, lookup_package, get_tag, get_user, assert_policy, readPackageList, _pkglist_add):
         block = False
         extra_arches = 'arch123'
-        force=True
-        update=False
-        policy=True
+        force = True
+        update = False
+        policy = True
         tag = {'id': 1, 'name': 'tag'}
         pkg = {'id': 2, 'name': 'pkg', 'owner_id': 3}
         users = [
-            {'id': 3, 'name': 'user',},
+            {'id': 3, 'name': 'user', },
             {'id': 112233, 'name': 'user1'},
         ]
         user = users[0]
@@ -444,9 +475,9 @@ class TestPkglistBlock(unittest.TestCase):
             'extra_arches': ''}
         }
 
-        kojihub._direct_pkglist_add(tag['name'], pkg['name'],
-            user['name'], block=block, extra_arches=extra_arches,
-            force=force, update=update, policy=policy)
+        kojihub._direct_pkglist_add(tag['name'], pkg['name'], user['name'], block=block,
+                                    extra_arches=extra_arches, force=force, update=update,
+                                    policy=policy)
 
         get_tag.assert_called_once_with(tag['name'], strict=True)
         lookup_package.assert_called_once_with(pkg['name'], strict=False)
@@ -455,19 +486,17 @@ class TestPkglistBlock(unittest.TestCase):
             mock.call(112233),
         ])
         # force + admin
-        assert_policy.assert_called_once_with('package_list',
-            {'tag': 1, 'action': 'add', 'package': 'pkg', 'force': True}, force=True)
+        assert_policy.assert_called_once_with(
+            'package_list', {'tag': 1, 'action': 'add', 'package': 'pkg', 'force': True},
+            force=True)
 
         self.assertEqual(self.run_callbacks.call_count, 2)
         self.run_callbacks.assert_has_calls([
-            mock.call('prePackageListChange', action='add', tag=tag,
-                package=pkg, owner=user['id'], block=block,
-                extra_arches=extra_arches, force=force, update=update,
-                user=users[1]),
-            mock.call('postPackageListChange', action='add', tag=tag,
-                package=pkg, owner=user['id'], block=block,
-                extra_arches=extra_arches, force=force, update=update,
-                user=users[1]),
+            mock.call('prePackageListChange', action='add', tag=tag, package=pkg, owner=user['id'],
+                      block=block, extra_arches=extra_arches, force=force, update=update,
+                      user=users[1]),
+            mock.call('postPackageListChange', action='add', tag=tag, package=pkg,
+                      owner=user['id'], block=block, extra_arches=extra_arches, force=force,
+                      update=update, user=users[1]),
         ])
-        _pkglist_add.assert_called_once_with(tag['id'], pkg['id'],
-            user['id'], block, extra_arches)
+        _pkglist_add.assert_called_once_with(tag['id'], pkg['id'], user['id'], block, extra_arches)

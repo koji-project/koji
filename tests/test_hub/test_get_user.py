@@ -1,5 +1,7 @@
 import unittest
 
+import mock
+
 import koji
 import kojihub
 
@@ -37,6 +39,9 @@ class TestGetUser(unittest.TestCase):
 
 
 class TestGetUserByKrbPrincipal(unittest.TestCase):
+    def setUp(self):
+        self.get_user = mock.patch('kojihub.get_user').start()
+
     def test_wrong_type_krb_principal(self):
         krb_principal = ['test-user']
         with self.assertRaises(koji.GenericError) as cm:
@@ -49,3 +54,11 @@ class TestGetUserByKrbPrincipal(unittest.TestCase):
         with self.assertRaises(koji.GenericError) as cm:
             kojihub.get_user_by_krb_principal(krb_principal)
         self.assertEqual("No kerberos principal provided", str(cm.exception))
+
+    def test_valid(self):
+        krb_principal = 'test-user@test.org'
+        user_info = {'id': 1, 'krb_principals': ['test-user@test.org'],
+                     'name': 'test-user', 'status': 0, 'usertype': 0}
+        self.get_user.return_value = user_info
+        rv = kojihub.get_user_by_krb_principal(krb_principal)
+        self.assertEqual(user_info, rv)
