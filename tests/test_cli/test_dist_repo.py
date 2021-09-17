@@ -352,6 +352,7 @@ Options:
   --zck-dict-dir=ZCK_DICT_DIR
                         Directory containing compression dictionaries for use
                         by zchunk (on builder)
+  --write-signed-rpms   Write a signed rpms for given tag
 """ % self.progname)
 
 

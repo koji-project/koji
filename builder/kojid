@@ -6150,6 +6150,33 @@ enabled=1
                 selected[rpm_id] = rpminfo
             else:
                 selected[rpm_id] = rpm_idx[rpm_id][best_key]
+                selected[rpm_id]['best_key'] = best_key
+
+        # write signed rpms
+        if opts.get('write_signed_rpms'):
+            results = []
+            rpm_with_key = []
+            with session.multicall(batch=1000) as m:
+                for rpm_id in selected:
+                    if selected[rpm_id].get('best_key'):
+                        results.append(m.host.writeSignedRPM(rpm_id, selected[rpm_id]['best_key']))
+                        rpm_with_key.append(rpm_id)
+
+            log_output = ''
+            for rpm_id, r in zip(rpm_with_key, results):
+                if isinstance(r._result, list):
+                    log_output += 'Signed RPM %s is writen with %s key.\n' \
+                                  % (rpm_id, selected[rpm_id]['best_key'])
+                else:
+                    log_output += 'FAILED: Signed RPM %s is not written with %s key, ' \
+                                  'error: %s\n' % (rpm_id, selected[rpm_id]['best_key'],
+                                                   r._result['faultString'])
+
+        if log_output:
+            writen_log = os.path.join(self.workdir, 'writen_signed_rpms.log')
+            with koji._open_text_file(writen_log, 'at') as outfile:
+                outfile.write(log_output)
+            self.session.uploadWrapper(writen_log, self.uploadpath)
 
         # generate kojipkgs data and note missing files
         fs_missing = []

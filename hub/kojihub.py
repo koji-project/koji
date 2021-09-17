@@ -15123,6 +15123,10 @@ class HostExports(object):
         host.verify()
         return host.isEnabled()
 
+    def writeSignedRPM(self, an_rpm, sigkey, force=False):
+        """Write a signed copy of the rpm"""
+        return write_signed_rpm(an_rpm, sigkey, force)
+
 
 def get_upload_path(reldir, name, create=False, volume=None):
     orig_reldir = reldir
