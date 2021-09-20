@@ -301,6 +301,9 @@ def login(environ, page=None):
                 'presenting this page')
 
         username = principal
+    else:
+        raise koji.AuthError(
+            'configuration error: set WebAuthType or on of WebPrincipal/WebCert options')
 
     ## This now is how we proxy the user to the hub
     if options['WebCert']:

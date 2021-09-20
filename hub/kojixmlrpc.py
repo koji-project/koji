@@ -427,6 +427,7 @@ def load_config(environ):
         ['CheckClientIP', 'boolean', True],
 
         ['LoginCreatesUser', 'boolean', True],
+        ['ProxyAuthType', 'boolean', False],
         ['KojiWebURL', 'string', 'http://localhost.localdomain/koji'],
         ['EmailDomain', 'string', None],
         ['NotifyOnSuccess', 'boolean', True],
