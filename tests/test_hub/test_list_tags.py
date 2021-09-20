@@ -43,3 +43,12 @@ class TestListTags(unittest.TestCase):
         with self.assertRaises(koji.GenericError) as cm:
             self.exports.listTags(package=package_name)
         self.assertEqual("No such package: %s" % package_name, str(cm.exception))
+
+    def test_build_package_not_none(self):
+        build_id = 999
+        package_id = 998
+
+        with self.assertRaises(koji.GenericError) as cm:
+            self.exports.listTags(build=build_id, package=package_id)
+        self.assertEqual("only one of build and package may be specified", str(cm.exception))
+        self.get_build.assert_not_called()
