@@ -7599,21 +7599,14 @@ def add_rpm_sig(an_rpm, sighdr):
         sigkey = koji.get_sigpacket_key_id(sigkey)
     sighash = md5_constructor(sighdr).hexdigest()
     rpm_id = rinfo['id']
-    # - db entry
-    q = """SELECT sighash FROM rpmsigs WHERE rpm_id=%(rpm_id)i AND sigkey=%(sigkey)s"""
-    rows = _fetchMulti(q, locals())
-    nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" % rinfo
-    sig_error = "Signature already exists for package %s, key %s" % (nvra, sigkey)
-    if rows:
-        # TODO[?] - if sighash is the same, handle more gracefully
-        raise koji.GenericError(sig_error)
     koji.plugin.run_callbacks('preRPMSign', sigkey=sigkey, sighash=sighash, build=binfo, rpm=rinfo)
     insert = InsertProcessor('rpmsigs')
     insert.set(rpm_id=rpm_id, sigkey=sigkey, sighash=sighash)
     try:
         insert.execute()
     except IntegrityError:
-        raise koji.GenericError(sig_error)
+        nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" % rinfo
+        raise koji.GenericError("Signature already exists for package %s, key %s" % (nvra, sigkey))
     # - write to fs
     sigpath = "%s/%s" % (builddir, koji.pathinfo.sighdr(rinfo, sigkey))
     koji.ensuredir(os.path.dirname(sigpath))
