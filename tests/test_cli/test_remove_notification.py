@@ -22,6 +22,23 @@ class TestAddHost(utils.CliTestCase):
         self.session.deleteNotification.assert_has_calls([mock.call(1), mock.call(3),
                                                           mock.call(5)])
 
+    @mock.patch('koji_cli.commands.activate_session')
+    @mock.patch('sys.stdout', new_callable=StringIO)
+    def test_handle_remove_notification_not_quiet(self, stdout, activate_session_mock):
+        self.options.quiet = False
+        expected = "Notification 1 successfully removed.\n" \
+                   "Notification 3 successfully removed.\n" \
+                   "Notification 5 successfully removed.\n"
+        handle_remove_notification(self.options, self.session, ['1', '3', '5'])
+
+        self.session.deleteNotification.assert_has_calls([mock.call(1), mock.call(3),
+                                                          mock.call(5)])
+
+        activate_session_mock.assert_called_once_with(self.session, self.options)
+        actual = stdout.getvalue()
+        print(actual)
+        self.assertMultiLineEqual(actual, expected)
+
     @mock.patch('sys.stderr', new_callable=StringIO)
     def test_handle_remove_notification_bogus(self, stderr):
         expected = """Usage: %s remove-notification [options] <notification_id> [<notification_id> ...]
