@@ -299,6 +299,8 @@ class BuildRoot(object):
                     'opts': self.config['extra']['mock.plugin_conf.sign_opts.opts'],
                 }
             }
+        if 'mock.module_setup_commands' in self.config['extra']:
+            opts['module_setup_commands'] = self.config['extra']['mock.module_setup_commands']
         if self.internal_dev_setup is not None:
             opts['internal_dev_setup'] = bool(self.internal_dev_setup)
         opts['tag_macros'] = {}
