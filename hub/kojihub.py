@@ -3380,6 +3380,8 @@ def get_tag(tagInfo, strict=False, event=None, blocked=False):
     - maven_support :           maven support flag (boolean)
     - maven_include_all :       maven include all flag (boolean)
     - extra :   extra tag parameters (dictionary)
+    - query_event : return "event" parameter for current call
+                    if something was passed in
 
     If there is no tag matching the given tagInfo, and strict is False,
     return None.  If strict is True, raise a GenericError.
@@ -3442,6 +3444,8 @@ def get_tag(tagInfo, strict=False, event=None, blocked=False):
             raise koji.GenericError("No such tagInfo: %r" % tagInfo)
         return None
     result['extra'] = get_tag_extra(result, event, blocked=blocked)
+    if event is not None:
+        result['query_event'] = event
     return result
 
 
@@ -9587,26 +9591,33 @@ def policy_get_cgs(data):
 
 def policy_get_build_tags(data, taginfo=False):
     """If taginfo is set, return list of taginfos, else list of names only"""
-    if 'build_tag' in data:
-        return [get_tag(data['build_tag'], strict=True)['name']]
-    elif 'build_tags' in data:
-        return [get_tag(t, strict=True)['name'] for t in data['build_tags']]
-
-    # see if we have a target
-    target = data.get('target')
-    if target:
-        target = get_build_target(target, strict=False)
-        if target:
-            return [target['build_tag_name']]
-
-    # otherwise look at buildroots
     tags = {}
-    for br_id in policy_get_brs(data):
-        if br_id is None:
-            tags[None] = None
-        else:
-            tinfo = get_buildroot(br_id, strict=True)
-            tags[tinfo['tag_name']] = tinfo
+    if 'build_tag' in data:
+        buildtag = get_tag(data['build_tag'], strict=True, event="auto")
+        tags[buildtag['name']] = buildtag
+    elif 'build_tags' in data:
+        build_tags = [get_tag(t, strict=True, event="auto") for t in data['build_tags']]
+        for tag in build_tags:
+            tags[tag['name']] = tag
+
+    if not tags:
+        # see if we have a target
+        target = data.get('target')
+        if target:
+            target = get_build_target(target, strict=False)
+            if target:
+                tags[target['build_tag_name']] = get_tag(target['build_tag'], strict=True,
+                                                         event="auto")
+
+    if not tags:
+        # otherwise look at buildroots
+        for br_id in policy_get_brs(data):
+            if br_id is None:
+                tags[None] = None
+            else:
+                tinfo = get_buildroot(br_id, strict=True)
+                tags[tinfo['tag_name']] = get_tag(tinfo['tag_name'], strict=True,
+                                                  event=tinfo['repo_create_event_id'])
 
     if taginfo:
         tags = tags.values()
@@ -9825,7 +9836,7 @@ class BuildTagInheritsFromTest(koji.policy.BaseSimpleTest):
                 # content generator buildroots might not have tag info
                 continue
 
-            for tag in readFullInheritance(tinfo['tag_id']):
+            for tag in readFullInheritance(tinfo['id'], event=tinfo.get('query_event')):
                 if multi_fnmatch(tag['name'], args):
                     return True
         # otherwise...
