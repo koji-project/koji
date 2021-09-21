@@ -10,6 +10,8 @@ ExecStart=/usr/sbin/kojid \
        --force-lock \
        --verbose
 ExecReload=/bin/kill -USR1 $MAINPID
+Restart=on-failure
+RestartSec=60s
 
 [Install]
 WantedBy=multi-user.target
