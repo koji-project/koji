@@ -643,12 +643,14 @@ class RepoManager(object):
             session.logout()
 
     def pruneLocalRepos(self):
+        volname = 'DEFAULT'
+        volumedir = pathinfo.volumedir(volname)
+        repodir = "%s/repos" % volumedir
+        self._pruneLocalRepos(repodir, self.options.deleted_repo_lifetime)
+
         for volinfo in self.session.listVolumes():
             volname = volinfo['name']
             volumedir = pathinfo.volumedir(volname)
-            if volname == 'DEFAULT':  # currently the only path for non-dist repos.
-                repodir = "%s/repos" % volumedir
-                self._pruneLocalRepos(repodir, self.options.deleted_repo_lifetime)
             distrepodir = "%s/repos-dist" % volumedir
             self._pruneLocalRepos(distrepodir, self.options.dist_repo_lifetime)
 
@@ -1209,8 +1211,6 @@ def get_options():
     parser.add_option("--logfile", help="Specify logfile")
     parser.add_option("--queue-file",
                       help="If specified, queue is dumped to separate status file each cycle")
-    parser.add_option("--ignore-other-volumes", action="store_true",
-                      help="Ignore repos on other volumes")
     (options, args) = parser.parse_args()
 
     config = koji.read_config_files(options.configFile)
