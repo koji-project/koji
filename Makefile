@@ -129,6 +129,9 @@ pypi-upload:
 flake8:
 	tox -e flake8
 
+bandit:
+	tox -e bandit
+
 tag::
 	git tag -a $(TAG)
 	@echo "Tagged with: $(TAG)"

@@ -411,7 +411,7 @@ class TrackedBuild(object):
             url = "%s/%s" % (pathinfo.build(self.info), pathinfo.rpm(self.srpm))
             log("Downloading %s" % url)
             # XXX - this is not really the right place for this
-            fsrc = urllib2.urlopen(url)
+            fsrc = urllib2.urlopen(url)  # nosec
             fn = "%s/%s.src.rpm" % (options.workpath, self.nvr)
             koji.ensuredir(os.path.dirname(fn))
             fdst = open(fn, 'wb')
@@ -856,7 +856,7 @@ class BuildTracker(object):
                 koji.ensuredir(os.path.dirname(dst))
                 os.chown(os.path.dirname(dst), 48, 48)  # XXX - hack
                 log("Downloading %s to %s" % (url, dst))
-                fsrc = urllib2.urlopen(url)
+                fsrc = urllib2.urlopen(url)  # nosec
                 fdst = open(fn, 'wb')
                 shutil.copyfileobj(fsrc, fdst)
                 fsrc.close()
@@ -870,7 +870,7 @@ class BuildTracker(object):
             koji.ensuredir(options.workpath)
             dst = "%s/%s" % (options.workpath, fn)
             log("Downloading %s to %s..." % (url, dst))
-            fsrc = urllib2.urlopen(url)
+            fsrc = urllib2.urlopen(url)  # nosec
             fdst = open(dst, 'wb')
             shutil.copyfileobj(fsrc, fdst)
             fsrc.close()

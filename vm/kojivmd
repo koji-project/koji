@@ -795,7 +795,7 @@ class VMExecTask(BaseTaskHandler):
             raise koji.BuildError('%s does not exist' % local_path)
 
         if algo == 'sha1':
-            sum = hashlib.sha1()
+            sum = hashlib.sha1()  # nosec
         elif algo == 'md5':
             sum = koji.util.md5_constructor()
         elif algo == 'sha256':

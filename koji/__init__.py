@@ -1321,13 +1321,13 @@ def parse_pom(path=None, contents=None):
     contents = fixEncoding(contents)
 
     try:
-        xml.sax.parseString(contents, handler)
+        xml.sax.parseString(contents, handler)  # nosec - trusted data
     except xml.sax.SAXParseException:
         # likely an undefined entity reference, so lets try replacing
         # any entity refs we can find and see if we get something parseable
         handler.reset()
         contents = ENTITY_RE.sub('?', contents)
-        xml.sax.parseString(contents, handler)
+        xml.sax.parseString(contents, handler)  # nosec - trusted data
 
     for field in fields:
         if field not in util.to_list(values.keys()):

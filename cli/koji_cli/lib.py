@@ -680,7 +680,7 @@ def download_archive(build, archive, topurl, quiet=False, noprogress=False):
     if archive['checksum_type'] == koji.CHECKSUM_TYPES['md5']:
         hash = md5_constructor()
     elif archive['checksum_type'] == koji.CHECKSUM_TYPES['sha1']:
-        hash = hashlib.sha1()
+        hash = hashlib.sha1()  # nosec
     elif archive['checksum_type'] == koji.CHECKSUM_TYPES['sha256']:
         hash = hashlib.sha256()
     else:
