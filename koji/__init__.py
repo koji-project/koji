@@ -2483,7 +2483,8 @@ class ClientSession(object):
         return self.gssapi_login(principal=principal, keytab=keytab,
                                  ccache=ccache, proxyuser=proxyuser)
 
-    def gssapi_login(self, principal=None, keytab=None, ccache=None, proxyuser=None):
+    def gssapi_login(self, principal=None, keytab=None, ccache=None,
+                     proxyuser=None, proxyauthtype=None):
         if not reqgssapi:
             raise PythonImportError(
                 "Please install python-requests-gssapi to use GSSAPI."
@@ -2526,7 +2527,9 @@ class ClientSession(object):
                 # Depending on the server configuration, we might not be able to
                 # connect without client certificate, which means that the conn
                 # will fail with a handshake failure, which is retried by default.
-                sinfo = self._callMethod('sslLogin', [proxyuser], retry=False)
+                sinfo = self._callMethod('sslLogin', [],
+                                         {'proxyuser': proxyuser, 'proxyauthtype': proxyauthtype},
+                                         retry=False)
             except Exception as e:
                 e_str = ''.join(traceback.format_exception_only(type(e), e)).strip('\n')
                 e_str = '(gssapi auth failed: %s)\n' % e_str
@@ -2553,7 +2556,7 @@ class ClientSession(object):
         self.authtype = AUTHTYPE_GSSAPI
         return True
 
-    def ssl_login(self, cert=None, ca=None, serverca=None, proxyuser=None):
+    def ssl_login(self, cert=None, ca=None, serverca=None, proxyuser=None, proxyauthtype=None):
         cert = cert or self.opts.get('cert')
         serverca = serverca or self.opts.get('serverca')
         if cert is None:
@@ -2582,7 +2585,9 @@ class ClientSession(object):
         self.opts['serverca'] = serverca
         e_str = None
         try:
-            sinfo = self.callMethod('sslLogin', proxyuser)
+            sinfo = self.callMethod('sslLogin', [],
+                                    {'proxyuser': proxyuser, 'proxyauthtype': proxyauthtype})
+
         except Exception as ex:
             e_str = ''.join(traceback.format_exception_only(type(ex), ex))
             e_str = 'ssl auth failed: %s' % e_str
