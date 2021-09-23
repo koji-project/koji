@@ -562,7 +562,11 @@ def make_task(method, arglist, **opts):
     policy_data['user_id'] = opts['owner']
     if 'channel' in opts:
         policy_data['req_channel'] = opts['channel']
-        req_channel_id = get_channel_id(opts['channel'], strict=True)
+        channel_info = get_channel(opts['channel'], strict=True)
+        if channel_info['enabled']:
+            req_channel_id = channel_info['id']
+        else:
+            raise koji.GenericError('Channel %s is disabled.' % opts['channel'])
     policy_data.update(policy_data_from_task_args(method, arglist))
 
     ruleset = context.policy.get('channel')
@@ -574,7 +578,11 @@ def make_task(method, arglist, **opts):
         try:
             parts = result.split()
             if parts[0] == "use":
-                opts['channel_id'] = get_channel_id(parts[1], strict=True)
+                channel_info = get_channel(parts[1], strict=True)
+                if channel_info['enabled']:
+                    opts['channel_id'] = channel_info['id']
+                else:
+                    raise koji.GenericError('Channel %s is disabled.' % parts[1])
             elif parts[0] == "parent":
                 if not opts.get('parent'):
                     logger.error("Invalid channel policy result (no parent task): %s",
@@ -2446,7 +2454,9 @@ def get_ready_hosts():
     c.execute(q)
     hosts = [dict(zip(aliases, row)) for row in c.fetchall()]
     for host in hosts:
-        q = """SELECT channel_id FROM host_channels WHERE host_id=%(id)s AND active IS TRUE"""
+        q = """SELECT channel_id FROM host_channels
+            JOIN channels ON host_channels.channel_id = channels.id
+            WHERE host_id=%(id)s AND active IS TRUE AND enabled IS TRUE"""
         c.execute(q, host)
         host['channels'] = [row[0] for row in c.fetchall()]
     return hosts
