@@ -325,8 +325,8 @@ class Session(object):
         web ui which itself is authenticated via SSL certificate. (See kojiweb
         for usage).
 
-        proxyauthtype is working only if ProxyAuthType option is set to 'On' in
-        the hub.conf
+        proxyauthtype is working only if AllowProxyAuthType option is set to
+        'On' in the hub.conf
         """
         if self.logged_in:
             raise koji.AuthError("Already logged in")
@@ -376,9 +376,9 @@ class Session(object):
 
             # in this point we can continue with proxied user in same way as if it is not proxied
             if proxyauthtype is not None:
-                if not context.opts['ProxyAuthType']:
+                if not context.opts['AllowProxyAuthType']:
                     raise koji.AuthError("Proxy must use same auth mechanism as hub (behaviour "
-                                         "can be overriden via ProxyAuthType hub option)")
+                                         "can be overriden via AllowProxyAuthType hub option)")
                 if proxyauthtype not in (koji.AUTHTYPE_GSSAPI, koji.AUTHTYPE_SSL):
                     raise koji.AuthError(
                         "Proxied authtype %s is not valid for sslLogin" % proxyauthtype)
