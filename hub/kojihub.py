@@ -194,22 +194,35 @@ class Task(object):
             state, otherhost = r
             if state == koji.TASK_STATES['FREE']:
                 if otherhost is not None:
-                    log_error("Error: task %i is both free and locked (host %i)"
-                              % (task_id, otherhost))
+                    log_error(f"Error: task {task_id} is both free "
+                              f"and handled by host {otherhost}")
                     return False
             elif state == koji.TASK_STATES['ASSIGNED']:
                 if otherhost is None:
-                    log_error("Error: task %i is assigned, but has no assignee"
-                              % (task_id))
+                    log_error(f"Error: task {task_id} is assigned, but no host is really assigned")
                     return False
                 elif otherhost != host_id:
-                    # task is assigned to someone else
+                    # task is assigned to someone else, no error just return
                     return False
+                elif newstate == 'ASSIGNED':
+                    # double assign is a weird situation but we can return True as state doesn't
+                    # really change
+                    log_error(f"Error: double assign of task {task_id} and host {host_id}")
+                    return True
                 # otherwise the task is assigned to host_id, so keep going
-            else:
+            elif state == koji.TASK_STATES['CANCELED']:
+                # it is ok that task was canceled meanwhile
+                return False
+            elif state == koji.TASK_STATES['OPEN']:
                 if otherhost is None:
-                    log_error("Error: task %i is non-free but unlocked (state %i)"
-                              % (task_id, state))
+                    log_error(f"Error: task {task_id} is opened but not handled by any host")
+                elif otherhost == host_id:
+                    log_error(f"Error: task {task_id} is already open and handled by "
+                              f"{host_id} (double open/assign)")
+                return False
+            elif otherhost is None:  # CLOSED, FAILED
+                log_error(f"Error: task {task_id} is non-free but not handled by any host "
+                          f"(state {koji.TASK_STATES[state]})")
                 return False
         # if we reach here, task is either
         #  - free and unlocked
@@ -6331,7 +6344,7 @@ def cg_refund_build(cg, build_id, token, state=koji.BUILD_STATES['FAILED']):
     """
 
     if state not in (koji.BUILD_STATES['FAILED'], koji.BUILD_STATES['CANCELED']):
-        raise koji.GenericError("Only FAILED/CANCELLED build states are allowed")
+        raise koji.GenericError("Only FAILED/CANCELED build states are allowed")
 
     assert_cg(cg)
     binfo = get_build(build_id, strict=True)
