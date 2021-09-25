@@ -11863,7 +11863,7 @@ class RootExports(object):
         context.session.assertPerm('tag')
         return writeInheritanceData(tag, data, clear=clear)
 
-    def getFullInheritance(self, tag, event=None, reverse=False):
+    def getFullInheritance(self, tag, event=None, reverse=False, **kwargs):
         """
         :param int|str tag: tag ID | name
         :param int event: event ID
@@ -11872,6 +11872,15 @@ class RootExports(object):
 
         :returns: list of node dicts
         """
+        # Backwards-compatible with the removed options
+        for k, v in kwargs.items():
+            if k in ('stops', 'jumps'):
+                if v is not None:
+                    raise koji.ParameterError("%s option has been removed since 1.26" % k)
+            else:
+                raise koji.ParameterError(
+                    "getFullInheritance() got an unexpected keyword argument '%s'" % k)
+
         if not isinstance(tag, int):
             # lookup tag id
             tag = get_tag_id(tag, strict=True)
