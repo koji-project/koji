@@ -11875,7 +11875,7 @@ class RootExports(object):
         # Backwards-compatible with the removed options
         for k, v in kwargs.items():
             if k in ('stops', 'jumps'):
-                if v is not None:
+                if v:
                     raise koji.ParameterError("%s option has been removed since 1.26" % k)
             else:
                 raise koji.ParameterError(
