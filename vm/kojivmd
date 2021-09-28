@@ -138,8 +138,8 @@ def get_options():
                 'offline_retry': True,
                 'offline_retry_interval': 120,
                 'allowed_scms': '',
-                'allowed_scms_by_config': True,
-                'allowed_scms_by_policy': False,
+                'allowed_scms_use_config': True,
+                'allowed_scms_use_policy': False,
                 'cert': None,
                 'serverca': None}
     if config.has_section('kojivmd'):
@@ -151,8 +151,8 @@ def get_options():
                     defaults[name] = int(value)
                 except ValueError:
                     quit("value for %s option must be a valid integer" % name)
-            elif name in ['offline_retry', 'no_ssl_verify', 'allowed_scms_by_config',
-                          'allowed_scms_by_policy']:
+            elif name in ['offline_retry', 'no_ssl_verify', 'allowed_scms_use_config',
+                          'allowed_scms_use_policy']:
                 defaults[name] = config.getboolean('kojivmd', name)
             elif name in ['plugin', 'plugins']:
                 defaults['plugin'] = value.split()
