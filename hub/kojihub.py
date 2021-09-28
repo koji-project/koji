@@ -11869,6 +11869,8 @@ class RootExports(object):
         :param int event: event ID
         :param bool reverse: return reversed tree (descendants instead of
                              parents)
+        :param dict stops: SHOULD NOT BE USED, BACKWARDS COMPATIBLE ONLY
+        :param dict jumps: SHOULD NOT BE USED, BACKWARDS COMPATIBLE ONLY
 
         :returns: list of node dicts
         """
