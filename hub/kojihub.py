@@ -10025,10 +10025,13 @@ class SourceTest(koji.policy.MatchTest):
                 # build - (src, target, opts=None)
                 # maven - (url, target, opts=None)
                 # winbuild - (name, source_url, target, opts=None)
+                # wrapperRPM - (spec_url, build_target, build, task, opts=None)
                 if info['method'] == 'winbuild':
                     data[self.field] = params['source_url']
                 elif info['method'] == 'indirectionimage':
                     return False
+                elif info['method'] == 'wrapperRPM':
+                    data[self.field] = params['spec_url']
                 elif 'src' in params:
                     data[self.field] = params['src']
                 elif 'url' in params:
