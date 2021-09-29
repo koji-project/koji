@@ -17,10 +17,10 @@ class TestVersion(utils.CliTestCase):
 
     @mock.patch('sys.stdout', new_callable=StringIO)
     def test_version_valid(self, stdout):
-        expected = """Client: 1.26.0
-Hub:    1.26.0
-"""
-        self.session.getKojiVersion.return_value = '1.26.0'
+        expected = f"""Client: %s
+Hub:    %s
+""" % (koji.__version__, koji.__version__)
+        self.session.getKojiVersion.return_value = koji.__version__
         rv = handle_version(self.options, self.session, [])
         self.assertEqual(rv, None)
         self.assert_console_message(stdout, expected)
@@ -28,9 +28,9 @@ Hub:    1.26.0
 
     @mock.patch('sys.stdout', new_callable=StringIO)
     def test_version_invalid(self, stdout):
-        expected = """Client: 1.26.0
+        expected = """Client: %s
 Hub:    Can't determine (older than 1.23)
-"""
+""" % koji.__version__
         self.session.getKojiVersion.side_effect = koji.GenericError()
         rv = handle_version(self.options, self.session, [])
         self.assertEqual(rv, None)
