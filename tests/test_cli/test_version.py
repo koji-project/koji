@@ -17,7 +17,7 @@ class TestVersion(utils.CliTestCase):
 
     @mock.patch('sys.stdout', new_callable=StringIO)
     def test_version_valid(self, stdout):
-        expected = f"""Client: %s
+        expected = """Client: %s
 Hub:    %s
 """ % (koji.__version__, koji.__version__)
         self.session.getKojiVersion.return_value = koji.__version__
