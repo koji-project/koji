@@ -4394,6 +4394,9 @@ def anon_handle_list_tag_inheritance(goptions, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) != 1:
         parser.error(_("This command takes exactly one argument: a tag name or ID"))
+    for deprecated in ('stop', 'jump'):
+        if getattr(options, deprecated):
+            parser.error(_("--%s option has been removed in 1.26") % deprecated)
     ensure_connection(session, goptions)
     event = koji.util.eventFromOpts(session, options)
     if event:
