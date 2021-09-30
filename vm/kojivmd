@@ -746,7 +746,7 @@ class VMExecTask(BaseTaskHandler):
         try:
             fileobj.seek(offset)
             data = fileobj.read(length)
-            encoded = base64.b64encode(data)
+            encoded = base64.b64encode(data).decode()
             del data
             return encoded
         finally:
@@ -1081,7 +1081,7 @@ class VMTaskManager(TaskManager):
                 self.cleanupVM(vm_name)
 
     def cleanupExpiredVMs(self):
-        for vm_name, task in self.expired_vms.items():
+        for vm_name, task in list(self.expired_vms.items()):
             if task['state'] == koji.TASK_STATES['FAILED']:
                 if time.time() - task['completion_ts'] < 3600 * 4:
                     # task failed, so we'll keep the VM image around for 4 hours
@@ -1097,7 +1097,7 @@ class VMTaskManager(TaskManager):
         self.macaddr_lock.acquire()
         try:
             if ret:
-                for macaddr, (vm_name, id, port) in self.macaddrs.items():
+                for macaddr, (vm_name, id, port) in list(self.macaddrs.items()):
                     if task_id == id:
                         self.expired_vms[vm_name] = self.session.getTaskInfo(task_id)
                         del self.macaddrs[macaddr]
