@@ -7454,9 +7454,10 @@ def anon_handle_wait_repo(options, session, args):
             warn("Package %s is not in tag %s" % (nvr["name"], tag))
         else:
             present_nvr = [x["nvr"] for x in data][0]
-            if present_nvr != "%s-%s-%s" % (nvr["name"], nvr["version"], nvr["release"]):
-                warn("nvr %s-%s-%s is not current in tag %s\n  latest build in %s is %s" %
-                     (nvr["name"], nvr["version"], nvr["release"], tag, tag, present_nvr))
+            expected_nvr = '%(name)s-%(version)s-%(release)s' % nvr
+            if present_nvr != expected_nvr:
+                warn("nvr %s is not current in tag %s\n  latest build in %s is %s" %
+                     (expected_nvr, tag, tag, present_nvr))
 
     last_repo = None
     repo = session.getRepo(tag_id)
