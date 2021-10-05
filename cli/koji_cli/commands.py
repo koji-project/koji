@@ -1750,7 +1750,7 @@ def handle_write_signed_rpm(goptions, session, args):
         for rpm_list in rpm_lists:
             rpms.extend(rpm_list.result)
 
-    with session.multicall() as m:
+    with session.multicall(strict=True) as m:
         for i, rpminfo in enumerate(rpms):
             nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" % rpminfo
             print("[%d/%d] %s" % (i + 1, len(rpms), nvra))
