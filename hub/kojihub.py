@@ -11582,7 +11582,7 @@ class RootExports(object):
                    volumeID=None, source=None,
                    createdBefore=None, createdAfter=None,
                    completeBefore=None, completeAfter=None, type=None, typeInfo=None,
-                   queryOpts=None, pattern=None):
+                   queryOpts=None, pattern=None, cgID=None):
         """
         Return a list of builds that match the given parameters
 
@@ -11596,6 +11596,7 @@ class RootExports(object):
         :param str prefix: only builds whose package name starts with that prefix
         :param str pattern: only builds whose nvr matches the glob pattern
         :param int state: only builds in the given state
+        :param int|str cgID: only build from given content generator
 
         Timestamp filter parameters
             - these limit the results to builds where the corresponding
@@ -11725,6 +11726,12 @@ class RootExports(object):
             if not isinstance(completeAfter, str):
                 completeAfter = datetime.datetime.fromtimestamp(completeAfter).isoformat(' ')
             clauses.append('build.completion_time > %(completeAfter)s')
+        if cgID:
+            cgID = lookup_name('content_generator', cgID, strict=False)
+            if not cgID:
+                return []
+            cgID = cgID['id']
+            clauses.append('build.cg_id = %(cgID)s')
         if type is None:
             pass
         elif type == 'maven':
