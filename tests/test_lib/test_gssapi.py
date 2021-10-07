@@ -27,7 +27,7 @@ class TestGSSAPI(unittest.TestCase):
         old_environ = dict(**os.environ)
         self.session.gssapi_login()
         self.session._callMethod.assert_called_once_with(
-                'sslLogin', [], {'proxyuser': None, 'proxyauthtype': None}, retry=False)
+                'sslLogin', [], {'proxyuser': None}, retry=False)
         self.assertEqual(old_environ, dict(**os.environ))
 
     @mock.patch('koji.reqgssapi.HTTPKerberosAuth')
@@ -47,7 +47,7 @@ class TestGSSAPI(unittest.TestCase):
             koji.reqgssapi.__version__ = accepted_version
             rv = self.session.gssapi_login(principal, keytab, ccache)
             self.session._callMethod.assert_called_once_with(
-                    'sslLogin', [], {'proxyuser': None, 'proxyauthtype': None}, retry=False)
+                    'sslLogin', [], {'proxyuser': None}, retry=False)
             self.assertEqual(old_environ, dict(**os.environ))
             self.assertTrue(rv)
             self.session._callMethod.reset_mock()
@@ -84,7 +84,7 @@ class TestGSSAPI(unittest.TestCase):
         with self.assertRaises(koji.GSSAPIAuthError):
             self.session.gssapi_login()
         self.session._callMethod.assert_called_once_with(
-                'sslLogin', [], {'proxyuser': None, 'proxyauthtype': None}, retry=False)
+                'sslLogin', [], {'proxyuser': None}, retry=False)
         self.assertEqual(old_environ, dict(**os.environ))
 
     def test_gssapi_login_http(self):

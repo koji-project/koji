@@ -2527,9 +2527,10 @@ class ClientSession(object):
                 # Depending on the server configuration, we might not be able to
                 # connect without client certificate, which means that the conn
                 # will fail with a handshake failure, which is retried by default.
-                sinfo = self._callMethod('sslLogin', [],
-                                         {'proxyuser': proxyuser, 'proxyauthtype': proxyauthtype},
-                                         retry=False)
+                kwargs = {'proxyuser': proxyuser}
+                if proxyauthtype is not None:
+                    kwargs['proxyauthtype'] = proxyauthtype
+                sinfo = self._callMethod('sslLogin', [], kwargs, retry=False)
             except Exception as e:
                 e_str = ''.join(traceback.format_exception_only(type(e), e)).strip('\n')
                 e_str = '(gssapi auth failed: %s)\n' % e_str
@@ -2585,8 +2586,10 @@ class ClientSession(object):
         self.opts['serverca'] = serverca
         e_str = None
         try:
-            sinfo = self.callMethod('sslLogin', [],
-                                    {'proxyuser': proxyuser, 'proxyauthtype': proxyauthtype})
+            kwargs = {'proxyuser': proxyuser}
+            if proxyauthtype is not None:
+                kwargs['proxyauthtype'] = proxyauthtype
+            sinfo = self.callMethod('sslLogin', [], kwargs)
 
         except Exception as ex:
             e_str = ''.join(traceback.format_exception_only(type(ex), ex))
