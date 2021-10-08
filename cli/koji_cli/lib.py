@@ -9,6 +9,7 @@ import socket
 import string
 import sys
 import time
+import json
 from contextlib import closing
 from copy import copy
 
@@ -21,6 +22,7 @@ import koji
 # import parse_arches to current namespace for backward compatibility
 from koji import parse_arches
 from koji.util import md5_constructor, to_list
+from koji.xmlrpcplus import xmlrpc_client
 
 
 # for compatibility with plugins based on older version of lib
@@ -848,3 +850,10 @@ def truncate_string(s, length=47):
             return s
     else:
         return ''
+
+
+class DatetimeJSONEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, xmlrpc_client.DateTime):
+            return str(o)
+        return json.JSONEncoder.default(self, o)
