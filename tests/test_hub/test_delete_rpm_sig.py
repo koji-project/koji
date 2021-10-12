@@ -23,6 +23,7 @@ class TestDeleteRPMSig(unittest.TestCase):
         self.get_rpm = mock.patch('kojihub.get_rpm').start()
         self.query_rpm_sigs = mock.patch('kojihub.query_rpm_sigs').start()
         self.get_build = mock.patch('kojihub.get_build').start()
+        self.get_user = mock.patch('kojihub.get_user').start()
         self.buildinfo = {'build_id': 1,
                           'epoch': None,
                           'extra': None,
@@ -55,6 +56,8 @@ class TestDeleteRPMSig(unittest.TestCase):
                               'sigkey': ''},
                              {'rpm_id': 2, 'sighash': '78c245caa6deb70f0abc8b844c642cd6',
                               'sigkey': '2f86d6a1'}]
+        self.userinfo = {'authtype': 2, 'id': 1, 'krb_principal': None, 'krb_principals': [],
+                         'name': 'testuser', 'status': 0, 'usertype': 0}
 
     def tearDown(self):
         mock.patch.stopall()
@@ -121,6 +124,7 @@ class TestDeleteRPMSig(unittest.TestCase):
         os_remove.side_effect = FileNotFoundError()
         self.get_rpm.return_value = self.rinfo
         self.get_build.return_value = self.buildinfo
+        self.get_user.return_value = self.userinfo
         self.query_rpm_sigs.return_value = self.queryrpmsigs
         r = kojihub.delete_rpm_sig(rpminfo, all_sigs=True)
         self.assertEqual(r, None)
@@ -154,6 +158,7 @@ class TestDeleteRPMSig(unittest.TestCase):
         rpminfo = 2
         self.get_rpm.return_value = self.rinfo
         self.get_build.return_value = self.buildinfo
+        self.get_user.return_value = self.userinfo
         self.query_rpm_sigs.return_value = self.queryrpmsigs
         kojihub.delete_rpm_sig(rpminfo, all_sigs=True)
         self.get_rpm.assert_called_once_with(rpminfo, strict=True)
