@@ -548,7 +548,10 @@ class SCM(object):
             scheme = self.scheme
             if '+' in scheme:
                 scheme = scheme.split('+')[1]
-            gitrepo = '%s%s%s' % (scheme, self.host, self.repository)
+            if self.user:
+                gitrepo = '%s%s@%s%s' % (scheme, self.user, self.host, self.repository)
+            else:
+                gitrepo = '%s%s%s' % (scheme, self.host, self.repository)
             commonrepo = os.path.dirname(gitrepo) + '/common'
             checkout_path = os.path.basename(self.repository)
             if self.repository.endswith('/.git'):
