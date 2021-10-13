@@ -29,12 +29,10 @@ from koji import request_with_retry
 import optparse
 import os
 import random
-import shutil
 import socket  # for socket.error and socket.setdefaulttimeout
 import string
 import sys
 import time
-import urllib2
 
 import requests
 import rpm
