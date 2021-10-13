@@ -7800,7 +7800,9 @@ def check_rpm_sig(an_rpm, sigkey, sighdr):
 def query_rpm_sigs(rpm_id=None, sigkey=None, queryOpts=None):
     """Queries db for rpm signatures
 
-    :param int rpm_id: rpm ID
+    :param rpm_id: a int RPM ID,
+                   a string N-V-R.A,
+                   a map containing 'name', 'version', 'release', and 'arch'
     :param int sigkey: signature key hash
     :param queryOpts: query options used by the QueryProcessor.
 
@@ -7808,6 +7810,12 @@ def query_rpm_sigs(rpm_id=None, sigkey=None, queryOpts=None):
     """
     fields = ('rpm_id', 'sigkey', 'sighash')
     clauses = []
+    if rpm_id is not None and not isinstance(rpm_id, int):
+        rpminfo = get_rpm(rpm_id)
+        if rpminfo:
+            rpm_id = rpminfo['id']
+        else:
+            return []
     if rpm_id is not None:
         clauses.append("rpm_id=%(rpm_id)s")
     if sigkey is not None:
