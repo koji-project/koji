@@ -437,9 +437,18 @@ class MultiCallInProgress(object):
     pass
 
 
-# A function to get create an exception from a fault
 def convertFault(fault):
-    """Convert a fault to the corresponding Exception type, if possible"""
+    """Convert a fault to the corresponding Exception type, if possible.
+
+    This method compares this fault's faultCode to all the known faultCodes
+    in the GenericError and sub-classes defined above. If there is a matching
+    faultCode, return that new Exception class. If there is no match, just
+    return the fault object as-is.
+
+    :param xmlrpc.client.Fault fault: The XML-RPC fault from the hub.
+    :returns: one of the GenericError sub-classes, if possible.
+    :returns: fault instance, if no GenericError sub-classes matched.
+    """
     code = getattr(fault, 'faultCode', None)
     if code is None:
         return fault
