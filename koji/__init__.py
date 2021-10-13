@@ -2589,7 +2589,7 @@ class ClientSession(object):
             kwargs = {'proxyuser': proxyuser}
             if proxyauthtype is not None:
                 kwargs['proxyauthtype'] = proxyauthtype
-            sinfo = self.callMethod('sslLogin', [], kwargs)
+            sinfo = self._callMethod('sslLogin', [], kwargs)
 
         except Exception as ex:
             e_str = ''.join(traceback.format_exception_only(type(ex), ex))
