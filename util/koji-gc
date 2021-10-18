@@ -26,88 +26,78 @@ import koji.policy
 from koji.util import LazyDict, LazyValue, to_list
 
 
-def _(args):
-    """Stub function for translation"""
-    return args
-
-
 def get_options():
     """process options from command line and config file"""
 
-    usage = _("%prog [options]")
+    usage = "%prog [options]"
     parser = optparse.OptionParser(usage=usage)
-    parser.add_option("-c", "--config-file", metavar="FILE",
-                      default='/etc/koji-gc/koji-gc.conf',
-                      help=_("use alternate configuration file"))
-    parser.add_option("--keytab", help=_("specify a Kerberos keytab to use"))
-    parser.add_option("--principal", help=_("specify a Kerberos principal to use"))
+    parser.add_option("-c", "--config-file", metavar="FILE", default='/etc/koji-gc/koji-gc.conf',
+                      help="use alternate configuration file")
+    parser.add_option("--keytab", help="specify a Kerberos keytab to use")
+    parser.add_option("--principal", help="specify a Kerberos principal to use")
     parser.add_option("--runas", metavar="USER",
-                      help=_("run as the specified user (requires special privileges)"))
-    parser.add_option("--user", help=_("specify user"))
-    parser.add_option("--password", help=_("specify password"))
-    parser.add_option("--noauth", action="store_true", default=False,
-                      help=_("do not authenticate"))
+                      help="run as the specified user (requires special privileges)")
+    parser.add_option("--user", help="specify user")
+    parser.add_option("--password", help="specify password")
+    parser.add_option("--noauth", action="store_true", default=False, help="do not authenticate")
     parser.add_option("--network-hack", action="store_true", default=False,
                       help=optparse.SUPPRESS_HELP)  # no longer used
-    parser.add_option("--cert", help=_("Client SSL certificate file for authentication"))
-    parser.add_option("--serverca", help=_("CA cert file that issued the hub certificate"))
-    parser.add_option("-n", "--test", action="store_true", default=False,
-                      help=_("test mode"))
+    parser.add_option("--cert", help="Client SSL certificate file for authentication")
+    parser.add_option("--serverca", help="CA cert file that issued the hub certificate")
+    parser.add_option("-n", "--test", action="store_true", default=False, help="test mode")
     parser.add_option("-d", "--debug", action="store_true", default=False,
-                      help=_("show debug output"))
+                      help="show debug output")
     parser.add_option("--debug-xmlrpc", action="store_true", default=False,
-                      help=_("show xmlrpc debug output"))
+                      help="show xmlrpc debug output")
     parser.add_option("--smtp-host", metavar="HOST", default='localhost',
-                      help=_("specify smtp server for notifications"))
+                      help="specify smtp server for notifications")
     parser.add_option("--smtp-user", dest="smtp_user", metavar="USER",
-                      help=_("specify smtp username for notifications"))
+                      help="specify smtp username for notifications")
     parser.add_option("--smtp-pass", dest="smtp_pass", metavar="PASSWORD",
                       help=optparse.SUPPRESS_HELP)  # do not allow passwords on a command line
     parser.add_option("--no-mail", action='store_false', default=True, dest="mail",
-                      help=_("don't send notifications"))
-    parser.add_option("--send-mail", action='store_true', dest="mail",
-                      help=_("send notifications"))
+                      help="don't send notifications")
+    parser.add_option("--send-mail", action='store_true', dest="mail", help="send notifications")
     parser.add_option("--email-domain", default="fedoraproject.org",
-                      help=_("Email domain appended to Koji username for notifications"))
+                      help="Email domain appended to Koji username for notifications")
     parser.add_option("--from-addr", default="Koji Build System <buildsys@example.com>",
-                      help=_("From address for notifications"))
-    parser.add_option("--cc-addr", help=_("CC address for notifications (multiple)"),
+                      help="From address for notifications")
+    parser.add_option("--cc-addr", help="CC address for notifications (multiple)",
                       action="append", metavar="EMAIL_ADDRESS")
-    parser.add_option("--bcc-addr", help=_("BCC address for notifications (multiple)"),
+    parser.add_option("--bcc-addr", help="BCC address for notifications (multiple)",
                       action="append", metavar="EMAIL_ADDRESS")
     parser.add_option("--email-template", default="/etc/koji-gc/email.tpl",
-                      help=_("notification template"))
-    parser.add_option("--action", help=_("action(s) to take"))
+                      help="notification template")
+    parser.add_option("--action", help="action(s) to take")
     parser.add_option("--delay", metavar="INTERVAL", default='5 days',
                       help="time before eligible builds are placed in trashcan")
     parser.add_option("--grace-period", default='4 weeks', metavar="INTERVAL",
                       help="time that builds are held in trashcan")
     parser.add_option("--skip-main", action="store_true", default=False,
-                      help=_("don't actually run main"))
+                      help="don't actually run main")
     parser.add_option("--unprotected-keys", metavar="KEYS",
-                      help=_("allow builds signed with these keys to be deleted"))
+                      help="allow builds signed with these keys to be deleted")
     parser.add_option("--tag-filter", "--tag", metavar="PATTERN", action="append",
-                      help=_("Process only tags matching PATTERN when pruning"))
+                      help="Process only tags matching PATTERN when pruning")
     parser.add_option("--ignore-tags", metavar="PATTERN", action="append",
-                      help=_("Ignore tags matching PATTERN when pruning"))
-    parser.add_option("--pkg-filter", "--pkg", "--package",
-                      metavar="PATTERN", action='append',
-                      help=_("Process only packages matching PATTERN"))
+                      help="Ignore tags matching PATTERN when pruning")
+    parser.add_option("--pkg-filter", "--pkg", "--package", metavar="PATTERN", action='append',
+                      help="Process only packages matching PATTERN")
     parser.add_option("--bypass-locks", metavar="PATTERN", action="append",
-                      help=_("Bypass locks for tags matching PATTERN"))
+                      help="Bypass locks for tags matching PATTERN")
     parser.add_option("--purge", action="store_true", default=False,
-                      help=_("When pruning, attempt to delete the builds that are untagged"))
+                      help="When pruning, attempt to delete the builds that are untagged")
     parser.add_option("--trashcan-tag", default='trashcan', metavar="TAG",
-                      help=_("specify an alternate trashcan tag"))
+                      help="specify an alternate trashcan tag")
     parser.add_option("--weburl", default="http://localhost/koji", metavar="URL",
-                      help=_("url of koji web server (for use in notifications)"))
-    parser.add_option("-s", "--server", help=_("url of koji XMLRPC server"))
-    parser.add_option("--lock-file", help=_("koji-gc will wait while specified file exists. "
-                                            "Default path is /run/user/<uid>/koji-gc.lock. "
-                                            "For service usage /var/lock/koji-gc.lock is "
-                                            "recommended."))
+                      help="url of koji web server (for use in notifications)")
+    parser.add_option("-s", "--server", help="url of koji XMLRPC server")
+    parser.add_option("--lock-file", help="koji-gc will wait while specified file exists. "
+                                          "Default path is /run/user/<uid>/koji-gc.lock. "
+                                          "For service usage /var/lock/koji-gc.lock is "
+                                          "recommended.")
     parser.add_option("--exit-on-lock", action="store_true",
-                      help=_("quit if --lock-file exists, don't wait"))
+                      help="quit if --lock-file exists, don't wait")
     # parse once to get the config file
     (options, args) = parser.parse_args()
 
@@ -181,7 +171,7 @@ def get_options():
         options.action = options.action.lower().replace(',', ' ').split()
         for x in options.action:
             if x not in actions:
-                parser.error(_("Invalid action: %s") % x)
+                parser.error("Invalid action: %s" % x)
     else:
         options.action = ('delete', 'prune', 'trash')
 
@@ -202,7 +192,7 @@ def get_options():
                 options.key_aliases[parts[0].upper()] = parts[1]
     except ValueError as e:
         print(e)
-        parser.error(_("Invalid key alias data in config: %s") % config.get('main', 'key_aliases'))
+        parser.error("Invalid key alias data in config: %s" % config.get('main', 'key_aliases'))
 
     # parse time intervals
     for key in ('delay', 'grace_period'):
@@ -213,7 +203,7 @@ def get_options():
             if options.debug:
                 print("%s: %s seconds" % (key, value))
         except ValueError:
-            parser.error(_("Invalid time interval: %s") % value)
+            parser.error("Invalid time interval: %s" % value)
 
     # special handling for cert defaults
     cert_defaults = {
@@ -228,7 +218,7 @@ def get_options():
 
     template = getattr(options, 'email_template', None)
     if not template or not os.access(template, os.F_OK):
-        parser.error(_("No such file: %s") % template)
+        parser.error("No such file: %s" % template)
 
     return options, args
 
@@ -375,10 +365,10 @@ def ensure_connection(session):
     try:
         ret = session.getAPIVersion()
     except requests.exceptions.ConnectionError:
-        error(_("Error: Unable to connect to server"))
+        error("Error: Unable to connect to server")
     if ret != koji.API_VERSION:
-        warn(_("WARNING: The server is at API version %d and the client is at %d" %
-               (ret, koji.API_VERSION)))
+        warn("WARNING: The server is at API version %d and the client is at %d" %
+             (ret, koji.API_VERSION))
 
 
 def activate_session(session):
@@ -397,7 +387,7 @@ def activate_session(session):
         session.gssapi_login(principal=options.principal, keytab=options.keytab,
                              proxyuser=options.runas)
     if not options.noauth and not session.logged_in:
-        error(_("Error: unable to log in, no authentication methods available"))
+        error("Error: unable to log in, no authentication methods available")
     ensure_connection(session)
     if options.debug:
         print("successfully connected to hub")
@@ -457,7 +447,7 @@ Build: %%(name)s-%%(version)s-%%(release)s
 def main(args):
     activate_session(session)
     if not session.getTag(options.trashcan_tag, strict=False):
-        error(_("Trashcan tag %s doesn't exist") % options.trashcan_tag)
+        error("Trashcan tag %s doesn't exist" % options.trashcan_tag)
     for x in options.action:
         globals()['handle_' + x]()
 

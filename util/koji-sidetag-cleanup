@@ -8,7 +8,6 @@ import os
 import xmlrpc
 
 import koji
-from koji import _
 
 
 def error(msg=None, code=1):
@@ -27,36 +26,33 @@ def warn(msg):
 
 def get_options():
     """process options from command line and config file"""
-    parser = optparse.OptionParser(usage=_("%prog [options]"))
-    parser.add_option("-c", "--config", metavar="FILE",
-                      help=_("use alternate config file"))
-    parser.add_option("-s", "--server", help=_("url of koji XMLRPC server"))
-    parser.add_option("--keytab", help=_("specify a Kerberos keytab to use"))
-    parser.add_option("--principal", help=_("specify a Kerberos principal to use"))
+    parser = optparse.OptionParser(usage="%prog [options]")
+    parser.add_option("-c", "--config", metavar="FILE", help="use alternate config file")
+    parser.add_option("-s", "--server", help="url of koji XMLRPC server")
+    parser.add_option("--keytab", help="specify a Kerberos keytab to use")
+    parser.add_option("--principal", help="specify a Kerberos principal to use")
     parser.add_option("--runas", metavar="USER",
-                      help=_("run as the specified user (requires special privileges)"))
-    parser.add_option("--user", help=_("specify user"))
-    parser.add_option("--password", help=_("specify password"))
-    parser.add_option("--noauth", action="store_true", default=False,
-                      help=_("do not authenticate"))
-    parser.add_option("--cert", help=_("Client SSL certificate file for authentication"))
-    parser.add_option("--serverca", help=_("CA cert file that issued the hub certificate"))
+                      help="run as the specified user (requires special privileges)")
+    parser.add_option("--user", help="specify user")
+    parser.add_option("--password", help="specify password")
+    parser.add_option("--noauth", action="store_true", default=False, help="do not authenticate")
+    parser.add_option("--cert", help="Client SSL certificate file for authentication")
+    parser.add_option("--serverca", help="CA cert file that issued the hub certificate")
     parser.add_option("-d", "--debug", action="store_true", default=False,
-                      help=_("show debug output"))
+                      help="show debug output")
     parser.add_option("--debug-xmlrpc", action="store_true", default=False,
-                      help=_("show xmlrpc debug output"))
-    parser.add_option("-t", "--test", action="store_true",
-                      help=_("test mode, no tag is deleted"))
+                      help="show xmlrpc debug output")
+    parser.add_option("-t", "--test", action="store_true", help="test mode, no tag is deleted")
     parser.add_option("--no-empty", action="store_false", dest="clean_empty", default=True,
-                      help=_("don't run emptiness check"))
+                      help="don't run emptiness check")
     parser.add_option("--empty-delay", action="store", metavar="DAYS", default=1, type=int,
-                      help=_("delete empty tags older than DAYS"))
+                      help="delete empty tags older than DAYS")
     parser.add_option("--no-old", action="store_false", dest="clean_old", default=True,
-                      help=_("don't run old check"))
+                      help="don't run old check")
     parser.add_option("--old-delay", action="store", metavar="DAYS", default=30, type=int,
-                      help=_("delete older tags than timestamp"))
+                      help="delete older tags than timestamp")
     parser.add_option("--ignore-tags", metavar="PATTERN", action="append",
-                      help=_("Ignore tags matching PATTERN when pruning"))
+                      help="Ignore tags matching PATTERN when pruning")
     # parse once to get the config file
     (options, args) = parser.parse_args()
 
@@ -66,7 +62,7 @@ def get_options():
     cf = getattr(options, 'config', None)
     if cf:
         if not os.access(cf, os.F_OK):
-            parser.error(_("No such file: %s") % cf)
+            parser.error("No such file: %s" % cf)
             assert False  # pragma: no cover
     else:
         cf = '/etc/koji-gc/koji-gc.conf'
@@ -125,10 +121,9 @@ def ensure_connection(session):
     try:
         ret = session.getAPIVersion()
     except xmlrpc.client.ProtocolError:
-        error(_("Unable to connect to server"))
+        error("Unable to connect to server")
     if ret != koji.API_VERSION:
-        warn(_("The server is at API version %d and the client is at %d" %
-               (ret, koji.API_VERSION)))
+        warn("The server is at API version %d and the client is at %d" % (ret, koji.API_VERSION))
 
 
 def activate_session(session):
@@ -153,9 +148,9 @@ def activate_session(session):
             else:
                 session.gssapi_login(proxyuser=options.runas)
         except Exception as e:
-            error(_("GSSAPI authentication failed: %s (%s)") % (e.args[1], e.args[0]))
+            error("GSSAPI authentication failed: %s (%s)" % (e.args[1], e.args[0]))
     if not options.noauth and not session.logged_in:
-        error(_("unable to log in, no authentication methods available"))
+        error("unable to log in, no authentication methods available")
     ensure_connection(session)
     if options.debug:
         print("successfully connected to hub")

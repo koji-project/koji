@@ -40,7 +40,7 @@ import koji
 import koji.plugin
 import koji.util
 from koji_cli.commands import *  # noqa: F401, F403
-from koji_cli.lib import _, categories, get_epilog_str, greetings, warn
+from koji_cli.lib import categories, get_epilog_str, greetings, warn
 
 
 def register_plugin(plugin):
@@ -105,8 +105,8 @@ def get_options():
 
     common_commands = ['build', 'help', 'download-build',
                        'latest-build', 'search', 'list-targets']
-    usage = _("%%prog [global-options] command [command-options-and-arguments]"
-              "\n\nCommon commands: %s" % ', '.join(sorted(common_commands)))
+    usage = "%%prog [global-options] command [command-options-and-arguments]\n\n" \
+            "Common commands: %s" % ', '.join(sorted(common_commands))
     parser = OptionParser(usage=usage)
     parser.disable_interspersed_args()
     progname = os.path.basename(sys.argv[0]) or 'koji'
@@ -116,38 +116,33 @@ def get_options():
             'origin_format_help': parser.origin_format_help(formatter),
             'epilog': get_epilog_str()}))
     parser.add_option("-p", "--profile", default=progname,
-                      help=_("specify a configuration profile. default: %s" % progname))
+                      help="specify a configuration profile. default: %s" % progname)
     parser.add_option("-c", "--config", dest="configFile",
-                      help=_("load profile's settings from another file"), metavar="FILE")
-    parser.add_option("--keytab", help=_("specify a Kerberos keytab to use"), metavar="FILE")
-    parser.add_option("--principal", help=_("specify a Kerberos principal to use"))
-    parser.add_option("--cert", help=_("specify a SSL cert to use"), metavar="FILE")
-    parser.add_option("--runas", help=_("run as the specified user (requires special privileges)"))
-    parser.add_option("--user", help=_("specify user"))
-    parser.add_option("--password", help=_("specify password"))
-    parser.add_option("--noauth", action="store_true", default=False,
-                      help=_("do not authenticate"))
+                      help="load profile's settings from another file", metavar="FILE")
+    parser.add_option("--keytab", help="specify a Kerberos keytab to use", metavar="FILE")
+    parser.add_option("--principal", help="specify a Kerberos principal to use")
+    parser.add_option("--cert", help="specify a SSL cert to use", metavar="FILE")
+    parser.add_option("--runas", help="run as the specified user (requires special privileges)")
+    parser.add_option("--user", help="specify user")
+    parser.add_option("--password", help="specify password")
+    parser.add_option("--noauth", action="store_true", default=False, help="do not authenticate")
     parser.add_option("--force-auth", action="store_true",  # default (False) comes from the config
-                      help=_("authenticate even for read-only operations"))
-    parser.add_option("--authtype", help=_("force use of a type of authentication, options: "
-                                           "noauth, ssl, password, or kerberos"))
-    parser.add_option("-d", "--debug", action="store_true",
-                      help=_("show debug output"))
-    parser.add_option("--debug-xmlrpc", action="store_true",
-                      help=_("show xmlrpc debug output"))
-    parser.add_option("-q", "--quiet", action="store_true", default=False,
-                      help=_("run quietly"))
+                      help="authenticate even for read-only operations")
+    parser.add_option("--authtype", help="force use of a type of authentication, options: "
+                                         "noauth, ssl, password, or kerberos")
+    parser.add_option("-d", "--debug", action="store_true", help="show debug output")
+    parser.add_option("--debug-xmlrpc", action="store_true", help="show xmlrpc debug output")
+    parser.add_option("-q", "--quiet", action="store_true", default=False, help="run quietly")
     parser.add_option("--skip-main", action="store_true", default=False,
-                      help=_("don't actually run main"))
-    parser.add_option("-s", "--server", help=_("url of XMLRPC server"))
-    parser.add_option("--topdir", help=_("specify topdir"))
-    parser.add_option("--weburl", help=_("url of the Koji web interface"))
-    parser.add_option("--topurl", help=_("url for Koji file access"))
+                      help="don't actually run main")
+    parser.add_option("-s", "--server", help="url of XMLRPC server")
+    parser.add_option("--topdir", help="specify topdir")
+    parser.add_option("--weburl", help="url of the Koji web interface")
+    parser.add_option("--topurl", help="url for Koji file access")
     parser.add_option("--pkgurl", help=SUPPRESS_HELP)
     parser.add_option("--plugin-paths", metavar='PATHS',
-                      help=_("specify additional plugin paths (colon separated)"))
-    parser.add_option("--help-commands", action="store_true", default=False,
-                      help=_("list commands"))
+                      help="specify additional plugin paths (colon separated)")
+    parser.add_option("--help-commands", action="store_true", default=False, help="list commands")
     (options, args) = parser.parse_args()
 
     # load local config
@@ -227,8 +222,8 @@ def get_options():
 
 def handle_help(options, session, args):
     "[info] List available commands"
-    usage = _("usage: %prog help <category> ...")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
+    usage = "usage: %prog help <category> ..."
+    usage += "\n(Specify the --help global option for a list of other help options)"
     parser = OptionParser(usage=usage)
     # the --admin opt is for backwards compatibility. It is equivalent to: koji help admin
     parser.add_option("--admin", action="store_true", help=SUPPRESS_HELP)
@@ -290,9 +285,9 @@ def list_commands(categories_chosen=None):
             alias = alias.replace('_', '-')
             handlers.append((alias, value))
     handlers.sort()
-    print(_("Available commands:"))
+    print("Available commands:")
     for category in categories_chosen:
-        print(_("\n%s:" % categories[category]))
+        print("\n%s:" % categories[category])
         for alias, handler in handlers:
             desc = handler.__doc__ or ''
             if desc.startswith('[%s] ' % category):
