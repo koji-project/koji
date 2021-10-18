@@ -127,6 +127,25 @@ class TestAddTarget(utils.CliTestCase):
         self.session.createBuildTarget.assert_called_once_with(target, tag, target)
         self.session.getTag.assert_called_with(target)
 
+    @mock.patch('sys.stderr', new_callable=StringIO)
+    def test_add_target_without_perms(self, stderr):
+        side_effect_result = [False, False]
+
+        target = 'test-target'
+        tag = 'test-tag'
+        self.session.hasPerm.side_effect = side_effect_result
+        with self.assertRaises(SystemExit) as ex:
+            handle_add_target(self.options, self.session, [target, tag])
+        self.assertExitCode(ex, 2)
+        expected_msg = """Usage: %s add-target <name> <build tag> <dest tag>
+(Specify the --help global option for a list of other help options)
+
+%s: error: This action requires target or admin privileges
+""" % (self.progname, self.progname)
+        self.assert_console_message(stderr, expected_msg)
+        self.session.createBuildTarget.assert_not_called()
+        self.session.getTag.assert_not_called()
+
     def test_add_target_help(self):
         self.assert_help(
             handle_add_target,

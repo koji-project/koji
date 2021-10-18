@@ -64,6 +64,23 @@ class TestRenameChannel(utils.CliTestCase):
         self.session.getChannel.assert_called_once_with(self.channel_name_old)
         self.session.renameChannel.assert_not_called()
 
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
+    @mock.patch('koji_cli.commands.activate_session')
+    def test_handle_rename_channel_more_args(self, activate_session_mock, stderr, stdout):
+        args = [self.channel_name_old, self.channel_name_new, 'extra-arg']
+        with self.assertRaises(SystemExit) as ex:
+            handle_rename_channel(self.options, self.session, args)
+        self.assertExitCode(ex, 2)
+        expected = 'Incorrect number of arguments'
+        depr_warn = 'rename-channel is deprecated and will be removed in 1.28'
+        self.assert_console_message(stderr, expected, wipe=False, regex=True)
+        self.assert_console_message(stdout, depr_warn, wipe=False, regex=True)
+        # Finally, assert that things were called as we expected.
+        activate_session_mock.assert_not_called()
+        self.session.getChannel.assert_not_called()
+        self.session.renameChannel.assert_not_called()
+
     def test_handle_rename_channel_help(self):
         self.assert_help(
             handle_rename_channel,

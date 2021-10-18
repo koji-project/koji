@@ -52,6 +52,24 @@ class TestRemoveTag(utils.CliTestCase):
         self.session.deleteTag.assert_called_once_with(tag_info['id'])
         self.session.getTag.assert_called_with(tag_info['name'])
 
+    @mock.patch('sys.stderr', new_callable=StringIO)
+    def test_remove_tag_without_perms(self, stderr):
+        side_effect_result = [False, False]
+
+        tag = 'test-tag'
+        self.session.hasPerm.side_effect = side_effect_result
+        with self.assertRaises(SystemExit) as ex:
+            handle_remove_tag(self.options, self.session, [tag])
+        self.assertExitCode(ex, 2)
+        expected_msg = """Usage: %s remove-tag [options] <name>
+(Specify the --help global option for a list of other help options)
+
+%s: error: This action requires tag or admin privileges
+""" % (self.progname, self.progname)
+        self.assert_console_message(stderr, expected_msg)
+        self.session.deleteTag.assert_not_called()
+        self.session.getTag.assert_not_called()
+
     def test_remove_tag_help(self):
         self.assert_help(
             handle_remove_tag,
