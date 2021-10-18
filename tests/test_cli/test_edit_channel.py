@@ -19,6 +19,11 @@ class TestEditChannel(utils.CliTestCase):
         self.channel_old = 'test-channel'
         self.channel_new = 'test-channel-new'
         self.description = 'description'
+        self.channel_info = {
+            'id': 123,
+            'name': self.channel_old,
+            'description': self.description,
+        }
         self.maxDiff = None
 
     def tearDown(self):
@@ -71,6 +76,39 @@ Options:
         self.session.getKojiVersion.return_value = '1.25.1'
 
         self.session.editChannel.side_effect = koji.GenericError(expected_api)
+        with self.assertRaises(SystemExit) as ex:
+            handle_edit_channel(self.options, self.session,
+                                [self.channel_old, '--name', self.channel_new,
+                                 '--description', self.description])
+        self.assertExitCode(ex, 1)
+        actual = stderr.getvalue()
+        self.assertMultiLineEqual(actual, expected)
+        activate_session_mock.assert_called_once_with(self.session, self.options)
+        self.session.editChannel.assert_called_once_with(self.channel_old, name=self.channel_new,
+                                                         description=self.description)
+
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
+    @mock.patch('koji_cli.commands.activate_session')
+    def test_handle_edit_channel_non_exist_channel(self, activate_session_mock, stderr):
+        expected = 'No such channel: %s\n' % self.channel_old
+        channel_info = None
+        self.session.getChannel.return_value = channel_info
+        with self.assertRaises(SystemExit) as ex:
+            handle_edit_channel(self.options, self.session,
+                                [self.channel_old, '--name', self.channel_new,
+                                 '--description', self.description])
+        self.assertExitCode(ex, 1)
+        actual = stderr.getvalue()
+        self.assertMultiLineEqual(actual, expected)
+        activate_session_mock.assert_called_once_with(self.session, self.options)
+        self.session.editChannel.assert_not_called()
+
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
+    @mock.patch('koji_cli.commands.activate_session')
+    def test_handle_edit_channel_non_result(self, activate_session_mock, stderr):
+        expected = 'No changes made, please correct the command line\n'
+        self.session.getChannel.return_value = self.channel_info
+        self.session.editChannel.return_value = None
         with self.assertRaises(SystemExit) as ex:
             handle_edit_channel(self.options, self.session,
                                 [self.channel_old, '--name', self.channel_new,

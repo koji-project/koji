@@ -56,7 +56,7 @@ class TestEditExternalRepo(utils.CliTestCase):
 
         # edit ext-repo only
         handle_edit_external_repo(self.options, self.session,
-                                  ['ext_repo','--name', 'newname', '--url', 'https://newurl'])
+                                  ['ext_repo', '--name', 'newname', '--url', 'https://newurl'])
         self.assert_console_message(stdout, "")
         self.assert_console_message(stderr, "")
         self.session.editExternalRepo.assert_called_once_with('ext_repo',
@@ -66,14 +66,15 @@ class TestEditExternalRepo(utils.CliTestCase):
         # edit tag-repo only
         self.session.reset_mock()
         handle_edit_external_repo(self.options, self.session,
-                                  ['ext_repo','-t', 'tag', '-p', '0', '-m', 'koji'])
+                                  ['ext_repo', '-t', 'tag', '-p', '0', '-m', 'koji', '-a', 'i386'])
         self.assert_console_message(stdout, "")
         self.assert_console_message(stderr, "")
         self.session.editExternalRepo.assert_not_called()
         self.session.editTagExternalRepo.assert_called_once_with(repo_info='ext_repo',
                                                                  tag_info='tag',
                                                                  priority=0,
-                                                                 merge_mode='koji')
+                                                                 merge_mode='koji',
+                                                                 arches='i386')
 
     def test_handle_edit_external_repo_help(self):
         self.assert_help(

@@ -501,6 +501,16 @@ class TestSpinLiveCD(utils.CliTestCase):
                 activate_session=None)
         build_image_mock.assert_not_called()
 
+    @mock.patch('koji_cli.commands._build_image')
+    def test_handle_spin_livecd_longer_volid(self, build_image_mock):
+        """Test handle_spin_livecd volid options error"""
+        expected = self.format_error_message("Volume ID has a maximum length of 32 characters")
+        volid = '12345678901234567890123456789012345'
+        args = ['--volid', volid, 'name', 'version', 'target', 'arch', 'file.ks']
+        self.assert_system_exit(handle_spin_livecd, self.options, self.session, args,
+                                stderr=expected, activate_session=None)
+        build_image_mock.assert_not_called()
+
     def test_handle_spin_livecd_help(self):
         """Test handle_spin_livecd help message"""
         self.assert_help(

@@ -74,13 +74,14 @@ class TestAddHostToChannel(utils.CliTestCase):
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_add_host_to_channel_new(
+    def test_handle_add_host_to_channel_new_and_force(
             self, activate_session_mock, stdout):
         host = 'host'
         host_info = mock.ANY
         channel = 'channel'
         new_arg = '--new'
-        args = [host, channel, new_arg]
+        force_arg = '--force'
+        args = [host, channel, new_arg, force_arg]
         options = mock.MagicMock()
 
         # Mock out the xmlrpc server
@@ -98,7 +99,7 @@ class TestAddHostToChannel(utils.CliTestCase):
         activate_session_mock.assert_called_once_with(session, options)
         session.getChannel.assert_not_called()
         session.getHost.assert_called_once_with(host)
-        session.addHostToChannel.assert_called_once_with(host, channel, create=True)
+        session.addHostToChannel.assert_called_once_with(host, channel, create=True, force=True)
         self.assertNotEqual(rv, 1)
 
     @mock.patch('sys.stderr', new_callable=six.StringIO)
