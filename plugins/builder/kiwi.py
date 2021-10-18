@@ -1,4 +1,5 @@
 import glob
+#import json
 import pickle
 import os
 import xml.dom.minidom
@@ -342,6 +343,7 @@ class KiwiCreateImageTask(BaseBuildTask):
             raise koji.GenericError("Kiwi failed")
 
         result = pickle.load(open(joinpath(broot.rootdir(), target_dir[1:], 'kiwi.result'), 'rb'))
+        #result = json.load(open(joinpath(broot.rootdir(), target_dir[1:], 'kiwi.result'), 'rb'))
 
         imgdata = {
             'arch': arch,
