@@ -7603,6 +7603,8 @@ def handle_dist_repo(options, session, args):
     parser.add_option('--zck-dict-dir', action='store', default=None,
                       help=_('Directory containing compression dictionaries for use by zchunk '
                              '(on builder)'))
+    parser.add_option("--write-signed-rpms", action='store_true', default=False,
+                      help=_('Write a signed rpms for given tag'))
     task_opts, args = parser.parse_args(args)
     if len(args) < 1:
         parser.error(_('You must provide a tag to generate the repo from'))
@@ -7678,6 +7680,7 @@ def handle_dist_repo(options, session, args):
         task_opts.arch.append('src')
     if not task_opts.arch:
         parser.error(_('No arches left.'))
+
     opts = {
         'arch': task_opts.arch,
         'comps': task_opts.comps,
@@ -7692,6 +7695,7 @@ def handle_dist_repo(options, session, args):
         'allow_missing_signatures': task_opts.allow_missing_signatures,
         'zck': task_opts.zck,
         'zck_dict_dir': task_opts.zck_dict_dir,
+        'write_signed_rpms': task_opts.write_signed_rpms,
     }
     task_id = session.distRepo(tag, keys, **opts)
     print("Creating dist repo for tag " + tag)
