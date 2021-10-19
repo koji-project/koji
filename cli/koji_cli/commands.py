@@ -24,6 +24,7 @@ import koji
 from koji.util import base64encode, md5_constructor, to_list
 from koji_cli.lib import (
     TimeOption,
+    DatetimeJSONEncoder,
     _,
     _list_tasks,
     _progress_callback,
@@ -1045,7 +1046,7 @@ def handle_call(goptions, session, args):
                 non_kw.append(arg_filter(arg))
     response = getattr(session, name).__call__(*non_kw, **kw)
     if options.json_output:
-        print(json.dumps(response, indent=2, separators=(',', ': ')))
+        print(json.dumps(response, indent=2, separators=(',', ': '), cls=DatetimeJSONEncoder))
     else:
         pprint.pprint(response)
 
