@@ -2089,6 +2089,8 @@ class WrapperRPMTask(BaseBuildTask):
         specfile = spec_template[:-5]
         with open(specfile, 'wb') as specfd:
             specfd.write(contents)
+        uploadpath = self.getUploadDir()
+        self.session.uploadWrapper(specfile, uploadpath)
 
         # Run spec file sanity checks.  Any failures will throw a BuildError
         self.spec_sanity_checks(specfile)
@@ -2144,7 +2146,8 @@ class WrapperRPMTask(BaseBuildTask):
         resultdir = buildroot.resultdir()
         srpm = None
         rpms = []
-        logs = ['checkout.log']
+        specfile_name = os.path.basename(specfile)
+        logs = ['checkout.log', specfile_name]
 
         for filename in os.listdir(resultdir):
             if filename.endswith('.src.rpm'):
