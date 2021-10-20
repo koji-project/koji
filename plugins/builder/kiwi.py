@@ -189,11 +189,22 @@ class KiwiCreateImageTask(BaseBuildTask):
         newxml = xml.dom.minidom.parse(cfg)
         image = newxml.getElementsByTagName('image')[0]
 
-        # remove old repos
+        # apply includes - kiwi can include only top-level nodes, so we can simply
+        # go through "include" elements and replace them with referred content (without
+        # doing it recursively)
+        for inc_node in image.getElementsByTagName('include'):
+            path = inc_node.getAttribute('from')
+            inc = xml.dom.minidom.parse(path)
+            # every included xml has image root element again
+            for node in inc.getElementsByTagName('image').childNodes:
+                if node.nodeName != 'repository':
+                    image.appendChild(node)
+
+        # remove remaining old repos
         for old_repo in image.getElementsByTagName('repository'):
             image.removeChild(old_repo)
 
-        # add new ones
+        # add koji ones
         for repo in sorted(set(repos)):
             repo_node = newxml.createElement('repository')
             repo_node.setAttribute('type', 'rpm-md')
@@ -220,7 +231,7 @@ class KiwiCreateImageTask(BaseBuildTask):
         # write file back
         with open(cfg, 'wt') as f:
             f.write(newxml.toprettyxml())
- 
+
         return cfg, types
 
     def getImagePackagesFromCache(self, cachepath):
