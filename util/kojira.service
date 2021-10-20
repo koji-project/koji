@@ -9,6 +9,8 @@ ExecStart=/usr/sbin/kojira \
        --fg \
        --force-lock \
        --verbose
+Restart=on-failure
+RestartSec=60s
 
 [Install]
 WantedBy=multi-user.target
