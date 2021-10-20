@@ -53,7 +53,7 @@ def md5_constructor(*args, **kwargs):
         # do not care about FIPS we need md5 for signatures and older hashes
         # It is still used for *some* security
         kwargs['usedforsecurity'] = False
-    return hashlib.md5(*args, **kwargs)
+    return hashlib.md5(*args, **kwargs)  # nosec
 
 # END kojikamid dup #
 

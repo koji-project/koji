@@ -11,6 +11,7 @@ import __main__
 __main__.BuildRoot = kojid.BuildRoot
 
 import koji
+import koji.util
 import runroot
 
 if six.PY2:
@@ -346,9 +347,9 @@ class TestHandler(unittest.TestCase):
     def tearDown(self):
         runroot.BuildRoot = kojid.BuildRoot
 
+    @mock.patch('os.unlink')
     @mock.patch('platform.uname')
-    @mock.patch('os.system')
-    def test_handler_simple(self, os_system, platform_uname):
+    def test_handler_simple(self, platform_uname, os_unlink):
         platform_uname.return_value = ('system', 'node', 'release', 'version', 'machine', 'arch')
         self.session.getBuildConfig.return_value = {
             'id': 456,
@@ -381,7 +382,6 @@ class TestHandler(unittest.TestCase):
         runroot.BuildRoot.assert_called_once_with(self.session, self.t.options,
                 'tag_name', 'x86_64', self.t.id, repo_id=1, setup_dns=True,
                 internal_dev_setup=None)
-        os_system.assert_called_once()
         self.session.host.setBuildRootState.assert_called_once_with(678, 'BUILDING')
         self.br.mock.assert_has_calls([
             mock.call(['--install', 'rpm_a', 'rpm_b']),

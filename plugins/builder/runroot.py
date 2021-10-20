@@ -2,6 +2,7 @@
 
 from __future__ import absolute_import
 
+import glob
 import os
 import platform
 import re
@@ -174,7 +175,11 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
         broot.init()
         rootdir = broot.rootdir()
         # workaround for rpm oddness
-        os.system('rm -f "%s"/var/lib/rpm/__db.*' % rootdir)
+        for f in glob.glob(os.path.join(rootdir, '/var/lib/rpm/__db*')):
+            try:
+                os.unlink(f)
+            except OSError:
+                pass
         # update buildroot state (so that updateBuildRootList() will work)
         self.session.host.setBuildRootState(broot.id, 'BUILDING')
         try:

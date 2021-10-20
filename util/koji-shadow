@@ -25,15 +25,14 @@
 from __future__ import absolute_import
 
 import fnmatch
+from koji import request_with_retry
 import optparse
 import os
 import random
-import shutil
 import socket  # for socket.error and socket.setdefaulttimeout
 import string
 import sys
 import time
-import urllib2
 
 import requests
 import rpm
@@ -411,13 +410,15 @@ class TrackedBuild(object):
             url = "%s/%s" % (pathinfo.build(self.info), pathinfo.rpm(self.srpm))
             log("Downloading %s" % url)
             # XXX - this is not really the right place for this
-            fsrc = urllib2.urlopen(url)
+            resp = request_with_retry().get(url, stream=True)
             fn = "%s/%s.src.rpm" % (options.workpath, self.nvr)
             koji.ensuredir(os.path.dirname(fn))
-            fdst = open(fn, 'wb')
-            shutil.copyfileobj(fsrc, fdst)
-            fsrc.close()
-            fdst.close()
+            try:
+                with open(fn, 'wb') as fo:
+                    for chunk in resp.iter_content(chunk_size=8192):
+                        fo.write(chunk)
+            finally:
+                resp.close()
             serverdir = _unique_path('koji-shadow')
             session.uploadWrapper(fn, serverdir, blocksize=65536)
             src = "%s/%s" % (serverdir, os.path.basename(fn))
@@ -856,11 +857,13 @@ class BuildTracker(object):
                 koji.ensuredir(os.path.dirname(dst))
                 os.chown(os.path.dirname(dst), 48, 48)  # XXX - hack
                 log("Downloading %s to %s" % (url, dst))
-                fsrc = urllib2.urlopen(url)
-                fdst = open(fn, 'wb')
-                shutil.copyfileobj(fsrc, fdst)
-                fsrc.close()
-                fdst.close()
+                resp = request_with_retry().get(url, stream=True)
+                try:
+                    with open(fn, 'wb') as fo:
+                        for chunk in resp.iter_content(chunk_size=8192):
+                            fo.write(chunk)
+                finally:
+                    resp.close()
             finally:
                 os.umask(old_umask)
         else:
@@ -870,11 +873,13 @@ class BuildTracker(object):
             koji.ensuredir(options.workpath)
             dst = "%s/%s" % (options.workpath, fn)
             log("Downloading %s to %s..." % (url, dst))
-            fsrc = urllib2.urlopen(url)
-            fdst = open(dst, 'wb')
-            shutil.copyfileobj(fsrc, fdst)
-            fsrc.close()
-            fdst.close()
+            resp = request_with_retry().get(url, stream=True)
+            try:
+                with open(dst, 'wb') as fo:
+                    for chunk in resp.iter_content(chunk_size=8192):
+                        fo.write(chunk)
+            finally:
+                resp.close()
             log("Uploading %s..." % dst)
             session.uploadWrapper(dst, serverdir, blocksize=65536)
         session.importRPM(serverdir, fn)

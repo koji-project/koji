@@ -35,6 +35,7 @@ import json
 import logging
 import os
 import re
+import secrets
 import shutil
 import stat
 import sys
@@ -71,13 +72,6 @@ from koji.util import (
     multi_fnmatch,
     safer_move,
 )
-
-try:
-    # py 3.6+
-    import secrets
-except ImportError:
-    import random
-    secrets = None
 
 
 logger = logging.getLogger('koji.hub')
@@ -6272,11 +6266,7 @@ def generate_token(nbytes=32):
     """
     Generate random hex-string token of length 2 * nbytes
     """
-    if secrets:
-        return secrets.token_hex(nbytes=nbytes)
-    else:
-        values = ['%02x' % random.randint(0, 255) for x in range(nbytes)]
-        return ''.join(values)
+    return secrets.token_hex(nbytes=nbytes)
 
 
 def get_reservation_token(build_id):

@@ -3994,7 +3994,7 @@ class OzImageTask(BaseTaskHandler):
         @return:
             an absolute path to the modified XML
         """
-        newxml = xml.dom.minidom.parseString(xmltext)
+        newxml = xml.dom.minidom.parseString(xmltext)  # nosec
         ename = newxml.getElementsByTagName('name')[0]
         ename.firstChild.nodeValue = self.imgname
         esources = newxml.getElementsByTagName('source')
@@ -4488,7 +4488,7 @@ class BaseImageTask(OzImageTask):
         if not opts.get('scratch'):
             # fields = ('name', 'version', 'release', 'arch', 'epoch', 'size',
             #    'payloadhash', 'buildtime')
-            icicle = xml.dom.minidom.parseString(images['raw']['icicle'])
+            icicle = xml.dom.minidom.parseString(images['raw']['icicle'])  # nosec
             self.logger.debug('ICICLE: %s' % images['raw']['icicle'])
             for p in icicle.getElementsByTagName('extra'):
                 bits = p.firstChild.nodeValue.split(',')

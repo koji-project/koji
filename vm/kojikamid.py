@@ -326,7 +326,7 @@ class WindowsBuild(object):
         if 'checksum_type' in fileinfo:
             checksum_type = CHECKSUM_TYPES[fileinfo['checksum_type']]  # noqa: F821
             if checksum_type == 'sha1':
-                checksum = hashlib.sha1()
+                checksum = hashlib.sha1()  # nosec
             elif checksum_type == 'sha256':
                 checksum = hashlib.sha256()
             elif checksum_type == 'md5':

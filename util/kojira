@@ -486,7 +486,7 @@ class RepoManager(object):
             self.logger.debug('Checking external url: %s' % arch_url)
             try:
                 r = requests.get(arch_url, timeout=5)
-                root = ElementTree.fromstring(r.text)
+                root = ElementTree.fromstring(r.text)  # nosec
                 ts_elements = root.iter('{http://linux.duke.edu/metadata/repo}timestamp')
                 arch_ts = max([round(float(child.text)) for child in ts_elements])
                 self.external_repo_ts[arch_url] = arch_ts
