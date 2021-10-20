@@ -228,17 +228,17 @@ Admins should consider the balance between the ``batch_size`` and
 plugin could attempt to send during a single call.
 
 
-Kiwi images
-===========
+Image builds using Kiwi
+=======================
 
 **This is just a tech-preview. API/usage can drastically change in upcoming
 releases**
 
 Plugin for creating images via `kiwi <http://osinside.github.io/kiwi/>`_
-project.
+project. Minimal supported version of kiwi is ``kiwi-9.24.2``.
 
 All three parts (cli/hub/builder) needs to be installed. There is currently no
-configuration except allowing the plugins.
+configuration except allowing the plugins (name is 'kiwi' for all components).
 
 Builders have to be part of ``image`` channel and don't need to have any
 specific library installed (kiwi invocation/usage is only in buildroots not on
