@@ -5248,7 +5248,7 @@ def handle_add_tag(goptions, session, args):
     "[admin] Add a new tag to the database"
     usage = _("usage: %prog add-tag [options] <name>")
     parser = OptionParser(usage=get_usage_str(usage))
-    parser.add_option("--parent", help=_("Specify parent"))
+    parser.add_option("--parent", help=_("Set a parent tag with priority 0"))
     parser.add_option("--arches", help=_("Specify arches"))
     parser.add_option("--maven-support", action="store_true",
                       help=_("Enable creation of Maven repos for this tag"))
