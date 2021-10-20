@@ -382,7 +382,6 @@ class TestHandler(unittest.TestCase):
         runroot.BuildRoot.assert_called_once_with(self.session, self.t.options,
                 'tag_name', 'x86_64', self.t.id, repo_id=1, setup_dns=True,
                 internal_dev_setup=None)
-        os_unlink.assert_not_called()
         self.session.host.setBuildRootState.assert_called_once_with(678, 'BUILDING')
         self.br.mock.assert_has_calls([
             mock.call(['--install', 'rpm_a', 'rpm_b']),
