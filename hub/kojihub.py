@@ -12164,25 +12164,38 @@ class RootExports(object):
 
     def listPackages(self, tagID=None, userID=None, pkgID=None, prefix=None, inherited=False,
                      with_dups=False, event=None, queryOpts=None, with_owners=True):
-        """List if tagID and/or userID is specified, limit the
-        list to packages belonging to the given user or with the
-        given tag.
+        """
+        Returns a list of packages in Koji.
 
-        A list of maps is returned.  Each map contains the
-        following keys:
+        All parameters are optional.
 
-        - package_id
-        - package_name
+        Note that the returned data includes blocked entries
 
-        If tagID, userID, or pkgID are specified, the maps will also contain the
-        following keys.
-
-        - tag_id
-        - tag_name
-        - owner_id
-        - owner_name
-        - extra_arches
-        - blocked
+        :param int|str tag: filter on tag ID or name
+        :param int|str userID: filter on package owner
+        :param int|str pkgID: filter on package
+        :param str prefix: filter package names that start with a
+                           case-insensitive string.
+        :param bool inherited: return also inherited packages
+        :param bool with_dups: possible duplicates from inheritance, makes no
+                               sense with inherited=False
+        :param int event: filter on event
+        :param dict queryOpts: Options to order or filter the results. For
+                               example: {'order': 'name'}, or {'limit': 5}.
+                               Valid query options are "countOnly", "order",
+                               "offset", and "limit".
+        :param bool with_owners: Return owner_id and owner_name in the list of
+                                 packages. Default is True. This cannot be
+                                 False if userID is not None.
+        :returns [dict]: List of dicts with "package_id" and "package_name"
+                         keys. If tagID, userID, or pkgID are specified, the
+                         dicts will also contain the following keys.
+                           - tag_id
+                           - tag_name
+                           - owner_id
+                           - owner_name
+                           - extra_arches
+                           - blocked
         """
         if tagID is None and userID is None and pkgID is None:
             return self.listPackagesSimple(prefix, queryOpts)
