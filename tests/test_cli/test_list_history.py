@@ -2,6 +2,8 @@ from __future__ import absolute_import
 
 import time
 from datetime import datetime
+from dateutil.tz import tzutc
+
 import unittest
 
 from six.moves import StringIO
@@ -17,23 +19,30 @@ class TestListHistory(utils.CliTestCase):
         self.options = mock.MagicMock()
         self.options.debug = False
         self.session = mock.MagicMock()
+        self.maxDiff = None
 
     @staticmethod
-    def get_expected_date_active_action(item, act='add'):
+    def get_expected_date_active_action(item, act='add', utc=False):
         if act == 'add':
-            dt = datetime.fromtimestamp(item['create_ts'])
+            if utc:
+                dt = datetime.fromtimestamp(item['create_ts'], tzutc())
+            else:
+                dt = datetime.fromtimestamp(item['create_ts'])
             if item['active']:
                 active = ' [still active]'
             else:
                 active = ''
         else:
-            dt = datetime.fromtimestamp(item['revoke_ts'])
+            if utc:
+                dt = datetime.fromtimestamp(item['create_ts'], tzutc())
+            else:
+                dt = datetime.fromtimestamp(item['revoke_ts'])
             active = ''
 
         expected_date = time.asctime(dt.timetuple())
         return expected_date, active
 
-    def get_expected_channel(self, item):
+    def get_expected_channel(self, item, utc=False):
         if item['active']:
             list_active = ['add']
         else:
@@ -41,7 +50,7 @@ class TestListHistory(utils.CliTestCase):
         expected = ''
         for act in list_active:
             expected_date, active = self.get_expected_date_active_action(
-                item, act)
+                item, act, utc)
             if act == 'add':
                 action = 'added to'
             else:
@@ -217,6 +226,36 @@ class TestListHistory(utils.CliTestCase):
             anon_handle_list_history(self.options, self.session, [])
         self.assertExitCode(ex, 2)
         self.assert_console_message(stderr, expected)
+
+    @mock.patch('sys.stderr', new_callable=StringIO)
+    @mock.patch('sys.stdout', new_callable=StringIO)
+    @mock.patch('koji_cli.commands.ensure_connection')
+    def test_list_history_channel_utc(self, ensure_connection_mock, stdout, stderr):
+        # test case when channel is still active
+        channel_name = 'default'
+
+        # when channel name is created
+        dict_history = {
+            'host_channels': [
+                {'active': True,
+                 'channel_id': 1,
+                 'channels.name': 'default',
+                 'create_event': 3,
+                 'create_ts': 1612355089.887727,
+                 'creator_id': 1,
+                 'creator_name': 'kojiadmin',
+                 'host.name': 'kojibuilder',
+                 'host_id': 1,
+                 'revoke_event': None,
+                 'revoke_ts': None,
+                 'revoker_id': None,
+                 'revoker_name': None}]
+        }
+        self.session.queryHistory.return_value = dict_history
+        expected = self.get_expected_channel(dict_history['host_channels'][0], utc=True)
+        anon_handle_list_history(self.options, self.session,
+                                 ['--channel', channel_name])
+        self.assert_console_message(stdout, expected)
 
     @mock.patch('sys.stderr', new_callable=StringIO)
     @mock.patch('sys.stdout', new_callable=StringIO)
@@ -1145,6 +1184,7 @@ Options:
   -v, --verbose         Show more detail
   -e, --events          Show event ids
   --all                 Allows listing the entire global history
+  --utc                 Shows time in UTC timezone
 """ % self.progname)
 
 

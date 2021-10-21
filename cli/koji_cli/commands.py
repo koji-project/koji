@@ -13,6 +13,8 @@ import sys
 import textwrap
 import time
 import traceback
+from datetime import datetime
+from dateutil.tz import tzutc
 from collections import OrderedDict, defaultdict
 from optparse import SUPPRESS_HELP, OptionParser
 
@@ -4615,7 +4617,11 @@ def _print_histline(entry, **kwargs):
             fmt = "%s entry created" % table
         else:
             fmt = "%s entry revoked" % table
-    time_str = time.asctime(time.localtime(ts))
+    if options.utc:
+        time_str = time.asctime(datetime.fromtimestamp(ts, tzutc()).timetuple())
+    else:
+        time_str = time.asctime(time.localtime(ts))
+
     parts = [time_str, fmt % x]
     if options.events or options.verbose:
         parts.insert(1, "(eid %i)" % event_id)
@@ -4733,6 +4739,8 @@ def anon_handle_list_history(goptions, session, args):
     parser.add_option("-e", "--events", action="store_true", help="Show event ids")
     parser.add_option("--all", action="store_true",
                       help="Allows listing the entire global history")
+    parser.add_option("--utc", action="store_true",
+                      help="Shows time in UTC timezone")
     (options, args) = parser.parse_args(args)
     if len(args) != 0:
         parser.error("This command takes no arguments")
@@ -4759,6 +4767,8 @@ def anon_handle_list_history(goptions, session, args):
         channelinfo = session.getChannel(options.channel)
         if not channelinfo:
             error("No such channel: %s" % options.channel)
+    if options.utc:
+        kwargs['utc'] = options.utc
     tables = None
     if options.show:
         tables = []
