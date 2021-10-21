@@ -5,7 +5,6 @@ from koji import canonArch
 
 from koji.plugin import export_cli
 from koji_cli.lib import (
-    _,
     _running_in_bg,
     activate_session,
     watch_tasks,
@@ -15,33 +14,32 @@ from koji_cli.lib import (
 @export_cli
 def handle_kiwi_build(goptions, session, args):
     "[build] Run a command in a buildroot"
-    usage = _("usage: %prog kiwi-build [options] "
-              "<target> <description_scm> <description_path>")
-    usage += _("\n(Specify the --help global option for a list of other help options)")
+    usage = "usage: %prog kiwi-build [options] <target> <description_scm> <description_path>"
+    usage += "\n(Specify the --help global option for a list of other help options)"
     parser = OptionParser(usage=usage)
     parser.add_option("--scratch", action="store_true", default=False,
-                      help=_("Perform a scratch build"))
+                      help="Perform a scratch build")
     parser.add_option("--repo", action="append",
-                      help=_("Specify a repo that will override the repo used to install "
-                             "RPMs in the image. May be used multiple times. The "
-                             "build tag repo associated with the target is the default."))
+                      help="Specify a repo that will override the repo used to install "
+                           "RPMs in the image. May be used multiple times. The "
+                           "build tag repo associated with the target is the default.")
     parser.add_option("--noprogress", action="store_true",
-                      help=_("Do not display progress of the upload"))
+                      help="Do not display progress of the upload")
     parser.add_option("--kiwi-profile", action="store", default=None,
-                      help=_("Select profile from description file"))
+                      help="Select profile from description file")
     parser.add_option("--can-fail", action="store", dest="optional_arches",
                       metavar="ARCH1,ARCH2,...", default="",
-                      help=_("List of archs which are not blocking for build "
-                             "(separated by commas."))
+                      help="List of archs which are not blocking for build "
+                           "(separated by commas.")
     parser.add_option("--arch", action="append", dest="arches", default=[],
-                      help=_("Limit arches to this subset"))
+                      help="Limit arches to this subset")
     parser.add_option("--nowait", action="store_false", dest="wait", default=True)
     parser.add_option("--wait", action="store_true",
-                      help=_("Wait on the image creation, even if running in the background"))
+                      help="Wait on the image creation, even if running in the background")
     (options, args) = parser.parse_args(args)
 
     if len(args) != 3:
-        parser.error(_("Incorrect number of arguments"))
+        parser.error("Incorrect number of arguments")
         assert False  # pragma: no cover
     target, scm, path = args
 
