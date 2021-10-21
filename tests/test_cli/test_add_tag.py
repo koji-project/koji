@@ -82,7 +82,7 @@ class TestAddTag(utils.CliTestCase):
 
 Options:
   -h, --help            show this help message and exit
-  --parent=PARENT       Specify parent
+  --parent=PARENT       Set a parent tag with priority 0
   --arches=ARCHES       Specify arches
   --maven-support       Enable creation of Maven repos for this tag
   --include-all         Include all packages in this tag when generating Maven
