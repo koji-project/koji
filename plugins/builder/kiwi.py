@@ -1,6 +1,5 @@
 import glob
-#import json
-import pickle
+import json
 import os
 import xml.dom.minidom
 from fnmatch import fnmatch
@@ -353,8 +352,7 @@ class KiwiCreateImageTask(BaseBuildTask):
         if rv:
             raise koji.GenericError("Kiwi failed")
 
-        result = pickle.load(open(joinpath(broot.rootdir(), target_dir[1:], 'kiwi.result'), 'rb'))
-        #result = json.load(open(joinpath(broot.rootdir(), target_dir[1:], 'kiwi.result'), 'rb'))
+        result = json.load(open(joinpath(broot.rootdir(), target_dir[1:], 'kiwi.result'), 'rb'))
 
         imgdata = {
             'arch': arch,
@@ -377,7 +375,7 @@ class KiwiCreateImageTask(BaseBuildTask):
         #     self.uploadFile(os.path.join(broot.rootdir()), remoteName=img_file)
         #     imgdata['files'].append(img_file)
         fpath = os.path.join(broot.rootdir(),
-                             result.result_files['disk_format_image'].filename[1:])
+                             result['result_files']['disk_format_image'].filename[1:])
         img_file = os.path.basename(fpath)
         self.uploadFile(fpath, remoteName=os.path.basename(img_file))
         imgdata['files'].append(img_file)
@@ -386,7 +384,7 @@ class KiwiCreateImageTask(BaseBuildTask):
             if False:
                 # should be used after kiwi update
                 fpath = os.path.join(broot.rootdir(),
-                                     result.result_files['image_packages'].filename[1:])
+                                     result['result_files']['image_packages'].filename[1:])
                 hdrlist = self.getImagePackages(fpath)
             else:
                 cachepath = os.path.join(broot.rootdir(), 'var/cache/kiwi/dnf')

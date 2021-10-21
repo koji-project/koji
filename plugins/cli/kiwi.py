@@ -1,4 +1,3 @@
-import os
 from optparse import OptionParser
 
 from koji import canonArch
