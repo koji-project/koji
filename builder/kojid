@@ -6153,6 +6153,7 @@ enabled=1
                 selected[rpm_id]['best_key'] = best_key
 
         # write signed rpms
+        log_output = ''
         if opts.get('write_signed_rpms'):
             results = []
             rpm_with_key = []
@@ -6162,7 +6163,6 @@ enabled=1
                         results.append(m.host.writeSignedRPM(rpm_id, selected[rpm_id]['best_key']))
                         rpm_with_key.append(rpm_id)
 
-            log_output = ''
             for rpm_id, r in zip(rpm_with_key, results):
                 if isinstance(r._result, list):
                     log_output += 'Signed RPM %s is writen with %s key.\n' \
