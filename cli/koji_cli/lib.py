@@ -21,6 +21,7 @@ from six.moves import range
 import koji
 # import parse_arches to current namespace for backward compatibility
 from koji import parse_arches
+from koji import _  # noqa: F401
 from koji.util import md5_constructor, to_list
 from koji.xmlrpcplus import xmlrpc_client
 
@@ -43,8 +44,7 @@ def _check_time_option(option, opt, value):
         ts = time.mktime(dt.timetuple())
         return ts
     except Exception:
-        raise optparse.OptionValueError(
-            _("option %s: invalid time specification: %r") % (opt, value))
+        raise optparse.OptionValueError("option %s: invalid time specification: %r" % (opt, value))
 
 
 class TimeOption(optparse.Option):
@@ -55,9 +55,8 @@ class TimeOption(optparse.Option):
 
     @classmethod
     def get_help(self):
-        return _("time is specified as timestamp or date/time in any "
-                 "format which can be parsed by dateutil.parser. e.g. "
-                 "\"2020-12-31 12:35\" or \"December 31st 12:35\"")
+        return "time is specified as timestamp or date/time in any format which can be " \
+               "parsed by dateutil.parser. e.g. \"2020-12-31 12:35\" or \"December 31st 12:35\""
 
 
 greetings = ('hello', 'hi', 'yo', "what's up", "g'day", 'back to work',
@@ -85,11 +84,6 @@ greetings = ('hello', 'hi', 'yo', "what's up", "g'day", 'back to work',
 ARGMAP = {'None': None,
           'True': True,
           'False': False}
-
-
-def _(args):
-    """Stub function for translation"""
-    return args
 
 
 def arg_filter(arg):
@@ -130,11 +124,11 @@ Try "%(progname)s <command> --help" for help about the options of a particular c
 Try "%(progname)s help <category>" to get commands under a particular category
 Available categories are: %(categories)s
 ''' % ({'progname': progname, 'categories': categories_ordered})
-    return _(epilog_str)
+    return epilog_str
 
 
 def get_usage_str(usage):
-    return usage + _("\n(Specify the --help global option for a list of other help options)")
+    return usage + "\n(Specify the --help global option for a list of other help options)"
 
 
 def ensure_connection(session, options=None):
@@ -145,14 +139,14 @@ def ensure_connection(session, options=None):
     try:
         ret = session.getAPIVersion()
     except requests.exceptions.ConnectionError as ex:
-        warn(_("Error: Unable to connect to server"))
+        warn("Error: Unable to connect to server")
         if options and getattr(options, 'debug', False):
             error(str(ex))
         else:
             error()
     if ret != koji.API_VERSION:
-        warn(_("WARNING: The server is at API version %d and "
-               "the client is at %d" % (ret, koji.API_VERSION)))
+        warn("WARNING: The server is at API version %d and "
+             "the client is at %d" % (ret, koji.API_VERSION))
 
 
 def print_task_headers():
@@ -565,9 +559,9 @@ def download_file(url, relpath, quiet=False, noprogress=False, size=None,
         koji.ensuredir(os.path.dirname(relpath))
     if not quiet:
         if size and num:
-            print(_("Downloading [%d/%d]: %s") % (num, size, relpath))
+            print("Downloading [%d/%d]: %s" % (num, size, relpath))
         else:
-            print(_("Downloading: %s") % relpath)
+            print("Downloading: %s" % relpath)
 
     pos = 0
     headers = {}
@@ -578,10 +572,10 @@ def download_file(url, relpath, quiet=False, noprogress=False, size=None,
         if pos:
             if filesize == pos:
                 if not quiet:
-                    print(_("File %s already downloaded, skipping" % relpath))
+                    print("File %s already downloaded, skipping" % relpath)
                 return
             if not quiet:
-                print(_("Appending to existing file %s" % relpath))
+                print("Appending to existing file %s" % relpath)
             headers['Range'] = ('bytes=%d-' % pos)
     else:
         # rewrite
@@ -754,9 +748,9 @@ def activate_session(session, options):
             else:
                 session.gssapi_login(proxyuser=runas)
         except socket.error as e:
-            warn(_("Could not connect to Kerberos authentication service: %s") % e.args[1])
+            warn("Could not connect to Kerberos authentication service: %s" % e.args[1])
     if not noauth and not session.logged_in:
-        error(_("Unable to log in, no authentication methods available"))
+        error("Unable to log in, no authentication methods available")
     # don't add "options" to ensure_connection it would create loop in case of --force-auth
     # when it calls activate_session
     ensure_connection(session)

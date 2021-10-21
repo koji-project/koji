@@ -236,7 +236,7 @@ Most simple command would look like this:
     @export_cli
     def anon_handle_echo(options, session, args):
         "[info] Print arguments"
-        usage = _("usage: %prog echo <message>")
+        usage = "usage: %prog echo <message>"
         parser = OptionParser(usage=usage)
         (opts, args) = parser.parse_args(args)
         print(args[0])

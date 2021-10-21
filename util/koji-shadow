@@ -47,11 +47,6 @@ socket.setdefaulttimeout(180)  # XXX - too short?
 logfile = None
 
 
-def _(args):
-    """Stub function for translation"""
-    return args
-
-
 def log(str):
     global logfile
     print("%s" % str)
@@ -67,82 +62,65 @@ class SubOption(object):
 def get_options():
     """process options from command line and config file"""
 
-    usage = _("%prog [options]")
+    usage = "%prog [options]"
     parser = optparse.OptionParser(usage=usage)
     parser.add_option("-c", "--config-file", metavar="FILE",
-                      help=_("use alternate configuration file"))
-    parser.add_option("--keytab", help=_("specify a Kerberos keytab to use"))
-    parser.add_option("--principal", help=_("specify a Kerberos principal to use"))
+                      help="use alternate configuration file")
+    parser.add_option("--keytab", help="specify a Kerberos keytab to use")
+    parser.add_option("--principal", help="specify a Kerberos principal to use")
     parser.add_option("--runas", metavar="USER",
-                      help=_("run as the specified user (requires special privileges)"))
-    parser.add_option("--user", help=_("specify user"))
-    parser.add_option("--password", help=_("specify password"))
+                      help="run as the specified user (requires special privileges)")
+    parser.add_option("--user", help="specify user")
+    parser.add_option("--password", help="specify password")
     parser.add_option("--noauth", action="store_true", default=False,
-                      help=_("do not authenticate"))
-    parser.add_option("-n", "--test", action="store_true", default=False,
-                      help=_("test mode"))
+                      help="do not authenticate")
+    parser.add_option("-n", "--test", action="store_true", default=False, help="test mode")
     parser.add_option("-d", "--debug", action="store_true", default=False,
-                      help=_("show debug output"))
+                      help="show debug output")
     parser.add_option("--first-one", action="store_true", default=False,
-                      help=_("stop after scanning first build -- debugging"))
+                      help="stop after scanning first build -- debugging")
     parser.add_option("--debug-xmlrpc", action="store_true", default=False,
-                      help=_("show xmlrpc debug output"))
+                      help="show xmlrpc debug output")
     parser.add_option("--skip-main", action="store_true", default=False,
-                      help=_("don't actually run main"))
-#    parser.add_option("--tag-filter", metavar="PATTERN",
-#                      help=_("limit tags for pruning"))
-#    parser.add_option("--pkg-filter", metavar="PATTERN",
-#                      help=_("limit packages for pruning"))
-    parser.add_option("--max-jobs", type="int", default=0,
-                      help=_("limit number of tasks"))
-    parser.add_option("--build",
-                      help=_("scan just this build"))
-    parser.add_option("-s", "--server",
-                      help=_("url of local XMLRPC server"))
-    parser.add_option("-r", "--remote",
-                      help=_("url of remote XMLRPC server"))
+                      help="don't actually run main")
+#    parser.add_option("--tag-filter", metavar="PATTERN", help="limit tags for pruning")
+#    parser.add_option("--pkg-filter", metavar="PATTERN", help="limit packages for pruning")
+    parser.add_option("--max-jobs", type="int", default=0, help="limit number of tasks")
+    parser.add_option("--build", help="scan just this build")
+    parser.add_option("-s", "--server", help="url of local XMLRPC server")
+    parser.add_option("-r", "--remote", help="url of remote XMLRPC server")
     parser.add_option("--prefer-new", action="store_true", default=False,
-                      help=_("if there is a newer build locally prefer it for deps"))
+                      help="if there is a newer build locally prefer it for deps")
     parser.add_option("--import-noarch-only", action="store_true", default=False,
-                      help=_("Only import missing noarch builds"))
+                      help="Only import missing noarch builds")
     parser.add_option("--import-noarch", action="store_true",
-                      help=_("import missing noarch builds rather than rebuilding"))
+                      help="import missing noarch builds rather than rebuilding")
     parser.add_option("--link-imports", action="store_true",
-                      help=_("use 'import --link' functionality"))
-    parser.add_option("--remote-topurl",
-                      help=_("topurl for remote server"))
+                      help="use 'import --link' functionality")
+    parser.add_option("--remote-topurl", help="topurl for remote server")
     parser.add_option("--workpath", default="/var/tmp/koji-shadow",
-                      help=_("location to store work files"))
-    parser.add_option("--auth-cert",
-                      help=_("Certificate for authentication"))
+                      help="location to store work files")
+    parser.add_option("--auth-cert", help="Certificate for authentication")
     parser.add_option("--auth-ca",  # DEPRECATED and ignored
                       help=optparse.SUPPRESS_HELP)
     parser.add_option("--serverca",
-                      help=_("Server CA certificate"))
-    parser.add_option("--rules",
-                      help=_("rules"))
-    parser.add_option("--rules-greylist",
-                      help=_("greylist rules"))
-    parser.add_option("--rules-blacklist",
-                      help=_("blacklist rules"))
-    parser.add_option("--rules-ignorelist",
-                      help=_("Rules: list of packages to ignore"))
+                      help="Server CA certificate")
+    parser.add_option("--rules", help="rules")
+    parser.add_option("--rules-greylist", help="greylist rules")
+    parser.add_option("--rules-blacklist", help="blacklist rules")
+    parser.add_option("--rules-ignorelist", help="Rules: list of packages to ignore")
     parser.add_option("--rules-excludelist",
-                      help=_("Rules: list of packages to are excluded using ExcludeArch or "
-                             "ExclusiveArch"))
-    parser.add_option("--rules-includelist",
-                      help=_("Rules: list of packages to always include"))
-    parser.add_option("--rules-protectlist",
-                      help=_("Rules: list of package names to never replace"))
+                      help="Rules: list of packages to are excluded using ExcludeArch or "
+                           "ExclusiveArch")
+    parser.add_option("--rules-includelist", help="Rules: list of packages to always include")
+    parser.add_option("--rules-protectlist", help="Rules: list of package names to never replace")
     parser.add_option("--tag-build", action="store_true", default=False,
-                      help=_("tag successful builds into the tag we are building, default is to "
-                             "not tag"))
-    parser.add_option("--logfile",
-                      help=_("file where everything gets logged"))
-    parser.add_option("--arches",
-                      help=_("arches to use when creating tags"))
+                      help="tag successful builds into the tag we are building, default is to "
+                           "not tag")
+    parser.add_option("--logfile", help="file where everything gets logged")
+    parser.add_option("--arches", help="arches to use when creating tags")
     parser.add_option("--priority", type="int", default=5,
-                      help=_("priority to set for submitted builds"))
+                      help="priority to set for submitted builds")
 
     # parse once to get the config file
     (options, args) = parser.parse_args()
@@ -263,10 +241,10 @@ def ensure_connection(session):
     try:
         ret = session.getAPIVersion()
     except requests.exceptions.ConnectionError:
-        error(_("Error: Unable to connect to server"))
+        error("Error: Unable to connect to server")
     if ret != koji.API_VERSION:
-        warn(_("WARNING: The server is at API version %d and the client is at "
-               "%d" % (ret, koji.API_VERSION)))
+        warn("WARNING: The server is at API version %d and the client is at "
+             "%d" % (ret, koji.API_VERSION))
 
 
 def activate_session(session):
@@ -295,7 +273,7 @@ def activate_session(session):
         else:
             session.gssapi_login(proxyuser=options.runas)
     if not options.noauth and not session.logged_in:
-        error(_("Error: unable to log in"))
+        error("Error: unable to log in")
     ensure_connection(session)
     if options.debug:
         log("successfully connected to hub")

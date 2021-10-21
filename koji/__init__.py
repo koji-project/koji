@@ -69,6 +69,7 @@ from six.moves import range, zip
 
 from koji.tasks import parse_task_params
 from koji.xmlrpcplus import Fault, dumps, getparser, loads, xmlrpc_client
+from koji.util import deprecated
 from . import util
 from . import _version
 __version__ = _version.__version__
@@ -92,6 +93,7 @@ PROFILE_MODULES = {}  # {module_name: module_instance}
 
 def _(args):
     """Stub function for translation"""
+    deprecated('The stub function for translation is no longer used\n')
     return args  # pragma: no cover
 
 ## Constants ##
