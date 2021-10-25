@@ -148,6 +148,8 @@ installed.
 
     pk12util -d sql:$HOME/.pki/nssdb -i fedora-browser-cert.p12
 
+.. _notification-basics:
+
 Notifications
 ^^^^^^^^^^^^^
 

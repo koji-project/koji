@@ -777,7 +777,7 @@ override all these values. So, you can use e.g.
 ``/etc/koji-hub/hub.conf.d/secret.conf`` for sensitive values. Typical usecase
 for separate config is :doc:`policy <defining_hub_policies>` configuration file.
 
-Doc page about hub options in :doc:`Hub conf <hub_conf>`. (Currently in progress).
+Doc page about hub options in :doc:`Hub conf <hub_conf>`.
 
 Authentication Configuration
 ----------------------------
