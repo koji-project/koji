@@ -1018,12 +1018,25 @@ def _direct_pkglist_add(taginfo, pkginfo, owner, block, extra_arches, force,
 
 
 def pkglist_remove(taginfo, pkginfo, force=False):
-    """Remove package from the list for tag
+    """Remove a package from a tag's package list
 
-    Most of the time you really want to use the block or unblock functions
+    One reason to remove an entry like this is to remove an override so that
+    the package data can be inherited from elsewhere.
 
-    The main reason to remove an entry like this is to remove an override so
-    that the package data can be inherited from elsewhere.
+    Alternatively you can use the block or unblock functions.
+
+    This method always returns None, even if the package does not exist in the
+    tag.
+
+    :param int|str taginfo: tag id or name to remove the package
+    :param int|str pkginfo: package id or name to remove
+    :param bool force: If False (default), Koji will check this
+                       operation against the package_list hub policy. If hub
+                       policy does not allow the current user to remove
+                       packages from this tag, then this method will raise
+                       an error.
+                       If True, then this method will bypass hub policy
+                       settings. Only admin users can set force to True.
     """
     _direct_pkglist_remove(taginfo, pkginfo, force, policy=True)
 
