@@ -138,7 +138,7 @@ class KiwiBuildTask(BuildImageTask):
                         ignored_arches.add(arch)
 
             self.logger.debug('Image Results for hub: %s' % results)
-            results = dict([(str(k), v) for k, v in results.items()])
+            results = {str(k): v for k, v in results.items()}
             if opts['scratch']:
                 self.session.host.moveImageBuildToScratch(self.id, results)
             else:
@@ -263,11 +263,10 @@ class KiwiCreateImageTask(BaseBuildTask):
         for line in open(result, 'rt'):
             line = line.strip()
             name, epoch, version, release, arch, disturl, license = line.split('|')
-            try:
-                # "(none)" for None epochs
-                epoch = int(epoch)
-            except ValueError:
+            if epoch == '(none)':
                 epoch = None
+            else:
+                epoch = int(epoch)
             hdrlist.append({
                 'name': name,
                 'epoch': epoch,
