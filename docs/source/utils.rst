@@ -183,8 +183,15 @@ comments.
       # default: keep the last 3
       order > 2 :: untag
 
-GC Options
-..........
+GC Options (config/commmand-line)
+.................................
+``bypass_locks = ''``
+    If tag is locked and ``bypass_locks`` is set and GC user has
+    sufficient permissions, even locked tags are pruned.
+
+``debug = False``
+    Verbose output
+
 ``delay = 5 days``
     Time, after which untagged builds can go to trashcan via
     ``trashcan`` action.
@@ -192,56 +199,118 @@ GC Options
 ``grace_period = 4 weeks``
     How long builds are staying in trashcan before final deletion.
 
-``unprotected_keys = ''``
-    Set of signing keys, which are treated as in same way as
-    "unsigned" packages.
-
-``tag_filter = ''``
-    If defined, only tags corresponding to these globs are checked.
-
 ``ignore_tags = ''``
     Tags corresponding to these globs are ignored.
-
-``pkg_filter = ''``
-    Globs for package names which should be processed.
-
-``bypass_locks = ''``
-    If tag is locked and ``bypass_locks`` is set and GC user has
-    sufficient permissions, even locked tags are pruned.
-
-``purge = False``
-    If set, delete packages immediately during pruning action
-    (effectively skipping ``delay`` + ``grace_period`` safety period)
-
-``trashcan_tag = trashcan``
-    Default name for trashcan tag, you can use other tags for testing
-    policies, or deploy multiple configuration in cascade-like
-    workflows (anyway, not recommended)
 
 ``key_aliases = None``
     Keys are normally defined by their hashes, which could be
     inconvenient while reading configs. This option (pairs of
     hash/name) make it more readable.
 
+``pkg_filter = ''``
+    Globs for package names which should be processed.
+
+``purge = False``
+    If set, delete packages immediately during pruning action
+    (effectively skipping ``delay`` + ``grace_period`` safety period)
+
+``tag_filter = ''``
+    If defined, only tags corresponding to these globs are checked.
+
+
+``trashcan_tag = trashcan``
+    Default name for trashcan tag, you can use other tags for testing
+    policies, or deploy multiple configuration in cascade-like
+    workflows (anyway, not recommended)
+
+``unprotected_keys = ''``
+    Set of signing keys, which are treated as in same way as
+    "unsigned" packages.
+
 
 Notification related options
 ............................
-``smtp_host = None``
-   Connection parameters
+``bcc_addr``
+    Blind carbon copy addresses
 
-``mail = True``
-   Send / don't send e-mail notifications
+``cc_addr``
+    Carbon copy addresses
 
 ``email_domain = fedoraproject.org``
    Append this domain to usernames
-
-``from_addr = Koji Build System <buildsys@example.com>``
-    Sender address
 
 ``email_template = /etc/koji-gc/email.tpl``
     Simple template which can contain python formatting (via
     ``string.Template``) with ``owner`` (owner name) and ``builds``
     (pre-generated list of builds).
+
+``from_addr = Koji Build System <buildsys@example.com>``
+    Sender address
+
+``mail = True``
+   Send / don't send e-mail notifications
+
+``smtp_host = None``
+   SMTP connection parameters
+
+``smtp_pass = ''``
+   SMTP connection parameters
+
+``smtp_user = ''``
+   SMTP connection parameters
+
+``weburl = ''``
+    Koji base web url. It is used for constructing links in notification messages.
+
+Server connection options
+.........................
+``cert = /etc/koji-gc/client.crt``
+    User certificate for SSL authentication
+
+``keytab = ''``
+    Path to keytab for GC authentication
+
+``noauth=False``
+    Don't authenticate (e.g. for --test call)
+
+``no_ssl_verify``
+    Don't check SSL CA chain. Should be turned off in production.
+
+``password = ''``
+    Password for login/password authentication.
+
+``principal = ''``
+    Kerberos principal to use for authentication
+
+``runas = ''``
+    Run as specified user
+
+``server = ''``
+    URL for koji hub
+
+``serverca = /etc/koji-gc/serverca.crt``
+    Server certification authority if it is not part of system-wide CAs.
+
+``timeout = 43200``
+    GC will quit after 12 hours of trying to connect to the hub.
+
+``user = ''``
+    Use specified user for login/password authentication. (It should be never enabled
+    in production environment)
+
+
+General options
+...............
+
+``exit_on_lock = False``
+   If lock file is present, exit.
+
+``lock_file = /run/user/<uid>/koji-gc.lock``
+   Lock file for running GC. It is used to prevent overlapping calls.
+
+``test = False``
+    Run in test mode, no build will be deleted
+
 
 Koji Shadow
 -----------
