@@ -1317,16 +1317,20 @@ if __name__ == "__main__":
 
     session_opts = koji.grab_session_options(options)
     session = koji.ClientSession(options.server, session_opts)
-    if options.cert is not None and os.path.isfile(options.cert):
-        # authenticate using SSL client certificates
-        session.ssl_login(options.cert, None, options.serverca)
-    elif options.user:
-        # authenticate using user/password
-        session.login()
-    elif koji.reqgssapi and options.principal and options.keytab:
-        session.gssapi_login(options.principal, options.keytab, options.ccache)
-    else:
-        quit("No username/password/certificate supplied and Kerberos missing or not configured")
+    try:
+        if options.cert is not None and os.path.isfile(options.cert):
+            # authenticate using SSL client certificates
+            session.ssl_login(options.cert, None, options.serverca)
+        elif options.user:
+            # authenticate using user/password
+            session.login()
+        elif koji.reqgssapi and options.principal and options.keytab:
+            session.gssapi_login(options.principal, options.keytab, options.ccache)
+        else:
+            quit("No username/password/certificate supplied and Kerberos missing or "
+                 "not configured")
+    except koji.AuthError as ex:
+        quit(str(ex))
     # get an exclusive session
     try:
         session.exclusiveSession(force=options.force_lock)

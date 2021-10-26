@@ -273,7 +273,7 @@ class Session(object):
         if not isinstance(password, str) or len(password) == 0:
             raise koji.AuthError('invalid username or password')
         if self.logged_in:
-            raise koji.GenericError("Already logged in")
+            raise koji.AuthError("Already logged in")
         hostip = self.get_remote_ip(override=opts.get('hostip'))
 
         # check passwd
