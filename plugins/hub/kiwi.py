@@ -10,7 +10,7 @@ koji.tasks.LEGACY_SIGNATURES['kiwiBuild'] = [
      None, None, (None,)]]
 koji.tasks.LEGACY_SIGNATURES['createKiwiImage'] = [
     [['name', 'version', 'release', 'arch',
-      'target_info', 'build_tag', 'repo_info', 'desc_url', 'opts'],
+      'target_info', 'build_tag', 'repo_info', 'desc_url', 'desc_path', 'opts'],
      None, None, (None,)]]
 
 
