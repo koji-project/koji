@@ -14,7 +14,7 @@ class KiwiBuildTask(BuildImageTask):
     Methods = ['kiwiBuild']
     _taskWeight = 4.0
 
-    def get_nvr(self, desc_path):
+    def get_nvrp(self, desc_path):
         # TODO: update release in desc
         kiwi_files = glob.glob('%s/*.kiwi' % desc_path)
         if len(kiwi_files) != 1:
@@ -37,9 +37,17 @@ class KiwiBuildTask(BuildImageTask):
                 release = preferences.getElementsByTagName('release')[0].childNodes[0].data
             except Exception:
                 release = None
+        profile = None
+        try:
+            for p in image.getElementsByTagName('profiles')[0].getElementsByTagName('profile'):
+                if p.getAttribute('image') == 'true':
+                    profile = p.getAttribute('name')
+        except IndexError:
+            # missing profiles section
+            pass
         if not version:
             raise koji.BuildError("Description file doesn't contain preferences/version")
-        return name, version, release
+        return name, version, release, profile
 
     def handler(self, target, arches, desc_url, desc_path, opts=None):
         target_info = self.session.getBuildTarget(target, strict=True)
@@ -91,7 +99,12 @@ class KiwiBuildTask(BuildImageTask):
                            srcdir=scmsrcdir)
 
         path = os.path.join(scmsrcdir, desc_path)
-        name, version, release = self.get_nvr(path)
+
+        name, version, release, default_profile = self.get_nvrp(path)
+        if opts.get('profile') or default_profile:
+            # package name is a combination of name + profile
+            # in case profiles are not used, let's use the standalone name
+            name = "%s-%s" % (name, opts.get('profile', default_profile))
 
         bld_info = {}
         if not opts['scratch']:
@@ -177,7 +190,7 @@ class KiwiCreateImageTask(BaseBuildTask):
     Methods = ['createKiwiImage']
     _taskWeight = 2.0
 
-    def prepareDescription(self, desc_path, release, repos):
+    def prepareDescription(self, desc_path, name, release, repos):
         # TODO: update release in desc
         kiwi_files = glob.glob('%s/*.kiwi' % desc_path)
         if len(kiwi_files) != 1:
@@ -212,6 +225,7 @@ class KiwiCreateImageTask(BaseBuildTask):
             repo_node.appendChild(source)
             image.appendChild(repo_node)
 
+        image.setAttribute('name', name)
         # TODO: release is part of version (major.minor.release)
         # preferences = image.getElementsByTagName('preferences')[0]
         # try:
@@ -229,7 +243,10 @@ class KiwiCreateImageTask(BaseBuildTask):
 
         # write file back
         with open(cfg, 'wt') as f:
-            f.write(newxml.toprettyxml())
+            s = newxml.toprettyxml()
+            # toprettyxml adds too many whitespaces/newlines
+            s = '\n'.join([x for x in s.splitlines() if x.strip()])
+            f.write(s)
 
         return cfg, types
 
@@ -335,7 +352,7 @@ class KiwiCreateImageTask(BaseBuildTask):
         repos.append(baseurl)
 
         path = os.path.join(scmsrcdir, desc_path)
-        desc, types = self.prepareDescription(path, release, repos)
+        desc, types = self.prepareDescription(path, name, release, repos)
         self.uploadFile(desc)
 
         cmd = ['kiwi-ng']
@@ -351,13 +368,15 @@ class KiwiCreateImageTask(BaseBuildTask):
         if rv:
             raise koji.GenericError("Kiwi failed")
 
-        result = json.load(open(joinpath(broot.rootdir(), target_dir[1:], 'kiwi.result'), 'rb'))
+        #result = json.load(open(joinpath(broot.rootdir(), target_dir[1:], 'kiwi.result'), 'rb'))
+        import pickle
+        result = pickle.load(open(joinpath(broot.rootdir(), target_dir[1:], 'kiwi.result'), 'rb'))
 
         imgdata = {
             'arch': arch,
             'task_id': self.id,
             'logs': [
-                os.path.basename(desc)
+                os.path.basename(desc),
             ],
             'name': name,
             'version': version,
@@ -365,19 +384,25 @@ class KiwiCreateImageTask(BaseBuildTask):
             'rpmlist': [],
             'files': [],
         }
+
         # TODO: upload detailed log?
         # build/image-root.log
-        # os.path.join(broot.tmpdir(), target_dir[1:], "build/image-root.log")
+        root_log_path = os.path.join(broot.tmpdir(), target_dir[1:], "build/image-root.log")
+        if os.path.exists(root_log_path):
+            self.uploadFile(root_log_path, remoteName="image-root.log")
 
         # for type in types:
         #     img_file = '%s.%s-%s.%s' % (name, version, arch, type)
         #     self.uploadFile(os.path.join(broot.rootdir()), remoteName=img_file)
         #     imgdata['files'].append(img_file)
-        fpath = os.path.join(broot.rootdir(),
-                             result['result_files']['disk_format_image'].filename[1:])
-        img_file = os.path.basename(fpath)
-        self.uploadFile(fpath, remoteName=os.path.basename(img_file))
-        imgdata['files'].append(img_file)
+        for ftype in ('disk_format_image', 'installation_image'):
+            fdata = result.result_files.get(ftype)
+            if not fdata:
+                continue
+            fpath = os.path.join(broot.rootdir(), fdata.filename[1:])
+            img_file = os.path.basename(fpath)
+            self.uploadFile(fpath, remoteName=os.path.basename(img_file))
+            imgdata['files'].append(img_file)
 
         if not self.opts.get('scratch'):
             if False:
