@@ -11310,8 +11310,22 @@ class RootExports(object):
     def untagBuild(self, tag, build, strict=True, force=False):
         """Untag a build
 
-        Unlike tagBuild, this does not create a task
-        No return value"""
+        Unlike tagBuild, this does not create a task.
+
+        :param int|str tag: tag name or ID
+        :param int|str build: build name or ID
+        :param bool strict: If True (default), Koji will raise a TagError if
+                            this build is not in the tag. If False, Koji will
+                            not raise TagError when the build is not in the
+                            tag.
+        :param bool force: If False (default), Koji will check this operation
+                           against the tag hub policy. If hub policy does not
+                           allow the current user to untag packages from this
+                           tag, then this method will raise an error.
+                           If True, then this method will bypass hub policy
+                           settings. Only admin users can set force to True.
+        :returns: None
+        """
         # we can't staticmethod this one -- we're limiting the options
         context.session.assertLogin()
         user_id = context.session.user_id
