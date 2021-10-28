@@ -4403,6 +4403,8 @@ def get_next_release(build_info, incr=1):
     :raises: BuildError if the latest build uses a release value that Koji
              does not know how to increment.
     """
+    if not isinstance(incr, int):
+        raise koji.GenericError("incr parameter must be an integer")
     values = {
         'name': build_info['name'],
         'version': build_info['version'],
@@ -4440,6 +4442,32 @@ def get_next_release(build_info, incr=1):
     else:
         raise koji.BuildError('Unable to increment release value: %s' % release)
     return release
+
+
+def get_next_build(data):
+    """
+    Returns a new build entry with automatic release incrementing
+
+    :param dict data: data for the build to be created
+    :returns: build id for the created build
+
+    If data includes a non-None release value, then this function is
+    equivalent to new_build. Otherwise, it will use get_next_release()
+    to choose the release value.
+
+    To limit race conditions, this function will try a series of release
+    increments.
+    """
+    if data.get('release') is not None:
+        return new_build(data)
+    data['release'] = get_next_release(data)
+    for try_no in range(2, 10):
+        try:
+            return new_build(data)
+        except IntegrityError:
+            data['release'] = get_next_release(data, try_no)
+    # otherwise
+    raise koji.GenericError("Can't find available release")
 
 
 def _fix_rpm_row(row):
@@ -14415,19 +14443,14 @@ class HostExports(object):
         host.verify()
         task = Task(task_id)
         task.assertHost(host.id)
-        build_info['release'] = get_next_release(build_info)
+        # ensure release is None so get_next_build will handle incrementing
+        build_info['release'] = None
         data = build_info.copy()
         data['task_id'] = task_id
         data['owner'] = task.getOwner()
         data['state'] = koji.BUILD_STATES['BUILDING']
         data['completion_time'] = None
-        for try_no in range(2, 10):
-            try:
-                build_id = new_build(data)
-            except IntegrityError:
-                data['release'] = get_next_release(data, try_no)
-        if not build_id:
-            raise koji.GenericError("Can't find available release")
+        build_id = get_next_build(data)
         data['id'] = build_id
         new_maven_build(data, maven_info)
 
@@ -14592,16 +14615,7 @@ class HostExports(object):
         data['owner'] = task.getOwner()
         data['state'] = koji.BUILD_STATES['BUILDING']
         data['completion_time'] = None
-        build_id = None
-        if data.get('release') is None:
-            data['release'] = get_next_release(data)
-        for try_no in range(2, 10):
-            try:
-                build_id = new_build(data)
-            except IntegrityError:
-                data['release'] = get_next_release(data, try_no)
-        if not build_id:
-            raise koji.GenericError("Can't find available release")
+        build_id = get_next_build(data)
         data['id'] = build_id
         new_image_build(data)
         return data
