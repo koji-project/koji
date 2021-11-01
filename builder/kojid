@@ -142,6 +142,7 @@ def main(options, session):
         tm.restart_pending = True
     signal.signal(signal.SIGTERM, shutdown)
     signal.signal(signal.SIGUSR1, restart)
+    exit_code = 0
     while True:
         try:
             taken = False
@@ -156,6 +157,7 @@ def main(options, session):
             os.execv(sys.argv[0], sys.argv)
         except koji.AuthExpired:
             logger.error('Session expired')
+            exit_code = 1
             break
         except koji.RetryError:
             raise
@@ -175,7 +177,7 @@ def main(options, session):
     logger.warning("Shutting down, please wait...")
     tm.shutdown()
     session.logout()
-    sys.exit(0)
+    sys.exit(exit_code)
 
 
 class BuildRoot(object):
