@@ -2345,18 +2345,7 @@ def remove_host_from_channel(hostname, channel_name):
 
 def rename_channel(old, new):
     """Rename a channel"""
-    logger.warning("renameChannel call is deprecated and will be removed in 1.28")
-    context.session.assertPerm('admin')
-    if not isinstance(new, str):
-        raise koji.GenericError("new channel name must be a string")
-    verify_name_internal(new)
-    cinfo = get_channel(old, strict=True)
-    dup_check = get_channel(new, strict=False)
-    if dup_check:
-        raise koji.GenericError("channel %(name)s already exists (id=%(id)i)" % dup_check)
-    update = UpdateProcessor('channels', clauses=['id=%(id)i'], values=cinfo)
-    update.set(name=new)
-    update.execute()
+    edit_channel(old, name=new)
 
 
 def edit_channel(channelInfo, **kw):

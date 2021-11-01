@@ -346,22 +346,6 @@ def handle_remove_channel(goptions, session, args):
     session.removeChannel(args[0], force=options.force)
 
 
-def handle_rename_channel(goptions, session, args):
-    "[admin] Rename a channel"
-    usage = "usage: %prog rename-channel [options] <old-name> <new-name>"
-    parser = OptionParser(usage=get_usage_str(usage))
-    (options, args) = parser.parse_args(args)
-    print("rename-channel is deprecated and will be removed in 1.28, this call is replaced by "
-          "edit-channel")
-    if len(args) != 2:
-        parser.error("Incorrect number of arguments")
-    activate_session(session, goptions)
-    cinfo = session.getChannel(args[0])
-    if not cinfo:
-        error("No such channel: %s" % args[0])
-    session.renameChannel(args[0], args[1])
-
-
 def handle_edit_channel(goptions, session, args):
     "[admin] Edit a channel"
     usage = "usage: %prog edit-channel [options] <old-name>"
