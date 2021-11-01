@@ -6168,7 +6168,7 @@ enabled=1
 
             for rpm_id, r in zip(rpm_with_key, results):
                 if isinstance(r._result, list):
-                    log_output += 'Signed RPM %s is writen with %s key.\n' \
+                    log_output += 'Signed RPM %s is written with %s key.\n' \
                                   % (rpm_id, selected[rpm_id]['best_key'])
                 else:
                     log_output += 'FAILED: Signed RPM %s is not written with %s key, ' \
@@ -6176,10 +6176,10 @@ enabled=1
                                                    r._result['faultString'])
 
         if log_output:
-            writen_log = os.path.join(self.workdir, 'writen_signed_rpms.log')
-            with koji._open_text_file(writen_log, 'at') as outfile:
+            written_log = os.path.join(self.workdir, 'written_signed_rpms.log')
+            with koji._open_text_file(written_log, 'at') as outfile:
                 outfile.write(log_output)
-            self.session.uploadWrapper(writen_log, self.uploadpath)
+            self.session.uploadWrapper(written_log, self.uploadpath)
 
         # generate kojipkgs data and note missing files
         fs_missing = []
