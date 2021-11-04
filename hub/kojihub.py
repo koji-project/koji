@@ -7692,12 +7692,13 @@ def delete_rpm_sig(rpminfo, sigkey=None, all_sigs=False):
         list_sighdrs.append(joinpath(builddir, koji.pathinfo.signed(rinfo, rpmsig['sigkey'])))
     list_paths = list_sighdrs + list_sigcaches
     count = 0
+    logged_user = get_user(context.session.user_id)
     for file_path in list_paths:
         try:
             os.remove(file_path)
             count += 1
         except FileNotFoundError:
-            logger.info("File: %s has been deleted", file_path)
+            logger.warning("User %s has deleted file %s", logged_user['name'], file_path)
         except Exception:
             logger.error("An error happens when deleting %s, %s deleting are deleted, "
                          "%s deleting are skipped, the original request is %s rpm "
@@ -7720,6 +7721,8 @@ def delete_rpm_sig(rpminfo, sigkey=None, all_sigs=False):
             except OSError:
                 logger.warning("An error happens when deleting %s directory",
                                sigdir, exc_info=True)
+    logger.warning("Signed RPM %s with sigkey %s is deleted by %s", rinfo['id'], sigkey,
+                   logged_user['name'])
 
 
 def _scan_sighdr(sighdr, fn):
@@ -8394,6 +8397,8 @@ def delete_build(build, strict=True, min_ref_age=604800):
             return False
     # otherwise we can delete it
     _delete_build(binfo)
+    logged_user = get_user(context.session.user_id)
+    logger.warning("Build %s is deleted by %s", binfo['nvr'], logged_user['name'])
     return True
 
 

@@ -40,7 +40,6 @@ class TestDeleteBuild(unittest.TestCase):
                 refs.return_value = retval
                 assert kojihub.delete_build(build='', strict=False) is False
 
-
     @mock.patch('kojihub.context')
     @mock.patch('kojihub.get_build')
     def test_delete_build_check_last_used_raise_error(self, build, context):
@@ -53,19 +52,24 @@ class TestDeleteBuild(unittest.TestCase):
             with mock.patch('kojihub.build_references') as refs:
                 retval = defaultdict(dict)
                 if ref == 'last_used':
-                    retval[ref] = time.time()+100
+                    retval[ref] = time.time() + 100
                     refs.return_value = retval
                     self.assertFalse(kojihub.delete_build(build='', strict=False))
 
+    @mock.patch('kojihub.get_user')
     @mock.patch('kojihub._delete_build')
     @mock.patch('kojihub.build_references')
     @mock.patch('kojihub.context')
     @mock.patch('kojihub.get_build')
-    def test_delete_build_lazy_refs(self, build, context, buildrefs, _delete):
+    def test_delete_build_lazy_refs(self, build, context, buildrefs, _delete, get_user):
         '''Test that we can handle lazy return from build_references'''
+        get_user.return_value = {'authtype': 2, 'id': 1, 'krb_principal': None,
+                                 'krb_principals': [], 'name': 'kojiadmin', 'status': 0,
+                                 'usertype': 0}
         context.session.assertPerm = mock.MagicMock()
         buildrefs.return_value = {'tags': []}
-        binfo = {'id': 'BUILD ID', 'state': koji.BUILD_STATES['COMPLETE']}
+        binfo = {'id': 'BUILD ID', 'state': koji.BUILD_STATES['COMPLETE'],
+                 'nvr': 'test_nvr-3.3-20.el8'}
         build.return_value = binfo
         kojihub.delete_build(build=binfo, strict=True)
 
