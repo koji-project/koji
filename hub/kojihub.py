@@ -4261,7 +4261,7 @@ def get_build(buildInfo, strict=False):
     """Return information about a build.
 
     buildInfo may be either a int ID, a string NVR, or a map containing
-    'name', 'version' and 'release.
+    'name', 'version' and 'release'.
 
     A map will be returned containing the following keys*:
       id: build ID
@@ -4708,7 +4708,7 @@ def get_build_type(buildInfo, strict=False):
     Returns a dictionary whose keys are type names and whose values are
     the type info corresponding to that type
     """
-    if not isinstance(buildInfo, dict) or 'extra' not in buildInfo:
+    if not isinstance(buildInfo, dict) or 'extra' not in buildInfo or 'id' not in buildInfo:
         binfo = get_build(buildInfo, strict=strict)
         if not binfo:
             return None
