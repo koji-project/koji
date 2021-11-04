@@ -2084,7 +2084,7 @@ def _grp_req_add(taginfo, grpinfo, reqinfo, block, force, **opts):
     insert.execute()
 
 
-def grp_req_remove(taginfo, grpinfo, reqinfo, force=False):
+def grp_req_remove(taginfo, grpinfo, reqinfo, force=None):
     """Remove group requirement from the list for group-tag
 
     Really this shouldn't be used except in special cases
@@ -2097,6 +2097,8 @@ def grp_req_remove(taginfo, grpinfo, reqinfo, force=False):
 
 def _grp_req_remove(taginfo, grpinfo, reqinfo, force):
     """grp_req_remove without permission checks"""
+    if force is not None:
+        logger.warning("force option in groupReqListRemove call is deprecated")
     tag_id = get_tag_id(taginfo, strict=True)
     grp_id = get_group_id(grpinfo, strict=True)
     req_id = get_group_id(reqinfo, strict=True)
