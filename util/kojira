@@ -447,6 +447,8 @@ class RepoManager(object):
                 repo = ManagedRepo(self, data, repodata)
                 if self.options.ignore_other_volumes:
                     info = repo.get_info()
+                    if info is None:
+                        continue
                     volume = info.get('volume')
                     if volume is not None and volume != 'DEFAULT':
                         # Other volume
