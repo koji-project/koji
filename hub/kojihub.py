@@ -11568,12 +11568,28 @@ class RootExports(object):
         task.setPriority(priority, recurse=recurse)
 
     def listTagged(self, tag, event=None, inherit=False, prefix=None, latest=False, package=None,
-                   owner=None, type=None):
-        """List builds tagged with tag"""
+                   owner=None, type=None, strict=True):
+        """List builds tagged with tag.
+
+            :param int|str tag: tag name or ID number
+            :param int event: event ID
+            :param bool inherit: If inherit is True, follow the tag hierarchy and return
+                            a list of tagged builds for all tags in the tree
+            :param str prefix: only builds whose package name starts with that prefix
+            :param  bool|int latest:  True for latest build per package,
+                            N to get N latest builds per package.
+            :param str package: only builds of the specified package
+            :param owner: only builds of the specified owner
+            :param str type: only builds of the given btype (such as maven or image)
+            :param bool strict: If tag doesn't exist, an exception is raised,
+                            unless strict is False in which case returns an empty list.
+        """
         # lookup tag id
-        tag = get_tag(tag, strict=True, event=event)['id']
-        results = readTaggedBuilds(tag, event, inherit=inherit, latest=latest, package=package,
-                                   owner=owner, type=type)
+        tag = get_tag(tag, strict=strict, event=event)
+        if not tag:
+            return []
+        results = readTaggedBuilds(tag['id'], event, inherit=inherit, latest=latest,
+                                   package=package, owner=owner, type=type)
         if prefix:
             prefix = prefix.lower()
             results = [build for build in results
@@ -11581,24 +11597,56 @@ class RootExports(object):
         return results
 
     def listTaggedRPMS(self, tag, event=None, inherit=False, latest=False, package=None, arch=None,
-                       rpmsigs=False, owner=None, type=None):
-        """List rpms and builds within tag"""
+                       rpmsigs=False, owner=None, type=None, strict=True):
+        """List rpms and builds within tag.
+
+            :param int|str tag: tag name or ID number
+            :param int event: event ID
+            :param bool inherit: If inherit is True, follow the tag hierarchy and return
+                            a list of tagged RPMs for all tags in the tree
+            :param  bool|int latest: Set to "True" to get the single latest build. Set
+                            to an int "N" to get the latest "N" builds. If
+                            unspecified, the default value is "False", and
+                            Koji will list all builds in the tag.
+            :param str package: only rpms of the specified package
+            :param str arch: only rpms of the specified arch
+            :param str rpmsigs: only rpms of the specified rpmsigs
+            :param str owner: only rpms of the specified owner
+            :param str type: only rpms of the given btype (such as maven or image)
+            :param bool strict: If tag doesn't exist, an exception is raised,
+                            unless strict is False in which case returns an empty list.
+        """
         # lookup tag id
-        tag = get_tag(tag, strict=True, event=event)['id']
-        return readTaggedRPMS(tag, event=event, inherit=inherit, latest=latest, package=package,
-                              arch=arch, rpmsigs=rpmsigs, owner=owner, type=type)
+        tag = get_tag(tag, strict=strict, event=event)
+        if not tag:
+            return []
+        return readTaggedRPMS(tag['id'], event=event, inherit=inherit, latest=latest,
+                              package=package, arch=arch, rpmsigs=rpmsigs, owner=owner, type=type)
 
     def listTaggedArchives(self, tag, event=None, inherit=False, latest=False, package=None,
-                           type=None):
-        """List archives and builds within a tag"""
+                           type=None, strict=True):
+        """List archives and builds within a tag.
+
+            :param int|str tag: tag name or ID number
+            :param int event: event ID
+            :param bool inherit: If inherit is True, follow the tag hierarchy and return
+                            a list of tagged archives for all tags in the tree
+            :param  bool|int latest: Set to "True" to get tagged archives just from latest build.
+                            Set latest=N to get only the N latest tagged RPMs.
+            :param str package: only archives of the specified package
+            :param str type: only archives of the given btype (such as maven or image)
+            :param bool strict: If tag doesn't exist, an exception is raised,
+                            unless strict is False in which case returns an empty list.
+        """
         # lookup tag id
-        tag = get_tag(tag, strict=True, event=event)['id']
-        return readTaggedArchives(tag, event=event, inherit=inherit, latest=latest,
+        tag = get_tag(tag, strict=strict, event=event)
+        if not tag:
+            return []
+        return readTaggedArchives(tag['id'], event=event, inherit=inherit, latest=latest,
                                   package=package, type=type)
 
     def listBuilds(self, packageID=None, userID=None, taskID=None, prefix=None, state=None,
-                   volumeID=None, source=None,
-                   createdBefore=None, createdAfter=None,
+                   volumeID=None, source=None, createdBefore=None, createdAfter=None,
                    completeBefore=None, completeAfter=None, type=None, typeInfo=None,
                    queryOpts=None, pattern=None, cgID=None):
         """
