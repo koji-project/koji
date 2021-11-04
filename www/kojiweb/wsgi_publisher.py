@@ -78,6 +78,8 @@ class Dispatcher(object):
         ['KrbCanonHost', 'boolean', False],
         ['KrbServerRealm', 'string', None],
 
+        ['WebAuthType', 'string', None],
+
         ['WebCert', 'string', None],
         ['KojiHubCA', 'string', '/etc/kojiweb/kojihubca.crt'],
 
@@ -148,6 +150,20 @@ class Dispatcher(object):
             else:
                 opts[name] = default
         opts['Secret'] = koji.util.HiddenValue(opts['Secret'])
+
+        if opts['WebAuthType'] not in (None, 'gssapi', 'ssl'):
+            raise koji.ConfigurationError(f"Invalid value {opts['WebAuthType']} for "
+                                          "WebAuthType (ssl/gssapi)")
+        if opts['WebAuthType'] == 'gssapi':
+            opts['WebAuthType'] = koji.AUTHTYPE_GSSAPI
+        elif opts['WebAuthType'] == 'ssl':
+            opts['WebAuthType'] = koji.AUTHTYPE_SSL
+        # if there is no explicit request, use same authtype as web has
+        elif opts['WebPrincipal']:
+            opts['WebAuthType'] = koji.AUTHTYPE_GSSAPI
+        elif opts['WebCert']:
+            opts['WebAuthType'] = koji.AUTHTYPE_SSL
+
         self.options = opts
         return opts
 

@@ -315,7 +315,19 @@ class Session(object):
 
         return (local_ip, local_port, remote_ip, remote_port)
 
-    def sslLogin(self, proxyuser=None):
+    def sslLogin(self, proxyuser=None, proxyauthtype=None):
+
+        """Login into brew via SSL. proxyuser name can be specified and if it is
+        allowed in the configuration file then connection is allowed to login as
+        that user. By default we assume that proxyuser is coming via same
+        authentication mechanism but proxyauthtype can be set to koji.AUTHTYPE_*
+        value for different handling. Typical case is proxying kerberos user via
+        web ui which itself is authenticated via SSL certificate. (See kojiweb
+        for usage).
+
+        proxyauthtype is working only if AllowProxyAuthType option is set to
+        'On' in the hub.conf
+        """
         if self.logged_in:
             raise koji.AuthError("Already logged in")
 
@@ -361,6 +373,16 @@ class Session(object):
                 username = proxyuser
             else:
                 raise koji.AuthError('%s is not authorized to login other users' % client_dn)
+
+            # in this point we can continue with proxied user in same way as if it is not proxied
+            if proxyauthtype is not None:
+                if not context.opts['AllowProxyAuthType']:
+                    raise koji.AuthError("Proxy must use same auth mechanism as hub (behaviour "
+                                         "can be overriden via AllowProxyAuthType hub option)")
+                if proxyauthtype not in (koji.AUTHTYPE_GSSAPI, koji.AUTHTYPE_SSL):
+                    raise koji.AuthError(
+                        "Proxied authtype %s is not valid for sslLogin" % proxyauthtype)
+                authtype = proxyauthtype
 
         if authtype == koji.AUTHTYPE_GSSAPI and '@' in username:
             user_id = self.getUserIdFromKerberos(username)
