@@ -4397,14 +4397,14 @@ def get_next_release(build_info, incr=1):
     :param dict build_info: a dict with two keys: a package "name" and
                             "version" of the builds to search. For example,
                             {"name": "bash", "version": "4.4.19"}
-    :param incr int: value which should be added to latest found release
+    :param int incr: value which should be added to latest found release
                      (it is used for solving race-condition conflicts)
     :returns: a release string for this package, for example "15.el8".
     :raises: BuildError if the latest build uses a release value that Koji
              does not know how to increment.
     """
     if not isinstance(incr, int):
-        raise koji.GenericError("incr parameter must be an integer")
+        raise koji.ParameterError("incr parameter must be an integer")
     values = {
         'name': build_info['name'],
         'version': build_info['version'],
@@ -4444,11 +4444,11 @@ def get_next_release(build_info, incr=1):
     return release
 
 
-def get_next_build(data):
+def get_next_build(build_info):
     """
     Returns a new build entry with automatic release incrementing
 
-    :param dict data: data for the build to be created
+    :param dict build_info: data for the build to be created
     :returns: build id for the created build
 
     If data includes a non-None release value, then this function is
@@ -4458,14 +4458,14 @@ def get_next_build(data):
     To limit race conditions, this function will try a series of release
     increments.
     """
-    if data.get('release') is not None:
-        return new_build(data)
-    data['release'] = get_next_release(data)
+    if build_info.get('release') is not None:
+        return new_build(build_info)
+    build_info['release'] = get_next_release(build_info)
     for try_no in range(2, 10):
         try:
-            return new_build(data)
+            return new_build(build_info)
         except IntegrityError:
-            data['release'] = get_next_release(data, try_no)
+            build_info['release'] = get_next_release(build_info, try_no)
     # otherwise
     raise koji.GenericError("Can't find available release")
 
