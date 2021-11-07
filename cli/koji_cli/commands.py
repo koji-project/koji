@@ -3348,6 +3348,9 @@ def anon_handle_list_builds(goptions, session, args):
                 if e.args[0].endswith("'pattern'"):
                     parser.error("The hub doesn't support the 'pattern' argument, please try"
                                  " filtering the result on your local instead.")
+                if e.args[0].endswith("'cgID'"):
+                    parser.error("The hub doesn't support the 'cg' argument, please try"
+                                 " filtering the result on your local instead.")
         else:
             parser.error("Filter must be provided for list")
     if not options.sort_key:
