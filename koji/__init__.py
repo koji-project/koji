@@ -472,6 +472,7 @@ def listFaults():
         name: the name of the exception
         desc: the description of the exception (docstring)
     """
+    util.deprecated("method listFaults is deprecated and will be removed in 1.29")
     ret = []
     for n, v in globals().items():
         if isinstance(v, type(Exception)) and issubclass(v, GenericError):
