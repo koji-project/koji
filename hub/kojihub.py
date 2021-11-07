@@ -4378,7 +4378,7 @@ def get_build_logs(build):
     return logs
 
 
-def get_next_release(build_info):
+def get_next_release(build_info, incr=1):
     """
     Find the next release for a package's version.
 
@@ -4397,10 +4397,14 @@ def get_next_release(build_info):
     :param dict build_info: a dict with two keys: a package "name" and
                             "version" of the builds to search. For example,
                             {"name": "bash", "version": "4.4.19"}
+    :param int incr: value which should be added to latest found release
+                     (it is used for solving race-condition conflicts)
     :returns: a release string for this package, for example "15.el8".
     :raises: BuildError if the latest build uses a release value that Koji
              does not know how to increment.
     """
+    if not isinstance(incr, int):
+        raise koji.ParameterError("incr parameter must be an integer")
     values = {
         'name': build_info['name'],
         'version': build_info['version'],
@@ -4422,22 +4426,48 @@ def get_next_release(build_info):
         release = result['release']
 
     if not release:
-        release = '1'
+        release = str(incr)
     elif release.isdigit():
-        release = str(int(release) + 1)
+        release = str(int(release) + incr)
     elif len(release.split('.')) == 2 and release.split('.')[0].isdigit():
         # Handle the N.%{dist} case
         r_split = release.split('.')
-        r_split[0] = str(int(r_split[0]) + 1)
+        r_split[0] = str(int(r_split[0]) + incr)
         release = '.'.join(r_split)
     elif len(release.split('.')) == 3 and release.split('.')[2].isdigit():
         # Handle the {date}.nightly.%{id} case
         r_split = release.split('.')
-        r_split[2] = str(int(r_split[2]) + 1)
+        r_split[2] = str(int(r_split[2]) + incr)
         release = '.'.join(r_split)
     else:
         raise koji.BuildError('Unable to increment release value: %s' % release)
     return release
+
+
+def get_next_build(build_info):
+    """
+    Returns a new build entry with automatic release incrementing
+
+    :param dict build_info: data for the build to be created
+    :returns: build id for the created build
+
+    If data includes a non-None release value, then this function is
+    equivalent to new_build. Otherwise, it will use get_next_release()
+    to choose the release value.
+
+    To limit race conditions, this function will try a series of release
+    increments.
+    """
+    if build_info.get('release') is not None:
+        return new_build(build_info)
+    build_info['release'] = get_next_release(build_info)
+    for try_no in range(2, 10):
+        try:
+            return new_build(build_info)
+        except IntegrityError:
+            build_info['release'] = get_next_release(build_info, try_no)
+    # otherwise
+    raise koji.GenericError("Can't find available release")
 
 
 def _fix_rpm_row(row):
@@ -14413,13 +14443,14 @@ class HostExports(object):
         host.verify()
         task = Task(task_id)
         task.assertHost(host.id)
-        build_info['release'] = get_next_release(build_info)
+        # ensure release is None so get_next_build will handle incrementing
+        build_info['release'] = None
         data = build_info.copy()
         data['task_id'] = task_id
         data['owner'] = task.getOwner()
         data['state'] = koji.BUILD_STATES['BUILDING']
         data['completion_time'] = None
-        build_id = new_build(data)
+        build_id = get_next_build(data)
         data['id'] = build_id
         new_maven_build(data, maven_info)
 
@@ -14584,9 +14615,7 @@ class HostExports(object):
         data['owner'] = task.getOwner()
         data['state'] = koji.BUILD_STATES['BUILDING']
         data['completion_time'] = None
-        if data.get('release') is None:
-            data['release'] = get_next_release(build_info)
-        build_id = new_build(data)
+        build_id = get_next_build(data)
         data['id'] = build_id
         new_image_build(data)
         return data

@@ -33,6 +33,7 @@ class TestGetNextRelease(unittest.TestCase):
             ['1.el6', '2.el6'],
             ['1.fc23', '2.fc23'],
             ['45.fc23', '46.fc23'],
+            ['20211105.nightly.7', '20211105.nightly.8'],
         ]
         for a, b in data:
             self.query.executeOne.return_value = {'release': a}
@@ -53,3 +54,15 @@ class TestGetNextRelease(unittest.TestCase):
             with self.assertRaises(koji.BuildError):
                 kojihub.get_next_release(self.binfo)
 
+    def test_get_next_release_bad_incr(self):
+        data = [
+            # bad_incr_value
+            "foo",
+            None,
+            1.1,
+            {1:1},
+            [1],
+        ]
+        for val in data:
+            with self.assertRaises(koji.ParameterError):
+                kojihub.get_next_release(self.binfo, incr=val)
