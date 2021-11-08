@@ -458,7 +458,7 @@ def load_config(environ):
         ['RLIMIT_MEMLOCK', 'string', None],
         ['RLIMIT_NOFILE', 'string', None],
         ['RLIMIT_NPROC', 'string', None],
-        ['RLIMIT_OFILE', 'string', None],
+        ['RLIMIT_OFILE', 'string', None],  # alias for RLIMIT_NOFILE
         ['RLIMIT_RSS', 'string', None],
         ['RLIMIT_STACK', 'string', None],
 
@@ -487,6 +487,8 @@ def load_config(environ):
         opts[name] = default
     if opts['DBHost'] is None:
         opts['DBHost'] = opts['DBhost']
+    if opts['RLIMIT_NOFILE'] is None:
+        opts['RLIMIT_NOFILE'] = opts['RLIMIT_OFILE']
     # load policies
     # (only from config file)
     if config and config.has_section('policy'):
