@@ -1,11 +1,10 @@
 from __future__ import absolute_import
 
-import os
-import sys
 import unittest
 
 import mock
 import six
+import koji
 from mock import call
 
 from koji_cli.commands import handle_add_pkg
@@ -14,12 +13,22 @@ from . import utils
 
 class TestAddPkg(utils.CliTestCase):
 
-    # Show long diffs in error output...
-    maxDiff = None
+    def setUp(self):
+        # Show long diffs in error output...
+        self.options = mock.MagicMock()
+        self.options.quiet = True
+        self.options.debug = False
+        self.session = mock.MagicMock()
+        self.session.getAPIVersion.return_value = koji.API_VERSION
+        self.activate_session_mock = mock.patch('koji_cli.commands.activate_session').start()
+        self.error_format = """Usage: %s add-pkg [options] --owner <owner> <tag> <package> [<package> ...]
+(Specify the --help global option for a list of other help options)
+
+%s: error: {message}
+""" % (self.progname, self.progname)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_add_pkg(self, activate_session_mock, stdout):
+    def test_handle_add_pkg(self, stdout):
         tag = 'tag'
         dsttag = {'name': tag, 'id': 1}
         package = 'package'
@@ -36,35 +45,30 @@ class TestAddPkg(utils.CliTestCase):
         kwargs = {'force': None,
                   'block': False,
                   'extra_arches': 'arch1 arch2 arch3 arch4'}
-        options = mock.MagicMock()
 
-        # Mock out the xmlrpc server
-        session = mock.MagicMock()
-
-        session.getUser.return_value = owner_info
-        session.getTag.return_value = dsttag
-        session.listPackages.return_value = [
+        self.session.getUser.return_value = owner_info
+        self.session.getTag.return_value = dsttag
+        self.session.listPackages.return_value = [
             {'package_name': 'other_package', 'package_id': 2}]
         # Run it and check immediate output
         # args: --owner, --extra-arches='arch1,arch2 arch3, arch4', tag, package
         # expected: success
-        rv = handle_add_pkg(options, session, args)
+        rv = handle_add_pkg(self.options, self.session, args)
         actual = stdout.getvalue()
         expected = 'Adding 1 packages to tag tag\n'
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(session, options)
-        session.getUser.assert_called_once_with(owner)
-        session.getTag.assert_called_once_with(tag)
-        session.listPackages.assert_called_once_with(tagID=dsttag['id'], with_owners=False)
-        session.packageListAdd.assert_called_once_with(
+        self.activate_session_mock.assert_called_once_with(self.session, self.options)
+        self.session.getUser.assert_called_once_with(owner)
+        self.session.getTag.assert_called_once_with(tag)
+        self.session.listPackages.assert_called_once_with(tagID=dsttag['id'], with_owners=False)
+        self.session.packageListAdd.assert_called_once_with(
             tag, package, owner, **kwargs)
-        session.multiCall.assert_called_once_with(strict=True)
+        self.session.multiCall.assert_called_once_with(strict=True)
         self.assertNotEqual(rv, 1)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_add_pkg_multi_pkg(self, activate_session_mock, stdout):
+    def test_handle_add_pkg_multi_pkg(self, stdout):
         tag = 'tag'
         dsttag = {'name': tag, 'id': 1}
         packages = ['package1', 'package2', 'package3']
@@ -78,26 +82,22 @@ class TestAddPkg(utils.CliTestCase):
         kwargs = {'force': None,
                   'block': False,
                   'extra_arches': 'arch1 arch2 arch3 arch4'}
-        options = mock.MagicMock()
 
-        # Mock out the xmlrpc server
-        session = mock.MagicMock()
-
-        session.getUser.return_value = owner_info
-        session.getTag.return_value = dsttag
-        session.listPackages.return_value = [
+        self.session.getUser.return_value = owner_info
+        self.session.getTag.return_value = dsttag
+        self.session.listPackages.return_value = [
             {'package_name': 'package2', 'package_id': 2}]
         # Run it and check immediate output
         # args: --owner, --extra-arches='arch1,arch2 arch3, arch4',
         #       tag, package1, package2, package3
         # expected: success
-        rv = handle_add_pkg(options, session, args)
+        rv = handle_add_pkg(self.options, self.session, args)
         actual = stdout.getvalue()
         expected = 'Package package2 already exists in tag tag\nAdding 2 packages to tag tag\n'
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(session, options)
-        self.assertEqual(session.mock_calls,
+        self.activate_session_mock.assert_called_once_with(self.session, self.options)
+        self.assertEqual(self.session.mock_calls,
                          [call.getUser(owner),
                           call.getTag(tag),
                           call.listPackages(tagID=dsttag['id'], with_owners=False),
@@ -106,147 +106,100 @@ class TestAddPkg(utils.CliTestCase):
                           call.multiCall(strict=True)])
         self.assertNotEqual(rv, 1)
 
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_add_pkg_owner_no_exists(
-            self, activate_session_mock, stderr):
+    def test_handle_add_pkg_owner_no_exists(self):
         tag = 'tag'
         packages = ['package1', 'package2', 'package3']
         owner = 'owner'
         owner_info = None
         extra_arches = 'arch1,arch2 arch3, arch4'
-        args = [
+        arguments = [
             '--owner=' + owner,
             '--extra-arches=' + extra_arches,
             tag] + packages
-        options = mock.MagicMock()
 
-        # Mock out the xmlrpc server
-        session = mock.MagicMock()
-
-        session.getUser.return_value = owner_info
+        self.session.getUser.return_value = owner_info
         # Run it and check immediate output
         # args: --owner, --extra-arches='arch1,arch2 arch3, arch4',
         #       tag, package1, package2, package3
         # expected: failed: owner does not exist
-        with self.assertRaises(SystemExit) as ex:
-            handle_add_pkg(options, session, args)
-        self.assertExitCode(ex, 1)
-        actual = stderr.getvalue()
-        expected = 'No such user: %s\n' % owner
-        self.assertMultiLineEqual(actual, expected)
+        self.assert_system_exit(
+            handle_add_pkg,
+            self.options, self.session, arguments,
+            stdout='',
+            stderr='No such user: %s\n' % owner,
+            exit_code=1,
+            activate_session=None)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_not_called()
-        self.assertEqual(session.mock_calls,
-                         [call.getUser(owner)])
+        self.activate_session_mock.assert_not_called()
+        self.assertEqual(self.session.mock_calls, [call.getUser(owner)])
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_add_pkg_tag_no_exists(self, activate_session_mock, stdout):
+    def test_handle_add_pkg_tag_no_exists(self):
         tag = 'tag'
         dsttag = None
         packages = ['package1', 'package2', 'package3']
         owner = 'owner'
         owner_info = mock.ANY
         extra_arches = 'arch1,arch2 arch3, arch4'
-        args = [
-            '--owner=' + owner,
-            '--extra-arches=' + extra_arches,
-            tag] + packages
-        options = mock.MagicMock()
+        arguments = ['--owner=' + owner, '--extra-arches=' + extra_arches, tag] + packages
 
-        # Mock out the xmlrpc server
-        session = mock.MagicMock()
-
-        session.getUser.return_value = owner_info
-        session.getTag.return_value = dsttag
+        self.session.getUser.return_value = owner_info
+        self.session.getTag.return_value = dsttag
         # Run it and check immediate output
         # args: --owner, --extra-arches='arch1,arch2 arch3, arch4',
         #       tag, package1, package2, package3
         # expected: failed: tag does not exist
-        with self.assertRaises(SystemExit) as ex:
-            handle_add_pkg(options, session, args)
-        self.assertExitCode(ex, 1)
-        actual = stdout.getvalue()
-        expected = 'No such tag: %s\n' % tag
-        self.assertMultiLineEqual(actual, expected)
-        # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(session, options)
-        self.assertEqual(session.mock_calls,
-                         [call.getUser(owner),
-                          call.getTag(tag)])
+        self.assert_system_exit(
+            handle_add_pkg,
+            self.options, self.session, arguments,
+            stdout='',
+            stderr='No such tag: %s\n' % tag,
+            exit_code=1,
+            activate_session=None)
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_add_pkg_no_owner(
-            self, activate_session_mock, stderr, stdout):
+        # Finally, assert that things were called as we expected.
+        self.activate_session_mock.assert_called_once_with(self.session, self.options)
+        self.assertEqual(self.session.mock_calls, [call.getUser(owner), call.getTag(tag)])
+
+    def test_handle_add_pkg_no_owner(self):
         tag = 'tag'
         packages = ['package1', 'package2', 'package3']
         extra_arches = 'arch1,arch2 arch3, arch4'
-        args = ['--extra-arches=' + extra_arches, tag] + packages
-        options = mock.MagicMock()
-
-        progname = os.path.basename(sys.argv[0]) or 'koji'
-
-        # Mock out the xmlrpc server
-        session = mock.MagicMock()
+        arguments = ['--extra-arches=' + extra_arches, tag] + packages
 
         # Run it and check immediate output
-        with self.assertRaises(SystemExit) as ex:
-            handle_add_pkg(options, session, args)
-        self.assertExitCode(ex, 2)
-        actual_stdout = stdout.getvalue()
-        actual_stderr = stderr.getvalue()
-        expected_stdout = ''
-        expected_stderr = """Usage: %s add-pkg [options] --owner <owner> <tag> <package> [<package> ...]
-(Specify the --help global option for a list of other help options)
-
-%s: error: Please specify an owner for the package(s)
-""" % (progname, progname)
-        self.assertMultiLineEqual(actual_stdout, expected_stdout)
-        self.assertMultiLineEqual(actual_stderr, expected_stderr)
+        self.assert_system_exit(
+            handle_add_pkg,
+            self.options, self.session, arguments,
+            stdout='',
+            stderr=self.format_error_message('Please specify an owner for the package(s)'),
+            exit_code=2,
+            activate_session=None)
 
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_not_called()
-        session.getUser.assert_not_called()
-        session.getTag.assert_not_called()
-        session.listPackages.assert_not_called()
-        session.packageListAdd.assert_not_called()
+        self.activate_session_mock.assert_not_called()
+        self.session.getUser.assert_not_called()
+        self.session.getTag.assert_not_called()
+        self.session.listPackages.assert_not_called()
+        self.session.packageListAdd.assert_not_called()
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_add_pkg_no_arg(
-            self, activate_session_mock, stderr, stdout):
-        args = []
-        options = mock.MagicMock()
-        progname = os.path.basename(sys.argv[0]) or 'koji'
-
-        # Mock out the xmlrpc server
-        session = mock.MagicMock()
+    def test_handle_add_pkg_no_arg(self):
+        arguments = []
 
         # Run it and check immediate output
-        with self.assertRaises(SystemExit) as ex:
-            handle_add_pkg(options, session, args)
-        self.assertExitCode(ex, 2)
-        actual_stdout = stdout.getvalue()
-        actual_stderr = stderr.getvalue()
-        expected_stdout = ''
-        expected_stderr = """Usage: %s add-pkg [options] --owner <owner> <tag> <package> [<package> ...]
-(Specify the --help global option for a list of other help options)
-
-%s: error: Please specify a tag and at least one package
-""" % (progname, progname)
-        self.assertMultiLineEqual(actual_stdout, expected_stdout)
-        self.assertMultiLineEqual(actual_stderr, expected_stderr)
+        self.assert_system_exit(
+            handle_add_pkg,
+            self.options, self.session, arguments,
+            stdout='',
+            stderr=self.format_error_message('Please specify a tag and at least one package'),
+            exit_code=2,
+            activate_session=None)
 
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_not_called()
-        session.getUser.assert_not_called()
-        session.getTag.assert_not_called()
-        session.listPackages.assert_not_called()
-        session.packageListAdd.assert_not_called()
+        self.activate_session_mock.assert_not_called()
+        self.session.getUser.assert_not_called()
+        self.session.getTag.assert_not_called()
+        self.session.listPackages.assert_not_called()
+        self.session.packageListAdd.assert_not_called()
 
 
 if __name__ == '__main__':
