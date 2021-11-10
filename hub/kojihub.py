@@ -3216,6 +3216,45 @@ def get_build_target(info, event=None, strict=False):
         return None
 
 
+def name_or_id_clause(info, table=None):
+    """Return query clause and values for lookup by name or id
+
+    :param info: the name or id to look up
+    :type info: int or str or dict
+    :param str table: table name
+    :returns: a pair (clause, values)
+
+    If info is an int, we are looking up by id
+    If info is a string, we are looking up by name
+    If info is a dict, we look for 'id' or 'name' fields to decide
+
+    If table is given, then the query string will include it in the field name
+    """
+    if not table:
+        prefix1 = prefix2 = ''
+    else:
+        prefix1 = f'{table}.'
+        prefix2 = f'{table}_'
+    if isinstance(info, dict):
+        if 'id' in info:
+            try:
+                info = int(info['id'])
+            except (ValueError, TypeError):
+                raise koji.ParameterError('Invalid name or id value: %r' % info)
+        elif 'name' in info:
+            info = info['name']
+    if isinstance(info, int):
+        clause = f"({prefix1}id = %({prefix2}id)s)"
+        values = {f"{prefix2}id": info}
+    elif isinstance(info, str):
+        clause = f"({prefix1}name = %({prefix2}name)s)"
+        values = {f"{prefix2}name": info}
+    else:
+        raise koji.ParameterError('Invalid name or id value: %r' % info)
+
+    return clause, values
+
+
 def lookup_name(table, info, strict=False, create=False):
     """Find the id and name in the table associated with info.
 
@@ -3234,26 +3273,24 @@ def lookup_name(table, info, strict=False, create=False):
     create option will fail.
     """
     fields = ('id', 'name')
-    if isinstance(info, int):
-        q = """SELECT id,name FROM %s WHERE id=%%(info)d""" % table
-    elif isinstance(info, str):
-        q = """SELECT id,name FROM %s WHERE name=%%(info)s""" % table
+    clause, values = name_or_id_clause(info, table=table)
+    query = QueryProcessor(columns=fields, tables=[table],
+                           clauses=[clause], values=values)
+    ret = query.executeOne()
+    if ret is not None:
+        return ret
+    elif strict:
+        raise koji.GenericError('No such entry in table %s: %s' % (table, info))
+    elif create:
+        if not isinstance(info, str):
+            raise koji.GenericError('Name must be a string')
+        new_id = nextval(f'{table}_id_seq')
+        insert = InsertProcessor(table)
+        insert.set(id=new_id, name=info)
+        return {'id': new_id, 'name': info}
     else:
-        raise koji.GenericError('Invalid type for id lookup: %s' % type(info))
-    ret = _singleRow(q, locals(), fields, strict=False)
-    if ret is None:
-        if strict:
-            raise koji.GenericError('No such entry in table %s: %s' % (table, info))
-        elif create:
-            if not isinstance(info, str):
-                raise koji.GenericError('Name must be a string')
-            id = _singleValue("SELECT nextval('%s_id_seq')" % table, strict=True)
-            q = """INSERT INTO %s(id,name) VALUES (%%(id)i,%%(info)s)""" % table
-            _dml(q, locals())
-            return {'id': id, 'name': info}
-        else:
-            return ret
-    return ret
+        # no match and not strict
+        return None
 
 
 def get_id(table, info, strict=False, create=False):
