@@ -3760,19 +3760,18 @@ def get_external_repos(info=None, url=None, event=None, queryOpts=None):
     tables = ['external_repo']
     joins = ['external_repo_config ON external_repo_id = id']
     clauses = [eventCondition(event)]
+    values = {}
     if info is not None:
-        if isinstance(info, str):
-            clauses.append('name = %(info)s')
-        elif isinstance(info, int):
-            clauses.append('id = %(info)i')
-        else:
-            raise koji.GenericError('Invalid type for lookup: %s' % type(info))
+        clause, c_values = name_or_id_clause(info, table='external_repo')
+        clauses.append(clause)
+        values.update(c_values)
     if url:
         clauses.append('url = %(url)s')
+        values['url'] = url
 
     query = QueryProcessor(columns=fields, tables=tables,
                            joins=joins, clauses=clauses,
-                           values=locals(), opts=queryOpts)
+                           values=values, opts=queryOpts)
     return query.execute()
 
 
