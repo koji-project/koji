@@ -5467,17 +5467,12 @@ def get_host(hostInfo, strict=False, event=None):
               }
     clauses = [eventCondition(event, table='host_config')]
 
-    if isinstance(hostInfo, int):
-        clauses.append("host.id = %(hostInfo)i")
-    elif isinstance(hostInfo, str):
-        clauses.append("host.name = %(hostInfo)s")
-    else:
-        raise koji.GenericError('Invalid type for hostInfo: %s' % type(hostInfo))
+    clause, values = name_or_id_clause(hostInfo, table='host')
+    clauses.append(clause)
 
-    data = {'hostInfo': hostInfo}
     fields, aliases = zip(*fields.items())
     query = QueryProcessor(columns=fields, aliases=aliases, tables=tables,
-                           joins=joins, clauses=clauses, values=data)
+                           joins=joins, clauses=clauses, values=values)
     result = query.executeOne()
     if not result:
         if strict:
