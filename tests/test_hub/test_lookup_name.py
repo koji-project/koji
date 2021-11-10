@@ -42,6 +42,7 @@ class TestLookupName(unittest.TestCase):
     def test_wrong_lookup_type(self):
         bad_values = [
             {'foo': 'missing id and name fields'},
+            {'id': 'not a valid int'},
             ['something'],
             set(),
             ]
@@ -65,7 +66,6 @@ class TestLookupName(unittest.TestCase):
         self.assertEqual(query.values, values)
         self.assertEqual(len(self.inserts), 0)
 
-
     def test_query_by_id(self):
         kojihub.lookup_name('some_table', 12345)
         self.assertEqual(len(self.queries), 1)
@@ -84,6 +84,18 @@ class TestLookupName(unittest.TestCase):
         query = self.queries[0]
         clauses = ['(some_table.id = %(some_table_id)s)']
         values = {'some_table_id': 12345}
+        self.assertEqual(query.tables, ['some_table'])
+        self.assertEqual(query.joins, None)
+        self.assertEqual(set(query.clauses), set(clauses))
+        self.assertEqual(query.values, values)
+        self.assertEqual(len(self.inserts), 0)
+
+    def test_query_by_dict_with_name(self):
+        kojihub.lookup_name('some_table', {'name': 'whatever'})
+        self.assertEqual(len(self.queries), 1)
+        query = self.queries[0]
+        clauses = ['(some_table.name = %(some_table_name)s)']
+        values = {'some_table_name': 'whatever'}
         self.assertEqual(query.tables, ['some_table'])
         self.assertEqual(query.joins, None)
         self.assertEqual(set(query.clauses), set(clauses))
