@@ -3188,7 +3188,7 @@ def get_build_targets(info=None, event=None, buildTagID=None, destTagID=None, qu
     values = {}
 
     if info:
-        clause, c_values = name_or_id_clause(info, table='tag')
+        clause, c_values = name_or_id_clause('tag', info)
         clauses.append(clause)
         values.update(c_values)
     if buildTagID is not None:
@@ -3216,25 +3216,18 @@ def get_build_target(info, event=None, strict=False):
         return None
 
 
-def name_or_id_clause(info, table=None):
+def name_or_id_clause(table, info):
     """Return query clause and values for lookup by name or id
 
+    :param str table: table name
     :param info: the name or id to look up
     :type info: int or str or dict
-    :param str table: table name
     :returns: a pair (clause, values)
 
     If info is an int, we are looking up by id
     If info is a string, we are looking up by name
     If info is a dict, we look for 'id' or 'name' fields to decide
-
-    If table is given, then the query string will include it in the field name
     """
-    if not table:
-        prefix1 = prefix2 = ''
-    else:
-        prefix1 = f'{table}.'
-        prefix2 = f'{table}_'
     if isinstance(info, dict):
         if 'id' in info:
             try:
@@ -3244,11 +3237,11 @@ def name_or_id_clause(info, table=None):
         elif 'name' in info:
             info = info['name']
     if isinstance(info, int):
-        clause = f"({prefix1}id = %({prefix2}id)s)"
-        values = {f"{prefix2}id": info}
+        clause = f"({table}.id = %({table}_id)s)"
+        values = {f"{table}_id": info}
     elif isinstance(info, str):
-        clause = f"({prefix1}name = %({prefix2}name)s)"
-        values = {f"{prefix2}name": info}
+        clause = f"({table}.name = %({table}_name)s)"
+        values = {f"{table}_name": info}
     else:
         raise koji.ParameterError('Invalid name or id value: %r' % info)
 
@@ -3273,7 +3266,7 @@ def lookup_name(table, info, strict=False, create=False):
     create option will fail.
     """
     fields = ('id', 'name')
-    clause, values = name_or_id_clause(info, table=table)
+    clause, values = name_or_id_clause(table, info)
     query = QueryProcessor(columns=fields, tables=[table],
                            clauses=[clause], values=values)
     ret = query.executeOne()
@@ -3466,7 +3459,7 @@ def get_tag(tagInfo, strict=False, event=None, blocked=False):
               'tag_config.maven_include_all': 'maven_include_all',
               }
 
-    clause, values = name_or_id_clause(tagInfo, table='tag')
+    clause, values = name_or_id_clause('tag', tagInfo)
     clauses = [clause]
     if event == "auto":
         # find active event or latest create_event
@@ -3762,7 +3755,7 @@ def get_external_repos(info=None, url=None, event=None, queryOpts=None):
     clauses = [eventCondition(event)]
     values = {}
     if info is not None:
-        clause, c_values = name_or_id_clause(info, table='external_repo')
+        clause, c_values = name_or_id_clause('external_repo', info)
         clauses.append(clause)
         values.update(c_values)
     if url:
@@ -5466,7 +5459,7 @@ def get_host(hostInfo, strict=False, event=None):
               }
     clauses = [eventCondition(event, table='host_config')]
 
-    clause, values = name_or_id_clause(hostInfo, table='host')
+    clause, values = name_or_id_clause('host', hostInfo)
     clauses.append(clause)
 
     fields, aliases = zip(*fields.items())
@@ -5536,7 +5529,7 @@ def get_channel(channelInfo, strict=False):
               For example, {'id': 20, 'name': 'container'}
     """
     fields = ('id', 'name', 'description', 'enabled', 'comment')
-    clause, values = name_or_id_clause(channelInfo, table='channels')
+    clause, values = name_or_id_clause('channels', channelInfo)
     query = QueryProcessor(columns=fields, tables=['channels'],
                            clauses=[clause], values=values)
     return query.executeOne(strict=strict)
