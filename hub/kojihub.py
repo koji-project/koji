@@ -3185,22 +3185,22 @@ def get_build_targets(info=None, event=None, buildTagID=None, destTagID=None, qu
              'tag AS tag1 ON build_target_config.build_tag = tag1.id',
              'tag AS tag2 ON build_target_config.dest_tag = tag2.id']
     clauses = [eventCondition(event)]
+    values = {}
 
     if info:
-        if isinstance(info, str):
-            clauses.append('build_target.name = %(info)s')
-        elif isinstance(info, int):
-            clauses.append('build_target.id = %(info)i')
-        else:
-            raise koji.GenericError('Invalid type for lookup: %s' % type(info))
+        clause, c_values = name_or_id_clause(info, table='tag')
+        clauses.append(clause)
+        values.update(c_values)
     if buildTagID is not None:
         clauses.append('build_tag = %(buildTagID)i')
+        values['buildTagID'] = buildTagID
     if destTagID is not None:
         clauses.append('dest_tag = %(destTagID)i')
+        values['destTagID'] = destTagID
 
     query = QueryProcessor(columns=[f[0] for f in fields], aliases=[f[1] for f in fields],
                            tables=['build_target_config'], joins=joins, clauses=clauses,
-                           values=locals(), opts=queryOpts)
+                           values=values, opts=queryOpts)
     return query.execute()
 
 
