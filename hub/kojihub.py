@@ -5536,16 +5536,10 @@ def get_channel(channelInfo, strict=False):
               For example, {'id': 20, 'name': 'container'}
     """
     fields = ('id', 'name', 'description', 'enabled', 'comment')
-    query = """SELECT %s FROM channels
-    WHERE """ % ', '.join(fields)
-    if isinstance(channelInfo, int):
-        query += """id = %(channelInfo)i"""
-    elif isinstance(channelInfo, str):
-        query += """name = %(channelInfo)s"""
-    else:
-        raise koji.GenericError('Invalid type for channelInfo: %s' % type(channelInfo))
-
-    return _singleRow(query, locals(), fields, strict)
+    clause, values = name_or_id_clause(channelInfo, table='channels')
+    query = QueryProcessor(columns=fields, tables=['channels'],
+                           clauses=[clause], values=values)
+    return query.executeOne(strict=strict)
 
 
 def query_buildroots(hostID=None, tagID=None, state=None, rpmID=None, archiveID=None, taskID=None,

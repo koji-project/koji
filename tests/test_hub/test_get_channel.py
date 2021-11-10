@@ -20,12 +20,12 @@ class TestGetChannel(unittest.TestCase):
         channel_info = {'channel': 'val'}
         with self.assertRaises(koji.GenericError) as cm:
             self.exports.getChannel(channel_info)
-        self.assertEqual('Invalid type for channelInfo: %s' % type(channel_info),
+        self.assertEqual('Invalid name or id value: %s' % channel_info,
                          str(cm.exception))
 
         # list
         channel_info = ['channel']
         with self.assertRaises(koji.GenericError) as cm:
             self.exports.getChannel(channel_info)
-        self.assertEqual('Invalid type for channelInfo: %s' % type(channel_info),
+        self.assertEqual('Invalid name or id value: %s' % channel_info,
                          str(cm.exception))
