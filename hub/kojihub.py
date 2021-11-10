@@ -3465,21 +3465,15 @@ def get_tag(tagInfo, strict=False, event=None, blocked=False):
               'tag_config.maven_support': 'maven_support',
               'tag_config.maven_include_all': 'maven_include_all',
               }
-    data = {'tagInfo': tagInfo}
 
-    clauses = []
-    if isinstance(tagInfo, int):
-        clauses.append("tag.id = %(tagInfo)i")
-    elif isinstance(tagInfo, str):
-        clauses.append("tag.name = %(tagInfo)s")
-    else:
-        raise koji.GenericError('Invalid type for tagInfo: %s' % type(tagInfo))
+    clause, values = name_or_id_clause(tagInfo, table='tag')
+    clauses = [clause]
     if event == "auto":
         # find active event or latest create_event
         opts = {'order': '-create_event', 'limit': 1}
         query = QueryProcessor(tables=['tag_config'], columns=['create_event', 'revoke_event'],
                                joins=['tag on tag.id = tag_config.tag_id'],
-                               clauses=clauses, values=data, opts=opts)
+                               clauses=clauses, values=values, opts=opts)
         try:
             event = query.executeOne(strict=True)['revoke_event']
         except koji.GenericError:
@@ -3496,7 +3490,7 @@ def get_tag(tagInfo, strict=False, event=None, blocked=False):
 
     fields, aliases = zip(*fields.items())
     query = QueryProcessor(columns=fields, aliases=aliases, tables=tables,
-                           joins=joins, clauses=clauses, values=data)
+                           joins=joins, clauses=clauses, values=values)
     result = query.executeOne()
     if not result:
         if strict:
