@@ -256,6 +256,10 @@ class ManagedRepo(object):
             if not os.path.exists(realpath):
                 logger.error('Repo real path missing: %s', realpath)
                 return False
+            if self.options.ignore_other_volumes:
+                # don't delete from other volumes
+                logger.error('Repo on non-default volume %s', realpath)
+                return False
             if not os.path.samefile(path, realpath):
                 logger.error('Incorrect volume link: %s', path)
                 return False
@@ -641,6 +645,11 @@ class RepoManager(object):
 
         for volinfo in self.session.listVolumes():
             volname = volinfo['name']
+            if volname == 'DEFAULT':
+                continue
+            if self.options.ignore_other_volumes:
+                # don't prune from other volumes
+                continue
             volumedir = pathinfo.volumedir(volname)
             distrepodir = "%s/repos-dist" % volumedir
             self._pruneLocalRepos(distrepodir, self.options.dist_repo_lifetime)
