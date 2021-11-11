@@ -445,17 +445,6 @@ class RepoManager(object):
                 self.logger.info('Found repo %s, state=%s'
                                  % (repo_id, koji.REPO_STATES[data['state']]))
                 repo = ManagedRepo(self, data, repodata)
-                if self.options.ignore_other_volumes:
-                    info = repo.get_info()
-                    if info is None:
-                        continue
-                    volume = info.get('volume')
-                    if volume is not None and volume != 'DEFAULT':
-                        # Other volume
-                        self.logger.info("Skipping repo ({}) on other volume {}".format(
-                            repo_id, volume,
-                        ))
-                        continue
                 self.repos[repo_id] = repo
             if not getTag(self.session, repo.tag_id) and not repo.expired():
                 self.logger.info('Tag %d for repo %d disappeared, expiring.', repo.tag_id, repo_id)
