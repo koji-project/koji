@@ -22,7 +22,7 @@ class KiwiBuildTask(BuildImageTask):
 
         cfg = kiwi_files[0]
 
-        newxml = xml.dom.minidom.parse(cfg)
+        newxml = xml.dom.minidom.parse(cfg)  # nosec
         image = newxml.getElementsByTagName('image')[0]
 
         name = image.getAttribute('name')
@@ -198,7 +198,7 @@ class KiwiCreateImageTask(BaseBuildTask):
 
         cfg = kiwi_files[0]
 
-        newxml = xml.dom.minidom.parse(cfg)
+        newxml = xml.dom.minidom.parse(cfg)  # nosec
         image = newxml.getElementsByTagName('image')[0]
 
         # apply includes - kiwi can include only top-level nodes, so we can simply
@@ -206,7 +206,7 @@ class KiwiCreateImageTask(BaseBuildTask):
         # doing it recursively)
         for inc_node in image.getElementsByTagName('include'):
             path = inc_node.getAttribute('from')
-            inc = xml.dom.minidom.parse(path)
+            inc = xml.dom.minidom.parse(path)  # nosec
             # every included xml has image root element again
             for node in inc.getElementsByTagName('image').childNodes:
                 if node.nodeName != 'repository':
@@ -369,8 +369,10 @@ class KiwiCreateImageTask(BaseBuildTask):
             raise koji.GenericError("Kiwi failed")
 
         #result = json.load(open(joinpath(broot.rootdir(), target_dir[1:], 'kiwi.result'), 'rb'))
+        # nosec comment - we will replace it with json ASAP
         import pickle
-        result = pickle.load(open(joinpath(broot.rootdir(), target_dir[1:], 'kiwi.result'), 'rb'))
+        result = pickle.load(open(joinpath(broot.rootdir(), target_dir[1:],  # nosec
+                                           'kiwi.result'), 'rb'))
 
         imgdata = {
             'arch': arch,
