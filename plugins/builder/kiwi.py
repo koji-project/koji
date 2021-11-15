@@ -1,5 +1,5 @@
 import glob
-import json
+# import json
 import os
 import xml.dom.minidom
 from fnmatch import fnmatch
@@ -368,7 +368,7 @@ class KiwiCreateImageTask(BaseBuildTask):
         if rv:
             raise koji.GenericError("Kiwi failed")
 
-        #result = json.load(open(joinpath(broot.rootdir(), target_dir[1:], 'kiwi.result'), 'rb'))
+        # result = json.load(open(joinpath(broot.rootdir(), target_dir[1:], 'kiwi.result'), 'rb'))
         # nosec comment - we will replace it with json ASAP
         import pickle
         result = pickle.load(open(joinpath(broot.rootdir(), target_dir[1:],  # nosec
