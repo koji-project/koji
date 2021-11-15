@@ -254,6 +254,13 @@ most simple configuration will look like:
    $ koji add-group kiwi-build-tag kiwi
    $ koji add-group-pkg kiwi-build-tag kiwi kiwi-cli
 
+Another thing we need to ensure is that we're building in chroot and not in
+container.
+
+.. code-block:: shell
+
+   $ koji edit-tag kiwi-build-tag -x mock.new_chroot=False
+
 Calling the build itself is a matter of simple CLI call:
 
 .. code-block: shell
