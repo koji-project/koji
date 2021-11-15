@@ -569,7 +569,9 @@ def make_task(method, arglist, **opts):
     policy_data['user_id'] = opts['owner']
     if 'channel' in opts:
         policy_data['req_channel'] = opts['channel']
-        channel_info = get_channel(opts['channel'], strict=True)
+        channel_info = get_channel(opts['channel'])
+        if not channel_info:
+            raise koji.GenericError('No such channel: %s' % opts['channel'])
         if channel_info['enabled']:
             req_channel_id = channel_info['id']
         else:
