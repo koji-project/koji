@@ -252,7 +252,7 @@ most simple configuration will look like:
 .. code-block:: shell
 
    $ koji add-group kiwi-build-tag kiwi
-   $ koji add-group-pkg kiwi-build-tag kiwi-cli
+   $ koji add-group-pkg kiwi-build-tag kiwi kiwi-cli
 
 Calling the build itself is a matter of simple CLI call:
 
