@@ -256,6 +256,10 @@ class ManagedRepo(object):
             if not os.path.exists(realpath):
                 logger.error('Repo real path missing: %s', realpath)
                 return False
+            if self.options.ignore_other_volumes:
+                # don't delete from other volumes
+                logger.error('Repo on non-default volume %s', realpath)
+                return False
             if not os.path.samefile(path, realpath):
                 logger.error('Incorrect volume link: %s', path)
                 return False
@@ -634,10 +638,19 @@ class RepoManager(object):
             session.logout()
 
     def pruneLocalRepos(self):
+        volname = 'DEFAULT'
+        volumedir = pathinfo.volumedir(volname)
+        repodir = "%s/repos" % volumedir
+        self._pruneLocalRepos(repodir, self.options.deleted_repo_lifetime)
+
         for volinfo in self.session.listVolumes():
-            volumedir = pathinfo.volumedir(volinfo['name'])
-            repodir = "%s/repos" % volumedir
-            self._pruneLocalRepos(repodir, self.options.deleted_repo_lifetime)
+            volname = volinfo['name']
+            if volname == 'DEFAULT':
+                continue
+            if self.options.ignore_other_volumes:
+                # don't prune from other volumes
+                continue
+            volumedir = pathinfo.volumedir(volname)
             distrepodir = "%s/repos-dist" % volumedir
             self._pruneLocalRepos(distrepodir, self.options.dist_repo_lifetime)
 
@@ -1235,6 +1248,7 @@ def get_options():
                 'cert': None,
                 'serverca': None,
                 'queue_file': None,
+                'ignore_other_volumes': False,
                 }
     if config.has_section(section):
         int_opts = ('deleted_repo_lifetime', 'max_repo_tasks', 'repo_tasks_limit',
@@ -1245,7 +1259,7 @@ def get_options():
                     'cert', 'serverca', 'debuginfo_tags', 'queue_file',
                     'source_tags', 'separate_source_tags', 'ignore_tags')
         bool_opts = ('verbose', 'debug', 'ignore_stray_repos', 'offline_retry',
-                     'no_ssl_verify', 'check_external_repos')
+                     'no_ssl_verify', 'check_external_repos', 'ignore_other_volumes')
         legacy_opts = ('with_src', 'delete_batch_size', 'recent_tasks_lifetime')
         for name in config.options(section):
             if name in int_opts:
