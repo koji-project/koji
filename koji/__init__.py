@@ -959,21 +959,26 @@ def get_sighdr_key(sighdr):
 def splice_rpm_sighdr(sighdr, src, dst=None, bufsize=8192):
     """Write a copy of an rpm with signature header spliced in"""
     (start, size) = find_rpm_sighdr(src)
-    if dst is None:
-        (fd, dst) = tempfile.mkstemp()
-        os.close(fd)
-    src_fo = open(src, 'rb')
-    dst_fo = open(dst, 'wb')
-    dst_fo.write(src_fo.read(start))
-    dst_fo.write(sighdr)
-    src_fo.seek(size, 1)
-    while True:
-        buf = src_fo.read(bufsize)
-        if not buf:
-            break
-        dst_fo.write(buf)
-    src_fo.close()
-    dst_fo.close()
+    if dst is not None:
+        dirname = os.path.dirname(dst)
+        os.makedirs(dirname)
+        (fd, dst_temp) = tempfile.mkstemp(dir=dirname)
+    else:
+        (fd, dst_temp) = tempfile.mkstemp()
+    os.close(fd)
+    with open(src, 'rb') as src_fo, open(dst_temp, 'wb') as dst_fo:
+        dst_fo.write(src_fo.read(start))
+        dst_fo.write(sighdr)
+        src_fo.seek(size, 1)
+        while True:
+            buf = src_fo.read(bufsize)
+            if not buf:
+                break
+            dst_fo.write(buf)
+    if dst is not None:
+        os.rename(dst_temp, dst)
+    else:
+        dst = dst_temp
     return dst
 
 
