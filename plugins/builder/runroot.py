@@ -210,7 +210,7 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
             self.do_mounts(rootdir,
                            [self._get_path_params(x) for x in self.config['default_mounts']])
             self.do_extra_mounts(rootdir, mounts)
-            mock_cmd = ['chroot']
+            mock_cmd = []
             if new_chroot:
                 mock_cmd.append('--new-chroot')
             elif new_chroot is False:  # None -> no option added
@@ -220,7 +220,7 @@ class RunRootTask(koji.tasks.BaseTaskHandler):
                 # chroot one
                 myarch = platform.uname()[5]
                 mock_cmd.extend(['--arch', myarch])
-            mock_cmd.append('--')
+            mock_cmd.extend(['--chroot', '--'])
             mock_cmd.extend(cmdargs)
             rv = broot.mock(mock_cmd)
             log_paths = ['builddir/runroot.log']
