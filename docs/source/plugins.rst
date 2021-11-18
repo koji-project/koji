@@ -226,3 +226,50 @@ sent on the bus (e.g. if the amqps server is offline).
 Admins should consider the balance between the ``batch_size`` and
 ``extra_limit`` options, as both can affect the total amount of data that the
 plugin could attempt to send during a single call.
+
+
+Image builds using Kiwi
+=======================
+
+**This is just a tech-preview. API/usage can drastically change in upcoming
+releases**
+
+Plugin for creating images via `kiwi <http://osinside.github.io/kiwi/>`_
+project. Minimal supported version of kiwi is ``kiwi-9.24.2``.
+
+All three parts (cli/hub/builder) needs to be installed. There is currently no
+configuration except allowing the plugins (name is 'kiwi' for all components).
+
+Builders have to be part of ``image`` channel and don't need to have any
+specific library installed (kiwi invocation/usage is only in buildroots not on
+builder itself). (Temporarily ``python3-kiwi`` needs to be installed on builder
+for kojid to be able to parse kiwi output. It will be changed to json in next
+version and this requirement will be dropped.)
+
+Buildtag needs to be configured by adding special group ``kiwi`` which should
+contain at least ``kiwi-cli``, potentially ``jing`` for better description files
+validation and any ``kiwi-systemdeps-*`` packages for requested image types. So,
+most simple configuration will look like:
+
+.. code-block:: shell
+
+   $ koji add-group kiwi-build-tag kiwi
+   $ koji add-group-pkg kiwi-build-tag kiwi kiwi-cli
+
+Another thing we need to ensure is that we're building in chroot and not in
+container.
+
+.. code-block:: shell
+
+   $ koji edit-tag kiwi-build-tag -x mock.new_chroot=False
+
+Calling the build itself is a matter of simple CLI call:
+
+.. code-block: shell
+
+   $ koji kiwi-build kiwi-target git+https://my.git/image-descriptions#master my_image_path
+
+Selecting other than default kiwi profile can be done by ``--kiwi-profile``
+option. Similarly to other image tasks, alternative architecture failures can be
+ignored for successful build by ``--can-fail`` option. ``--arch`` can be used to
+limit build tag architectures.
