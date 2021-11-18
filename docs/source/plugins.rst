@@ -242,7 +242,9 @@ configuration except allowing the plugins (name is 'kiwi' for all components).
 
 Builders have to be part of ``image`` channel and don't need to have any
 specific library installed (kiwi invocation/usage is only in buildroots not on
-builder itself).
+builder itself). (Temporarily ``python3-kiwi`` needs to be installed on builder
+for kojid to be able to parse kiwi output. It will be changed to json in next
+version and this requirement will be dropped.)
 
 Buildtag needs to be configured by adding special group ``kiwi`` which should
 contain at least ``kiwi-cli``, potentially ``jing`` for better description files
