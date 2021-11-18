@@ -385,7 +385,7 @@ class TestHandler(unittest.TestCase):
         self.session.host.setBuildRootState.assert_called_once_with(678, 'BUILDING')
         self.br.mock.assert_has_calls([
             mock.call(['--install', 'rpm_a', 'rpm_b']),
-            mock.call(['chroot', '--new-chroot', '--arch', 'arch', '--', '/bin/sh', '-c', '{ command; } < /dev/null 2>&1 | /usr/bin/tee /builddir/runroot.log; exit ${PIPESTATUS[0]}']),
+            mock.call(['--new-chroot', '--arch', 'arch', '--chroot', '--', '/bin/sh', '-c', '{ command; } < /dev/null 2>&1 | /usr/bin/tee /builddir/runroot.log; exit ${PIPESTATUS[0]}']),
         ])
         self.session.host.updateBuildRootList.assert_called_once_with(678, self.br.getPackageList())
         self.t.do_mounts.assert_called_once_with('/rootdir', ['default_mount'])
