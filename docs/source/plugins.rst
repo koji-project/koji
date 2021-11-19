@@ -194,8 +194,9 @@ The following fields are understood:
 * ``urls`` -- a space separated list of amqps urls. Additional urls are
   treated as fallbacks. The plugin will send to the first one that accepts
   the message
-* ``cert`` -- the client cert file for authentication
-* ``cacert`` -- the ca cert to validate the server
+* ``cert`` -- the combined client cert and key file for authenticating koji to
+  the broker.
+* ``cacert`` -- the CA certificate to verify the broker server TLS connection
 * ``topic_prefix`` -- this string will be used as a prefix for all message topics
 * ``connect_timeout`` -- the number of seconds to wait for a connection before
   timing out
