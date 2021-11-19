@@ -31,8 +31,8 @@
       <th>Hosts</th>
       <td>
       #if $len($hosts) > 0
-      <table>
-        <tr>
+      <table class="data-list">
+        <tr class="list-header">
           <th>Hostname</th>
           <th>Enabled</th>
           <th>Ready</th>
