@@ -59,7 +59,7 @@
     </tr>
     #end if
     <tr>
-      <th>Size</th><td>$util.formatThousands($rpm.size)</td>
+      <th>Size</th><td><span title="$util.formatThousands($rpm.size)">$util.formatNatural($rpm.size)</span></td>
     </tr>
     <tr>
       <th><label title="The MD5 digest of the combined header and payload contents. You can query it by `rpmkeys -Kv foo.rpm`">SIGMD5</label></th><td>$rpm.payloadhash</td>
@@ -250,7 +250,7 @@
           </tr>
           #for $file in $files
           <tr class="$util.rowToggle($self)">
-            <td><a href="fileinfo?rpmID=$rpm.id&amp;filename=$quote($file.name)">$util.escapeHTML($file.name)</a></td><td align="right">$util.formatThousands($file.size)</td>
+            <td><a href="fileinfo?rpmID=$rpm.id&amp;filename=$quote($file.name)">$util.escapeHTML($file.name)</a></td><td align="right"><span title="$util.formatThousands($file.size)">$util.formatNatural($file.size)</span></td>
           </tr>
           #end for
         </table>

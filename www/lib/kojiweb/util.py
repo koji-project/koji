@@ -530,7 +530,16 @@ def formatMode(mode):
 
 
 def formatThousands(value):
-    return '{:,}'.format(value)
+    return '{:,} B'.format(value)
+
+
+def formatNatural(value):
+    suffix = ['B', 'KB', 'MB', 'GB']
+    suff_index = 0
+    while value >= 1024 and suff_index < 3:
+        suff_index += 1  # increment the index of the suffix
+        value = value / 1024.0  # apply the division
+    return '{:.2f} {}'.format(value, suffix[suff_index])
 
 
 def formatLink(url):

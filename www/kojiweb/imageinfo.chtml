@@ -15,7 +15,7 @@
     <th>File Name</th><td>$image.filename</a></td>
   </tr>
   <tr>
-    <th>File Size</th><td>$image.filesize</td>
+    <th>File Size</th><td><span title="$util.formatThousands($image.filesize)">$util.formatNatural($image.filesize)</span></td>
   </tr>
   <tr>
     <th>Arch</th><td>$image.arch</td>
