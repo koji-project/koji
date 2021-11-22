@@ -31,14 +31,14 @@
       <th>Hosts</th>
       <td>
       #if $len($hosts) > 0
-      <table>
-        <tr>
+      <table class="data-list">
+        <tr class="list-header">
           <th>Hostname</th>
           <th>Enabled</th>
           <th>Ready</th>
         </tr>
       #for $host in $hosts
-        <tr>
+        <tr class="$util.rowToggle($self)">
           <td><a href="hostinfo?hostID=$host.id">$host.name</a></td>
           <td class="$str($bool($host.enabled)).lower()">#if $host.enabled then $util.imageTag('yes') else $util.imageTag('no')#</td>
           <td class="$str($bool($host.ready)).lower()">#if $host.ready then $util.imageTag('yes') else $util.imageTag('no')#</td>
