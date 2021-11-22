@@ -124,7 +124,7 @@ def application(environ, start_response):
 def main():
     # koji.add_file_logger('koji', 'fakeweb.log')
     httpd = make_server('', 8000, application)
-    print("Serving on port 8000...")
+    print("Serving kojiweb on http://localhost:8000 ...")
     httpd.serve_forever()
 
 if __name__ == '__main__':
