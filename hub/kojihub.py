@@ -1958,7 +1958,7 @@ def _grp_pkg_add(taginfo, grpinfo, pkg_name, block, force, **opts):
     insert.execute()
 
 
-def grp_pkg_remove(taginfo, grpinfo, pkg_name, force=False):
+def grp_pkg_remove(taginfo, grpinfo, pkg_name, force=None):
     """Remove package from the list for group-tag
 
     Really this shouldn't be used except in special cases
@@ -1971,6 +1971,9 @@ def grp_pkg_remove(taginfo, grpinfo, pkg_name, force=False):
 
 def _grp_pkg_remove(taginfo, grpinfo, pkg_name, force):
     """grp_pkg_remove without permssion checks"""
+    if force is not None:
+        logger.warning("force option in groupPackageListRemove call is deprecated and "
+                       "will be removed in 1.30")
     tag_id = get_tag_id(taginfo, strict=True)
     grp_id = get_group_id(grpinfo, strict=True)
     update = UpdateProcessor('group_package_listing', values=locals(),
