@@ -4,6 +4,7 @@ import unittest
 
 import mock
 import six
+import koji
 
 from koji_cli.commands import anon_handle_mock_config
 from . import utils
@@ -15,6 +16,12 @@ class TestMockConfig(utils.CliTestCase):
     maxDiff = None
 
     def setUp(self):
+        self.options = mock.MagicMock()
+        self.options.debug = False
+        self.session = mock.MagicMock()
+        self.session.getAPIVersion.return_value = koji.API_VERSION
+        self.gen_config_mock = mock.patch('koji.genMockConfig').start()
+        self.ensure_connection_mock = mock.patch('koji_cli.commands.ensure_connection').start()
         self.maxDiff = None
         self.common_args = [
             '--distribution', 'fedora',
@@ -58,16 +65,9 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
 %s: error: {message}
 """ % (self.progname, self.progname)
 
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji.genMockConfig')
-    @mock.patch('koji_cli.commands.ensure_connection')
-    def test_handle_mock_config_buildroot_option(
-            self, ensure_connection_mock, gen_config_mock, stdout, stderr):
+    def test_handle_mock_config_buildroot_option(self, stdout):
         """Test anon_handle_mock_config buildroot options"""
-        arguments = []
-        options = mock.MagicMock()
-
         buildroot_info = {
             'repo_id': 101,
             'tag_name': 'tag_name',
@@ -75,100 +75,103 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
         }
 
         # Mock out the xmlrpc server
-        session = mock.MagicMock()
-        session.getBuildroot.return_value = buildroot_info
+        self.session.getBuildroot.return_value = buildroot_info
 
         # Mock config
-        gen_config_mock.return_value = self.mock_output
+        self.gen_config_mock.return_value = self.mock_output
 
         # buildroot check
         arguments = ['--buildroot', 'root', self.progname]
         expected = self.format_error_message("Buildroot id must be an integer")
         self.assert_system_exit(
             anon_handle_mock_config,
-            options,
-            session,
-            arguments,
+            self.options, self.session, arguments,
             stderr=expected,
+            exit_code=2,
             activate_session=None)
+        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.ensure_connection_mock.reset_mock()
 
-        arguments = self.common_args + ['--buildroot', '1',
-                                        '--name', self.progname]
+        arguments = self.common_args + ['--buildroot', '1', '--name', self.progname]
         opts = self.common_opts.copy()
         opts.update({
             'repoid': buildroot_info['repo_id'],
             'tag_name': buildroot_info['tag_name'],
             'tag_macros': {},
         })
-        anon_handle_mock_config(options, session, arguments)
-        self.assert_console_message(
-            stdout, "%s\n" % gen_config_mock.return_value)
-        gen_config_mock.assert_called_with(
-            self.progname, buildroot_info['arch'], **opts)
+        del opts['topurl']
+        anon_handle_mock_config(self.options, self.session, arguments)
+        self.assert_console_message(stdout, "%s\n" % self.gen_config_mock.return_value)
+        self.gen_config_mock.assert_called_with(self.progname, buildroot_info['arch'], **opts)
+        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.ensure_connection_mock.reset_mock()
 
         arguments = self.common_args + ['--buildroot', '1',
                                         '--name', self.progname,
                                         '--latest']
         opts['repoid'] = 'latest'
-        anon_handle_mock_config(options, session, arguments)
-        self.assert_console_message(
-            stdout, "%s\n" % gen_config_mock.return_value)
-        gen_config_mock.assert_called_with(
-            self.progname, buildroot_info['arch'], **opts)
+        anon_handle_mock_config(self.options, self.session, arguments)
+        self.assert_console_message(stdout, "%s\n" % self.gen_config_mock.return_value)
+        self.gen_config_mock.assert_called_with(self.progname, buildroot_info['arch'], **opts)
+        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.ensure_connection_mock.reset_mock()
 
         # if buildroot is not existing
         buildroot_id = '999999'
         arguments = ['--buildroot', buildroot_id]
+        self.session.getBuildroot.return_value = None
         expected = "No such buildroot: %s" % buildroot_id + "\n"
-        session.getBuildroot.return_value = None
-        with self.assertRaises(SystemExit) as ex:
-            anon_handle_mock_config(options, session, arguments)
-        self.assertExitCode(ex, 1)
-        self.assert_console_message(stderr, expected)
+        self.assert_system_exit(
+            anon_handle_mock_config,
+            self.options, self.session, arguments,
+            stderr=expected,
+            exit_code=1,
+            activate_session=None)
+        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.ensure_connection_mock.reset_mock()
 
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji.genMockConfig')
-    @mock.patch('koji_cli.commands.ensure_connection')
-    def test_handle_mock_config_task_option(
-            self, ensure_connection_mock, gen_config_mock, stdout, stderr):
+    def test_handle_mock_config_task_option(self, stdout):
         """Test  anon_handle_mock_config task options"""
-        arguments = []
         task_id = 1001
-        options = mock.MagicMock()
-
-        session = mock.MagicMock()
-        session.listBuildroots.return_value = ''
+        self.session.listBuildroots.return_value = ''
 
         # Mock config
-        gen_config_mock.return_value = ''
+        self.gen_config_mock.return_value = ''
 
         arguments = ['--task', 'task']
         expected = self.format_error_message("Task id must be an integer")
         self.assert_system_exit(
             anon_handle_mock_config,
-            options,
-            session,
-            arguments,
+            self.options, self.session, arguments,
             stderr=expected,
+            exit_code=2,
             activate_session=None)
+        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.ensure_connection_mock.reset_mock()
 
         arguments = ['--task', str(task_id)]
         expected = "No buildroots for task %s (or no such task)\n" % str(task_id)
-        with self.assertRaises(SystemExit) as ex:
-            anon_handle_mock_config(options, session, arguments)
-        self.assertExitCode(ex, 1)
-        self.assert_console_message(stderr, expected)
+        self.assert_system_exit(
+            anon_handle_mock_config,
+            self.options, self.session, arguments,
+            stderr=expected,
+            exit_code=1,
+            activate_session=None)
+        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.ensure_connection_mock.reset_mock()
 
         multi_broots = [
             {'id': 1101, 'repo_id': 101, 'tag_name': 'tag_101', 'arch': 'x86_64'},
             {'id': 1111, 'repo_id': 111, 'tag_name': 'tag_111', 'arch': 'x86_64'},
             {'id': 1121, 'repo_id': 121, 'tag_name': 'tag_121', 'arch': 'x86_64'}
         ]
-        session.listBuildroots.return_value = multi_broots
-        anon_handle_mock_config(options, session, arguments)
+        self.session.listBuildroots.return_value = multi_broots
+        anon_handle_mock_config(self.options, self.session, arguments)
         expected = "Multiple buildroots found: %s" % [br['id'] for br in multi_broots]
         self.assert_console_message(stdout, "%s\n\n" % expected)
+        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.ensure_connection_mock.reset_mock()
 
         opts = self.common_opts.copy()
         opts.update({
@@ -176,62 +179,63 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
             'tag_name': multi_broots[0]['tag_name'],
             'tag_macros': {},
         })
+        del opts['topurl']
         arguments = self.common_args + ['--task', str(task_id),
                                         '--name', self.progname,
                                         '--latest']
-        session.listBuildroots.return_value = [multi_broots[0]]
-        gen_config_mock.return_value = self.mock_output
-        anon_handle_mock_config(options, session, arguments)
-        self.assert_console_message(
-            stdout, "%s\n" % gen_config_mock.return_value)
-        gen_config_mock.assert_called_with(
-            self.progname, multi_broots[0]['arch'], **opts)
+        self.session.listBuildroots.return_value = [multi_broots[0]]
+        self.gen_config_mock.return_value = self.mock_output
+        anon_handle_mock_config(self.options, self.session, arguments)
+        self.assert_console_message(stdout, "%s\n" % self.gen_config_mock.return_value)
+        self.gen_config_mock.assert_called_with(self.progname, multi_broots[0]['arch'], **opts)
+        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.ensure_connection_mock.reset_mock()
 
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji.genMockConfig')
-    @mock.patch('koji_cli.commands.ensure_connection')
-    def test_handle_mock_config_tag_option(
-            self, ensure_connection_mock, gen_config_mock, stdout, stderr):
+    def test_handle_mock_config_tag_option(self, stdout, stderr):
         """Test anon_handle_mock_config with tag option"""
-        arguments = []
-        tag = 'tag'
         tag = {'id': 201, 'name': 'tag', 'arch': 'x86_64'}
-        options = mock.MagicMock()
-
-        # Mock out the xmlrpc server
-        session = mock.MagicMock()
-        session.getTag.return_value = None
-        session.getBuildConfig.return_value = None
-        session.getRepo.return_value = None
+        self.session.getTag.return_value = None
+        self.session.getBuildConfig.return_value = None
+        self.session.getRepo.return_value = None
 
         arguments = ['--tag', tag['name']]
         expected = "Please specify an arch\n"
-        with self.assertRaises(SystemExit) as ex:
-            anon_handle_mock_config(options, session, arguments)
-        self.assertExitCode(ex, 1)
-        self.assert_console_message(stderr, expected)
+        self.assert_system_exit(
+            anon_handle_mock_config,
+            self.options, self.session, arguments,
+            stderr=expected,
+            exit_code=1,
+            activate_session=None)
+        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.ensure_connection_mock.reset_mock()
 
         arguments = ['--tag', tag['name'], '--arch', tag['arch']]
         expected = self.format_error_message("No such tag: %s" % tag['name'])
         self.assert_system_exit(
             anon_handle_mock_config,
-            options,
-            session,
-            arguments,
+            self.options, self.session, arguments,
             stderr=expected,
+            exit_code=2,
             activate_session=None)
+        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.ensure_connection_mock.reset_mock()
 
         # return tag info
-        session.getTag.return_value = tag
+        self.session.getTag.return_value = tag
         expected = "Could not get config info for tag: %(name)s\n" % tag
-        with self.assertRaises(SystemExit) as ex:
-            anon_handle_mock_config(options, session, arguments)
-        self.assertExitCode(ex, 1)
-        self.assert_console_message(stderr, expected)
+        self.assert_system_exit(
+            anon_handle_mock_config,
+            self.options, self.session, arguments,
+            stderr=expected,
+            exit_code=1,
+            activate_session=None)
+        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.ensure_connection_mock.reset_mock()
 
         # return build config
-        session.getBuildConfig.return_value = {
+        self.session.getBuildConfig.return_value = {
             'id': 301,
             'extra': {
                 'rpm.macro.random_macro1': 'random_macro_content1',
@@ -242,17 +246,22 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
             'arches': 'x86_64',
         }
         expected = "Could not get a repo for tag: %(name)s\n" % tag
-        with self.assertRaises(SystemExit) as ex:
-            anon_handle_mock_config(options, session, arguments)
-        self.assertExitCode(ex, 1)
-        self.assert_console_message(stderr, expected)
+        self.assert_system_exit(
+            anon_handle_mock_config,
+            self.options, self.session, arguments,
+            stderr=expected,
+            exit_code=1,
+            activate_session=None)
+        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.ensure_connection_mock.reset_mock()
 
         # return repo
-        session.getRepo.return_value = {'id': 101}
-        gen_config_mock.return_value = self.mock_output
-        anon_handle_mock_config(options, session, arguments)
-        self.assert_console_message(
-            stdout, "%s\n" % gen_config_mock.return_value)
+        self.session.getRepo.return_value = {'id': 101}
+        self.gen_config_mock.return_value = self.mock_output
+        anon_handle_mock_config(self.options, self.session, arguments)
+        self.assert_console_message(stdout, "%s\n" % self.gen_config_mock.return_value)
+        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.ensure_connection_mock.reset_mock()
 
         arguments = self.common_args + ['--tag', tag['name'],
                                         '--arch', tag['arch'],
@@ -269,24 +278,27 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
             'package_manager': 'yum',
             'module_hotfixes': 1,
         })
-        anon_handle_mock_config(options, session, arguments)
-        self.assert_console_message(
-            stdout, "%s\n" % gen_config_mock.return_value)
-        gen_config_mock.assert_called_with(
-            self.progname, tag['arch'], **opts)
+        del opts['topurl']
+        anon_handle_mock_config(self.options, self.session, arguments)
+        self.assert_console_message(stdout, "%s\n" % self.gen_config_mock.return_value)
+        self.gen_config_mock.assert_called_with(self.progname, tag['arch'], **opts)
+        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.ensure_connection_mock.reset_mock()
 
         # return arch warning and config
         arch = 'test'
         warn_msg = '%s is not in the list of tag arches' % arch
-        gen_config_mock.return_value = self.mock_output
+        self.gen_config_mock.return_value = self.mock_output
         arguments = self.common_args + ['--tag', tag['name'], '--arch', arch,
                                         '--name', self.progname, '--latest']
-        anon_handle_mock_config(options, session, arguments)
-        self.assert_console_message(stdout, "%s\n" % gen_config_mock.return_value)
+        anon_handle_mock_config(self.options, self.session, arguments)
+        self.assert_console_message(stdout, "%s\n" % self.gen_config_mock.return_value)
         self.assert_console_message(stderr, "%s\n" % warn_msg)
+        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.ensure_connection_mock.reset_mock()
 
         # return warning that tag arch is empty
-        session.getBuildConfig.return_value = {
+        self.session.getBuildConfig.return_value = {
             'id': 301,
             'extra': {
                 'rpm.macro.random_macro1': 'random_macro_content1',
@@ -298,22 +310,20 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
         }
         arch = 'test'
         warn_msg = 'Tag %s has an empty arch list' % tag['name']
-        gen_config_mock.return_value = self.mock_output
+        self.gen_config_mock.return_value = self.mock_output
         arguments = self.common_args + ['--tag', tag['name'], '--arch', arch,
                                         '--name', self.progname, '--latest']
-        anon_handle_mock_config(options, session, arguments)
-        self.assert_console_message(stdout, "%s\n" % gen_config_mock.return_value)
+        anon_handle_mock_config(self.options, self.session, arguments)
+        self.assert_console_message(stdout, "%s\n" % self.gen_config_mock.return_value)
         self.assert_console_message(stderr, "%s\n" % warn_msg)
+        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.ensure_connection_mock.reset_mock()
 
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji.genMockConfig')
-    @mock.patch('koji_cli.commands.ensure_connection')
     @mock.patch('koji_cli.commands.open')
-    def test_handle_mock_config_target_option(
-            self, openf, ensure_connection_mock, gen_config_mock, stdout, stderr):
+    def test_handle_mock_config_target_option(self, openf, stdout, stderr):
         """Test anon_handle_mock_config with target option"""
-        arguments = []
         arch = "x86_64"
         target = {'id': 1,
                   'name': 'target',
@@ -321,66 +331,73 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
                   'build_tag': 2,
                   'build_tag_name': 'target-build',
                   'dest_tag_name': 'target'}
-        options = mock.MagicMock()
-
-        # Mock out the xmlrpc server
-        session = mock.MagicMock()
-        session.getBuildTarget.return_value = None
-        session.getRepo.return_value = None
+        self.session.getBuildTarget.return_value = None
+        self.session.getRepo.return_value = None
 
         arguments = ['--target', target['name']]
         expected = "Please specify an arch\n"
-        with self.assertRaises(SystemExit) as ex:
-            anon_handle_mock_config(options, session, arguments)
-        self.assertExitCode(ex, 1)
-        self.assert_console_message(stderr, expected)
+        self.assert_system_exit(
+            anon_handle_mock_config,
+            self.options, self.session, arguments,
+            stderr=expected,
+            exit_code=1,
+            activate_session=None)
+        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.ensure_connection_mock.reset_mock()
 
         arguments = ['--target', target['name'],
                      '--arch', arch]
         expected = self.format_error_message("No such build target: %s" % target['name'])
         self.assert_system_exit(
             anon_handle_mock_config,
-            options,
-            session,
-            arguments,
+            self.options, self.session, arguments,
             stderr=expected,
+            exit_code=2,
             activate_session=None)
+        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.ensure_connection_mock.reset_mock()
 
-        session.getBuildTarget.return_value = target
-        session.getBuildConfig.return_value = {'arches': 'x86_64', 'extra': {}}
+        self.session.getBuildTarget.return_value = target
+        self.session.getBuildConfig.return_value = {'arches': 'x86_64', 'extra': {}}
         expected = "Could not get a repo for tag: %s\n" % target['build_tag_name']
-        with self.assertRaises(SystemExit) as ex:
-            anon_handle_mock_config(options, session, arguments)
-        self.assertExitCode(ex, 1)
-        self.assert_console_message(stderr, expected)
+        self.assert_system_exit(
+            anon_handle_mock_config,
+            self.options, self.session, arguments,
+            stderr=expected,
+            exit_code=1,
+            activate_session=None)
+        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.ensure_connection_mock.reset_mock()
 
-        arguments = self.common_args + ['--target', target['name'],
-                                        '--arch', arch,
-                                        '--name', self.progname]
+        arguments = ['--distribution', 'fedora', '--topurl', '/top-url',
+                     '--yum-proxy', '/yum-proxy', '--target', target['name'], '--arch', arch,
+                     '--name', self.progname]
         opts = self.common_opts.copy()
         opts.update({
             'repoid': 101,
             'tag_name': target['build_tag_name'],
             'tag_macros': {},
         })
-        session.getRepo.return_value = {'id': 101}
-        gen_config_mock.return_value = self.mock_output
-        anon_handle_mock_config(options, session, arguments)
-        self.assert_console_message(
-            stdout, "%s\n" % gen_config_mock.return_value)
-        gen_config_mock.assert_called_with(
-            self.progname, arch, **opts)
+        del opts['topdir']
+        self.session.getRepo.return_value = {'id': 101}
+        self.gen_config_mock.return_value = self.mock_output
+        anon_handle_mock_config(self.options, self.session, arguments)
+        self.assert_console_message(stdout, "%s\n" % self.gen_config_mock.return_value)
+        self.gen_config_mock.assert_called_with(self.progname, arch, **opts)
+        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.ensure_connection_mock.reset_mock()
 
         # --latest and -o (output) test
         opts['repoid'] = 'latest'
         arguments.extend(['--latest', '-o', '/tmp/mock.out'])
         fobj = mock.MagicMock()
         openf.return_value.__enter__.return_value = fobj
-        anon_handle_mock_config(options, session, arguments)
+        anon_handle_mock_config(self.options, self.session, arguments)
         openf.assert_called_once()
         fobj.write.assert_called_once_with(self.mock_output)
-        gen_config_mock.assert_called_with(
-            self.progname, arch, **opts)
+        self.gen_config_mock.assert_called_with(self.progname, arch, **opts)
+        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.ensure_connection_mock.reset_mock()
 
         # return arch warning and config
         arch = 'test'
@@ -388,20 +405,16 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
                                         '--arch', arch,
                                         '--name', self.progname]
         warn_msg = '%s is not in the list of tag arches' % arch
-        gen_config_mock.return_value = self.mock_output
-        anon_handle_mock_config(options, session, arguments)
-        self.assert_console_message(stdout, "%s\n" % gen_config_mock.return_value)
+        self.gen_config_mock.return_value = self.mock_output
+        anon_handle_mock_config(self.options, self.session, arguments)
+        self.assert_console_message(stdout, "%s\n" % self.gen_config_mock.return_value)
         self.assert_console_message(stderr, "%s\n" % warn_msg)
+        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.ensure_connection_mock.reset_mock()
 
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.ensure_connection')
-    def test_handle_mock_config_errors(self, ensure_connection_mock, stderr):
+    def test_handle_mock_config_errors(self):
         """Test anon_handle_mock_config general error messages"""
         arguments = []
-        options = mock.MagicMock()
-
-        # Mock out the xmlrpc server
-        session = mock.MagicMock()
 
         # Run it and check immediate output
         # argument is empty
@@ -409,22 +422,22 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
             "Please specify one of: --tag, --target, --task, --buildroot")
         self.assert_system_exit(
             anon_handle_mock_config,
-            options,
-            session,
-            arguments,
+            self.options, self.session, arguments,
             stderr=expected,
             activate_session=None)
+        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.ensure_connection_mock.reset_mock()
 
         # name is specified twice case
         arguments = [self.progname, '--name', 'name']
         expected = self.format_error_message("Name already specified via option")
         self.assert_system_exit(
             anon_handle_mock_config,
-            options,
-            session,
-            arguments,
+            self.options, self.session, arguments,
             stderr=expected,
             activate_session=None)
+        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.ensure_connection_mock.reset_mock()
 
     def test_handle_mock_config_help(self):
         """Test anon_handle_mock_config help message full output"""
@@ -445,8 +458,9 @@ Options:
                         Duplicate the mock config for the specified buildroot
                         id
   --mockdir=DIR         Specify mockdir
-  --topdir=DIR          Specify topdir
-  --topurl=URL          URL under which Koji files are accessible
+  --topdir=DIR          Specify topdir, topdir tops the topurl
+  --topurl=URL          URL under which Koji files are accessible, when topdir
+                        is specified, topdir tops the topurl
   --distribution=DISTRIBUTION
                         Change the distribution macro
   --yum-proxy=YUM_PROXY
