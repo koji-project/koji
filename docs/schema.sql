@@ -47,25 +47,25 @@ CREATE TABLE user_krb_principals (
 
 CREATE TABLE permissions (
 	id SERIAL NOT NULL PRIMARY KEY,
-	name VARCHAR(50) UNIQUE NOT NULL
+	name VARCHAR(50) UNIQUE NOT NULL,
+	description TEXT
 ) WITHOUT OIDS;
 
 -- Some basic perms
-INSERT INTO permissions (name) VALUES ('admin');
-INSERT INTO permissions (name) VALUES ('appliance');
-INSERT INTO permissions (name) VALUES ('build');
-INSERT INTO permissions (name) VALUES ('dist-repo');
-INSERT INTO permissions (name) VALUES ('host');
-INSERT INTO permissions (name) VALUES ('image');
-INSERT INTO permissions (name) VALUES ('image-import');
-INSERT INTO permissions (name) VALUES ('livecd');
-INSERT INTO permissions (name) VALUES ('maven-import');
-INSERT INTO permissions (name) VALUES ('repo');
-INSERT INTO permissions (name) VALUES ('sign');
-INSERT INTO permissions (name) VALUES ('tag');
-INSERT INTO permissions (name) VALUES ('target');
-INSERT INTO permissions (name) VALUES ('win-admin');
-INSERT INTO permissions (name) VALUES ('win-import');
+INSERT INTO permissions (name, description) VALUES ('admin', 'Full administrator access. Perform all actions.');
+INSERT INTO permissions (name, description) VALUES ('appliance', 'Create appliance builds - deprecated.');
+INSERT INTO permissions (name, description) VALUES ('dist-repo', 'Create a dist-repo.');
+INSERT INTO permissions (name, description) VALUES ('host', 'Add, remove, enable, disable hosts and channels.');
+INSERT INTO permissions (name, description) VALUES ('image', 'Start image tasks.');
+INSERT INTO permissions (name, description) VALUES ('image-import', 'Import image archives.');
+INSERT INTO permissions (name, description) VALUES ('livecd', 'Start livecd tasks.');
+INSERT INTO permissions (name, description) VALUES ('maven-import', 'Import maven archives.');
+INSERT INTO permissions (name, description) VALUES ('repo', 'Manage repos: newRepo, repoExpire, repoDelete, repoProblem.');
+INSERT INTO permissions (name, description) VALUES ('sign', 'Import RPM signatures and write signed RPMs.');
+INSERT INTO permissions (name, description) VALUES ('tag', 'Manage packages in tags: add, block, remove, and clone tags.');
+INSERT INTO permissions (name, description) VALUES ('target', 'Add, edit, and remove targets.');
+INSERT INTO permissions (name, description) VALUES ('win-admin', 'The default hub policy rule for "vm" requires this permission to trigger Windows builds.');
+INSERT INTO permissions (name, description) VALUES ('win-import', 'Import win archives.');
 
 CREATE TABLE user_perms (
 	user_id INTEGER NOT NULL REFERENCES users(id),

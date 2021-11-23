@@ -12417,14 +12417,21 @@ class RootExports(object):
     getUser = staticmethod(get_user)
     editUser = staticmethod(edit_user)
 
-    def grantPermission(self, userinfo, permission, create=False):
+    def grantPermission(self, userinfo, permission, create=False, description=None):
         """Grant a permission to a user"""
         context.session.assertPerm('admin')
         if create:
             verify_name_internal(permission)
+        if description is not None and not create:
+            raise koji.GenericError('Description should be specified only with create.')
         user_id = get_user(userinfo, strict=True)['id']
         perm = lookup_perm(permission, strict=(not create), create=create)
         perm_id = perm['id']
+        if create and description is not None:
+            update = UpdateProcessor('permissions', clauses=['id=%(perm_id)i'],
+                                     values={'perm_id': perm_id})
+            update.set(description=description)
+            update.execute()
         if perm['name'] in koji.auth.get_user_perms(user_id):
             raise koji.GenericError('user %s already has permission: %s' %
                                     (userinfo, perm['name']))
@@ -12445,6 +12452,16 @@ class RootExports(object):
         update = UpdateProcessor('user_perms', values=locals(),
                                  clauses=["user_id = %(user_id)i", "perm_id = %(perm_id)i"])
         update.make_revoke()
+        update.execute()
+
+    def editPermission(self, permission, description):
+        """Edit a permission description"""
+        context.session.assertPerm('admin')
+        perm = lookup_perm(permission, strict=True)
+        perm_id = perm['id']
+        update = UpdateProcessor('permissions', clauses=['id=%(perm_id)i'],
+                                 values={'perm_id': perm_id})
+        update.set(description=description)
         update.execute()
 
     def createUser(self, username, status=None, krb_principal=None):
@@ -13189,11 +13206,12 @@ class RootExports(object):
 
         - id
         - name
+        - description
         """
-        query = """SELECT id, name FROM permissions
+        query = """SELECT id, name, description FROM permissions
         ORDER BY id"""
 
-        return _multiRow(query, {}, ['id', 'name'])
+        return _multiRow(query, {}, ['id', 'name', 'description'])
 
     def getLoggedInUser(self):
         """Return information about the currently logged-in user.  Returns data
