@@ -6228,7 +6228,7 @@ enabled=1
                 if opts['skip_missing_signatures']:
                     outfile.write('The skip_missing_signatures option was specified, so '
                                   'these files were excluded.\n')
-                outfile.write('Acceptable keys: %r\n\n' % keys)
+                outfile.write('Requested keys: %r\n\n' % keys)
                 outfile.write('# RPM name: available keys\n')
                 fmt = '%(name)s-%(version)s-%(release)s.%(arch)s'
                 filenames = [[fmt % selected[r], r] for r in sig_missing]
