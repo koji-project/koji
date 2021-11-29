@@ -116,22 +116,18 @@ Task info: weburl/taskinfo?taskID=1
             poll_interval=self.options.poll_interval, topurl=self.options.topurl)
         self.assertEqual(rv, 0)
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    def test_handle_build_no_arg(self, stderr, stdout):
-        args = []
+    def test_handle_build_no_arg(self):
+        arguments = []
 
         # Run it and check immediate output
-        with self.assertRaises(SystemExit) as ex:
-            handle_build(self.options, self.session, args)
-        self.assertExitCode(ex, 2)
-        actual_stdout = stdout.getvalue()
-        actual_stderr = stderr.getvalue()
-        expected_stdout = ''
-        expected_stderr = self.format_error_message("Exactly two arguments (a build target and "
-                                                    "a SCM URL or srpm file) are required")
-        self.assertMultiLineEqual(actual_stdout, expected_stdout)
-        self.assertMultiLineEqual(actual_stderr, expected_stderr)
+        self.assert_system_exit(
+            handle_build,
+            self.options, self.session, arguments,
+            stderr=self.format_error_message("Exactly two arguments (a build target and "
+                                             "a SCM URL or srpm file) are required"),
+            stdout='',
+            activate_session=None,
+            exit_code=2)
 
         # Finally, assert that things were called as we expected.
         self.activate_session_mock.assert_not_called()
@@ -144,17 +140,8 @@ Task info: weburl/taskinfo?taskID=1
         self.session.logout.assert_not_called()
         self.watch_tasks_mock.assert_not_called()
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    def test_handle_build_help(self, stderr, stdout):
-        args = ['--help']
-
-        # Run it and check immediate output
-        with self.assertRaises(SystemExit) as ex:
-            handle_build(self.options, self.session, args)
-        self.assertExitCode(ex, 0)
-        actual_stdout = stdout.getvalue()
-        actual_stderr = stderr.getvalue()
+    def test_handle_build_help(self):
+        arguments = ['--help']
         expected_stdout = """Usage: %s build [options] <target> <srpm path or scm url>
 
 The first option is the build target, not to be confused with the destination
@@ -189,9 +176,15 @@ Options:
                         deserialized and stored under the build's
                         extra.custom_user_metadata field
 """ % (self.progname, self.progname)
-        expected_stderr = ''
-        self.assertMultiLineEqual(actual_stdout, expected_stdout)
-        self.assertMultiLineEqual(actual_stderr, expected_stderr)
+
+        # Run it and check immediate output
+        self.assert_system_exit(
+            handle_build,
+            self.options, self.session, arguments,
+            stderr='',
+            stdout=expected_stdout,
+            activate_session=None,
+            exit_code=0)
 
         # Finally, assert that things were called as we expected.
         self.activate_session_mock.assert_not_called()
@@ -237,22 +230,18 @@ Task info: weburl/taskinfo?taskID=1
             poll_interval=self.options.poll_interval, topurl=self.options.topurl)
         self.assertEqual(rv, 0)
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    def test_handle_build_custom_user_metadata_invalid_json(self, stderr, stdout):
-        args = [self.target, self.source_scm,
-                '--custom-user-metadata={Do or do not. There is no try.}']
+    def test_handle_build_custom_user_metadata_invalid_json(self):
+        arguments = [self.target, self.source_scm,
+                     '--custom-user-metadata={Do or do not. There is no try.}']
 
         # Run it and check immediate output
-        with self.assertRaises(SystemExit) as ex:
-            handle_build(self.options, self.session, args)
-        self.assertExitCode(ex, 2)
-        actual_stdout = stdout.getvalue()
-        actual_stderr = stderr.getvalue()
-        expected_stdout = ''
-        expected_stderr = self.format_error_message("--custom-user-metadata is not valid JSON")
-        self.assertMultiLineEqual(actual_stdout, expected_stdout)
-        self.assertMultiLineEqual(actual_stderr, expected_stderr)
+        self.assert_system_exit(
+            handle_build,
+            self.options, self.session, arguments,
+            stderr=self.format_error_message("--custom-user-metadata is not valid JSON"),
+            stdout='',
+            activate_session=None,
+            exit_code=2)
 
         # Finally, assert that things were called as we expected.
         self.activate_session_mock.assert_not_called()
@@ -265,22 +254,18 @@ Task info: weburl/taskinfo?taskID=1
         self.session.logout.assert_not_called()
         self.watch_tasks_mock.assert_not_called()
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    def test_handle_build_custom_user_metadata_not_json_object(self, stderr, stdout):
-        args = [self.target, self.source_scm,
-                '--custom-user-metadata="Do or do not. There is no try."']
+    def test_handle_build_custom_user_metadata_not_json_object(self):
+        arguments = [self.target, self.source_scm,
+                     '--custom-user-metadata="Do or do not. There is no try."']
 
         # Run it and check immediate output
-        with self.assertRaises(SystemExit) as ex:
-            handle_build(self.options, self.session, args)
-        self.assertExitCode(ex, 2)
-        actual_stdout = stdout.getvalue()
-        actual_stderr = stderr.getvalue()
-        expected_stdout = ''
-        expected_stderr = self.format_error_message("--custom-user-metadata must be a JSON object")
-        self.assertMultiLineEqual(actual_stdout, expected_stdout)
-        self.assertMultiLineEqual(actual_stderr, expected_stderr)
+        self.assert_system_exit(
+            handle_build,
+            self.options, self.session, arguments,
+            stderr=self.format_error_message("--custom-user-metadata must be a JSON object"),
+            stdout='',
+            activate_session=None,
+            exit_code=2)
 
         # Finally, assert that things were called as we expected.
         self.activate_session_mock.assert_not_called()
@@ -293,23 +278,19 @@ Task info: weburl/taskinfo?taskID=1
         self.session.logout.assert_not_called()
         self.watch_tasks_mock.assert_not_called()
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    def test_handle_build_arch_override_denied(self, stderr, stdout):
+    def test_handle_build_arch_override_denied(self):
         arch_override = 'somearch'
-        args = [self.target, self.source_scm, '--arch-override=' + arch_override]
+        arguments = [self.target, self.source_scm, '--arch-override=' + arch_override]
 
         # Run it and check immediate output
-        with self.assertRaises(SystemExit) as ex:
-            handle_build(self.options, self.session, args)
-        self.assertExitCode(ex, 2)
-        actual_stdout = stdout.getvalue()
-        actual_stderr = stderr.getvalue()
-        expected_stdout = ''
-        expected_stderr = self.format_error_message(
-            "--arch_override is only allowed for --scratch builds")
-        self.assertMultiLineEqual(actual_stdout, expected_stdout)
-        self.assertMultiLineEqual(actual_stderr, expected_stderr)
+        self.assert_system_exit(
+            handle_build,
+            self.options, self.session, arguments,
+            stderr=self.format_error_message(
+                "--arch_override is only allowed for --scratch builds"),
+            stdout='',
+            activate_session=None,
+            exit_code=2)
 
         # Finally, assert that things were called as we expected.
         self.activate_session_mock.assert_not_called()
@@ -360,18 +341,19 @@ Task info: weburl/taskinfo?taskID=1
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     def test_handle_build_target_not_found(self, stderr):
         target_info = None
-        args = [self.target, self.source_scm]
+        arguments = [self.target, self.source_scm]
 
         self.session.getBuildTarget.return_value = target_info
         # Run it and check immediate output
         # args: target, http://scm
         # expected: failed, target not found
-        with self.assertRaises(SystemExit) as ex:
-            handle_build(self.options, self.session, args)
-        self.assertExitCode(ex, 2)
-        actual = stderr.getvalue()
-        expected = self.format_error_message("No such build target: target")
-        self.assertMultiLineEqual(actual, expected)
+        self.assert_system_exit(
+            handle_build,
+            self.options, self.session, arguments,
+            stderr=self.format_error_message("No such build target: target"),
+            stdout='',
+            activate_session=None,
+            exit_code=2)
         # Finally, assert that things were called as we expected.
         self.activate_session_mock.assert_called_once_with(self.session, self.options)
         self.session.getBuildTarget.assert_called_once_with(self.target)
@@ -383,24 +365,24 @@ Task info: weburl/taskinfo?taskID=1
         self.session.logout.assert_not_called()
         self.watch_tasks_mock.assert_not_called()
 
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    def test_handle_build_dest_tag_not_found(self, stderr):
+    def test_handle_build_dest_tag_not_found(self):
         dest_tag_name = 'dest_tag_name'
         target_info = {'dest_tag': self.dest_tag, 'dest_tag_name': dest_tag_name}
         dest_tag_info = None
-        args = [self.target, self.source_scm]
+        arguments = [self.target, self.source_scm]
 
         self.session.getBuildTarget.return_value = target_info
         self.session.getTag.return_value = dest_tag_info
         # Run it and check immediate output
         # args: target, http://scm
         # expected: failed, dest_tag not found
-        with self.assertRaises(SystemExit) as ex:
-            handle_build(self.options, self.session, args)
-        self.assertExitCode(ex, 2)
-        actual = stderr.getvalue()
-        expected = self.format_error_message("No such destination tag: dest_tag_name")
-        self.assertMultiLineEqual(actual, expected)
+        self.assert_system_exit(
+            handle_build,
+            self.options, self.session, arguments,
+            stderr=self.format_error_message("No such destination tag: dest_tag_name"),
+            stdout='',
+            activate_session=None,
+            exit_code=2)
         # Finally, assert that things were called as we expected.
         self.activate_session_mock.assert_called_once_with(self.session, self.options)
         self.session.getBuildTarget.assert_called_once_with(self.target)
@@ -412,24 +394,24 @@ Task info: weburl/taskinfo?taskID=1
         self.session.logout.assert_not_called()
         self.watch_tasks_mock.assert_not_called()
 
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    def test_handle_build_dest_tag_locked(self, stderr):
+    def test_handle_build_dest_tag_locked(self):
         dest_tag_name = 'dest_tag_name'
         target_info = {'dest_tag': self.dest_tag, 'dest_tag_name': dest_tag_name}
         dest_tag_info = {'name': 'dest_tag_name', 'locked': True}
-        args = [self.target, self.source_scm]
+        arguments = [self.target, self.source_scm]
 
         self.session.getBuildTarget.return_value = target_info
         self.session.getTag.return_value = dest_tag_info
         # Run it and check immediate output
         # args: target, http://scm
         # expected: failed, dest_tag is locked
-        with self.assertRaises(SystemExit) as ex:
-            handle_build(self.options, self.session, args)
-        self.assertExitCode(ex, 2)
-        actual = stderr.getvalue()
-        expected = self.format_error_message("Destination tag dest_tag_name is locked")
-        self.assertMultiLineEqual(actual, expected)
+        self.assert_system_exit(
+            handle_build,
+            self.options, self.session, arguments,
+            stderr=self.format_error_message("Destination tag dest_tag_name is locked"),
+            stdout='',
+            activate_session=None,
+            exit_code=2)
         # Finally, assert that things were called as we expected.
         self.activate_session_mock.assert_called_once_with(self.session, self.options)
         self.session.getBuildTarget.assert_called_once_with(self.target)
@@ -687,22 +669,18 @@ Task info: weburl/taskinfo?taskID=1
         self.watch_tasks_mock.assert_not_called()
         self.assertIsNone(rv)
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    def test_handle_build_rebuild_srpm_without_scratch(self, stderr, stdout):
-        args = ['--rebuild-srpm', self.target, self.source_srpm]
+    def test_handle_build_rebuild_srpm_without_scratch(self):
+        arguments = ['--rebuild-srpm', self.target, self.source_srpm]
 
         # Run it and check immediate output
-        with self.assertRaises(SystemExit) as ex:
-            handle_build(self.options, self.session, args)
-        self.assertExitCode(ex, 2)
-        actual_stdout = stdout.getvalue()
-        actual_stderr = stderr.getvalue()
-        expected_stdout = ''
-        expected_stderr = self.format_error_message(
-            "--no-/rebuild-srpm is only allowed for --scratch builds")
-        self.assertMultiLineEqual(actual_stdout, expected_stdout)
-        self.assertMultiLineEqual(actual_stderr, expected_stderr)
+        self.assert_system_exit(
+            handle_build,
+            self.options, self.session, arguments,
+            stderr=self.format_error_message(
+                "--no-/rebuild-srpm is only allowed for --scratch builds"),
+            stdout='',
+            activate_session=None,
+            exit_code=2)
 
         # Finally, assert that things were called as we expected.
         self.activate_session_mock.assert_not_called()

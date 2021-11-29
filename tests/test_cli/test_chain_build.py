@@ -1,9 +1,7 @@
 from __future__ import absolute_import
 
 import mock
-import os
 import six
-import sys
 import unittest
 
 from koji_cli.commands import handle_chain_build
@@ -11,10 +9,10 @@ from . import utils
 
 
 class TestChainBuild(utils.CliTestCase):
-    # Show long diffs in error output...
-    maxDiff = None
 
     def setUp(self):
+        # Show long diffs in error output...
+        self.maxDiff = None
         # Mock out the options parsed in main
         self.options = mock.MagicMock()
         self.options.quiet = None
@@ -22,13 +20,19 @@ class TestChainBuild(utils.CliTestCase):
         self.options.poll_interval = 0
         # Mock out the xmlrpc server
         self.session = mock.MagicMock()
+        self.activate_session_mock = mock.patch('koji_cli.commands.activate_session').start()
+        self.running_in_bg_mock = mock.patch('koji_cli.commands._running_in_bg').start()
+        self.running_in_bg_mock.return_value = False
+        self.watch_tasks_mock = mock.patch('koji_cli.commands.watch_tasks').start()
+        self.watch_tasks_mock.return_value = 0
+        self.error_format = """Usage: %s chain-build [options] <target> <URL> [<URL> [:] <URL> [:] <URL> ...]
+(Specify the --help global option for a list of other help options)
+
+%s: error: {message}
+""" % (self.progname, self.progname)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
-    @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
-    def test_handle_chain_build(self, watch_tasks_mock, running_in_bg_mock,
-                                activate_session_mock, stdout):
+    def test_handle_chain_build(self, stdout):
         target = 'target'
         dest_tag = 'dest_tag'
         dest_tag_id = 2
@@ -70,80 +74,43 @@ Task info: weburl/taskinfo?taskID=1
 """
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(self.session, self.options)
+        self.activate_session_mock.assert_called_once_with(self.session, self.options)
         self.session.getBuildTarget.assert_called_once_with(target)
         self.session.getTag.assert_called_once_with(dest_tag_id, strict=True)
         self.session.getFullInheritance.assert_called_once_with(build_tag_id)
-        self.session.chainBuild.assert_called_once_with(
-            sources, target, priority=priority)
-        running_in_bg_mock.assert_called_once()
+        self.session.chainBuild.assert_called_once_with(sources, target, priority=priority)
+        self.running_in_bg_mock.assert_called_once()
         self.session.logout.assert_called()
-        watch_tasks_mock.assert_called_once_with(
+        self.watch_tasks_mock.assert_called_once_with(
             self.session, [task_id], quiet=self.options.quiet,
             poll_interval=self.options.poll_interval, topurl=self.options.topurl)
         self.assertEqual(rv, 0)
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
-    @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
-    def test_handle_chain_build_no_arg(
-            self,
-            watch_tasks_mock,
-            running_in_bg_mock,
-            activate_session_mock,
-            stderr,
-            stdout):
-        args = []
-        progname = os.path.basename(sys.argv[0]) or 'koji'
+    def test_handle_chain_build_no_arg(self):
+        arguments = []
 
         # Run it and check immediate output
-        with self.assertRaises(SystemExit) as ex:
-            handle_chain_build(self.options, self.session, args)
-        self.assertExitCode(ex, 2)
-        actual_stdout = stdout.getvalue()
-        actual_stderr = stderr.getvalue()
-        expected_stdout = ''
-        expected_stderr = """Usage: %s chain-build [options] <target> <URL> [<URL> [:] <URL> [:] <URL> ...]
-(Specify the --help global option for a list of other help options)
-
-%s: error: At least two arguments (a build target and a SCM URL) are required
-""" % (progname, progname)
-        self.assertMultiLineEqual(actual_stdout, expected_stdout)
-        self.assertMultiLineEqual(actual_stderr, expected_stderr)
+        self.assert_system_exit(
+            handle_chain_build,
+            self.options, self.session, arguments,
+            stderr=self.format_error_message(
+                "At least two arguments (a build target and a SCM URL) are required"),
+            stdout='',
+            activate_session=None,
+            exit_code=2)
 
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_not_called()
+        self.activate_session_mock.assert_not_called()
         self.session.getBuildTarget.assert_not_called()
         self.session.getTag.assert_not_called()
         self.session.getFullInheritance.assert_not_called()
-        running_in_bg_mock.assert_not_called()
+        self.running_in_bg_mock.assert_not_called()
         self.session.chainBuild.assert_not_called()
         self.session.logout.assert_not_called()
-        watch_tasks_mock.assert_not_called()
+        self.watch_tasks_mock.assert_not_called()
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
-    @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
-    def test_handle_chain_build_help(
-            self,
-            watch_tasks_mock,
-            running_in_bg_mock,
-            activate_session_mock,
-            stderr,
-            stdout):
-        args = ['--help']
-        progname = os.path.basename(sys.argv[0]) or 'koji'
-
-        # Run it and check immediate output
-        with self.assertRaises(SystemExit) as ex:
-            handle_chain_build(self.options, self.session, args)
-        self.assertExitCode(ex, 0)
-        actual_stdout = stdout.getvalue()
-        actual_stderr = stderr.getvalue()
+    def test_handle_chain_build_help(self):
+        arguments = ['--help']
         expected_stdout = """Usage: %s chain-build [options] <target> <URL> [<URL> [:] <URL> [:] <URL> ...]
 (Specify the --help global option for a list of other help options)
 
@@ -153,31 +120,28 @@ Options:
   --nowait      Don't wait on build
   --quiet       Do not print the task information
   --background  Run the build at a lower priority
-""" % progname
-        expected_stderr = ''
-        self.assertMultiLineEqual(actual_stdout, expected_stdout)
-        self.assertMultiLineEqual(actual_stderr, expected_stderr)
+""" % self.progname
+
+        # Run it and check immediate output
+        self.assert_system_exit(
+            handle_chain_build,
+            self.options, self.session, arguments,
+            stderr='',
+            stdout=expected_stdout,
+            activate_session=None,
+            exit_code=0)
 
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_not_called()
+        self.activate_session_mock.assert_not_called()
         self.session.getBuildTarget.assert_not_called()
         self.session.getTag.assert_not_called()
         self.session.getFullInheritance.assert_not_called()
-        running_in_bg_mock.assert_not_called()
+        self.running_in_bg_mock.assert_not_called()
         self.session.chainBuild.assert_not_called()
         self.session.logout.assert_not_called()
-        watch_tasks_mock.assert_not_called()
+        self.watch_tasks_mock.assert_not_called()
 
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
-    @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
-    def test_handle_chain_build_target_not_found(
-            self,
-            watch_tasks_mock,
-            running_in_bg_mock,
-            activate_session_mock,
-            stderr):
+    def test_handle_chain_build_target_not_found(self):
         target = 'target'
         target_info = None
         source_args = [
@@ -189,44 +153,30 @@ Options:
             ':',
             'n-v-r-2',
             'n-v-r-3']
-        args = [target] + source_args
-
-        progname = os.path.basename(sys.argv[0]) or 'koji'
+        arguments = [target] + source_args
 
         self.session.getBuildTarget.return_value = target_info
         # Run it and check immediate output
         # args: target http://scm1 : http://scm2 http://scm3 n-v-r-1 : n-v-r-2 n-v-r-3
         # expected: failed, target not found
-        with self.assertRaises(SystemExit) as ex:
-            handle_chain_build(self.options, self.session, args)
-        self.assertExitCode(ex, 2)
-        actual = stderr.getvalue()
-        expected = """Usage: %s chain-build [options] <target> <URL> [<URL> [:] <URL> [:] <URL> ...]
-(Specify the --help global option for a list of other help options)
-
-%s: error: No such build target: target
-""" % (progname, progname)
-        self.assertMultiLineEqual(actual, expected)
+        self.assert_system_exit(
+            handle_chain_build,
+            self.options, self.session, arguments,
+            stderr=self.format_error_message("No such build target: target"),
+            stdout='',
+            activate_session=None,
+            exit_code=2)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(self.session, self.options)
+        self.activate_session_mock.assert_called_once_with(self.session, self.options)
         self.session.getBuildTarget.assert_called_once_with(target)
         self.session.getTag.assert_not_called()
         self.session.getFullInheritance.assert_not_called()
-        running_in_bg_mock.assert_not_called()
+        self.running_in_bg_mock.assert_not_called()
         self.session.chainBuild.assert_not_called()
         self.session.logout.assert_not_called()
-        watch_tasks_mock.assert_not_called()
+        self.watch_tasks_mock.assert_not_called()
 
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
-    @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
-    def test_handle_build_dest_tag_locked(
-            self,
-            watch_tasks_mock,
-            running_in_bg_mock,
-            activate_session_mock,
-            stderr):
+    def test_handle_build_dest_tag_locked(self):
         target = 'target'
         dest_tag = 'dest_tag'
         dest_tag_id = 2
@@ -247,41 +197,31 @@ Options:
             ':',
             'n-v-r-2',
             'n-v-r-3']
-        args = [target] + source_args
-
-        progname = os.path.basename(sys.argv[0]) or 'koji'
+        arguments = [target] + source_args
 
         self.session.getBuildTarget.return_value = target_info
         self.session.getTag.return_value = dest_tag_info
         # Run it and check immediate output
         # args: target http://scm1 : http://scm2 http://scm3 n-v-r-1 : n-v-r-2 n-v-r-3
         # expected: failed, dest_tag is locked
-        with self.assertRaises(SystemExit) as ex:
-            handle_chain_build(self.options, self.session, args)
-        self.assertExitCode(ex, 2)
-        actual = stderr.getvalue()
-        expected = """Usage: %s chain-build [options] <target> <URL> [<URL> [:] <URL> [:] <URL> ...]
-(Specify the --help global option for a list of other help options)
-
-%s: error: Destination tag dest_tag is locked
-""" % (progname, progname)
-        self.assertMultiLineEqual(actual, expected)
+        self.assert_system_exit(
+            handle_chain_build,
+            self.options, self.session, arguments,
+            stderr=self.format_error_message("Destination tag dest_tag is locked"),
+            stdout='',
+            activate_session=None,
+            exit_code=2)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(self.session, self.options)
+        self.activate_session_mock.assert_called_once_with(self.session, self.options)
         self.session.getBuildTarget.assert_called_once_with(target)
         self.session.getTag.assert_called_once_with(dest_tag_id, strict=True)
         self.session.getFullInheritance.assert_not_called()
-        running_in_bg_mock.assert_not_called()
+        self.running_in_bg_mock.assert_not_called()
         self.session.chainBuild.assert_not_called()
         self.session.logout.assert_not_called()
-        watch_tasks_mock.assert_not_called()
+        self.watch_tasks_mock.assert_not_called()
 
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
-    @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
-    def test_handle_build_dest_tag_not_inherited_by_build_tag(
-            self, watch_tasks_mock, running_in_bg_mock, activate_session_mock, stderr):
+    def test_handle_build_dest_tag_not_inherited_by_build_tag(self):
         target = 'target'
         dest_tag = 'dest_tag'
         dest_tag_id = 2
@@ -304,7 +244,7 @@ Options:
             ':',
             'n-v-r-2',
             'n-v-r-3']
-        args = [target] + source_args
+        arguments = [target] + source_args
 
         self.session.getBuildTarget.return_value = target_info
         self.session.getTag.return_value = dest_tag_info
@@ -312,32 +252,27 @@ Options:
         # Run it and check immediate output
         # args: target, target http://scm1 : http://scm2 http://scm3 n-v-r-1 : n-v-r-2 n-v-r-3
         # expected: failed, dest_tag is not in build_tag's inheritance
-        with self.assertRaises(SystemExit) as ex:
-            handle_chain_build(self.options, self.session, args)
-        self.assertExitCode(ex, 1)
-        actual = stderr.getvalue()
         expected = """Packages in destination tag dest_tag are not inherited by build tag build_tag
 Target target is not usable for a chain-build
 """
-        self.assertMultiLineEqual(actual, expected)
+        self.assert_system_exit(
+            handle_chain_build,
+            self.options, self.session, arguments,
+            stderr=expected,
+            stdout='',
+            activate_session=None,
+            exit_code=1)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(self.session, self.options)
+        self.activate_session_mock.assert_called_once_with(self.session, self.options)
         self.session.getBuildTarget.assert_called_once_with(target)
         self.session.getTag.assert_called_once_with(dest_tag_id, strict=True)
         self.session.getFullInheritance.assert_called_once_with(build_tag_id)
-        running_in_bg_mock.assert_not_called()
+        self.running_in_bg_mock.assert_not_called()
         self.session.chainBuild.assert_not_called()
         self.session.logout.assert_not_called()
-        watch_tasks_mock.assert_not_called()
+        self.watch_tasks_mock.assert_not_called()
 
-    @mock.patch('koji_cli.commands.activate_session')
-    @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
-    @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
-    def test_handle_chain_build_invalidated_src(
-            self,
-            watch_tasks_mock,
-            running_in_bg_mock,
-            activate_session_mock):
+    def test_handle_chain_build_invalidated_src(self):
         target = 'target'
         dest_tag = 'dest_tag'
         dest_tag_id = 2
@@ -375,16 +310,16 @@ Target target is not usable for a chain-build
             expected = '"badnvr" is not a SCM URL or package N-V-R\n'
             self.assertMultiLineEqual(actual, expected)
             # Finally, assert that things were called as we expected.
-            activate_session_mock.assert_called_once_with(self.session, self.options)
+            self.activate_session_mock.assert_called_once_with(self.session, self.options)
             self.session.getBuildTarget.assert_called_once_with(target)
             self.session.getTag.assert_called_once_with(
                 dest_tag_id, strict=True)
             self.session.getFullInheritance.assert_called_once_with(
                 build_tag_id)
             self.session.chainBuild.assert_not_called()
-            running_in_bg_mock.assert_not_called()
+            self.running_in_bg_mock.assert_not_called()
             self.session.logout.assert_not_called()
-            watch_tasks_mock.assert_not_called()
+            self.watch_tasks_mock.assert_not_called()
 
         with mock.patch('sys.stderr', new_callable=six.StringIO) as stderr:
             source_args = [
@@ -450,32 +385,19 @@ Target target is not usable for a chain-build
             source_args = ['http://scm']
             args = [target] + source_args
 
-            progname = os.path.basename(sys.argv[0]) or 'koji'
-
             # args: target http://scm
             # expected: failed, only one src found
             with self.assertRaises(SystemExit) as ex:
                 handle_chain_build(self.options, self.session, args)
             self.assertExitCode(ex, 2)
             actual = stderr.getvalue()
-            expected = """Usage: %s chain-build [options] <target> <URL> [<URL> [:] <URL> [:] <URL> ...]
-(Specify the --help global option for a list of other help options)
-
-%s: error: You must specify at least one dependency between builds with : (colon)
-If there are no dependencies, use the build command instead
-""" % (progname, progname)
+            expected = self.format_error_message(
+                "You must specify at least one dependency between builds with : (colon)\n"
+                "If there are no dependencies, use the build command instead")
             self.assertMultiLineEqual(actual, expected)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
-    @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
-    def test_handle_chain_build_background(
-            self,
-            watch_tasks_mock,
-            running_in_bg_mock,
-            activate_session_mock,
-            stdout):
+    def test_handle_chain_build_background(self, stdout):
         target = 'target'
         dest_tag = 'dest_tag'
         dest_tag_id = 2
@@ -517,29 +439,21 @@ Task info: weburl/taskinfo?taskID=1
 """
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(self.session, self.options)
+        self.activate_session_mock.assert_called_once_with(self.session, self.options)
         self.session.getBuildTarget.assert_called_once_with(target)
         self.session.getTag.assert_called_once_with(dest_tag_id, strict=True)
         self.session.getFullInheritance.assert_called_once_with(build_tag_id)
         self.session.chainBuild.assert_called_once_with(
             sources, target, priority=priority)
-        running_in_bg_mock.assert_called_once()
+        self.running_in_bg_mock.assert_called_once()
         self.session.logout.assert_called()
-        watch_tasks_mock.assert_called_once_with(
+        self.watch_tasks_mock.assert_called_once_with(
             self.session, [task_id], quiet=self.options.quiet,
             poll_interval=self.options.poll_interval, topurl=self.options.topurl)
         self.assertEqual(rv, 0)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
-    @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
-    def test_handle_chain_build_quiet(
-            self,
-            watch_tasks_mock,
-            running_in_bg_mock,
-            activate_session_mock,
-            stdout):
+    def test_handle_chain_build_quiet(self, stdout):
         target = 'target'
         dest_tag = 'dest_tag'
         dest_tag_id = 2
@@ -580,29 +494,22 @@ Task info: weburl/taskinfo?taskID=1
         expected = ''
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(self.session, self.options)
+        self.activate_session_mock.assert_called_once_with(self.session, self.options)
         self.session.getBuildTarget.assert_called_once_with(target)
         self.session.getTag.assert_called_once_with(dest_tag_id, strict=True)
         self.session.getFullInheritance.assert_called_once_with(build_tag_id)
         self.session.chainBuild.assert_called_once_with(
             sources, target, priority=priority)
-        running_in_bg_mock.assert_called_once()
+        self.running_in_bg_mock.assert_called_once()
         self.session.logout.assert_called()
-        watch_tasks_mock.assert_called_once_with(
+        self.watch_tasks_mock.assert_called_once_with(
             self.session, [task_id], quiet=self.options.quiet,
             poll_interval=self.options.poll_interval, topurl=self.options.topurl)
         self.assertEqual(rv, 0)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    @mock.patch('koji_cli.commands._running_in_bg', return_value=True)
-    @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
-    def test_handle_chain_build_running_in_bg(
-            self,
-            watch_tasks_mock,
-            running_in_bg_mock,
-            activate_session_mock,
-            stdout):
+    def test_handle_chain_build_running_in_bg(self, stdout):
+        self.running_in_bg_mock.return_value = True
         target = 'target'
         dest_tag = 'dest_tag'
         dest_tag_id = 2
@@ -644,25 +551,19 @@ Task info: weburl/taskinfo?taskID=1
 """
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(self.session, self.options)
+        self.activate_session_mock.assert_called_once_with(self.session, self.options)
         self.session.getBuildTarget.assert_called_once_with(target)
         self.session.getTag.assert_called_once_with(dest_tag_id, strict=True)
         self.session.getFullInheritance.assert_called_once_with(build_tag_id)
         self.session.chainBuild.assert_called_once_with(
             sources, target, priority=priority)
-        running_in_bg_mock.assert_called_once()
+        self.running_in_bg_mock.assert_called_once()
         self.session.logout.assert_not_called()
-        watch_tasks_mock.assert_not_called()
+        self.watch_tasks_mock.assert_not_called()
         self.assertIsNone(rv)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
-    def test_handle_chain_build_nowait(
-            self,
-            watch_tasks_mock,
-            activate_session_mock,
-            stdout):
+    def test_handle_chain_build_nowait(self, stdout):
         target = 'target'
         dest_tag = 'dest_tag'
         dest_tag_id = 2
@@ -704,14 +605,14 @@ Task info: weburl/taskinfo?taskID=1
 """
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(self.session, self.options)
+        self.activate_session_mock.assert_called_once_with(self.session, self.options)
         self.session.getBuildTarget.assert_called_once_with(target)
         self.session.getTag.assert_called_once_with(dest_tag_id, strict=True)
         self.session.getFullInheritance.assert_called_once_with(build_tag_id)
         self.session.chainBuild.assert_called_once_with(
             sources, target, priority=priority)
         self.session.logout.assert_not_called()
-        watch_tasks_mock.assert_not_called()
+        self.watch_tasks_mock.assert_not_called()
         self.assertIsNone(rv)
 
 

@@ -75,9 +75,7 @@ Tags:
         self.session.listRPMs.assert_called_once_with(buildID=self.buildinfo['id'])
         self.assertEqual(self.session.listArchives.call_count, 4)
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    @mock.patch('sys.stdout', new_callable=StringIO)
-    def test_buildinfo_more_build_with_non_exist_build(self, stdout, stderr):
+    def test_buildinfo_more_build_with_non_exist_build(self):
         build = 'test-build-1-1'
         non_exist_build = 'test-build-11-12'
         buildinfo = copy.deepcopy(self.buildinfo)
@@ -96,12 +94,14 @@ Task: none
 Finished: Thu, 04 Mar 2021 14:45:40 UTC
 Tags: 
 """
-        expected_error = "No such build: %s\n\n" % non_exist_build
-        with self.assertRaises(SystemExit) as ex:
-            anon_handle_buildinfo(self.options, self.session, [non_exist_build, build])
-        self.assertExitCode(ex, 1)
-        self.assert_console_message(stderr, expected_error)
-        self.assert_console_message(stdout, expected_stdout)
+        arguments = [non_exist_build, build]
+        self.assert_system_exit(
+            anon_handle_buildinfo,
+            self.options, self.session, arguments,
+            stderr="No such build: %s\n\n" % non_exist_build,
+            stdout=expected_stdout,
+            activate_session=None,
+            exit_code=1)
         self.session.listTags.assert_called_once_with(build)
         self.session.getMavenBuild.assert_called_once_with(self.buildinfo['id'])
         self.session.getWinBuild.assert_called_once_with(self.buildinfo['id'])
@@ -109,12 +109,14 @@ Tags:
         self.assertEqual(self.session.getBuild.call_count, 2)
         self.assertEqual(self.session.listArchives.call_count, 4)
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_buildinfo_non_exist_build(self, stderr):
+    def test_buildinfo_non_exist_build(self):
         non_exist_build = 'test-build-11-12'
         self.session.getBuild.return_value = None
-        expected = "No such build: %s\n\n" % non_exist_build
-        with self.assertRaises(SystemExit) as ex:
-            anon_handle_buildinfo(self.options, self.session, [non_exist_build])
-        self.assertExitCode(ex, 1)
-        self.assert_console_message(stderr, expected)
+        arguments = [non_exist_build]
+        self.assert_system_exit(
+            anon_handle_buildinfo,
+            self.options, self.session, arguments,
+            stderr="No such build: %s\n\n" % non_exist_build,
+            stdout='',
+            activate_session=None,
+            exit_code=1)

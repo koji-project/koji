@@ -10,31 +10,91 @@ from . import utils
 
 class TestListTags(utils.CliTestCase):
     def setUp(self):
+        self.maxDiff = None
         self.options = mock.MagicMock()
         self.options.debug = False
         self.session = mock.MagicMock()
         self.session.getAPIVersion.return_value = koji.API_VERSION
+        self.ensure_connection = mock.patch('koji_cli.commands.ensure_connection').start()
+        self.list_tags_api = [{'arches': '',
+                               'id': 455,
+                               'locked': False,
+                               'maven_include_all': False,
+                               'maven_support': False,
+                               'name': 'test-tag-1',
+                               'perm': None,
+                               'perm_id': None},
+                              {'arches': '',
+                               'id': 456,
+                               'locked': True,
+                               'maven_include_all': False,
+                               'maven_support': False,
+                               'name': 'test-tag-2',
+                               'perm': 'admin',
+                               'perm_id': 1}]
+        self.error_format = """Usage: %s list-tags [options] [pattern]
+(Specify the --help global option for a list of other help options)
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_list_tags_non_exist_package(self, stderr):
+%s: error: {message}
+""" % (self.progname, self.progname)
+
+    def test_list_tags_non_exist_package(self):
         pkg = 'test-pkg'
-        expected = "Usage: %s list-tags [options] [pattern]\n" \
-                   "(Specify the --help global option for a list of other help options)\n\n" \
-                   "%s: error: No such package: %s\n" % (self.progname, self.progname, pkg)
         self.session.getPackage.return_value = None
-        with self.assertRaises(SystemExit) as ex:
-            anon_handle_list_tags(self.options, self.session, ['--package', pkg])
-        self.assertExitCode(ex, 2)
-        self.assert_console_message(stderr, expected)
+        arguments = ['--package', pkg]
+        self.assert_system_exit(
+            anon_handle_list_tags,
+            self.options, self.session, arguments,
+            stderr=self.format_error_message('No such package: %s' % pkg),
+            stdout='',
+            activate_session=None,
+            exit_code=2)
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_list_tags_non_exist_build(self, stderr):
+    def test_list_tags_non_exist_build(self):
         build = 'test-build'
-        expected = "Usage: %s list-tags [options] [pattern]\n" \
-                   "(Specify the --help global option for a list of other help options)\n\n" \
-                   "%s: error: No such build: %s\n" % (self.progname, self.progname, build)
         self.session.getBuild.return_value = None
-        with self.assertRaises(SystemExit) as ex:
-            anon_handle_list_tags(self.options, self.session, ['--build', build])
-        self.assertExitCode(ex, 2)
-        self.assert_console_message(stderr, expected)
+        arguments = ['--build', build]
+        self.assert_system_exit(
+            anon_handle_list_tags,
+            self.options, self.session, arguments,
+            stderr=self.format_error_message('No such build: %s' % build),
+            stdout='',
+            activate_session=None,
+            exit_code=2)
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
+
+    @mock.patch('sys.stdout', new_callable=StringIO)
+    def test_list_tags(self, stdout):
+        self.session.listTags.return_value = self.list_tags_api
+        rv = anon_handle_list_tags(self.options, self.session, [])
+        actual = stdout.getvalue()
+        expected = 'test-tag-1\ntest-tag-2\n'
+        self.assertMultiLineEqual(actual, expected)
+        self.assertEqual(rv, None)
+        self.session.listTags.assert_called_once_with(build=None, package=None)
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
+
+    @mock.patch('sys.stdout', new_callable=StringIO)
+    def test_list_tags_show_id_unlocked(self, stdout):
+        self.session.listTags.return_value = self.list_tags_api
+        rv = anon_handle_list_tags(self.options, self.session,
+                                   ['--show-id', '--unlocked'])
+        actual = stdout.getvalue()
+        expected = 'test-tag-1 [455]\n'
+        self.assertMultiLineEqual(actual, expected)
+        self.assertEqual(rv, None)
+        self.session.listTags.assert_called_once_with(build=None, package=None)
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
+
+    @mock.patch('sys.stdout', new_callable=StringIO)
+    def test_list_tags_verbose(self, stdout):
+        self.session.listTags.return_value = self.list_tags_api
+        rv = anon_handle_list_tags(self.options, self.session,
+                                   ['--show-id', '--verbose'])
+        actual = stdout.getvalue()
+        expected = 'test-tag-1 [455]\ntest-tag-2 [456] [LOCKED] [admin perm required]\n'
+        self.assertMultiLineEqual(actual, expected)
+        self.assertEqual(rv, None)
+        self.session.listTags.assert_called_once_with(build=None, package=None)
+        self.ensure_connection.assert_called_once_with(self.session, self.options)

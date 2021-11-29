@@ -1,6 +1,5 @@
 from __future__ import absolute_import
 
-from six.moves import StringIO
 import mock
 
 import koji
@@ -14,34 +13,43 @@ class TestAddTagInheritance(utils.CliTestCase):
         self.options.debug = False
         self.session = mock.MagicMock()
         self.session.getAPIVersion.return_value = koji.API_VERSION
+        self.activate_session_mock = mock.patch('koji_cli.commands.activate_session').start()
+        self.error_format = """Usage: %s add-tag-inheritance [options] <tag> <parent-tag>
+(Specify the --help global option for a list of other help options)
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_add_tag_inheritance_without_option(self, stderr):
-        expected = "Usage: %s add-tag-inheritance [options] <tag> <parent-tag>\n" \
-                   "(Specify the --help global option for a list of other help options)\n\n" \
-                   "%s: error: This command takes exctly two argument: " \
-                   "a tag name or ID and that tag's new parent name " \
-                   "or ID\n" % (self.progname, self.progname)
-        with self.assertRaises(SystemExit) as ex:
-            handle_add_tag_inheritance(self.options, self.session, [])
-        self.assertExitCode(ex, 2)
-        self.assert_console_message(stderr, expected)
+%s: error: {message}
+""" % (self.progname, self.progname)
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_add_tag_inheritance_non_exist_tag(self, stderr):
+    def test_add_tag_inheritance_without_option(self):
+        arguments = []
+        expected = self.format_error_message(
+            "This command takes exctly two argument: a tag name or ID and that tag's new "
+            "parent name or ID")
+        self.assert_system_exit(
+            handle_add_tag_inheritance,
+            self.options, self.session, arguments,
+            stdout='',
+            stderr=expected,
+            exit_code=2,
+            activate_session=None)
+        self.activate_session_mock.assert_not_called()
+
+    def test_add_tag_inheritance_non_exist_tag(self):
         tag = 'test-tag'
         parent_tag = 'parent-test-tag'
-        expected = "Usage: %s add-tag-inheritance [options] <tag> <parent-tag>\n" \
-                   "(Specify the --help global option for a list of other help options)\n\n" \
-                   "%s: error: No such tag: %s\n" % (self.progname, self.progname, tag)
+        arguments = [tag, parent_tag]
         self.session.getTag.return_value = None
-        with self.assertRaises(SystemExit) as ex:
-            handle_add_tag_inheritance(self.options, self.session, [tag, parent_tag])
-        self.assertExitCode(ex, 2)
-        self.assert_console_message(stderr, expected)
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_add_tag_inheritance_non_exist_parent_tag(self, stderr):
+        self.assert_system_exit(
+            handle_add_tag_inheritance,
+            self.options, self.session, arguments,
+            stdout='',
+            stderr=self.format_error_message("No such tag: %s" % tag),
+            exit_code=2,
+            activate_session=None)
+        self.activate_session_mock.assert_called_once_with(self.session, self.options)
+
+    def test_add_tag_inheritance_non_exist_parent_tag(self):
         side_effect_result = [{'arches': 'x86_64',
                                'extra': {},
                                'id': 1,
@@ -54,11 +62,13 @@ class TestAddTagInheritance(utils.CliTestCase):
                               None]
         tag = 'test-tag'
         parent_tag = 'parent-test-tag'
-        expected = "Usage: %s add-tag-inheritance [options] <tag> <parent-tag>\n" \
-                   "(Specify the --help global option for a list of other help options)\n\n" \
-                   "%s: error: No such tag: %s\n" % (self.progname, self.progname, parent_tag)
+        arguments = [tag, parent_tag]
         self.session.getTag.side_effect = side_effect_result
-        with self.assertRaises(SystemExit) as ex:
-            handle_add_tag_inheritance(self.options, self.session, [tag, parent_tag])
-        self.assertExitCode(ex, 2)
-        self.assert_console_message(stderr, expected)
+        self.assert_system_exit(
+            handle_add_tag_inheritance,
+            self.options, self.session, arguments,
+            stdout='',
+            stderr=self.format_error_message("No such tag: %s" % parent_tag),
+            exit_code=2,
+            activate_session=None)
+        self.activate_session_mock.assert_called_once_with(self.session, self.options)

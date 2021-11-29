@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 
 import mock
-from six.moves import StringIO
 
 import koji
 from koji_cli.commands import handle_add_target
@@ -14,32 +13,41 @@ class TestAddTarget(utils.CliTestCase):
         self.options.debug = False
         self.session = mock.MagicMock()
         self.session.getAPIVersion.return_value = koji.API_VERSION
+        self.activate_session_mock = mock.patch('koji_cli.commands.activate_session').start()
+        self.error_format = """Usage: %s add-target <name> <build tag> <dest tag>
+(Specify the --help global option for a list of other help options)
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_add_target_without_option(self, stderr):
-        expected = "Usage: %s add-target <name> <build tag> <dest tag>\n" \
-                   "(Specify the --help global option for a list of other help options)\n\n" \
-                   "%s: error: Please specify a target name, a build tag, " \
-                   "and destination tag\n" % (self.progname, self.progname)
-        with self.assertRaises(SystemExit) as ex:
-            handle_add_target(self.options, self.session, [])
-        self.assertExitCode(ex, 2)
-        self.assert_console_message(stderr, expected)
+%s: error: {message}
+""" % (self.progname, self.progname)
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_add_target_non_exist_tag(self, stderr):
+    def test_add_target_without_option(self,):
+        expected = self.format_error_message(
+            "Please specify a target name, a build tag, and destination tag")
+        self.assert_system_exit(
+            handle_add_target,
+            self.options, self.session, [],
+            stdout='',
+            stderr=expected,
+            exit_code=2,
+            activate_session=None)
+        self.activate_session_mock.assert_not_called()
+
+    def test_add_target_non_exist_tag(self):
         target = 'test-target'
         tag = 'test-tag'
         dest_tag = 'test-dest-tag'
-        expected = "No such tag: %s\n" % tag
+        arguments = [target, tag, dest_tag]
         self.session.getTag.return_value = None
-        with self.assertRaises(SystemExit) as ex:
-            handle_add_target(self.options, self.session, [target, tag, dest_tag])
-        self.assertExitCode(ex, 1)
-        self.assert_console_message(stderr, expected)
+        self.assert_system_exit(
+            handle_add_target,
+            self.options, self.session, arguments,
+            stdout='',
+            stderr="No such tag: %s\n" % tag,
+            exit_code=1,
+            activate_session=None)
+        self.activate_session_mock.assert_called_once_with(self.session, self.options)
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_add_target_tag_without_arch(self, stderr):
+    def test_add_target_tag_without_arch(self,):
         tag_info = {'arches': None,
                     'extra': {},
                     'id': 1,
@@ -52,15 +60,18 @@ class TestAddTarget(utils.CliTestCase):
         target = 'test-target'
         tag = 'test-tag'
         dest_tag = 'test-dest-tag'
-        expected = "Build tag has no arches: %s\n" % tag
         self.session.getTag.return_value = tag_info
-        with self.assertRaises(SystemExit) as ex:
-            handle_add_target(self.options, self.session, [target, tag, dest_tag])
-        self.assertExitCode(ex, 1)
-        self.assert_console_message(stderr, expected)
+        arguments = [target, tag, dest_tag]
+        self.assert_system_exit(
+            handle_add_target,
+            self.options, self.session, arguments,
+            stdout='',
+            stderr="Build tag has no arches: %s\n" % tag,
+            exit_code=1,
+            activate_session=None)
+        self.activate_session_mock.assert_called_once_with(self.session, self.options)
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_add_target_non_exist_dest_tag(self, stderr):
+    def test_add_target_non_exist_dest_tag(self):
         side_effect_result = [{'arches': 'x86_64',
                                'extra': {},
                                'id': 1,
@@ -77,23 +88,27 @@ class TestAddTarget(utils.CliTestCase):
         target = 'test-target'
         tag = 'test-tag'
         dest_tag = 'test-dest-tag'
-        expected = "No such destination tag: %s\n" % dest_tag
         self.session.getTag.side_effect = side_effect_result
-        with self.assertRaises(SystemExit) as ex:
-            handle_add_target(self.options, self.session, [target, tag, dest_tag])
-        self.assertExitCode(ex, 1)
-        self.assert_console_message(stderr, expected)
+        arguments = [target, tag, dest_tag]
+        self.assert_system_exit(
+            handle_add_target,
+            self.options, self.session, arguments,
+            stdout='',
+            stderr="No such destination tag: %s\n" % dest_tag,
+            exit_code=1,
+            activate_session=None)
+        self.activate_session_mock.assert_called_once_with(self.session, self.options)
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_add_target_more_option(self, stderr):
-        args = ['test-target', 'tag', 'test-dest-tag', 'tag-2']
-        expected = "Usage: %s add-target <name> <build tag> <dest tag>\n" \
-                   "(Specify the --help global option for a list of other help options)\n\n" \
-                   "%s: error: Incorrect number of arguments\n" % (self.progname, self.progname)
-        with self.assertRaises(SystemExit) as ex:
-            handle_add_target(self.options, self.session, args)
-        self.assertExitCode(ex, 2)
-        self.assert_console_message(stderr, expected)
+    def test_add_target_more_option(self):
+        arguments = ['test-target', 'tag', 'test-dest-tag', 'tag-2']
+        self.assert_system_exit(
+            handle_add_target,
+            self.options, self.session, arguments,
+            stdout='',
+            stderr=self.format_error_message("Incorrect number of arguments"),
+            exit_code=2,
+            activate_session=None)
+        self.activate_session_mock.assert_not_called()
 
     def test_add_target_valid(self):
         side_effect_result = [{'arches': 'x86_64',
@@ -126,25 +141,25 @@ class TestAddTarget(utils.CliTestCase):
         self.assertEqual(rv, None)
         self.session.createBuildTarget.assert_called_once_with(target, tag, target)
         self.session.getTag.assert_called_with(target)
+        self.activate_session_mock.assert_called_once_with(self.session, self.options)
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_add_target_without_perms(self, stderr):
+    def test_add_target_without_perms(self):
         side_effect_result = [False, False]
 
         target = 'test-target'
         tag = 'test-tag'
         self.session.hasPerm.side_effect = side_effect_result
-        with self.assertRaises(SystemExit) as ex:
-            handle_add_target(self.options, self.session, [target, tag])
-        self.assertExitCode(ex, 2)
-        expected_msg = """Usage: %s add-target <name> <build tag> <dest tag>
-(Specify the --help global option for a list of other help options)
-
-%s: error: This action requires target or admin privileges
-""" % (self.progname, self.progname)
-        self.assert_console_message(stderr, expected_msg)
+        arguments = [target, tag]
+        self.assert_system_exit(
+            handle_add_target,
+            self.options, self.session, arguments,
+            stdout='',
+            stderr=self.format_error_message("This action requires target or admin privileges"),
+            exit_code=2,
+            activate_session=None)
         self.session.createBuildTarget.assert_not_called()
         self.session.getTag.assert_not_called()
+        self.activate_session_mock.assert_called_once_with(self.session, self.options)
 
     def test_add_target_help(self):
         self.assert_help(
