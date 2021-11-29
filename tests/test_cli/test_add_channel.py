@@ -19,87 +19,84 @@ class TestAddChannel(utils.CliTestCase):
         self.channel_id = 1
         self.options = mock.MagicMock()
         self.session = mock.MagicMock()
+        self.activate_session_mock = mock.patch('koji_cli.commands.activate_session').start()
+        self.error_format = """Usage: %s add-channel [options] <channel_name>
+(Specify the --help global option for a list of other help options)
+
+%s: error: {message}
+""" % (self.progname, self.progname)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_add_channel(self, activate_session_mock, stdout):
+    def test_handle_add_channel(self, stdout):
         self.session.addChannel.return_value = self.channel_id
         rv = handle_add_channel(self.options, self.session,
                                 ['--description', self.description, self.channel_name])
         actual = stdout.getvalue()
         expected = '%s added: id %s\n' % (self.channel_name, self.channel_id)
         self.assertMultiLineEqual(actual, expected)
-        activate_session_mock.assert_called_once_with(self.session, self.options)
+        self.activate_session_mock.assert_called_once_with(self.session, self.options)
         self.session.addChannel.assert_called_once_with(self.channel_name,
                                                         description=self.description)
         self.assertNotEqual(rv, 1)
 
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_add_channel_exist(self, activate_session_mock, stderr):
+    def test_handle_add_channel_exist(self):
         expected_api = 'channel %s already exists (id=%s)' % (self.channel_name, self.channel_id)
         expected = 'channel %s already exists\n' % self.channel_name
 
         self.session.addChannel.side_effect = koji.GenericError(expected_api)
-        with self.assertRaises(SystemExit) as ex:
-            handle_add_channel(self.options, self.session,
-                               ['--description', self.description, self.channel_name])
-        self.assertExitCode(ex, 1)
-        actual = stderr.getvalue()
-        self.assertMultiLineEqual(actual, expected)
-        activate_session_mock.assert_called_once_with(self.session, self.options)
+        arguments = ['--description', self.description, self.channel_name]
+        self.assert_system_exit(
+            handle_add_channel,
+            self.options, self.session, arguments,
+            stdout='',
+            stderr=expected,
+            exit_code=1,
+            activate_session=None)
+        self.activate_session_mock.assert_called_once_with(self.session, self.options)
         self.session.addChannel.assert_called_once_with(self.channel_name,
                                                         description=self.description)
 
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_add_channel_older_hub(self, activate_session_mock, stderr):
+    def test_handle_add_channel_older_hub(self):
         expected_api = 'Invalid method: addChannel'
         expected = 'addChannel is available on hub from Koji 1.26 version, your version ' \
                    'is 1.25.1\n'
         self.session.getKojiVersion.return_value = '1.25.1'
 
         self.session.addChannel.side_effect = koji.GenericError(expected_api)
-        with self.assertRaises(SystemExit) as ex:
-            handle_add_channel(self.options, self.session,
-                               ['--description', self.description, self.channel_name])
-        self.assertExitCode(ex, 1)
-        actual = stderr.getvalue()
-        self.assertMultiLineEqual(actual, expected)
-        activate_session_mock.assert_called_once_with(self.session, self.options)
+        arguments = ['--description', self.description, self.channel_name]
+        self.assert_system_exit(
+            handle_add_channel,
+            self.options, self.session, arguments,
+            stdout='',
+            stderr=expected,
+            exit_code=1,
+            activate_session=None)
+        self.activate_session_mock.assert_called_once_with(self.session, self.options)
         self.session.addChannel.assert_called_once_with(self.channel_name,
                                                         description=self.description)
 
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_add_channel_without_args(self, activate_session_mock, stderr):
-        with self.assertRaises(SystemExit) as ex:
-            handle_add_channel(self.options, self.session, [])
-        self.assertExitCode(ex, 2)
-        actual = stderr.getvalue()
-        expected_stderr = """Usage: %s add-channel [options] <channel_name>
-(Specify the --help global option for a list of other help options)
+    def test_handle_add_channel_without_args(self):
+        arguments = []
+        self.assert_system_exit(
+            handle_add_channel,
+            self.options, self.session, arguments,
+            stdout='',
+            stderr=self.format_error_message('Please specify one channel name'),
+            exit_code=2,
+            activate_session=None)
+        self.activate_session_mock.assert_not_called()
 
-%s: error: Please specify one channel name
-""" % (self.progname, self.progname)
-        self.assertMultiLineEqual(actual, expected_stderr)
-        activate_session_mock.assert_not_called()
-
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_add_channel_more_args(self, activate_session_mock, stderr):
+    def test_handle_add_channel_more_args(self):
         channel_2 = 'channel-2'
-        with self.assertRaises(SystemExit) as ex:
-            handle_add_channel(self.options, self.session, [self.channel_name, channel_2])
-        self.assertExitCode(ex, 2)
-        actual = stderr.getvalue()
-        expected_stderr = """Usage: %s add-channel [options] <channel_name>
-(Specify the --help global option for a list of other help options)
-
-%s: error: Please specify one channel name
-""" % (self.progname, self.progname)
-        self.assertMultiLineEqual(actual, expected_stderr)
-        activate_session_mock.assert_not_called()
+        arguments = [self.channel_name, channel_2]
+        self.assert_system_exit(
+            handle_add_channel,
+            self.options, self.session, arguments,
+            stdout='',
+            stderr=self.format_error_message('Please specify one channel name'),
+            exit_code=2,
+            activate_session=None)
+        self.activate_session_mock.assert_not_called()
 
     def test_handle_add_channel_help(self):
         self.assert_help(

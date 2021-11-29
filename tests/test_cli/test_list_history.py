@@ -20,6 +20,12 @@ class TestListHistory(utils.CliTestCase):
         self.options.debug = False
         self.session = mock.MagicMock()
         self.maxDiff = None
+        self.ensure_connection = mock.patch('koji_cli.commands.ensure_connection').start()
+        self.error_format = """Usage: %s list-history [options]
+(Specify the --help global option for a list of other help options)
+
+%s: error: {message}
+""" % (self.progname, self.progname)
 
     @staticmethod
     def get_expected_date_active_action(item, act='add', utc=False):
@@ -214,23 +220,8 @@ class TestListHistory(utils.CliTestCase):
                                       active)
         return expected
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_list_history_without_option(self, stderr):
-        expected = "Usage: %s list-history [options]\n" \
-                   "(Specify the --help global option for a list of other " \
-                   "help options)\n\n" \
-                   "%s: error: Please specify an option to limit " \
-                   "the query\n" % (self.progname, self.progname)
-        self.session.getChannel.return_value = None
-        with self.assertRaises(SystemExit) as ex:
-            anon_handle_list_history(self.options, self.session, [])
-        self.assertExitCode(ex, 2)
-        self.assert_console_message(stderr, expected)
-
-    @mock.patch('sys.stderr', new_callable=StringIO)
     @mock.patch('sys.stdout', new_callable=StringIO)
-    @mock.patch('koji_cli.commands.ensure_connection')
-    def test_list_history_channel_utc(self, ensure_connection_mock, stdout, stderr):
+    def test_list_history_channel_utc(self, stdout):
         # test case when channel is still active
         channel_name = 'default'
 
@@ -253,14 +244,12 @@ class TestListHistory(utils.CliTestCase):
         }
         self.session.queryHistory.return_value = dict_history
         expected = self.get_expected_channel(dict_history['host_channels'][0], utc=True)
-        anon_handle_list_history(self.options, self.session,
-                                 ['--channel', channel_name])
+        anon_handle_list_history(self.options, self.session, ['--channel', channel_name])
         self.assert_console_message(stdout, expected)
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
     @mock.patch('sys.stdout', new_callable=StringIO)
-    @mock.patch('koji_cli.commands.ensure_connection')
-    def test_list_history_channel(self, ensure_connection_mock, stdout, stderr):
+    def test_list_history_channel(self, stdout):
         # test case when channel is still active
         channel_name = 'default'
 
@@ -286,6 +275,8 @@ class TestListHistory(utils.CliTestCase):
         anon_handle_list_history(self.options, self.session,
                                  ['--channel', channel_name])
         self.assert_console_message(stdout, expected)
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
+        self.ensure_connection.reset_mock()
 
         # when channel name is dropped
         dict_history = {
@@ -309,21 +300,24 @@ class TestListHistory(utils.CliTestCase):
         anon_handle_list_history(self.options, self.session,
                                  ['--channel', channel_name])
         self.assert_console_message(stdout, expected)
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
+        self.ensure_connection.reset_mock()
 
         # test case when channel is not existing
-        expected = "No such channel: %s" % channel_name + "\n"
         self.session.untaggedBuilds.return_value = {}
         self.session.getChannel.return_value = None
-        with self.assertRaises(SystemExit) as ex:
-            anon_handle_list_history(self.options, self.session,
-                                     ['--channel', channel_name])
-        self.assertExitCode(ex, 1)
-        self.assert_console_message(stderr, expected)
+        arguments = ['--channel', channel_name]
+        self.assert_system_exit(
+            anon_handle_list_history,
+            self.options, self.session, arguments,
+            stderr="No such channel: %s" % channel_name + "\n",
+            stdout='',
+            activate_session=None,
+            exit_code=1)
+        self.ensure_connection.assert_not_called()
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
     @mock.patch('sys.stdout', new_callable=StringIO)
-    @mock.patch('koji_cli.commands.ensure_connection')
-    def test_list_history_host(self, ensure_connection_mock, stdout, stderr):
+    def test_list_history_host(self, stdout):
         host_name = 'kojibuilder'
 
         # new host
@@ -352,6 +346,8 @@ class TestListHistory(utils.CliTestCase):
         anon_handle_list_history(self.options, self.session,
                                  ['--host', host_name])
         self.assert_console_message(stdout, expected)
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
+        self.ensure_connection.reset_mock()
 
         # dropped
         dict_history = {
@@ -380,20 +376,24 @@ class TestListHistory(utils.CliTestCase):
         anon_handle_list_history(self.options, self.session,
                                  ['--host', host_name])
         self.assert_console_message(stdout, expected)
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
+        self.ensure_connection.reset_mock()
 
         # test case when host is not existing
-        expected = "No such host: %s" % host_name + "\n"
         self.session.untaggedBuilds.return_value = {}
         self.session.getHost.return_value = None
-        with self.assertRaises(SystemExit) as ex:
-            anon_handle_list_history(self.options, self.session,
-                                     ['--host', host_name])
-        self.assertExitCode(ex, 1)
-        self.assert_console_message(stderr, expected)
+        arguments = ['--host', host_name]
+        self.assert_system_exit(
+            anon_handle_list_history,
+            self.options, self.session, arguments,
+            stderr="No such host: %s" % host_name + "\n",
+            stdout='',
+            activate_session=None,
+            exit_code=1)
+        self.ensure_connection.assert_not_called()
 
     @mock.patch('sys.stdout', new_callable=StringIO)
-    @mock.patch('koji_cli.commands.ensure_connection')
-    def test_list_history_build(self, ensure_connection_mock, stdout):
+    def test_list_history_build(self, stdout):
         build_nvr = 'test-build-1.1-11'
 
         # when build is tagged
@@ -423,6 +423,8 @@ class TestListHistory(utils.CliTestCase):
         anon_handle_list_history(self.options, self.session,
                                  ['--build', build_nvr])
         self.assert_console_message(stdout, expected)
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
+        self.ensure_connection.reset_mock()
 
         # when build is untagged
         dict_history = {
@@ -450,6 +452,8 @@ class TestListHistory(utils.CliTestCase):
         anon_handle_list_history(self.options, self.session,
                                  ['--build', build_nvr])
         self.assert_console_message(stdout, expected)
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
+        self.ensure_connection.reset_mock()
 
         # test case when build nvr is not existing
         expected = "No matching build found: %s" % build_nvr + "\n"
@@ -458,6 +462,8 @@ class TestListHistory(utils.CliTestCase):
             anon_handle_list_history(self.options, self.session,
                                      ['--build', build_nvr])
         self.assertEqual(str(ex.exception), expected)
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
+        self.ensure_connection.reset_mock()
 
         # test case when build has wrong format
         build = 'test-build'
@@ -467,10 +473,10 @@ class TestListHistory(utils.CliTestCase):
             anon_handle_list_history(self.options, self.session,
                                      ['--build', build_nvr])
         self.assertEqual(str(ex.exception), expected)
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
 
     @mock.patch('sys.stdout', new_callable=StringIO)
-    @mock.patch('koji_cli.commands.ensure_connection')
-    def test_list_history_package(self, ensure_connection_mock, stdout):
+    def test_list_history_package(self, stdout):
         dict_history = {
             'tag_listing': [
                 {'active': True,
@@ -535,6 +541,8 @@ class TestListHistory(utils.CliTestCase):
         anon_handle_list_history(self.options, self.session,
                                  ['--package', package])
         self.assert_console_message(stdout, expected)
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
+        self.ensure_connection.reset_mock()
 
         # test case when package s not existing
         expected = "No such entry in table package: %s" % package + "\n"
@@ -543,10 +551,10 @@ class TestListHistory(utils.CliTestCase):
             anon_handle_list_history(self.options, self.session,
                                      ['--package', package])
         self.assertEqual(str(ex.exception), expected)
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
 
     @mock.patch('sys.stdout', new_callable=StringIO)
-    @mock.patch('koji_cli.commands.ensure_connection')
-    def test_list_history_tag(self, ensure_connection_mock, stdout):
+    def test_list_history_tag(self, stdout):
         dict_history = {
             'tag_config': [
                 {'active': True,
@@ -588,6 +596,8 @@ class TestListHistory(utils.CliTestCase):
             dict_history['tag_extra'][0])
         anon_handle_list_history(self.options, self.session, ['--tag', tag])
         self.assert_console_message(stdout, expected)
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
+        self.ensure_connection.reset_mock()
 
         # test case when tag s not existing
         expected = "No such entry in table tag: %s" % tag + "\n"
@@ -596,10 +606,10 @@ class TestListHistory(utils.CliTestCase):
             anon_handle_list_history(self.options, self.session,
                                      ['--tag', tag])
         self.assertEqual(str(ex.exception), expected)
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
 
     @mock.patch('sys.stdout', new_callable=StringIO)
-    @mock.patch('koji_cli.commands.ensure_connection')
-    def test_list_history_editor(self, ensure_connection_mock, stdout):
+    def test_list_history_editor(self, stdout):
         dict_history = {
             'build_target_config': [
                 {'_created_by': True,
@@ -786,6 +796,8 @@ class TestListHistory(utils.CliTestCase):
         anon_handle_list_history(self.options, self.session,
                                  ['--editor', editor])
         self.assert_console_message(stdout, expected)
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
+        self.ensure_connection.reset_mock()
 
         # test case when tag is not existing
         expected = "No such user: %s" % editor + "\n"
@@ -794,10 +806,10 @@ class TestListHistory(utils.CliTestCase):
             anon_handle_list_history(self.options, self.session,
                                      ['--editor', editor])
         self.assertEqual(str(ex.exception), expected)
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
 
     @mock.patch('sys.stdout', new_callable=StringIO)
-    @mock.patch('koji_cli.commands.ensure_connection')
-    def test_list_history_user(self, ensure_connection_mock, stdout):
+    def test_list_history_user(self, stdout):
         dict_history = {
             'cg_users': [],
             'tag_package_owners': [
@@ -856,6 +868,8 @@ class TestListHistory(utils.CliTestCase):
         anon_handle_list_history(self.options, self.session,
                                  ['--user', username])
         self.assert_console_message(stdout, expected)
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
+        self.ensure_connection.reset_mock()
 
         # test case when user is not existing
         expected = "No such user: %s" % username + "\n"
@@ -864,10 +878,10 @@ class TestListHistory(utils.CliTestCase):
             anon_handle_list_history(self.options, self.session,
                                      ['--user', username])
         self.assertEqual(str(ex.exception), expected)
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
 
     @mock.patch('sys.stdout', new_callable=StringIO)
-    @mock.patch('koji_cli.commands.ensure_connection')
-    def test_list_history_permissions(self, ensure_connection_mock, stdout):
+    def test_list_history_permissions(self, stdout):
         permission = 'dist-repo'
         # when user has permission
         dict_history = {
@@ -892,6 +906,8 @@ class TestListHistory(utils.CliTestCase):
         anon_handle_list_history(self.options, self.session,
                                  ['--permission', permission])
         self.assert_console_message(stdout, expected)
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
+        self.ensure_connection.reset_mock()
 
         # when user does not have permission
         dict_history = {
@@ -916,6 +932,8 @@ class TestListHistory(utils.CliTestCase):
         anon_handle_list_history(self.options, self.session,
                                  ['--permission', permission])
         self.assert_console_message(stdout, expected)
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
+        self.ensure_connection.reset_mock()
 
         # test case when perm is not existing
         expected = "No such entry in table permissions: %s" % permission + "\n"
@@ -924,10 +942,10 @@ class TestListHistory(utils.CliTestCase):
             anon_handle_list_history(self.options, self.session,
                                      ['--permission', permission])
         self.assertEqual(str(ex.exception), expected)
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
 
     @mock.patch('sys.stdout', new_callable=StringIO)
-    @mock.patch('koji_cli.commands.ensure_connection')
-    def test_list_history_cg(self, ensure_connection_mock, stdout):
+    def test_list_history_cg(self, stdout):
         cg = 'test-cg'
 
         # when cg is new
@@ -951,6 +969,8 @@ class TestListHistory(utils.CliTestCase):
         expected = self.get_expected_cg_user(dict_history['cg_users'][0])
         anon_handle_list_history(self.options, self.session, ['--cg', cg])
         self.assert_console_message(stdout, expected)
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
+        self.ensure_connection.reset_mock()
 
         # when cg is dropped
         dict_history = {
@@ -973,6 +993,8 @@ class TestListHistory(utils.CliTestCase):
         expected = self.get_expected_cg_user(dict_history['cg_users'][0])
         anon_handle_list_history(self.options, self.session, ['--cg', cg])
         self.assert_console_message(stdout, expected)
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
+        self.ensure_connection.reset_mock()
 
         # test case when cg is not existing
         expected = "No such entry in table content_generator: %s" % cg + "\n"
@@ -980,10 +1002,10 @@ class TestListHistory(utils.CliTestCase):
         with self.assertRaises(koji.GenericError) as ex:
             anon_handle_list_history(self.options, self.session, ['--cg', cg])
         self.assertEqual(str(ex.exception), expected)
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
 
     @mock.patch('sys.stdout', new_callable=StringIO)
-    @mock.patch('koji_cli.commands.ensure_connection')
-    def test_list_history_external_repo(self, ensure_connection_mock, stdout):
+    def test_list_history_external_repo(self, stdout):
         dict_history = {
             'external_repo_config': [
                 {'active': True,
@@ -1025,6 +1047,8 @@ class TestListHistory(utils.CliTestCase):
         anon_handle_list_history(self.options, self.session,
                                  ['--external-repo', external_repo])
         self.assert_console_message(stdout, expected)
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
+        self.ensure_connection.reset_mock()
 
         # test case when external repo is not existing
         expected = "No such entry in table external_repo: " \
@@ -1034,10 +1058,10 @@ class TestListHistory(utils.CliTestCase):
             anon_handle_list_history(self.options, self.session,
                                      ['--external-repo', external_repo])
         self.assertEqual(str(ex.exception), expected)
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
 
     @mock.patch('sys.stdout', new_callable=StringIO)
-    @mock.patch('koji_cli.commands.ensure_connection')
-    def test_list_history_build_target(self, ensure_connection_mock, stdout):
+    def test_list_history_build_target(self, stdout):
         build_target = 'test-build-target'
 
         # test when build target is new
@@ -1065,6 +1089,8 @@ class TestListHistory(utils.CliTestCase):
         anon_handle_list_history(self.options, self.session,
                                  ['--build-target', build_target])
         self.assert_console_message(stdout, expected)
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
+        self.ensure_connection.reset_mock()
 
         # test when build target is dropped
         dict_history = {
@@ -1091,6 +1117,8 @@ class TestListHistory(utils.CliTestCase):
         anon_handle_list_history(self.options, self.session,
                                  ['--build-target', build_target])
         self.assert_console_message(stdout, expected)
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
+        self.ensure_connection.reset_mock()
 
         # test case when build target is not existing
         expected = "No such entry in table build_target: " \
@@ -1100,10 +1128,10 @@ class TestListHistory(utils.CliTestCase):
             anon_handle_list_history(self.options, self.session,
                                      ['--build-target', build_target])
         self.assertEqual(str(ex.exception), expected)
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
 
     @mock.patch('sys.stdout', new_callable=StringIO)
-    @mock.patch('koji_cli.commands.ensure_connection')
-    def test_list_history_xkey(self, ensure_connection_mock, stdout):
+    def test_list_history_xkey(self, stdout):
         dict_history = {
             'tag_extra': [
                 {'active': True,
@@ -1126,19 +1154,29 @@ class TestListHistory(utils.CliTestCase):
 
         anon_handle_list_history(self.options, self.session, ['--xkey', xkey])
         self.assert_console_message(stdout, expected)
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    @mock.patch('koji_cli.commands.ensure_connection')
-    def test_list_history_without_arguments(self, ensure_connection_mock, stderr):
-        expected = """Usage: %s list-history [options]
-(Specify the --help global option for a list of other help options)
+    def test_list_history_without_limited_and_all(self):
+        arguments = []
+        self.assert_system_exit(
+            anon_handle_list_history,
+            self.options, self.session, arguments,
+            stderr=self.format_error_message("Please specify an option to limit the query"),
+            stdout='',
+            activate_session=None,
+            exit_code=2)
+        self.ensure_connection.assert_not_called()
 
-%s: error: Please specify an option to limit the query
-""" % (self.progname, self.progname)
-        with self.assertRaises(SystemExit) as ex:
-            anon_handle_list_history(self.options, self.session, [])
-        self.assertExitCode(ex, 2)
-        self.assert_console_message(stderr, expected)
+    def test_list_history_with_arg(self):
+        arguments = ['args']
+        self.assert_system_exit(
+            anon_handle_list_history,
+            self.options, self.session, arguments,
+            stderr=self.format_error_message("This command takes no arguments"),
+            stdout='',
+            activate_session=None,
+            exit_code=2)
+        self.ensure_connection.assert_not_called()
 
     def test_handle_list_history_help(self):
         self.assert_help(

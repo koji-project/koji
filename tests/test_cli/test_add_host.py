@@ -1,8 +1,5 @@
 from __future__ import absolute_import
 
-import os
-import sys
-
 import mock
 import six
 
@@ -13,12 +10,17 @@ from . import utils
 
 class TestAddHost(utils.CliTestCase):
 
-    # Show long diffs in error output...
-    maxDiff = None
+    def setUp(self):
+        self.maxDiff = None
+        self.activate_session_mock = mock.patch('koji_cli.commands.activate_session').start()
+        self.error_format = """Usage: %s add-host [options] <hostname> <arch> [<arch> ...]
+(Specify the --help global option for a list of other help options)
+
+%s: error: {message}
+""" % (self.progname, self.progname)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_add_host(self, activate_session_mock, stdout):
+    def test_handle_add_host(self, stdout):
         host = 'host'
         host_id = 1
         arches = ['arch1', 'arch2']
@@ -41,15 +43,13 @@ class TestAddHost(utils.CliTestCase):
         expected = 'host added: id 1\n'
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(session, options)
+        self.activate_session_mock.assert_called_once_with(session, options)
         session.getHost.assert_called_once_with(host)
         session.addHost.assert_called_once_with(host, arches, **kwargs)
         self.assertNotEqual(rv, 1)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_add_host_no_krb_principal(
-            self, activate_session_mock, stdout):
+    def test_handle_add_host_no_krb_principal(self, stdout):
         host = 'host'
         host_id = 1
         arches = ['arch1', 'arch2']
@@ -68,14 +68,12 @@ class TestAddHost(utils.CliTestCase):
         expected = 'host added: id 1\n'
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(session, options)
+        self.activate_session_mock.assert_called_once_with(session, options)
         session.getHost.assert_called_once_with(host)
         session.addHost.assert_called_once_with(host, arches, force=False)
         self.assertNotEqual(rv, 1)
 
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_add_host_dupl(self, activate_session_mock, stderr):
+    def test_handle_add_host_dupl(self):
         host = 'host'
         host_id = 1
         arches = ['arch1', 'arch2']
@@ -90,45 +88,36 @@ class TestAddHost(utils.CliTestCase):
         # Run it and check immediate output
         # args: host, arch1, arch2, --krb-principal=krb
         # expected: failed, host already exists
-        with self.assertRaises(SystemExit) as ex:
-            handle_add_host(options, session, arguments)
-        self.assertExitCode(ex, 1)
-        actual = stderr.getvalue()
-        expected = 'host is already in the database\n'
-        self.assertMultiLineEqual(actual, expected)
+        self.assert_system_exit(
+            handle_add_host,
+            options, session, arguments,
+            stdout='',
+            stderr='host is already in the database\n',
+            exit_code=1,
+            activate_session=None)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(session, options)
+        self.activate_session_mock.assert_called_once_with(session, options)
         session.getHost.assert_called_once_with(host)
         session.addHost.assert_not_called()
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_add_host_without_args(self, activate_session_mock, stderr, stdout):
+    def test_handle_add_host_without_args(self):
         arguments = []
         options = mock.MagicMock()
-        progname = os.path.basename(sys.argv[0]) or 'koji'
 
         # Mock out the xmlrpc server
         session = mock.MagicMock()
 
         # Run it and check immediate output
-        with self.assertRaises(SystemExit) as ex:
-            handle_add_host(options, session, arguments)
-        self.assertExitCode(ex, 2)
-        actual_stdout = stdout.getvalue()
-        actual_stderr = stderr.getvalue()
-        expected_stdout = ''
-        expected_stderr = """Usage: %s add-host [options] <hostname> <arch> [<arch> ...]
-(Specify the --help global option for a list of other help options)
-
-%s: error: Please specify a hostname and at least one arch
-""" % (progname, progname)
-        self.assertMultiLineEqual(actual_stdout, expected_stdout)
-        self.assertMultiLineEqual(actual_stderr, expected_stderr)
+        self.assert_system_exit(
+            handle_add_host,
+            options, session, arguments,
+            stdout='',
+            stderr=self.format_error_message('Please specify a hostname and at least one arch'),
+            exit_code=2,
+            activate_session=None)
 
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_not_called()
+        self.activate_session_mock.assert_not_called()
         session.hasHost.assert_not_called()
         session.addHost.assert_not_called()
 
@@ -147,8 +136,7 @@ Options:
 """ % self.progname)
 
     @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_add_host_failed(self, activate_session_mock, stderr):
+    def test_handle_add_host_failed(self, stderr):
         host = 'host'
         arches = ['arch1', 'arch2']
         krb_principal = '--krb-principal=krb'
@@ -171,6 +159,6 @@ Options:
         expected = ''
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(session, options)
+        self.activate_session_mock.assert_called_once_with(session, options)
         session.getHost.assert_called_once_with(host)
         session.addHost.assert_called_once_with(host, arches, **kwargs)
