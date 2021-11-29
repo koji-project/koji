@@ -74,10 +74,28 @@ class TimeoutHandler(MessagingHandler):
         self.log.debug('connection to %s opened successfully', event.connection.hostname)
         self.send_msgs(event)
 
+    @property
+    def topic_prefix(self):
+        """Normalize topic_prefix value that the user configured.
+
+        RabbitMQ brokers require that topics start with "/topic/"
+        ActiveMQ brokers require that topics start with "topic://"
+
+        If the user specified a prefix that begins with one or the other, use
+        that. For backwards compatibility, if the user chose neither, prepend
+        "topic://".
+        """
+        koji_topic_prefix = self.conf.get('broker', 'topic_prefix')
+        if koji_topic_prefix.startswith('/topic/'):
+            return koji_topic_prefix
+        if koji_topic_prefix.startswith('topic://'):
+            return koji_topic_prefix
+        return 'topic://' + koji_topic_prefix
+
     def send_msgs(self, event):
-        prefix = self.conf.get('broker', 'topic_prefix')
         for msg in self.msgs:
-            address = 'topic://' + prefix + '.' + msg['address']
+            # address is like "topic://koji.package.add"
+            address = self.topic_prefix + '.' + msg['address']
             if address in self.senders:
                 sender = self.senders[address]
                 self.log.debug('retrieved cached sender for %s', address)
