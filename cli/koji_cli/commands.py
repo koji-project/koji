@@ -3210,8 +3210,15 @@ def anon_handle_list_pkgs(goptions, session, args):
         if options.show_blocked:
             parser.error("--show-blocked makes sense only with --tag,"
                          " --owner or --package")
+    if options.show_blocked:
+        opts['with_blocked'] = options.show_blocked
 
-    data = session.listPackages(**opts)
+    try:
+        data = session.listPackages(**opts)
+    except koji.ParameterError:
+        del opts['with_blocked']
+        data = session.listPackages(**opts)
+
     if not data:
         error("(no matching packages)")
     if not options.quiet:
