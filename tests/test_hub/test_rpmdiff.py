@@ -22,7 +22,8 @@ class TestRPMDiff(unittest.TestCase):
         d.differs.return_value = False
         Rpmdiff.return_value = d
         self.assertFalse(kojihub.rpmdiff('basepath', ['12/1234/foo', '23/2345/bar'], hashes={}))
-        Rpmdiff.assert_called_once_with('basepath/12/1234/foo', 'basepath/23/2345/bar', ignore='S5TN')
+        Rpmdiff.assert_called_once_with(
+            'basepath/12/1234/foo', 'basepath/23/2345/bar', ignore='S5TN')
 
     @mock.patch('koji.rpmdiff.Rpmdiff')
     def test_rpmdiff_simple_failure(self, Rpmdiff):
@@ -31,7 +32,8 @@ class TestRPMDiff(unittest.TestCase):
         Rpmdiff.return_value = d
         with self.assertRaises(koji.BuildError):
             kojihub.rpmdiff('basepath', ['12/1234/foo', '13/1345/bar'], hashes={})
-        Rpmdiff.assert_called_once_with('basepath/12/1234/foo', 'basepath/13/1345/bar', ignore='S5TN')
+        Rpmdiff.assert_called_once_with(
+            'basepath/12/1234/foo', 'basepath/13/1345/bar', ignore='S5TN')
         d.textdiff.assert_called_once_with()
 
     def test_rpmdiff_real_target(self):
@@ -88,10 +90,11 @@ class TestRPMDiff(unittest.TestCase):
         # dummy file info
         defattr = [19, 33188, 1531970408, 0, 0, 2, 1, -1, -1, 'root', 'root', '02d2c91b']
 
-        rpm_dict_old = {'a_file': defattr }
+        rpm_dict_old = {'a_file': defattr}
 
         def check_diff_result(opt, idx, value, textdiff):
             orig_init = koji.rpmdiff.Rpmdiff.__init__
+
             def init_mock(*args, **kwargs):
                 # need to init rpm_dict every time
                 attr = defattr[:]
@@ -147,14 +150,14 @@ class TestCheckNoarchRpms(unittest.TestCase):
     def test_check_noarch_rpms_empty_invocation(self, rpmdiff):
         originals = ['foo', 'bar']
         result = kojihub.check_noarch_rpms('basepath', copy.copy(originals))
-        self.assertEquals(result, originals)
+        self.assertEqual(result, originals)
 
     @mock.patch('kojihub.rpmdiff')
     def test_check_noarch_rpms_simple_invocation(self, rpmdiff):
         originals = ['12/1234/foo.noarch.rpm', '23/2345/foo.noarch.rpm']
         result = kojihub.check_noarch_rpms('basepath', copy.copy(originals))
-        self.assertEquals(result, originals[0:1])
-        self.assertEquals(len(rpmdiff.mock_calls), 1)
+        self.assertEqual(result, originals[0:1])
+        self.assertEqual(len(rpmdiff.mock_calls), 1)
 
     @mock.patch('kojihub.rpmdiff')
     def test_check_noarch_rpms_with_duplicates(self, rpmdiff):
@@ -164,7 +167,7 @@ class TestCheckNoarchRpms(unittest.TestCase):
             'bar.noarch.rpm',
         ]
         result = kojihub.check_noarch_rpms('basepath', copy.copy(originals))
-        self.assertEquals(result, ['bar.noarch.rpm'])
+        self.assertEqual(result, ['bar.noarch.rpm'])
         rpmdiff.assert_called_once_with('basepath', originals, hashes={})
 
     @mock.patch('kojihub.rpmdiff')
@@ -176,7 +179,7 @@ class TestCheckNoarchRpms(unittest.TestCase):
             'bar.noarch.rpm',
         ]
         result = kojihub.check_noarch_rpms('basepath', copy.copy(originals))
-        self.assertEquals(result, [
+        self.assertEqual(result, [
             'foo.x86_64.rpm', 'bar.x86_64.rpm', 'bar.noarch.rpm'
         ])
         rpmdiff.assert_called_once_with(

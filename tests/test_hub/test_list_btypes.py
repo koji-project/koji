@@ -17,15 +17,15 @@ class TestListBTypes(unittest.TestCase):
         ret = kojihub.list_btypes()
         QueryProcessor.assert_called_once()
         query.execute.assert_called_once()
-        self.assertEquals(ret, "return value")
+        self.assertEqual(ret, "return value")
 
         args, kwargs = QueryProcessor.call_args
-        self.assertEquals(args, ())
+        self.assertEqual(args, ())
         qp = QP(**kwargs)
-        self.assertEquals(qp.tables, ['btype'])
-        self.assertEquals(qp.columns, ['id', 'name'])
-        self.assertEquals(qp.clauses, [])
-        self.assertEquals(qp.joins, None)
+        self.assertEqual(qp.tables, ['btype'])
+        self.assertEqual(qp.columns, ['id', 'name'])
+        self.assertEqual(qp.clauses, [])
+        self.assertEqual(qp.joins, None)
 
         QueryProcessor.reset_mock()
 
@@ -35,16 +35,16 @@ class TestListBTypes(unittest.TestCase):
         ret = kojihub.list_btypes({'name': 'rpm'})
         QueryProcessor.assert_called_once()
         query.execute.assert_called_once()
-        self.assertEquals(ret, "return value")
+        self.assertEqual(ret, "return value")
 
         args, kwargs = QueryProcessor.call_args
-        self.assertEquals(args, ())
+        self.assertEqual(args, ())
         qp = QP(**kwargs)
-        self.assertEquals(qp.tables, ['btype'])
-        self.assertEquals(qp.columns, ['id', 'name'])
-        self.assertEquals(qp.clauses, ['btype.name = %(name)s'])
-        self.assertEquals(qp.values, {'name': 'rpm'})
-        self.assertEquals(qp.joins, None)
+        self.assertEqual(qp.tables, ['btype'])
+        self.assertEqual(qp.columns, ['id', 'name'])
+        self.assertEqual(qp.clauses, ['btype.name = %(name)s'])
+        self.assertEqual(qp.values, {'name': 'rpm'})
+        self.assertEqual(qp.joins, None)
 
         QueryProcessor.reset_mock()
 
@@ -54,17 +54,17 @@ class TestListBTypes(unittest.TestCase):
         ret = kojihub.list_btypes({'id': 1}, {'order': 'id'})
         QueryProcessor.assert_called_once()
         query.execute.assert_called_once()
-        self.assertEquals(ret, "return value")
+        self.assertEqual(ret, "return value")
 
         args, kwargs = QueryProcessor.call_args
-        self.assertEquals(args, ())
+        self.assertEqual(args, ())
         qp = QP(**kwargs)
-        self.assertEquals(qp.tables, ['btype'])
-        self.assertEquals(qp.columns, ['id', 'name'])
-        self.assertEquals(qp.clauses, ['btype.id = %(id)s'])
-        self.assertEquals(qp.values, {'id': 1})
-        self.assertEquals(qp.opts, {'order': 'id'})
-        self.assertEquals(qp.joins, None)
+        self.assertEqual(qp.tables, ['btype'])
+        self.assertEqual(qp.columns, ['id', 'name'])
+        self.assertEqual(qp.clauses, ['btype.id = %(id)s'])
+        self.assertEqual(qp.values, {'id': 1})
+        self.assertEqual(qp.opts, {'order': 'id'})
+        self.assertEqual(qp.joins, None)
 
         QueryProcessor.reset_mock()
 

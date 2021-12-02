@@ -47,64 +47,63 @@ class TestHost(unittest.TestCase):
     def test_task_unwait(self, context, processor):
         host = kojihub.Host(id=1234)
         host.taskUnwait(parent=123)
-        self.assertEquals(len(processor.mock_calls), 6)
+        self.assertEqual(len(processor.mock_calls), 6)
         update1 = mock.call(
             'task',
             clauses=['id=%(parent)s'],
             values=mock.ANY,
         )
-        self.assertEquals(processor.call_args_list[0], update1)
+        self.assertEqual(processor.call_args_list[0], update1)
         update2 = mock.call(
             'task',
             clauses=['parent=%(parent)s'],
             values=mock.ANY,
         )
-        self.assertEquals(processor.call_args_list[1], update2)
-
+        self.assertEqual(processor.call_args_list[1], update2)
 
     @mock.patch('kojihub.UpdateProcessor')
     @mock.patch('kojihub.context')
     def test_task_set_wait_all_tasks(self, context, processor):
         host = kojihub.Host(id=1234)
         host.taskSetWait(parent=123, tasks=None)
-        self.assertEquals(len(processor.mock_calls), 6)
+        self.assertEqual(len(processor.mock_calls), 6)
         update1 = mock.call(
             'task',
             clauses=['id=%(parent)s'],
             values=mock.ANY,
         )
-        self.assertEquals(processor.call_args_list[0], update1)
+        self.assertEqual(processor.call_args_list[0], update1)
         update2 = mock.call(
             'task',
             clauses=['parent=%(parent)s'],
             values=mock.ANY,
         )
-        self.assertEquals(processor.call_args_list[1], update2)
+        self.assertEqual(processor.call_args_list[1], update2)
 
     @mock.patch('kojihub.UpdateProcessor')
     @mock.patch('kojihub.context')
     def test_task_set_wait_some_tasks(self, context, processor):
         host = kojihub.Host(id=1234)
         host.taskSetWait(parent=123, tasks=[234, 345])
-        self.assertEquals(len(processor.mock_calls), 9)
+        self.assertEqual(len(processor.mock_calls), 9)
         update1 = mock.call(
             'task',
             clauses=['id=%(parent)s'],
             values=mock.ANY,
         )
-        self.assertEquals(processor.call_args_list[0], update1)
+        self.assertEqual(processor.call_args_list[0], update1)
         update2 = mock.call(
             'task',
             clauses=['id IN %(tasks)s', 'parent=%(parent)s'],
             values=mock.ANY,
         )
-        self.assertEquals(processor.call_args_list[1], update2)
+        self.assertEqual(processor.call_args_list[1], update2)
         update3 = mock.call(
             'task',
             clauses=['id NOT IN %(tasks)s', 'parent=%(parent)s', 'awaited=true'],
             values=mock.ANY,
         )
-        self.assertEquals(processor.call_args_list[2], update3)
+        self.assertEqual(processor.call_args_list[2], update3)
 
     @mock.patch('kojihub.context')
     def test_task_wait_check(self, context):
@@ -119,8 +118,8 @@ class TestHost(unittest.TestCase):
         host = kojihub.Host(id=1234)
         finished, unfinished = host.taskWaitCheck(parent=123)
         cursor.execute.assert_called_once()
-        self.assertEquals(finished, [2, 3])
-        self.assertEquals(unfinished, [1, 4])
+        self.assertEqual(finished, [2, 3])
+        self.assertEqual(unfinished, [1, 4])
 
     @mock.patch('kojihub.context')
     def test_task_wait(self, context):
@@ -134,4 +133,4 @@ class TestHost(unittest.TestCase):
         ]
         host = kojihub.Host(id=1234)
         host.taskWait(parent=123)
-        self.assertEquals(len(cursor.execute.mock_calls), 3)
+        self.assertEqual(len(cursor.execute.mock_calls), 3)

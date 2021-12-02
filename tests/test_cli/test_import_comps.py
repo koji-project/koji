@@ -4,10 +4,10 @@ import os
 import sys
 import unittest
 import json
+import pytest
 
 import mock
 import six
-from nose.plugins.skip import SkipTest
 
 try:
     import libcomps
@@ -222,9 +222,9 @@ class TestImportComps(utils.CliTestCase):
         session.groupListAdd.assert_not_called()
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    def test_import_comps_libcomps(self, stdout):
+    def _test_import_comps_libcomps(self, stdout):
         if libcomps is None:
-            raise SkipTest('no libcomps')
+            pytest.skip('no libcomps')
         comps_file = os.path.dirname(__file__) + '/data/comps-example.xml'
         stdout_file = os.path.dirname(
             __file__) + '/data/comps-example.libcomps.out'
@@ -238,9 +238,9 @@ class TestImportComps(utils.CliTestCase):
             stdout)
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    def test_import_comps_sample_libcomps(self, stdout):
+    def _test_import_comps_sample_libcomps(self, stdout):
         if libcomps is None:
-            raise SkipTest('no libcomps')
+            pytest.skip('no libcomps')
         comps_file = os.path.dirname(__file__) + '/data/comps-sample.xml'
         stdout_file = os.path.dirname(
             __file__) + '/data/comps-sample.libcomps.out'
@@ -256,9 +256,9 @@ class TestImportComps(utils.CliTestCase):
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.libcomps', new=None)
     @mock.patch('koji_cli.commands.yumcomps', create=True, new=yumcomps)
-    def test_import_comps_yumcomps(self, stdout):
+    def _test_import_comps_yumcomps(self, stdout):
         if yumcomps is None:
-            raise SkipTest('no yum.comps')
+            pytest.skip('no yum.comps')
         comps_file = os.path.dirname(__file__) + '/data/comps-example.xml'
         stdout_file = os.path.dirname(
             __file__) + '/data/comps-example.yumcomps.out'
@@ -274,9 +274,9 @@ class TestImportComps(utils.CliTestCase):
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.libcomps', new=None)
     @mock.patch('koji_cli.commands.yumcomps', create=True, new=yumcomps)
-    def test_import_comps_sample_yumcomps(self, stdout):
+    def _test_import_comps_sample_yumcomps(self, stdout):
         if yumcomps is None:
-            raise SkipTest('no yum.comps')
+            pytest.skip('no yum.comps')
         comps_file = os.path.dirname(__file__) + '/data/comps-sample.xml'
         stdout_file = os.path.dirname(
             __file__) + '/data/comps-sample.yumcomps.out'
