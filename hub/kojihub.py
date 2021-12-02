@@ -2410,6 +2410,7 @@ def remove_channel(channel_name, force=False):
     Removing channel will remove also remove complete history
     for that channel.
     """
+    logger.warning("removeChannel call is deprecated and will be removed in 1.30")
     context.session.assertPerm('admin')
     channel_id = get_channel_id(channel_name, strict=True)
     # check for task references
