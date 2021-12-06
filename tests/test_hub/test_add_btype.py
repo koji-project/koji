@@ -28,9 +28,9 @@ class TestAddBType(unittest.TestCase):
 
         args, kwargs = InsertProcessor.call_args
         ip = IP(*args, **kwargs)
-        self.assertEquals(ip.table, 'btype')
-        self.assertEquals(ip.data, {'name': 'new_btype'})
-        self.assertEquals(ip.rawdata, {})
+        self.assertEqual(ip.table, 'btype')
+        self.assertEqual(ip.data, {'name': 'new_btype'})
+        self.assertEqual(ip.rawdata, {})
         session.assertPerm.assert_called_with('admin')
 
         for m in mocks:

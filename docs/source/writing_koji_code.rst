@@ -662,7 +662,7 @@ You will need to install the following packages to actually run the tests.
  * ``python3-dateutil``
  * ``python3-mock``
  * ``python3-multilib``
- * ``python3-nose``
+ * ``python3-pytest``
  * ``python3-psycopg2``
  * ``python3-qpid-proton``
  * ``python3-requests``

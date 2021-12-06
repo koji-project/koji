@@ -31,7 +31,7 @@ class TestParseTaskParams(utils.CliTestCase):
     def __run_parseTask_test(self, method, params, expect):
         self.session.getTaskRequest.return_value = params
         lines = _parseTaskParams(self.session, method, 1, '/mnt/koji')
-        self.assertEquals(lines, expect)
+        self.assertEqual(lines, expect)
 
     def test_error_with_param(self):
         params = []
@@ -115,15 +115,16 @@ class TestParseTaskParams(utils.CliTestCase):
 
     def test_wrapperRPM(self):
         target = 'test-target'
-        params = ['http://path.to/pkg.spec', {'name': 'build-tag'},
-                  self.build_templ,
-                  {
-                    'id': 1,
-                    'method': 'wrapperRPM',
-                    'arch': 'x86_64',
-                    'request': [1, {'name': target}, self.build_templ, 'task', 'opts']
-                  },
-                  {'wrapRPM-test': True}]
+        params = [
+            'http://path.to/pkg.spec', {'name': 'build-tag'},
+            self.build_templ,
+            {
+                'id': 1,
+                'method': 'wrapperRPM',
+                'arch': 'x86_64',
+                'request': [1, {'name': target}, self.build_templ, 'task', 'opts']
+            },
+            {'wrapRPM-test': True}]
         expect = ["Spec File URL: %s" % params[0]]
         expect.append("Build Tag: %s" % params[1]['name'])
         expect.append("Build: %s" % self.build_templ['nvr'])
@@ -135,11 +136,11 @@ class TestParseTaskParams(utils.CliTestCase):
 
     def test_chainmaven(self):
         params = [{
-                    'maven-pkg-1': {'build-opt': '--test'},
-                    'maven-pkg-2': {'build-opt': '-O2'},
-                  },
-                  'build-target',
-                  {'chainmaven-test': True}]
+            'maven-pkg-1': {'build-opt': '--test'},
+            'maven-pkg-2': {'build-opt': '-O2'},
+        },
+            'build-target',
+            {'chainmaven-test': True}]
         expect = ["Builds:"]
         for pkg, opt in params[0].items():
             expect.append("  %s" % pkg)
@@ -258,9 +259,9 @@ class TestParseTaskParams(utils.CliTestCase):
         params = [
             [1, 2, 3, 4],        # dependant task ids
             [
-              ['buildSRPMFromSCM', ['param1', 'param2'], {'scm': 'github.com'}],
-              ['build', ['param1', 'param2'], {'arch': 'x86_64'}],
-              ['tagBuild', ['tagname', 'param2'], {}]
+                ['buildSRPMFromSCM', ['param1', 'param2'], {'scm': 'github.com'}],
+                ['build', ['param1', 'param2'], {'arch': 'x86_64'}],
+                ['tagBuild', ['tagname', 'param2'], {}]
             ]
         ]
         expect = ["Dependant Tasks: %s" % ", ".join([str(dep) for dep in params[0]])]
@@ -278,14 +279,14 @@ class TestParseTaskParams(utils.CliTestCase):
 
     def test_chainbuild(self):
         params = [[
-                    ['base-grp', 'desktop-grp'],
-                    ['base-grp', 'devel-grp'],
-                  ],
-                  'f26',
-                  {'extra': 'f26-pre-release'}]
+            ['base-grp', 'desktop-grp'],
+            ['base-grp', 'devel-grp'],
+        ],
+            'f26',
+            {'extra': 'f26-pre-release'}]
         expect = ["Build Groups:"]
         for i, grp in enumerate(params[0]):
-            expect.append('  %i: %s' % (i+1, ', '.join(grp)))
+            expect.append('  %i: %s' % (i + 1, ', '.join(grp)))
         expect.append("Build Target: %s" % params[1])
         expect.append("Options:")
         expect.append("  extra: f26-pre-release")
@@ -576,7 +577,7 @@ Build: bash-4.4.12-5.fc26 (1)
 
         with self.assertRaises(koji.GenericError) as cm:
             _printTaskInfo(session, task_id, '/')
-        self.assertEquals(str(cm.exception), "No such task: %d" % task_id)
+        self.assertEqual(str(cm.exception), "No such task: %d" % task_id)
 
 
 class TestTaskInfo(utils.CliTestCase):

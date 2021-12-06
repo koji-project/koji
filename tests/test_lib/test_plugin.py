@@ -84,7 +84,7 @@ class TestCallbackDecorators(unittest.TestCase):
         self.assertEqual(newfunc(1, 2, 3), [1, 2, 3])
 
 
-class TestError(Exception):
+class ErrorTest(Exception):
     """Raised by a test callback defined below"""
     pass
 
@@ -103,12 +103,12 @@ class TestCallbacks(unittest.TestCase):
         self.callbacks.append([cbtype, args, kwargs])
 
     def error_callback(self, cbtype, *args, **kwargs):
-        raise TestError
+        raise ErrorTest
 
     @koji.plugin.ignore_error
     def safe_error_callback(self, cbtype, *args, **kwargs):
         self.callbacks.append([cbtype, args, kwargs])
-        raise TestError
+        raise ErrorTest
 
     @koji.plugin.convert_datetime
     def datetime_callback(self, cbtype, *args, **kwargs):
@@ -299,8 +299,8 @@ class TestPluginTracker(unittest.TestCase):
 
     @mock.patch('logging.getLogger')
     def test_bad_plugin(self, getLogger):
-        self._set_module_side_effect(TestError)
-        with self.assertRaises(TestError):
+        self._set_module_side_effect(ErrorTest)
+        with self.assertRaises(ErrorTest):
             self.tracker.load('hello')
         self.assertEqual(self.tracker.get('hello'), None)
         getLogger.assert_called_once()

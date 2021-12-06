@@ -5,7 +5,6 @@ import weakref
 import unittest
 
 import koji
-from koji.xmlrpcplus import Fault
 
 
 class TestClientSession(unittest.TestCase):
@@ -84,8 +83,8 @@ class TestFastUpload(unittest.TestCase):
         fileobj.read.side_effect = ['123123', '']
         self.file_mock.return_value = fileobj
         self.ksession._callMethod.side_effect = [
-            {'size': 6, 'hexdigest': '041c012d'}, # rawUpload
-            {'size': 6, 'hexdigest': '041c012d'}, # checkUpload
+            {'size': 6, 'hexdigest': '041c012d'},  # rawUpload
+            {'size': 6, 'hexdigest': '041c012d'},  # checkUpload
         ]
         self.ksession.fastUpload('file', 'target', blocksize=1024)
 
@@ -96,8 +95,8 @@ class TestFastUpload(unittest.TestCase):
         self.file_mock.return_value = fileobj
         self.getsize_mock.return_value = 123456
         self.ksession._callMethod.side_effect = [
-            {'size': 6, 'hexdigest': '041c012d'}, # rawUpload
-            {'size': 6, 'hexdigest': '041c012d'}, # checkUpload
+            {'size': 6, 'hexdigest': '041c012d'},  # rawUpload
+            {'size': 6, 'hexdigest': '041c012d'},  # checkUpload
         ]
         self.ksession.fastUpload('file', 'target', blocksize=1024)
 
@@ -108,8 +107,8 @@ class TestFastUpload(unittest.TestCase):
         self.file_mock.return_value = fileobj
         self.getsize_mock.return_value = 123456
         self.ksession._callMethod.side_effect = [
-            {'size': 6, 'hexdigest': '041c012d'}, # rawUpload
-            {'size': 3, 'hexdigest': '041c012d'}, # checkUpload
+            {'size': 6, 'hexdigest': '041c012d'},  # rawUpload
+            {'size': 3, 'hexdigest': '041c012d'},  # checkUpload
         ]
         with self.assertRaises(koji.GenericError):
             self.ksession.fastUpload('file', 'target', blocksize=1024)
@@ -121,8 +120,8 @@ class TestFastUpload(unittest.TestCase):
         self.file_mock.return_value = fileobj
         self.getsize_mock.return_value = 123456
         self.ksession._callMethod.side_effect = [
-            {'size': 6, 'hexdigest': '041c012d'}, # rawUpload
-            {'size': 3, 'hexdigest': 'deadbeef'}, # checkUpload
+            {'size': 6, 'hexdigest': '041c012d'},  # rawUpload
+            {'size': 3, 'hexdigest': 'deadbeef'},  # checkUpload
         ]
         with self.assertRaises(koji.GenericError):
             self.ksession.fastUpload('file', 'target', blocksize=1024)
@@ -133,8 +132,8 @@ class TestFastUpload(unittest.TestCase):
         fileobj.read.side_effect = ['123123', '']
         self.file_mock.return_value = fileobj
         self.ksession._callMethod.side_effect = [
-            {'size': 6, 'hexdigest': '041c012d'}, # rawUpload
-            {'size': 6, 'hexdigest': '041c012d'}, # checkUpload
+            {'size': 6, 'hexdigest': '041c012d'},  # rawUpload
+            {'size': 6, 'hexdigest': '041c012d'},  # checkUpload
         ]
         self.ksession.fastUpload('file', 'target', blocksize=1024, volume='foobar')
         for call in self.ksession._callMethod.call_args_list:
@@ -171,8 +170,7 @@ class TestMultiCall(unittest.TestCase):
         self.ksession._sendCall.assert_not_called()
 
     def test_multiCall_strict(self):
-        self.ksession._sendCall.return_value = [[], {'faultCode': 1000,
-                                               'faultString': 'msg'}]
+        self.ksession._sendCall.return_value = [[], {'faultCode': 1000, 'faultString': 'msg'}]
         self.ksession.multicall = True
         self.ksession.methodA('a', 'b', c='c')
         self.ksession.methodB(1, 2, 3)
@@ -204,7 +202,7 @@ class TestMultiCall(unittest.TestCase):
 
     def test_MultiCallHack_weakref_validation(self):
         expected_exc = 'The session parameter must be a weak reference'
-        with self.assertRaisesRegexp(TypeError, expected_exc):
+        with self.assertRaisesRegex(TypeError, expected_exc):
             koji.MultiCallHack(self.ksession)
 
         # This should not raise an exception

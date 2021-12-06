@@ -30,11 +30,11 @@ class TestAddArchiveType(unittest.TestCase):
 
         args, kwargs = InsertProcessor.call_args
         ip = IP(*args, **kwargs)
-        self.assertEquals(ip.table, 'archivetypes')
-        self.assertEquals(ip.data, {'name': 'deb',
-                                    'description': 'Debian package',
-                                    'extensions': 'deb'})
-        self.assertEquals(ip.rawdata, {})
+        self.assertEqual(ip.table, 'archivetypes')
+        self.assertEqual(ip.data, {'name': 'deb',
+                                   'description': 'Debian package',
+                                   'extensions': 'deb'})
+        self.assertEqual(ip.rawdata, {})
         session.assertPerm.assert_called_with('admin')
 
         for m in mocks:

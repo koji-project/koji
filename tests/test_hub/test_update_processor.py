@@ -13,13 +13,13 @@ class TestUpdateProcessor(unittest.TestCase):
         proc = kojihub.UpdateProcessor('sometable', data={'foo': 'bar'})
         actual = str(proc)
         expected = 'UPDATE sometable SET foo = %(data.foo)s'
-        self.assertEquals(actual, expected)
+        self.assertEqual(actual, expected)
 
     def test_to_values_from_data(self):
         proc = kojihub.UpdateProcessor('sometable', data={'foo': 'bar'})
         actual = proc.get_values()
         expected = {'data.foo': 'bar'}
-        self.assertEquals(actual, expected)
+        self.assertEqual(actual, expected)
 
     @mock.patch('kojihub.context')
     def test_simple_execution_with_iterate(self, context):

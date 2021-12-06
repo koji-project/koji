@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 import unittest
+import pytest
 
-from nose.tools import raises
 
 import koji.policy
 
@@ -24,10 +24,10 @@ class myvarTest(koji.policy.CompareTest):
 
 class TestBasicTests(unittest.TestCase):
 
-    @raises(NotImplementedError)
     def test_base_test(self):
-        obj = koji.policy.BaseSimpleTest('something')
-        obj.run({})
+        with pytest.raises(NotImplementedError):
+            obj = koji.policy.BaseSimpleTest('something')
+            obj.run({})
 
     def test_true_test(self):
         obj = koji.policy.TrueTest('something')
@@ -108,9 +108,9 @@ class TestBasicTests(unittest.TestCase):
         self.assertTrue(obj.run({'thing': 0}))
         self.assertFalse(obj.run({}))
 
-    @raises(koji.GenericError)
     def test_invalid_compare_test(self):
-        koji.policy.CompareTest('some thing LOL 2')
+        with pytest.raises(koji.GenericError):
+            koji.policy.CompareTest('some thing LOL 2')
 
 
 class TestDiscovery(unittest.TestCase):
@@ -143,7 +143,7 @@ class TestRuleHandling(unittest.TestCase):
         rules = ['true :: allow']
         obj = koji.policy.SimpleRuleSet(rules, tests)
         result = obj.all_actions()
-        self.assertEquals(result, ['allow'])
+        self.assertEqual(result, ['allow'])
 
     def test_simple_rule_set_apply(self):
         tests = koji.policy.findSimpleTests(koji.policy.__dict__)
@@ -164,18 +164,18 @@ class TestRuleHandling(unittest.TestCase):
 
         rules = ['bool_check :: True', 'all :: False']
         for val in True, False:
-            data = {'bool_field' : val}
+            data = {'bool_field': val}
             obj = koji.policy.SimpleRuleSet(rules, tests)
             action = obj.apply(data)
             self.assertEqual(action, str(val))
 
         rules = ['match_check foo* :: foo', 'match_check * :: bar']
-        data = {'match_field' : 'foo1234'}
+        data = {'match_field': 'foo1234'}
         obj = koji.policy.SimpleRuleSet(rules, tests)
         action = obj.apply(data)
         self.assertEqual(action, 'foo')
 
-        data = {'match_field' : 'not foo'}
+        data = {'match_field': 'not foo'}
         obj = koji.policy.SimpleRuleSet(rules, tests)
         action = obj.apply(data)
         self.assertEqual(action, 'bar')
@@ -197,21 +197,21 @@ class TestRuleHandling(unittest.TestCase):
         # no match
         rules = ['none :: allow']
         obj = koji.policy.SimpleRuleSet(rules, tests)
-        self.assertEquals(obj.last_rule(), None)
+        self.assertEqual(obj.last_rule(), None)
         action = obj.apply(data)
-        self.assertEquals(obj.last_rule(), '(no match)')
+        self.assertEqual(obj.last_rule(), '(no match)')
 
         # simple rule
         rules = ['all :: allow']
         obj = koji.policy.SimpleRuleSet(rules, tests)
         action = obj.apply(data)
-        self.assertEquals(obj.last_rule(), rules[0])
+        self.assertEqual(obj.last_rule(), rules[0])
 
         # negate rule
         rules = ['none !! allow']
         obj = koji.policy.SimpleRuleSet(rules, tests)
         action = obj.apply(data)
-        self.assertEquals(obj.last_rule(), rules[0])
+        self.assertEqual(obj.last_rule(), rules[0])
 
         # nested rule
         policy = '''
@@ -225,7 +225,7 @@ all :: {
         obj = koji.policy.SimpleRuleSet(rules, tests)
         action = obj.apply(data)
         expected = 'all :: ... all :: ... all :: allow'
-        self.assertEquals(obj.last_rule(), expected)
+        self.assertEqual(obj.last_rule(), expected)
 
     def test_unclosed_brace(self):
         tests = koji.policy.findSimpleTests(koji.policy.__dict__)
@@ -311,4 +311,4 @@ has DEPTH :: {
         self.assertEqual(action, 'END')
 
         actions = set(obj.all_actions())
-        self.assertEquals(actions, set(['1', '2', '3', '4', 'ERROR', 'END']))
+        self.assertEqual(actions, set(['1', '2', '3', '4', 'ERROR', 'END']))

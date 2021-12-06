@@ -6,13 +6,11 @@ import tempfile
 
 import koji
 import kojihub
-from koji.util import dslice_ex
 
 IP = kojihub.InsertProcessor
 
 
 class TestDistRepoInit(unittest.TestCase):
-
 
     def getInsert(self, *args, **kwargs):
         insert = IP(*args, **kwargs)
@@ -20,16 +18,15 @@ class TestDistRepoInit(unittest.TestCase):
         self.inserts.append(insert)
         return insert
 
-
     def setUp(self):
         self.tempdir = tempfile.mkdtemp()
         self.pathinfo = koji.PathInfo(self.tempdir)
         mock.patch('koji.pathinfo', new=self.pathinfo).start()
 
         self.InsertProcessor = mock.patch('kojihub.InsertProcessor',
-                side_effect=self.getInsert).start()
+                                          side_effect=self.getInsert).start()
         self.inserts = []
- 
+
         self.get_tag = mock.patch('kojihub.get_tag').start()
         self.get_event = mock.patch('kojihub.get_event').start()
         self.nextval = mock.patch('kojihub.nextval').start()
@@ -39,10 +36,8 @@ class TestDistRepoInit(unittest.TestCase):
         self.get_event.return_value = 12345
         self.nextval.return_value = 99
 
-
     def tearDown(self):
         mock.patch.stopall()
-
 
     def test_simple_dist_repo_init(self):
 
@@ -51,29 +46,27 @@ class TestDistRepoInit(unittest.TestCase):
         self.InsertProcessor.assert_called_once()
 
         ip = self.inserts[0]
-        self.assertEquals(ip.table, 'repo')
+        self.assertEqual(ip.table, 'repo')
         data = {'dist': True, 'create_event': 12345, 'tag_id': 42, 'id': 99,
-                    'state': koji.REPO_STATES['INIT']}
-        self.assertEquals(ip.data, data)
-        self.assertEquals(ip.rawdata, {})
+                'state': koji.REPO_STATES['INIT']}
+        self.assertEqual(ip.data, data)
+        self.assertEqual(ip.rawdata, {})
 
         # no comps option
         self.copyfile.assert_not_called()
 
-
     def test_dist_repo_init_with_comps(self):
 
         # simple case
-        kojihub.dist_repo_init('tag', ['key'], {'arch': ['x86_64'],
-                    'comps': 'COMPSFILE'})
+        kojihub.dist_repo_init('tag', ['key'], {'arch': ['x86_64'], 'comps': 'COMPSFILE'})
         self.InsertProcessor.assert_called_once()
 
         ip = self.inserts[0]
-        self.assertEquals(ip.table, 'repo')
+        self.assertEqual(ip.table, 'repo')
         data = {'dist': True, 'create_event': 12345, 'tag_id': 42, 'id': 99,
-                    'state': koji.REPO_STATES['INIT']}
-        self.assertEquals(ip.data, data)
-        self.assertEquals(ip.rawdata, {})
+                'state': koji.REPO_STATES['INIT']}
+        self.assertEqual(ip.data, data)
+        self.assertEqual(ip.rawdata, {})
 
         self.copyfile.assert_called_once()
 
@@ -102,7 +95,7 @@ class TestDistRepo(unittest.TestCase):
         assert_policy.assert_called_once_with('dist_repo', {'tag': 'tag'})
         dist_repo_init.assert_called_once()
         make_task.assert_called_once()
-        self.assertEquals(ret, make_task.return_value)
+        self.assertEqual(ret, make_task.return_value)
         exports.getBuildConfig.assert_called_once_with('tag')
 
 
@@ -143,9 +136,9 @@ class TestDistRepoMove(unittest.TestCase):
         # generate pkglist file
         self.files.append('pkglist')
         plist = os.path.join(uploaddir, 'pkglist')
-        nvrs = ['aaa-1.0-2', 'bbb-3.0-5', 'ccc-8.0-13','ddd-21.0-34']
+        nvrs = ['aaa-1.0-2', 'bbb-3.0-5', 'ccc-8.0-13', 'ddd-21.0-34']
         self.rpms = {}
-        self.builds ={}
+        self.builds = {}
         self.key = '4c8da725'
         with open(plist, 'wt', encoding='utf-8') as f_pkglist:
             for nvr in nvrs:
@@ -192,19 +185,15 @@ class TestDistRepoMove(unittest.TestCase):
         self.get_rpm.side_effect = self.our_get_rpm
         self.get_build.side_effect = self.our_get_build
 
-
     def tearDown(self):
         mock.patch.stopall()
         shutil.rmtree(self.topdir)
 
-
     def our_get_rpm(self, rpminfo, strict=False, multi=False):
         return self.rpms[rpminfo]
 
-
     def our_get_build(self, buildInfo, strict=False):
         return self.builds[buildInfo]
-
 
     def test_distRepoMove(self):
         session = kojihub.context.session = mock.MagicMock()
@@ -220,5 +209,4 @@ class TestDistRepoMove(unittest.TestCase):
                 raise Exception("Missing file: %s" % path)
             data = open(path, 'rt', encoding='utf-8').read()
             data.strip()
-            self.assertEquals(data, basename)
-
+            self.assertEqual(data, basename)
