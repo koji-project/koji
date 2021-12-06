@@ -20,20 +20,19 @@ class TestGetRPMFile(unittest.TestCase):
 
         get_rpm.side_effect = mock_get_rpm
         re = kojihub.RootExports().getRPMFile(1, 'filename')
-        self.assertEquals(re, {})
+        self.assertEqual(re, {})
         with self.assertRaises(koji.GenericError) as cm:
             kojihub.RootExports().getRPMFile(1, 'filename', strict=True)
-        self.assertEquals(cm.exception.args[0], 'msg')
+        self.assertEqual(cm.exception.args[0], 'msg')
 
     @mock.patch('kojihub.get_rpm', return_value={'id': 1, 'build_id': None})
     def test_getRPMFile_external_rpm(self, get_rpm):
         re = kojihub.RootExports().getRPMFile(1, 'filename')
-        self.assertEquals(re, {})
+        self.assertEqual(re, {})
         with self.assertRaises(koji.GenericError) as cm:
             kojihub.RootExports().getRPMFile(1, 'filename', strict=True)
-        self.assertEquals(cm.exception.args[0],
-                          'Can not get RPM file,'
-                          ' because RPM: 1 is not internal')
+        self.assertEqual(cm.exception.args[0],
+                         'Can not get RPM file, because RPM: 1 is not internal')
 
     @mock.patch('kojihub.get_rpm', return_value={'id': 1, 'build_id': 1})
     @mock.patch('kojihub.get_build', return_value={'id': 1})
@@ -42,11 +41,10 @@ class TestGetRPMFile(unittest.TestCase):
     @mock.patch('os.path.exists', return_value=False)
     def test_getRPMFile_no_rpmfile(self, ope, pr, pb, get_build, get_rpm):
         re = kojihub.RootExports().getRPMFile(1, 'filename')
-        self.assertEquals(re, {})
+        self.assertEqual(re, {})
         with self.assertRaises(koji.GenericError) as cm:
             kojihub.RootExports().getRPMFile(1, 'filename', strict=True)
-        self.assertEquals(cm.exception.args[0],
-                          "RPM package file of 1 doesn't exist")
+        self.assertEqual(cm.exception.args[0], "RPM package file of 1 doesn't exist")
 
     @mock.patch('kojihub.get_rpm', return_value={'id': 1, 'build_id': 1})
     @mock.patch('kojihub.get_build')
@@ -57,20 +55,20 @@ class TestGetRPMFile(unittest.TestCase):
         pi.rpm.return_value = 'test-files-1-1.fc27.noarch.rpm'
         getRPMFile = kojihub.RootExports().getRPMFile
         res = getRPMFile(1, '/fileA')
-        self.assertDictEqual(res, {'digest_algo': 'sha256',
-                                   'user': 'root',
-                                   'mtime': int(1535536271),
-                                   'digest': 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
-                                   'size': 0,
-                                   'group': 'root',
-                                   'name': '/fileA',
-                                   'rpm_id': 1,
-                                   'flags': 0,
-                                   'mode': int(0o100755),
-                                   'md5': 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'})
+        self.assertDictEqual(res, {
+            'digest_algo': 'sha256',
+            'user': 'root',
+            'mtime': int(1535536271),
+            'digest': 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+            'size': 0,
+            'group': 'root',
+            'name': '/fileA',
+            'rpm_id': 1,
+            'flags': 0,
+            'mode': int(0o100755),
+            'md5': 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'})
         res = getRPMFile(1, '/fileB')
-        self.assertEquals(res, {})
+        self.assertEqual(res, {})
         with self.assertRaises(koji.GenericError) as cm:
             res = getRPMFile(1, '/fileB', strict=True)
-        self.assertEquals(cm.exception.args[0],
-                          'No file: /fileB found in RPM: 1')
+        self.assertEqual(cm.exception.args[0], 'No file: /fileB found in RPM: 1')

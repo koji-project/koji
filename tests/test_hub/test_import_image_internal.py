@@ -55,12 +55,13 @@ class TestImportImageInternal(unittest.TestCase):
     @mock.patch('kojihub.get_build')
     @mock.patch('kojihub.Task')
     @mock.patch('kojihub.context')
-    def test_with_rpm(self, context, Task, get_build, get_archive_type, import_archive, build, work, get_rpm):
+    def test_with_rpm(self, context, Task, get_build, get_archive_type, import_archive, build,
+                      work, get_rpm):
         task = mock.MagicMock()
         task.assertHost = mock.MagicMock()
         Task.return_value = task
         rpm = {
-            #'location': 'foo',
+            # 'location': 'foo',
             'id': 6,
             'name': 'foo',
             'version': '3.1',
@@ -108,13 +109,13 @@ class TestImportImageInternal(unittest.TestCase):
         # Check that the log symlink made it to where it was supposed to.
         dest = os.readlink(workdir + '/foo.log')
         dest = os.path.abspath(os.path.join(workdir, dest))
-        self.assertEquals(dest, self.tempdir + '/data/logs/image/foo.log')
+        self.assertEqual(dest, self.tempdir + '/data/logs/image/foo.log')
 
         # And.. check all the sql statements
-        self.assertEquals(len(cursor.execute.mock_calls), 1)
+        self.assertEqual(len(cursor.execute.mock_calls), 1)
         expression, kwargs = cursor.execute.mock_calls[0][1]
         expression = " ".join(expression.split())
         expected = 'INSERT INTO archive_rpm_components (archive_id, rpm_id) ' + \
             'VALUES (%(archive_id0)s, %(rpm_id0)s)'
-        self.assertEquals(expression, expected)
-        self.assertEquals(kwargs, {'archive_id0': 9, 'rpm_id0': 6})
+        self.assertEqual(expression, expected)
+        self.assertEqual(kwargs, {'archive_id0': 9, 'rpm_id0': 6})

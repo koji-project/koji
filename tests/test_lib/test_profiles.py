@@ -8,6 +8,7 @@ from six.moves import range
 
 import unittest
 
+
 class ProfilesTestCase(unittest.TestCase):
 
     def test_profile_threading(self):
@@ -34,11 +35,8 @@ def stress(errors, n):
         config = mock.Mock(topdir='topdir')
         koji.get_profile_module('koji', config=config)
     except Exception:
-        # if we don't catch this, nose seems to ignore the test
+        # if we don't catch this, pytest seems to ignore the test
         errors[n] = ''.join(traceback.format_exception(*sys.exc_info()))
         return
     else:
         errors[n] = None
-
-
-

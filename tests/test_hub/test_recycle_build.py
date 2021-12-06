@@ -1,4 +1,5 @@
 import mock
+import unittest
 
 import koji
 import kojihub
@@ -6,14 +7,12 @@ import kojihub
 QP = kojihub.QueryProcessor
 UP = kojihub.UpdateProcessor
 
-class TestRecycleBuild():
-    # NOT a subclass of unittest.TestCase so that we can use generator
-    # methods
 
+class TestRecycleBuild(unittest.TestCase):
     def setUp(self):
         self.QueryProcessor = mock.patch('kojihub.QueryProcessor').start()
         self.UpdateProcessor = mock.patch('kojihub.UpdateProcessor',
-                                side_effect=self.getUpdate).start()
+                                          side_effect=self.getUpdate).start()
         self._dml = mock.patch('kojihub._dml').start()
         self.run_callbacks = mock.patch('koji.plugin.run_callbacks').start()
         self.rmtree = mock.patch('koji.util.rmtree').start()
@@ -70,6 +69,17 @@ class TestRecycleBuild():
         self._dml.assert_not_called()
         self.run_callbacks.assert_not_called()
 
+    def run_fail(self, old, new):
+        try:
+            kojihub.recycle_build(old, new)
+        except koji.GenericError:
+            pass
+        else:
+            raise Exception("expected koji.GenericError")
+        self.UpdateProcessor.assert_not_called()
+        self._dml.assert_not_called()
+        self.run_callbacks.assert_not_called()
+
     def test_recycle_building_bad(self):
         new = self.new.copy()
         old = self.old.copy()
@@ -109,17 +119,6 @@ class TestRecycleBuild():
         assert update.clauses == ['id=%(id)s']
         assert update.values['id'] == old['id']
 
-    def run_fail(self, old, new):
-        try:
-            kojihub.recycle_build(old, new)
-        except koji.GenericError:
-            pass
-        else:
-            raise Exception("expected koji.GenericError")
-        self.UpdateProcessor.assert_not_called()
-        self._dml.assert_not_called()
-        self.run_callbacks.assert_not_called()
-
     def test_recycle_states_bad(self):
         for state in 'BUILDING', 'COMPLETE', 'DELETED':
             yield self.check_recycle_states_bad, koji.BUILD_STATES[state]
@@ -139,7 +138,7 @@ class TestRecycleBuild():
             [[], [], True],
             [True, [], []],
             [[], True, []],
-            ]
+        ]
         for values in vlists:
             yield self.check_recycle_query_bad, values
 
@@ -153,4 +152,3 @@ class TestRecycleBuild():
         query = self.QueryProcessor.return_value
         query.execute.side_effect = values
         self.run_fail(old, new)
-

@@ -45,7 +45,7 @@ class TestListBuilds(unittest.TestCase):
         package = 'test-package'
         kojihub.get_package_id.return_value = None
         rv = self.exports.listBuilds(packageID=package)
-        self.assertEquals(rv, [])
+        self.assertEqual(rv, [])
 
     @mock.patch('kojihub.get_package_id')
     def test_package_string(self, get_package_id):
@@ -57,27 +57,27 @@ class TestListBuilds(unittest.TestCase):
         self.assertEqual(len(self.queries), 1)
         args, kwargs = self.QueryProcessor.call_args
         qp = QP(**kwargs)
-        self.assertEquals(qp.tables, ['build'])
-        self.assertEquals(qp.columns, ['build.id', 'build.completion_time',
-                                       'EXTRACT(EPOCH FROM build.completion_time)',
-                                       'events.id', 'events.time',
-                                       'EXTRACT(EPOCH FROM events.time)', 'build.epoch',
-                                       'build.extra', 'package.name',
-                                       "package.name || '-' || build.version || '-' || "
-                                       "build.release", 'users.id', 'users.name', 'package.id',
-                                       'package.name', 'build.release', 'build.source',
-                                       'build.start_time', 'EXTRACT(EPOCH FROM build.start_time)',
-                                       'build.state', 'build.task_id', 'build.version',
-                                       'volume.id', 'volume.name'])
+        self.assertEqual(qp.tables, ['build'])
+        self.assertEqual(qp.columns, ['build.id', 'build.completion_time',
+                                      'EXTRACT(EPOCH FROM build.completion_time)',
+                                      'events.id', 'events.time',
+                                      'EXTRACT(EPOCH FROM events.time)', 'build.epoch',
+                                      'build.extra', 'package.name',
+                                      "package.name || '-' || build.version || '-' || "
+                                      "build.release", 'users.id', 'users.name', 'package.id',
+                                      'package.name', 'build.release', 'build.source',
+                                      'build.start_time', 'EXTRACT(EPOCH FROM build.start_time)',
+                                      'build.state', 'build.task_id', 'build.version',
+                                      'volume.id', 'volume.name'])
         self.assertEqual(qp.clauses, ['package.id = %(packageID)i'])
-        self.assertEquals(qp.joins, ['LEFT JOIN events ON build.create_event = events.id',
-                                     'LEFT JOIN package ON build.pkg_id = package.id',
-                                     'LEFT JOIN volume ON build.volume_id = volume.id',
-                                     'LEFT JOIN users ON build.owner = users.id'])
+        self.assertEqual(qp.joins, ['LEFT JOIN events ON build.create_event = events.id',
+                                    'LEFT JOIN package ON build.pkg_id = package.id',
+                                    'LEFT JOIN volume ON build.volume_id = volume.id',
+                                    'LEFT JOIN users ON build.owner = users.id'])
 
     @mock.patch('kojihub.get_user')
     def test_wrong_user(self, get_user):
         user = 'test-user'
         get_user.return_value = None
         rv = self.exports.listBuilds(userID=user)
-        self.assertEquals(rv, [])
+        self.assertEqual(rv, [])

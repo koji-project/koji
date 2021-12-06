@@ -40,18 +40,18 @@ class TestListCommands(unittest.TestCase):
         self.session = mock.MagicMock()
         self.session.getAPIVersion.return_value = koji.API_VERSION
         self.args = [
-                '--skip-setarch',
-                '--use-shell',
-                '--new-chroot',
-                '--task-id',
-                '--package', 'rpm_a',
-                '--package', 'rpm_b',
-                '--mount', 'mount_a',
-                '--mount', 'mount_b',
-                '--weight', '3',
-                '--channel-override', 'some_channel',
-                '--repo-id', '12345',
-                'TAG', 'ARCH', 'COMMAND']
+            '--skip-setarch',
+            '--use-shell',
+            '--new-chroot',
+            '--task-id',
+            '--package', 'rpm_a',
+            '--package', 'rpm_b',
+            '--mount', 'mount_a',
+            '--mount', 'mount_b',
+            '--weight', '3',
+            '--channel-override', 'some_channel',
+            '--repo-id', '12345',
+            'TAG', 'ARCH', 'COMMAND']
         self.old_OptionParser = runroot.OptionParser
         runroot.OptionParser = mock.MagicMock(side_effect=self.get_parser)
         self.old_watch_tasks = runroot.watch_tasks
@@ -83,7 +83,6 @@ class TestListCommands(unittest.TestCase):
         # Run it and check immediate output
         runroot.handle_runroot(self.options, self.session, self.args)
         actual = get_stdout_value(stdout)
-        actual = actual.replace(b'nosetests', b'koji')
         expected = b'1\ntask output'
         self.assertEqual(actual, expected)
 

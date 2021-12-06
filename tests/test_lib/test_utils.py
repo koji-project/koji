@@ -30,9 +30,9 @@ class EnumTestCase(unittest.TestCase):
     def test_enum_bracket_access(self):
         """ Test bracket access. """
         test = koji.Enum(('one', 'two', 'three'))
-        self.assertEquals(test['one'], 0)
-        self.assertEquals(test['two'], 1)
-        self.assertEquals(test['three'], 2)
+        self.assertEqual(test['one'], 0)
+        self.assertEqual(test['two'], 1)
+        self.assertEqual(test['three'], 2)
 
         with self.assertRaises(KeyError):
             test['does not exist']
@@ -40,15 +40,15 @@ class EnumTestCase(unittest.TestCase):
     def test_enum_getter_access(self):
         """ Test getter access. """
         test = koji.Enum(('one', 'two', 'three'))
-        self.assertEquals(test.get('one'), 0)
-        self.assertEquals(test.get('two'), 1)
-        self.assertEquals(test.get('three'), 2)
-        self.assertEquals(test.get('does not exist'), None)
+        self.assertEqual(test.get('one'), 0)
+        self.assertEqual(test.get('two'), 1)
+        self.assertEqual(test.get('three'), 2)
+        self.assertEqual(test.get('does not exist'), None)
 
     def test_enum_slice_access(self):
         """ Test slice access. """
         test = koji.Enum(('one', 'two', 'three'))
-        self.assertEquals(test[1:], ('two', 'three'))
+        self.assertEqual(test[1:], ('two', 'three'))
 
 
 def mock_open():
@@ -165,8 +165,7 @@ class MiscFunctionTestCase(unittest.TestCase):
         # downloaded size is larger than content-length
         with requests_mock.Mocker() as m_requests:
             text = 'random content'
-            m_requests.register_uri('GET', url, text=text,
-                    headers = {'Content-Length': "3"})
+            m_requests.register_uri('GET', url, text=text, headers={'Content-Length': "3"})
             m_TemporaryFile.return_value.tell.return_value = len(text)
             with self.assertRaises(koji.GenericError):
                 koji.openRemoteFile(path, topurl=topurl)
@@ -179,8 +178,7 @@ class MiscFunctionTestCase(unittest.TestCase):
         # downloaded size is shorter than content-length
         with requests_mock.Mocker() as m_requests:
             text = 'random content'
-            m_requests.register_uri('GET', url, text=text,
-                    headers = {'Content-Length': "100"})
+            m_requests.register_uri('GET', url, text=text, headers={'Content-Length': "100"})
             m_TemporaryFile.return_value.tell.return_value = len(text)
             with self.assertRaises(koji.GenericError):
                 koji.openRemoteFile(path, topurl=topurl)
@@ -194,7 +192,7 @@ class MiscFunctionTestCase(unittest.TestCase):
             path = 'tests/test_lib/data/rpms/test-src-1-1.fc24.src.rpm'
             url = os.path.join(topurl, path)
             m_requests.register_uri('GET', url, body=open(path, 'rb'))
-            #with self.assertRaises(koji.GenericError):
+            # with self.assertRaises(koji.GenericError):
             koji.openRemoteFile(path, topurl=topurl)
 
     def test_openRemoteFile_invalid_rpm(self):
@@ -214,20 +212,20 @@ class MiscFunctionTestCase(unittest.TestCase):
             ['/foo', '/bar'],
             ['/foo//', '/bar'],
             ['/foo', 'bar', 'baz', '/zoo'],
-            ]
+        ]
         for args in bad_joins:
             with self.assertRaises(ValueError):
                 koji.util.joinpath(*args)
 
     def test_joinpath_good(self):
         p = koji.util.joinpath('/foo', 'bar')
-        self.assertEquals(p, '/foo/bar')
+        self.assertEqual(p, '/foo/bar')
 
         p = koji.util.joinpath('/foo', 'bar/../baz')
-        self.assertEquals(p, '/foo/baz')
+        self.assertEqual(p, '/foo/baz')
 
         p = koji.util.joinpath('/foo', 'a/b/c/../../../z')
-        self.assertEquals(p, '/foo/z')
+        self.assertEqual(p, '/foo/z')
 
 
 class ConfigFileTestCase(unittest.TestCase):
@@ -242,9 +240,9 @@ class ConfigFileTestCase(unittest.TestCase):
         self.manager.cp_clz = mock.patch("six.moves.configparser.ConfigParser",
                                          spec=True).start()
         self.manager.scp_clz = mock.patch("six.moves.configparser.SafeConfigParser",
-                                         spec=True).start()
+                                          spec=True).start()
         self.manager.rcp_clz = mock.patch("six.moves.configparser.RawConfigParser",
-                                         spec=True).start()
+                                          spec=True).start()
         if six.PY2:
             self.real_parser_clz = self.manager.scp_clz
         else:
@@ -274,7 +272,8 @@ class ConfigFileTestCase(unittest.TestCase):
                       object(),
                       ('string', True),
                       [('str', True, 'str')],
-                      [tuple()],]:
+                      [tuple()],
+                      ]:
             with self.assertRaises(koji.GenericError):
                 koji.read_config_files(files)
 
@@ -399,7 +398,6 @@ class ConfigFileTestCase(unittest.TestCase):
         self.assertEqual(listdir_mock.call_count, 2)
 
 
-
 class MavenUtilTestCase(unittest.TestCase):
     """Test maven relative functions"""
     maxDiff = None
@@ -418,16 +416,16 @@ class MavenUtilTestCase(unittest.TestCase):
         conf.has_option.return_value = False
         with self.assertRaises(AttributeError) as cm:
             adapter.noexistsattr
-        self.assertEquals(cm.exception.args[0], 'noexistsattr')
-        self.assertEquals(conf.mock_calls, [call.has_option(section, 'goals'),
-                                            call.get(section, 'goals'),
-                                            call.get().split(),
-                                            call.has_option(section, 'properties'),
-                                            call.get(section, 'properties'),
-                                            call.get().splitlines(),
-                                            call.has_option(section, 'someattr'),
-                                            call.get('section', 'someattr'),
-                                            call.has_option(section, 'noexistsattr')])
+        self.assertEqual(cm.exception.args[0], 'noexistsattr')
+        self.assertEqual(conf.mock_calls, [call.has_option(section, 'goals'),
+                                           call.get(section, 'goals'),
+                                           call.get().split(),
+                                           call.has_option(section, 'properties'),
+                                           call.get(section, 'properties'),
+                                           call.get().splitlines(),
+                                           call.has_option(section, 'someattr'),
+                                           call.get('section', 'someattr'),
+                                           call.has_option(section, 'noexistsattr')])
 
     def test_maven_opts(self):
         """Test maven_opts function"""
@@ -748,26 +746,25 @@ class MavenUtilTestCase(unittest.TestCase):
         # force locale to compare 'expect' value
         locale.setlocale(locale.LC_ALL, ('en_US', 'UTF-8'))
         data = [
-                {
-                    'author': 'Happy Koji User <user1@example.com> - 1.1-1',
-                    'date': '2017-10-25 08:00:00',
-                    'date_ts': 1508932800,
-                    'text': '- Line 1\n- Line 2',
-                },
-                {
-                    'author': u'Happy \u0138\u014dji \u016cs\u0259\u0155 <user2@example.com>',
-                    'date': '2017-08-28 08:00:00',
-                    'date_ts': 1503921600,
-                    'text': '- some changelog entry',
-                },
-                {
-                    'author': 'Koji Admin <admin@example.com> - 1.49-6',
-                    'date': datetime(2017, 10, 10, 12, 34, 56),
-                    'text': '- mass rebuild',
-                }
-               ]
-        expect = (
-'''* Wed Oct 25 2017 Happy Koji User <user1@example.com> - 1.1-1
+            {
+                'author': 'Happy Koji User <user1@example.com> - 1.1-1',
+                'date': '2017-10-25 08:00:00',
+                'date_ts': 1508932800,
+                'text': '- Line 1\n- Line 2',
+            },
+            {
+                'author': u'Happy \u0138\u014dji \u016cs\u0259\u0155 <user2@example.com>',
+                'date': '2017-08-28 08:00:00',
+                'date_ts': 1503921600,
+                'text': '- some changelog entry',
+            },
+            {
+                'author': 'Koji Admin <admin@example.com> - 1.49-6',
+                'date': datetime(2017, 10, 10, 12, 34, 56),
+                'text': '- mass rebuild',
+            }
+        ]
+        expect = ('''* Wed Oct 25 2017 Happy Koji User <user1@example.com> - 1.1-1
 - Line 1
 - Line 2
 
@@ -918,7 +915,7 @@ class MavenUtilTestCase(unittest.TestCase):
 
         # slice with non exist key,
         # if strict bit is not set, empty dict should be returned.
-        self.assertEqual({},  koji.util.dslice(distro, ['debian'], False))
+        self.assertEqual({}, koji.util.dslice(distro, ['debian'], False))
         # if strict bit is set, KeyError should be raised
         self.assertRaises(KeyError, koji.util.dslice, distro, ['debian'])
 
@@ -948,11 +945,9 @@ class MavenUtilTestCase(unittest.TestCase):
 
         # latest bit check
         self.assertTrue(koji.util.checkForBuilds(
-                            session, 'fedora', (koji.parse_NVR('pkg-1.1-r1'),),
-                            event, latest=True))
+            session, 'fedora', (koji.parse_NVR('pkg-1.1-r1'),), event, latest=True))
         self.assertFalse(koji.util.checkForBuilds(
-                            session, 'fedora', (koji.parse_NVR('pkg-1.0-r2'),),
-                            event, latest=True))
+            session, 'fedora', (koji.parse_NVR('pkg-1.0-r2'),), event, latest=True))
 
         # all elemnts in builds should exist.
         for b in builds:
@@ -961,16 +956,15 @@ class MavenUtilTestCase(unittest.TestCase):
 
         # non exist build test.
         self.assertEqual(False, koji.util.checkForBuilds(
-                                    session, "pkg-build",
-                                    (koji.parse_NVR("pkg-1.0-r1"),), event))
+            session, "pkg-build", (koji.parse_NVR("pkg-1.0-r1"),), event))
 
     def test_LazyValue(self):
         """Test LazyValue object"""
         init, base, incr = 0, 1, 0
         lv = koji.util.LazyValue(
-                lambda x, offset=0: base + x + offset,
-                (init,),
-                {'offset': incr})
+            lambda x, offset=0: base + x + offset,
+            (init,),
+            {'offset': incr})
         self.assertEqual(init + base + incr, lv.get())
 
         base = 2
@@ -979,10 +973,10 @@ class MavenUtilTestCase(unittest.TestCase):
         # cache bit test
         init, base, incr = 1, 2, 3
         lv = koji.util.LazyValue(
-                lambda x, offset=0: base + x + offset,
-                (init,),
-                {'offset': incr},
-                cache=True)
+            lambda x, offset=0: base + x + offset,
+            (init,),
+            {'offset': incr},
+            cache=True)
         self.assertEqual(init + base + incr, lv.get())
 
         base = 3
@@ -996,10 +990,10 @@ class MavenUtilTestCase(unittest.TestCase):
         timestamp = int(time.time())
 
         lstr = koji.util.LazyString(
-                lambda fmt, *args, **kwargs:
-                fmt.format(*args, timestamp=timestamp, **kwargs),
-                (fmt, 'koji'),
-                {'greeting': 'hello'})
+            lambda fmt, *args, **kwargs:
+            fmt.format(*args, timestamp=timestamp, **kwargs),
+            (fmt, 'koji'),
+            {'greeting': 'hello'})
 
         self.assertEqual(
             fmt.format('koji', timestamp=timestamp, greeting='hello'),
@@ -1143,18 +1137,18 @@ class MavenUtilTestCase(unittest.TestCase):
         """Test test_setup_rlimits function"""
         logger = mock.MagicMock()
         options = {
-                'RLIMIT_AS':      '',
-                'RLIMIT_CORE':    '0',
-                'RLIMIT_CPU':     '',
-                'RLIMIT_DATA':    '4194304',
-                'RLIMIT_FSIZE':   '0',
-                'RLIMIT_MEMLOCK': '',
-                'RLIMIT_NOFILE':  '768',
-                'RLIMIT_NPROC':   '3',
-                'RLIMIT_OFILE':   '',
-                'RLIMIT_RSS':     '',
-                'RLIMIT_STACK':   '4194304'
-               }
+            'RLIMIT_AS':      '',
+            'RLIMIT_CORE':    '0',
+            'RLIMIT_CPU':     '',
+            'RLIMIT_DATA':    '4194304',
+            'RLIMIT_FSIZE':   '0',
+            'RLIMIT_MEMLOCK': '',
+            'RLIMIT_NOFILE':  '768',
+            'RLIMIT_NPROC':   '3',
+            'RLIMIT_OFILE':   '',
+            'RLIMIT_RSS':     '',
+            'RLIMIT_STACK':   '4194304'
+        }
 
         # create a resource token <--> id lookup table
         rlimit_lookup = dict([(getattr(resource, k), k) for k in options])
@@ -1274,7 +1268,7 @@ class TestRmtree(unittest.TestCase):
         getcwd.return_value = 'cwd'
         path = '/mnt/folder'
 
-        self.assertEquals(koji.util.rmtree(path), None)
+        self.assertEqual(koji.util.rmtree(path), None)
         chdir.assert_called_with('cwd')
         _rmtree.assert_called_once_with('dev')
         rmdir.assert_called_once_with(path)
@@ -1455,6 +1449,7 @@ class TestRmtree2(unittest.TestCase):
         os.makedirs('%s/a/b/c/d/e/f/g/h/i/j/k' % dirname)
         mock_data = {'n': 0, 'removed': False}
         os_chdir = os.chdir
+
         def my_chdir(*a, **kw):
             # after 4 calls, remove the tree
             # this should happen during the descent
@@ -1482,6 +1477,7 @@ class TestRmtree2(unittest.TestCase):
                     os.makedirs('%s/a/%s/c/d/%s/e/f/%s/g/h' % (dirname, i, j, k))
         mock_data = {'n': 0, 'removed': False}
         os_chdir = os.chdir
+
         def my_chdir(path):
             mock_data['n'] += 1
             if path == 'f':
@@ -1501,6 +1497,7 @@ class TestRmtree2(unittest.TestCase):
         os.makedirs('%s/a/b/c/d/e/f/g/h/i/j/k' % dirname)
         mock_data = {'n': 0, 'removed': False}
         os_chdir = os.chdir
+
         def my_chdir(path):
             # remove the tree when we start ascending
             # rmtree should gracefully handle this
@@ -1526,6 +1523,7 @@ class TestRmtree2(unittest.TestCase):
         os.makedirs('%s/a/b/c/d/e/f/g/h/i/j/k' % dirname)
         mock_data = {'n': 0, 'removed': False}
         os_listdir = os.listdir
+
         def my_listdir(*a, **kw):
             # after 4 calls, remove the tree
             # rmtree should gracefully handle this
@@ -1547,12 +1545,15 @@ class TestRmtree2(unittest.TestCase):
             raise Exception('test directory not removed')
 
     def test_rmtree_parallel_new_file(self):
-        # Testing case where a separate process adds new files during after we have stripped a directory
-        # This should cause rmtree to fail
+        """Testing case where a separate process adds new files during after
+        # we have stripped a directory.
+        # This should cause rmtree to fail.
+        """
         dirname = '%s/some-dir/' % self.tempdir
         os.makedirs('%s/a/b/c/d/e/f/g/h/i/j/k' % dirname)
         os_listdir = os.listdir
         mock_data = {}
+
         def my_listdir(path):
             ret = os_listdir(path)
             if 'b' in ret:
@@ -1597,6 +1598,7 @@ class TestMoveAndSymlink(unittest.TestCase):
         safer_move.assert_called_once_with('a/src', 'b/dst')
         symlink.assert_called_once_with('../b/dst', 'a/src')
         ensuredir.assert_called_once_with('b')
+
 
 if __name__ == '__main__':
     unittest.main()

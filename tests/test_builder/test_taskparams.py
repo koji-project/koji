@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 import inspect
 import mock
+import sys
 import unittest
 import koji
 import koji.tasks
@@ -16,7 +17,7 @@ class TestParseTaskParams(unittest.TestCase):
 
         # simple case
         ret = koji.tasks.parse_task_params('sleep', [4])
-        self.assertEqual(ret, {'n':4})
+        self.assertEqual(ret, {'n': 4})
 
         # bad args
         with self.assertRaises(koji.ParameterError):
@@ -24,7 +25,7 @@ class TestParseTaskParams(unittest.TestCase):
 
         # bad method
         with self.assertRaises(TypeError):
-            koji.tasks.parse_task_params('MISSINGMETHOD', [1,2,3])
+            koji.tasks.parse_task_params('MISSINGMETHOD', [1, 2, 3])
 
         # new style
         params = {'__method__': 'hello', 'n': 1}
@@ -48,10 +49,15 @@ class TestParseTaskParams(unittest.TestCase):
             if not h_class:
                 missing.append(method)
                 continue
-
-            spec = inspect.getargspec(h_class.handler)
-            # unbound method, so strip "self"
-            spec.args.pop(0)
+            if sys.version_info > (3,):
+                spec = inspect.getfullargspec(h_class.handler)
+                # unbound method, so strip "self"
+                spec.args.pop(0)
+                spec = spec[:-3]
+            else:
+                spec = inspect.getargspec(h_class.handler)
+                # unbound method, so strip "self"
+                spec.args.pop(0)
 
             # for the methods we have, at least one of the signatures should
             # match
