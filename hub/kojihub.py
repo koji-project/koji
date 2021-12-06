@@ -7537,7 +7537,7 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
         insert.execute()
 
         if not metadata_only:
-            # move the file to it's final destination
+            # move the file to its final destination
             mavendir = joinpath(koji.pathinfo.mavenbuild(buildinfo),
                                 koji.pathinfo.mavenrepo(typeInfo))
             _import_archive_file(filepath, mavendir)
@@ -7584,8 +7584,8 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
 
 def _import_archive_file(filepath, destdir):
     """
-    Move the file to it's final location on the filesystem.
-    filepath must exist, destdir will be created if it doesn not exist.
+    Move the file to its final location on the filesystem.
+    filepath must exist, destdir will be created if it does not exist.
     A symlink pointing from the old location to the new location will
     be created.
     """
