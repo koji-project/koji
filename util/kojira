@@ -802,7 +802,7 @@ class RepoManager(object):
         # 2.4-hour-old, very popular repo
 
     def updateTagScores(self):
-        for entry in self.needed_tags.values():
+        for entry in list(self.needed_tags.values()):
             self.setTagScore(entry)
 
     def _delete_needed_tag(self, tag_id):
