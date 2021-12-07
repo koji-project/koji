@@ -30,4 +30,5 @@ class TestUpdateProcessor(unittest.TestCase):
         cursor.execute.assert_called_once_with(
             'UPDATE sometable SET foo = %(data.foo)s',
             {'data.foo': 'bar'},
+            log=True,
         )
