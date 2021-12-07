@@ -132,7 +132,7 @@ class CursorWrapper:
                     params[i] = tuple(item)
         return sql, params
 
-    def execute(self, operation, parameters=()):
+    def execute(self, operation, parameters=(), log=True):
         debug = self.logger.isEnabledFor(logging.DEBUG)
         operation, parameters = self.preformat(operation, parameters)
         if debug:
@@ -141,7 +141,8 @@ class CursorWrapper:
         try:
             ret = self.cursor.execute(operation, parameters)
         except Exception:
-            self.logger.error('Query failed. Query was: %s', self.quote(operation, parameters))
+            if log:
+                self.logger.error('Query failed. Query was: %s', self.quote(operation, parameters))
             raise
         if debug:
             self.logger.debug("Execute operation completed in %.4f seconds", time.time() - start)

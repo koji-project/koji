@@ -356,7 +356,7 @@ def handle_db_msgs(urls, CONFIG):
     # we're running in postCommit, so we need to handle new transaction
     c.execute('BEGIN')
     try:
-        c.execute('LOCK TABLE proton_queue IN ACCESS EXCLUSIVE MODE NOWAIT')
+        c.execute('LOCK TABLE proton_queue IN ACCESS EXCLUSIVE MODE NOWAIT', log=False)
     except psycopg2.OperationalError:
         LOG.debug('skipping db queue due to lock')
         return
