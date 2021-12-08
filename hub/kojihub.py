@@ -3236,6 +3236,8 @@ def name_or_id_clause(table, info):
                 raise koji.ParameterError('Invalid name or id value: %r' % info)
         elif 'name' in info:
             info = info['name']
+        else:
+            raise koji.ParameterError('Invalid name or id value: %r' % info)
     if isinstance(info, int):
         clause = f"({table}.id = %({table}_id)s)"
         values = {f"{table}_id": info}
