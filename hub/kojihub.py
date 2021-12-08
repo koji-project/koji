@@ -3188,7 +3188,7 @@ def get_build_targets(info=None, event=None, buildTagID=None, destTagID=None, qu
     values = {}
 
     if info:
-        clause, c_values = name_or_id_clause('tag', info)
+        clause, c_values = name_or_id_clause('build_target', info)
         clauses.append(clause)
         values.update(c_values)
     if buildTagID is not None:
