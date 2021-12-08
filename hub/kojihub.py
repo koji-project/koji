@@ -4352,7 +4352,20 @@ def get_build(buildInfo, strict=False):
 
 
 def get_build_logs(build):
-    """Return a list of log files for the given build"""
+    """Return a list of log files for the given build
+
+    This method will only return logs for builds that are complete.
+    If a build is in progress, failed, or canceled, you must look at the
+    build's task logs instead (see listTaskOutput).
+
+    :param build: A build ID (int), a NVR (string), or a dict containing
+                  "name", "version" and "release".
+    :returns: a possibly-empty list of log file entries. Each entry is a dict
+              with three keys:
+                "name" (log file name)
+                "dir" (immediate parent subdirectory)
+                "path" (the full path under koji's topdir)
+    """
     buildinfo = get_build(build, strict=True)
     logdir = koji.pathinfo.build_logs(buildinfo)
     logreldir = os.path.relpath(logdir, koji.pathinfo.topdir)
