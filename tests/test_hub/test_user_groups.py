@@ -1,5 +1,6 @@
-import mock
 import unittest
+
+import mock
 
 import koji
 import kojihub
@@ -7,6 +8,7 @@ import kojihub
 QP = kojihub.QueryProcessor
 IP = kojihub.InsertProcessor
 UP = kojihub.UpdateProcessor
+
 
 class TestGrouplist(unittest.TestCase):
     def getQuery(self, *args, **kwargs):
@@ -31,25 +33,27 @@ class TestGrouplist(unittest.TestCase):
     def setUp(self):
         self.context = mock.patch('kojihub.context').start()
         self.get_user = mock.patch('kojihub.get_user').start()
+        self.verify_name_internal = mock.patch('kojihub.verify_name_internal').start()
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"
         self.context.session.assertPerm = mock.MagicMock()
         self.context.session.assertLogin = mock.MagicMock()
 
         self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
-                side_effect=self.getQuery).start()
+                                         side_effect=self.getQuery).start()
         self.queries = []
         self.InsertProcessor = mock.patch('kojihub.InsertProcessor',
-                side_effect=self.getInsert).start()
+                                          side_effect=self.getInsert).start()
         self.inserts = []
         self.UpdateProcessor = mock.patch('kojihub.UpdateProcessor',
-                side_effect=self.getUpdate).start()
+                                          side_effect=self.getUpdate).start()
         self.updates = []
 
     def tearDown(self):
         mock.patch.stopall()
 
     def test_new_group(self):
+        self.verify_name_internal.return_value = None
         name = 'test_group'
 
         # insufficient permissions
@@ -73,6 +77,17 @@ class TestGrouplist(unittest.TestCase):
         kojihub.new_group(name)
         self.context.session.assertPerm.assert_called_with('admin')
         self.context.session.createUser.called_with(name, usertype=koji.USERTYPES['GROUP'])
+
+        # name is longer as expected
+        name = 'new-group+'
+        self.verify_name_internal.side_effect = koji.GenericError
+        with self.assertRaises(koji.GenericError):
+            kojihub.new_group(name)
+
+        # not except regex rules
+        self.verify_name_internal.side_effect = koji.GenericError
+        with self.assertRaises(koji.GenericError):
+            kojihub.new_group(name)
 
     def test_add_group_member(self):
         group, gid = 'test_group', 1
@@ -160,7 +175,6 @@ class TestGrouplist(unittest.TestCase):
         self.assertEqual(i.data['group_id'], gid)
         self.assertEqual(i.data['user_id'], uid)
 
-
     @mock.patch('kojihub.get_group_members')
     def test_drop_group_member(self, get_group_members):
         group, gid = 'test_group', 1
@@ -243,7 +257,6 @@ class TestGrouplist(unittest.TestCase):
         self.assertEqual(u.table, 'user_groups')
         self.assertEqual(u.values['user_id'], uid)
         self.assertEqual(u.values['group_id'], gid)
-
 
     @mock.patch('kojihub._multiRow')
     def test_get_group_members(self, _multiRow):

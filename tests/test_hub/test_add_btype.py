@@ -1,4 +1,5 @@
 import unittest
+
 import mock
 
 import koji
@@ -9,15 +10,17 @@ IP = kojihub.InsertProcessor
 
 class TestAddBType(unittest.TestCase):
 
+    @mock.patch('kojihub.verify_name_internal')
     @mock.patch('kojihub.list_btypes')
     @mock.patch('kojihub.InsertProcessor')
-    def test_add_btype(self, InsertProcessor, list_btypes):
+    def test_add_btype(self, InsertProcessor, list_btypes, verify_name_internal):
         # Not sure why mock can't patch kojihub.context, so we do this
         session = kojihub.context.session = mock.MagicMock()
         mocks = [InsertProcessor, list_btypes, session]
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"
         session.assertPerm = mock.MagicMock()
+        verify_name_internal.return_value = None
 
         # expected case
         list_btypes.return_value = None
@@ -43,3 +46,14 @@ class TestAddBType(unittest.TestCase):
             kojihub.add_btype('new_btype')
         InsertProcessor.assert_not_called()
         session.assertPerm.assert_called_with('admin')
+
+        # name is longer as expected
+        new_btype = 'new-btype+'
+        verify_name_internal.side_effect = koji.GenericError
+        with self.assertRaises(koji.GenericError):
+            kojihub.add_btype(new_btype)
+
+        # not except regex rules
+        verify_name_internal.side_effect = koji.GenericError
+        with self.assertRaises(koji.GenericError):
+            kojihub.add_btype(new_btype)

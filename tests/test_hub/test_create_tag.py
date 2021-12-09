@@ -1,6 +1,7 @@
 # coding: utf-8
-import mock
 import unittest
+
+import mock
 
 import koji
 import kojihub
@@ -18,11 +19,12 @@ class TestCreateTag(unittest.TestCase):
 
     def setUp(self):
         self.InsertProcessor = mock.patch('kojihub.InsertProcessor',
-                side_effect=self.getInsert).start()
+                                          side_effect=self.getInsert).start()
         self.inserts = []
         self._dml = mock.patch('kojihub._dml').start()
         self.get_tag = mock.patch('kojihub.get_tag').start()
         self.get_tag_id = mock.patch('kojihub.get_tag_id').start()
+        self.verify_name_internal = mock.patch('kojihub.verify_name_internal').start()
         self.writeInheritanceData = mock.patch('kojihub.writeInheritanceData').start()
         self.context = mock.patch('kojihub.context').start()
         # It seems MagicMock will not automatically handle attributes that
@@ -34,6 +36,7 @@ class TestCreateTag(unittest.TestCase):
         mock.patch.stopall()
 
     def test_duplicate(self):
+        self.verify_name_internal.return_value = None
         self.get_tag.return_value = {'name': 'duptag'}
         with self.assertRaises(koji.GenericError):
             kojihub.create_tag('duptag')
@@ -41,6 +44,7 @@ class TestCreateTag(unittest.TestCase):
     def test_simple_create(self):
         self.get_tag.return_value = None
         self.get_tag_id.return_value = 99
+        self.verify_name_internal.return_value = None
         self.context.event_id = 42
         self.context.session.user_id = 23
         kojihub.create_tag('newtag')
@@ -66,6 +70,7 @@ class TestCreateTag(unittest.TestCase):
     def test_invalid_archs(self):
         self.get_tag.return_value = None
         self.get_tag_id.return_value = 99
+        self.verify_name_internal.return_value = None
         self.context.event_id = 42
         self.context.session.user_id = 23
 
@@ -79,3 +84,16 @@ class TestCreateTag(unittest.TestCase):
             kojihub.create_tag('newtag', arches=u'arch1,arch2')
 
         self.assertEqual(len(self.inserts), 0)
+
+    def test_tag_wrong_format(self):
+        tag_name = 'test-tag+'
+
+        # name is longer as expected
+        self.verify_name_internal.side_effect = koji.GenericError
+        with self.assertRaises(koji.GenericError):
+            kojihub.create_tag(tag_name)
+
+        # not except regex rules
+        self.verify_name_internal.side_effect = koji.GenericError
+        with self.assertRaises(koji.GenericError):
+            kojihub.create_tag(tag_name)

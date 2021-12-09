@@ -431,6 +431,14 @@ class GSSAPIAuthError(AuthError):
     faultCode = 1023
 
 
+class NameValidationError(GenericError):
+    """Raised when name validation fails
+
+    Currently not used, set up this error class into verify_name_internal, verify_name_user
+    instead of GenericError for Koji 1.31."""
+    faultCode = 1024
+
+
 class MultiCallInProgress(object):
     """
     Placeholder class to be returned by method calls when in the process of
