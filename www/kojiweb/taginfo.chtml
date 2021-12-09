@@ -1,24 +1,25 @@
 #from kojiweb import util
+#from urllib.parse import quote
 #import pprint
 
 #include "includes/header.chtml"
 
-  <h4>Information for tag <a href="taginfo?tagID=$tag.id">$tag.name</a></h4>
+  <h4>Information for tag <a href="taginfo?tagID=$tag.id">$util.escapeHTML($tag.name)</a></h4>
 
   <table>
     #if $child and 'admin' in $perms
     <tr>
-      <th colspan="2"><a href="tagparent?tagID=$child.id&parentID=$tag.id&action=add$util.authToken($self)">Add $tag.name as parent of $child.name</a></th>
+      <th colspan="2"><a href="tagparent?tagID=$child.id&parentID=$tag.id&action=add$util.authToken($self)">Add $util.escapeHTML($tag.name) as parent of $util.escapeHTML($child.name)</a></th>
     </tr>
     #end if
     <tr>
-      <th>Name</th><td>$tag.name</td>
+      <th>Name</th><td>$util.escapeHTML($tag.name)</td>
     </tr>
     <tr>
       <th>ID</th><td>$tag.id</td>
     </tr>
     <tr>
-      <th>Arches</th><td>$tag.arches</td>
+      <th>Arches</th><td>$util.escapeHTML($tag.arches)</td>
     </tr>
     <tr>
       <th>Locked</th><td class="$str(not $tag.locked).lower()">#if $tag.locked then 'yes' else 'no'#</td>
@@ -37,7 +38,7 @@
     <tr>
       <th>Inheritance</th>
       <td class="tree">
-        <span class="root">$tag.name</span>
+        <span class="root">$util.escapeHTML($tag.name)</span>
         #set $numParents = $len($inheritance)
         #set $iter = 0
         #set $maxDepth = 0
@@ -61,7 +62,7 @@
           #silent $tagsByChild[$parent.child_id].pop()
             <span class="treeBranch">
               <span class="treeLabel">
-                <a href="taginfo?tagID=$parent.parent_id">$parent.name</a>
+                <a href="taginfo?tagID=$parent.parent_id">$util.escapeHTML($parent.name)</a>
                 #if $depth == 1 and 'admin' in $perms
                 <span class="treeLink">(<a href="tagparent?tagID=$tag.id&parentID=$parent.parent_id&action=edit$util.authToken($self)">edit</a>) (<a href="tagparent?tagID=$tag.id&parentID=$parent.parent_id&action=remove$util.authToken($self)">remove</a>)</span>
                 #end if
@@ -102,9 +103,9 @@
       <th>External&nbsp;repos</th>
       <td>
 	#for $external_repo in $external_repos
-	<a href="externalrepoinfo?extrepoID=$external_repo.external_repo_id">$external_repo.external_repo_name</a> [$external_repo.merge_mode]
+	<a href="externalrepoinfo?extrepoID=$external_repo.external_repo_id">$util.escapeHTML($external_repo.external_repo_name)</a> [$external_repo.merge_mode]
 	#if $external_repo.tag_id != $tag.id
-	<span class="smaller">(inherited from <a href="taginfo?tagID=$external_repo.tag_id">$external_repo.tag_name</a>)</span>
+	<span class="smaller">(inherited from <a href="taginfo?tagID=$external_repo.tag_id">$util.escapeHTML($external_repo.tag_name)</a>)</span>
 	#end if
 	<br/>
 	#end for
@@ -136,7 +137,7 @@
       <td>
         #if $len($srcTargets)
         #for $target in $srcTargets
-        <a href="buildtargetinfo?name=$target.name">$target.name</a><br/>
+        <a href="buildtargetinfo?name=$quote($target.name)">$util.escapeHTML($target.name)</a><br/>
         #end for
         #else
         No build targets
@@ -148,7 +149,7 @@
       <td>
         #if $len($destTargets)
         #for $target in $destTargets
-        <a href="buildtargetinfo?name=$target.name">$target.name</a><br/>
+        <a href="buildtargetinfo?name=$quote($target.name)">$util.escapeHTML($target.name)</a><br/>
         #end for
         #else
         No build targets

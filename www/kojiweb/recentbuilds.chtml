@@ -22,18 +22,18 @@
 
 <rss version="2.0">
   <channel>
-    <title>$siteName: recent builds#if $package then ' of package ' + $package.name else ''##if $tag then ' into tag ' + $tag.name else ''##if $user then ' by user ' + $user.name else ''#</title>
+    <title>$siteName: recent builds#if $package then ' of package ' + $util.escapeHTML($package.name) else ''##if $tag then ' into tag ' + $util.escapeHTML($tag.name) else ''##if $user then ' by user ' + $util.escapeHTML($user.name) else ''#</title>
     <link>$linkURL()</link>
     <description>
       A list of the most recent builds
       #if $package
-      of package $package.name
+      of package $util.escapeHTML($package.name)
       #end if
       #if $tag
-      into tag $tag.name
+      into tag $util.escapeHTML($tag.name)
       #end if
       #if $user
-      by user $user.name
+      by user $util.escapeHTML($user.name)
       #end if
       in the $siteName Build System.  The list is sorted in reverse chronological order by build completion time.
     </description>

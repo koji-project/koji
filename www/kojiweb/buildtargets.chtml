@@ -35,7 +35,7 @@
     #for $target in $targets
     <tr class="$util.rowToggle($self)">
       <td>$target.id</td>
-      <td><a href="buildtargetinfo?targetID=$target.id">$target.name</a></td>
+      <td><a href="buildtargetinfo?targetID=$target.id">$util.escapeHTML($target.name)</a></td>
     </tr>
     #end for
     #else

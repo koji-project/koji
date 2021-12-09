@@ -2,24 +2,24 @@
 
 #include "includes/header.chtml"
 
-  <h4>Information for external repo <a href="externalrepoinfo?extrepoID=$extRepo.id">$extRepo.name</a></h4>
+  <h4>Information for external repo <a href="externalrepoinfo?extrepoID=$extRepo.id">$util.escapeHTML($extRepo.name)</a></h4>
 
   <table>
     <tr>
-      <th>Name</th><td>$extRepo.name</td>
+      <th>Name</th><td>$util.escapeHTML($extRepo.name)</td>
     </tr>
     <tr>
       <th>ID</th><td>$extRepo.id</td>
     </tr>
     <tr>
-      <th>URL</th><td><a href="$extRepo.url">$extRepo.url</a></td>
+      <th>URL</th><td><a href="$util.escapeHTML($extRepo.url)">$util.escapeHTML($extRepo.url)</a></td>
     </tr>
     <tr>
       <th>Tags using this external repo</th>
       <td>
 	#if $len($repoTags)
 	#for $tag in $repoTags
-	<a href="taginfo?tagID=$tag.tag_id">$tag.tag_name</a><br/>
+	<a href="taginfo?tagID=$tag.tag_id">$util.escapeHTML($tag.tag_name)</a><br/>
 	#end for
 	#else
 	No tags

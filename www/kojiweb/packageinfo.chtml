@@ -2,11 +2,11 @@
 
 #include "includes/header.chtml"
 
-  <h4>Information for package <a href="packageinfo?packageID=$package.id">$package.name</a></h4>
+  <h4>Information for package <a href="packageinfo?packageID=$package.id">$util.escapeHTML($package.name)</a></h4>
 
   <table>
     <tr>
-      <th>Name</th><td>$package.name</td>
+      <th>Name</th><td>$util.escapeHTML($package.name)</td>
     </tr>
     <tr>
       <th>ID</th><td>$package.id</td>
@@ -46,8 +46,8 @@
           </tr>
           #for $build in $builds
           <tr class="$util.rowToggle($self)">
-            <td><a href="buildinfo?buildID=$build.build_id">$build.nvr</a></td>
-            <td class="user-$build.owner_name"><a href="userinfo?userID=$build.owner_id">$build.owner_name</a></td>
+            <td><a href="buildinfo?buildID=$build.build_id">$util.escapeHTML($build.nvr)</a></td>
+            <td class="user-$build.owner_name"><a href="userinfo?userID=$build.owner_id">$util.escapeHTML($build.owner_name)</a></td>
             <td>$util.formatTime($build.completion_ts)</td>
             #set $stateName = $util.stateName($build.state)
             <td class="$stateName">$util.stateImage($build.state)</td>
@@ -101,8 +101,8 @@
           </tr>
           #for $tag in $tags
           <tr class="$util.rowToggle($self)">
-            <td><a href="taginfo?tagID=$tag.id">$tag.name</a></td>
-            <td><a href="userinfo?userID=$tag.owner_id">$tag.owner_name</a></td>
+            <td><a href="taginfo?tagID=$tag.id">$util.escapeHTML($tag.name)</a></td>
+            <td><a href="userinfo?userID=$tag.owner_id">$util.escapeHTML($tag.owner_name)</a></td>
             #set $included = $tag.blocked and 'no' or 'yes'
             <td>$util.imageTag($included)</td>
             <td>$tag.extra_arches</td>

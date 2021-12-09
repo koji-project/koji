@@ -4,14 +4,14 @@
 
 #include "includes/header.chtml"
   #if $rpm
-  <h4>Information for file <a href="fileinfo?rpmID=$rpm.id&amp;filename=$quote($file.name)">$file.name</a></h4>
+  <h4>Information for file <a href="fileinfo?rpmID=$rpm.id&amp;filename=$quote($file.name)">$util.escapeHTML($file.name)</a></h4>
   #elif $archive
-  <h4>Information for file <a href="fileinfo?archiveID=$archive.id&amp;filename=$quote($file.name)">$file.name</a></h4>
+  <h4>Information for file <a href="fileinfo?archiveID=$archive.id&amp;filename=$quote($file.name)">$util.escapeHTML($file.name)</a></h4>
   #end if
 
   <table>
     <tr>
-      <th>Name</th><td>$file.name</td>
+      <th>Name</th><td>$util.escapeHTML($file.name)</td>
     </tr>
     #if $rpm
     <tr>
@@ -28,12 +28,12 @@
     #end if
     #if 'user' in $file and $file.user
     <tr>
-      <th>User</th><td>$file.user</td>
+      <th>User</th><td>$util.escapeHTML($file.user)</td>
     </tr>
     #end if
     #if 'group' in $file and $file.group
     <tr>
-      <th>Group</th><td>$file.group</td>
+      <th>Group</th><td>$util.escapeHTML($file.group)</td>
     </tr>
     #end if
     #if 'mode' in $file and $file.mode
@@ -56,7 +56,7 @@
     </tr>
     #elif $archive
     <tr>
-      <th>Archive</th><td><a href="archiveinfo?archiveID=$archive.id">$archive.filename</a></td>
+      <th>Archive</th><td><a href="archiveinfo?archiveID=$archive.id">$util.escapeHTML($archive.filename)</a></td>
     </tr>
     #end if
   </table>

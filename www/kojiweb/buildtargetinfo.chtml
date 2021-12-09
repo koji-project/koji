@@ -2,20 +2,20 @@
 
 #include "includes/header.chtml"
 
-  <h4>Information for target <a href="buildtargetinfo?targetID=$target.id">$target.name</a></h4>
+  <h4>Information for target <a href="buildtargetinfo?targetID=$target.id">$util.escapeHTML($target.name)</a></h4>
 
   <table>
     <tr>
-      <th>Name</th><td>$target.name</td>
+      <th>Name</th><td>$util.escapeHTML($target.name)</td>
     </tr>
     <tr>
       <th>ID</th><td>$target.id</td>
     </tr>
     <tr>
-      <th>Build Tag</th><td><a href="taginfo?tagID=$buildTag.id">$buildTag.name</a></td>
+      <th>Build Tag</th><td><a href="taginfo?tagID=$buildTag.id">$util.escapeHTML($buildTag.name)</a></td>
     </tr>
     <tr>
-      <th>Destination Tag</th><td><a href="taginfo?tagID=$destTag.id">$destTag.name</a></td>
+      <th>Destination Tag</th><td><a href="taginfo?tagID=$destTag.id">$util.escapeHTML($destTag.name)</a></td>
     </tr>
     #if 'admin' in $perms
     <tr>

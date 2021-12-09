@@ -11,19 +11,19 @@
       <th>ID</th><td>$buildroot.id</td>
     </tr>
     <tr>
-      <th>Host OS</th><td>$buildroot.host_os</td>
+      <th>Host OS</th><td>$util.escapeHTML($buildroot.host_os)</td>
     </tr>
     <tr>
-      <th>Host Arch</th><td>$buildroot.host_arch</td>
+      <th>Host Arch</th><td>$util.escapeHTML($buildroot.host_arch)</td>
     </tr>
     <tr>
-      <th>Content Generator</th><td>$buildroot.cg_name ($buildroot.cg_version)</td>
+      <th>Content Generator</th><td>$util.escapeHTML($buildroot.cg_name) ($buildroot.cg_version)</td>
     </tr>
     <tr>
-      <th>Container Type</th><td>$buildroot.container_type</td>
+      <th>Container Type</th><td>$util.escapeHTML($buildroot.container_type)</td>
     </tr>
     <tr>
-      <th>Container Arch</th><td>$buildroot.container_arch</td>
+      <th>Container Arch</th><td>$util.escapeHTML($buildroot.container_arch)</td>
     </tr>
     #if $buildroot.get('extra')
     <tr>

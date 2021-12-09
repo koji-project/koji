@@ -13,7 +13,7 @@ buildrootID=$buildroot.id #slurp
   #if $type == 'component'
   <h4>Component Archives of buildroot <a href="buildrootinfo?buildrootID=$buildroot.id">$util.brLabel($buildroot)</a></h4>
   #elif $type == 'image'
-  <h4>Archives installed in <a href="archiveinfo?archiveID=$image.id">$image.filename</a></h4>
+  <h4>Archives installed in <a href="archiveinfo?archiveID=$image.id">$util.escapeHTML($image.filename)</a></h4>
   #else
   <h4>Archives built in buildroot <a href="buildrootinfo?buildrootID=$buildroot.id">$util.brLabel($buildroot)</a></h4>
   #end if
@@ -52,8 +52,8 @@ buildrootID=$buildroot.id #slurp
     #if $len($archives) > 0
     #for $archive in $archives
     <tr class="$util.rowToggle($self)">
-      <td><a href="archiveinfo?archiveID=$archive.id">$archive.filename</a></td>
-      <td>$archive.type_name</td>
+      <td><a href="archiveinfo?archiveID=$archive.id">$util.escapeHTML($archive.filename)</a></td>
+      <td>$util.escapeHTML($archive.type_name)</td>
       #if $type == 'component'
       #set $project = $archive.project and 'yes' or 'no'
       <td class="$project">$util.imageTag($project)</td>

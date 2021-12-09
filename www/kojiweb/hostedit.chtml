@@ -2,14 +2,14 @@
 
 #include "includes/header.chtml"
 
-  <h4>Edit host $host.name</h4>
+  <h4>Edit host $util.escapeHTML($host.name)</h4>
 
   <form action="hostedit">
     $util.authToken($self, form=True)
     <table>
       <tr>
         <th>Name</th>
-        <td>$host.name</td>
+        <td>$util.escapeHTML($host.name)</td>
       </tr>
       <tr>
         <th>ID</th>
@@ -20,7 +20,7 @@
       </tr>
       <tr>
         <th>Arches</th>
-        <td><input type="text" name="arches" value="$host.arches"/></td>
+        <td><input type="text" name="arches" value=$util.escapeHTML("$host.arches)"/></td>
       </tr>
       <tr>
         <th>Capacity</th>
@@ -43,7 +43,7 @@
         <td>
           <select name="channels" multiple="multiple">
             #for $channel in $allChannels
-            <option value="$channel.name" #if $channel in $hostChannels then 'selected="selected"' else ''#>$channel.name</option>
+            <option value="$channel.name" #if $channel in $hostChannels then 'selected="selected"' else ''#>$util.escapeHTML($channel.name)</option>
             #end for
           </select>
         </td>

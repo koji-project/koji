@@ -5,7 +5,7 @@
 
 #include "includes/header.chtml"
 
-  <h4>#if $latest then 'Latest ' else ''##if $state != None then $util.stateName($state).capitalize() + ' ' else ''##if $type then $type.capitalize() + ' ' else ''#Builds#if $package then ' of <a href="packageinfo?packageID=%i">%s</a>' % ($package.id, $package.name) else ''##if $prefix then ' starting with "%s"' % $prefix else ''##if $user then ' by <a href="userinfo?userID=%i">%s</a>' % ($user.id, $user.name) else ''##if $tag then ' in tag <a href="taginfo?tagID=%i">%s</a>' % ($tag.id, $tag.name) else ''#</h4>
+  <h4>#if $latest then 'Latest ' else ''##if $state != None then $util.stateName($state).capitalize() + ' ' else ''##if $type then $type.capitalize() + ' ' else ''#Builds#if $package then ' of <a href="packageinfo?packageID=%i">%s</a>' % ($package.id, $util.escapeHTML($package.name)) else ''##if $prefix then ' starting with "%s"' % $prefix else ''##if $user then ' by <a href="userinfo?userID=%i">%s</a>' % ($user.id, $util.escapeHTML($user.name)) else ''##if $tag then ' in tag <a href="taginfo?tagID=%i">%s</a>' % ($tag.id, $util.escapeHTML($tag.name)) else ''#</h4>
 
   <table class="data-list">
     <tr>
@@ -38,7 +38,7 @@
           <option value="$loggedInUser.name">me</option>
           #end if
           #for $userOption in $users
-          <option value="$userOption.name" #if $userOption.name == ($user and $user.name or None) then 'selected="selected"' else ''#>$userOption.name</option>
+          <option value="$userOption.name" #if $userOption.name == ($user and $user.name or None) then 'selected="selected"' else ''#>$util.escapeHTML($userOption.name)</option>
           #end for
         </select>
         </td></tr>
@@ -124,9 +124,9 @@
           <td>$build.build_id</td>
           <td><a href="buildinfo?buildID=$build.build_id">$koji.buildLabel($build)</a></td>
           #if $tag
-          <td><a href="taginfo?tagID=$build.tag_id">$build.tag_name</a></td>
+          <td><a href="taginfo?tagID=$build.tag_id">$util.escapeHTML($build.tag_name)</a></td>
           #end if
-          <td class="user-$build.owner_name"><a href="userinfo?userID=$build.owner_id">$build.owner_name</a></td>
+          <td class="user-$build.owner_name"><a href="userinfo?userID=$build.owner_id">$util.escapeHTML($build.owner_name)</a></td>
           <td>$util.formatTime($build.completion_time)</td>
           #set $stateName = $util.stateName($build.state)
           <td class="$stateName">$util.stateImage($build.state)</td>

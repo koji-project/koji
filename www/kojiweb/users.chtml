@@ -1,4 +1,5 @@
 #from kojiweb import util
+#from urllib.parse import quote
 
 #include "includes/header.chtml"
 
@@ -55,10 +56,10 @@
       #for $user in $users
         <tr class="$util.rowToggle($self)">
           <td>$user.id</td>
-          <td><a href="userinfo?userID=$user.name">$user.name</a></td>
-          <td><a href="packages?userID=$user.name">view</a></td>
-          <td><a href="builds?userID=$user.name">view</a></td>
-          <td><a href="tasks?owner=$user.name">view</a></td>
+          <td><a href="userinfo?userID=$quote($user.name)">$util.escapeHTML($user.name)</a></td>
+          <td><a href="packages?userID=$quote($user.name)">view</a></td>
+          <td><a href="builds?userID=$quote($user.name)">view</a></td>
+          <td><a href="tasks?owner=$quote($user.name)">view</a></td>
         </tr>
       #end for
     #else

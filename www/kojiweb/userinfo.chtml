@@ -2,17 +2,17 @@
 
 #include "includes/header.chtml"
 
-  <h4>Information for user <a href="userinfo?userID=$user.id">$user.name</a></h4>
+  <h4>Information for user <a href="userinfo?userID=$user.id">$util.escapeHTML($user.name)</a></h4>
 
   <table>
     <tr>
-      <th>Name</th><td>$user.name</td>
+      <th>Name</th><td>$util.escapeHTML($user.name)</td>
     </tr>
     <tr>
       <th>ID</th><td>$user.id</td>
     </tr>
     <tr>
-      <th>Tasks</th><td><a href="tasks?owner=$user.name&state=all">$taskCount</a></td>
+      <th>Tasks</th><td><a href="tasks?$util.passthrough($self, 'owner')&state=all">$taskCount</a></td>
     </tr>
     <tr>
       <th id="packagelist">Packages</th>
@@ -47,8 +47,8 @@
           </tr>
           #for $package in $packages
           <tr class="$util.rowToggle($self)">
-            <td><a href="packageinfo?packageID=$package.package_id">$package.package_name</a></td>
-            <td><a href="taginfo?tagID=$package.tag_id">$package.tag_name</a></td>
+            <td><a href="packageinfo?packageID=$package.package_id">$util.escapeHTML($package.package_name)</a></td>
+            <td><a href="taginfo?tagID=$package.tag_id">$util.escapeHTML($package.tag_name)</a></td>
             <td class="$str(not $package.blocked).lower()">#if $package.blocked then $util.imageTag('no') else $util.imageTag('yes')#</td>
           </tr>
           #end for
@@ -92,7 +92,7 @@
           #for $build in $builds
           <tr class="$util.rowToggle($self)">
             #set $stateName = $util.stateName($build.state)
-            <td><a href="buildinfo?buildID=$build.build_id">$build.nvr</a></td>
+            <td><a href="buildinfo?buildID=$build.build_id">$util.escapeHTML($build.nvr)</a></td>
             <td>$util.formatTime($build.completion_ts)</td>
             <td class="$stateName">$util.stateImage($build.state)</td>
           </tr>
