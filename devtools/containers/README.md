@@ -4,7 +4,6 @@ Dockerfiles for development
 To facilitate in development - specifically, running tests, some Dockerfiles are
 provided:
 
-* [`./Dockerfile.centos6`](./Dockerfile.centos6) CentOS 6, for testing with python2.6
 * [`./Dockerfile.centos7`](./Dockerfile.centos7) CentOS 7, for testing with python2.7
 * [`./Dockerfile.centos8`](./Dockerfile.centos8) CentOS 8, for testing with python3.6
 * [`./Dockerfile.f32`](./Dockerfile.f32) Fedora 32, for testing with python3.8
