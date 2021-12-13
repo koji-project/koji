@@ -19,7 +19,7 @@
     </tr>
     #end if
     <tr>
-      <th>Size</th><td>$file.size</td>
+      <th>Size</th><td><span title="$util.formatThousands($file.size)">$util.formatNatural($file.size)</span></td>
     </tr>
     #if 'mtime' in $file and $file.mtime
     <tr>

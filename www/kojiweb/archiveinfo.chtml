@@ -42,7 +42,7 @@
     </tr>
     #end if
     <tr>
-      <th>Size</th><td>$archive.size</td>
+      <th>Size</th><td><span title="$util.formatThousands($archive.size)">$util.formatNatural($archive.size)</span></td>
     </tr>
     <tr>
       <th>Checksum</th><td>$archive.checksum</td>
@@ -97,7 +97,7 @@
           </tr>
           #for $file in $files
           <tr class="$util.rowToggle($self)">
-            <td><a href="fileinfo?archiveID=$archive.id&filename=$quote($file.name)">$file.name</a></td><td>$file.size</td>
+            <td><a href="fileinfo?archiveID=$archive.id&filename=$quote($file.name)">$file.name</a></td><td><span title="$util.formatThousands($file.size)">$util.formatNatural($file.size)</span></td>
           </tr>
           #end for
         </table>
