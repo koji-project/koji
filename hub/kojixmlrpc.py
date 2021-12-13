@@ -697,6 +697,10 @@ def server_setup(environ):
     try:
         setup_logging1()
         opts = load_config(environ)
+        if opts['DisableGSSAPIProxyDNFallback']:
+            logger.warning(
+                'Hub option DisableGSSAPIProxyDNFallback is deprecated and '
+                'will be removed in 1.29')
         setup_logging2(opts)
         load_scripts(environ)
         koji.util.setup_rlimits(opts)
