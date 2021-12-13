@@ -1043,9 +1043,11 @@ def anon_handle_mock_config(goptions, session, args):
     parser.add_option("--buildroot",
                       help="Duplicate the mock config for the specified buildroot id")
     parser.add_option("--mockdir", default="/var/lib/mock", metavar="DIR", help="Specify mockdir")
-    parser.add_option("--topdir", metavar="DIR", help="Specify topdir")
-    parser.add_option("--topurl", metavar="URL", default=goptions.topurl,
-                      help="URL under which Koji files are accessible")
+    parser.add_option("--topdir", metavar="DIR",
+                      help="Specify topdir, topdir tops the topurl")
+    parser.add_option("--topurl", metavar="URL",
+                      help="URL under which Koji files are accessible, "
+                           "when topdir is specified, topdir tops the topurl")
     parser.add_option("--distribution", default="Koji Testing",
                       help="Change the distribution macro")
     parser.add_option("--yum-proxy", help="Specify a yum proxy")
@@ -1062,7 +1064,12 @@ def anon_handle_mock_config(goptions, session, args):
     opts = {}
     for k in ('topdir', 'topurl', 'distribution', 'mockdir', 'yum_proxy'):
         if hasattr(options, k):
-            opts[k] = getattr(options, k)
+            if getattr(options, k) is not None:
+                opts[k] = getattr(options, k)
+    if opts.get('topdir') and opts.get('topurl'):
+        del opts['topurl']
+    if not opts.get('topdir') and not opts.get('topurl'):
+        opts['topurl'] = goptions.topurl
     if options.buildroot:
         try:
             br_id = int(options.buildroot)
