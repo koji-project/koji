@@ -20,7 +20,6 @@ class TestLookupName(unittest.TestCase):
         self.InsertProcessor = mock.patch('kojihub.InsertProcessor',
                                           side_effect=self.getInsert).start()
         self.inserts = []
-        self.insert_execute = mock.MagicMock()
         self.nextval = mock.patch('kojihub.nextval').start()
         self.context = mock.patch('kojihub.context').start()
 
@@ -32,7 +31,7 @@ class TestLookupName(unittest.TestCase):
 
     def getInsert(self, *args, **kwargs):
         insert = IP(*args, **kwargs)
-        insert.execute = self.insert_execute
+        insert.execute = mock.MagicMock()
         self.inserts.append(insert)
         return insert
 
@@ -128,6 +127,7 @@ class TestLookupName(unittest.TestCase):
         self.assertEqual(insert.table, 'package')
         self.assertEqual(insert.data, expected)
         self.assertEqual(insert.rawdata, {})
+        insert.execute.assert_called_once()
 
     def test_lookup_name_create_wrong_type(self):
         self.query_executeOne.return_value = None

@@ -3282,6 +3282,7 @@ def lookup_name(table, info, strict=False, create=False):
         new_id = nextval(f'{table}_id_seq')
         insert = InsertProcessor(table)
         insert.set(id=new_id, name=info)
+        insert.execute()
         return {'id': new_id, 'name': info}
     else:
         # no match and not strict
