@@ -29,7 +29,7 @@ class TestRemoveChannel(utils.CliTestCase):
         self.session.getChannel.return_value = self.channel_info
         rv = handle_remove_channel(self.options, self.session, [self.channel_name])
         actual = stdout.getvalue()
-        expected = ''
+        expected = 'remove-channel is deprecated and will be removed in 1.30\n'
         self.assertMultiLineEqual(actual, expected)
         activate_session_mock.assert_called_once_with(self.session, self.options)
         self.session.getChannel.assert_called_once_with(self.channel_name)
@@ -42,7 +42,7 @@ class TestRemoveChannel(utils.CliTestCase):
         self.session.getChannel.return_value = self.channel_info
         rv = handle_remove_channel(self.options, self.session, ['--force', self.channel_name])
         actual = stdout.getvalue()
-        expected = ''
+        expected = 'remove-channel is deprecated and will be removed in 1.30\n'
         self.assertMultiLineEqual(actual, expected)
         activate_session_mock.assert_called_once_with(self.session, self.options)
         self.session.getChannel.assert_called_once_with(self.channel_name)
@@ -76,7 +76,7 @@ class TestRemoveChannel(utils.CliTestCase):
         self.assertExitCode(ex, 2)
         actual_stdout = stdout.getvalue()
         actual_stderr = stderr.getvalue()
-        expected_stdout = ''
+        expected_stdout = 'remove-channel is deprecated and will be removed in 1.30\n'
         expected_stderr = """Usage: %s remove-channel [options] <channel>
 (Specify the --help global option for a list of other help options)
 
