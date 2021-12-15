@@ -465,8 +465,7 @@ def handle_add_pkg(goptions, session, args):
     # check if list of packages exists for that tag already
     dsttag = session.getTag(tag)
     if dsttag is None:
-        print("No such tag: %s" % tag)
-        sys.exit(1)
+        error("No such tag: %s" % tag)
     try:
         pkglist = session.listPackages(tagID=dsttag['id'], with_owners=False)
     except koji.ParameterError:
@@ -1444,8 +1443,7 @@ def handle_import_cg(goptions, session, args):
     activate_session(session, goptions)
     metadata = koji.load_json(args[0])
     if 'output' not in metadata:
-        print("Metadata contains no output")
-        sys.exit(1)
+        error("Metadata contains no output")
     localdir = args[1]
 
     to_upload = []

@@ -179,7 +179,7 @@ class TestImportCG(utils.CliTestCase):
                         options,
                         session,
                         arguments,
-                        stdout=expected,
+                        stderr=expected,
                         exit_code=1)
 
                     # Case 4. path not exist
