@@ -376,7 +376,7 @@ class Session(object):
 
             # in this point we can continue with proxied user in same way as if it is not proxied
             if proxyauthtype is not None:
-                if not context.opts['AllowProxyAuthType']:
+                if not context.opts['AllowProxyAuthType'] and authtype != proxyauthtype:
                     raise koji.AuthError("Proxy must use same auth mechanism as hub (behaviour "
                                          "can be overriden via AllowProxyAuthType hub option)")
                 if proxyauthtype not in (koji.AUTHTYPE_GSSAPI, koji.AUTHTYPE_SSL):
