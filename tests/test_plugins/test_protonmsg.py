@@ -3,6 +3,7 @@ from __future__ import absolute_import
 import json
 import tempfile
 import unittest
+import pytest
 
 import protonmsg
 import mock
@@ -488,3 +489,17 @@ send_timeout = 60
         self.assertEqual(event.container.schedule.return_value.cancel.call_count, 2)
         self.assertTrue(self.handler.connect_task is None)
         self.assertTrue(self.handler.timeout_task is None)
+
+
+@pytest.mark.parametrize('topic_prefix,expected', (
+    ('koji', 'topic://koji'),
+    ('brew', 'topic://brew'),
+    ('topic://koji', 'topic://koji'),
+    ('/topic/koji', '/topic/koji'),
+))
+def test_topic_prefix(topic_prefix, expected):
+    conf = ConfigParser()
+    conf.add_section('broker')
+    conf.set('broker', 'topic_prefix', topic_prefix)
+    handler = protonmsg.TimeoutHandler('amqp://broker1.example.com:5672', [], conf)
+    assert handler.topic_prefix == expected

@@ -197,7 +197,11 @@ The following fields are understood:
 * ``cert`` -- the combined client cert and key file for authenticating koji to
   the broker.
 * ``cacert`` -- the CA certificate to verify the broker server TLS connection
-* ``topic_prefix`` -- this string will be used as a prefix for all message topics
+* ``topic_prefix`` -- Koji uses this string as a prefix for all message
+  topics. For example, if you choose ``topic://koji``, then Koji
+  will publish messages on ``topic://koji.package.add`` when an user runs
+  ``kojidev add-pkg`` etc. Use ``topic://`` prefixes for ActiveMQ brokers,
+  ``/topic/`` for RabbitMQ brokers.
 * ``connect_timeout`` -- the number of seconds to wait for a connection before
   timing out
 * ``send_timeout`` -- the number of seconds to wait while sending a message
