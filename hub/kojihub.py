@@ -1121,7 +1121,7 @@ def pkglist_setarches(taginfo, pkginfo, arches, force=False):
 
 
 def readPackageList(tagID=None, userID=None, pkgID=None, event=None, inherit=False,
-                    with_dups=False, with_owners=True):
+                    with_dups=False, with_owners=True, with_blocked=True):
     """Returns the package list for the specified tag or user.
 
     One of (tagID,userID,pkgID) must be specified
@@ -1175,6 +1175,8 @@ def readPackageList(tagID=None, userID=None, pkgID=None, event=None, inherit=Fal
             'users ON users.id = tag_package_owners.owner'
         ]
         clauses.append(eventCondition(event, table='tag_package_owners'))
+    if not with_blocked:
+        clauses.append('NOT tag_packages.blocked')
     fields, aliases = zip(*fields)
     query = QueryProcessor(columns=fields, aliases=aliases, tables=tables, joins=joins,
                            clauses=clauses, values=locals())
@@ -12285,7 +12287,8 @@ class RootExports(object):
     getPackage = staticmethod(lookup_package)
 
     def listPackages(self, tagID=None, userID=None, pkgID=None, prefix=None, inherited=False,
-                     with_dups=False, event=None, queryOpts=None, with_owners=True):
+                     with_dups=False, event=None, queryOpts=None, with_owners=True,
+                     with_blocked=False):
         """
         Returns a list of packages in Koji.
 
@@ -12330,7 +12333,8 @@ class RootExports(object):
                 pkgID = get_package_id(pkgID, strict=True)
             result_list = list(readPackageList(tagID=tagID, userID=userID, pkgID=pkgID,
                                                inherit=inherited, with_dups=with_dups,
-                                               event=event, with_owners=with_owners).values())
+                                               event=event, with_owners=with_owners,
+                                               with_blocked=with_blocked).values())
             if with_dups:
                 # when with_dups=True, readPackageList returns a list of list of dicts
                 # convert it to a list of dicts for consistency

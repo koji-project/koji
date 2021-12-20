@@ -124,6 +124,10 @@
       <td><a href="packages?tagID=$tag.id">$numPackages</a></td>
     </tr>
     <tr>
+      <th>Packages (blocked packages included)</th>
+      <td><a href="packages?tagID=$tag.id">$numPackagesBlocked</a></td>
+    </tr>
+    <tr>
       <th>Builds</th>
       <td><a href="builds?tagID=$tag.id">$numBuilds</a></td>
     </tr>
