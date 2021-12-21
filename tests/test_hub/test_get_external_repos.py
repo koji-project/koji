@@ -17,15 +17,7 @@ class TestGetExternalRepos(DBQueryTestCase):
                                   joins=[
                                       'external_repo_config ON external_repo_id = id'],
                                   clauses=['(active = TRUE)'],
-                                  values={'clauses': ['(active = TRUE)'],
-                                          'event': None,
-                                          'fields': ['id', 'name', 'url'],
-                                          'info': None,
-                                          'joins': [
-                                              'external_repo_config ON external_repo_id = id'],
-                                          'queryOpts': None,
-                                          'tables': ['external_repo'],
-                                          'url': None},
+                                  values={},
                                   opts={})
         self.assertEqual(rv, [{'id': 1,
                                'name': 'ext_repo_1',
@@ -46,19 +38,7 @@ class TestGetExternalRepos(DBQueryTestCase):
                                       '(create_event <= 1000'
                                       ' AND ( revoke_event IS NULL'
                                       ' OR 1000 < revoke_event ))'],
-                                  values={'clauses': [
-                                      '(create_event <= 1000'
-                                      ' AND ( revoke_event IS NULL'
-                                      ' OR 1000 < revoke_event ))'],
-                                      'event': 1000,
-                                      'fields': ['id', 'name', 'url'],
-                                      'info': None,
-                                      'joins': [
-                                          'external_repo_config ON'
-                                          ' external_repo_id = id'],
-                                      'queryOpts': None,
-                                      'tables': ['external_repo'],
-                                      'url': None},
+                                  values={},
                                   opts={})
         self.assertEqual(rv, [{'id': 1,
                                'name': 'ext_repo_1',
@@ -75,17 +55,8 @@ class TestGetExternalRepos(DBQueryTestCase):
                                   joins=[
                                       'external_repo_config ON external_repo_id = id'],
                                   clauses=['(active = TRUE)',
-                                           'name = %(info)s'],
-                                  values={'clauses': ['(active = TRUE)',
-                                                      'name = %(info)s'],
-                                          'event': None,
-                                          'fields': ['id', 'name', 'url'],
-                                          'info': 'ext_repo_1',
-                                          'joins': [
-                                              'external_repo_config ON external_repo_id = id'],
-                                          'queryOpts': None,
-                                          'tables': ['external_repo'],
-                                          'url': None},
+                                           '(external_repo.name = %(external_repo_name)s)'],
+                                  values={'external_repo_name': 'ext_repo_1'},
                                   opts={})
         self.assertEqual(rv, [{'id': 1,
                                'name': 'ext_repo_1',
@@ -102,17 +73,8 @@ class TestGetExternalRepos(DBQueryTestCase):
                                   joins=[
                                       'external_repo_config ON external_repo_id = id'],
                                   clauses=['(active = TRUE)',
-                                           'id = %(info)i'],
-                                  values={'clauses': ['(active = TRUE)',
-                                                      'id = %(info)i'],
-                                          'event': None,
-                                          'fields': ['id', 'name', 'url'],
-                                          'info': 1,
-                                          'joins': [
-                                              'external_repo_config ON external_repo_id = id'],
-                                          'queryOpts': None,
-                                          'tables': ['external_repo'],
-                                          'url': None},
+                                           '(external_repo.id = %(external_repo_id)s)'],
+                                  values={'external_repo_id': 1},
                                   opts={})
         self.assertEqual(rv, [{'id': 1,
                                'name': 'ext_repo_1',
@@ -130,16 +92,7 @@ class TestGetExternalRepos(DBQueryTestCase):
                                       'external_repo_config ON external_repo_id = id'],
                                   clauses=['(active = TRUE)',
                                            'url = %(url)s'],
-                                  values={'clauses': ['(active = TRUE)',
-                                                      'url = %(url)s'],
-                                          'event': None,
-                                          'fields': ['id', 'name', 'url'],
-                                          'info': None,
-                                          'joins': [
-                                              'external_repo_config ON external_repo_id = id'],
-                                          'queryOpts': None,
-                                          'tables': ['external_repo'],
-                                          'url': 'http://example.com/repo/'},
+                                  values={'url': 'http://example.com/repo/'},
                                   opts={})
         self.assertEqual(rv, [{'id': 1,
                                'name': 'ext_repo_1',
@@ -149,4 +102,4 @@ class TestGetExternalRepos(DBQueryTestCase):
         info = {'info_key': 'info_value'}
         with self.assertRaises(koji.GenericError) as cm:
             kojihub.get_external_repos(info=info)
-        self.assertEqual("Invalid type for lookup: %s" % type(info), str(cm.exception))
+        self.assertEqual("Invalid name or id value: %s" % info, str(cm.exception))

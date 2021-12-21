@@ -257,7 +257,7 @@ class TestGetTag(unittest.TestCase):
         taginfo = {'test-tag': 'value'}
         with self.assertRaises(koji.GenericError) as ex:
             kojihub.get_tag(taginfo, strict=True)
-        self.assertEqual("Invalid type for tagInfo: %s" % type(taginfo), str(ex.exception))
+        self.assertEqual("Invalid name or id value: %s" % taginfo, str(ex.exception))
 
     def test_get_tag_non_exist_tag(self):
         taginfo = 'test-tag'

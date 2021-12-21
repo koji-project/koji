@@ -3193,22 +3193,22 @@ def get_build_targets(info=None, event=None, buildTagID=None, destTagID=None, qu
              'tag AS tag1 ON build_target_config.build_tag = tag1.id',
              'tag AS tag2 ON build_target_config.dest_tag = tag2.id']
     clauses = [eventCondition(event)]
+    values = {}
 
     if info:
-        if isinstance(info, str):
-            clauses.append('build_target.name = %(info)s')
-        elif isinstance(info, int):
-            clauses.append('build_target.id = %(info)i')
-        else:
-            raise koji.GenericError('Invalid type for lookup: %s' % type(info))
+        clause, c_values = name_or_id_clause('build_target', info)
+        clauses.append(clause)
+        values.update(c_values)
     if buildTagID is not None:
         clauses.append('build_tag = %(buildTagID)i')
+        values['buildTagID'] = buildTagID
     if destTagID is not None:
         clauses.append('dest_tag = %(destTagID)i')
+        values['destTagID'] = destTagID
 
     query = QueryProcessor(columns=[f[0] for f in fields], aliases=[f[1] for f in fields],
                            tables=['build_target_config'], joins=joins, clauses=clauses,
-                           values=locals(), opts=queryOpts)
+                           values=values, opts=queryOpts)
     return query.execute()
 
 
@@ -3222,6 +3222,40 @@ def get_build_target(info, event=None, strict=False):
         raise koji.GenericError('No such build target: %s' % info)
     else:
         return None
+
+
+def name_or_id_clause(table, info):
+    """Return query clause and values for lookup by name or id
+
+    :param str table: table name
+    :param info: the name or id to look up
+    :type info: int or str or dict
+    :returns: a pair (clause, values)
+
+    If info is an int, we are looking up by id
+    If info is a string, we are looking up by name
+    If info is a dict, we look for 'id' or 'name' fields to decide
+    """
+    if isinstance(info, dict):
+        if 'id' in info:
+            try:
+                info = int(info['id'])
+            except (ValueError, TypeError):
+                raise koji.ParameterError('Invalid name or id value: %r' % info)
+        elif 'name' in info:
+            info = info['name']
+        else:
+            raise koji.ParameterError('Invalid name or id value: %r' % info)
+    if isinstance(info, int):
+        clause = f"({table}.id = %({table}_id)s)"
+        values = {f"{table}_id": info}
+    elif isinstance(info, str):
+        clause = f"({table}.name = %({table}_name)s)"
+        values = {f"{table}_name": info}
+    else:
+        raise koji.ParameterError('Invalid name or id value: %r' % info)
+
+    return clause, values
 
 
 def lookup_name(table, info, strict=False, create=False):
@@ -3242,26 +3276,25 @@ def lookup_name(table, info, strict=False, create=False):
     create option will fail.
     """
     fields = ('id', 'name')
-    if isinstance(info, int):
-        q = """SELECT id,name FROM %s WHERE id=%%(info)d""" % table
-    elif isinstance(info, str):
-        q = """SELECT id,name FROM %s WHERE name=%%(info)s""" % table
+    clause, values = name_or_id_clause(table, info)
+    query = QueryProcessor(columns=fields, tables=[table],
+                           clauses=[clause], values=values)
+    ret = query.executeOne()
+    if ret is not None:
+        return ret
+    elif strict:
+        raise koji.GenericError('No such entry in table %s: %s' % (table, info))
+    elif create:
+        if not isinstance(info, str):
+            raise koji.GenericError('Name must be a string')
+        new_id = nextval(f'{table}_id_seq')
+        insert = InsertProcessor(table)
+        insert.set(id=new_id, name=info)
+        insert.execute()
+        return {'id': new_id, 'name': info}
     else:
-        raise koji.GenericError('Invalid type for id lookup: %s' % type(info))
-    ret = _singleRow(q, locals(), fields, strict=False)
-    if ret is None:
-        if strict:
-            raise koji.GenericError('No such entry in table %s: %s' % (table, info))
-        elif create:
-            if not isinstance(info, str):
-                raise koji.GenericError('Name must be a string')
-            id = _singleValue("SELECT nextval('%s_id_seq')" % table, strict=True)
-            q = """INSERT INTO %s(id,name) VALUES (%%(id)i,%%(info)s)""" % table
-            _dml(q, locals())
-            return {'id': id, 'name': info}
-        else:
-            return ret
-    return ret
+        # no match and not strict
+        return None
 
 
 def get_id(table, info, strict=False, create=False):
@@ -3440,21 +3473,15 @@ def get_tag(tagInfo, strict=False, event=None, blocked=False):
               'tag_config.maven_support': 'maven_support',
               'tag_config.maven_include_all': 'maven_include_all',
               }
-    data = {'tagInfo': tagInfo}
 
-    clauses = []
-    if isinstance(tagInfo, int):
-        clauses.append("tag.id = %(tagInfo)i")
-    elif isinstance(tagInfo, str):
-        clauses.append("tag.name = %(tagInfo)s")
-    else:
-        raise koji.GenericError('Invalid type for tagInfo: %s' % type(tagInfo))
+    clause, values = name_or_id_clause('tag', tagInfo)
+    clauses = [clause]
     if event == "auto":
         # find active event or latest create_event
         opts = {'order': '-create_event', 'limit': 1}
         query = QueryProcessor(tables=['tag_config'], columns=['create_event', 'revoke_event'],
                                joins=['tag on tag.id = tag_config.tag_id'],
-                               clauses=clauses, values=data, opts=opts)
+                               clauses=clauses, values=values, opts=opts)
         try:
             event = query.executeOne(strict=True)['revoke_event']
         except koji.GenericError:
@@ -3471,7 +3498,7 @@ def get_tag(tagInfo, strict=False, event=None, blocked=False):
 
     fields, aliases = zip(*fields.items())
     query = QueryProcessor(columns=fields, aliases=aliases, tables=tables,
-                           joins=joins, clauses=clauses, values=data)
+                           joins=joins, clauses=clauses, values=values)
     result = query.executeOne()
     if not result:
         if strict:
@@ -3739,19 +3766,18 @@ def get_external_repos(info=None, url=None, event=None, queryOpts=None):
     tables = ['external_repo']
     joins = ['external_repo_config ON external_repo_id = id']
     clauses = [eventCondition(event)]
+    values = {}
     if info is not None:
-        if isinstance(info, str):
-            clauses.append('name = %(info)s')
-        elif isinstance(info, int):
-            clauses.append('id = %(info)i')
-        else:
-            raise koji.GenericError('Invalid type for lookup: %s' % type(info))
+        clause, c_values = name_or_id_clause('external_repo', info)
+        clauses.append(clause)
+        values.update(c_values)
     if url:
         clauses.append('url = %(url)s')
+        values['url'] = url
 
     query = QueryProcessor(columns=fields, tables=tables,
                            joins=joins, clauses=clauses,
-                           values=locals(), opts=queryOpts)
+                           values=values, opts=queryOpts)
     return query.execute()
 
 
@@ -5442,17 +5468,12 @@ def get_host(hostInfo, strict=False, event=None):
               }
     clauses = [eventCondition(event, table='host_config')]
 
-    if isinstance(hostInfo, int):
-        clauses.append("host.id = %(hostInfo)i")
-    elif isinstance(hostInfo, str):
-        clauses.append("host.name = %(hostInfo)s")
-    else:
-        raise koji.GenericError('Invalid type for hostInfo: %s' % type(hostInfo))
+    clause, values = name_or_id_clause('host', hostInfo)
+    clauses.append(clause)
 
-    data = {'hostInfo': hostInfo}
     fields, aliases = zip(*fields.items())
     query = QueryProcessor(columns=fields, aliases=aliases, tables=tables,
-                           joins=joins, clauses=clauses, values=data)
+                           joins=joins, clauses=clauses, values=values)
     result = query.executeOne()
     if not result:
         if strict:
@@ -5517,16 +5538,10 @@ def get_channel(channelInfo, strict=False):
               For example, {'id': 20, 'name': 'container'}
     """
     fields = ('id', 'name', 'description', 'enabled', 'comment')
-    query = """SELECT %s FROM channels
-    WHERE """ % ', '.join(fields)
-    if isinstance(channelInfo, int):
-        query += """id = %(channelInfo)i"""
-    elif isinstance(channelInfo, str):
-        query += """name = %(channelInfo)s"""
-    else:
-        raise koji.GenericError('Invalid type for channelInfo: %s' % type(channelInfo))
-
-    return _singleRow(query, locals(), fields, strict)
+    clause, values = name_or_id_clause('channels', channelInfo)
+    query = QueryProcessor(columns=fields, tables=['channels'],
+                           clauses=[clause], values=values)
+    return query.executeOne(strict=strict)
 
 
 def query_buildroots(hostID=None, tagID=None, state=None, rpmID=None, archiveID=None, taskID=None,
