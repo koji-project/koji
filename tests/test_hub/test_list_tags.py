@@ -27,22 +27,21 @@ class TestListTags(unittest.TestCase):
             self.exports.listTags(build=build_name)
         self.assertEqual("No such build: %s" % build_name, str(cm.exception))
 
-    def test_non_exist_package(self):
-        package_id = 999
+    @mock.patch('kojihub.lookup_package')
+    def test_non_exist_package(self, lookup_package):
         self.cursor.fetchone.return_value = None
         self.context.cnx.cursor.return_value = self.cursor
-        kojihub.lookup_package.return_value = koji.GenericError
+        lookup_package.side_effect = koji.GenericError('Expected error')
+
+        package_id = 999
         with self.assertRaises(koji.GenericError) as cm:
             self.exports.listTags(package=package_id)
-        self.assertEqual("No such package: %s" % package_id, str(cm.exception))
+        self.assertEqual('Expected error', str(cm.exception))
 
         package_name = 'test-pkg'
-        self.cursor.fetchone.return_value = None
-        self.context.cnx.cursor.return_value = self.cursor
-        kojihub.lookup_package.return_value = koji.GenericError
         with self.assertRaises(koji.GenericError) as cm:
             self.exports.listTags(package=package_name)
-        self.assertEqual("No such package: %s" % package_name, str(cm.exception))
+        self.assertEqual("Expected error", str(cm.exception))
 
     def test_build_package_not_none(self):
         build_id = 999

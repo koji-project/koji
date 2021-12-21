@@ -41,9 +41,10 @@ class TestListBuilds(unittest.TestCase):
                             'volume_id': 0,
                             'volume_name': 'DEFAULT'}]
 
-    def test_wrong_package(self):
+    @mock.patch('kojihub.get_package_id')
+    def test_wrong_package(self, get_package_id):
         package = 'test-package'
-        kojihub.get_package_id.return_value = None
+        get_package_id.return_value = None
         rv = self.exports.listBuilds(packageID=package)
         self.assertEqual(rv, [])
 

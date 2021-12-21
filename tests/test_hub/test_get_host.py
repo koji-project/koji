@@ -40,13 +40,13 @@ class TestSetHostEnabled(unittest.TestCase):
         joins = ['host ON host.id = host_config.host_id']
         aliases = ['id', 'user_id', 'name', 'ready', 'task_load',
                    'arches', 'capacity', 'description', 'comment', 'enabled']
-        clauses = ['(host_config.active = TRUE)', 'host.name = %(hostInfo)s']
-        values = {'hostInfo': 'hostname'}
+        clauses = ['(host_config.active = TRUE)', '(host.name = %(host_name)s)']
+        values = {'host_name': 'hostname'}
         self.assertEqual(query.tables, ['host_config'])
         self.assertEqual(query.joins, joins)
         self.assertEqual(set(query.columns), set(columns))
         self.assertEqual(set(query.aliases), set(aliases))
-        self.assertEqual(query.clauses, clauses)
+        self.assertEqual(set(query.clauses), set(clauses))
         self.assertEqual(query.values, values)
 
     def test_get_host_by_id_event(self):
@@ -63,13 +63,13 @@ class TestSetHostEnabled(unittest.TestCase):
                    'arches', 'capacity', 'description', 'comment', 'enabled']
         clauses = ['(host_config.create_event <= 345 AND ( host_config.revoke_event IS NULL '
                    'OR 345 < host_config.revoke_event ))',
-                   'host.id = %(hostInfo)i']
-        values = {'hostInfo': 123}
+                   '(host.id = %(host_id)s)']
+        values = {'host_id': 123}
         self.assertEqual(query.tables, ['host_config'])
         self.assertEqual(query.joins, joins)
         self.assertEqual(set(query.columns), set(columns))
         self.assertEqual(set(query.aliases), set(aliases))
-        self.assertEqual(query.clauses, clauses)
+        self.assertEqual(set(query.clauses), set(clauses))
         self.assertEqual(query.values, values)
 
     def getQueryMissing(self, *args, **kwargs):
@@ -95,5 +95,5 @@ class TestSetHostEnabled(unittest.TestCase):
         host_info = {'host_id': 567}
         with self.assertRaises(koji.GenericError) as cm:
             self.exports.getHost(host_info)
-        self.assertEqual("Invalid type for hostInfo: %s" % type(host_info), str(cm.exception))
+        self.assertEqual("Invalid name or id value: %s" % host_info, str(cm.exception))
         self.assertEqual(len(self.queries), 0)
