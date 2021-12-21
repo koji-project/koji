@@ -9702,8 +9702,10 @@ def policy_get_build_tags(data, taginfo=False):
                 tags[None] = None
             else:
                 tinfo = get_buildroot(br_id, strict=True)
-                tags[tinfo['tag_name']] = get_tag(tinfo['tag_name'], strict=True,
-                                                  event=tinfo['repo_create_event_id'])
+                # CG don't need to have buildroots based on tags
+                if tinfo['tag_name']:
+                    tags[tinfo['tag_name']] = get_tag(tinfo['tag_name'], strict=True,
+                                                      event=tinfo['repo_create_event_id'])
 
     if taginfo:
         tags = tags.values()
