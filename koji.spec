@@ -83,7 +83,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.27.0
+Version: 1.27.1
 Release: %{release}%{?dist}
 License: LGPLv2 and GPLv2+
 # the included arch lib from yum's rpmUtils is GPLv2+
@@ -644,6 +644,26 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Tue Dec 21 2021 Tomas Kopecek <tkopecek at redhat.com> - 1.27.1-1
+- PR#3098: Add all options to hub_conf.rst
+- PR#3104: Make setup.py executable
+- PR#3113: error function instead of print with sys.exit in CLI commands
+- PR#3115: Add and update CLI unit tests
+- PR#3118: handle dictionary parameter in get_tag() 
+- PR#3138: doc: improve protonmsg SSL parameter descriptions
+- PR#3139: www: style channelinfo hosts table
+- PR#3142: devtools: print fakeweb listening URL
+- PR#3150: Rewrite Acceptable keys to Requested keys in missing_signatures log
+- PR#3157: Pytest instead of nose in unittest
+- PR#3161: hub: fix spelling in comments for archive handling
+- PR#3164: [hub] only raise error when authtype is not proxyauthtype
+- PR#3166: kojira: don't fail on deleted items
+- PR#3172: Return mistakenly dropped option (--keytab)
+- PR#3174: hub: document getBuildLogs method
+- PR#3180: Add unit test for get_options
+- PR#3186: Don't fail on missing buildroot tag
+- PR#3189: buildtag_inherits_from docs
+
 * Mon Jun 21 2021 Tomas Kopecek <tkopecek at redhat.com> - 1.25.1-1
 - PR#2849 hub: replace with py3 exception
 - PR#2881 update .coveragerc to ignore p3 code
