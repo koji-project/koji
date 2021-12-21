@@ -273,12 +273,15 @@ Available tests
     * checks the current tags for the build in question against the arguments.
 
 ``buildtag``
-
     * checks the build tag name against the arguments
     * for the build_from_* policies the build tag is determined by the build
       target requested
     * for the tag policies, determines the build tag from the build data,
       which will by null for imported builds
+
+``buildtag_inherits_from``
+    * check if some tag is in inheritance chain of the buildtag
+    * All parents are checked excluding the buildtag itself
 
 ``buildtype``
     * checks the build type(s) against the arguments
