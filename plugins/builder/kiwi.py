@@ -403,7 +403,7 @@ class KiwiCreateImageTask(BaseBuildTask):
         #     img_file = '%s.%s-%s.%s' % (name, version, arch, type)
         #     self.uploadFile(os.path.join(broot.rootdir()), remoteName=img_file)
         #     imgdata['files'].append(img_file)
-        for ftype in ('disk_format_image', 'installation_image'):
+        for ftype in ('disk_image', 'disk_format_image', 'installation_image'):
             fdata = result_files.get(ftype)
             if not fdata:
                 continue
