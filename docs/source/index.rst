@@ -86,6 +86,10 @@ RPM
     kernel-2.6.9-34.EL.x86_64, kernel-devel-2.6.9-34.EL.s390,
     glibc-2.3.4-2.19.i686, glibc-common-2.3.4-2.19.ia64
 
+
+Quick overview of architecture and history is covered by Ken's `video
+<https://www.youtube.com/watch?v=B0xfsJ1G4v0>`_.
+
 Koji Components
 ===============
 
