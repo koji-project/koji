@@ -179,3 +179,15 @@ Another reason this is important is for image-based artifacts that might use
 many RPMs. If you think of cloud images or container images where you're
 delivering an image with "preinstalled" RPMs, if you use signed RPMs in the
 images you distribute, you're providing an extra layer of security.
+
+How do RPM signatures relate to IMA signing?
+--------------------------------------------
+
+IMA stands for `"Integrity Measurement Architecture"
+<https://www.redhat.com/en/blog/how-use-linux-kernels-integrity-measurement-architecture>`_.
+It's a separate type of signature. RHEL-9 is the first release to have IMA
+signing enabled. The change is still `under discussion
+<https://fedoraproject.org/wiki/Changes/Signed_RPM_Contents>`_ for Fedora.
+
+IMA does not replace RPM signing. RPM signing is orthogonal to IMA. Packages
+can be both RPM-signed and IMA signed at the same time.
