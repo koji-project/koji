@@ -2331,9 +2331,9 @@ def is_conn_error(e):
         return True
     try:
         if isinstance(e, requests.exceptions.ConnectionError):
-            e2 = getattr(e, 'args', [None])[0]
+            inner_err = getattr(e, 'args', [None])[0]
             # same check as unwrapped socket error
-            if getattr(e2, 'errno', None) in ERRNOS:
+            if getattr(inner_err, 'errno', None) in ERRNOS:
                 return True
     except (TypeError, AttributeError):
         pass
