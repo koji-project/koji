@@ -65,6 +65,7 @@ import six.moves.http_client
 import six.moves.urllib
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
+from requests.packages.urllib3.exceptions import MaxRetryError
 from six.moves import range, zip
 
 from koji.tasks import parse_task_params
@@ -2713,6 +2714,15 @@ class ClientSession(object):
             try:
                 return self._sendOneCall(handler, headers, request)
             except Exception as e:
+                if isinstance(e, requests.exceptions.ConnectionError):
+                    # mask sensitive values, ConnectionError could contain underlying
+                    # urllib3 exception which displays full URL with session-id, etc.
+                    if e.args and isinstance(e.args[0], MaxRetryError):
+                        mre = e.args[0]
+                        s = mre.args[0]
+                        s = re.sub(r'session-id=\d+', 'session-id=XXXXX', s)
+                        s = re.sub(r'session-key=[^&]+', 'session-key=XXXXX', s)
+                        mre.args = (s, mre.args[1:])
                 if i or not is_conn_error(e):
                     raise
                 self.logger.debug("Connection Error: %s", e)
