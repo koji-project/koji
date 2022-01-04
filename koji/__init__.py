@@ -2318,7 +2318,8 @@ def is_conn_error(e):
     # there is no value to an `isinstance` check here; let's just
     # assume that if the exception has an 'errno' and it's one of
     # these values, this is a connection error.
-    if getattr(e, 'errno', None) in (errno.ECONNRESET, errno.ECONNABORTED, errno.EPIPE):
+    ERRNOS = (errno.ECONNRESET, errno.ECONNABORTED, errno.EPIPE)
+    if getattr(e, 'errno', None) in ERRNOS:
         return True
     str_e = str(e)
     if 'BadStatusLine' in str_e or \
@@ -2332,7 +2333,7 @@ def is_conn_error(e):
         if isinstance(e, requests.exceptions.ConnectionError):
             e2 = getattr(e, 'args', [None])[0]
             # same check as unwrapped socket error
-            if getattr(e2, 'errno', None) in (errno.ECONNRESET, errno.ECONNABORTED, errno.EPIPE):
+            if getattr(e2, 'errno', None) in ERRNOS:
                 return True
     except (TypeError, AttributeError):
         pass
