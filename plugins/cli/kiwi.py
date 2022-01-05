@@ -61,6 +61,7 @@ def handle_kiwi_build(goptions, session, args):
         arches=arches,
         desc_url=scm,
         desc_path=path,
+        repos=options.repo,
         **kwargs)
 
     if not goptions.quiet:

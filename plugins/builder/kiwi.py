@@ -191,7 +191,7 @@ class KiwiCreateImageTask(BaseBuildTask):
     Methods = ['createKiwiImage']
     _taskWeight = 2.0
 
-    def prepareDescription(self, desc_path, name, release, repos):
+    def prepareDescription(self, desc_path, name, version, release, repos):
         # TODO: update release in desc
         kiwi_files = glob.glob('%s/*.kiwi' % desc_path)
         if len(kiwi_files) != 1:
@@ -227,13 +227,22 @@ class KiwiCreateImageTask(BaseBuildTask):
             image.appendChild(repo_node)
 
         image.setAttribute('name', name)
+        preferences = image.getElementsByTagName('preferences')[0]
+        try:
+            preferences.getElementsByTagName('release-version')[0].childNodes[0].data = version
+        except IndexError:
+            releasever_node = newxml.createElement('release-version')
+            text = newxml.createTextNode(version)
+            releasever_node.appendChild(text)
+            preferences.appendChild(releasever_node)
+
         # TODO: release is part of version (major.minor.release)
-        # preferences = image.getElementsByTagName('preferences')[0]
         # try:
         #    preferences.getElementsByTagName('release')[0].childNodes[0].data = release
         # except Exception:
         #    rel_node = newxml.createElement('release')
-        #    rel_node.data = release
+        #    text = newxml.createTextNode(release)
+        #    rel_node.appendChild(rel_node)
         #    preferences.appendChild(rel_node)
 
         types = []
@@ -353,7 +362,7 @@ class KiwiCreateImageTask(BaseBuildTask):
         repos.append(baseurl)
 
         path = os.path.join(scmsrcdir, desc_path)
-        desc, types = self.prepareDescription(path, name, release, repos)
+        desc, types = self.prepareDescription(path, name, version, release, repos)
         self.uploadFile(desc)
 
         cmd = ['kiwi-ng']
