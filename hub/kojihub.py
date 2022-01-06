@@ -769,8 +769,9 @@ def _writeInheritanceData(tag_id, changes, clear=False):
             continue
         # oops, duplicate entries for a single priority
         dup_ids = [link['parent_id'] for link in dups]
-        raise koji.GenericError("Inheritance priorities must be unique (pri %s: %r )" %
-                                (pri, dup_ids))
+        raise koji.GenericError("Multiple parent tags (%r) cannot have the "
+                                "same priority value (%d) on child tag %d" %
+                                (dup_ids, pri, tag_id))
     for parent_id, link in data.items():
         if not link.get('is_update'):
             continue
