@@ -12305,7 +12305,7 @@ class RootExports(object):
 
     def listPackages(self, tagID=None, userID=None, pkgID=None, prefix=None, inherited=False,
                      with_dups=False, event=None, queryOpts=None, with_owners=True,
-                     with_blocked=False):
+                     with_blocked=True):
         """
         Returns a list of packages in Koji.
 
