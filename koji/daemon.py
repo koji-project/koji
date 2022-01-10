@@ -209,7 +209,7 @@ class SCM(object):
         else:
             return False
 
-    def __init__(self, url):
+    def __init__(self, url, allow_password=False):
         """
         Initialize the SCM object using the specified url.
         The expected url format is:
@@ -237,10 +237,14 @@ class SCM(object):
             raise koji.GenericError('Invalid SCM URL: %s' % url)
 
         self.url = url
-        scheme, user, host, path, query, fragment = self._parse_url()
+        scheme, user, password, host, path, query, fragment = self._parse_url(
+            allow_password=allow_password)
 
         self.scheme = scheme
-        self.user = user
+        if password is not None:
+            self.user = '%s:%s' % (user, password)
+        else:
+            self.user = user
         self.host = host
         self.repository = path
         self.module = query
@@ -261,7 +265,7 @@ class SCM(object):
             keys = ["url", "scheme", "user", "host", "repository", "module", "revision", "scmtype"]
         return dslice(vars(self), keys)
 
-    def _parse_url(self):
+    def _parse_url(self, allow_password=False):
         """
         Parse the SCM url into usable components.
         Return the following tuple:
@@ -275,23 +279,29 @@ class SCM(object):
 
         # replace the scheme with http:// so that the urlparse works in all cases
         dummyurl = self.url.replace(scheme, 'http://', 1)
-        dummyscheme, netloc, path, params, query, fragment = urllib.parse.urlparse(dummyurl)
+        parsed_url = urllib.parse.urlparse(dummyurl)
+        path = parsed_url.path
+        params = parsed_url.params
+        query = parsed_url.query
+        fragment = parsed_url.fragment
 
         user = None
-        userhost = netloc.split('@')
-        if len(userhost) == 2:
-            user = userhost[0]
-            if not user:
-                # Don't return an empty string
-                user = None
-            elif ':' in user:
-                raise koji.GenericError('username:password format not supported: %s' % user)
-            netloc = userhost[1]
-        elif len(userhost) > 2:
-            raise koji.GenericError('Invalid username@hostname specified: %s' % netloc)
-        if not netloc:
+        password = None
+
+        userhost = parsed_url.netloc.split('@')
+        if len(userhost) > 2:
+            raise koji.GenericError('Invalid username@hostname specified: %s' % userhost)
+        if not userhost:
             raise koji.GenericError(
                 'Unable to parse SCM URL: %s . Could not find the netloc element.' % self.url)
+        if parsed_url.username:
+            user = parsed_url.username
+        if parsed_url.password:
+            password = parsed_url.password
+        if password is not None and not allow_password:
+            raise koji.GenericError('username:password format not supported: %s:%s'
+                                    % (user, password))
+        netloc = parsed_url.hostname
 
         # check for empty path before we apply normpath
         if not path:
@@ -326,7 +336,7 @@ class SCM(object):
                 'Unable to parse SCM URL: %s . Could not find the fragment element.' % self.url)
 
         # return parsed values
-        return (scheme, user, netloc, path, query, fragment)
+        return (scheme, user, password, netloc, path, query, fragment)
 
     def assert_allowed(self, allowed='', session=None, by_config=True, by_policy=False,
                        policy_data=None):
