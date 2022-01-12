@@ -303,7 +303,7 @@ class KiwiCreateImageTask(BaseBuildTask):
                           arch=arch,
                           task_id=self.id,
                           repo_id=repo_info['id'],
-                          install_group='kiwi',
+                          install_group='kiwi-build',
                           setup_dns=True,
                           bind_opts={'dirs': {'/dev': '/dev', }})
         broot.workdir = self.workdir
@@ -404,10 +404,7 @@ class KiwiCreateImageTask(BaseBuildTask):
         if os.path.exists(root_log_path):
             self.uploadFile(root_log_path, remoteName="image-root.log")
 
-        for ftype in ('disk_image', 'disk_format_image', 'installation_image'):
-            fdata = result_files.get(ftype)
-            if not fdata:
-                continue
+        for ftype, fdata in result_files.items():
             # hack to use correct paths derived from results
             filename = os.path.basename(fdata['filename'])
             (name, ext) = os.path.splitext(filename)
