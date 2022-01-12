@@ -7,6 +7,8 @@
 <option value="$value"#if $value == $days then ' selected="selected"' else ''#>$label</option>
 #end def
 
+#set $numTotal = $numSucceeded + $numFailed + $numCanceled
+
 #include "includes/header.chtml"
 
   <h4>Succeeded/Failed/Canceled Builds#if $days != -1 then ' in the last %i days' % $days else ''#</h4>
@@ -25,6 +27,8 @@
             $printOption(60)
             $printOption(90)
             $printOption(120)
+            $printOption(180)
+            $printOption(365)
             $printOption(-1, 'all')
           </select> days
         </form>
@@ -49,6 +53,11 @@
       <td>Canceled</td>
       <td width="#echo $graphWidth + 5#"><img src="$util.themePath('images/1px.gif')" width="#echo $increment * $numCanceled#" height="15" class="graphrow" alt="graph row"/></td>
       <td>$numCanceled</td>
+    </tr>
+    <tr class="row-even">
+      <td>Total</td>
+      <td></td>
+      <td>$numTotal</td>
     </tr>
   </table>
 
