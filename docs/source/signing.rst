@@ -38,7 +38,8 @@ the public GPG key into their RPMDB::
       Payload SHA256 digest: OK
       MD5 digest: OK
 
-Note there is no "RSA/SHA256 Signature" header field on the RPM here.
+Note there are only "digest" fields here, no "Signature" fields since this RPM
+is unsigned.
 
 *Example: A GPG signature that rpmdb DOES trust*::
 
