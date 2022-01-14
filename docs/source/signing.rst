@@ -71,6 +71,9 @@ A lower-level command that shows the signature on an RPM file (the
 
     rpm -q --qf '%{NAME} %{RSAHEADER:pgpsig}\n' -p python-routes-2.5.1-1.el8.src.rpm
 
+Learn more about RPM signatures and digests in `RPM's reference manual
+<https://rpm-software-management.github.io/rpm/manual/signatures_digests.html>`_.
+
 Uploding signed RPMs to Koji
 ----------------------------
 
