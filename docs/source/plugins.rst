@@ -281,3 +281,52 @@ Selecting other than default kiwi profile can be done by ``--kiwi-profile``
 option. Similarly to other image tasks, alternative architecture failures can be
 ignored for successful build by ``--can-fail`` option. ``--arch`` can be used to
 limit build tag architectures.
+
+
+Driver Update Disks building
+===========================
+
+**This is just a tech-preview. API/usage can drastically change in upcoming
+releases**
+
+Plugin for creating Driver Update Disks with ``mkisofs``.
+
+All three parts (cli/hub/builder) needs to be installed. There is currently no
+configuration except allowing the plugins (name is 'dud' for all components).
+
+Builders have to be part of ``image`` channel and don't need to have any
+specific library installed (mkisofs invocation/usage is only in buildroots not on
+builder itself)
+
+Buildtag needs to be configured by adding special group ``dud`` which should contain
+the following packages:
+
+.. code-block:: shell
+
+
+   $ koji add-group dud-build-tag dud
+   $ koji add-group-pkg dud-build-tag dud genisoimage
+   $ koji add-group-pkg dud-build-tag dud createrepo_c
+   $ koji add-group-pkg dud-build-tag dud dnf
+   $ koji add-group-pkg dud-build-tag dud dnf-plugins-core
+
+Another thing we need to ensure is that we're building in chroot and not in
+container.
+
+.. code-block:: shell
+
+   $ koji edit-tag dud-build-tag -x mock.new_chroot=False
+
+Calling the build itself is a matter of simple CLI call:
+
+.. code-block: shell
+
+   $ koji dud-build dud-build-tag --scmurl=git+https://my.git/image-descriptions#master myamazingdud 1 package1 package2
+
+The command options allows to bring all the package dependencies into the DUD 
+ISO with ``--alldeps``. ``--scmurl`` allows to include non-RPM related content 
+inside the produced ISO.
+
+Similarly to other image tasks, alternative architecture failures can be
+ignored for successful build by ``--can-fail`` option. ``--arch`` can be used 
+to limit build tag architectures.
