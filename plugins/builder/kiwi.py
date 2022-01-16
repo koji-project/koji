@@ -1,6 +1,4 @@
 import glob
-import json
-from json.decoder import JSONDecodeError
 import os
 import xml.dom.minidom
 from fnmatch import fnmatch
@@ -374,17 +372,6 @@ class KiwiCreateImageTask(BaseBuildTask):
         if rv:
             raise koji.GenericError("Kiwi failed")
 
-        resultdir = joinpath(broot.rootdir(), target_dir[1:])
-        try:
-            # new version has json format, older pickle (needs python3-kiwi installed)
-            result_files = json.load(open(joinpath(resultdir, 'kiwi.result.json')))
-        except (FileNotFoundError, JSONDecodeError):
-            # try old variant
-            import pickle
-            result = pickle.load(open(joinpath(resultdir, 'kiwi.result'), 'rb'))  # nosec
-            # convert from namedtuple's to normal dict
-            result_files = {k: v._asdict() for k, v in result.result_files.items()}
-
         imgdata = {
             'arch': arch,
             'task_id': self.id,
@@ -404,25 +391,18 @@ class KiwiCreateImageTask(BaseBuildTask):
         if os.path.exists(root_log_path):
             self.uploadFile(root_log_path, remoteName="image-root.log")
 
-        for ftype, fdata in result_files.items():
-            # hack to use correct paths derived from results
-            filename = os.path.basename(fdata['filename'])
-            (name, ext) = os.path.splitext(filename)
-            filename = f'{name}-{release}{ext}'
-            fpath = os.path.dirname(fdata['filename'])[len(target_dir) + 1:]
-            fpath = os.path.join(broot.rootdir(), bundle_dir[1:], fpath, filename)
-            img_file = os.path.basename(fpath)
-            if os.path.exists(fpath):
-                self.uploadFile(fpath, remoteName=os.path.basename(img_file))
-                imgdata['files'].append(img_file)
-            else:
-                self.logger.debug(f'File {img_file} is not present in bundle but is in results')
+        bundle_path = os.path.join(broot.rootdir(), bundle_dir[1:])
+        for fname in os.listdir(bundle_path):
+            self.uploadFile(os.path.join(bundle_path, fname), remoteName=fname)
+            imgdata['files'].append(fname)
 
         if not self.opts.get('scratch'):
             if False:
                 # should be used after kiwi update
-                fpath = os.path.join(broot.rootdir(),
-                                     result_files['image_packages'].filename[1:])
+                fpath = os.path.join(
+                    bundle_path,
+                    next(f for f in imgdata['files'] if f.endswith('.packages')),
+                )
                 hdrlist = self.getImagePackages(fpath)
             else:
                 cachepath = os.path.join(broot.rootdir(), 'var/cache/kiwi/dnf')
