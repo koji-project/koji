@@ -27,6 +27,8 @@ def handle_kiwi_build(goptions, session, args):
                       help="Do not display progress of the upload")
     parser.add_option("--kiwi-profile", action="store", default=None,
                       help="Select profile from description file")
+    parser.add_option("--make-prep", action="store_true", default=False,
+                      help="Run 'make prep' in checkout before starting the build")
     parser.add_option("--can-fail", action="store", dest="optional_arches",
                       metavar="ARCH1,ARCH2,...", default="",
                       help="List of archs which are not blocking for build "
@@ -52,6 +54,7 @@ def handle_kiwi_build(goptions, session, args):
                             if arch],
         'profile': options.kiwi_profile,
         'release': options.release,
+        'make_prep': options.make_prep,
     }
 
     arches = []

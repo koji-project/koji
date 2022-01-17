@@ -16,7 +16,7 @@ koji.tasks.LEGACY_SIGNATURES['createKiwiImage'] = [
 
 @export
 def kiwiBuild(target, arches, desc_url, desc_path, optional_arches=None, profile=None,
-              scratch=False, priority=None, repos=None, release=None):
+              scratch=False, priority=None, make_prep=False, repos=None, release=None):
     context.session.assertPerm('image')
     taskOpts = {
         'channel': 'image',
@@ -34,6 +34,7 @@ def kiwiBuild(target, arches, desc_url, desc_path, optional_arches=None, profile
         'scratch': scratch,
         'release': release,
         'repos': repos or [],
+        'make_prep': make_prep,
     }
     return kojihub.make_task('kiwiBuild',
                              [target, arches, desc_url, desc_path, opts],

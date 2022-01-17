@@ -344,6 +344,12 @@ class KiwiCreateImageTask(BaseBuildTask):
         self.logger.debug('BASEURL: %s' % baseurl)
         repos.append(baseurl)
 
+        if opts.get('make_prep'):
+            cmd = ['make', 'prep']
+            rv = broot.mock(['--cwd', broot.tmpdir(within=True), '--chroot', '--'] + cmd)
+            if rv:
+                raise koji.GenericError("Preparation step failed")
+
         path = os.path.join(scmsrcdir, desc_path)
         desc, types = self.prepareDescription(path, name, version, repos)
         self.uploadFile(desc)
