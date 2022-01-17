@@ -10,18 +10,23 @@ from koji_cli.lib import (
 )
 
 # All client related stuff, to be located in ~/.koji/plugins/dud.py
+
+
 @export_cli
 def handle_dud_build(goptions, session, args):
     "[build] Run a command in a buildroot"
-    usage = "usage: %prog dud-build [options] <koji_target> --scmurl=<git_repo> <dud_name> <version> <pkg(nvr optional)> [<pkg> ...]"
+    usage = ("usage: %prog dud-build [options] <koji_target> --scmurl=<git_repo> <dud_name>"
+             "<version> <pkg(nvr optional)> [<pkg> ...]")
     usage += "\n(Specify the --help global option for a list of other help options)"
     parser = OptionParser(usage=usage)
     parser.add_option("--scratch", action="store_true", default=False,
-                    help="Perform a scratch build")
+                      help="Perform a scratch build")
     parser.add_option("--scmurl", metavar="SCMURL", default=None,
-                    help="SCM repository URL for non-rpm related content to be included in the ISO")
+                      help="SCM repository URL for non-rpm related content to be included "
+                      "in the ISO")
     parser.add_option("--alldeps", action="store_true", default=False,
-                    help="Download all involved rpm dependencies and put them inside the DUD ISO as well")
+                      help="Download all involved rpm dependencies and put them inside "
+                      "the DUD ISO as well")
     parser.add_option("--arch", action="append", dest="arches", default=[],
                       help="Limit arches to this subset")
     parser.add_option("--can-fail", action="store", dest="optional_arches",
@@ -71,4 +76,3 @@ def handle_dud_build(goptions, session, args):
         session.logout()
         return watch_tasks(session, [task_id], quiet=goptions.quiet,
                            poll_interval=goptions.poll_interval, topurl=goptions.topurl)
-

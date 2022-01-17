@@ -15,18 +15,20 @@ koji.tasks.LEGACY_SIGNATURES['createDudIso'] = [
 
 # /usr/lib/koji-hub-plugins/
 
+
 @export
-def dudBuild(dud_name, dud_version, arches, target, pkg_list, optional_arches=None, scratch=False, alldeps=False, scmurl=None, priority=None):
+def dudBuild(dud_name, dud_version, arches, target, pkg_list, optional_arches=None, scratch=False,
+             alldeps=False, scmurl=None, priority=None):
     context.session.assertPerm('image')
     taskOpts = {
         'channel': 'image',
     }
     if priority:
-      if priority < 0:
-          if not context.session.hasPerm('admin'):
-              raise koji.ActionNotAllowed(
-                  'only admins may create high-priority tasks')
-          taskOpts['priority'] = koji.PRIO_DEFAULT + priority
+        if priority < 0:
+            if not context.session.hasPerm('admin'):
+                raise koji.ActionNotAllowed(
+                    'only admins may create high-priority tasks')
+            taskOpts['priority'] = koji.PRIO_DEFAULT + priority
 
     opts = {
         'scratch': scratch,

@@ -1,18 +1,12 @@
-import glob
-import json
 import os
-import rpm
-import xml.dom.minidom
-from fnmatch import fnmatch
-
 import koji
-import time
-import re
-from koji.util import joinpath, to_list
+from fnmatch import fnmatch
+from koji.util import to_list
 from koji.tasks import ServerExit
 from __main__ import BaseBuildTask, BuildImageTask, BuildRoot, SCM
 
 # /usr/lib/koji-builder-plugins/
+
 
 class DudBuildTask(BuildImageTask):
     Methods = ['dudBuild']
@@ -66,13 +60,13 @@ class DudBuildTask(BuildImageTask):
                     method='createDudIso',
                     arglist=[name, version, release, arch,
                              target_info, build_tag, repo_info,
-                             pkg_list, opts], label=arch,
-                             parent=self.id, arch=arch)
+                             pkg_list, opts], label=arch, parent=self.id, arch=arch)
                 if arch in self.opts['optional_arches']:
                     canfail.append(subtasks[arch])
             self.logger.info("Got image subtasks: %r" % (subtasks))
             self.logger.info("Waiting on image subtasks (%s can fail)..." % canfail)
-            results = self.wait(to_list(subtasks.values()), all=True, failany=True, canfail=canfail)
+            results = self.wait(to_list(subtasks.values()), all=True, failany=True,
+                                canfail=canfail)
 
             # if everything failed, fail even if all subtasks are in canfail
             self.logger.info('subtask results: %r', results)
@@ -170,7 +164,8 @@ class DudCreateImageTask(BaseBuildTask):
                           arch=arch,
                           task_id=self.id,
                           repo_id=repo_info['id'],
-                          install_group='dud', # Replace with a group that includes createrepo and mkisofs
+                          # Replace with a group that includes createrepo and xorrisofs
+                          install_group='dud',
                           setup_dns=True,
                           bind_opts={'dirs': {'/dev': '/dev', }})
         broot.workdir = self.workdir
@@ -215,26 +210,30 @@ class DudCreateImageTask(BaseBuildTask):
 
             rv = broot.mock(['--cwd', broot.tmpdir(within=True), '--chroot', '--'] + cmd)
             if rv:
-                raise koji.GenericError("DUD build failed while getting the involved rpm '{}': {}".format(rpm, str(rv)))
+                raise koji.GenericError("DUD build failed while getting the involved rpm '{}': {}"
+                      .format(rpm, str(rv)))
 
         # Create the dd directory structure.
         cmd = ['/usr/bin/mkdir']
         cmd.extend([
-            '-p', './dd/rpms/x86_64/repodata/',
+            '-p', './dd/rpms/{arch}/repodata/'.format(arch=arch),
             '-p', './dd/src/',
         ])
         rv = broot.mock(['--cwd', broot.tmpdir(within=True), '--chroot', '--'] + cmd)
         if rv:
-            raise koji.GenericError("DUD build failed while preparing the dir struct for the ISO: " + str(rv))
+            raise koji.GenericError("DUD build failed while preparing the dir struct for "
+                                    "the ISO: " + str(rv))
 
-        # Inspiration from https://pagure.io/koji/blob/master/f/plugins/builder/runroot.py#_201 for this dirty hack
+        # Inspiration from https://pagure.io/koji/blob/master/f/plugins/builder/runroot.py#_201
+        # for this dirty hack
         cmd = ['/usr/bin/sh', '-c']
         cmd.extend([
             '/usr/bin/echo -e "Driver Update Disk version 3\c" > ./dd/rhdd3',
         ])
         rv = broot.mock(['--cwd', broot.tmpdir(within=True), '--chroot', '--'] + cmd)
         if rv:
-            raise koji.GenericError("DUD build failed while writing the rhdd3 file in the ISO: " + str(rv))
+            raise koji.GenericError("DUD build failed while writing the rhdd3 file in "
+                                    "the ISO: " + str(rv))
 
         imgdata['name'] = dud_name
         imgdata['version'] = dud_version
@@ -246,62 +245,69 @@ class DudCreateImageTask(BaseBuildTask):
             # get configuration
             scm = SCM(self.opts.get('scmurl'))
             scm.assert_allowed(allowed=self.options.allowed_scms,
-                              session=self.session,
-                              by_config=self.options.allowed_scms_use_config,
-                              by_policy=self.options.allowed_scms_use_policy,
-                              policy_data={
-                                  'user_id': self.taskinfo['owner'],
-                                  'channel': self.session.getChannel(self.taskinfo['channel_id'],
+                               session=self.session,
+                               by_config=self.options.allowed_scms_use_config,
+                               by_policy=self.options.allowed_scms_use_policy,
+                               policy_data={
+                                   'user_id': self.taskinfo['owner'],
+                                   'channel': self.session.getChannel(self.taskinfo['channel_id'],
                                                                       strict=True)['name'],
-                                  'scratch': self.opts.get('scratch')
-                              })
+                                   'scratch': self.opts.get('scratch')
+                               })
             logfile = os.path.join(self.workdir, 'checkout-%s.log' % arch)
             self.run_callbacks('preSCMCheckout', scminfo=scm.get_info(),
-                              build_tag=build_tag, scratch=self.opts.get('scratch'))
+                               build_tag=build_tag, scratch=self.opts.get('scratch'))
             scmdir = broot.tmpdir()
             koji.ensuredir(scmdir)
             scmsrcdir = scm.checkout(scmdir, self.session,
-                                    self.getUploadDir(), logfile)
+                                     self.getUploadDir(), logfile)
             self.run_callbacks("postSCMCheckout",
-                              scminfo=scm.get_info(),
-                              build_tag=build_tag,
-                              scratch=self.opts.get('scratch'),
-                              srcdir=scmsrcdir)
+                               scminfo=scm.get_info(),
+                               build_tag=build_tag,
+                               scratch=self.opts.get('scratch'),
+                               srcdir=scmsrcdir)
             cmd = ['/usr/bin/cp']
             cmd.extend([
                 '-aR', os.path.basename(scmsrcdir), './dd/',
             ])
             rv = broot.mock(['--cwd', broot.tmpdir(within=True), '--chroot', '--'] + cmd)
             if rv:
-                raise koji.GenericError("DUD build failed while copying SCM repo content into dir struct: " + str(rv))
+                raise koji.GenericError("DUD build failed while copying SCM repo content into dir"
+                                        "struct: " + str(rv))
 
         # Get the RPMs inside the corresponding dir struct for the ISO
         cmd = ['/usr/bin/sh', '-c']
-        # Could not get it to work with a more elegant syntax, as it would not find the *.rpm files otherwise
+        # Could not get it to work with a more elegant syntax, as it would not find the *.rpm
+        # files otherwise
         cmd.extend([
-            '/usr/bin/cp *.rpm ./dd/rpms/x86_64/',
+            '/usr/bin/cp *.rpm ./dd/rpms/{arch}/'.format(arch=arch),
         ])
         rv = broot.mock(['--cwd', broot.tmpdir(within=True), '--chroot', '--'] + cmd)
         if rv:
-            raise koji.GenericError("DUD build failed while copying RPMs into dir struct: " + str(rv))
+            raise koji.GenericError("DUD build failed while copying RPMs into dir struct: " +
+                                    str(rv))
 
         cmd = ['/usr/bin/createrepo']
         cmd.extend([
-            '-q', '--workers=1', './dd/rpms/x86_64/',
+            '-q', '--workers=1', './dd/rpms/{arch}/'.format(arch=arch),
         ])
         rv = broot.mock(['--cwd', broot.tmpdir(within=True), '--chroot', '--'] + cmd)
         if rv:
             raise koji.GenericError("DUD build failed while creating ISO repodata: " + str(rv))
 
-        # mkisofs -quiet -lR -V OEMDRV -input-charset utf8 -o $PACKNAME ./dd
-        cmd = ['/usr/bin/mkisofs']
-        iso_name = 'dd-{name}-{version}-{release}.{arch}.iso'.format(name=dud_name, version=dud_version, release=dud_release, arch=arch)
+        # xorrisofs -quiet -lR -V OEMDRV -input-charset utf8 -o $PACKNAME ./dd
+        cmd = ['/usr/bin/sh', '-c']
+        iso_name = 'dd-{name}-{version}-{release}.{arch}.iso'.format(name=dud_name,
+                                                                     version=dud_version,
+                                                                     release=dud_release,
+                                                                     arch=arch)
         cmd.extend([
-            '-quiet', '-lR', '-V OEMDRV', '-input-charset', 'utf8', '-o', iso_name, './dd',
+            "/usr/bin/xorrisofs -quiet -lR -V OEMDRV -input-charset utf8 -o {} ".format(iso_name) +
+            "./dd -v"
         ])
         rv = broot.mock(['--cwd', broot.tmpdir(within=True), '--chroot', '--'] + cmd)
         if rv:
-            raise koji.GenericError("DUD build failed while mkisofs: " + str(rv))
+            raise koji.GenericError("DUD build failed while xorrisofs: " + str(rv))
 
         fpath = os.path.join(broot.tmpdir(), iso_name)
         img_file = os.path.basename(fpath)
@@ -316,4 +322,3 @@ class DudCreateImageTask(BaseBuildTask):
         broot.expire()
         self.logger.error("Uploading image data: %s", imgdata)
         return imgdata
-
