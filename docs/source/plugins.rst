@@ -298,17 +298,17 @@ Builders have to be part of ``image`` channel and don't need to have any
 specific library installed (mkisofs invocation/usage is only in buildroots not on
 builder itself)
 
-Buildtag needs to be configured by adding special group ``dud`` which should contain
+Buildtag needs to be configured by adding special group ``dud-build`` which should contain
 the following packages:
 
 .. code-block:: shell
 
 
-   $ koji add-group dud-build-tag dud
-   $ koji add-group-pkg dud-build-tag dud genisoimage
-   $ koji add-group-pkg dud-build-tag dud createrepo_c
-   $ koji add-group-pkg dud-build-tag dud dnf
-   $ koji add-group-pkg dud-build-tag dud dnf-plugins-core
+   $ koji add-group dud-build-tag dud-build
+   $ koji add-group-pkg dud-build-tag dud-build xorriso
+   $ koji add-group-pkg dud-build-tag dud-build createrepo_c
+   $ koji add-group-pkg dud-build-tag dud-build dnf
+   $ koji add-group-pkg dud-build-tag dud-build dnf-plugins-core
 
 Another thing we need to ensure is that we're building in chroot and not in
 container.

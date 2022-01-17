@@ -165,7 +165,7 @@ class DudCreateImageTask(BaseBuildTask):
                           task_id=self.id,
                           repo_id=repo_info['id'],
                           # Replace with a group that includes createrepo and xorrisofs
-                          install_group='dud',
+                          install_group='dud-build',
                           setup_dns=True,
                           bind_opts={'dirs': {'/dev': '/dev', }})
         broot.workdir = self.workdir
