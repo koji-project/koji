@@ -4,7 +4,6 @@ import xml.dom.minidom
 from fnmatch import fnmatch
 
 import koji
-from koji.util import joinpath, to_list
 from koji.tasks import ServerExit
 from __main__ import BaseBuildTask, BuildImageTask, BuildRoot, SCM
 
@@ -123,7 +122,7 @@ class KiwiBuildTask(BuildImageTask):
                     canfail.append(subtasks[arch])
             self.logger.debug("Got image subtasks: %r" % (subtasks))
             self.logger.debug("Waiting on image subtasks (%s can fail)..." % canfail)
-            results = self.wait(to_list(subtasks.values()), all=True,
+            results = self.wait(list(subtasks.values()), all=True,
                                 failany=True, canfail=canfail)
 
             # if everything failed, fail even if all subtasks are in canfail
