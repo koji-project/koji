@@ -38,7 +38,8 @@ the public GPG key into their RPMDB::
       Payload SHA256 digest: OK
       MD5 digest: OK
 
-Note there is no "RSA/SHA256 Signature" header field on the RPM here.
+Note there are only "digest" fields here, no "Signature" fields since this RPM
+is unsigned.
 
 *Example: A GPG signature that rpmdb DOES trust*::
 
@@ -69,6 +70,9 @@ A lower-level command that shows the signature on an RPM file (the
 ``RSAHEADER`` field piped through RPM's ``pgpsig`` formatter)::
 
     rpm -q --qf '%{NAME} %{RSAHEADER:pgpsig}\n' -p python-routes-2.5.1-1.el8.src.rpm
+
+Learn more about RPM signatures and digests in `RPM's reference manual
+<https://rpm-software-management.github.io/rpm/manual/signatures_digests.html>`_.
 
 Uploding signed RPMs to Koji
 ----------------------------
