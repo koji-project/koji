@@ -1,11 +1,9 @@
 import glob
-# import json
 import os
 import xml.dom.minidom
 from fnmatch import fnmatch
 
 import koji
-from koji.util import joinpath, to_list
 from koji.tasks import ServerExit
 from __main__ import BaseBuildTask, BuildImageTask, BuildRoot, SCM
 
@@ -15,7 +13,6 @@ class KiwiBuildTask(BuildImageTask):
     _taskWeight = 4.0
 
     def get_nvrp(self, desc_path):
-        # TODO: update release in desc
         kiwi_files = glob.glob('%s/*.kiwi' % desc_path)
         if len(kiwi_files) != 1:
             raise koji.GenericError("Repo must contain only one .kiwi file.")
@@ -27,16 +24,11 @@ class KiwiBuildTask(BuildImageTask):
 
         name = image.getAttribute('name')
         version = None
-        release = None
         for preferences in image.getElementsByTagName('preferences'):
             try:
                 version = preferences.getElementsByTagName('version')[0].childNodes[0].data
             except Exception:
                 pass
-            try:
-                release = preferences.getElementsByTagName('release')[0].childNodes[0].data
-            except Exception:
-                release = None
         profile = None
         try:
             for p in image.getElementsByTagName('profiles')[0].getElementsByTagName('profile'):
@@ -47,7 +39,7 @@ class KiwiBuildTask(BuildImageTask):
             pass
         if not version:
             raise koji.BuildError("Description file doesn't contain preferences/version")
-        return name, version, release, profile
+        return name, version, profile
 
     def handler(self, target, arches, desc_url, desc_path, opts=None):
         target_info = self.session.getBuildTarget(target, strict=True)
@@ -100,18 +92,20 @@ class KiwiBuildTask(BuildImageTask):
 
         path = os.path.join(scmsrcdir, desc_path)
 
-        name, version, release, default_profile = self.get_nvrp(path)
+        name, version, default_profile = self.get_nvrp(path)
         if opts.get('profile') or default_profile:
             # package name is a combination of name + profile
             # in case profiles are not used, let's use the standalone name
             name = "%s-%s" % (name, opts.get('profile', default_profile))
 
         bld_info = {}
+        if opts.get('release'):
+            release = opts['release']
+        else:
+            release = self.session.getNextRelease({'name': name, 'version': version})
         if not opts['scratch']:
             bld_info = self.initImageBuild(name, version, release, target_info, opts)
             release = bld_info['release']
-        elif not release:
-            release = self.session.getNextRelease({'name': name, 'version': version})
 
         try:
             subtasks = {}
@@ -128,7 +122,7 @@ class KiwiBuildTask(BuildImageTask):
                     canfail.append(subtasks[arch])
             self.logger.debug("Got image subtasks: %r" % (subtasks))
             self.logger.debug("Waiting on image subtasks (%s can fail)..." % canfail)
-            results = self.wait(to_list(subtasks.values()), all=True,
+            results = self.wait(list(subtasks.values()), all=True,
                                 failany=True, canfail=canfail)
 
             # if everything failed, fail even if all subtasks are in canfail
@@ -190,8 +184,7 @@ class KiwiCreateImageTask(BaseBuildTask):
     Methods = ['createKiwiImage']
     _taskWeight = 2.0
 
-    def prepareDescription(self, desc_path, name, release, repos):
-        # TODO: update release in desc
+    def prepareDescription(self, desc_path, name, version, repos):
         kiwi_files = glob.glob('%s/*.kiwi' % desc_path)
         if len(kiwi_files) != 1:
             raise koji.GenericError("Repo must contain only one .kiwi file.")
@@ -226,14 +219,14 @@ class KiwiCreateImageTask(BaseBuildTask):
             image.appendChild(repo_node)
 
         image.setAttribute('name', name)
-        # TODO: release is part of version (major.minor.release)
-        # preferences = image.getElementsByTagName('preferences')[0]
-        # try:
-        #    preferences.getElementsByTagName('release')[0].childNodes[0].data = release
-        # except Exception:
-        #    rel_node = newxml.createElement('release')
-        #    rel_node.data = release
-        #    preferences.appendChild(rel_node)
+        preferences = image.getElementsByTagName('preferences')[0]
+        try:
+            preferences.getElementsByTagName('release-version')[0].childNodes[0].data = version
+        except IndexError:
+            releasever_node = newxml.createElement('release-version')
+            text = newxml.createTextNode(version)
+            releasever_node.appendChild(text)
+            preferences.appendChild(releasever_node)
 
         types = []
         for pref in image.getElementsByTagName('preferences'):
@@ -307,7 +300,7 @@ class KiwiCreateImageTask(BaseBuildTask):
                           arch=arch,
                           task_id=self.id,
                           repo_id=repo_info['id'],
-                          install_group='kiwi',
+                          install_group='kiwi-build',
                           setup_dns=True,
                           bind_opts={'dirs': {'/dev': '/dev', }})
         broot.workdir = self.workdir
@@ -351,8 +344,14 @@ class KiwiCreateImageTask(BaseBuildTask):
         self.logger.debug('BASEURL: %s' % baseurl)
         repos.append(baseurl)
 
+        if opts.get('make_prep'):
+            cmd = ['make', 'prep']
+            rv = broot.mock(['--cwd', os.path.join(broot.tmpdir(within=True), os.path.basename(scmsrcdir), desc_path), '--chroot', '--'] + cmd)
+            if rv:
+                raise koji.GenericError("Preparation step failed")
+
         path = os.path.join(scmsrcdir, desc_path)
-        desc, types = self.prepareDescription(path, name, release, repos)
+        desc, types = self.prepareDescription(path, name, version, repos)
         self.uploadFile(desc)
 
         cmd = ['kiwi-ng']
@@ -368,11 +367,15 @@ class KiwiCreateImageTask(BaseBuildTask):
         if rv:
             raise koji.GenericError("Kiwi failed")
 
-        # result = json.load(open(joinpath(broot.rootdir(), target_dir[1:], 'kiwi.result'), 'rb'))
-        # nosec comment - we will replace it with json ASAP
-        import pickle
-        result = pickle.load(open(joinpath(broot.rootdir(), target_dir[1:],  # nosec
-                                           'kiwi.result'), 'rb'))
+        # rename artifacts accordingly to release
+        bundle_dir = '/builddir/result/bundle'
+        cmd = ['kiwi-ng', 'result', 'bundle',
+               '--target-dir', target_dir,
+               '--bundle-dir', bundle_dir,
+               '--id', release]
+        rv = broot.mock(['--cwd', broot.tmpdir(within=True), '--chroot', '--'] + cmd)
+        if rv:
+            raise koji.GenericError("Kiwi failed")
 
         imgdata = {
             'arch': arch,
@@ -393,24 +396,18 @@ class KiwiCreateImageTask(BaseBuildTask):
         if os.path.exists(root_log_path):
             self.uploadFile(root_log_path, remoteName="image-root.log")
 
-        # for type in types:
-        #     img_file = '%s.%s-%s.%s' % (name, version, arch, type)
-        #     self.uploadFile(os.path.join(broot.rootdir()), remoteName=img_file)
-        #     imgdata['files'].append(img_file)
-        for ftype in ('disk_format_image', 'installation_image'):
-            fdata = result.result_files.get(ftype)
-            if not fdata:
-                continue
-            fpath = os.path.join(broot.rootdir(), fdata.filename[1:])
-            img_file = os.path.basename(fpath)
-            self.uploadFile(fpath, remoteName=os.path.basename(img_file))
-            imgdata['files'].append(img_file)
+        bundle_path = os.path.join(broot.rootdir(), bundle_dir[1:])
+        for fname in os.listdir(bundle_path):
+            self.uploadFile(os.path.join(bundle_path, fname), remoteName=fname)
+            imgdata['files'].append(fname)
 
         if not self.opts.get('scratch'):
             if False:
                 # should be used after kiwi update
-                fpath = os.path.join(broot.rootdir(),
-                                     result['result_files']['image_packages'].filename[1:])
+                fpath = os.path.join(
+                    bundle_path,
+                    next(f for f in imgdata['files'] if f.endswith('.packages')),
+                )
                 hdrlist = self.getImagePackages(fpath)
             else:
                 cachepath = os.path.join(broot.rootdir(), 'var/cache/kiwi/dnf')

@@ -258,8 +258,8 @@ most simple configuration will look like:
 
 .. code-block:: shell
 
-   $ koji add-group kiwi-build-tag kiwi
-   $ koji add-group-pkg kiwi-build-tag kiwi kiwi-cli
+   $ koji add-group kiwi-build-tag kiwi-build
+   $ koji add-group-pkg kiwi-build-tag kiwi-build kiwi-cli kiwi-systemdeps
 
 Another thing we need to ensure is that we're building in chroot and not in
 container.

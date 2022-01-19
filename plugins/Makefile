@@ -1,11 +1,12 @@
+PYVER_MAJOR := $(shell $(PYTHON) -c 'import sys; print(".".join(sys.version.split(".")[:1]))')
 PKGDIR = $(shell $(PYTHON) -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")/$(PACKAGE)
 
 CLIPLUGINDIR = $(PKGDIR)/koji_cli_plugins
 HUBPLUGINDIR = /usr/lib/koji-hub-plugins
 BUILDERPLUGINDIR = /usr/lib/koji-builder-plugins
-CLIFILES = $(wildcard cli/*.py)
-HUBFILES = $(wildcard hub/*.py)
-BUILDERFILES = $(wildcard builder/*.py)
+CLIFILES_ALL = $(wildcard cli/*.py)
+HUBFILES_ALL = $(wildcard hub/*.py)
+BUILDERFILES_ALL = $(wildcard builder/*.py)
 CLICONFDIR = /etc/koji/plugins
 HUBCONFDIR = /etc/koji-hub/plugins
 BUILDERCONFDIR = /etc/kojid/plugins
@@ -13,6 +14,16 @@ CLICONFFILES = $(wildcard cli/*.conf)
 HUBCONFFILES = $(wildcard hub/*.conf)
 BUILDERCONFFILES = $(wildcard builder/*.conf)
 
+ifeq ($(PYVER_MAJOR),2)
+	HUBFILES=$(filter-out hub/kiwi.py,$(HUBFILES_ALL))
+	BUILDERFILES=$(filter-out builder/kiwi.py,$(BUILDERFILES_ALL))
+	CLIFILES=$(filter-out cli/kiwi.py,$(CLIFILES_ALL))
+else
+	HUBFILES=$(HUBFILES_ALL)
+	BUILDERFILES=$(BUILDERFILES_ALL)
+	CLIFILES=$(CLIFILES_ALL)
+endif
+	
 _default:
 	@echo "nothing to make.  try make install"
 
