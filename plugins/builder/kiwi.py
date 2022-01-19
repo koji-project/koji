@@ -346,7 +346,9 @@ class KiwiCreateImageTask(BaseBuildTask):
 
         if opts.get('make_prep'):
             cmd = ['make', 'prep']
-            rv = broot.mock(['--cwd', os.path.join(broot.tmpdir(within=True), os.path.basename(scmsrcdir), desc_path), '--chroot', '--'] + cmd)
+            rv = broot.mock(['--cwd', os.path.join(broot.tmpdir(within=True),
+                                                   os.path.basename(scmsrcdir), desc_path),
+                             '--chroot', '--'] + cmd)
             if rv:
                 raise koji.GenericError("Preparation step failed")
 
