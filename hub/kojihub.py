@@ -10375,9 +10375,8 @@ def importImageInternal(task_id, build_info, imgdata):
     for imgfile in imgdata['files']:
         fullpath = joinpath(workpath, imgfile)
         archivetype = get_archive_type(imgfile)
-        logger.debug('image type we are importing is: %s' % archivetype)
         if not archivetype:
-            raise koji.BuildError('Unsupported image type')
+            raise koji.BuildError('Unsupported file type: %s' % imgfile)
         archives.append(import_archive(fullpath, build_info, 'image', imgdata))
 
     # upload logs
