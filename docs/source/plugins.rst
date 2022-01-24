@@ -289,7 +289,7 @@ Driver Update Disks building
 **This is just a tech-preview. API/usage can drastically change in upcoming
 releases**
 
-Plugin for creating Driver Update Disks with ``mkisofs``.
+Plugin for creating Driver Update Disks with ``xorrisofs``.
 
 All three parts (cli/hub/builder) needs to be installed. There is currently no
 configuration except allowing the plugins (name is 'dud' for all components).
