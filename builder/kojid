@@ -1644,7 +1644,7 @@ class BuildMavenTask(BaseBuildTask):
             opts = {}
         self.opts = opts
 
-        scm = SCM(url)
+        scm = SCM(url, allow_password=self.options.allow_password_in_scm_url)
         scm_policy_opts = {
             'user_id': self.taskinfo['owner'],
             'channel': self.session.getChannel(self.taskinfo['channel_id'],
@@ -1728,7 +1728,8 @@ class BuildMavenTask(BaseBuildTask):
         # Checkout out patches, if present
         if self.opts.get('patches'):
             patchlog = self.workdir + '/patches.log'
-            patch_scm = SCM(self.opts.get('patches'))
+            patch_scm = SCM(self.opts.get('patches'),
+                            allow_password=self.options.allow_password_in_scm_url)
             patch_scm.assert_allowed(allowed=self.options.allowed_scms,
                                      session=self.session,
                                      by_config=self.options.allowed_scms_use_config,
@@ -2015,7 +2016,7 @@ class WrapperRPMTask(BaseBuildTask):
                 # can't happen
                 assert False  # pragma: no cover
 
-        scm = SCM(spec_url)
+        scm = SCM(spec_url, allow_password=self.options.allow_password_in_scm_url)
         scm.assert_allowed(allowed=self.options.allowed_scms,
                            session=self.session,
                            by_config=self.options.allowed_scms_use_config,
@@ -3016,7 +3017,7 @@ class ImageTask(BaseTaskHandler):
         koji.ensuredir(scmdir)
         self.logger.debug("ksfile = %s" % ksfile)
         if self.opts.get('ksurl'):
-            scm = SCM(self.opts['ksurl'])
+            scm = SCM(self.opts['ksurl'], allow_password=self.options.allow_password_in_scm_url)
             scm.assert_allowed(allowed=self.options.allowed_scms,
                                session=self.session,
                                by_config=self.options.allowed_scms_use_config,
@@ -3499,7 +3500,7 @@ class LiveMediaTask(ImageTask):
             An absolute path (from within the chroot) to where livemedia-creator
             can find the checked out templates.
         """
-        scm = SCM(self.opts['lorax_url'])
+        scm = SCM(self.opts['lorax_url'], allow_password=self.options.allow_password_in_scm_url)
         scm.assert_allowed(allowed=self.options.allowed_scms,
                            session=self.session,
                            by_config=self.options.allowed_scms_use_config,
@@ -3755,7 +3756,7 @@ class OzImageTask(BaseTaskHandler):
         ksfile = self.opts.get('kickstart')
         self.logger.debug("ksfile = %s" % ksfile)
         if self.opts.get('ksurl'):
-            scm = SCM(self.opts['ksurl'])
+            scm = SCM(self.opts['ksurl'], allow_password=self.options.allow_password_in_scm_url)
             scm.assert_allowed(allowed=self.options.allowed_scms,
                                session=self.session,
                                by_config=self.options.allowed_scms_use_config,
@@ -4591,7 +4592,7 @@ class BuildIndirectionImageTask(OzImageTask):
         #       to be entirely self contained.  Revisit if anyone feels like a refactor.
         self.logger.debug("filepath = %s" % filepath)
         if fileurl:
-            scm = SCM(fileurl)
+            scm = SCM(fileurl, allow_password=self.options.allow_password_in_scm_url)
             scm.assert_allowed(allowed=self.options.allowed_scms,
                                session=self.session,
                                by_config=self.options.allowed_scms_use_config,
@@ -5012,7 +5013,7 @@ class BuildSRPMFromSCMTask(BaseBuildTask):
         if opts is None:
             opts = {}
         # will throw a BuildError if the url is invalid
-        scm = SCM(url)
+        scm = SCM(url, allow_password=self.options.allow_password_in_scm_url)
         scm.assert_allowed(allowed=self.options.allowed_scms,
                            session=self.session,
                            by_config=self.options.allowed_scms_use_config,
@@ -6486,7 +6487,8 @@ def get_options():
                 'task_avail_delay': 300,
                 'cert': None,
                 'serverca': None,
-                'allow_noverifyssl': False}
+                'allow_noverifyssl': False,
+                'allow_password_in_scm_url': False}
     if config.has_section('kojid'):
         for name, value in config.items('kojid'):
             if name in ['sleeptime', 'maxjobs', 'minspace', 'retry_interval',
@@ -6502,7 +6504,7 @@ def get_options():
                           'createrepo_update', 'use_fast_upload', 'support_rpm_source_layout',
                           'build_arch_can_fail', 'no_ssl_verify', 'log_timestamps',
                           'allow_noverifyssl', 'allowed_scms_use_config',
-                          'allowed_scms_use_policy']:
+                          'allowed_scms_use_policy', 'allow_password_in_scm_url']:
                 defaults[name] = config.getboolean('kojid', name)
             elif name in ['plugin', 'plugins']:
                 defaults['plugin'] = value.split()
