@@ -124,6 +124,15 @@ class TestListArchives(DBQueryTestCase):
                                   clauses=['checksum = %(checksum)s'],
                                   values={'checksum': '7873f0a6dbf3abc07724e000ac9b3941'})
 
+    def test_list_archives_checksum_type(self):
+        kojihub.list_archives(checksum_type=koji.CHECKSUM_TYPES['sha256'])
+        self.assertLastQueryEqual(tables=['archiveinfo'],
+                                  joins=['archivetypes on archiveinfo.type_id = archivetypes.id',
+                                         'btype ON archiveinfo.btype_id = btype.id'],
+                                  clauses=['checksum_type = %(checksum_type)s'],
+                                  values={'checksum_type': koji.CHECKSUM_TYPES['sha256']})
+
+
     def test_list_archives_archiveid(self):
         kojihub.list_archives(archiveID=1)
         self.assertLastQueryEqual(tables=['archiveinfo'],
