@@ -43,13 +43,15 @@ class DudBuildTask(BuildImageTask):
         name, version, release = dud_name, dud_version, None
 
         bld_info = None
+        if opts.get('release'):
+            release = opts['release']
+        else:
+            release = self.session.getNextRelease({'name': name, 'version': version})
         if '-' in version:
             raise koji.ApplianceError('The Version may not have a hyphen')
         if not opts['scratch']:
             bld_info = self.initImageBuild(name, version, release, target_info, opts)
             release = bld_info['release']
-        elif not release:
-            release = self.session.getNextRelease({'name': name, 'version': version})
 
         try:
             subtasks = {}
@@ -187,9 +189,9 @@ class DudCreateImageTask(BaseBuildTask):
         imgdata = {
             'arch': arch,
             'task_id': self.id,
-            'name': '',
-            'version': '',
-            'release': '',
+            'name': dud_name,
+            'version': dud_version,
+            'release': dud_release,
             'logs': [],
             'rpmlist': [],
             'files': [],
@@ -234,10 +236,6 @@ class DudCreateImageTask(BaseBuildTask):
         if rv:
             raise koji.GenericError("DUD build failed while writing the rhdd3 file in "
                                     "the ISO: " + str(rv))
-
-        imgdata['name'] = dud_name
-        imgdata['version'] = dud_version
-        imgdata['release'] = dud_release
 
         # Get the SCM content into the ISO root
         # Retrieve SCM content if it exists
