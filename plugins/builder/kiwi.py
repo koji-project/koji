@@ -184,7 +184,7 @@ class KiwiCreateImageTask(BaseBuildTask):
     Methods = ['createKiwiImage']
     _taskWeight = 2.0
 
-    def prepareDescription(self, desc_path, name, version, repos):
+    def prepareDescription(self, desc_path, name, version, repos, arch):
         kiwi_files = glob.glob('%s/*.kiwi' % desc_path)
         if len(kiwi_files) != 1:
             raise koji.GenericError("Repo must contain only one .kiwi file.")
@@ -234,14 +234,16 @@ class KiwiCreateImageTask(BaseBuildTask):
                 # TODO: if type.getAttribute('primary') == 'true':
                 types.append(type.getAttribute('image'))
 
-        # write file back
-        with open(cfg, 'wt') as f:
+        # write new file
+        newcfg = f'{cfg[:-5]}.{arch}.kiwi'
+        with open(newcfg, 'wt') as f:
             s = newxml.toprettyxml()
             # toprettyxml adds too many whitespaces/newlines
             s = '\n'.join([x for x in s.splitlines() if x.strip()])
             f.write(s)
+        os.unlink(cfg)
 
-        return cfg, types
+        return newcfg, types
 
     def getImagePackagesFromCache(self, cachepath):
         """
@@ -353,7 +355,7 @@ class KiwiCreateImageTask(BaseBuildTask):
                 raise koji.GenericError("Preparation step failed")
 
         path = os.path.join(scmsrcdir, desc_path)
-        desc, types = self.prepareDescription(path, name, version, repos)
+        desc, types = self.prepareDescription(path, name, version, repos, arch)
         self.uploadFile(desc)
 
         cmd = ['kiwi-ng']
@@ -396,7 +398,7 @@ class KiwiCreateImageTask(BaseBuildTask):
         # build/image-root.log
         root_log_path = os.path.join(broot.tmpdir(), target_dir[1:], "build/image-root.log")
         if os.path.exists(root_log_path):
-            self.uploadFile(root_log_path, remoteName="image-root.log")
+            self.uploadFile(root_log_path, remoteName=f"image-root.{arch}.log")
 
         bundle_path = os.path.join(broot.rootdir(), bundle_dir[1:])
         for fname in os.listdir(bundle_path):
