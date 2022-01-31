@@ -32,12 +32,12 @@ class TestListPermissions(utils.CliTestCase):
         options = mock.MagicMock()
         user = 'tester'
         all_perms = [
-            {'id': 0, 'name': 'admin'},
-            {'id': 1, 'name': 'build'},
-            {'id': 2, 'name': 'repo'},
-            {'id': 3, 'name': 'image'},
-            {'id': 4, 'name': 'livecd'},
-            {'id': 5, 'name': 'appliance'}
+            {'id': 0, 'name': 'admin', 'description': 'admin-description'},
+            {'id': 1, 'name': 'build', 'description': 'build-description'},
+            {'id': 2, 'name': 'repo', 'description': 'repo-description'},
+            {'id': 3, 'name': 'image', 'description': 'image-description'},
+            {'id': 4, 'name': 'livecd', 'description': 'livecd-description'},
+            {'id': 5, 'name': 'appliance', 'description': 'appliance-description'}
         ]
 
         # case 1. argument error (no argument is required)
@@ -62,7 +62,13 @@ class TestListPermissions(utils.CliTestCase):
         perms = [p['name'] for p in all_perms[::1]]
         session.getUserPerms.return_value = perms
         session.getUser.return_value = {'id': 101, 'name': user}
-        expected = "\n".join([p for p in perms]) + "\n"
+        expected = """admin             
+build             
+repo              
+image             
+livecd            
+appliance         
+"""
         handle_list_permissions(options, session, ['--user', user])
         self.assert_console_message(stdout, expected)
 
@@ -71,7 +77,9 @@ class TestListPermissions(utils.CliTestCase):
         # case 4. List my permission
         perms = [p['name'] for p in all_perms[1:3]]
         session.getPerms.return_value = perms
-        expected = "\n".join([p for p in perms]) + "\n"
+        expected = """build             
+repo              
+"""
         handle_list_permissions(options, session, ['--mine'])
         self.assert_console_message(stdout, expected)
         session.getUserPerms.assert_not_called()
@@ -80,7 +88,13 @@ class TestListPermissions(utils.CliTestCase):
 
         # case 5. List all permission
         session.getAllPerms.return_value = all_perms
-        expected = "\n".join([p['name'] for p in all_perms]) + "\n"
+        expected = """admin                admin-description
+build                build-description
+repo                 repo-description
+image                image-description
+livecd               livecd-description
+appliance            appliance-description
+"""
         handle_list_permissions(options, session, [])
         self.assert_console_message(stdout, expected)
         session.getUserPerms.assert_not_called()
@@ -97,6 +111,7 @@ Options:
   -h, --help   show this help message and exit
   --user=USER  List permissions for the given user
   --mine       List your permissions
+  --quiet      Do not print the header information
 """ % self.progname)
 
 

@@ -2130,21 +2130,43 @@ def handle_list_permissions(goptions, session, args):
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--user", help="List permissions for the given user")
     parser.add_option("--mine", action="store_true", help="List your permissions")
+    parser.add_option("--quiet", action="store_true", default=goptions.quiet,
+                      help="Do not print the header information")
     (options, args) = parser.parse_args(args)
     if len(args) > 0:
         parser.error("This command takes no arguments")
     activate_session(session, goptions)
+    perms = []
     if options.user:
         user = session.getUser(options.user)
         if not user:
             error("No such user: %s" % options.user)
-        perms = session.getUserPerms(user['id'])
+        for p in session.getUserPerms(user['id']):
+            perms.append({'name': p})
     elif options.mine:
-        perms = session.getPerms()
+        for p in session.getPerms():
+            perms.append({'name': p})
     else:
-        perms = [p['name'] for p in session.getAllPerms()]
+        for p in session.getAllPerms():
+            perms.append({'name': p['name'], 'description': p['description']})
+    if perms:
+        longest_perm = max([len(perm['name']) for perm in perms])
+    else:
+        longest_perm = 8
+    if longest_perm < len('Permission name   '):
+        longest_perm = len('Permission name   ')
+    if not options.quiet:
+        hdr = '{permname:<{longest_perm}}'
+        hdr = hdr.format(longest_perm=longest_perm, permname='Permission name')
+        if perms and perms[0].get('description'):
+            hdr += "   Description".ljust(53)
+        print(hdr)
     for perm in perms:
-        print(perm)
+        line = '{permname:<{longest_perm}}'
+        line = line.format(longest_perm=longest_perm, permname=perm['name'])
+        if perm.get('description'):
+            line += "   %s" % perm['description']
+        print(line)
 
 
 def handle_add_user(goptions, session, args):
@@ -2417,10 +2439,12 @@ def handle_import_archive(options, session, args):
 
 def handle_grant_permission(goptions, session, args):
     "[admin] Grant a permission to a user"
-    usage = "usage: %prog grant-permission [--new] <permission> <user> [<user> ...]"
+    usage = "usage: %prog grant-permission [options] <permission> <user> [<user> ...]"
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--new", action="store_true",
                       help="Create this permission if the permission does not exist")
+    parser.add_option("--description",
+                      help="Add description about new permission")
     (options, args) = parser.parse_args(args)
     if len(args) < 2:
         parser.error("Please specify a permission and at least one user")
@@ -2436,6 +2460,10 @@ def handle_grant_permission(goptions, session, args):
     kwargs = {}
     if options.new:
         kwargs['create'] = True
+        if options.description:
+            kwargs['description'] = options.description
+    if options.description and not options.new:
+        parser.error("Option new must be specified with option description.")
     for user in users:
         session.grantPermission(user['name'], perm, **kwargs)
 
@@ -2458,6 +2486,19 @@ def handle_revoke_permission(goptions, session, args):
         users.append(user)
     for user in users:
         session.revokePermission(user['name'], perm)
+
+
+def handle_edit_permission(goptions, session, args):
+    "[admin] Edit a permission description"
+    usage = "usage: %prog edit-permission <permission> <description>"
+    parser = OptionParser(usage=get_usage_str(usage))
+    (options, args) = parser.parse_args(args)
+    if len(args) < 2:
+        parser.error("Please specify a permission and a description")
+    activate_session(session, goptions)
+    perm = args[0]
+    description = args[1]
+    session.editPermission(perm, description)
 
 
 def handle_grant_cg_access(goptions, session, args):

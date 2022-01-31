@@ -26,6 +26,7 @@ admin commands:
         edit-channel              Edit a channel
         edit-external-repo        Edit data for an external repo
         edit-host                 Edit a host
+        edit-permission           Edit a permission description
         edit-tag                  Alter tag information
         edit-tag-inheritance      Edit tag inheritance
         edit-target               Set the name, build_tag, and/or dest_tag of an existing build target to new values
