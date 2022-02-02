@@ -473,29 +473,6 @@ def convertFault(fault):
     return fault
 
 
-def listFaults():
-    """Return a list of faults
-
-    Returns a list of dictionaries whose keys are:
-        faultCode: the numeric code used in fault conversion
-        name: the name of the exception
-        desc: the description of the exception (docstring)
-    """
-    util.deprecated("method listFaults is deprecated and will be removed in 1.29")
-    ret = []
-    for n, v in globals().items():
-        if isinstance(v, type(Exception)) and issubclass(v, GenericError):
-            code = getattr(v, 'faultCode', None)
-            if code is None:
-                continue
-            info = {}
-            info['faultCode'] = code
-            info['name'] = n
-            info['desc'] = getattr(v, '__doc__', None)
-            ret.append(info)
-    ret.sort(key=lambda x: x['faultCode'])
-    return ret
-
 # functions for encoding/decoding optional arguments
 
 
