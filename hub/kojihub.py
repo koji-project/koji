@@ -214,9 +214,11 @@ class Task(object):
                     log_error(f"Error: task {task_id} is already open and handled by "
                               f"{host_id} (double open/assign)")
                 return False
-            elif otherhost is None:  # CLOSED, FAILED
-                log_error(f"Error: task {task_id} is non-free but not handled by any host "
-                          f"(state {koji.TASK_STATES[state]})")
+            else:
+                # state is CLOSED or FAILED
+                if otherhost is None:
+                    log_error(f"Error: task {task_id} is non-free but not handled by any host "
+                              f"(state {koji.TASK_STATES[state]})")
                 return False
         # if we reach here, task is either
         #  - free and unlocked
