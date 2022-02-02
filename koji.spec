@@ -83,7 +83,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.27.1
+Version: 1.28.0
 Release: %{release}%{?dist}
 License: LGPLv2 and GPLv2+
 # the included arch lib from yum's rpmUtils is GPLv2+
@@ -644,6 +644,36 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Wed Feb  2 2022  Tomas Kopecek <tkopecek at redhat.com> - 1.28.0-1
+- PR#3028: Add limits on name values
+- PR#3105: Deprecated --paths option in list-buildroot
+- PR#3108: Remove rename-channel CLI and use editChannel in renameChannel
+- PR#3116: RLIMIT_OFILE alias for RLIMIT_NOFILE
+- PR#3117: Deprecated hub option DisableGSSAPIProxyDNFallback
+- PR#3119: AuthExpire returns code 1 in kojid
+- PR#3123: Centralize name/id lookup clauses
+- PR#3137: www: rpminfo/fileinfo/imageinfo/archiveinfo page shows human-readable filesize
+- PR#3145: Deprecated force option in groupPackageListRemove call
+- PR#3146: CLI mock-config: when topdir option, remove topurl value
+- PR#3158: Deprecated remove-channel CLI and removeChannel API
+- PR#3159: Taginfo page shows packages with/without blocked
+- PR#3164: [hub] only raise error when authtype is not proxyauthtype
+- PR#3168: protonmsg: allow users to specify router-specific topic prefixes
+- PR#3177: Drop RHEL6 references
+- PR#3192: Release notes 1.27.1
+- PR#3195: Link to overview video
+- PR#3196: hub: default with_blocked=True in listPackages
+- PR#3204: lib: refactor variables in is_conn_err()
+- PR#3205: Implant releasever into kiwi description
+- PR#3206: doc: explain IMA signing vs usual RPM signing
+- PR#3211: save modified .kiwi files per arch
+- PR#3212: Allow password in SCM url with new builder option
+- PR#3214: Add description for permissions
+- PR#3215: Show total builds and add two more date options
+- PR#3218: doc: additional explanations for RPM signatures
+- PR#3223: Provide meaningful message when importing image files fails
+- PR#3226: doc: improve multicall documentation
+
 * Tue Dec 21 2021 Tomas Kopecek <tkopecek at redhat.com> - 1.27.1-1
 - PR#3098: Add all options to hub_conf.rst
 - PR#3104: Make setup.py executable
