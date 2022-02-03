@@ -201,6 +201,35 @@ class TestAddPkg(utils.CliTestCase):
         self.session.listPackages.assert_not_called()
         self.session.packageListAdd.assert_not_called()
 
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    def test_handle_add_pkg_parameter_error(self, stdout):
+        tag = 'tag'
+        dsttag = {'name': tag, 'id': 1}
+        package = 'package'
+        owner = 'testuser'
+        args = ['--owner', owner, tag, package]
+
+        self.session.getTag.return_value = dsttag
+        self.session.listPackages.side_effect = [koji.ParameterError, []]
+        # Run it and check immediate output
+        # args: tag, package
+        # expected: success
+        rv = handle_add_pkg(self.options, self.session, args)
+        actual = stdout.getvalue()
+        expected = 'Adding 1 packages to tag tag\n'
+        self.assertMultiLineEqual(actual, expected)
+        # Finally, assert that things were called as we expected.
+        self.activate_session_mock.assert_called_once_with(self.session, self.options)
+        self.session.getTag.assert_called_once_with(tag)
+        self.session.listPackages.assert_has_calls([
+            call(tagID=dsttag['id'], with_owners=False),
+            call(tagID=dsttag['id'])
+        ])
+        self.session.packageListAdd.assert_called_once_with(
+            tag, package, owner, block=False, force=None)
+        self.session.multiCall.assert_called_once_with(strict=True)
+        self.assertFalse(rv)
+
 
 if __name__ == '__main__':
     unittest.main()
