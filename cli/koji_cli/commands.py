@@ -1430,8 +1430,6 @@ def handle_import_cg(goptions, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) < 2:
         parser.error("Please specify metadata files directory")
-    if json is None:
-        parser.error("Unable to find json module")
     activate_session(session, goptions)
     metadata = koji.load_json(args[0])
     if 'output' not in metadata:
