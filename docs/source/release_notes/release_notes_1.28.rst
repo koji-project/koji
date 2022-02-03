@@ -155,7 +155,7 @@ Web
 
 | PR: https://pagure.io/koji/pull-request/3215
 
-Buildsbystatus wep page is showing a bit more information now.
+Buildsbystatus web page is showing a bit more information now.
 
 
 Plugins
