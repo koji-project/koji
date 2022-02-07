@@ -767,9 +767,10 @@ Apache to connect to the remote PostgreSQL server::
 
     root@localhost$ setsebool -P httpd_can_network_connect_db=1
 
-Note, that database connection parameters (password) are sensitive values.
-Config is installed by default with 0640 root/apache file permissions. If you're
-not installing hub from rpm double-check these permissions.
+Note, the database password (``DBPass`` parameter) is a sensitive value. The
+``hub.conf`` file should have 0640 ``root``/``apache`` file permissions to
+restrict access. If you're not installing the hub from RPM, double-check these
+permissions.
 
 Furthermore, you can install any config file in ``/etc/koji-hub/hub.conf.d``
 directory. These files are read *at first* and main config is allowed to
