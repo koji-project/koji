@@ -43,11 +43,6 @@ def _sortbyname(x):
     return x['name']
 
 
-# regexps for input checking
-_VALID_SEARCH_CHARS = r"""a-zA-Z0-9"""
-_VALID_SEARCH_SYMS = r""" @.,_/\()%+-~*?|[]^$"""
-_VALID_SEARCH_RE = re.compile('^[' + _VALID_SEARCH_CHARS + re.escape(_VALID_SEARCH_SYMS) + ']+$')
-
 _VALID_ARCH_RE = re.compile(r'^[\w-]+$', re.ASCII)
 
 
@@ -61,14 +56,12 @@ def _validate_arch(arch):
         raise koji.GenericError("No such arch: %r" % arch)
 
 
-def _validate_name_or_id(value):
-    # integer ID or label, it is unicode alnum + search symbols (reasonable expectation?)
+def _convert_if_int(value):
+    # if value is digit, converts value to integer, otherwise it returns raw value
     if value.isdigit():
         return int(value)
-    elif _VALID_SEARCH_RE.match(value):
-        return value
     else:
-        raise koji.GenericError("Invalid int/label value: %r" % value)
+        return value
 
 
 # loggers
@@ -540,7 +533,7 @@ def tasks(environ, owner=None, state='active', view='tree', method='all', hostID
 
     opts = {'decode': True}
     if owner:
-        owner = _validate_name_or_id(owner)
+        owner = _convert_if_int(owner)
         ownerObj = server.getUser(owner, strict=True)
         opts['owner'] = ownerObj['id']
         values['owner'] = ownerObj['name']
@@ -598,7 +591,7 @@ def tasks(environ, owner=None, state='active', view='tree', method='all', hostID
     values['state'] = state
 
     if hostID:
-        hostID = int(hostID)
+        hostID = _convert_if_int(hostID)
         host = server.getHost(hostID, strict=True)
         opts['host_id'] = host['id']
         values['host'] = host
@@ -608,7 +601,7 @@ def tasks(environ, owner=None, state='active', view='tree', method='all', hostID
         values['hostID'] = None
 
     if channelID:
-        channelID = _validate_name_or_id(channelID)
+        channelID = _convert_if_int(channelID)
         channel = server.getChannel(channelID, strict=True)
         opts['channel_id'] = channel['id']
         values['channel'] = channel
@@ -916,13 +909,13 @@ def packages(environ, tagID=None, userID=None, order='package_name', start=None,
     server = _getServer(environ)
     tag = None
     if tagID is not None:
-        tagID = _validate_name_or_id(tagID)
+        tagID = _convert_if_int(tagID)
         tag = server.getTag(tagID, strict=True)
     values['tagID'] = tagID
     values['tag'] = tag
     user = None
     if userID is not None:
-        userID = _validate_name_or_id(userID)
+        userID = _convert_if_int(userID)
         user = server.getUser(userID, strict=True)
     values['userID'] = userID
     values['user'] = user
@@ -952,7 +945,7 @@ def packageinfo(environ, packageID, tagOrder='name', tagStart=None, buildOrder='
     values = _initValues(environ, 'Package Info', 'packages')
     server = _getServer(environ)
 
-    packageID = _validate_name_or_id(packageID)
+    packageID = _convert_if_int(packageID)
     package = server.getPackage(packageID)
     if package is None:
         raise koji.GenericError('No such package ID: %s' % packageID)
@@ -976,7 +969,7 @@ def taginfo(environ, tagID, all='0', packageOrder='package_name', packageStart=N
     values = _initValues(environ, 'Tag Info', 'tags')
     server = _getServer(environ)
 
-    tagID = _validate_name_or_id(tagID)
+    tagID = _convert_if_int(tagID)
     tag = server.getTag(tagID, strict=True)
 
     values['title'] = tag['name'] + ' | Tag Info'
@@ -1016,7 +1009,8 @@ def taginfo(environ, tagID, all='0', packageOrder='package_name', packageStart=N
 
     child = None
     if childID is not None:
-        child = server.getTag(int(childID), strict=True)
+        childID = _convert_if_int(childID)
+        child = server.getTag(childID, strict=True)
     values['child'] = child
 
     if environ['koji.currentUser']:
@@ -1193,7 +1187,7 @@ def externalrepoinfo(environ, extrepoID):
     values = _initValues(environ, 'External Repo Info', 'tags')
     server = _getServer(environ)
 
-    extrepoID = _validate_name_or_id(extrepoID)
+    extrepoID = _convert_if_int(extrepoID)
     extRepo = server.getExternalRepo(extrepoID, strict=True)
     repoTags = server.getTagExternalRepos(repo_info=extRepo['id'])
 
@@ -1349,7 +1343,7 @@ def builds(environ, userID=None, tagID=None, packageID=None, state=None, order='
 
     user = None
     if userID:
-        userID = _validate_name_or_id(userID)
+        userID = _convert_if_int(userID)
         user = server.getUser(userID, strict=True)
     values['userID'] = userID
     values['user'] = user
@@ -1361,14 +1355,14 @@ def builds(environ, userID=None, tagID=None, packageID=None, state=None, order='
 
     tag = None
     if tagID:
-        tagID = _validate_name_or_id(tagID)
+        tagID = _convert_if_int(tagID)
         tag = server.getTag(tagID, strict=True)
     values['tagID'] = tagID
     values['tag'] = tag
 
     package = None
     if packageID:
-        packageID = _validate_name_or_id(packageID)
+        packageID = _convert_if_int(packageID)
         package = server.getPackage(packageID, strict=True)
     values['packageID'] = packageID
     values['package'] = package
@@ -1454,13 +1448,14 @@ def userinfo(environ, userID, packageOrder='package_name', packageStart=None,
     values = _initValues(environ, 'User Info', 'users')
     server = _getServer(environ)
 
-    userID = _validate_name_or_id(userID)
+    userID = _convert_if_int(userID)
     user = server.getUser(userID, strict=True)
 
     values['title'] = user['name'] + ' | User Info'
 
     values['user'] = user
     values['userID'] = userID
+    values['owner'] = user['name']
     values['taskCount'] = server.listTasks(opts={'owner': user['id'], 'parent': None},
                                            queryOpts={'countOnly': True})
 
@@ -1708,12 +1703,12 @@ def hostinfo(environ, hostID=None, userID=None):
     server = _getServer(environ)
 
     if hostID:
-        hostID = _validate_name_or_id(hostID)
+        hostID = _convert_if_int(hostID)
         host = server.getHost(hostID)
         if host is None:
             raise koji.GenericError('No such host ID: %s' % hostID)
     elif userID:
-        userID = int(userID)
+        userID = _convert_if_int(userID)
         hosts = server.listHosts(userID=userID)
         host = None
         if hosts:
@@ -2426,17 +2421,17 @@ def recentbuilds(environ, user=None, tag=None, package=None):
 
     tagObj = None
     if tag is not None:
-        tag = _validate_name_or_id(tag)
+        tag = _convert_if_int(tag)
         tagObj = server.getTag(tag, strict=True)
 
     userObj = None
     if user is not None:
-        user = _validate_name_or_id(user)
+        user = _convert_if_int(user)
         userObj = server.getUser(user, strict=True)
 
     packageObj = None
     if package:
-        package = _validate_name_or_id(package)
+        package = _convert_if_int(package)
         packageObj = server.getPackage(package, strict=True)
 
     if tagObj is not None:
@@ -2532,13 +2527,6 @@ def search(environ, start=None, order=None):
         if match not in ('glob', 'regexp', 'exact'):
             raise koji.GenericError("No such match type: %r" % match)
 
-        if not _VALID_SEARCH_RE.match(terms):
-            values['error'] = 'Invalid search terms<br/>' + \
-                'Search terms may contain only these characters: ' + \
-                _VALID_SEARCH_CHARS + _VALID_SEARCH_SYMS
-            values['terms'] = ''
-            return _genHTML(environ, 'search.chtml')
-
         if match == 'regexp':
             try:
                 re.compile(terms)
@@ -2617,8 +2605,8 @@ def repoinfo(environ, repoID):
     values = _initValues(environ, 'Repo Info', 'tags')
     server = _getServer(environ)
 
-    repoID = _validate_name_or_id(repoID)
     values['repo_id'] = repoID
+    repoID = _convert_if_int(repoID)
     repo_info = server.repoInfo(repoID, strict=False)
     values['repo'] = repo_info
     if repo_info:

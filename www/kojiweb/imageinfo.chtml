@@ -5,23 +5,23 @@
 
 #include "includes/header.chtml"
 
-<h4>Information for image <a href="imageinfo?imageID=$image.id">$image.filename</a></h4>
+<h4>Information for image <a href="imageinfo?imageID=$image.id">$util.escapeHTML($image.filename)</a></h4>
 
 <table>
   <tr>
     <th>ID</th><td>$image.id</td>
   </tr>
   <tr>
-    <th>File Name</th><td>$image.filename</a></td>
+    <th>File Name</th><td>$util.escapeHTML($image.filename)</a></td>
   </tr>
   <tr>
     <th>File Size</th><td><span title="$util.formatThousands($image.filesize)">$util.formatNatural($image.filesize)</span></td>
   </tr>
   <tr>
-    <th>Arch</th><td>$image.arch</td>
+    <th>Arch</th><td>$util.escapeHTML($image.arch)</td>
   </tr>
   <tr>
-    <th>Media Type</th><td>$image.mediatype</td>
+    <th>Media Type</th><td>$util.escapeHTML($image.mediatype)</td>
   </tr>
   <tr>
     #if $len($image.hash) == 32
@@ -42,7 +42,7 @@
     <th>Task</th><td><a href="taskinfo?taskID=$task.id" class="task$util.taskState($task.state)">$koji.taskLabel($task)</a></td>
   </tr>
   <tr>
-    <th>Buildroot</th><td><a href="buildrootinfo?buildrootID=$buildroot.id">/var/lib/mock/$buildroot.tag_name-$buildroot.id-$buildroot.repo_id</a></td>
+    <th>Buildroot</th><td><a href="buildrootinfo?buildrootID=$buildroot.id">$util.escapeHTML(/var/lib/mock/$buildroot.tag_name-$buildroot.id-$buildroot.repo_id)</a></td>
   </tr>
   <tr>
     <th colspan="2"><a href="rpmlist?imageID=$image.id&amp;type=image" title="RPMs that where installed into the LiveCD">Included RPMs</a></th>

@@ -2,7 +2,7 @@
 
 #include "includes/header.chtml"
 
-  <h4>Information for channel <a href="channelinfo?channelID=$channel.id">$channel.name</a></h4>
+  <h4>Information for channel <a href="channelinfo?channelID=$channel.id">$util.escapeHTML($channel.name)</a></h4>
 
   <table>
     <tr>
@@ -39,7 +39,7 @@
         </tr>
       #for $host in $hosts
         <tr class="$util.rowToggle($self)">
-          <td><a href="hostinfo?hostID=$host.id">$host.name</a></td>
+          <td><a href="hostinfo?hostID=$host.id">$util.escapeHTML($host.name)</a></td>
           <td class="$str($bool($host.enabled)).lower()">#if $host.enabled then $util.imageTag('yes') else $util.imageTag('no')#</td>
           <td class="$str($bool($host.ready)).lower()">#if $host.ready then $util.imageTag('yes') else $util.imageTag('no')#</td>
         </tr>

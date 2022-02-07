@@ -40,9 +40,9 @@ $value
 #if $len($params) > 1
 <strong>Build Tag:</strong>
 #if $buildTag.id
-<a href="taginfo?tagID=$buildTag.id">$buildTag.name</a>
+<a href="taginfo?tagID=$buildTag.id">$util.escapeHTML($buildTag.name)</a>
 #else
-$buildTag.name
+$util.escapeHTML($buildTag.name)
 #end if
 <br/>
 #end if
@@ -55,9 +55,9 @@ $printOpts($params[2])
 <strong>SRPM:</strong> $params[0]<br/>
 <strong>Build Tag:</strong>
 #if $buildTag.id
-<a href="taginfo?tagID=$buildTag.id">$buildTag.name</a>
+<a href="taginfo?tagID=$buildTag.id">$util.escapeHTML($buildTag.name)</a>
 #else
-$buildTag.name
+$util.escapeHTML($buildTag.name)
 #end if
 <br/>
 <strong>Arch:</strong> $params[2]<br/>
@@ -66,15 +66,15 @@ $buildTag.name
 $printOpts($params[4])
 #end if
 #elif $task.method == 'tagBuild'
-<strong>Destination Tag:</strong> <a href="taginfo?tagID=$destTag.id">$destTag.name</a><br/>
-<strong>Build:</strong> <a href="buildinfo?buildID=$build.id">$koji.buildLabel($build)</a>
+<strong>Destination Tag:</strong> <a href="taginfo?tagID=$destTag.id">$util.escapeHTML($destTag.name)</a><br/>
+<strong>Build:</strong> <a href="buildinfo?buildID=$build.id">$util.escapeHTML($koji.buildLabel($build))</a>
 #elif $task.method == 'buildNotification'
 #set $build = $params[1]
 #set $buildTarget = $params[2]
 <strong>Recipients:</strong>&nbsp;$printValue('', $params[0])<br/>
-<strong>Build:</strong> <a href="buildinfo?buildID=$build.id">$koji.buildLabel($build)</a><br/>
+<strong>Build:</strong> <a href="buildinfo?buildID=$build.id">$util.escapeHTML($koji.buildLabel($build))</a><br/>
 #if $buildTarget
-<strong>Build Target:</strong> <a href="buildtargetinfo?targetID=$buildTarget.id">$buildTarget.name</a><br/>
+<strong>Build Target:</strong> <a href="buildtargetinfo?targetID=$buildTarget.id">$util.escapeHTML($buildTarget.name)</a><br/>
 #else
 <strong>Build Target:</strong> (no build target)<br/>
 #end if
@@ -83,32 +83,32 @@ $printOpts($params[4])
 <strong>Recipients:</strong>&nbsp;$printValue('', $params[0])<br/>
 <strong>Successful?:</strong> #if $params[1] then 'yes' else 'no'#<br/>
 #if $destTag
-<strong>Tagged Into:</strong> <a href="taginfo?tagID=$destTag.id">$destTag.name</a><br/>
+<strong>Tagged Into:</strong> <a href="taginfo?tagID=$destTag.id">$util.escapeHTML($destTag.name)</a><br/>
 #end if
 #if $srcTag
-<strong>#if $destTag then 'Moved From:' else 'Untagged From:'#</strong> <a href="taginfo?tagID=$srcTag.id">$srcTag.name</a><br/>
+<strong>#if $destTag then 'Moved From:' else 'Untagged From:'#</strong> <a href="taginfo?tagID=$srcTag.id">$util.escapeHTML($srcTag.name)</a><br/>
 #end if
-<strong>Build:</strong> <a href="buildinfo?buildID=$build.id">$koji.buildLabel($build)</a><br/>
-<strong>#if $destTag then 'Tagged By:' else 'Untagged By:'#</strong> <a href="userinfo?userID=$user.id">$user.name</a><br/>
+<strong>Build:</strong> <a href="buildinfo?buildID=$build.id">$util.escapeHTML($koji.buildLabel($build))</a><br/>
+<strong>#if $destTag then 'Tagged By:' else 'Untagged By:'#</strong> <a href="userinfo?userID=$user.id">$util.escapeHTML($user.name)</a><br/>
 <strong>Ignore Success?:</strong> #if $params[6] then 'yes' else 'no'#<br/>
 #if $params[7]
 <strong>Failure Message:</strong> $params[7]
 #end if
 #elif $task.method == 'build'
 <strong>Source:</strong> $params[0]<br/>
-<strong>Build Target:</strong> <a href="buildtargetinfo?name=$quote($params[1])">$params[1]</a><br/>
+<strong>Build Target:</strong> <a href="buildtargetinfo?name=$quote($params[1])">$util.escapeHTML($params[1])</a><br/>
 $printOpts($params[2])
 #elif $task.method == 'maven'
-<strong>SCM URL:</strong> $params[0]<br/>
-<strong>Build Target:</strong> <a href="buildtargetinfo?name=$quote($params[1])">$params[1]</a><br/>
+<strong>SCM URL:</strong> $util.escapeHTML($params[0])<br/>
+<strong>Build Target:</strong> <a href="buildtargetinfo?name=$quote($params[1])">$util.escapeHTML($params[1])</a><br/>
 $printOpts($params[2])
 #elif $task.method == 'buildMaven'
-<strong>SCM URL:</strong> $params[0]<br/>
+<strong>SCM URL:</strong> $util.escapeHTML($params[0])<br/>
 <strong>Build Tag:</strong>
 #if $buildTag.id
-<a href="taginfo?tagID=$buildTag.id">$buildTag.name</a>
+<a href="taginfo?tagID=$buildTag.id">$util.escapeHTML($buildTag.name)</a>
 #else
-$buildTag.name
+$util.escapeHTML($buildTag.name)
 #end if
 <br/>
 #if $len($params) > 2
@@ -120,13 +120,13 @@ $printOpts($params[2])
 #set $buildTag = $buildTarget.name
 <strong>Build Tag:</strong>
 #if $buildTag.id
-<a href="taginfo?tagID=$buildTag.id">$buildTag.name</a>
+<a href="taginfo?tagID=$buildTag.id">$util.escapeHTML($buildTag.name)</a>
 #else
-$buildTag.name
+$util.escapeHTML($buildTag.name)
 #end if
 <br/>
 #else
-<strong>Build Target:</strong> <a href="buildtargetinfo?targetID=$buildTarget.id">$buildTarget.name</a><br/>
+<strong>Build Target:</strong> <a href="buildtargetinfo?targetID=$buildTarget.id">$util.escapeHTML($buildTarget.name)</a><br/>
 #end if
 #if $params[2]
 <strong>Build:</strong> <a href="buildinfo?buildID=$params[2].id">$koji.buildLabel($params[2])</a><br/>
@@ -144,53 +144,53 @@ $printOpts($params[4])
 <tr><td><strong>$key:</strong></td><td>$printMap($val)</td></tr>
 #end for
 </table>
-<strong>Build Target:</strong> <a href="buildtargetinfo?name=$quote($params[1])">$params[1]</a><br/>
+<strong>Build Target:</strong> <a href="buildtargetinfo?name=$quote($params[1])">$util.escapeHTML($params[1])</a><br/>
 #if $len($params) > 2
 $printOpts($params[2])
 #end if
 #elif $task.method == 'livecd' or $task.method == 'appliance' or $task.method == 'livemedia'
-<strong>Name:</strong> $params[0]<br/>
-<strong>Version:</strong> $params[1]<br/>
-<strong>Arch:</strong> $params[2]<br/>
-<strong>Build Target:</strong> <a href="buildtargetinfo?name=$quote($params[3])">$params[3]</a><br/>
-<strong>Kickstart File:</strong> $params[4]<br/>
+<strong>Name:</strong> $util.escapeHTML($params[0])<br/>
+<strong>Version:</strong> $util.escapeHTML($params[1])<br/>
+<strong>Arch:</strong> $util.escapeHTML($params[2])<br/>
+<strong>Build Target:</strong> <a href="buildtargetinfo?name=$quote($params[3])">$util.escapeHTML($params[3])</a><br/>
+<strong>Kickstart File:</strong> $util.escapeHTML($params[4])<br/>
 $printOpts($params[5])
 #elif $task.method == 'image'
 <strong>Arches:</strong> #echo ', '.join($params[2])#<br/>
-<strong>Build Target:</strong> <a href="buildtargetinfo?name=$quote($params[3])">$params[3]</a><br/>
+<strong>Build Target:</strong> <a href="buildtargetinfo?name=$quote($params[3])">$util.escapeHTML($params[3])</a><br/>
 <strong>Installation Tree:</strong> $params[4]<br/>
 $printOpts($params[5])
 #elif $task.method == 'createLiveCD' or $task.method == 'createAppliance' or $task.method == 'createLiveMedia'
 #if $len($params) > 4:
 ## new method signature
-<strong>Arch:</strong> $params[3]<br/>
-<strong>Kickstart File:</strong> $params[7]<br/>
+<strong>Arch:</strong> $util.escapeHTML($params[3])<br/>
+<strong>Kickstart File:</strong> $util.escapeHTML($params[7])<br/>
 #if $len($params) > 8
 $printOpts($params[8])
 #end if
 #else
 ## old method signature
-<strong>Arch:</strong> $params[0]<br/>
-<strong>Build Target:</strong> <a href="buildtargetinfo?name=$quote($params[1])">$params[1]</a><br/>
-<strong>Kickstart File:</strong> $params[2]<br/>
+<strong>Arch:</strong> $util.escapeHTML($params[0])<br/>
+<strong>Build Target:</strong> <a href="buildtargetinfo?name=$quote($params[1])">$util.escapeHTML($params[1])</a><br/>
+<strong>Kickstart File:</strong> $util.escapeHTML($params[2])<br/>
 #if $len($params) > 3
 $printOpts($params[3])
 #end if
 #end if
 #elif $task.method == 'createImage'
 #set $target = $params[4]
-<strong>Build Target:</strong> <a href="buildtargetinfo?targetID=$target.id">$target.name</a><br/>
-<strong>Install Tree:</strong> $params[7]<br/>
+<strong>Build Target:</strong> <a href="buildtargetinfo?targetID=$target.id">$util.escapeHTML($target.name)</a><br/>
+<strong>Install Tree:</strong> $util.escapeHTML($params[7])<br/>
 $printOpts($params[8])
 #elif $task.method == 'winbuild'
-<strong>VM:</strong> $params[0]<br/>
-<strong>SCM URL:</strong> $params[1]<br/>
-<strong>Build Target:</strong> <a href="buildtargetinfo?name=$quote($params[2])">$params[2]</a><br/>
+<strong>VM:</strong> $util.escapeHTML($params[0])<br/>
+<strong>SCM URL:</strong> $util.escapeHTML($params[1])<br/>
+<strong>Build Target:</strong> <a href="buildtargetinfo?name=$quote($params[2])">$util.escapeHTML($params[2])</a><br/>
 #if $len($params) > 3
 $printOpts($params[3])
 #end if
 #elif $task.method == 'vmExec'
-<strong>VM:</strong> $params[0]<br/>
+<strong>VM:</strong> $util.escapeHTML($params[0])<br/>
 <strong>Exec Params:</strong><br/>
 #for $info in $params[1]
 #if $isinstance($info, dict)
@@ -203,20 +203,20 @@ $printMap($info, '&nbsp;&nbsp;&nbsp;&nbsp;')
 $printOpts($params[2])
 #end if
 #elif $task.method == 'newRepo'
-<strong>Tag:</strong> <a href="taginfo?tagID=$tag.id">$tag.name</a><br/>
+<strong>Tag:</strong> <a href="taginfo?tagID=$tag.id">$util.escapeHTML($tag.name)</a><br/>
 #if $len($params) > 1
   $printOpts($params[1])
 #end if
 #elif $task.method == 'distRepo'
-<strong>Tag:</strong> <a href="taginfo?tagID=$tag.id">$tag.name</a><br/>
+<strong>Tag:</strong> <a href="taginfo?tagID=$tag.id">$util.escapeHTML($tag.name)</a><br/>
 <strong>Repo ID:</strong> <a href="repoinfo?repoID=$params[1]">$params[1]</a></br>
 <strong>Keys:</strong> $printValue(0, $params[2])<br/>
 $printOpts($params[3])
 #elif $task.method == 'prepRepo'
-<strong>Tag:</strong> <a href="taginfo?tagID=$params[0].id">$params[0].name</a>
+<strong>Tag:</strong> <a href="taginfo?tagID=$params[0].id">$util.escapeHTML($params[0].name)</a>
 #elif $task.method == 'createrepo'
 <strong>Repo ID:</strong> <a href="repoinfo?repoID=$params[0]">$params[0]</a><br/>
-<strong>Arch:</strong> $params[1]<br/>
+<strong>Arch:</strong> $util.escapeHTML($params[1])<br/>
 #set $oldrepo = $params[2]
 #if $oldrepo
     <strong>Old Repo ID:</strong> <a href="repoinfo?repoID=$oldrepo.id">$oldrepo.id</a><br/>
@@ -226,7 +226,7 @@ $printOpts($params[3])
     <strong>External Repos:</strong> $printValue(None, [ext['external_repo_name'] for ext in $params[3]])<br/>
 #end if
 #elif $task.method == 'createdistrepo'
-<strong>Tag:</strong> <a href="taginfo?tagID=$tag.id">$tag.name</a><br/>
+<strong>Tag:</strong> <a href="taginfo?tagID=$tag.id">$util.escapeHTML($tag.name)</a><br/>
 <strong>Repo ID:</strong> <a href="repoinfo?repoID=$params[1]">$params[1]</a></br>
 <strong>Arch:</strong> $printValue(0, $params[2])<br/>
 <strong>Keys:</strong> $printValue(0, $params[3])<br/>
@@ -253,27 +253,27 @@ $printMap($subtask[2], '&nbsp;&nbsp;&nbsp;&nbsp;')
 #set $groupNum += 1
 &nbsp;&nbsp;<strong>$groupNum</strong>: #echo ', '.join($urls)#<br/>
 #end for
-<strong>Build Target:</strong> <a href="buildtargetinfo?name=$quote($params[1])">$params[1]</a><br/>
+<strong>Build Target:</strong> <a href="buildtargetinfo?name=$quote($params[1])">$util.escapeHTML($params[1])</a><br/>
 $printOpts($params[2])
 #elif $task.method == 'waitrepo'
-<strong>Build Tag:</strong> $params[0]<br/>
+<strong>Build Tag:</strong> $util.escapeHTML($params[0])<br/>
 #if $params[1]
-<strong>Newer Than:</strong> $params[1]<br/>
+<strong>Newer Than:</strong> $util.escapeHTML($params[1])<br/>
 #end if
 #if $params[2]
 <strong>NVRs:</strong> $printValue('', $params[2])
 #end if
 #elif $task.method == 'restart'
-<strong>Host:</strong> <a href="hostinfo?hostID=$params[0].id">$params[0].name</a><br/>
+<strong>Host:</strong> <a href="hostinfo?hostID=$params[0].id">$util.escapeHTML($params[0].name)</a><br/>
 #elif $task.method == 'restartVerify'
-<strong>Host:</strong> <a href="hostinfo?hostID=$params[1].id">$params[1].name</a><br/>
+<strong>Host:</strong> <a href="hostinfo?hostID=$params[1].id">$util.escapeHTML($params[1].name)</a><br/>
 <strong>Restart Task:</strong>
     <a href="taskinfo?taskID=$rtask.id" class="task$util.taskState($rtask.state)">$koji.taskLabel($rtask)</a><br/>
 #elif $task.method == 'runroot'
 <strong>Build Tag:</strong> <a href="taginfo?tagID=$params[0]">$params[0]</a><br/>
-<strong>Arch:</strong> $params[1]<br/>
+<strong>Arch:</strong> $util.escapeHTML($params[1])<br/>
 $printOpts($params[3])
-<strong>Commands:</strong> $params[2]<br/>
+<strong>Commands:</strong> $util.escapeHTML($params[2])<br/>
 #else
 $params
 #end if

@@ -35,7 +35,7 @@
     #if $len($users) > 0
     #for $user in $users
     <tr class="$util.rowToggle($self)">
-      <td><a href="userinfo?userID=$user.id">$user.name</a></td>
+      <td><a href="userinfo?userID=$user.id">$util.escapeHTML($user.name)</a></td>
       <td width="#echo $graphWidth + 5#"><img src="$util.themePath('images/1px.gif')" width="#echo $increment * $user.packages#" height="15" class="graphrow" alt="graph row"/></td>
       <td>$user.packages</td>
     </tr>

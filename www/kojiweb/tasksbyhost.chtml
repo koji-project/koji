@@ -51,7 +51,7 @@
     #if $len($hosts) > 0
     #for $host in $hosts
     <tr class="$util.rowToggle($self)">
-      <td><a href="hostinfo?hostID=$host.id">$host.name</a></td>
+      <td><a href="hostinfo?hostID=$host.id">$util.escapeHTML($host.name)</a></td>
       <td width="#echo $graphWidth + 5#"><img src="$util.themePath('images/1px.gif')" width="#echo $increment * $host.tasks#" height="15" class="graphrow" alt="graph row"/></td>
       <td>$host.tasks</td>
     </tr>

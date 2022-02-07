@@ -58,7 +58,7 @@ in $channel channel
               <select name="channel" class="filterlist" onchange="javascript: window.location = 'hosts?channel=' + this.value + '$util.passthrough_except($self, 'channel')';">
                 <option value="all" #if not $channel then 'selected="selected"' else ''#>all</option>
                 #for $chan in $channels
-                <option value="$chan.name" #if $chan.name == $channel then 'selected="selected"' else ''#>$chan.name</option>
+                <option value="$chan.name" #if $chan.name == $channel then 'selected="selected"' else ''#>$util.escapeHTML($chan.name)</option>
                 #end for
               </select>
           </td>
@@ -120,11 +120,11 @@ in $channel channel
       #for $host in $hosts
         <tr class="$util.rowToggle($self)">
           <td>$host.id</td>
-          <td><a href="hostinfo?hostID=$host.id">$host.name</a></td>
+          <td><a href="hostinfo?hostID=$host.id">$util.escapeHTML($host.name)</a></td>
           <td>$host.arches</td>
           <td>
               #for $channame, $chan_id, $chan_enabled in zip($host.channels, $host.channels_id, $host.channels_enabled)
-                <a href="channelinfo?channelID=$chan_id" class="$chan_enabled">$channame</a>
+                <a href="channelinfo?channelID=$chan_id" class="$chan_enabled">$util.escapeHTML($channame)</a>
               #end for
           </td>
           <td class="$str($bool($host.enabled)).lower()">#if $host.enabled then $util.imageTag('yes') else $util.imageTag('no')#</td>

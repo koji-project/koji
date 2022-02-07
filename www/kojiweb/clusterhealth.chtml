@@ -59,7 +59,7 @@
     #for $channel in $channels
     <tr>
       <th>
-          <a href="channelinfo?channelID=$channel['id']">$channel['name']</a>
+          <a href="channelinfo?channelID=$channel['id']">$util.escapeHTML($channel['name'])</a>
           #if not $channel['enabled_channel']
           [disabled]
           #end if

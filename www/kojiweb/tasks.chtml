@@ -16,7 +16,7 @@
       #set $childState = $util.taskState($child.state)
       <span class="treeBranch">
         <span class="treeLabel">
-          <a href="taskinfo?taskID=$child.id" class="task$childState" title="$childState">$koji.taskLabel($child)</a>
+          <a href="taskinfo?taskID=$child.id" class="task$childState" title="$childState">$util.escapeHTML($koji.taskLabel($child))</a>
         </span>
       </span>
     $printChildren($child.id, $childMap)
@@ -40,7 +40,7 @@ All
 
 #include "includes/header.chtml"
 
-  <h4>$headerPrefix($state) #if $view == 'toplevel' then 'toplevel' else ''# #if $method != 'all' then $method else ''# Tasks#if $ownerObj then ' owned by <a href="userinfo?userID=%i">%s</a>' % ($ownerObj.id, $ownerObj.name) else ''##if $host then ' on host <a href="hostinfo?hostID=%i">%s</a>' % ($host.id, $host.name) else ''# #if $channel then ' in channel <a href="channelinfo?channelID=%i">%s</a>' % ($channel.id, $channel.name) else ''#</h4>
+  <h4>$headerPrefix($state) #if $view == 'toplevel' then 'toplevel' else ''# #if $method != 'all' then $method else ''# Tasks#if $ownerObj then ' owned by <a href="userinfo?userID=%i">%s</a>' % ($ownerObj.id, $util.escapeHTML($ownerObj.name)) else ''##if $host then ' on host <a href="hostinfo?hostID=%i">%s</a>' % ($host.id, $util.escapeHTML($host.name)) else ''# #if $channel then ' in channel <a href="channelinfo?channelID=%i">%s</a>' % ($channel.id, $util.escapeHTML($channel.name)) else ''#</h4>
 
   <table class="data-list">
     <tr>
@@ -69,7 +69,7 @@ All
           <option value="$loggedInUser.name">me</option>
           #end if
           #for $user in $users
-          <option value="$user.name" #if $user.name == $owner then 'selected="selected"' else ''#>$user.name</option>
+          <option value="$user.name" #if $user.name == $owner then 'selected="selected"' else ''#>$util.escapeHTML($user.name)</option>
           #end for
         </select>
         </td></tr>
@@ -159,9 +159,9 @@ All
           </td>
           <td class="user-$task.owner_name">
             #if $task.owner_type == $koji.USERTYPES['HOST']
-            <a href="hostinfo?userID=$task.owner">$task.owner_name</a>
+            <a href="hostinfo?userID=$task.owner">$util.escapeHTML($task.owner_name)</a>
             #else
-            <a href="userinfo?userID=$task.owner">$task.owner_name</a>
+            <a href="userinfo?userID=$task.owner">$util.escapeHTML($task.owner_name)</a>
             #end if
           </td>
           <td>$task.arch</td>

@@ -14,7 +14,7 @@
       <tr>
         <th>Name</th>
         <td>
-          <input type="text" name="name" value="#if $tag then $tag.name else ''#"/>
+          <input type="text" name="name" value="#if $tag then $util.escapeHTML($tag.name) else ''#"/>
           #if $tag
           <input type="hidden" name="tagID" value="$tag.id"/>
           #end if
@@ -22,7 +22,7 @@
       </tr>
       <tr>
         <th>Arches</th>
-        <td><input type="text" name="arches" value="#if $tag then $tag.arches else ''#"/></td>
+        <td><input type="text" name="arches" value="#if $tag then $util.escapeHTML($tag.arches) else ''#"/></td>
       </tr>
       <tr>
         <th>Locked</th>
@@ -34,7 +34,7 @@
           <select name="permission">
             <option value="none" #if $tag and not $tag.perm_id then 'selected="selected"' else ''#>none</option>
             #for $permission in $permissions
-            <option value="$permission.id" #if $tag and $tag.perm_id == $permission.id then 'selected="selected"' else ''#>$permission.name</option>
+            <option value="$permission.id" #if $tag and $tag.perm_id == $permission.id then 'selected="selected"' else ''#>$util.escapeHTML($permission.name)</option>
             #end for
           </select>
         </td>

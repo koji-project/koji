@@ -4,7 +4,7 @@
 
 #include "includes/header.chtml"
 
-  <h4>Packages#if $prefix then ' starting with "%s"' % $prefix else ''##if $tag then ' in tag <a href="taginfo?tagID=%i">%s</a>' % ($tag.id, $tag.name) else ''##if $user then ' owned by <a href="userinfo?userID=%i">%s</a>' % ($user.id, $user.name) else ''#</h4>
+  <h4>Packages#if $prefix then ' starting with "%s"' % $prefix else ''##if $tag then ' in tag <a href="taginfo?tagID=%i">%s</a>' % ($tag.id, $util.escapeHTML($tag.name)) else ''##if $user then ' owned by <a href="userinfo?userID=%i">%s</a>' % ($user.id, $util.escapeHTML($user.name)) else ''#</h4>
 
   <table class="data-list">
     #if $tag
@@ -75,10 +75,10 @@
       #for $package in $packages
         <tr class="$util.rowToggle($self)">
           <td>$package.package_id</td>
-          <td><a href="packageinfo?packageID=$package.package_id">$package.package_name</a></td>
+          <td><a href="packageinfo?packageID=$package.package_id">$util.escapeHTML($package.package_name)</a></td>
           #if $tag or $user
-          <td><a href="taginfo?tagID=$package.tag_id">$package.tag_name</a></td>
-          <td class="user-$package.owner_name"><a href="userinfo?userID=$package.owner_id">$package.owner_name</a></td>
+          <td><a href="taginfo?tagID=$package.tag_id">$util.escapeHTML($package.tag_name)</a></td>
+          <td class="user-$package.owner_name"><a href="userinfo?userID=$package.owner_id">$util.escapeHTML($package.owner_name)</a></td>
           <td class="$str(not $package.blocked).lower()">#if $package.blocked then $util.imageTag('no') else $util.imageTag('yes')#</td>
           #end if
         </tr>

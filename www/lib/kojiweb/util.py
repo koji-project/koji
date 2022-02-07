@@ -25,6 +25,7 @@ import os
 import re
 import ssl
 import stat
+import urllib
 import xmlrpc.client
 # a bunch of exception classes that explainError needs
 from socket import error as socket_error
@@ -232,6 +233,11 @@ def passthrough(template, *vars):
     for var in vars:
         value = template.getVar(var, default=None)
         if value is not None:
+            if isinstance(value, str):
+                if value.isdigit():
+                    pass
+                else:
+                    value = urllib.parse.quote(value)
             result.append('%s=%s' % (var, value))
     if result:
         return '&' + '&'.join(result)
