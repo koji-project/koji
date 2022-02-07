@@ -962,7 +962,7 @@ def splice_rpm_sighdr(sighdr, src, dst=None, bufsize=8192):
     (start, size) = find_rpm_sighdr(src)
     if dst is not None:
         dirname = os.path.dirname(dst)
-        os.makedirs(dirname)
+        os.makedirs(dirname, exist_ok=True)
         (fd, dst_temp) = tempfile.mkstemp(dir=dirname)
     else:
         (fd, dst_temp) = tempfile.mkstemp()
