@@ -9,9 +9,6 @@ from . import utils
 
 class TestListPermissions(utils.CliTestCase):
 
-    # Show long diffs in error output...
-    maxDiff = None
-
     def setUp(self):
         self.error_format = """Usage: %s list-permissions [options]
 (Specify the --help global option for a list of other help options)
@@ -19,87 +16,162 @@ class TestListPermissions(utils.CliTestCase):
 %s: error: {message}
 """ % (self.progname, self.progname)
 
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_list_permissions(
-            self,
-            activate_session_mock,
-            stdout,
-            stderr):
-        """Test handle_list_permissions function"""
-        session = mock.MagicMock()
-        options = mock.MagicMock()
-        user = 'tester'
-        all_perms = [
+        self.session = mock.MagicMock()
+        self.activate_session_mock = mock.patch('koji_cli.commands.activate_session').start()
+        self.options = mock.MagicMock()
+        self.options.quiet = True
+        # Show long diffs in error output...
+        self.maxDiff = None
+        self.all_perms = [
             {'id': 0, 'name': 'admin', 'description': 'admin-description'},
             {'id': 1, 'name': 'build', 'description': 'build-description'},
             {'id': 2, 'name': 'repo', 'description': 'repo-description'},
             {'id': 3, 'name': 'image', 'description': 'image-description'},
             {'id': 4, 'name': 'livecd', 'description': 'livecd-description'},
-            {'id': 5, 'name': 'appliance', 'description': 'appliance-description'}
+            {'id': 5, 'name': 'appliance', 'description': 'appliance-description'},
+            {'id': 6, 'name': 'long-permission-appliance',
+             'description': 'long-permission-appliance-description'}
         ]
+        self.user = 'tester'
+        self.userinfo = {'id': 101, 'name': self.user}
 
-        # case 1. argument error (no argument is required)
+    def test_handle_list_permissions_arg_error(self):
+        """Test handle_list_permissions argument error (no argument is required)"""
         expected = self.format_error_message("This command takes no arguments")
         self.assert_system_exit(
             handle_list_permissions,
-            options,
-            session,
+            self.options,
+            self.session,
             ['arg-1', 'arg-2'],
             stderr=expected,
-            activate_session=None)
+            activate_session=None,
+            exit_code=2
+        )
+        self.activate_session_mock.assert_not_called()
+        self.session.getUser.assert_not_called()
+        self.session.getUserPerms.assert_not_called()
+        self.session.getPerms.assert_not_called()
+        self.session.getAllPerms.assert_not_called()
 
-        # case 2. user does not exists
-        expected = "No such user: %s" % user + "\n"
-        session.getUser.return_value = None
-        with self.assertRaises(SystemExit) as ex:
-            handle_list_permissions(options, session, ['--user', user])
-        self.assertExitCode(ex, 1)
-        self.assert_console_message(stderr, expected)
+    def test_handle_list_permissions_user_not_exists(self):
+        """Test handle_list_permissions user does not exists"""
+        self.session.getUser.return_value = None
+        self.assert_system_exit(
+            handle_list_permissions,
+            self.options,
+            self.session,
+            ['--user', self.user],
+            stderr="No such user: %s" % self.user + "\n",
+            activate_session=None,
+            exit_code=1
+        )
+        self.activate_session_mock.assert_called_once()
+        self.session.getUser.assert_called_once()
+        self.session.getUserPerms.assert_not_called()
+        self.session.getPerms.assert_not_called()
+        self.session.getAllPerms.assert_not_called()
 
-        # case 3. List user permission
-        perms = [p['name'] for p in all_perms[::1]]
-        session.getUserPerms.return_value = perms
-        session.getUser.return_value = {'id': 101, 'name': user}
-        expected = """admin             
-build             
-repo              
-image             
-livecd            
-appliance         
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    def test_handle_list_permissions_empty_perms(self, stdout):
+        """Test handle_list_permissions that perms is empty"""
+        expected = """Permission name   
 """
-        handle_list_permissions(options, session, ['--user', user])
+        self.options.quiet = False
+        self.session.getUser.return_value = self.userinfo
+        self.session.getUserPerms.return_value = []
+        handle_list_permissions(self.options, self.session, ['--user', self.user])
         self.assert_console_message(stdout, expected)
 
-        session.getUserPerms.reset_mock()
+        self.activate_session_mock.assert_called_once()
+        self.session.getUser.assert_called_once()
+        self.session.getUserPerms.assert_called_once()
+        self.session.getPerms.assert_not_called()
+        self.session.getAllPerms.assert_not_called()
 
-        # case 4. List my permission
-        perms = [p['name'] for p in all_perms[1:3]]
-        session.getPerms.return_value = perms
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    def test_handle_list_permissions_user_perms(self, stdout):
+        """Test handle_list_permissions user permissions"""
+        expected = """admin                    
+build                    
+repo                     
+image                    
+livecd                   
+appliance                
+long-permission-appliance
+"""
+        perms = [p['name'] for p in self.all_perms[::1]]
+        self.session.getUserPerms.return_value = perms
+        self.session.getUser.return_value = self.userinfo
+        handle_list_permissions(self.options, self.session, ['--user', self.user])
+        self.assert_console_message(stdout, expected)
+
+        self.activate_session_mock.assert_called_once()
+        self.session.getUser.assert_called_once()
+        self.session.getUserPerms.assert_called_once()
+        self.session.getPerms.assert_not_called()
+        self.session.getAllPerms.assert_not_called()
+
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    def test_handle_list_permissions_my_perms(self, stdout):
+        """Test handle_list_permissions my permissions"""
         expected = """build             
 repo              
 """
-        handle_list_permissions(options, session, ['--mine'])
+        perms = [p['name'] for p in self.all_perms[1:3]]
+        self.session.getPerms.return_value = perms
+        handle_list_permissions(self.options, self.session, ['--mine'])
         self.assert_console_message(stdout, expected)
-        session.getUserPerms.assert_not_called()
 
-        session.getPerms.reset_mock()
+        self.activate_session_mock.assert_called_once()
+        self.session.getUser.assert_not_called()
+        self.session.getUserPerms.assert_not_called()
+        self.session.getPerms.assert_called_once()
+        self.session.getAllPerms.assert_not_called()
 
-        # case 5. List all permission
-        session.getAllPerms.return_value = all_perms
-        expected = """admin                admin-description
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    def test_handle_list_permissions_all_perms_quiet_false(self, stdout):
+        """Test handle_list_permissions all permissions and quiet is false"""
+        self.options.quiet = False
+        expected = """Permission name             Description                                       
+admin                       admin-description
+build                       build-description
+repo                        repo-description
+image                       image-description
+livecd                      livecd-description
+appliance                   appliance-description
+long-permission-appliance   long-permission-appliance-description
+"""
+        self.session.getAllPerms.return_value = self.all_perms
+        handle_list_permissions(self.options, self.session, [])
+        self.assert_console_message(stdout, expected)
+
+        self.activate_session_mock.assert_called_once()
+        self.session.getUser.assert_not_called()
+        self.session.getUserPerms.assert_not_called()
+        self.session.getPerms.assert_not_called()
+        self.session.getAllPerms.assert_called_once()
+
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    def test_handle_list_permissions_all_perms_length_shorter_eight(self, stdout):
+        """Test handle_list_permissions all permissions, length perms shorter than eight"""
+        self.options.quiet = False
+        expected = """Permission name      Description                                       
+admin                admin-description
 build                build-description
 repo                 repo-description
 image                image-description
 livecd               livecd-description
 appliance            appliance-description
 """
-        handle_list_permissions(options, session, [])
+        self.session.getAllPerms.return_value = self.all_perms[:-1]
+        handle_list_permissions(self.options, self.session, [])
         self.assert_console_message(stdout, expected)
-        session.getUserPerms.assert_not_called()
-        session.getPerms.assert_not_called()
-        session.getAllPerms.assert_called_once()
+
+        self.activate_session_mock.assert_called_once()
+        self.session.getUser.assert_not_called()
+        self.session.getUserPerms.assert_not_called()
+        self.session.getPerms.assert_not_called()
+        self.session.getAllPerms.assert_called_once()
 
     def test_handle_list_permissions_help(self):
         self.assert_help(
