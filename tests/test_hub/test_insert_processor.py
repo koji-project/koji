@@ -26,7 +26,7 @@ class TestInsertProcessor(unittest.TestCase):
         proc.execute()
         cursor.execute.assert_called_once_with(
             'INSERT INTO sometable (foo) VALUES (%(foo)s)',
-            {'foo': 'bar'}, log=True)
+            {'foo': 'bar'}, log_errors=True)
 
     @mock.patch('kojihub.context')
     def test_make_create(self, context):
@@ -115,7 +115,7 @@ class TestBulkInsertProcessor(unittest.TestCase):
         cursor.execute.assert_called_once_with(
             'INSERT INTO sometable (foo) VALUES (%(foo0)s)',
             {'foo0': 'bar'},
-            log=True
+            log_errors=True
         )
 
         cursor.reset_mock()
@@ -125,7 +125,7 @@ class TestBulkInsertProcessor(unittest.TestCase):
         cursor.execute.assert_called_once_with(
             'INSERT INTO sometable (foo) VALUES (%(foo0)s)',
             {'foo0': 'bar'},
-            log=True
+            log_errors=True
         )
 
     @mock.patch('kojihub.context')
@@ -140,7 +140,7 @@ class TestBulkInsertProcessor(unittest.TestCase):
         cursor.execute.assert_called_once_with(
             'INSERT INTO sometable (foo) VALUES (%(foo0)s), (%(foo1)s), (%(foo2)s)',
             {'foo0': 'bar1', 'foo1': 'bar2', 'foo2': 'bar3'},
-            log=True
+            log_errors=True
         )
 
     def test_missing_values(self):
@@ -180,10 +180,10 @@ class TestBulkInsertProcessor(unittest.TestCase):
         self.assertEqual(len(calls), 2)
         self.assertEqual(calls[0],
                          mock.call('INSERT INTO sometable (foo) VALUES (%(foo0)s), (%(foo1)s)',
-                         {'foo0': 'bar1', 'foo1': 'bar2'}, log=True))
+                         {'foo0': 'bar1', 'foo1': 'bar2'}, log_errors=True))
         self.assertEqual(calls[1],
                          mock.call('INSERT INTO sometable (foo) VALUES (%(foo0)s)',
-                                   {'foo0': 'bar3'}, log=True))
+                                   {'foo0': 'bar3'}, log_errors=True))
 
     @mock.patch('kojihub.context')
     def test_no_batch_execution(self, context):
@@ -200,5 +200,5 @@ class TestBulkInsertProcessor(unittest.TestCase):
         self.assertEqual(
             calls[0],
             mock.call('INSERT INTO sometable (foo) VALUES (%(foo0)s), (%(foo1)s), (%(foo2)s)',
-                      {'foo0': 'bar1', 'foo1': 'bar2', 'foo2': 'bar3'}, log=True)
+                      {'foo0': 'bar1', 'foo1': 'bar2', 'foo2': 'bar3'}, log_errors=True)
         )
