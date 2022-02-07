@@ -101,7 +101,7 @@ class TestCompleteImageBuild(unittest.TestCase):
         for arch in data:
             taskdir = koji.pathinfo.task(data[arch]['task_id'])
             os.makedirs(taskdir)
-            filenames = data[arch]['files'] +  data[arch]['logs']
+            filenames = data[arch]['files'] + data[arch]['logs']
             for filename in filenames:
                 path = os.path.join(taskdir, filename)
                 with open(path, 'wt', encoding='utf-8') as fp:
@@ -117,7 +117,7 @@ class TestCompleteImageBuild(unittest.TestCase):
             for filename in data[arch]['files']:
                 paths.append(os.path.join(imgdir, filename))
             for filename in data[arch]['logs']:
-                paths.append(os.path.join(logdir, 'image', filename))
+                paths.append(os.path.join(logdir, 'image', arch, filename))
         # bdir = koji.pathinfo.build(buildinfo)
         # paths.append(os.path.join(bdir, 'metadata.json'))
         return paths

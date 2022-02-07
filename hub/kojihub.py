@@ -10385,14 +10385,14 @@ def importImageInternal(task_id, build_info, imgdata):
     logs = [f for f in os.listdir(workpath) if f.endswith('.log')]
     for logfile in logs:
         logsrc = joinpath(workpath, logfile)
-        if tinfo['method'] == 'livemedia':
-            # multiarch livemedia spins can have log name conflicts, so we
+        if tinfo['method'] in ('appliance', 'image', 'indirectionimage', 'livecd'):
+            logdir = joinpath(koji.pathinfo.build(build_info),
+                              'data/logs/image')
+        else:
+            # multiarch livemedia (and plugins') spins can have log name conflicts, so we
             # add the arch to the path
             logdir = joinpath(koji.pathinfo.build(build_info),
                               'data/logs/image', imgdata['arch'])
-        else:
-            logdir = joinpath(koji.pathinfo.build(build_info),
-                              'data/logs/image')
         koji.ensuredir(logdir)
         final_path = joinpath(logdir, os.path.basename(logfile))
         if os.path.exists(final_path):

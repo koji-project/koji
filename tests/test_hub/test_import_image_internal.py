@@ -109,7 +109,7 @@ class TestImportImageInternal(unittest.TestCase):
         # Check that the log symlink made it to where it was supposed to.
         dest = os.readlink(workdir + '/foo.log')
         dest = os.path.abspath(os.path.join(workdir, dest))
-        self.assertEqual(dest, self.tempdir + '/data/logs/image/foo.log')
+        self.assertEqual(dest, self.tempdir + '/data/logs/image/x86_64/foo.log')
 
         # And.. check all the sql statements
         self.assertEqual(len(cursor.execute.mock_calls), 1)
