@@ -54,7 +54,7 @@
     <tr class="$util.rowToggle($self) $scratch">
       #set $state = $util.taskState($task.state)
       <td>$task.id</td>
-      <td><a href="taskinfo?taskID=$task.id" class="task$state" title="$state">$koji.taskLabel($task)</a></td>
+      <td><a href="taskinfo?taskID=$task.id" class="task$state" title="$state">$util.escapeHTML($koji.taskLabel($task))</a></td>
       #if not $user
       <td class="user-$task.owner_name">
         #if $task.owner_type == $koji.USERTYPES['HOST']

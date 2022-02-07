@@ -152,7 +152,7 @@ All
           #set $taskState = $util.taskState($task.state)
           <td>$task.id</td>
           <td#if $treeDisplay then ' class="tree"' else ''#>
-            #if $treeDisplay then '&nbsp;' else ''#<a href="taskinfo?taskID=$task.id" class="task$taskState" title="$taskState">$koji.taskLabel($task)</a>
+            #if $treeDisplay then '&nbsp;' else ''#<a href="taskinfo?taskID=$task.id" class="task$taskState" title="$taskState">$util.escapeHTML($koji.taskLabel($task))</a>
             #if $treeDisplay
             $printChildren($task.id, $task.descendents)
             #end if

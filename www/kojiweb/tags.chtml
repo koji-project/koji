@@ -35,7 +35,7 @@
       #for $tag in $tags
         <tr class="$util.rowToggle($self)">
           <td>$tag.id</td>
-          <td><a href="taginfo?tagID=$tag.id$util.passthrough($self, 'childID')">$tag.name</a></td>
+          <td><a href="taginfo?tagID=$tag.id$util.passthrough($self, 'childID')">$util.escapeHTML($tag.name)</a></td>
         </tr>
       #end for
     #else

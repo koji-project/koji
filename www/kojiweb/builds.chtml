@@ -122,7 +122,7 @@
       #for $build in $builds
         <tr class="$util.rowToggle($self)">
           <td>$build.build_id</td>
-          <td><a href="buildinfo?buildID=$build.build_id">$koji.buildLabel($build)</a></td>
+          <td><a href="buildinfo?buildID=$build.build_id">$util.escapeHTML($koji.buildLabel($build))</a></td>
           #if $tag
           <td><a href="taginfo?tagID=$build.tag_id">$util.escapeHTML($build.tag_name)</a></td>
           #end if
