@@ -2529,7 +2529,18 @@ class ClientSession(object):
                 kwargs = {'proxyuser': proxyuser}
                 if proxyauthtype is not None:
                     kwargs['proxyauthtype'] = proxyauthtype
-                sinfo = self._callMethod('sslLogin', [], kwargs, retry=False)
+                for i in range(self.opts.get('max_retries', 30)):
+                    try:
+                        sinfo = self._callMethod('sslLogin', [], kwargs, retry=False)
+                    except Exception as ex:
+                        # retry on connection error requests.exceptions.ConnectionError
+                        # die on:
+                        #   - any non-connection related error (http code, etc.)
+                        #   - requests.exceptions.SSLError - CA-mismatch, etc. - die on all SSL
+                        #                                    related errors
+                        if (not is_conn_error(ex) or isinstance(ex, requests.exceptions.SSLError)):
+                            raise
+                        time.sleep(self.opts.get('retry_interval', 20))
             except Exception as e:
                 e_str = ''.join(traceback.format_exception_only(type(e), e)).strip('\n')
                 e_str = '(gssapi auth failed: %s)\n' % e_str
