@@ -4877,12 +4877,15 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
     checksum: checksum of the archive (string)
     checksum_type: the checksum type (integer)
 
-    For checksum/checksum_type you need to have in mind that earch archive
-    currently has only one checksum attached. So, it you don't find some
-    checksum for given type it doesn't mean that it doesn't really exist.
-    Different checksum_type could have been computed e.g. via content generator
-    import and koji doesn't need to have an opportunity to compute the other
-    ones.
+    Koji only stores one checksum type per archive. Some content generators
+    store md5 checksums in Koji, and others store sha256 checksums, and this may
+    change for older and newer archives as different content generators upgrade
+    to sha256.
+
+    If you search for an archive by its sha256 checksum, and Koji has only
+    stored an md5 checksum record for that archive, then Koji will not return a
+    result for that archive. You may need to call listArchives multiple times,
+    once for each checksum_type you want to search.
 
     If componentBuildrootID is specified, then the map will also contain the following key:
     project: whether the archive was pulled in as a project dependency, or as part of the
