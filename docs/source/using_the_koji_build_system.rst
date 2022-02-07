@@ -321,7 +321,7 @@ line tool will print a list of valid commands and each command supports
     cancel-task          Cancel a task
     help                 List available commands
     latest-build         Print the latest builds for a tag
-    [...] 
+    [...]
 
 ::
 
@@ -335,7 +335,7 @@ line tool will print a list of valid commands and each command supports
     --skip-tag            Do not attempt to tag package
     --scratch             Perform a scratch build
     --nowait              Don't wait on build
-    [...] 
+    [...]
 
 Using koji to generate a mock config to replicate a buildroot
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -428,6 +428,11 @@ environment follows:
 
   - this option will automatically turn ``mock.use_bootstrap`` (this is how
     it is implemented in mock)
+* ``mock.module_setup_commands`` - commands for configuring the modules active
+  in a buildroot. Available in `mock 2.4
+  <https://github.com/rpm-software-management/mock/wiki/Release-Notes-2.4>`__.
+* ``mock.yum.best`` - 0/1 value. If set yum/dnf will use highest available rpm
+  version (see man yum.conf)
 * ``mock.yum.module_hotfixes`` - 0/1 value. If set, yum/dnf will use packages
   regardless if they come from modularity repo or not. It makes sense only for
   tags with external repositories. (See dnf `docs

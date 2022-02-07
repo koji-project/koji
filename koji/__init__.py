@@ -1649,6 +1649,8 @@ def genMockConfig(name, arch, managed=False, repoid=None, tag_name=None, **opts)
         config_opts['bootstrap_image'] = opts['bootstrap_image']
     if 'use_bootstrap' in opts:
         config_opts['use_bootstrap'] = bool(opts['use_bootstrap'])
+    if 'module_setup_commands' in opts:
+        config_opts['module_setup_commands'] = opts['module_setup_commands']
 
     # bind_opts are used to mount parts (or all of) /dev if needed.
     # See kojid::LiveCDTask for a look at this option in action.

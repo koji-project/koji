@@ -1147,6 +1147,8 @@ def anon_handle_mock_config(goptions, session, args):
         opts['bootstrap_image'] = buildcfg['extra']['mock.bootstrap_image']
     if 'mock.use_bootstrap' in buildcfg['extra']:
         opts['use_bootstrap'] = buildcfg['extra']['mock.use_bootstrap']
+    if 'mock.module_setup_commands' in buildcfg['extra']:
+        opts['module_setup_commands'] = buildcfg['extra']['mock.module_setup_commands']
     opts['tag_macros'] = {}
     for key in buildcfg['extra']:
         if key.startswith('rpm.macro.'):
@@ -5305,7 +5307,7 @@ def handle_edit_tag(goptions, session, args):
     parser.add_option("--no-include-all", action="store_true",
                       help="Do not include all packages in this tag when generating Maven repos")
     parser.add_option("-x", "--extra", action="append", default=[], metavar="key=value",
-                      help="Set tag extra option")
+                      help="Set tag extra option. JSON-encoded or simple value")
     parser.add_option("-r", "--remove-extra", action="append", default=[], metavar="key",
                       help="Remove tag extra option")
     parser.add_option("-b", "--block-extra", action="append", default=[], metavar="key",
@@ -5340,8 +5342,9 @@ def handle_edit_tag(goptions, session, args):
         extra = {}
         for xopt in options.extra:
             key, value = xopt.split('=', 1)
-            value = arg_filter(value)
-            extra[key] = value
+            if key in extra:
+                parser.error("Duplicate extra key: %s" % key)
+            extra[key] = arg_filter(value, parse_json=True)
         opts['extra'] = extra
     opts['remove_extra'] = options.remove_extra
     opts['block_extra'] = options.block_extra

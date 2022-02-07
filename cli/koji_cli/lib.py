@@ -2,6 +2,7 @@
 from __future__ import absolute_import, division
 
 import hashlib
+import json
 import optparse
 import os
 import random
@@ -9,7 +10,6 @@ import socket
 import string
 import sys
 import time
-import json
 from contextlib import closing
 from copy import copy
 
@@ -86,7 +86,7 @@ ARGMAP = {'None': None,
           'False': False}
 
 
-def arg_filter(arg):
+def arg_filter(arg, parse_json=False):
     try:
         return int(arg)
     except ValueError:
@@ -98,6 +98,11 @@ def arg_filter(arg):
     if arg in ARGMAP:
         return ARGMAP[arg]
     # handle lists/dicts?
+    if parse_json:
+        try:
+            return json.loads(arg)
+        except Exception:  # ValueError < 2.7, JSONDecodeError > 3.5
+            pass
     return arg
 
 

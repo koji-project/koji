@@ -130,7 +130,7 @@ Options:
   --no-include-all      Do not include all packages in this tag when
                         generating Maven repos
   -x key=value, --extra=key=value
-                        Set tag extra option
+                        Set tag extra option. JSON-encoded or simple value
   -r key, --remove-extra=key
                         Remove tag extra option
   -b key, --block-extra=key
