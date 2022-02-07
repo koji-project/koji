@@ -5421,10 +5421,13 @@ def _singleValue(query, values=None, strict=True):
         return None
 
 
-def _dml(operation, values):
-    """Run an insert, update, or delete. Return number of rows affected"""
+def _dml(operation, values, log_errors=True):
+    """Run an insert, update, or delete. Return number of rows affected
+    If log is False, errors will not be logged. It makes sense only for
+    queries which are expected to fail (LOCK NOWAIT)
+    """
     c = context.cnx.cursor()
-    c.execute(operation, values)
+    c.execute(operation, values, log_errors=log_errors)
     ret = c.rowcount
     logger.debug("Operation affected %s row(s)", ret)
     c.close()

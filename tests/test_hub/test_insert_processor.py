@@ -6,7 +6,6 @@ import kojihub
 
 
 class TestInsertProcessor(unittest.TestCase):
-
     def test_basic_instantiation(self):
         proc = kojihub.InsertProcessor('sometable')
         actual = str(proc)
@@ -27,8 +26,7 @@ class TestInsertProcessor(unittest.TestCase):
         proc.execute()
         cursor.execute.assert_called_once_with(
             'INSERT INTO sometable (foo) VALUES (%(foo)s)',
-            {'foo': 'bar'},
-        )
+            {'foo': 'bar'}, log_errors=True)
 
     @mock.patch('kojihub.context')
     def test_make_create(self, context):
@@ -117,6 +115,7 @@ class TestBulkInsertProcessor(unittest.TestCase):
         cursor.execute.assert_called_once_with(
             'INSERT INTO sometable (foo) VALUES (%(foo0)s)',
             {'foo0': 'bar'},
+            log_errors=True
         )
 
         cursor.reset_mock()
@@ -126,6 +125,7 @@ class TestBulkInsertProcessor(unittest.TestCase):
         cursor.execute.assert_called_once_with(
             'INSERT INTO sometable (foo) VALUES (%(foo0)s)',
             {'foo0': 'bar'},
+            log_errors=True
         )
 
     @mock.patch('kojihub.context')
@@ -140,6 +140,7 @@ class TestBulkInsertProcessor(unittest.TestCase):
         cursor.execute.assert_called_once_with(
             'INSERT INTO sometable (foo) VALUES (%(foo0)s), (%(foo1)s), (%(foo2)s)',
             {'foo0': 'bar1', 'foo1': 'bar2', 'foo2': 'bar3'},
+            log_errors=True
         )
 
     def test_missing_values(self):
@@ -177,24 +178,27 @@ class TestBulkInsertProcessor(unittest.TestCase):
         calls = cursor.execute.mock_calls
         # list of (name, positional args, keyword args)
         self.assertEqual(len(calls), 2)
-        self.assertEqual(calls[0][1],
-                         ('INSERT INTO sometable (foo) VALUES (%(foo0)s), (%(foo1)s)',
-                          {'foo0': 'bar1', 'foo1': 'bar2'}))
-        self.assertEqual(calls[1][1],
-                         ('INSERT INTO sometable (foo) VALUES (%(foo0)s)', {'foo0': 'bar3'}))
+        self.assertEqual(calls[0],
+                         mock.call('INSERT INTO sometable (foo) VALUES (%(foo0)s), (%(foo1)s)',
+                         {'foo0': 'bar1', 'foo1': 'bar2'}, log_errors=True))
+        self.assertEqual(calls[1],
+                         mock.call('INSERT INTO sometable (foo) VALUES (%(foo0)s)',
+                                   {'foo0': 'bar3'}, log_errors=True))
 
     @mock.patch('kojihub.context')
     def test_no_batch_execution(self, context):
         cursor = mock.MagicMock()
         context.cnx.cursor.return_value = cursor
 
-        proc = kojihub.BulkInsertProcessor('sometable', data=[{'foo': 'bar1'}], batch=None)
+        proc = kojihub.BulkInsertProcessor('sometable', data=[{'foo': 'bar1'}], batch=0)
         proc.add_record(foo='bar2')
         proc.add_record(foo='bar3')
         proc.execute()
         calls = cursor.execute.mock_calls
         # list of (name, positional args, keyword args)
         self.assertEqual(len(calls), 1)
-        self.assertEqual(calls[0][1],
-                         ('INSERT INTO sometable (foo) VALUES (%(foo0)s), (%(foo1)s), (%(foo2)s)',
-                          {'foo0': 'bar1', 'foo1': 'bar2', 'foo2': 'bar3'}))
+        self.assertEqual(
+            calls[0],
+            mock.call('INSERT INTO sometable (foo) VALUES (%(foo0)s), (%(foo1)s), (%(foo2)s)',
+                      {'foo0': 'bar1', 'foo1': 'bar2', 'foo2': 'bar3'}, log_errors=True)
+        )
