@@ -4850,8 +4850,8 @@ def add_btype(name):
 
 
 def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hostID=None,
-                  type=None, filename=None, size=None, checksum=None, typeInfo=None,
-                  queryOpts=None, imageID=None, archiveID=None, strict=False):
+                  type=None, filename=None, size=None, checksum=None, checksum_type=None,
+                  typeInfo=None, queryOpts=None, imageID=None, archiveID=None, strict=False):
     """
     Retrieve information about archives.
     If buildID is not null it will restrict the list to archives built by the build with that ID.
@@ -4860,8 +4860,8 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
     If componentBuildrootID is not null it will restrict the list to archives that were present in
     the buildroot with that ID.
     If hostID is not null it will restrict the list to archives built on the host with that ID.
-    If filename, size, and/or checksum are not null it will filter the results to entries matching
-    the provided values.
+    If filename, size, checksum and/or checksum_type are not null it will filter
+    the results to entries matching the provided values.
 
     Returns a list of maps containing the following keys:
 
@@ -4876,6 +4876,16 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
     size: size of the archive (integer)
     checksum: checksum of the archive (string)
     checksum_type: the checksum type (integer)
+
+    Koji only stores one checksum type per archive. Some content generators
+    store md5 checksums in Koji, and others store sha256 checksums, and this may
+    change for older and newer archives as different content generators upgrade
+    to sha256.
+
+    If you search for an archive by its sha256 checksum, and Koji has only
+    stored an md5 checksum record for that archive, then Koji will not return a
+    result for that archive. You may need to call listArchives multiple times,
+    once for each checksum_type you want to search.
 
     If componentBuildrootID is specified, then the map will also contain the following key:
     project: whether the archive was pulled in as a project dependency, or as part of the
@@ -4968,6 +4978,9 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
     if checksum is not None:
         clauses.append('checksum = %(checksum)s')
         values['checksum'] = checksum
+    if checksum_type is not None:
+        clauses.append('checksum_type = %(checksum_type)s')
+        values['checksum_type'] = checksum_type
     if archiveID is not None:
         clauses.append('archiveinfo.id = %(archive_id)s')
         values['archive_id'] = archiveID
