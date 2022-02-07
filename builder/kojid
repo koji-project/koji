@@ -5593,7 +5593,7 @@ class CreaterepoTask(BaseTaskHandler):
     def create_local_repo(self, rinfo, arch, pkglist, groupdata, oldrepo):
         koji.ensuredir(self.outdir)
         if self.options.use_createrepo_c:
-            cmd = ['/usr/bin/createrepo_c']
+            cmd = ['/usr/bin/createrepo_c', '--error-exit-val']
         else:
             cmd = ['/usr/bin/createrepo']
         cmd.extend(['-vd', '-o', self.outdir])
@@ -5936,7 +5936,7 @@ class createDistRepoTask(BaseTaskHandler):
         """
         koji.ensuredir(repodir)
         if self.options.use_createrepo_c:
-            cmd = ['/usr/bin/createrepo_c']
+            cmd = ['/usr/bin/createrepo_c', '--error-exit-val']
         else:
             cmd = ['/usr/bin/createrepo']
             if zck:
