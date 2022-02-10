@@ -323,10 +323,10 @@ Calling the build itself is a matter of simple CLI call:
 
    $ koji dud-build dud-build-tag --scmurl=git+https://my.git/image-descriptions#master myamazingdud 1 package1 package2
 
-The command options allows to bring all the package dependencies into the DUD 
-ISO with ``--alldeps``. ``--scmurl`` allows to include non-RPM related content 
+The command options allows to bring all the package dependencies into the DUD
+ISO with ``--alldeps``. ``--scmurl`` allows to include non-RPM related content
 inside the produced ISO.
 
 Similarly to other image tasks, alternative architecture failures can be
-ignored for successful build by ``--can-fail`` option. ``--arch`` can be used 
+ignored for successful build by ``--can-fail`` option. ``--arch`` can be used
 to limit build tag architectures.
