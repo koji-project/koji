@@ -12254,23 +12254,50 @@ class RootExports(object):
                 "No file: %s found in RPM: %s" % (filename, rpmID))
         return {}
 
-    def getRPMHeaders(self, rpmID=None, taskID=None, filepath=None, headers=None):
+    def getRPMHeaders(self, rpmID=None, taskID=None, filepath=None, headers=None, strict=False):
         """
-        Get the requested headers from the rpm.  Header names are case-insensitive.
-        If a header is requested that does not exist an exception will be raised.
-        Returns a map of header names to values.  If the specified ID
-        is not valid or the rpm does not exist on the file system, an empty map
-        will be returned.
+        Get the requested headers from the rpm, specified either by rpmID or taskID + filepath
+
+        If the specified ID is not valid or the rpm does not exist on the file system an empty
+        map will be returned, unless strict=True is given.
+
+        Header names are case-insensitive. If a header is requested that does not exist an
+        exception will be raised (regardless of strict option).
+
+        :param int|str rpmID: query the specified rpm
+        :param int taskID: query a file from the specified task (filepath must also be passed)
+        :param str filepath: the rpm path relative to the task directory
+        :param list headers: a list of rpm header names (as strings)
+        :param bool strict: raise an exception for invalid or missing rpms/paths
+        :returns dict: a map of header names to values
         """
 
         if rpmID:
-            rpm_info = get_rpm(rpmID)
-            if not rpm_info or not rpm_info['build_id']:
+            rpm_info = get_rpm(rpmID, strict=strict)
+            if not rpm_info:
+                # can only happen if not strict
                 return {}
-            build_info = get_build(rpm_info['build_id'])
+            if rpm_info['external_repo_id'] != 0:
+                if strict:
+                    raise koji.GenericError('External rpm: %(id)s' % rpm_info)
+                else:
+                    return {}
+            # get_build should be strict regardless since this is an internal rpm
+            build_info = get_build(rpm_info['build_id'], strict=True)
+            build_state = koji.BUILD_STATES[build_info['state']]
+            if build_state == 'DELETED':
+                if strict:
+                    raise koji.GenericError('Build %(nvr)s is deleted' % build_info)
+                else:
+                    return {}
             rpm_path = joinpath(koji.pathinfo.build(build_info), koji.pathinfo.rpm(rpm_info))
             if not os.path.exists(rpm_path):
-                return {}
+                if strict:
+                    raise koji.GenericError('Missing rpm file: %s' % rpm_path)
+                else:
+                    # strict or not, this is still unexpected
+                    logger.error('Missing rpm file: %s' % rpm_path)
+                    return {}
         elif taskID:
             if not filepath:
                 raise koji.GenericError('filepath must be specified with taskID')
@@ -12279,6 +12306,11 @@ class RootExports(object):
             rpm_path = joinpath(koji.pathinfo.work(),
                                 koji.pathinfo.taskrelpath(taskID),
                                 filepath)
+            if not os.path.exists(rpm_path):
+                if strict:
+                    raise koji.GenericError('Missing rpm file: %s' % rpm_path)
+                else:
+                    return {}
         else:
             raise koji.GenericError('either rpmID or taskID and filepath must be specified')
 
