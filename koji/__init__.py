@@ -2526,20 +2526,29 @@ class ClientSession(object):
                 # Depending on the server configuration, we might not be able to
                 # connect without client certificate, which means that the conn
                 # will fail with a handshake failure, which is retried by default.
+                # For this case we're now using retry=False and test errors for
+                # this exact usecase.
                 kwargs = {'proxyuser': proxyuser}
                 if proxyauthtype is not None:
                     kwargs['proxyauthtype'] = proxyauthtype
-                for i in range(self.opts.get('max_retries', 30)):
+                for tries in range(self.opts.get('max_retries', 30)):
                     try:
                         sinfo = self._callMethod('sslLogin', [], kwargs, retry=False)
+                        break
                     except Exception as ex:
-                        # retry on connection error requests.exceptions.ConnectionError
+                        # retry on requests.exceptions.ConnectionError
                         # die on:
                         #   - any non-connection related error (http code, etc.)
                         #   - requests.exceptions.SSLError - CA-mismatch, etc. - die on all SSL
                         #                                    related errors
                         if (not is_conn_error(ex) or isinstance(ex, requests.exceptions.SSLError)):
                             raise
+                        # logging similar to normal retry
+                        if self.logger.isEnabledFor(logging.DEBUG):
+                            tb_str = ''.join(traceback.format_exception(*sys.exc_info()))
+                            self.logger.debug(tb_str)
+                        self.logger.info("Try #%s for call %s (sslLogin) failed: %s",
+                                         tries, self.callnum, ex)
                         time.sleep(self.opts.get('retry_interval', 20))
             except Exception as e:
                 e_str = ''.join(traceback.format_exception_only(type(e), e)).strip('\n')
