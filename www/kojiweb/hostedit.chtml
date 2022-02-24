@@ -20,7 +20,7 @@
       </tr>
       <tr>
         <th>Arches</th>
-        <td><input type="text" name="arches" value=$util.escapeHTML("$host.arches)"/></td>
+        <td><input type="text" name="arches" value="$util.escapeHTML($host.arches)"/></td>
       </tr>
       <tr>
         <th>Capacity</th>
