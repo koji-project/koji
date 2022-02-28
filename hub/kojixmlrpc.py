@@ -404,15 +404,15 @@ def offline_reply(start_response, msg=None):
 
 
 def error_reply(start_response, status, response, extra_headers=None):
-        response = response.encode()
-        headers = [
-            ('Content-Length', str(len(response))),
-            ('Content-Type', "text/plain"),
-        ]
-        if extra_headers:
-            headers.extend(extra_headers)
-        start_response(status, headers)
-        return [response]
+    response = response.encode()
+    headers = [
+        ('Content-Length', str(len(response))),
+        ('Content-Type', "text/plain"),
+    ]
+    if extra_headers:
+        headers.extend(extra_headers)
+    start_response(status, headers)
+    return [response]
 
 
 def load_config(environ):
