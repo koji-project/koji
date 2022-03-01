@@ -62,6 +62,7 @@ from koji.tasks import parse_task_params
 import koji.xmlrpcplus
 from koji.context import context
 from koji.daemon import SCM
+from koji.server import BadRequest, RequestTimeout
 from koji.util import (
     base64encode,
     decode_bytes,
@@ -15361,7 +15362,17 @@ def handle_upload(environ):
             os.ftruncate(fd, offset)
             os.lseek(fd, offset, 0)
         while True:
-            chunk = inf.read(65536)
+            try:
+                chunk = inf.read(65536)
+            except OSError as e:
+                str_e = str(e)
+                logger.error(f"Error reading upload. Offset {offset}+{size}, path {fn}")
+                if 'timeout' in str_e:
+                    logger.exception("Timed out reading input stream")
+                    raise RequestTimeout(str_e)
+                else:
+                    logger.exception("Error reading input stream")
+                    raise BadRequest(str_e)
             if not chunk:
                 break
             size += len(chunk)

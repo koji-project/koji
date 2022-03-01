@@ -38,16 +38,8 @@ import koji.policy
 import koji.util
 from koji.context import context
 # import xmlrpclib functions from koji to use tweaked Marshaller
-from koji.server import ServerError
+from koji.server import ServerError, BadRequest, RequestTimeout
 from koji.xmlrpcplus import ExtendedMarshaller, Fault, dumps, getparser
-
-
-class BadRequest(ServerError):
-    """Used to trigger an http 400 error"""
-
-
-class RequestTimeout(ServerError):
-    """Used to trigger an http 408 error"""
 
 
 class Marshaller(ExtendedMarshaller):
