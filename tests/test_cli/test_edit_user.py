@@ -1,76 +1,61 @@
 from __future__ import absolute_import
 
 import unittest
-import os
-import sys
 
 import six
 import mock
+import koji
 
 
 from koji_cli.commands import handle_edit_user
 from . import utils
 
-progname = os.path.basename(sys.argv[0]) or 'koji'
-
 
 class TestEditUser(utils.CliTestCase):
-    # Show long diffs in error output...
-    maxDiff = None
+    def setUp(self):
+        self.options = mock.MagicMock()
+        self.options.debug = False
+        self.session = mock.MagicMock()
+        self.session.getAPIVersion.return_value = koji.API_VERSION
+        self.activate_session_mock = mock.patch('koji_cli.commands.activate_session').start()
+        self.error_format = """Usage: %s edit-user <username> [options]
+(Specify the --help global option for a list of other help options)
+
+%s: error: {message}
+""" % (self.progname, self.progname)
+        self.user = 'user'
+        self.rename = 'user2'
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_edit_user(self, activate_session_mock, stdout):
-        user = 'user'
-        rename = 'user2'
-        args = [user]
-        args.append('--rename=' + rename)
+    def test_handle_edit_user(self, stdout):
+        args = [self.user]
+        args.append('--rename=' + self.rename)
         args.append('--add-krb=addedkrb')
         args.append('--remove-krb=removedkrb')
         args.append('--edit-krb=oldkrb=newkrb')
-        options = mock.MagicMock()
-
-        # Mock out the xmlrpc server
-        session = mock.MagicMock()
 
         # Run it and check immediate output
         # args: user --rename=user --krb=krb
         # expected: success
-        rv = handle_edit_user(options, session, args)
+        rv = handle_edit_user(self.options, self.session, args)
         actual = stdout.getvalue()
         expected = ''
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(session, options)
-        session.editUser.assert_called_once_with(user, rename,
-                                                 [{'new': 'newkrb', 'old': 'oldkrb'},
-                                                  {'new': 'addedkrb', 'old': None},
-                                                  {'new': None, 'old': 'removedkrb'}])
+        self.activate_session_mock.assert_called_once_with(self.session, self.options)
+        self.session.editUser.assert_called_once_with(self.user, self.rename,
+                                                      [{'new': 'newkrb', 'old': 'oldkrb'},
+                                                       {'new': 'addedkrb', 'old': None},
+                                                       {'new': None, 'old': 'removedkrb'}])
         self.assertEqual(rv, None)
 
-        stdout.seek(0)
-        stdout.truncate()
-        session.reset_mock()
-        activate_session_mock.reset_mock()
-
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_edit_user_help(self, activate_session_mock, stderr, stdout):
-        args = ['--help']
-        options = mock.MagicMock()
-
-        # Mock out the xmlrpc server
-        session = mock.MagicMock()
-
+    def test_handle_edit_user_help(self):
         # Run it and check immediate output
         # args: --help
         # expected: failed, help info shows
-        with self.assertRaises(SystemExit) as cm:
-            handle_edit_user(options, session, args)
-        actual_stdout = stdout.getvalue()
-        actual_stderr = stderr.getvalue()
-        expected_stdout = """Usage: %s edit-user <username> [options]
+        self.assert_help(
+            handle_edit_user,
+            """Usage: %s edit-user <username> [options]
 (Specify the --help global option for a list of other help options)
 
 Options:
@@ -79,74 +64,49 @@ Options:
   --edit-krb=OLD=NEW  Change kerberos principal of the user
   --add-krb=KRB       Add kerberos principal of the user
   --remove-krb=KRB    Remove kerberos principal of the user
-""" % progname
-        expected_stderr = ''
-        self.assertMultiLineEqual(actual_stdout, expected_stdout)
-        self.assertMultiLineEqual(actual_stderr, expected_stderr)
+""" % self.progname)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_not_called()
-        session.editUser.assert_not_called()
-        self.assertEqual(cm.exception.code, 0)
+        self.activate_session_mock.assert_not_called()
+        self.session.editUser.assert_not_called()
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_edit_user_no_arg(self, activate_session_mock, stderr, stdout):
-        args = []
-        options = mock.MagicMock()
-
-        # Mock out the xmlrpc server
-        session = mock.MagicMock()
-
+    def test_handle_edit_user_no_arg(self):
         # Run it and check immediate output
         # args: --help
         # expected: failed, help info shows
-        with self.assertRaises(SystemExit) as ex:
-            handle_edit_user(options, session, args)
-        self.assertExitCode(ex, 2)
-        actual_stdout = stdout.getvalue()
-        actual_stderr = stderr.getvalue()
-        expected_stdout = ''
-        expected_stderr = """Usage: %(progname)s edit-user <username> [options]
-(Specify the --help global option for a list of other help options)
-
-%(progname)s: error: You must specify the username of the user to edit
-""" % {'progname': progname}
-        self.assertMultiLineEqual(actual_stdout, expected_stdout)
-        self.assertMultiLineEqual(actual_stderr, expected_stderr)
+        expected = self.format_error_message("You must specify the username of the user to edit")
+        self.assert_system_exit(
+            handle_edit_user,
+            self.options,
+            self.session,
+            [],
+            stdout='',
+            stderr=expected,
+            activate_session=None,
+            exit_code=2
+        )
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_not_called()
-        session.editUser.assert_not_called()
+        self.activate_session_mock.assert_not_called()
+        self.session.editUser.assert_not_called()
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_edit_user_more_arg(self, activate_session_mock, stderr, stdout):
+    def test_handle_edit_user_more_arg(self):
         args = ['user', 'user2']
-        options = mock.MagicMock()
-
-        # Mock out the xmlrpc server
-        session = mock.MagicMock()
-
         # Run it and check immediate output
         # args: --help
         # expected: failed, help info shows
-        with self.assertRaises(SystemExit) as ex:
-            handle_edit_user(options, session, args)
-        self.assertExitCode(ex, 2)
-        actual_stdout = stdout.getvalue()
-        actual_stderr = stderr.getvalue()
-        expected_stdout = ''
-        expected_stderr = """Usage: %(progname)s edit-user <username> [options]
-(Specify the --help global option for a list of other help options)
-
-%(progname)s: error: This command only accepts one argument (username)
-""" % {'progname': progname}
-        self.assertMultiLineEqual(actual_stdout, expected_stdout)
-        self.assertMultiLineEqual(actual_stderr, expected_stderr)
+        expected = self.format_error_message("This command only accepts one argument (username)")
+        self.assert_system_exit(
+            handle_edit_user,
+            self.options,
+            self.session,
+            args,
+            stdout='',
+            stderr=expected,
+            activate_session=None,
+            exit_code=2
+        )
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_not_called()
-        session.editUser.assert_not_called()
+        self.activate_session_mock.assert_not_called()
+        self.session.editUser.assert_not_called()
 
 
 if __name__ == '__main__':

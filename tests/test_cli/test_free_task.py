@@ -10,7 +10,7 @@ class TestFreeTask(utils.CliTestCase):
 
     def setUp(self):
         self.options = mock.MagicMock()
-        self.options.maxDiff = None
+        self.maxDiff = None
         self.session = mock.MagicMock()
         self.activate_session_mock = mock.patch('koji_cli.commands.activate_session').start()
         self.error_format = """Usage: %s free-task [options] <task_id> [<task_id> ...]
@@ -19,30 +19,37 @@ class TestFreeTask(utils.CliTestCase):
 %s: error: {message}
 """ % (self.progname, self.progname)
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_free_task_without_arg(self, stderr):
+    def test_free_task_without_arg(self):
         expected = self.format_error_message('please specify at least one task_id')
-        with self.assertRaises(SystemExit) as ex:
-            handle_free_task(self.options, self.session, [])
-        self.assertExitCode(ex, 2)
-        self.assert_console_message(stderr, expected)
-        self.activate_session_mock.assert_called_with(self.session, self.options)
+        self.assert_system_exit(
+            handle_free_task,
+            self.options, self.session, [],
+            stdout='',
+            stderr=expected,
+            exit_code=2,
+            activate_session=None)
+        self.activate_session_mock.assert_called_once_with(self.session, self.options)
+        self.session.freeTask.assert_not_called()
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_free_task_id_string_chars(self, stderr):
+    def test_free_task_id_string_chars(self):
         expected = self.format_error_message('task_id must be an integer')
-        with self.assertRaises(SystemExit) as ex:
-            handle_free_task(self.options, self.session, ['1abc'])
-        self.assertExitCode(ex, 2)
-        self.assert_console_message(stderr, expected)
-        self.activate_session_mock.assert_called_with(self.session, self.options)
+        self.assert_system_exit(
+            handle_free_task,
+            self.options, self.session, ['1abc'],
+            stdout='',
+            stderr=expected,
+            exit_code=2,
+            activate_session=None)
+        self.activate_session_mock.assert_called_once_with(self.session, self.options)
+        self.session.freeTask.assert_not_called()
 
     @mock.patch('sys.stdout', new_callable=StringIO)
     def test_free_task_valid(self, stdout):
         self.session.freeTask.side_effect = [True, True, True]
         handle_free_task(self.options, self.session, ['1', '2', '3'])
         self.assert_console_message(stdout, '')
-        self.activate_session_mock.assert_called_with(self.session, self.options)
+        self.activate_session_mock.assert_called_once_with(self.session, self.options)
+        self.session.freeTask.assert_has_calls([mock.call(1), mock.call(2), mock.call(3)])
 
     def test_handle_free_task_help(self):
         self.assert_help(

@@ -2,6 +2,7 @@ from __future__ import absolute_import
 import mock
 import six
 import unittest
+import koji
 
 from mock import call
 from koji_cli.commands import handle_enable_host
@@ -9,33 +10,24 @@ from . import utils
 
 
 class TestEnableHost(utils.CliTestCase):
-
-    # Show long diffs in error output...
-    maxDiff = None
-
     def setUp(self):
+        self.options = mock.MagicMock()
+        self.options.debug = False
+        self.session = mock.MagicMock()
+        self.session.getAPIVersion.return_value = koji.API_VERSION
+        self.activate_session_mock = mock.patch('koji_cli.commands.activate_session').start()
         self.error_format = """Usage: %s enable-host [options] <hostname> [<hostname> ...]
 (Specify the --help global option for a list of other help options)
 
 %s: error: {message}
 """ % (self.progname, self.progname)
 
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_enable_host(
-            self,
-            activate_session_mock,
-            stdout,
-            stderr):
+    def test_handle_enable_host_no_such_host(self):
         """Test %s function""" % handle_enable_host.__name__
-        arguments = []
-        options = mock.MagicMock()
-        session = mock.MagicMock()
 
-        session.getHost.return_value = None
-        session.enableHost.return_value = True
-        session.editHost.return_value = True
+        self.session.getHost.return_value = None
+        self.session.enableHost.return_value = True
+        self.session.editHost.return_value = True
 
         #
         # session.multiCall returns:
@@ -54,71 +46,66 @@ class TestEnableHost(utils.CliTestCase):
         #     'name': 'kbuilder02' ...}]
         #
 
-        session.multiCall.return_value = [[None], [None]]
+        self.session.multiCall.return_value = [[None], [None]]
 
         arguments = ['host1', 'host2']
-        with self.assertRaises(SystemExit) as ex:
-            handle_enable_host(options, session, arguments)
-        self.assertExitCode(ex, 1)
-        activate_session_mock.assert_called_once()
-        session.getHost.assert_has_calls([call('host1'), call('host2')])
-        session.multiCall.assert_called_once()
-        session.enableHost.assert_not_called()
-        session.editHost.assert_not_called()
         expect = ''
         for host in arguments:
             expect += "No such host: %s\n" % host
         stderr_exp = "No changes made. Please correct the command line.\n"
-        self.assert_console_message(stdout, expect)
-        self.assert_console_message(stderr, stderr_exp)
+        self.assert_system_exit(
+            handle_enable_host,
+            self.options,
+            self.session,
+            arguments,
+            stdout=expect,
+            stderr=stderr_exp,
+            activate_session=None,
+            exit_code=1
+        )
+        self.session.getHost.assert_has_calls([call('host1'), call('host2')])
+        self.session.multiCall.assert_called_once()
+        self.session.enableHost.assert_not_called()
+        self.session.editHost.assert_not_called()
 
-        # reset session mocks
-        activate_session_mock.reset_mock()
-        session.multiCall.reset_mock()
-        session.disableHost.reset_mock()
-        session.editHost.reset_mock()
-
-        session.multiCall.return_value = [
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    def test_handle_enable_host_valid(self, stdout):
+        self.session.multiCall.return_value = [
             [{'id': 1, 'name': 'host1'}], [{'id': 2, 'name': 'host2'}]
         ]
 
         arguments = ['host1', 'host2', '--comment', 'disable host test']
-        handle_enable_host(options, session, arguments)
-        activate_session_mock.assert_called_once()
-        session.getHost.assert_has_calls([call('host1'), call('host2')])
-        self.assertEqual(2, session.multiCall.call_count)
-        session.enableHost.assert_has_calls([call('host1'), call('host2')])
-        session.editHost.assert_has_calls(
+        handle_enable_host(self.options, self.session, arguments)
+        self.activate_session_mock.assert_called_once()
+        self.session.getHost.assert_has_calls([call('host1'), call('host2')])
+        self.assertEqual(2, self.session.multiCall.call_count)
+        self.session.enableHost.assert_has_calls([call('host1'), call('host2')])
+        self.session.editHost.assert_has_calls(
             [call('host1', comment='disable host test'),
              call('host2', comment='disable host test')])
         self.assert_console_message(stdout, '')
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_enable_host_no_argument(self, activate_session_mock, stdout):
+    def test_handle_enable_host_no_argument(self):
         """Test %s function without arguments""" % handle_enable_host.__name__
-        options = mock.MagicMock()
-        session = mock.MagicMock()
-
-        session.getHost.return_value = None
-        session.multiCall.return_value = [[None]]
-        session.enableHost.return_value = True
-        session.editHost.return_value = True
+        self.session.getHost.return_value = None
+        self.session.multiCall.return_value = [[None]]
+        self.session.enableHost.return_value = True
+        self.session.editHost.return_value = True
 
         expected = self.format_error_message("At least one host must be specified")
         self.assert_system_exit(
             handle_enable_host,
-            options,
-            session,
+            self.options,
+            self.session,
             [],
             stderr=expected,
             activate_session=None)
 
-        activate_session_mock.assert_not_called()
-        session.getHost.assert_not_called()
-        session.multiCall.assert_not_called()
-        session.enableHost.assert_not_called()
-        session.editHost.assert_not_called()
+        self.activate_session_mock.assert_not_called()
+        self.session.getHost.assert_not_called()
+        self.session.multiCall.assert_not_called()
+        self.session.enableHost.assert_not_called()
+        self.session.editHost.assert_not_called()
 
     def test_handle_enable_host_help(self):
         """Test %s help message""" % handle_enable_host.__name__

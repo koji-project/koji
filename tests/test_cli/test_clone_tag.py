@@ -44,7 +44,9 @@ clone-tag will create the destination tag if it does not already exist
             args,
             stderr=self.format_error_message(
                 "This command takes two arguments: <src-tag> <dst-tag>"),
-            activate_session=None)
+            activate_session=None,
+            exit_code=2
+        )
         self.activate_session.assert_not_called()
 
     def test_handle_clone_tag_not_admin(self):
@@ -55,9 +57,10 @@ clone-tag will create the destination tag if it does not already exist
             self.options,
             self.session,
             args,
-            stderr=self.format_error_message(
-                "This action requires tag or admin privileges"),
-            activate_session=None)
+            stderr=self.format_error_message("This action requires tag or admin privileges"),
+            activate_session=None,
+            exit_code=2
+        )
         self.activate_session.assert_called_once()
         self.session.hasPerm.assert_has_calls([call('admin'), call('tag')])
 
@@ -68,9 +71,9 @@ clone-tag will create the destination tag if it does not already exist
             self.options,
             self.session,
             args,
-            stderr=self.format_error_message(
-                "Source and destination tags must be different."),
-            activate_session=None)
+            stderr=self.format_error_message("Source and destination tags must be different."),
+            activate_session=None,
+            exit_code=2)
         self.activate_session.assert_called_once()
 
     def test_handle_clone_tag_invalid_batch(self):
@@ -80,9 +83,9 @@ clone-tag will create the destination tag if it does not already exist
             self.options,
             self.session,
             args,
-            stderr=self.format_error_message(
-                "batch size must be bigger than zero"),
-            activate_session=None)
+            stderr=self.format_error_message("batch size must be bigger than zero"),
+            activate_session=None,
+            exit_code=2)
         self.activate_session.assert_called_once()
 
     def test_handle_clone_tag_no_srctag(self):
@@ -94,17 +97,15 @@ clone-tag will create the destination tag if it does not already exist
             self.session,
             args,
             stderr=self.format_error_message("No such src-tag: src-tag"),
-            activate_session=None)
+            activate_session=None,
+            exit_code=2)
         self.activate_session.assert_called_once()
-        self.activate_session.getTag.has_called([call('src-tag'),
-                                                 call('dst-tag')])
+        self.activate_session.getTag.has_called([call('src-tag'), call('dst-tag')])
 
     def test_handle_clone_tag_locked(self):
         args = ['src-tag', 'dst-tag']
-        self.session.getTag.side_effect = [{'id': 1,
-                                            'locked': True},
-                                           {'id': 2,
-                                            'locked': False}]
+        self.session.getTag.side_effect = [{'id': 1, 'locked': True},
+                                           {'id': 2, 'locked': False}]
         self.assert_system_exit(
             handle_clone_tag,
             self.options,
@@ -113,13 +114,12 @@ clone-tag will create the destination tag if it does not already exist
             stderr=self.format_error_message(
                 "Error: You are attempting to clone from or to a tag which is locked.\n"
                 "Please use --force if this is what you really want to do."),
-            activate_session=None)
+            activate_session=None,
+            exit_code=2)
         self.activate_session.assert_called_once()
-        self.activate_session.getTag.has_called([call('src-tag'),
-                                                 call('dst-tag')])
+        self.activate_session.getTag.has_called([call('src-tag'), call('dst-tag')])
 
-        self.activate_session.getTag.has_called([call('src-tag'),
-                                                 call('dst-tag')])
+        self.activate_session.getTag.has_called([call('src-tag'), call('dst-tag')])
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     def test_handle_clone_tag_new_dsttag(self, stdout):

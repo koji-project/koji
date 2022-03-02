@@ -8,29 +8,21 @@ from . import utils
 
 
 class TestListApi(utils.CliTestCase):
-
-    # Show long diffs in error output...
-    maxDiff = None
-
     def setUp(self):
+        self.maxDiff = None
         self.error_format = """Usage: %s list-api [options] [method_name ...]
 (Specify the --help global option for a list of other help options)
 
 %s: error: {message}
 """ % (self.progname, self.progname)
+        self.session = mock.MagicMock()
+        self.options = mock.MagicMock()
+        self.ensure_connection = mock.patch('koji_cli.commands.ensure_connection').start()
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.ensure_connection')
-    def test_anon_handle_list_api(
-            self,
-            ensure_connection_mock,
-            stdout):
+    def test_anon_handle_list_api_all_method(self, stdout):
         """Test anon_handle_list_api function"""
-        session = mock.MagicMock()
-        options = mock.MagicMock()
-
-        # Case 1. list all methods
-        session._listapi.return_value = [
+        self.session._listapi.return_value = [
             {
                 'argdesc': '(tagInfo, **kwargs)',
                 'doc': 'Edit information for an existing tag.',
@@ -56,27 +48,32 @@ class TestListApi(utils.CliTestCase):
         expected += "editTag2(tagInfo, **kwargs)\n"
         expected += "  description: Edit information for an existing tag.\n"
         expected += "host.getID()\n"
-        anon_handle_list_api(options, session, [])
+        anon_handle_list_api(self.options, self.session, [])
         self.assert_console_message(stdout, expected)
+        self.ensure_connection.assert_called_once()
 
-        # Case 2. non-existent fake method
-        session.system.methodHelp.return_value = None
-        expected = self.format_error_message("Unknown method: non-existent-fake-method")
+    def test_anon_handle_list_api_fake_method(self):
+        """Test anon_handle_list_api function"""
+        self.session.system.methodHelp.return_value = None
         self.assert_system_exit(
             anon_handle_list_api,
-            options,
-            session,
+            self.options,
+            self.session,
             ['non-existent-fake-method'],
-            stderr=expected,
+            stderr=self.format_error_message("Unknown method: non-existent-fake-method"),
             activate_session=None)
+        self.ensure_connection.assert_called_once()
 
-        # Case 3. known method
-        session.system.methodHelp.return_value = "editTag2(tagInfo, **kwargs)\n" \
-                                          "  description: Edit information for an existing tag."
-        anon_handle_list_api(options, session, ['editTag2'])
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    def test_anon_handle_list_api_specific_method(self, stdout):
+        """Test anon_handle_list_api function"""
+        self.session.system.methodHelp.return_value = \
+            "editTag2(tagInfo, **kwargs)\n  description: Edit information for an existing tag."
+        anon_handle_list_api(self.options, self.session, ['editTag2'])
         expected = "editTag2(tagInfo, **kwargs)\n"
         expected += "  description: Edit information for an existing tag.\n"
         self.assert_console_message(stdout, expected)
+        self.ensure_connection.assert_called_once()
 
     def test_anon_handle_list_api_help(self):
         self.assert_help(

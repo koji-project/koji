@@ -38,11 +38,8 @@ class Options(object):
 
 
 class TestBuildImageIndirection(utils.CliTestCase):
-
-    # Show long diffs in error output...
-    maxDiff = None
-
     def setUp(self):
+        self.maxDiff = None
         self.task_id = 1001
         self.weburl = 'https://web.url'
         self.options = mock.MagicMock()
@@ -188,11 +185,8 @@ class TestBuildImageIndirection(utils.CliTestCase):
 
 
 class TestImageBuildIndirection(utils.CliTestCase):
-
-    # Show long diffs in error output...
-    maxDiff = None
-
     def setUp(self):
+        self.maxDiff = None
         self.options = mock.MagicMock()
         self.session = mock.MagicMock()
 
