@@ -185,6 +185,36 @@ class TestBuildImageOz(utils.CliTestCase):
             '/path/to/cli-image',
             callback=None)
 
+    def test_build_image_oz_local_ks(self):
+        task_id = 107
+        # self.task_options.kickstart will be
+        # changed in _build_image_oz()
+        ksfile = self.task_options.kickstart
+        self.task_options.ksurl = None
+        self.task_options.scratch = False
+
+        self.session.getBuildTarget.return_value = self.target_info
+        self.session.getTag.return_value = self.tag_info
+        self.session.buildImageOz.return_value = task_id
+
+        self.task_options.background = True
+        self.running_in_bg.return_value = True
+        with mock.patch('sys.stdout', new_callable=six.StringIO) as stdout:
+            _build_image_oz(
+                self.options, self.task_options, self.session, self.args)
+        expected = '' + '\n'
+        expected += "Created task: %d" % task_id + "\n"
+        expected += "Task info: %s/taskinfo?taskID=%s" % \
+                    (self.options.weburl, task_id) + "\n"
+        self.assert_console_message(stdout, expected)
+        self.watch_tasks.assert_not_called()
+        self.session.buildImageOz.assert_called_once()
+        self.unique_path.assert_called_with('cli-image')
+        self.session.uploadWrapper.assert_called_with(
+            ksfile,
+            '/path/to/cli-image',
+            callback=None)
+
     def test_build_image_oz_exception(self):
         self.session.getBuildTarget.return_value = {}
         with self.assertRaises(koji.GenericError) as cm:
