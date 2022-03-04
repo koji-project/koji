@@ -63,6 +63,9 @@
       <span class="adminLink">(<a href="resubmittask?taskID=$task.id$util.authToken($self)">resubmit</a>)</span>
       #end if
       #end if
+      #if $currentUser and 'admin' in $perms and $task.state in ($koji.TASK_STATES.OPEN, $koji.TASK_STATES.ASSIGNED)
+      <span class="adminLink">(<a href="freetask?taskID=$task.id$util.authToken($self)">free</a>)</span>
+      #end if
       </td>
     </tr>
     #if $taskBuild
