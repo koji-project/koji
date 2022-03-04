@@ -1136,6 +1136,9 @@ def anon_handle_mock_config(goptions, session, args):
             warn("Tag %s has an empty arch list" % opts['tag_name'])
         elif arch not in buildcfg['arches']:
             warn('%s is not in the list of tag arches' % arch)
+        if 'mock.forcearch' in buildcfg['extra']:
+            if bool(buildcfg['extra']['mock.forcearch']):
+                opts['forcearch'] = options.arch
     if 'mock.package_manager' in buildcfg['extra']:
         opts['package_manager'] = buildcfg['extra']['mock.package_manager']
     if 'mock.yum.module_hotfixes' in buildcfg['extra']:

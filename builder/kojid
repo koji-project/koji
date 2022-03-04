@@ -280,6 +280,9 @@ class BuildRoot(object):
         opts['maven_envs'] = self.maven_envs
         opts['bind_opts'] = self.bind_opts
         opts['target_arch'] = self.target_arch
+        if 'mock.forcearch' in self.config['extra']:
+            if bool(self.config['extra']['mock.forcearch']):
+                opts['forcearch'] = self.target_arch
         if 'mock.package_manager' in self.config['extra']:
             opts['package_manager'] = self.config['extra']['mock.package_manager']
         if 'mock.yum.module_hotfixes' in self.config['extra']:

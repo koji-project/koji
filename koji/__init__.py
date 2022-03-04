@@ -1629,6 +1629,8 @@ def genMockConfig(name, arch, managed=False, repoid=None, tag_name=None, **opts)
         # turn off warning for yum being used in place of dnf
         'dnf_warning': False,
     }
+    if 'forcearch' in opts:
+        config_opts['forcearch'] = opts['forcearch']
     if opts.get('package_manager'):
         config_opts['package_manager'] = opts['package_manager']
     if opts.get('bootstrap_image'):
