@@ -1149,6 +1149,8 @@ def anon_handle_mock_config(goptions, session, args):
         opts['use_bootstrap'] = buildcfg['extra']['mock.use_bootstrap']
     if 'mock.module_setup_commands' in buildcfg['extra']:
         opts['module_setup_commands'] = buildcfg['extra']['mock.module_setup_commands']
+    if 'mock.releasever' in buildcfg['extra']:
+        opts['releasever'] = buildcfg['extra']['mock.releasever']
     opts['tag_macros'] = {}
     for key in buildcfg['extra']:
         if key.startswith('rpm.macro.'):
