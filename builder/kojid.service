@@ -2,7 +2,8 @@
 Description=Koji build server
 Documentation=https://docs.pagure.org/koji/server_howto/
 
-After=network.target
+# If the koji-hub is on this host, httpd.service is needed first
+After=network.target httpd.service
 
 [Service]
 ExecStart=/usr/sbin/kojid \
