@@ -1354,7 +1354,7 @@ def list_tags(build=None, package=None, perms=True, queryOpts=None, pattern=None
 
 
 def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None, owner=None,
-                     type=None):
+                     type=None, extra=False):
     """Returns a list of builds for specified tag
 
     :param int tag: tag ID
@@ -1365,6 +1365,7 @@ def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None,
     :param str owner: filter on user name
     :param str type: restrict the list to builds of the given type.  Currently the supported
                      types are 'maven', 'win', 'image', or any custom content generator btypes.
+    :param bool extra: Set to "True" to get the build extra info
     :returns [dict]: list of buildinfo dicts
     """
     # build - id pkg_id version release epoch
@@ -1437,9 +1438,15 @@ def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None,
     if owner:
         clauses.append('users.name = %(owner)s')
     queryOpts = {'order': '-create_event'}  # latest first
-    query = QueryProcessor(columns=[x[0] for x in fields], aliases=[x[1] for x in fields],
-                           tables=tables, joins=joins, clauses=clauses, values=locals(),
-                           opts=queryOpts)
+    if extra:
+        fields.append(('build.extra', 'extra'))
+        query = QueryProcessor(columns=[x[0] for x in fields], aliases=[x[1] for x in fields],
+                               tables=tables, joins=joins, clauses=clauses, values=locals(),
+                               transform=_fix_extra_field, opts=queryOpts)
+    else:
+        query = QueryProcessor(columns=[x[0] for x in fields], aliases=[x[1] for x in fields],
+                               tables=tables, joins=joins, clauses=clauses, values=locals(),
+                               opts=queryOpts)
 
     builds = []
     seen = {}   # used to enforce the 'latest' option
@@ -1467,7 +1474,7 @@ def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None,
 
 
 def readTaggedRPMS(tag, package=None, arch=None, event=None, inherit=False, latest=True,
-                   rpmsigs=False, owner=None, type=None):
+                   rpmsigs=False, owner=None, type=None, extra=True):
     """Returns a list of rpms and builds for specified tag
 
     :param int|str tag: The tag name or ID to search
@@ -1486,6 +1493,7 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None, inherit=False, late
     :param str owner: Filter by build owner name
     :param str type: Filter by build type. Supported types are 'maven',
                      'win', and 'image'.
+    :param bool extra: Set to "False" to skip the rpm extra info
     :returns: a two-element list. The first element is the list of RPMs, and
               the second element is the list of builds.
     """
@@ -1513,7 +1521,6 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None, inherit=False, late
               ('rpminfo.buildroot_id', 'buildroot_id'),
               ('rpminfo.build_id', 'build_id'),
               ('rpminfo.metadata_only', 'metadata_only'),
-              ('rpminfo.extra', 'extra'),
               ]
     tables = ['rpminfo']
     joins = ['tag_listing ON rpminfo.build_id = tag_listing.build_id']
@@ -1536,9 +1543,17 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None, inherit=False, late
         else:
             raise koji.GenericError('Invalid type for arch option: %s' % builtins.type(arch))
 
-    fields, aliases = zip(*fields)
-    query = QueryProcessor(tables=tables, joins=joins, clauses=clauses,
-                           columns=fields, aliases=aliases, values=data, transform=_fix_rpm_row)
+    if extra:
+        fields.append(('rpminfo.extra', 'extra'))
+        query = QueryProcessor(tables=tables, joins=joins, clauses=clauses,
+                               columns=[pair[0] for pair in fields],
+                               aliases=[pair[1] for pair in fields],
+                               values=data, transform=_fix_rpm_row)
+    else:
+        query = QueryProcessor(tables=tables, joins=joins, clauses=clauses,
+                               columns=[pair[0] for pair in fields],
+                               aliases=[pair[1] for pair in fields],
+                               values=data)
 
     # unique constraints ensure that each of these queries will not report
     # duplicate rpminfo entries, BUT since we make the query multiple times,
@@ -1573,13 +1588,20 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None, inherit=False, late
     return [_iter_rpms(), builds]
 
 
-def readTaggedArchives(tag, package=None, event=None, inherit=False, latest=True, type=None):
+def readTaggedArchives(tag, package=None, event=None, inherit=False, latest=True, type=None,
+                       extra=True):
     """Returns a list of archives for specified tag
 
-    set inherit=True to follow inheritance
-    set event to query at a time in the past
-    set latest=False to get all tagged archives (not just from the latest builds)
-    set latest=N to get only the N latest tagged RPMs
+    :param int|str tag: The tag name or ID to search
+    :param str package: Filter on a package name.
+    :param int event: set event to query at a time in the past
+    :param bool inherit: set to "True" to follow inheritance
+    :param bool|int latest: set to "False" to get all tagged archives (not just from the latest
+                            builds), set to "N" to get only the "N" latest tagged RPMs
+    :param str type: Filter by build type. Supported types are 'maven' and 'win'.
+    :param bool extra: Set to "False" to skip the archives extra info
+    :returns: a two-element list. The first element is the list of archives, and
+              the second element is the list of builds.
 
     If type is not None, restrict the listing to archives of the given type.  Currently
     the supported types are 'maven' and 'win'.
@@ -1608,7 +1630,6 @@ def readTaggedArchives(tag, package=None, event=None, inherit=False, latest=True
               ('archiveinfo.checksum', 'checksum'),
               ('archiveinfo.checksum_type', 'checksum_type'),
               ('archiveinfo.metadata_only', 'metadata_only'),
-              ('archiveinfo.extra', 'extra'),
               ]
     tables = ['archiveinfo']
     joins = ['tag_listing ON archiveinfo.build_id = tag_listing.build_id',
@@ -1633,10 +1654,16 @@ def readTaggedArchives(tag, package=None, event=None, inherit=False, latest=True
     else:
         raise koji.GenericError('unsupported archive type: %s' % type)
 
-    query = QueryProcessor(tables=tables, joins=joins, clauses=clauses,
-                           transform=_fix_archive_row,
-                           columns=[pair[0] for pair in fields],
-                           aliases=[pair[1] for pair in fields])
+    if extra:
+        fields.append(('archiveinfo.extra', 'extra'))
+        query = QueryProcessor(tables=tables, joins=joins, clauses=clauses,
+                               transform=_fix_archive_row,
+                               columns=[pair[0] for pair in fields],
+                               aliases=[pair[1] for pair in fields])
+    else:
+        query = QueryProcessor(tables=tables, joins=joins, clauses=clauses,
+                               columns=[pair[0] for pair in fields],
+                               aliases=[pair[1] for pair in fields])
 
     # unique constraints ensure that each of these queries will not report
     # duplicate archiveinfo entries, BUT since we make the query multiple times,
@@ -11770,7 +11797,7 @@ class RootExports(object):
         task.setPriority(priority, recurse=recurse)
 
     def listTagged(self, tag, event=None, inherit=False, prefix=None, latest=False, package=None,
-                   owner=None, type=None, strict=True):
+                   owner=None, type=None, strict=True, extra=False):
         """List builds tagged with tag.
 
             :param int|str tag: tag name or ID number
@@ -11785,13 +11812,14 @@ class RootExports(object):
             :param str type: only builds of the given btype (such as maven or image)
             :param bool strict: If tag doesn't exist, an exception is raised,
                             unless strict is False in which case returns an empty list.
+            :param bool extra: Set to "True" to get the build extra info
         """
         # lookup tag id
         tag = get_tag(tag, strict=strict, event=event)
         if not tag:
             return []
         results = readTaggedBuilds(tag['id'], event, inherit=inherit, latest=latest,
-                                   package=package, owner=owner, type=type)
+                                   package=package, owner=owner, type=type, extra=extra)
         if prefix:
             prefix = prefix.lower()
             results = [build for build in results
@@ -11799,7 +11827,7 @@ class RootExports(object):
         return results
 
     def listTaggedRPMS(self, tag, event=None, inherit=False, latest=False, package=None, arch=None,
-                       rpmsigs=False, owner=None, type=None, strict=True):
+                       rpmsigs=False, owner=None, type=None, strict=True, extra=True):
         """List rpms and builds within tag.
 
             :param int|str tag: tag name or ID number
@@ -11817,16 +11845,18 @@ class RootExports(object):
             :param str type: only rpms of the given btype (such as maven or image)
             :param bool strict: If tag doesn't exist, an exception is raised,
                             unless strict is False in which case returns an empty list.
+            :param bool extra: Set to "False" to skip the rpms extra info
         """
         # lookup tag id
         tag = get_tag(tag, strict=strict, event=event)
         if not tag:
             return []
         return readTaggedRPMS(tag['id'], event=event, inherit=inherit, latest=latest,
-                              package=package, arch=arch, rpmsigs=rpmsigs, owner=owner, type=type)
+                              package=package, arch=arch, rpmsigs=rpmsigs, owner=owner,
+                              type=type, extra=extra)
 
     def listTaggedArchives(self, tag, event=None, inherit=False, latest=False, package=None,
-                           type=None, strict=True):
+                           type=None, strict=True, extra=True):
         """List archives and builds within a tag.
 
             :param int|str tag: tag name or ID number
@@ -11839,13 +11869,14 @@ class RootExports(object):
             :param str type: only archives of the given btype (such as maven or image)
             :param bool strict: If tag doesn't exist, an exception is raised,
                             unless strict is False in which case returns an empty list.
+            :param bool extra: Set to "False" to skip the archive extra info
         """
         # lookup tag id
         tag = get_tag(tag, strict=strict, event=event)
         if not tag:
             return []
         return readTaggedArchives(tag['id'], event=event, inherit=inherit, latest=latest,
-                                  package=package, type=type)
+                                  package=package, type=type, extra=extra)
 
     def listBuilds(self, packageID=None, userID=None, taskID=None, prefix=None, state=None,
                    volumeID=None, source=None, createdBefore=None, createdAfter=None,
