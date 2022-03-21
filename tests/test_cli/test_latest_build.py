@@ -3,7 +3,6 @@ from __future__ import absolute_import
 import unittest
 
 import mock
-import six
 
 from koji_cli.commands import anon_handle_latest_build
 from . import utils
@@ -15,6 +14,8 @@ class TestLatestBuild(utils.CliTestCase):
         self.maxDiff = None
         self.options = mock.MagicMock()
         self.session = mock.MagicMock()
+        self.activate_session_mock = mock.patch('koji_cli.commands.activate_session').start()
+        self.ensure_connection = mock.patch('koji_cli.commands.ensure_connection').start()
         self.tag_name = 'test-tag'
         self.pkg_name = 'test-pkg'
         self.expected_part_help = """Usage: %s latest-build [options] <tag> <package> [<package> ...]
@@ -28,58 +29,46 @@ More information on tags and build targets can be found in the documentation.
 https://docs.pagure.org/koji/HOWTO/#package-organization
 (Specify the --help global option for a list of other help options)
 
-""" \
-                                  % (self.progname, self.progname)
+""" % (self.progname, self.progname)
 
     def tearDown(self):
         mock.patch.stopall()
 
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.ensure_connection')
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_latest_build_without_args(self, activate_session_mock,
-                                              ensure_connection, stderr):
-        with self.assertRaises(SystemExit) as ex:
-            anon_handle_latest_build(self.options, self.session, [])
-        self.assertExitCode(ex, 2)
-        actual = stderr.getvalue()
-        expected_stderr = \
-            self.expected_part_help + "%s: error: A tag name must be specified\n" % self.progname
-        self.assertMultiLineEqual(actual, expected_stderr)
-        activate_session_mock.assert_not_called()
-        ensure_connection.assert_not_called()
+    def test_handle_latest_build_without_args(self):
+        expected = "%s: error: A tag name must be specified\n" % self.progname
+        self.assert_system_exit(
+            anon_handle_latest_build,
+            self.options, self.session, [],
+            stdout='',
+            stderr=self.expected_part_help + expected,
+            exit_code=2,
+            activate_session=None)
+        self.activate_session_mock.assert_not_called()
+        self.ensure_connection.assert_not_called()
 
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.ensure_connection')
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_latest_build_more_args(self, activate_session_mock, ensure_connection, stderr):
-        with self.assertRaises(SystemExit) as ex:
-            anon_handle_latest_build(self.options, self.session, [self.tag_name])
-        self.assertExitCode(ex, 2)
-        actual = stderr.getvalue()
-        expected_stderr = \
-            self.expected_part_help + "%s: error: A tag name and package name must " \
-                                      "be specified\n" % self.progname
-        self.assertMultiLineEqual(actual, expected_stderr)
-        activate_session_mock.assert_not_called()
-        ensure_connection.called_once()
+    def test_handle_latest_build_more_args(self):
+        expected = "%s: error: A tag name and package name must be specified\n" % self.progname
+        self.assert_system_exit(
+            anon_handle_latest_build,
+            self.options, self.session, [self.tag_name],
+            stdout='',
+            stderr=self.expected_part_help + expected,
+            exit_code=2,
+            activate_session=None)
+        self.activate_session_mock.assert_not_called()
+        self.ensure_connection.called_once()
 
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.ensure_connection')
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_latest_build_all_and_pkg(self, activate_session_mock, ensure_connection,
-                                             stderr):
-        with self.assertRaises(SystemExit) as ex:
-            anon_handle_latest_build(self.options, self.session,
-                                     ['--all', self.tag_name, self.pkg_name])
-        self.assertExitCode(ex, 2)
-        actual = stderr.getvalue()
-        expected_stderr = \
-            self.expected_part_help + "%s: error: A package name may not be combined " \
-                                      "with --all\n" % self.progname
-        self.assertMultiLineEqual(actual, expected_stderr)
-        activate_session_mock.assert_not_called()
-        ensure_connection.called_once()
+    def test_handle_latest_build_all_and_pkg(self):
+        expected = "%s: error: A package name may not be combined with --all\n" % self.progname
+        self.assert_system_exit(
+            anon_handle_latest_build,
+            self.options, self.session, ['--all', self.tag_name, self.pkg_name],
+            stdout='',
+            stderr=self.expected_part_help + expected,
+            exit_code=2,
+            activate_session=None)
+        self.activate_session_mock.assert_not_called()
+        self.ensure_connection.called_once()
 
     def test_handle_latest_build_help(self):
         self.assert_help(

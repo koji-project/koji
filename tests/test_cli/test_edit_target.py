@@ -16,6 +16,12 @@ class TestEditTarget(utils.CliTestCase):
         self.options.debug = False
         self.session = mock.MagicMock()
         self.session.getAPIVersion.return_value = koji.API_VERSION
+        self.activate_session_mock = mock.patch('koji_cli.commands.activate_session').start()
+        self.error_format = """Usage: %s edit-target [options] <name>
+(Specify the --help global option for a list of other help options)
+
+%s: error: {message}
+""" % (self.progname, self.progname)
         self.build_target_info = {'build_tag': 444,
                                   'build_tag_name': 'test-tag',
                                   'dest_tag': 445,
@@ -30,132 +36,157 @@ class TestEditTarget(utils.CliTestCase):
                                'extra': {},
                                'id': 1,
                                'name': 'new-build-tag'}
+        self.target = 'test-target'
+        self.dest_tag = 'test-dest-tag'
+        self.new_target_name = 'new-test-target'
+        self.new_dest_tag = 'new-dest-tag'
+        self.new_build_tag = 'new-build-tag'
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_edit_target_without_option(self, stderr):
-        expected = "Usage: %s edit-target [options] <name>\n" \
-                   "(Specify the --help global option for a list of other help options)\n\n" \
-                   "%s: error: Please specify a build target\n" % (self.progname, self.progname)
-        with self.assertRaises(SystemExit) as ex:
-            handle_edit_target(self.options, self.session, [])
-        self.assertExitCode(ex, 2)
-        self.assert_console_message(stderr, expected)
-
-    def test_edit_target_non_exist_target(self):
-        target = 'test-target'
-        expected = "No such build target: %s" % target
-        self.session.getBuildTarget.return_value = None
-        with self.assertRaises(koji.GenericError) as cm:
-            handle_edit_target(self.options, self.session, [target])
-        self.assertEqual(expected, str(cm.exception))
+    def test_edit_target_without_option(self):
+        expected = self.format_error_message("Please specify a build target")
+        self.assert_system_exit(
+            handle_edit_target,
+            self.options,
+            self.session,
+            [],
+            stdout='',
+            stderr=expected,
+            activate_session=None,
+            exit_code=2
+        )
+        self.activate_session_mock.assert_not_called()
+        self.session.getBuildTarget.assert_not_called()
         self.session.getTag.assert_not_called()
         self.session.editBuildTarget.assert_not_called()
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_edit_target_non_exist_dest_tag(self, stderr):
-        target = 'test-target'
-        dest_tag = 'test-dest-tag'
-        expected = "No such destination tag: %s\n" % dest_tag
+    def test_edit_target_non_exist_target(self):
+        expected = "No such build target: %s" % self.target
+        self.session.getBuildTarget.return_value = None
+        with self.assertRaises(koji.GenericError) as cm:
+            handle_edit_target(self.options, self.session, [self.target])
+        self.assertEqual(expected, str(cm.exception))
+        self.session.getBuildTarget.assert_called_once_with(self.target)
+        self.session.getTag.assert_not_called()
+        self.session.editBuildTarget.assert_not_called()
+        self.activate_session_mock.assert_called_with(self.session, self.options)
+
+    def test_edit_target_non_exist_dest_tag(self):
         self.session.getTag.return_value = None
-        with self.assertRaises(SystemExit) as ex:
-            handle_edit_target(self.options, self.session, ['--dest-tag', dest_tag, target])
-        self.assertExitCode(ex, 1)
-        self.assert_console_message(stderr, expected)
+        self.assert_system_exit(
+            handle_edit_target,
+            self.options,
+            self.session,
+            ['--dest-tag', self.dest_tag, self.target],
+            stdout='',
+            stderr="No such destination tag: %s\n" % self.dest_tag,
+            activate_session=None,
+            exit_code=1
+        )
+        self.session.getBuildTarget.assert_called_once_with(self.target)
+        self.session.getTag.assert_called_once_with(self.dest_tag)
         self.session.editBuildTarget.assert_not_called()
+        self.activate_session_mock.assert_called_with(self.session, self.options)
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_edit_target_without_perms(self, stderr):
+    def test_edit_target_without_perms(self):
         side_effect_result = [False, False]
-
-        target = 'test-target'
         self.session.hasPerm.side_effect = side_effect_result
-        with self.assertRaises(SystemExit) as ex:
-            handle_edit_target(self.options, self.session, [target])
-        self.assertExitCode(ex, 2)
-        expected_msg = """Usage: %s edit-target [options] <name>
-(Specify the --help global option for a list of other help options)
-
-%s: error: This action requires target or admin privileges
-""" % (self.progname, self.progname)
-        self.assert_console_message(stderr, expected_msg)
+        expected = self.format_error_message("This action requires target or admin privileges")
+        self.assert_system_exit(
+            handle_edit_target,
+            self.options,
+            self.session,
+            [self.target],
+            stdout='',
+            stderr=expected,
+            activate_session=None,
+            exit_code=2
+        )
         self.session.editBuildTarget.assert_not_called()
+        self.session.getTag.assert_not_called()
         self.session.getBuildTarget.assert_not_called()
+        self.activate_session_mock.assert_called_with(self.session, self.options)
 
     @mock.patch('sys.stdout', new_callable=StringIO)
     def test_edit_target_new_name(self, stdout):
-        target = 'test-target'
-        new_target_name = 'new-test-target'
         self.session.getBuildTarget.return_value = self.build_target_info
-        rv = handle_edit_target(self.options, self.session, ['--rename', new_target_name, target])
+        rv = handle_edit_target(self.options, self.session, ['--rename', self.new_target_name,
+                                                             self.target])
         self.assertEqual(rv, None)
         expected_msg = ''
         self.assert_console_message(stdout, expected_msg)
         self.session.getTag.assert_not_called()
-        self.session.getBuildTarget.assert_called_once_with(target)
+        self.session.getBuildTarget.assert_called_once_with(self.target)
         self.session.editBuildTarget.assert_called_once_with(
-            self.build_target_info['orig_name'], new_target_name,
+            self.build_target_info['orig_name'], self.new_target_name,
             self.build_target_info['build_tag_name'], self.build_target_info['dest_tag_name'])
+        self.activate_session_mock.assert_called_with(self.session, self.options)
 
     @mock.patch('sys.stdout', new_callable=StringIO)
     def test_edit_target_dest_tag(self, stdout):
-        target = 'test-target'
-        new_dest_tag = 'new-dest-tag'
         self.session.getBuildTarget.return_value = self.build_target_info
         self.session.getTag.return_value = self.dest_tag_info
-        rv = handle_edit_target(self.options, self.session, ['--dest-tag', new_dest_tag, target])
+        rv = handle_edit_target(self.options, self.session, ['--dest-tag', self.new_dest_tag,
+                                                             self.target])
         self.assertEqual(rv, None)
         expected_msg = ''
         self.assert_console_message(stdout, expected_msg)
-        self.session.getTag.assert_called_once_with(new_dest_tag)
-        self.session.getBuildTarget.assert_called_once_with(target)
+        self.session.getTag.assert_called_once_with(self.new_dest_tag)
+        self.session.getBuildTarget.assert_called_once_with(self.target)
         self.session.editBuildTarget.assert_called_once_with(
             self.build_target_info['orig_name'], self.build_target_info['name'],
             self.build_target_info['build_tag_name'], self.build_target_info['dest_tag_name'])
+        self.activate_session_mock.assert_called_with(self.session, self.options)
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_edit_target_non_exist_build_tag(self, stderr):
-        target = 'test-target'
-        new_build_tag = 'new-build-tag'
+    def test_edit_target_non_exist_build_tag(self):
         self.session.getBuildTarget.return_value = self.build_target_info
         self.session.getTag.return_value = None
-        with self.assertRaises(SystemExit) as ex:
-            handle_edit_target(self.options, self.session, ['--build-tag', new_build_tag, target])
-        self.assertExitCode(ex, 1)
-        expected_msg = "No such tag: %s\n" % new_build_tag
-        self.assert_console_message(stderr, expected_msg)
-        self.session.getTag.assert_called_once_with(new_build_tag)
-        self.session.getBuildTarget.assert_called_once_with(target)
+        self.assert_system_exit(
+            handle_edit_target,
+            self.options,
+            self.session,
+            ['--build-tag', self.new_build_tag, self.target],
+            stdout='',
+            stderr="No such tag: %s\n" % self.new_build_tag,
+            activate_session=None,
+            exit_code=1
+        )
+        self.session.getTag.assert_called_once_with(self.new_build_tag)
+        self.session.getBuildTarget.assert_called_once_with(self.target)
         self.session.editBuildTarget.assert_not_called()
+        self.activate_session_mock.assert_called_with(self.session, self.options)
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_edit_target_tag_arch_none(self, stderr):
-        target = 'test-target'
-        new_build_tag = 'new-build-tag'
+    def test_edit_target_tag_arch_none(self):
         build_tag_info = copy.deepcopy(self.build_tag_info)
         build_tag_info['arches'] = ''
         self.session.getBuildTarget.return_value = self.build_target_info
         self.session.getTag.return_value = build_tag_info
-        with self.assertRaises(SystemExit) as ex:
-            handle_edit_target(self.options, self.session, ['--build-tag', new_build_tag, target])
-        self.assertExitCode(ex, 1)
-        expected_msg = "Build tag has no arches: %s\n" % new_build_tag
-        self.assert_console_message(stderr, expected_msg)
-        self.session.getTag.assert_called_once_with(new_build_tag)
-        self.session.getBuildTarget.assert_called_once_with(target)
+        self.assert_system_exit(
+            handle_edit_target,
+            self.options,
+            self.session,
+            ['--build-tag', self.new_build_tag, self.target],
+            stdout='',
+            stderr="Build tag has no arches: %s\n" % self.new_build_tag,
+            activate_session=None,
+            exit_code=1
+        )
+        self.session.getTag.assert_called_once_with(self.new_build_tag)
+        self.session.getBuildTarget.assert_called_once_with(self.target)
         self.session.editBuildTarget.assert_not_called()
+        self.activate_session_mock.assert_called_with(self.session, self.options)
 
     @mock.patch('sys.stdout', new_callable=StringIO)
     def test_edit_target_build_tag_valid(self, stdout):
-        target = 'test-target'
-        new_build_tag = 'new-build-tag'
         self.session.getBuildTarget.return_value = self.build_target_info
         self.session.getTag.return_value = self.build_tag_info
-        rv = handle_edit_target(self.options, self.session, ['--build-tag', new_build_tag, target])
+        rv = handle_edit_target(self.options, self.session, ['--build-tag', self.new_build_tag,
+                                                             self.target])
         self.assertEqual(rv, None)
         expected_msg = ''
         self.assert_console_message(stdout, expected_msg)
-        self.session.getTag.assert_called_once_with(new_build_tag)
-        self.session.getBuildTarget.assert_called_once_with(target)
+        self.session.getTag.assert_called_once_with(self.new_build_tag)
+        self.session.getBuildTarget.assert_called_once_with(self.target)
         self.session.editBuildTarget.assert_called_once_with(
             self.build_target_info['orig_name'], self.build_target_info['name'],
             self.build_target_info['build_tag_name'], self.build_target_info['dest_tag_name'])
+        self.activate_session_mock.assert_called_with(self.session, self.options)

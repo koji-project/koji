@@ -17,12 +17,10 @@ class TestListCommands(unittest.TestCase):
         self.original_parser = cli.OptionParser
         cli.OptionParser = mock.MagicMock()
         self.parser = cli.OptionParser.return_value
+        self.maxDiff = None
 
     def tearDown(self):
         cli.OptionParser = self.original_parser
-
-    # Show long diffs in error output...
-    maxDiff = None
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     def test_list_commands(self, stdout):

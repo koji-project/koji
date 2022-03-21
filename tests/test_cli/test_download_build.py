@@ -14,6 +14,11 @@ class TestDownloadBuild(utils.CliTestCase):
         self.options.debug = False
         self.session = mock.MagicMock()
         self.session.getAPIVersion.return_value = koji.API_VERSION
+        self.error_format = """Usage: %s download-build [options] <n-v-r | build_id | package>
+(Specify the --help global option for a list of other help options)
+
+%s: error: {message}
+""" % (self.progname, self.progname)
 
         self.build_templ = {
             'package_name': 'bash',
@@ -37,19 +42,46 @@ class TestDownloadBuild(utils.CliTestCase):
                            'size': 7030,
                            'nvr': 'test-rpm-1.1-11'
                            }
+        self.listbuilds = [{'build_id': 1,
+                            'epoch': 17,
+                            'extra': None,
+                            'name': 'test-build',
+                            'nvr': 'test-build-1-11.f35',
+                            'owner_id': 1,
+                            'owner_name': 'testuser',
+                            'package_id': 4,
+                            'package_name': 'test-build',
+                            'release': '11.f35',
+                            'state': 1,
+                            'task_id': 3,
+                            'version': '1', }]
         self.sigkey = 'testkey'
         self.tag = 'test-tag'
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_download_build_without_option(self, stderr):
-        expected = "Usage: %s download-build [options] <n-v-r | build_id | package>\n" \
-                   "(Specify the --help global option for a list of other help options)\n\n" \
-                   "%s: error: Please specify a package N-V-R or build ID\n" \
-                   % (self.progname, self.progname)
-        with self.assertRaises(SystemExit) as ex:
-            anon_handle_download_build(self.options, self.session, [])
-        self.assertExitCode(ex, 2)
-        self.assert_console_message(stderr, expected)
+    def test_download_build_without_argument(self):
+        expected = self.format_error_message("Please specify a package N-V-R or build ID")
+        self.assert_system_exit(
+            anon_handle_download_build,
+            self.options,
+            self.session,
+            [],
+            stderr=expected,
+            activate_session=None,
+            exit_code=2
+        )
+
+    def test_download_build_more_arguments(self):
+        expected = self.format_error_message(
+            "Only a single package N-V-R or build ID may be specified")
+        self.assert_system_exit(
+            anon_handle_download_build,
+            self.options,
+            self.session,
+            ['1', '2'],
+            stderr=expected,
+            activate_session=None,
+            exit_code=2
+        )
 
     def __vm(self, result):
         m = koji.VirtualCall('mcall_method', [], {})
@@ -73,50 +105,86 @@ class TestDownloadBuild(utils.CliTestCase):
         self.assertEqual(rv, None)
         self.assert_console_message(stderr, expected)
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_download_build_without_rpm(self, stderr):
+    def test_download_build_without_rpm(self):
         build_id = '1'
         expected = "No such rpm: %s\n" % build_id
         self.session.getRPM.return_value = None
-        with self.assertRaises(SystemExit) as ex:
-            anon_handle_download_build(self.options, self.session, ['--rpm', build_id])
-        self.assertExitCode(ex, 1)
-        self.assert_console_message(stderr, expected)
+        self.assert_system_exit(
+            anon_handle_download_build,
+            self.options,
+            self.session,
+            ['--rpm', build_id],
+            stderr=expected,
+            activate_session=None,
+            exit_code=1
+        )
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_download_build_no_build(self, stderr):
+    def test_download_build_no_build(self):
         build_id = '1'
         expected = "No such build: %s\n" % build_id
         self.session.getRPM.return_value = self.getrpminfo
         self.session.getBuild.return_value = None
-        with self.assertRaises(SystemExit) as ex:
-            anon_handle_download_build(self.options, self.session, [build_id])
-        self.assertExitCode(ex, 1)
-        self.assert_console_message(stderr, expected)
+        self.assert_system_exit(
+            anon_handle_download_build,
+            self.options,
+            self.session,
+            [build_id],
+            stderr=expected,
+            activate_session=None,
+            exit_code=1
+        )
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_download_build_latest_from_no_build(self, stderr):
+    def test_download_build_latest_from_no_build(self):
         nvr = self.build_templ['nvr']
         expected = "%s has no builds of %s\n" % (self.tag, nvr)
         self.session.getRPM.return_value = self.getrpminfo
         self.session.listTagged.return_value = []
-        with self.assertRaises(SystemExit) as ex:
-            anon_handle_download_build(self.options, self.session, [nvr, '--latestfrom', self.tag])
-        self.assertExitCode(ex, 1)
-        self.assert_console_message(stderr, expected)
+        self.assert_system_exit(
+            anon_handle_download_build,
+            self.options,
+            self.session,
+            [nvr, '--latestfrom', self.tag],
+            stderr=expected,
+            activate_session=None,
+            exit_code=1
+        )
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_download_build_latest_from_build_id(self, stderr):
+    def test_download_build_latest_from_build_id(self):
         build_id = '1'
-        expected = "Usage: %s download-build [options] <n-v-r | build_id | package>\n" \
-                   "(Specify the --help global option for a list of other help options)\n\n" \
-                   "%s: error: --latestfrom not compatible with build IDs, " \
-                   "specify a package name.\n" % (self.progname, self.progname)
-        with self.assertRaises(SystemExit) as ex:
-            anon_handle_download_build(self.options, self.session, [build_id, '--latestfrom',
-                                                                    self.tag])
-        self.assertExitCode(ex, 2)
-        self.assert_console_message(stderr, expected)
+        expected = self.format_error_message(
+            "--latestfrom not compatible with build IDs, specify a package name.")
+        self.assert_system_exit(
+            anon_handle_download_build,
+            self.options,
+            self.session,
+            [build_id, '--latestfrom', self.tag],
+            stderr=expected,
+            activate_session=None,
+            exit_code=2
+        )
+
+    @mock.patch('sys.stdout', new_callable=StringIO)
+    @mock.patch('sys.stderr', new_callable=StringIO)
+    def test_download_task_id(self, stderr, stdout):
+        build_id = '1'
+        self.session.listBuilds.return_value = self.listbuilds
+        anon_handle_download_build(self.options, self.session, ['--task-id', build_id])
+        self.assert_console_message(stdout, "")
+        self.assert_console_message(stderr, "")
+
+    def test_download_no_asociated_build_task(self):
+        build_id = '1'
+        self.session.listBuilds.return_value = []
+        self.assert_system_exit(
+            anon_handle_download_build,
+            self.options,
+            self.session,
+            ['--task-id', build_id],
+            stderr='No associated builds for task %s\n' % build_id,
+            stdout='',
+            activate_session=None,
+            exit_code=1
+        )
 
     def test_handle_add_volume_help(self):
         self.assert_help(

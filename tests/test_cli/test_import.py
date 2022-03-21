@@ -8,18 +8,17 @@ import koji
 from koji_cli.commands import handle_import
 from . import utils
 
+
 def md5_to_bytes(s):
     if six.PY2:
         return bytearray.fromhex(unicode(s))
     else:
         return bytearray.fromhex(s)
 
+
 class TestImport(utils.CliTestCase):
-
-    # Show long diffs in error output...
-    maxDiff = None
-
     def setUp(self):
+        self.maxDiff = None
         self.huburl = "https://%s.local/%shub" % (self.progname, self.progname)
         self.md5 = '00112233445566778899aabbccddeeff'
         self.fake_srv_dir = '/path/to/server/import'
@@ -133,7 +132,7 @@ class TestImport(utils.CliTestCase):
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
     def __skip_import_test(self, options, session, arguments, activate_session_mock,
-                           stderr, stdout,  **kwargs):
+                           stderr, stdout, **kwargs):
         expected = kwargs.get('expected', None)
         expected_warn = kwargs.get('expected_warn', None)
         rpm_header = kwargs.get('rpm_header', {})

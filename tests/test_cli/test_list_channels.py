@@ -18,6 +18,7 @@ class TestListChannels(utils.CliTestCase):
         self.options.quiet = True
         self.session = mock.MagicMock()
         self.session.getAPIVersion.return_value = koji.API_VERSION
+        self.ensure_connection_mock = mock.patch('koji_cli.commands.ensure_connection').start()
         self.list_channels = [
             {'id': 1, 'name': 'default', 'enabled': True, 'comment': 'test-comment-1',
              'description': 'test-description-1'},
@@ -45,8 +46,7 @@ class TestListChannels(utils.CliTestCase):
         ]
 
     @mock.patch('sys.stdout', new_callable=StringIO)
-    @mock.patch('koji_cli.commands.ensure_connection')
-    def test_list_channels_not_quiet(self, ensure_connection_mock, stdout):
+    def test_list_channels_not_quiet(self, stdout):
         self.session.listChannels.return_value = self.list_channels
         self.session.multiCall.return_value = self.list_hosts_mc
         args = []
@@ -55,51 +55,45 @@ class TestListChannels(utils.CliTestCase):
         anon_handle_list_channels(self.options, self.session, args)
 
         actual = stdout.getvalue()
-        print(actual)
         expected = "Channel        Enabled  Ready Disbld   Load    Cap   Perc    \n" \
                    "default              3      1      0      1      6     22%\n" \
                    "test [disabled]      2      2      1      1      6     28%\n"
 
         self.assertMultiLineEqual(actual, expected)
-        ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
 
     @mock.patch('sys.stdout', new_callable=StringIO)
-    @mock.patch('koji_cli.commands.ensure_connection')
-    def test_list_channels_with_comment(self, ensure_connection_mock, stdout):
+    def test_list_channels_with_comment(self, stdout):
         self.session.listChannels.return_value = self.list_channels
         self.session.multiCall.return_value = self.list_hosts_mc
         args = ['--comment']
         anon_handle_list_channels(self.options, self.session, args)
 
         actual = stdout.getvalue()
-        print(actual)
         expected = 'default              3      1      0      1      6     22%   ' \
                    'test-comment-1                                    \n' \
                    'test [disabled]      2      2      1      1      6     28%   ' \
                    'test-comment-2                                    \n'
         self.assertMultiLineEqual(actual, expected)
-        ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
 
     @mock.patch('sys.stdout', new_callable=StringIO)
-    @mock.patch('koji_cli.commands.ensure_connection')
-    def test_list_channels_with_description(self, ensure_connection_mock, stdout):
+    def test_list_channels_with_description(self, stdout):
         self.session.listChannels.return_value = self.list_channels
         self.session.multiCall.return_value = self.list_hosts_mc
         args = ['--description']
         anon_handle_list_channels(self.options, self.session, args)
 
         actual = stdout.getvalue()
-        print(actual)
         expected = 'default              3      1      0      1      6     22%   ' \
                    'test-description-1                                \n' \
                    'test [disabled]      2      2      1      1      6     28%   ' \
                    'test-description-2                                \n'
         self.assertMultiLineEqual(actual, expected)
-        ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
 
     @mock.patch('sys.stdout', new_callable=StringIO)
-    @mock.patch('koji_cli.commands.ensure_connection')
-    def test_list_channels_with_comment_desc_not_quiet(self, ensure_connection_mock, stdout):
+    def test_list_channels_with_comment_desc_not_quiet(self, stdout):
         self.session.listChannels.return_value = self.list_channels
         self.session.multiCall.return_value = self.list_hosts_mc
         args = ['--description', '--comment']
@@ -108,7 +102,6 @@ class TestListChannels(utils.CliTestCase):
         anon_handle_list_channels(self.options, self.session, args)
 
         actual = stdout.getvalue()
-        print(actual)
         expected = "Channel        Enabled  Ready Disbld   Load    Cap   Perc    " \
                    "Description                                          " \
                    "Comment                                              \n" \
@@ -119,11 +112,10 @@ class TestListChannels(utils.CliTestCase):
                    "test-description-2                                   " \
                    "test-comment-2                                    \n"
         self.assertMultiLineEqual(actual, expected)
-        ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
 
     @mock.patch('sys.stdout', new_callable=StringIO)
-    @mock.patch('koji_cli.commands.ensure_connection')
-    def test_list_channels_with_enabled_hub_without_enabled(self, ensure_connection_mock, stdout):
+    def test_list_channels_with_enabled_hub_without_enabled(self, stdout):
         self.session.listChannels.side_effect = [koji.ParameterError,
                                                  self.list_channels_without_enabled]
         self.session.multiCall.return_value = self.list_hosts_mc
@@ -131,15 +123,13 @@ class TestListChannels(utils.CliTestCase):
         anon_handle_list_channels(self.options, self.session, args)
 
         actual = stdout.getvalue()
-        print(actual)
         expected = 'default      3      1      0      1      6     22%\n' \
                    'test         2      2      1      1      6     28%\n'
         self.assertMultiLineEqual(actual, expected)
-        ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
 
     @mock.patch('sys.stdout', new_callable=StringIO)
-    @mock.patch('koji_cli.commands.ensure_connection')
-    def test_list_channels_with_enabled(self, ensure_connection_mock, stdout):
+    def test_list_channels_with_enabled(self, stdout):
         list_channel_enabled = [
             {'id': 1, 'name': 'default', 'enabled': True, 'comment': 'test-comment-1',
              'description': 'test-description-1'},
@@ -157,14 +147,12 @@ class TestListChannels(utils.CliTestCase):
         anon_handle_list_channels(self.options, self.session, args)
 
         actual = stdout.getvalue()
-        print(actual)
         expected = 'default      3      1      0      1      6     22%\n'
         self.assertMultiLineEqual(actual, expected)
-        ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
 
     @mock.patch('sys.stdout', new_callable=StringIO)
-    @mock.patch('koji_cli.commands.ensure_connection')
-    def test_list_channels_with_disabled(self, ensure_connection_mock, stdout):
+    def test_list_channels_with_disabled(self, stdout):
         list_channel_disabled = [
             {'id': 2, 'name': 'test', 'enabled': False, 'comment': 'test-comment-2',
              'description': 'test-description-2'},
@@ -182,14 +170,12 @@ class TestListChannels(utils.CliTestCase):
         anon_handle_list_channels(self.options, self.session, args)
 
         actual = stdout.getvalue()
-        print(actual)
         expected = 'test [disabled]      2      2      1      1      6     28%\n'
         self.assertMultiLineEqual(actual, expected)
-        ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
 
     @mock.patch('sys.stdout', new_callable=StringIO)
-    @mock.patch('koji_cli.commands.ensure_connection')
-    def test_list_channels_with_empty_channels(self, ensure_connection_mock, stdout):
+    def test_list_channels_with_empty_channels(self, stdout):
         list_channels = []
         list_hosts_mc = [[[]]]
         self.session.listChannels.return_value = list_channels
@@ -198,14 +184,12 @@ class TestListChannels(utils.CliTestCase):
         anon_handle_list_channels(self.options, self.session, args)
 
         actual = stdout.getvalue()
-        print(actual)
         expected = ''
         self.assertMultiLineEqual(actual, expected)
-        ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
 
     @mock.patch('sys.stdout', new_callable=StringIO)
-    @mock.patch('koji_cli.commands.ensure_connection')
-    def test_list_channels_simple_without_quiet(self, ensure_connection_mock, stdout):
+    def test_list_channels_simple_without_quiet(self, stdout):
         self.session.listChannels.return_value = self.list_channels
         self.session.multiCall.return_value = self.list_hosts_mc
         self.options.quiet = False
@@ -214,17 +198,15 @@ class TestListChannels(utils.CliTestCase):
         anon_handle_list_channels(self.options, self.session, args)
 
         actual = stdout.getvalue()
-        print(actual)
         expected = """Channel
 default
 test [disabled]
 """
         self.assertMultiLineEqual(actual, expected)
-        ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
 
     @mock.patch('sys.stdout', new_callable=StringIO)
-    @mock.patch('koji_cli.commands.ensure_connection')
-    def test_list_channels_simple_with_quiet(self, ensure_connection_mock, stdout):
+    def test_list_channels_simple_with_quiet(self, stdout):
         self.session.listChannels.return_value = self.list_channels
         self.session.multiCall.return_value = self.list_hosts_mc
         args = ['--simple', '--quiet']
@@ -232,12 +214,11 @@ test [disabled]
         anon_handle_list_channels(self.options, self.session, args)
 
         actual = stdout.getvalue()
-        print(actual)
         expected = """default
 test [disabled]
 """
         self.assertMultiLineEqual(actual, expected)
-        ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
 
     def test_list_channels_help(self):
         self.assert_help(

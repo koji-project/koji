@@ -16,10 +16,6 @@ import os
 
 
 class TestImportSIG(utils.CliTestCase):
-
-    # Show long diffs in error output...
-    maxDiff = None
-
     def md5sum(self, message):
         md5 = hashlib.md5()
         md5.update(message.encode('utf-8'))
@@ -31,6 +27,10 @@ class TestImportSIG(utils.CliTestCase):
         return self.os_path_exists(filepath)
 
     def setUp(self):
+        self.maxDiff = None
+        self.options = mock.MagicMock()
+        self.session = mock.MagicMock()
+        self.activate_session_mock = mock.patch('koji_cli.commands.activate_session').start()
         self.custom_os_path_exists = {}
         self.os_path_exists = os.path.exists
 
@@ -81,18 +81,15 @@ class TestImportSIG(utils.CliTestCase):
     @mock.patch('koji.rip_rpm_sighdr')
     @mock.patch('koji.get_sigpacket_key_id')
     @mock.patch('koji.get_header_fields')
-    @mock.patch('koji_cli.commands.activate_session')
     def test_handle_import_sig(
             self,
-            activate_session_mock,
             get_header_fields_mock,
             get_sigpacket_key_id_mock,
             rip_rpm_sighdr_mock,
             stdout, stderr):
         """Test handle_import_sig function"""
         arguments = ['/path/to/bash', '/path/to/less', '/path/to/sed']
-        options = mock.MagicMock()
-        session = mock.MagicMock()
+
         expected = ''
         fake_sigkey = '00112233445566778899aAbBcCdDeEfF'
 
@@ -102,8 +99,7 @@ class TestImportSIG(utils.CliTestCase):
         self.custom_os_path_exists = dict((f, True) for f in arguments)
 
         # setup and start os.path.exists patch
-        os_path_exists_patch = mock.patch('os.path.exists',
-                                          new=self.mock_os_path_exists)
+        os_path_exists_patch = mock.patch('os.path.exists', new=self.mock_os_path_exists)
         os_path_exists_patch.start()
 
         # Case 1, Unsigned pkg test (without ----with-unsigned)
@@ -114,12 +110,12 @@ class TestImportSIG(utils.CliTestCase):
         get_header_fields_mock.side_effect = copy.deepcopy(self.rpm_headers)
 
         # Run
-        handle_import_sig(options, session, arguments)
+        handle_import_sig(self.options, self.session, arguments)
 
         self.assert_console_message(stdout, expected)
-        activate_session_mock.assert_called_once()
+        self.activate_session_mock.assert_called_once()
         rip_rpm_sighdr_mock.assert_not_called()
-        session.getRPM.assert_not_called()
+        self.session.getRPM.assert_not_called()
 
         # Case 2, No RPM in system
         # result: import skipped
@@ -136,14 +132,14 @@ class TestImportSIG(utils.CliTestCase):
 
         get_header_fields_mock.side_effect = copy.deepcopy(self.rpm_headers)
         get_sigpacket_key_id_mock.return_value = fake_sigkey
-        session.getRPM.return_value = {}
+        self.session.getRPM.return_value = {}
 
         # Run
-        handle_import_sig(options, session, arguments)
+        handle_import_sig(self.options, self.session, arguments)
 
         self.assert_console_message(stdout, expected)
         rip_rpm_sighdr_mock.assert_not_called()
-        session.queryRPMSigs.assert_not_called()
+        self.session.queryRPMSigs.assert_not_called()
 
         # Case 3, Find external repo RPM
         # result: import skipped
@@ -159,14 +155,14 @@ class TestImportSIG(utils.CliTestCase):
             expected += "Skipping external rpm: %(name)s-%(version)s-%(release)s.%(arch)s@%(external_repo_name)s" % data + "\n"
 
         get_header_fields_mock.side_effect = rinfo
-        session.getRPM.side_effect = rinfo
+        self.session.getRPM.side_effect = rinfo
 
         # Run
-        handle_import_sig(options, session, arguments)
+        handle_import_sig(self.options, self.session, arguments)
 
         self.assert_console_message(stdout, expected)
         rip_rpm_sighdr_mock.assert_not_called()
-        session.queryRPMSigs.assert_not_called()
+        self.session.queryRPMSigs.assert_not_called()
 
         # Case 4, has previous RPM signature
         # result: import skipped
@@ -196,12 +192,12 @@ class TestImportSIG(utils.CliTestCase):
             data['id'] = i + 1
 
         get_header_fields_mock.side_effect = copy.deepcopy(rinfo)
-        session.getRPM.side_effect = rinfo
+        self.session.getRPM.side_effect = rinfo
         rip_rpm_sighdr_mock.side_effect = sighdr
-        session.queryRPMSigs.side_effect = sigRpm
+        self.session.queryRPMSigs.side_effect = sigRpm
 
         # Run
-        handle_import_sig(options, session, arguments)
+        handle_import_sig(self.options, self.session, arguments)
 
         self.assert_console_message(stdout, expected)
         self.assert_console_message(stderr, expected_warn)
@@ -215,22 +211,22 @@ class TestImportSIG(utils.CliTestCase):
             expected += "Writing signed copy" + "\n"
 
         get_header_fields_mock.side_effect = copy.deepcopy(rinfo)
-        session.getRPM.side_effect = rinfo
+        self.session.getRPM.side_effect = rinfo
         rip_rpm_sighdr_mock.side_effect = sighdr
-        session.queryRPMSigs.side_effect = None
-        session.queryRPMSigs.return_value = []
+        self.session.queryRPMSigs.side_effect = None
+        self.session.queryRPMSigs.return_value = []
 
         # Run
-        handle_import_sig(options, session, arguments + ['--test'])
+        handle_import_sig(self.options, self.session, arguments + ['--test'])
 
         self.assert_console_message(stdout, expected)
-        session.addRPMSig.assert_not_called()
-        session.writeSignedRPM.assert_not_called()
+        self.session.addRPMSig.assert_not_called()
+        self.session.writeSignedRPM.assert_not_called()
 
         # Case 6, normal import
         # result: addRPMSig/writeSignedRPM should be called
         get_header_fields_mock.side_effect = copy.deepcopy(rinfo)
-        session.getRPM.side_effect = rinfo
+        self.session.getRPM.side_effect = rinfo
         rip_rpm_sighdr_mock.side_effect = sighdr
 
         add_sig_calls, write_sig_calls = [], []
@@ -239,36 +235,29 @@ class TestImportSIG(utils.CliTestCase):
             write_sig_calls.append(call(rinfo[i]['id'], fake_sigkey))
 
         # Run
-        handle_import_sig(options, session, arguments)
+        handle_import_sig(self.options, self.session, arguments)
 
         self.assert_console_message(stdout, expected)
-        session.addRPMSig.assert_has_calls(add_sig_calls)
-        session.writeSignedRPM.assert_has_calls(write_sig_calls)
+        self.session.addRPMSig.assert_has_calls(add_sig_calls)
+        self.session.writeSignedRPM.assert_has_calls(write_sig_calls)
 
         # restore os.path.exists patch
         os_path_exists_patch.stop()
 
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_import_sig_sigkey_from_header_signed(
-            self,
-            activate_session_mock,
-            stdout, stderr):
+    def test_handle_import_sig_sigkey_from_header_signed(self, stdout):
         """Test sigkey computation from header-only signed rpm in handle_import_sig function"""
         data_path = os.path.abspath("tests/test_hub/data/rpms")
         arguments = [os.path.join(data_path, 'header-signed.rpm')]
         sigkey = '15f712be'
 
-        options = mock.MagicMock()
-        session = mock.MagicMock()
         expected = ''
 
         for pkg in arguments:
             expected += "Importing signature [key %s] from %s..." % (sigkey, pkg) + "\n"
             expected += "Writing signed copy" + "\n"
 
-        session.getRPM.side_effect = [
+        self.session.getRPM.side_effect = [
             {
                 'sourcepackage': 0,
                 'name': 'testpkg',
@@ -279,43 +268,32 @@ class TestImportSIG(utils.CliTestCase):
                 'id': 1,
             }
         ]
-        session.queryRPMSigs.side_effect = None
-        session.queryRPMSigs.return_value = []
+        self.session.queryRPMSigs.side_effect = None
+        self.session.queryRPMSigs.return_value = []
 
         # Run
-        handle_import_sig(options, session, arguments + ['--test'])
+        handle_import_sig(self.options, self.session, arguments + ['--test'])
 
         self.assert_console_message(stdout, expected)
-        session.addRPMSig.assert_not_called()
-        session.writeSignedRPM.assert_not_called()
+        self.session.addRPMSig.assert_not_called()
+        self.session.writeSignedRPM.assert_not_called()
 
     def test_handle_import_sig_argument_test(self):
         """Test handle_import_sig function without arguments"""
-        options = mock.MagicMock()
-        session = mock.MagicMock()
-
         # Case 1. empty argument
-        expected = self.format_error_message(
-            "At least one package must be specified")
-
         self.assert_system_exit(
             handle_import_sig,
-            options,
-            session,
-            [],
-            stderr=expected,
-            activate_session=None)
+            self.options, self.session, [],
+            stderr=self.format_error_message("At least one package must be specified"),
+            activate_session=None,
+            exit_code=2)
 
         # Case 2. File not exists test
         arguments = ['/bin/ls', '/tmp', '/path/to/file1', '/path/to/file2']
-        expected = self.format_error_message(
-            "No such file: %s" % arguments[2])
         self.assert_system_exit(
             handle_import_sig,
-            options,
-            session,
-            arguments,
-            stderr=expected,
+            self.options, self.session, arguments,
+            stderr=self.format_error_message("No such file: %s" % arguments[2]),
             activate_session=None)
 
     def test_handle_import_sig_help(self):
