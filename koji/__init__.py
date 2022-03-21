@@ -977,6 +977,10 @@ def splice_rpm_sighdr(sighdr, src, dst=None, bufsize=8192):
                 break
             dst_fo.write(buf)
     if dst is not None:
+        src_stats = os.stat(src)
+        dst_temp_stats = os.stat(dst_temp)
+        if src_stats.st_mode != dst_temp_stats.st_mode:
+            os.chmod(dst_temp, src_stats.st_mode)
         os.rename(dst_temp, dst)
     else:
         dst = dst_temp
