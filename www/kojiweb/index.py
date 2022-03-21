@@ -690,8 +690,6 @@ def taskinfo(environ, taskID):
     if task['method'] in ('buildArch', 'buildMaven', 'buildSRPMFromSCM'):
         if len(params) > 1:
             tag_id = params[1]
-            if isinstance(tag_id, dict):
-                tag_id = tag_id.get('id')
             try:
                 values['buildTag'] = server.getTag(tag_id, strict=True)
             except koji.GenericError:
@@ -728,6 +726,10 @@ def taskinfo(environ, taskID):
             values['wrapTask'] = wrapTask
     elif task['method'] == 'restartVerify':
         values['rtask'] = server.getTaskInfo(params[0], request=True)
+    elif task['method'] == 'build':
+        if len(params) > 1:
+            if isinstance(params[1], dict):
+                params[1] = params[1].get('name')
 
     values['taskBuilds'] = []
     if task['state'] in (koji.TASK_STATES['CLOSED'], koji.TASK_STATES['FAILED']):
