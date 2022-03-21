@@ -26,3 +26,11 @@ class ServerError(Exception):
 
 class ServerRedirect(ServerError):
     """Used to handle redirects"""
+
+
+class BadRequest(ServerError):
+    """Used to trigger an http 400 error"""
+
+
+class RequestTimeout(ServerError):
+    """Used to trigger an http 408 error"""
