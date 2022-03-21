@@ -12938,51 +12938,6 @@ class RootExports(object):
                     task[f] = data
             yield task
 
-    def taskReport(self, owner=None):
-        """Return data on active or recent tasks"""
-        logger.warning("taskReport call is deprecated and will be removed in 1.29")
-        fields = (
-            ('task.id', 'id'),
-            ('task.state', 'state'),
-            ('task.create_time', 'create_time'),
-            ('task.completion_time', 'completion_time'),
-            ('task.channel_id', 'channel_id'),
-            ('channels.name', 'channel'),
-            ('task.host_id', 'host_id'),
-            ('host.name', 'host'),
-            ('task.parent', 'parent'),
-            ('task.waiting', 'waiting'),
-            ('task.awaited', 'awaited'),
-            ('task.method', 'method'),
-            ('task.arch', 'arch'),
-            ('task.priority', 'priority'),
-            ('task.weight', 'weight'),
-            ('task.owner', 'owner_id'),
-            ('users.name', 'owner'),
-            ('build.id', 'build_id'),
-            ('package.name', 'build_name'),
-            ('build.version', 'build_version'),
-            ('build.release', 'build_release'),
-        )
-        q = """SELECT %s FROM task
-        JOIN channels ON task.channel_id = channels.id
-        JOIN users ON task.owner = users.id
-        LEFT OUTER JOIN host ON task.host_id = host.id
-        LEFT OUTER JOIN build ON build.task_id = task.id
-        LEFT OUTER JOIN package ON build.pkg_id = package.id
-        WHERE (task.state NOT IN (%%(CLOSED)d,%%(CANCELED)d,%%(FAILED)d)
-            OR NOW() - task.create_time < '1 hour'::interval)
-            """ % ','.join([f[0] for f in fields])
-        if owner:
-            q += """AND users.id = %s
-            """ % get_user(owner, strict=True)['id']
-        q += """ORDER BY priority,create_time
-        """
-        # XXX hard-coded interval
-        c = context.cnx.cursor()
-        c.execute(q, koji.TASK_STATES)
-        return [dict(zip([f[1] for f in fields], row)) for row in c.fetchall()]
-
     def resubmitTask(self, taskID):
         """Retry a canceled or failed task, using the same parameter as the original task.
         The logged-in user must be the owner of the original task or an admin."""
