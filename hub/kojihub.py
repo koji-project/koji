@@ -15515,10 +15515,12 @@ def handle_upload(environ):
                 str_e = str(e)
                 logger.error(f"Error reading upload. Offset {offset}+{size}, path {fn}")
                 if 'timeout' in str_e:
-                    logger.exception("Timed out reading input stream")
+                    logger.exception("Timed out reading input stream. "
+                            f"Content-Length: {context.environ.get('CONTENT_LENGTH')}")
                     raise RequestTimeout(str_e)
                 else:
-                    logger.exception("Error reading input stream")
+                    logger.exception("Error reading input stream. "
+                            f"Content-Length: {context.environ.get('CONTENT_LENGTH')}")
                     raise BadRequest(str_e)
             if not chunk:
                 break
