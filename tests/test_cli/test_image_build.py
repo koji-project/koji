@@ -58,6 +58,7 @@ TASK_OPTIONS = {
     "wait": None,
 }
 
+
 def mock_open():
     """Return the right patch decorator for open"""
     if six.PY2:
@@ -73,11 +74,8 @@ class Options(object):
 
 
 class TestBuildImageOz(utils.CliTestCase):
-
-    # Show long diffs in error output...
-    maxDiff = None
-
     def setUp(self):
+        self.maxDiff = None
         self.task_options = Options(TASK_OPTIONS)
         self.session = mock.MagicMock()
         self.options = mock.MagicMock()
@@ -190,37 +188,27 @@ class TestBuildImageOz(utils.CliTestCase):
     def test_build_image_oz_exception(self):
         self.session.getBuildTarget.return_value = {}
         with self.assertRaises(koji.GenericError) as cm:
-            _build_image_oz(
-                self.options, self.task_options, self.session, self.args)
-        self.assertEqual(
-            str(cm.exception), 'No such build target: %s' % self.args[2])
+            _build_image_oz(self.options, self.task_options, self.session, self.args)
+        self.assertEqual(str(cm.exception), 'No such build target: %s' % self.args[2])
 
         self.session.getBuildTarget.return_value = self.target_info
         self.session.getTag.return_value = {}
         with self.assertRaises(koji.GenericError) as cm:
-            _build_image_oz(
-                self.options, self.task_options, self.session, self.args)
-        self.assertEqual(
-            str(cm.exception),
-            'No such destination tag: %s' % self.target_info['dest_tag_name'])
+            _build_image_oz(self.options, self.task_options, self.session, self.args)
+        self.assertEqual(str(cm.exception),
+                         'No such destination tag: %s' % self.target_info['dest_tag_name'])
 
         self.session.getTag.return_value = self.tag_info
         with self.assertRaises(koji.GenericError) as cm:
             self.task_options.ksurl = None
             self.task_options.scratch = False
-            _build_image_oz(
-                self.options, self.task_options, self.session, self.args)
-        self.assertEqual(
-            str(cm.exception),
-            'Non-scratch builds must provide ksurl')
+            _build_image_oz(self.options, self.task_options, self.session, self.args)
+        self.assertEqual(str(cm.exception), 'Non-scratch builds must provide ksurl')
 
 
 class TestImageBuild(utils.CliTestCase):
-
-    # Show long diffs in error output...
-    maxDiff = None
-
     def setUp(self):
+        self.maxDiff = None
         self.options = mock.MagicMock()
         self.session = mock.MagicMock()
         self.configparser = mock.patch('six.moves.configparser.ConfigParser').start()
@@ -236,37 +224,37 @@ class TestImageBuild(utils.CliTestCase):
     def tearDown(self):
         mock.patch.stopall()
 
-    @mock.patch('koji_cli.commands._build_image_oz')
-    def test_handle_image_build_with_config(self, build_image_oz_mock):
-        """Test handle_image_build argument with --config cases"""
-
-        # Case 1, config file not exist case
+    def test_handle_image_build_with_config_error(self):
+        """Test handle_image_build argument with --config, config error"""
         with self.assertRaises(koji.ConfigurationError) as cm:
             handle_image_build(self.options,
                                self.session,
                                ['--config', '/nonexistent-file-755684354'])
         self.assertEqual(cm.exception.args[0],
                          "Config file /nonexistent-file-755684354 can't be opened.")
+        self.session.activate_session_mock.assert_not_called()
 
-
-        # Case 2, no image-build section in config file
+    def test_handle_image_build_with_config_no_image_section(self):
+        """Test handle_image_build argument with --config, no image section"""
         expected = "single section called [%s] is required" % "image-build"
 
         self.configparser.return_value = ConfigParser()
 
         self.assert_system_exit(
             handle_image_build,
-            self.options,
-            self.session,
-            ['--config',
-             os.path.join(os.path.dirname(__file__),
-                          'data/image-build-config-empty.conf')],
+            self.options, self.session, ['--config',
+                                         os.path.join(os.path.dirname(__file__),
+                                                      'data/image-build-config-empty.conf')],
             stderr=self.format_error_message(expected),
-            activate_session=None)
+            activate_session=None,
+            exit_code=2)
+        self.session.activate_session_mock.assert_not_called()
 
-        config_file = os.path.join(os.path.dirname(__file__),
-                                   'data/image-build-config.conf')
-        # Case 3, normal
+    @mock.patch('koji_cli.commands._build_image_oz')
+    def test_handle_image_build_with_config_valid_with_config(self, build_image_oz_mock):
+        """Test handle_image_build."""
+        config_file = os.path.join(os.path.dirname(__file__), 'data/image-build-config.conf')
+        self.configparser.return_value = ConfigParser()
         handle_image_build(
             self.options,
             self.session,
@@ -275,52 +263,53 @@ class TestImageBuild(utils.CliTestCase):
         args, kwargs = build_image_oz_mock.call_args
         TASK_OPTIONS['config'] = config_file
         self.assertDictEqual(TASK_OPTIONS, args[1].__dict__)
+        self.session.activate_session_mock.assert_not_called()
 
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_image_build_argument_error_without_config(
-            self,
-            activate_session_mock):
-        """Test handle_image_build argument errors, no --config cases"""
-
-        # Case 1, empty argument error
+    def test_handle_image_build_argument_error_without_config_arg_error(self):
+        """Test handle_image_build argument errors, no --config, arguments error"""
         expected = "At least five arguments are required: a name, " + \
                    "a version, a build target, a URL to an " + \
                    "install tree, and 1 or more architectures."
 
         self.assert_system_exit(
-                handle_image_build,
-                self.options,
-                self.session,
-                [],
-                stderr=self.format_error_message(expected),
-                activate_session=None)
+            handle_image_build,
+            self.options,
+            self.session,
+            [],
+            stderr=self.format_error_message(expected),
+            activate_session=None,
+            exit_code=2)
+        self.session.activate_session_mock.assert_not_called()
 
-        # Case 2, not kickstart options (--ksurl, kickstart)
+    def test_handle_image_build_argument_error_without_config_without_kickstart_option(self):
+        """Test handle_image_build argument errors, no --config cases,
+        without kickstart option (--ksurl, kickstart)"""
         expected = "You must specify --kickstart"
 
         self.assert_system_exit(
-                handle_image_build,
-                self.options,
-                self.session,
-                ['name', 'version', 'target', 'install-tree-url', 'arch'],
-                stderr=self.format_error_message(expected),
-                activate_session=None)
+            handle_image_build,
+            self.options,
+            self.session,
+            ['name', 'version', 'target', 'install-tree-url', 'arch'],
+            stderr=self.format_error_message(expected),
+            activate_session=None,
+            exit_code=2)
+        self.session.activate_session_mock.assert_not_called()
 
-        # Case 3, no --distro
+    def test_handle_image_build_argument_error_without_config_without_distro_option(self):
+        """Test handle_image_build argument errors, no --config cases, without distro option"""
         expected = "You must specify --distro. Examples: Fedora-16, RHEL-6.4, " + \
                    "SL-6.4 or CentOS-6.4"
 
         self.assert_system_exit(
-                handle_image_build,
-                self.options,
-                self.session,
-                ['name', 'version', 'target', 'install-tree-url', 'arch',
-                 '--kickstart', 'kickstart.ks'],
-                stderr=self.format_error_message(expected),
-                activate_session=None)
-
-        # activate_session() should not be called
-        activate_session_mock.assert_not_called()
+            handle_image_build,
+            self.options,
+            self.session,
+            ['name', 'version', 'target', 'install-tree-url', 'arch',
+             '--kickstart', 'kickstart.ks'],
+            stderr=self.format_error_message(expected),
+            activate_session=None,
+            exit_code=2)
 
     def test_handle_image_build_help(self):
         """Test handle_image_build help message"""

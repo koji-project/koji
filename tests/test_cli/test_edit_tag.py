@@ -1,118 +1,106 @@
 from __future__ import absolute_import
 import mock
-import os
 import six
-import sys
+import koji
 
 from koji_cli.commands import handle_edit_tag
 from . import utils
 
-progname = os.path.basename(sys.argv[0]) or 'koji'
-
 
 class TestEditTag(utils.CliTestCase):
-    # Show long diffs in error output...
-    maxDiff = None
+
+    def setUp(self):
+        self.options = mock.MagicMock()
+        self.options.debug = False
+        self.session = mock.MagicMock()
+        self.session.getAPIVersion.return_value = koji.API_VERSION
+        self.activate_session_mock = mock.patch('koji_cli.commands.activate_session').start()
+        self.error_format = """Usage: %s edit-tag [options] <name>
+(Specify the --help global option for a list of other help options)
+
+%s: error: {message}
+""" % (self.progname, self.progname)
+        self.tag = 'tag'
+        self.arches = 'arch1 arch2'
+        self.perm = 'perm'
+        self.locked = True
+        self.rename = 'tag2'
+        self.maven_support = True
+        self.maven_include_all = True
+        self.extra = {'extraA': 'A', 'extraB': True}
+        self.remove_extra = ['extraC', 'extraD']
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_edit_tag(self, activate_session_mock, stdout):
-        tag = 'tag'
-        arches = 'arch1 arch2'
-        perm = 'perm'
-        locked = True
-        rename = 'tag2'
-        maven_support = True
-        maven_include_all = True
-        extra = {'extraA': 'A', 'extraB': True}
-        remove_extra = ['extraC', 'extraD']
-        args = [tag]
-        args.append('--arches=' + arches)
-        args.append('--perm=' + perm)
+    def test_handle_edit_tag_1(self, stdout):
+        args = [self.tag]
+        args.append('--arches=' + self.arches)
+        args.append('--perm=' + self.perm)
         args.append('--lock')
-        args.append('--rename=' + rename)
+        args.append('--rename=' + self.rename)
         args.append('--maven-support')
         args.append('--include-all')
-        for k, x in six.iteritems(extra):
+        for k, x in six.iteritems(self.extra):
             args.append('-x')
             args.append(k + '=' + str(x))
-        for r in remove_extra:
+        for r in self.remove_extra:
             args.append('-r')
             args.append(r)
-        opts = {'arches': arches,
-                'perm': perm,
-                'locked': locked,
-                'name': rename,
-                'maven_support': maven_support,
-                'maven_include_all': maven_include_all,
-                'extra': extra,
+        opts = {'arches': self.arches,
+                'perm': self.perm,
+                'locked': self.locked,
+                'name': self.rename,
+                'maven_support': self.maven_support,
+                'maven_include_all': self.maven_include_all,
+                'extra': self.extra,
                 'block_extra': [],
-                'remove_extra': remove_extra}
-        options = mock.MagicMock()
-
-        # Mock out the xmlrpc server
-        session = mock.MagicMock()
+                'remove_extra': self.remove_extra}
 
         # Run it and check immediate output
         # args: tag --arches='arch1 arch2' --perm --lock
         # --rename=tag2 --maven-support --include-all
         # -x extraA=A -x extraB=True -r extraC -r extraD
         # expected: success
-        rv = handle_edit_tag(options, session, args)
+        rv = handle_edit_tag(self.options, self.session, args)
         actual = stdout.getvalue()
         expected = ''
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(session, options)
-        session.editTag2.assert_called_once_with(tag, **opts)
+        self.activate_session_mock.assert_called_once_with(self.session, self.options)
+        self.session.editTag2.assert_called_once_with(self.tag, **opts)
         self.assertEqual(rv, None)
 
-        stdout.seek(0)
-        stdout.truncate()
-        session.reset_mock()
-        activate_session_mock.reset_mock()
-        args = [tag]
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    def test_handle_edit_tag_2(self, stdout):
+        args = [self.tag]
         args.append('--no-perm')
         args.append('--unlock')
         args.append('--no-maven-support')
         args.append('--no-include-all')
         opts = {'perm': None,
-                'locked': not locked,
-                'maven_support': not maven_support,
+                'locked': not self.locked,
+                'maven_support': not self.maven_support,
                 'block_extra': [],
                 'remove_extra': [],
-                'maven_include_all': not maven_include_all}
+                'maven_include_all': not self.maven_include_all}
         # Run it and check immediate output
         # args: tag --no-perm --unlock --no-maven-support --no-include-all
         # expected: success
-        rv = handle_edit_tag(options, session, args)
+        rv = handle_edit_tag(self.options, self.session, args)
         actual = stdout.getvalue()
         expected = ''
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_called_once_with(session, options)
-        session.editTag2.assert_called_once_with(tag, **opts)
+        self.activate_session_mock.assert_called_once_with(self.session, self.options)
+        self.session.editTag2.assert_called_once_with(self.tag, **opts)
         self.assertEqual(rv, None)
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_edit_tag_help(self, activate_session_mock, stderr, stdout):
-        args = ['--help']
-        options = mock.MagicMock()
-
-        # Mock out the xmlrpc server
-        session = mock.MagicMock()
-
+    def test_handle_edit_tag_help(self):
         # Run it and check immediate output
         # args: --help
         # expected: failed, help info shows
-        with self.assertRaises(SystemExit) as ex:
-            handle_edit_tag(options, session, args)
-        self.assertExitCode(ex, 0)
-        actual_stdout = stdout.getvalue()
-        actual_stderr = stderr.getvalue()
-        expected_stdout = """Usage: %s edit-tag [options] <name>
+        self.assert_help(
+            handle_edit_tag,
+            """Usage: %s edit-tag [options] <name>
 (Specify the --help global option for a list of other help options)
 
 Options:
@@ -135,40 +123,54 @@ Options:
                         Remove tag extra option
   -b key, --block-extra=key
                         Block inherited tag extra option
-""" % progname
-        expected_stderr = ''
-        self.assertMultiLineEqual(actual_stdout, expected_stdout)
-        self.assertMultiLineEqual(actual_stderr, expected_stderr)
+""" % self.progname)
+
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_not_called()
-        session.editTag2.assert_not_called()
+        self.activate_session_mock.assert_not_called()
+        self.session.editTag2.assert_not_called()
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_edit_tag_no_arg(self, activate_session_mock, stderr, stdout):
-        args = []
-        options = mock.MagicMock()
-
-        # Mock out the xmlrpc server
-        session = mock.MagicMock()
-
+    def test_handle_edit_tag_no_arg(self):
         # Run it and check immediate output
         # args: --help
         # expected: failed, help info shows
-        with self.assertRaises(SystemExit) as ex:
-            handle_edit_tag(options, session, args)
-        self.assertExitCode(ex, 2)
-        actual_stdout = stdout.getvalue()
-        actual_stderr = stderr.getvalue()
-        expected_stdout = ''
-        expected_stderr = """Usage: %(progname)s edit-tag [options] <name>
-(Specify the --help global option for a list of other help options)
-
-%(progname)s: error: Please specify a name for the tag
-""" % {'progname': progname}
-        self.assertMultiLineEqual(actual_stdout, expected_stdout)
-        self.assertMultiLineEqual(actual_stderr, expected_stderr)
+        expected = self.format_error_message("Please specify a name for the tag")
+        self.assert_system_exit(
+            handle_edit_tag,
+            self.options,
+            self.session,
+            [],
+            stdout='',
+            stderr=expected,
+            activate_session=None,
+            exit_code=2
+        )
         # Finally, assert that things were called as we expected.
-        activate_session_mock.assert_not_called()
-        session.editTag2.assert_not_called()
+        self.activate_session_mock.assert_not_called()
+        self.session.editTag2.assert_not_called()
+
+    def test_handle_edit_tag_duplicate_extra(self):
+        args = [self.tag]
+        for k, x in six.iteritems(self.extra):
+            args.append('-x')
+            args.append(k + '=' + str(x))
+        # duplicate item in dict extra
+        args.append('-x')
+        args.append('extraA=duplicateA')
+
+        # Run it and check immediate output
+        # args: tag -x extraA=A -x extraB=True -x extraA=duplicateA
+        # expected: failed
+        expected = self.format_error_message("Duplicate extra key: extraA")
+        self.assert_system_exit(
+            handle_edit_tag,
+            self.options,
+            self.session,
+            args,
+            stdout='',
+            stderr=expected,
+            activate_session=None,
+            exit_code=2
+        )
+        # Finally, assert that things were called as we expected.
+        self.activate_session_mock.assert_called_once_with(self.session, self.options)
+        self.session.editTag2.assert_not_called()

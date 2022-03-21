@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 import mock
 import koji
+import six
 
 from koji_cli.commands import handle_edit_permission
 from . import utils
@@ -26,8 +27,7 @@ class TestEditPermission(utils.CliTestCase):
         self.description = 'test-description'
 
     def test_handle_edit_permission_argument_error(self):
-        expected = self.format_error_message(
-            "Please specify a permission and a description")
+        expected = self.format_error_message("Please specify a permission and a description")
         for args in [[], [self.perm]]:
             self.assert_system_exit(
                 handle_edit_permission,
@@ -37,9 +37,13 @@ class TestEditPermission(utils.CliTestCase):
                 stderr=expected,
                 activate_session=None)
         self.activate_session_mock.assert_not_called()
-        self.session.grantPermission.assert_not_called()
+        self.session.editPermission.assert_not_called()
 
-    def test_handle_edit_permission_with_new_and_description(self):
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    def test_handle_edit_permission_with_new_and_description(self, stdout):
         handle_edit_permission(self.options, self.session, [self.perm, self.description])
+        actual = stdout.getvalue()
+        expected = ''
+        self.assertMultiLineEqual(actual, expected)
         self.session.editPermission.assert_called_once_with(self.perm, self.description)
         self.activate_session_mock.assert_called_once_with(self.session, self.options)

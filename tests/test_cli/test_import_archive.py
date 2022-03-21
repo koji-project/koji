@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 
 import mock
-from six.moves import StringIO
 
 import koji
 from koji_cli.commands import handle_import_archive
@@ -10,6 +9,7 @@ from . import utils
 
 class TestImportArchive(utils.CliTestCase):
     def setUp(self):
+        self.maxDiff = None
         self.options = mock.MagicMock()
         self.options.debug = False
         self.session = mock.MagicMock()
@@ -23,120 +23,197 @@ class TestImportArchive(utils.CliTestCase):
 %s: error: {message}
 """ % (self.progname, self.progname)
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_import_archive_without_option(self, stderr):
+    def test_import_archive_without_option(self):
         expected = self.format_error_message(
             "You must specify a build ID or N-V-R and an archive to import")
-        with self.assertRaises(SystemExit) as ex:
-            handle_import_archive(self.options, self.session, [])
-        self.assertExitCode(ex, 2)
-        self.assert_console_message(stderr, expected)
+        self.assert_system_exit(
+            handle_import_archive,
+            self.options, self.session, [],
+            stdout='',
+            stderr=expected,
+            exit_code=2,
+            activate_session=None)
         self.activate_session_mock.assert_not_called()
+        self.session.hasPerm.assert_not_called()
+        self.session.getBuild.assert_not_called()
+        self.session.createMavenBuild.assert_not_called()
+        self.session.createWinBuild.assert_not_called()
+        self.session.createImageBuild.assert_not_called()
+        self.session.uploadWrapper.assert_not_called()
+        self.session.importArchive.assert_not_called()
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_import_archive_wrong_type(self, stderr):
+    def test_import_archive_wrong_type(self):
         archive_type = 'test-type'
         expected = self.format_error_message("Unsupported archive type: %s" % archive_type)
-        with self.assertRaises(SystemExit) as ex:
-            handle_import_archive(self.options, self.session, ['--type', archive_type,
-                                                               self.build_id, self.archive_path])
-        self.assertExitCode(ex, 2)
-        self.assert_console_message(stderr, expected)
+        self.assert_system_exit(
+            handle_import_archive,
+            self.options, self.session, ['--type', archive_type, self.build_id, self.archive_path],
+            stdout='',
+            stderr=expected,
+            exit_code=2,
+            activate_session=None)
         self.activate_session_mock.assert_called_with(self.session, self.options)
+        self.session.hasPerm.assert_not_called()
+        self.session.getBuild.assert_not_called()
+        self.session.createMavenBuild.assert_not_called()
+        self.session.createWinBuild.assert_not_called()
+        self.session.createImageBuild.assert_not_called()
+        self.session.uploadWrapper.assert_not_called()
+        self.session.importArchive.assert_not_called()
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_import_archive_without_type(self, stderr):
-        expected = self.format_error_message("You must specify an archive type")
-        with self.assertRaises(SystemExit) as ex:
-            handle_import_archive(self.options, self.session, [self.build_id, self.archive_path])
-        self.assertExitCode(ex, 2)
-        self.assert_console_message(stderr, expected)
+
+    def test_import_archive_without_type(self):
+        self.assert_system_exit(
+            handle_import_archive,
+            self.options, self.session, [self.build_id, self.archive_path],
+            stdout='',
+            stderr=self.format_error_message("You must specify an archive type"),
+            exit_code=2,
+            activate_session=None)
         self.activate_session_mock.assert_called_with(self.session, self.options)
+        self.session.hasPerm.assert_not_called()
+        self.session.getBuild.assert_not_called()
+        self.session.createMavenBuild.assert_not_called()
+        self.session.createWinBuild.assert_not_called()
+        self.session.createImageBuild.assert_not_called()
+        self.session.uploadWrapper.assert_not_called()
+        self.session.importArchive.assert_not_called()
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_import_archive_type_maven_without_perm(self, stderr):
+    def test_import_archive_type_maven_without_perm(self):
         archive_type = 'maven'
         self.session.hasPerm.side_effect = [False, False]
-        expected = self.format_error_message("This action requires the maven-import privilege")
-        with self.assertRaises(SystemExit) as ex:
-            handle_import_archive(self.options, self.session,
-                                  ['--type', archive_type, self.build_id, self.archive_path])
-        self.assertExitCode(ex, 2)
-        self.assert_console_message(stderr, expected)
+        self.assert_system_exit(
+            handle_import_archive,
+            self.options, self.session, ['--type', archive_type, self.build_id, self.archive_path],
+            stdout='',
+            stderr=self.format_error_message("This action requires the maven-import privilege"),
+            exit_code=2,
+            activate_session=None)
         self.activate_session_mock.assert_called_with(self.session, self.options)
+        self.session.hasPerm.assert_has_calls([mock.call('maven-import'), mock.call('admin')])
+        self.session.getBuild.assert_not_called()
+        self.session.createMavenBuild.assert_not_called()
+        self.session.createWinBuild.assert_not_called()
+        self.session.createImageBuild.assert_not_called()
+        self.session.uploadWrapper.assert_not_called()
+        self.session.importArchive.assert_not_called()
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_import_archive_type_maven_without_type_info(self, stderr):
+    def test_import_archive_type_maven_without_type_info(self):
         archive_type = 'maven'
         self.session.hasPerm.side_effect = [False, True]
         expected = self.format_error_message(
             "--type-info must point to a .pom file when importing Maven archives")
-        with self.assertRaises(SystemExit) as ex:
-            handle_import_archive(self.options, self.session,
-                                  ['--type', archive_type, self.build_id, self.archive_path])
-        self.assertExitCode(ex, 2)
-        self.assert_console_message(stderr, expected)
+        self.assert_system_exit(
+            handle_import_archive,
+            self.options, self.session, ['--type', archive_type, self.build_id, self.archive_path],
+            stdout='',
+            stderr=expected,
+            exit_code=2,
+            activate_session=None)
         self.activate_session_mock.assert_called_with(self.session, self.options)
+        self.session.hasPerm.assert_has_calls([mock.call('maven-import'), mock.call('admin')])
+        self.session.getBuild.assert_not_called()
+        self.session.createMavenBuild.assert_not_called()
+        self.session.createWinBuild.assert_not_called()
+        self.session.createImageBuild.assert_not_called()
+        self.session.uploadWrapper.assert_not_called()
+        self.session.importArchive.assert_not_called()
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_import_archive_type_win_without_perm(self, stderr):
+    def test_import_archive_type_win_without_perm(self):
         archive_type = 'win'
         self.session.hasPerm.side_effect = [False, False]
-        expected = self.format_error_message("This action requires the win-import privilege")
-        with self.assertRaises(SystemExit) as ex:
-            handle_import_archive(self.options, self.session,
-                                  ['--type', archive_type, self.build_id, self.archive_path])
-        self.assertExitCode(ex, 2)
-        self.assert_console_message(stderr, expected)
+        self.assert_system_exit(
+            handle_import_archive,
+            self.options, self.session, ['--type', archive_type, self.build_id, self.archive_path],
+            stdout='',
+            stderr=self.format_error_message("This action requires the win-import privilege"),
+            exit_code=2,
+            activate_session=None)
         self.activate_session_mock.assert_called_with(self.session, self.options)
+        self.session.hasPerm.assert_has_calls([mock.call('win-import'), mock.call('admin')])
+        self.session.getBuild.assert_not_called()
+        self.session.createMavenBuild.assert_not_called()
+        self.session.createWinBuild.assert_not_called()
+        self.session.createImageBuild.assert_not_called()
+        self.session.uploadWrapper.assert_not_called()
+        self.session.importArchive.assert_not_called()
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_import_archive_type_win_without_type_info(self, stderr):
+    def test_import_archive_type_win_without_type_info(self):
         archive_type = 'win'
         self.session.hasPerm.side_effect = [False, True]
-        expected = self.format_error_message("--type-info must be specified")
-        with self.assertRaises(SystemExit) as ex:
-            handle_import_archive(self.options, self.session,
-                                  ['--type', archive_type, self.build_id, self.archive_path])
-        self.assertExitCode(ex, 2)
-        self.assert_console_message(stderr, expected)
+        self.assert_system_exit(
+            handle_import_archive,
+            self.options, self.session, ['--type', archive_type, self.build_id, self.archive_path],
+            stdout='',
+            stderr=self.format_error_message("--type-info must be specified"),
+            exit_code=2,
+            activate_session=None)
         self.activate_session_mock.assert_called_with(self.session, self.options)
+        self.session.hasPerm.assert_has_calls([mock.call('win-import'), mock.call('admin')])
+        self.session.getBuild.assert_not_called()
+        self.session.createMavenBuild.assert_not_called()
+        self.session.createWinBuild.assert_not_called()
+        self.session.createImageBuild.assert_not_called()
+        self.session.uploadWrapper.assert_not_called()
+        self.session.importArchive.assert_not_called()
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_import_archive_type_win_wrong_type_info(self, stderr):
+    def test_import_archive_type_win_wrong_type_info(self):
         archive_type = 'win'
         type_info = 'archive-type'
         self.session.hasPerm.side_effect = [False, True]
         expected = self.format_error_message(
             "--type-info must be in relpath:platforms[:flags] format")
-        with self.assertRaises(SystemExit) as ex:
-            handle_import_archive(self.options, self.session,
-                                  ['--type', archive_type, '--type-info', type_info,
-                                   self.build_id, self.archive_path])
-        self.assertExitCode(ex, 2)
-        self.assert_console_message(stderr, expected)
+        self.assert_system_exit(
+            handle_import_archive,
+            self.options, self.session,
+            ['--type', archive_type, '--type-info', type_info, self.build_id, self.archive_path],
+            stdout='',
+            stderr=expected,
+            exit_code=2,
+            activate_session=None)
         self.activate_session_mock.assert_called_with(self.session, self.options)
+        self.session.hasPerm.assert_has_calls([mock.call('win-import'), mock.call('admin')])
+        self.session.getBuild.assert_not_called()
+        self.session.createMavenBuild.assert_not_called()
+        self.session.createWinBuild.assert_not_called()
+        self.session.createImageBuild.assert_not_called()
+        self.session.uploadWrapper.assert_not_called()
+        self.session.importArchive.assert_not_called()
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_import_archive_type_image_without_perm(self, stderr):
+    def test_import_archive_type_image_without_perm(self):
         archive_type = 'image'
         self.session.hasPerm.side_effect = [False, False]
-        expected = self.format_error_message("This action requires the image-import privilege")
-        with self.assertRaises(SystemExit) as ex:
-            handle_import_archive(self.options, self.session,
-                                  ['--type', archive_type, self.build_id, self.archive_path])
-        self.assertExitCode(ex, 2)
-        self.assert_console_message(stderr, expected)
+        self.assert_system_exit(
+            handle_import_archive,
+            self.options, self.session, ['--type', archive_type, self.build_id, self.archive_path],
+            stdout='',
+            stderr=self.format_error_message("This action requires the image-import privilege"),
+            exit_code=2,
+            activate_session=None)
         self.activate_session_mock.assert_called_with(self.session, self.options)
+        self.session.hasPerm.assert_has_calls([mock.call('image-import'), mock.call('admin')])
+        self.session.getBuild.assert_not_called()
+        self.session.createMavenBuild.assert_not_called()
+        self.session.createWinBuild.assert_not_called()
+        self.session.createImageBuild.assert_not_called()
+        self.session.uploadWrapper.assert_not_called()
+        self.session.importArchive.assert_not_called()
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_import_archive_type_image_without_type_info(self, stderr):
+    def test_import_archive_type_image_without_type_info(self):
         archive_type = 'image'
         self.session.hasPerm.side_effect = [False, True]
-        expected = self.format_error_message("--type-info must be specified")
-        with self.assertRaises(SystemExit) as ex:
-            handle_import_archive(self.options, self.session,
-                                  ['--type', archive_type, self.build_id, self.archive_path])
-        self.assertExitCode(ex, 2)
-        self.assert_console_message(stderr, expected)
+        self.assert_system_exit(
+            handle_import_archive,
+            self.options, self.session, ['--type', archive_type, self.build_id, self.archive_path],
+            stdout='',
+            stderr=self.format_error_message("--type-info must be specified"),
+            exit_code=2,
+            activate_session=None)
         self.activate_session_mock.assert_called_with(self.session, self.options)
+        self.session.hasPerm.assert_has_calls([mock.call('image-import'), mock.call('admin')])
+        self.session.getBuild.assert_not_called()
+        self.session.createMavenBuild.assert_not_called()
+        self.session.createWinBuild.assert_not_called()
+        self.session.createImageBuild.assert_not_called()
+        self.session.uploadWrapper.assert_not_called()
+        self.session.importArchive.assert_not_called()

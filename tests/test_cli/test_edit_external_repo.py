@@ -17,20 +17,14 @@ class TestEditExternalRepo(utils.CliTestCase):
     def setUp(self):
         self.options = mock.MagicMock()
         self.session = mock.MagicMock()
+        self.activate_session_mock = mock.patch('koji_cli.commands.activate_session').start()
         self.error_format = """Usage: %s edit-external-repo [options] <name>
 (Specify the --help global option for a list of other help options)
 
 %s: error: {message}
 """ % (self.progname, self.progname)
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_edit_external_repo_error(
-            self,
-            activate_session_mock,
-            stderr,
-            stdout):
+    def test_handle_edit_external_repo_error(self):
         """Test handle_edit_external_repo function"""
         # [(expected, args),...]
         items = [
@@ -54,6 +48,13 @@ class TestEditExternalRepo(utils.CliTestCase):
                 stderr=self.format_error_message(expected),
                 activate_session=None)
 
+        self.activate_session_mock.assert_not_called()
+        self.session.editExternalRepo.assert_not_called()
+        self.session.editTagExternalRepo.assert_not_called()
+
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
+    def test_handle_edit_external_repo_ext_repo_only(self, stderr, stdout):
         # edit ext-repo only
         handle_edit_external_repo(self.options, self.session,
                                   ['ext_repo', '--name', 'newname', '--url', 'https://newurl'])
@@ -62,9 +63,12 @@ class TestEditExternalRepo(utils.CliTestCase):
         self.session.editExternalRepo.assert_called_once_with('ext_repo',
                                                               name='newname', url='https://newurl')
         self.session.editTagExternalRepo.assert_not_called()
+        self.activate_session_mock.assert_called_once_with(self.session, self.options)
 
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
+    def test_handle_edit_external_repo_tag_repo_only(self, stderr, stdout):
         # edit tag-repo only
-        self.session.reset_mock()
         handle_edit_external_repo(self.options, self.session,
                                   ['ext_repo', '-t', 'tag', '-p', '0', '-m', 'koji', '-a', 'i386'])
         self.assert_console_message(stdout, "")
@@ -75,6 +79,7 @@ class TestEditExternalRepo(utils.CliTestCase):
                                                                  priority=0,
                                                                  merge_mode='koji',
                                                                  arches='i386')
+        self.activate_session_mock.assert_called_once_with(self.session, self.options)
 
     def test_handle_edit_external_repo_help(self):
         self.assert_help(

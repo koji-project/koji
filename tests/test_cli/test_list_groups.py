@@ -9,15 +9,12 @@ from . import utils
 
 
 class TestListGroups(utils.CliTestCase):
-
-    # Show long diffs in error output...
-    maxDiff = None
-
     def setUp(self):
+        self.maxDiff = None
         self.session = mock.MagicMock()
         self.options = mock.MagicMock()
 
-        self.activate_session = mock.patch('koji_cli.commands.activate_session').start()
+        self.ensure_connection_mock = mock.patch('koji_cli.commands.ensure_connection').start()
         self.event_from_opts = mock.patch('koji.util.eventFromOpts').start()
 
         self.error_format = """Usage: %s list-groups [options] <tag> [<group>]
@@ -29,26 +26,15 @@ class TestListGroups(utils.CliTestCase):
     def tearDown(self):
         mock.patch.stopall()
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    @mock.patch('koji_cli.commands.ensure_connection')
-    def test_anon_handle_list_groups_argument_error(
-            self,
-            ensure_connection_mock,
-            activate_session_mock,
-            stdout):
+    def test_anon_handle_list_groups_argument_error(self):
         """Test anon_handle_list_groups function"""
-        expected = self.format_error_message(
-            "Incorrect number of arguments")
         for arg in [[], ['tag', 'grp', 'etc']]:
             self.assert_system_exit(
                 anon_handle_list_groups,
-                self.options,
-                self.session,
-                arg,
-                stderr=expected,
+                self.options, self.session, arg,
+                stderr=self.format_error_message("Incorrect number of arguments"),
                 activate_session=None)
-            activate_session_mock.assert_not_called()
+            self.ensure_connection_mock.assert_not_called()
 
     def test_anon_handle_list_groups_list_all(self):
         self.event_from_opts.return_value = {}
@@ -164,15 +150,16 @@ class TestListGroups(utils.CliTestCase):
         for group in groups:
             if query_group != '' and group['name'] != query_group:
                 continue
-            expected += "%s  [%s]" % (group['name'], tags.get(group['tag_id'], group['tag_id'])) + "\n"
+            expected += "%s  [%s]" % (group['name'], tags.get(group['tag_id'],
+                                                              group['tag_id'])) + "\n"
             for grp in group["grouplist"]:
                 grp['tag_name'] = tags.get(grp['tag_id'], grp['tag_id'])
                 expected += "  @%(name)s  [%(tag_name)s]" % grp + "\n"
             for pkg in group["packagelist"]:
                 pkg['tag_name'] = tags.get(pkg['tag_id'], pkg['tag_id'])
-                expected += "  %(package)s: %(basearchonly)s, %(type)s  [%(tag_name)s]" % pkg + "\n"
+                expected += "  %(package)s: %(basearchonly)s, %(type)s  [%(tag_name)s]"\
+                            % pkg + "\n"
 
-        #self.session.listTags.return_value = _list_tags
         def get_tag(tag_id, strict=False):
             self.assertFalse(strict)
             for tag in _list_tags:

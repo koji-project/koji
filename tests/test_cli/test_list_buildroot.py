@@ -16,32 +16,64 @@ class TestListBuilds(utils.CliTestCase):
         self.session = mock.MagicMock()
         self.session.getAPIVersion.return_value = koji.API_VERSION
         self.ensure_connection_mock = mock.patch('koji_cli.commands.ensure_connection').start()
-
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_list_buildroot_with_paths_option(self, stderr):
-        expected = """Usage: %s list-buildroot [options] <buildroot-id>
+        self.error_format = """Usage: %s list-buildroot [options] <buildroot-id>
 (Specify the --help global option for a list of other help options)
 
-%s: error: --paths option is deprecated and will be removed in 1.30
+%s: error: {message}
 """ % (self.progname, self.progname)
-        with self.assertRaises(SystemExit) as ex:
-            anon_handle_list_buildroot(self.options, self.session, ['--paths', '1'])
-        self.assertExitCode(ex, 2)
-        self.assert_console_message(stderr, expected)
+
+    def test_list_buildroot_with_paths_option(self):
+        expected = "--paths option is deprecated and will be removed in 1.30"
+        self.assert_system_exit(
+            anon_handle_list_buildroot,
+            self.options, self.session, ['--paths', '1'],
+            stderr=self.format_error_message(expected),
+            exit_code=2,
+            activate_session=None)
         self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.session.listRPMs.assert_not_called()
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_list_buildroot_without_args(self, stderr):
-        expected = """Usage: %s list-buildroot [options] <buildroot-id>
-(Specify the --help global option for a list of other help options)
-
-%s: error: Incorrect number of arguments
-""" % (self.progname, self.progname)
-        with self.assertRaises(SystemExit) as ex:
-            anon_handle_list_buildroot(self.options, self.session, [])
-        self.assertExitCode(ex, 2)
-        self.assert_console_message(stderr, expected)
+    def test_list_buildroot_without_args(self):
+        self.assert_system_exit(
+            anon_handle_list_buildroot,
+            self.options, self.session, [],
+            stderr=self.format_error_message('Incorrect number of arguments'),
+            exit_code=2,
+            activate_session=None)
         self.ensure_connection_mock.assert_not_called()
+        self.session.listRPMs.assert_not_called()
+
+    @mock.patch('sys.stdout', new_callable=StringIO)
+    def test_list_buildroot_with_verbose(self, stdout):
+        expected_output = """testpackage-1.1-7.f33.noarch
+testpkg-1.171-5.fc33.noarch [update]
+tpkg-4.11-1.fc33.x86_64 [update]
+"""
+        list_rpms = [{'arch': 'noarch', 'is_update': True, 'nvr': 'testpkg-1.171-5.fc33'},
+                     {'arch': 'noarch', 'is_update': False, 'nvr': 'testpackage-1.1-7.f33'},
+                     {'arch': 'x86_64', 'is_update': True, 'nvr': 'tpkg-4.11-1.fc33'}]
+        self.session.listRPMs.return_value = list_rpms
+        rv = anon_handle_list_buildroot(self.options, self.session, ['--verbose', '1'])
+        self.assertEqual(rv, None)
+        self.assert_console_message(stdout, expected_output)
+        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.session.listRPMs.assert_called_once_with(componentBuildrootID=1)
+
+    @mock.patch('sys.stdout', new_callable=StringIO)
+    def test_list_buildroot_with_built(self, stdout):
+        expected_output = """testpackage-1.1-7.f33.x86_64
+testpkg-1.171-5.fc33.noarch
+tpkg-4.11-1.fc33.noarch
+"""
+        list_rpms = [{'arch': 'noarch', 'nvr': 'testpkg-1.171-5.fc33'},
+                     {'arch': 'x86_64', 'nvr': 'testpackage-1.1-7.f33'},
+                     {'arch': 'noarch', 'nvr': 'tpkg-4.11-1.fc33'}]
+        self.session.listRPMs.return_value = list_rpms
+        rv = anon_handle_list_buildroot(self.options, self.session, ['--built', '2'])
+        self.assertEqual(rv, None)
+        self.assert_console_message(stdout, expected_output)
+        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.session.listRPMs.assert_called_once_with(buildrootID=2)
 
     def test_list_buildroot_help(self):
         self.assert_help(
