@@ -82,6 +82,24 @@ Tasks' states are following:
       CANCELED -> FREE[label="task is \nresubmitted\n[owner/admin]"]
   }
 
+If task is ``OPEN`` it starts with task's starting ``weight`` which is different
+for different task types. Every builder has some set ``capacity`` according to
+its resources and can accept new task only if ``sum(weight) < capacity``.
+Furthermore, task's ``weight`` is further increased based on statistics from
+previous runs and current running time, so you can sometimes see that builder's
+``load`` is above its ``capacity``.
+
+Tasks which are currently waiting on some of its subtasks have its ``weight``
+temporarily ignored and they are effectively sleeping. (``getTaskInfo`` API call
+returns all these values).
+
+Note, that cancelling task doesn't immediately stop it. Builder is polling hub
+and only in the upcoming call it will acknowledge that some of tasks it is
+running was cancelled meanwhile. Only in that point it will kill the
+corresponding thread and run cleanup routine. Nevertheless, it is the
+implementation detail as cancelled task will not affect anything in the db/filer
+as its data get cleaned.
+
 Component Overview
 ==================
 
