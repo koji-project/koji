@@ -6617,6 +6617,10 @@ if __name__ == "__main__":
         if krb_principal is None:
             krb_principal = options.host_principal_format % socket.getfqdn()
         try:
+            # Check ccache is not empty or authentication will fail
+            if os.stat(options.ccache).st_size == 0:
+                os.remove(options.ccache)
+
             session.gssapi_login(principal=krb_principal,
                                  keytab=options.keytab,
                                  ccache=options.ccache)
