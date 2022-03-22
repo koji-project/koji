@@ -53,6 +53,10 @@ def get_options():
                       help="delete older tags than timestamp")
     parser.add_option("--ignore-tags", metavar="PATTERN", action="append",
                       help="Ignore tags matching PATTERN when pruning")
+    parser.add_option("--no-inactive", dest="clean_inactive", default=True,
+                      help="don't run inactive check")
+    parser.add_option("--inactive-delay", action="store", metavar="DAYS", default=10, type=int,
+                      help="delete tags inactive for DAYS (no build was un/tagged there)")
     # parse once to get the config file
     (options, args) = parser.parse_args()
 
@@ -233,7 +237,7 @@ def clean_old(tags):
         create_ts = history[0]['tag_config'][0]['create_ts']
         if create_ts < old_ts:
             diff = datetime.timedelta(seconds=now_ts - create_ts)
-            print("[old] %s (%s)" % (tag['name'], diff))
+            print(f"[old] {tag['name']} ({diff})")
             if not options.test:
                 deleted.append(tag)
         else:
@@ -243,11 +247,42 @@ def clean_old(tags):
     return passed
 
 
+def clean_inactive(tags):
+    """Check latest tagged build against inactive_delay"""
+    if not options.clean_inactive:
+        return tags
+    passed = []
+    deleted = []
+    d = datetime.datetime.now()
+    now_ts = d.timestamp()
+    old_ts = (d - datetime.timedelta(options.inactive_delay)).timestamp()
+    session.multicall = True
+    for tag in tags:
+        session.queryHistory(['tag_listing'], tag=tag['id'])
+    for tag, history in zip(tags, session.multiCall()):
+        create_ts = 0
+        for h in history[0]['tag_listing']:
+            if h['create_ts'] > create_ts:
+                create_ts = h['create_ts']
+        # if there was never tagged any build it should be subject to clean_empty policy
+        # we will skip this case here (create_ts = 0)
+        if create_ts and create_ts < old_ts:
+            diff = datetime.timedelta(seconds=now_ts - create_ts)
+            print(f"[inactive] {tag['name']} ({diff})")
+            if not options.test:
+                deleted.append(tag)
+        else:
+            passed.append(tag)
+    delete_tags(deleted)
+    return passed
+
+
 def main(args):
     activate_session(session)
     sidetags = get_all()
     sidetags = clean_empty(sidetags)
     sidetags = clean_old(sidetags)
+    sidetags = clean_inactive(sidetags)
 
 
 if __name__ == "__main__":
