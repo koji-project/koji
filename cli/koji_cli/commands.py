@@ -2798,7 +2798,7 @@ def anon_handle_list_buildroot(goptions, session, args):
     order = sorted([(fmt % x, x) for x in data])
     for nvra, rinfo in order:
         if options.verbose and rinfo.get('is_update'):
-            print(nvra, "[update]")
+            print("%s [update]" % nvra)
         else:
             print(nvra)
 
