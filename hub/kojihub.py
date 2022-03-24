@@ -1437,7 +1437,7 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None, inherit=False, late
                             to an int "N" to get the latest "N" builds. If
                             unspecified, the default value is "False", and
                             Koji will list all builds in the tag.
-    :param str rpmsigs: Filter on an RPM signature key (eg "FD431D51")
+    :param bool rpmsigs: query will return one record per rpm/signature combination
     :param str owner: Filter by build owner name
     :param str type: Filter by build type. Supported types are 'maven',
                      'win', and 'image'.
@@ -11702,7 +11702,7 @@ class RootExports(object):
                             Koji will list all builds in the tag.
             :param str package: only rpms of the specified package
             :param str arch: only rpms of the specified arch
-            :param str rpmsigs: only rpms of the specified rpmsigs
+            :param bool rpmsigs: query will return one record per rpm/signature combination
             :param str owner: only rpms of the specified owner
             :param str type: only rpms of the given btype (such as maven or image)
             :param bool strict: If tag doesn't exist, an exception is raised,
