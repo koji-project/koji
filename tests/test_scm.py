@@ -53,6 +53,7 @@ class TestSCM(unittest.TestCase):
             "svn+ssh://server/some/path#bab0c73900241ef5c465d7e873e9d8b34c948e67",
             "cvs://server/some/path#bab0c73900241ef5c465d7e873e9d8b34c948e67",
             "cvs+ssh://server/some/path#bab0c73900241ef5c465d7e873e9d8b34c948e67",
+            "cvs+ssh://server:80/some/path#bab0c73900241ef5c465d7e873e9d8b34c948e67",
         ]
         bad = [
             "http://localhost/foo.html",
@@ -97,6 +98,19 @@ class TestSCM(unittest.TestCase):
         self.assertEqual(scm.use_common, True)
         self.assertEqual(scm.source_cmd, ['make', 'sources'])
         self.assertEqual(scm.scmtype, 'GIT')
+
+    def test_with_port(self):
+        url = "git+ssh://user@server:80/foo.git#bab0c73900241ef5c465d7e873e9d8b34c948e67"
+        scm = SCM(url)
+        self.assertEqual(scm.scheme, 'git+ssh://')
+        self.assertEqual(scm.user, 'user')
+        self.assertEqual(scm.host, 'server:80')
+        self.assertEqual(scm.repository, '/foo.git')
+        self.assertEqual(scm.module, '')
+        self.assertEqual(scm.revision, 'bab0c73900241ef5c465d7e873e9d8b34c948e67')
+        self.assertEqual(scm.use_common, True)
+        self.assertEqual(scm.source_cmd, ['make', 'sources'])
+        self.assertEqual(scm.scmtype, 'GIT+SSH')
 
     def test_assert_allowed_basic(self):
         scm = SCM("git://scm.example.com/path1#1234")
