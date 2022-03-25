@@ -301,7 +301,7 @@ class SCM(object):
         if password is not None and not allow_password:
             raise koji.GenericError('username:password format not supported: %s:%s'
                                     % (user, password))
-        netloc = parsed_url.hostname
+        netloc = userhost[-1]
 
         # check for empty path before we apply normpath
         if not path:
