@@ -25,6 +25,7 @@
 from __future__ import absolute_import
 
 import base64
+import builtins
 import calendar
 import datetime
 import fcntl
@@ -1489,7 +1490,7 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None, inherit=False, late
         elif isinstance(arch, (list, tuple)):
             clauses.append('rpminfo.arch IN %(arch)s')
         else:
-            raise koji.GenericError('Invalid type for arch option: %s' % type(arch))
+            raise koji.GenericError('Invalid type for arch option: %s' % builtins.type(arch))
 
     fields, aliases = zip(*fields)
     query = QueryProcessor(tables=tables, joins=joins, clauses=clauses,
