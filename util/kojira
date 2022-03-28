@@ -347,6 +347,7 @@ class RepoManager(object):
         self.delete_pids = {}
         self.delete_queue = []
         self.logger = logging.getLogger("koji.repo.manager")
+        prefillTagCache(session)
 
     @property
     def session(self):
@@ -432,7 +433,6 @@ class RepoManager(object):
         self.logger.debug("Reading current repo data")
         repodata = self.session.getActiveRepos()
         self.logger.debug("Repo data: %r" % repodata)
-        prefillTagCache(self.session)
         self.logger.debug("Preloaded %d tags" % len(tag_cache.keys()))
 
         for data in repodata:
