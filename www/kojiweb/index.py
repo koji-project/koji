@@ -2517,7 +2517,7 @@ def search(environ, start=None, order=None):
     values['error'] = None
 
     form = environ['koji.form']
-    if 'terms' in form and form['terms']:
+    if 'terms' in form and form['terms'].value:
         terms = form['terms'].value
         terms = terms.strip()
         type = form['type'].value
