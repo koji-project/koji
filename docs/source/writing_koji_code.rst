@@ -47,6 +47,59 @@ integrated in Koji's data model, you would need to modify the CLI, Hub,
 Builder, and WebUI at a minimum. Alternatively, you could do this with a
 plugin, which is far simpler but less flexible.
 
+Tasks' states are following:
+
+* ``FREE`` - Task was created and waits in the queue
+* ``OPEN`` - Task was grabbed by some builder and is running now
+* ``CLOSED`` - Succesffuly finished task.
+* ``CANCELED`` - Task which was either manually cancelled or some sibling task already
+  failed, so it would be wasteful to continue with this one so parent task
+  will cancel it.
+* ``ASSIGNED`` - Task can be manually (admin) assigned to specific builder bypassing channel
+  policy. This behaviour can be forbidden via policy, so in some instances this
+  could be unreachable state.
+* ``FAILED`` - Task failed from some reason (typically build process failed)
+
+.. graphviz::
+
+  digraph task_states {
+      "FREE" [color="blue", penwidth=2]
+      "OPEN" [shape="box", color="orange", penwidth=2]
+      "CLOSED" [shape="box", color="green", penwidth=2]
+      "CANCELED" [shape="box", color="yellow", penwidth=2]
+      "ASSIGNED" [shape="box", color="purple", penwidth=2]
+      "FAILED" [shape="box", color="red", penwidth=2]
+      FREE -> OPEN[label="builder picks the task\nand starts it\n[builder]"]
+      FREE -> ASSIGNED[label="task is assigned\nto specific builder\n[admin]"]
+      OPEN -> CLOSED[label="task is successfully\nfinished\n[builder]"]
+      OPEN -> FAILED[label="task fails\n[builder]"]
+      OPEN -> CANCELED[label="task is automatically\nor manually canceled\n[builder/owner/admin]"]
+      OPEN -> ASSIGNED[label="task is forced to\nrun on specific builder\n[admin]"]
+      OPEN -> FREE[label="task is freed\n[admin]"]
+      ASSIGNED -> OPEN[label="builder starts\nwork on task\n[builder]"]
+      ASSIGNED -> CANCELED[label="task is automatically\nor manually canceled\n[builder/owner/admin]"]
+      FAILED -> FREE[label="task is \nresubmitted\n[owner/admin]"]
+      CANCELED -> FREE[label="task is \nresubmitted\n[owner/admin]"]
+  }
+
+If task is ``OPEN`` it starts with task's starting ``weight`` which is different
+for different task types. Every builder has some set ``capacity`` according to
+its resources and can accept new task only if ``sum(weight) < capacity``.
+Furthermore, task's ``weight`` is further increased based on statistics from
+previous runs and current running time, so you can sometimes see that builder's
+``load`` is above its ``capacity``.
+
+Tasks which are currently waiting on some of its subtasks have its ``weight``
+temporarily ignored and they are effectively sleeping. (``getTaskInfo`` API call
+returns all these values).
+
+Note, that cancelling task doesn't immediately stop it. Builder is polling hub
+and only in the upcoming call it will acknowledge that some of tasks it is
+running was cancelled meanwhile. Only in that point it will kill the
+corresponding thread and run cleanup routine. Nevertheless, it is the
+implementation detail as cancelled task will not affect anything in the db/filer
+as its data get cleaned.
+
 Component Overview
 ==================
 
@@ -230,8 +283,6 @@ Once you send the multicall and the hub executes it, you can access the result
 of each call via the ``result`` property on each ``VirtualCall`` object. (You
 must execute the call before accessing the ``.result`` property, or
 ``VirtualCall`` will raise an exception.)
-
-::
 
 Two parameters affect the behavior of the multicall.
 
