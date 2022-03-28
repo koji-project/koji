@@ -83,7 +83,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.28.0
+Version: 1.28.1
 Release: %{release}%{?dist}
 License: LGPLv2 and GPLv2+
 # the included arch lib from yum's rpmUtils is GPLv2+
@@ -644,6 +644,21 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Mon Mar 28 2022  Tomas Kopecek <tkopecek at redhat.com> - 1.28.0-1
+- PR#3263: Fix syntax error
+- PR#3303: www: fix attribute test
+- PR#3292: docs: Task flow diagram
+- PR#3290: web: encode filename as UTF-8
+- PR#3259: kojira: don't call listTags more than once
+- PR#3262: Fix parsing of URLs with port numbers
+- PR#3298: Use buildins.type when option is called type in readTaggedRPMS
+- PR#3300: Same format output for list-builroot with verbose for py3/py2
+- PR#3297: doc: fix readTaggedRPMs rpmsigs option description
+- PR#3270: Increase CLI test cases
+- PR#3208: hub: improve inheritance priority collision error message
+- PR#3265: Set dst permissions same as src permissions
+- PR#3252: Fix tag and target shows as string, not as dict to string
+
 * Wed Feb  2 2022  Tomas Kopecek <tkopecek at redhat.com> - 1.28.0-1
 - PR#3028: Add limits on name values
 - PR#3105: Deprecated --paths option in list-buildroot
