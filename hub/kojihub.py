@@ -48,6 +48,7 @@ import traceback
 from urllib.parse import parse_qs
 import xmlrpc.client
 import zipfile
+from collections import defaultdict, OrderedDict
 
 import rpm
 from psycopg2._psycopg import IntegrityError
@@ -10560,6 +10561,14 @@ def importImageInternal(task_id, build_info, imgdata):
     koji.plugin.run_callbacks('postImport', type='image', image=imgdata,
                               build=build_info, fullpath=fullpath)
 
+
+def _delete_event_id():
+    """Helper function to bump event"""
+    try:
+        del context.event_id
+    except AttributeError:
+        pass
+
 #
 # XMLRPC Methods
 #
@@ -11543,6 +11552,348 @@ class RootExports(object):
         _untag_build(tag, build, strict=strict, force=force)
         if notify:
             tag_notification(True, None, tag, build, context.session.user_id)
+
+    def massTag(self, tag, builds):
+        """
+        Substitute for tagBuildBypass - this call ignores every check, so special
+        'tag' permission is needed. It bypass all tag access checks and policies.
+        On error it will raise concrete exception
+
+        :param builds: list of build NVRs
+        :type builds: [str]
+
+        :returns: None
+        """
+
+        context.session.assertPerm('tag')
+        tag = get_tag(tag, strict=True)
+        user = get_user(context.session.user_id, strict=True)
+
+        logger.debug("Tagging %d builds to %s on behalf of %s",
+                     len(builds), tag['name'], user['name'])
+        start = time.time()
+        for build in builds:
+            binfo = get_build(build, strict=True)
+            _direct_tag_build(tag, binfo, user, force=True)
+            # ensure tagging order by updating event id
+            _delete_event_id()
+        length = time.time() - start
+        logger.debug("Tagged %d builds to %s in %.2f seconds", len(builds), tag['name'], length)
+
+    def snapshotTag(self, src, dst, config=True, pkgs=True, builds=True, groups=True,
+                    latest_only=True, inherit_builds=True, event=None, force=False):
+        """
+        Copy the tag and its current (or event) contents to new one. It doesn't copy inheritance.
+        Suitable for creating snapshots of tags. External repos are not linked.
+        Destination tag must not exist. For updating existing tags use snapshotTagModify
+
+        Calling user needs to have 'admin' or 'tag' permission.
+
+        :param [inst|str] src: source tag
+        :param [int|str] dst: destination tag
+        :param [bool] config: copy basic config (arches, permission, lock, maven_support,
+                              maven_include_all, extra)
+        :param [bool] pkgs: copy package lists
+        :param [bool] builds: copy tagged builds
+        :param [bool] latest_only: copy only latest builds instead of all
+        :param [bool] inherit_builds: use inherited builds, not only explicitly tagged
+        :param [int] event: copy state of tag in given event id
+        :param [bool] force: use force for all underlying operations
+        :returns: None
+        """
+        context.session.assertPerm('tag')
+        if builds and not pkgs:
+            raise koji.ParameterError("builds can't be used without pkgs in snapshotTag")
+
+        if get_tag(dst):
+            raise koji.GenericError("Target tag already exists")
+
+        src = get_tag(src, event=event, strict=True)
+
+        if src['locked'] and not force:
+            raise koji.GenericError("Source tag is locked, use force to copy")
+
+        if config:
+            dsttag = _create_tag(
+                dst,
+                parent=None,  # should clone parent?
+                arches=src['arches'],
+                perm=src['perm_id'],
+                locked=src['locked'],
+                maven_support=src['maven_support'],
+                maven_include_all=src['maven_include_all'],
+                extra=src['extra'])
+        else:
+            dsttag = _create_tag(dst, parent=None)
+        # all update operations will reset event_id, so we've clear order of operations
+        _delete_event_id()
+        dst = get_tag(dsttag, strict=True)
+
+        logger.debug("Cloning %s to %s", src['name'], dst['name'])
+
+        # package lists
+        if pkgs:
+            logger.debug("Cloning package list to %s", dst['name'])
+            start = time.time()
+            for pkg in self.listPackages(tagID=src['id'], event=event, inherited=True):
+                _direct_pkglist_add(
+                    taginfo=dst['id'],
+                    pkginfo=pkg['package_name'],
+                    owner=pkg['owner_name'],
+                    block=pkg['blocked'],
+                    extra_arches=pkg['extra_arches'],
+                    force=True,
+                    update=False)
+                _delete_event_id()
+            length = time.time() - start
+            logger.debug("Cloned packages to %s in %.2f seconds", dst['name'], length)
+
+        # builds
+        if builds:
+            builds = readTaggedBuilds(tag=src['id'], inherit=inherit_builds,
+                                      event=event, latest=latest_only)
+            self.massTag(dst['id'], list(reversed(builds)))
+
+        # groups
+        if groups:
+            logger.debug("Cloning groups to %s", dst['name'])
+            start = time.time()
+            for group in readTagGroups(tag=src['id'], event=event):
+                _grplist_add(dst['id'], group['name'], block=group['blocked'], force=True)
+                _delete_event_id()
+                for pkg in group['packagelist']:
+                    _grp_pkg_add(dst['id'], group['name'], pkg['package'],
+                                 block=pkg['blocked'], force=True)
+                    _delete_event_id()
+                for group_req in group['grouplist']:
+                    _grp_req_add(dst['id'], group['name'], group_req['name'],
+                                 block=group_req['blocked'], force=True)
+                    _delete_event_id()
+            length = time.time() - start
+            logger.debug("Cloned groups to %s in %.2f seconds", dst['name'], length)
+            _delete_event_id()
+
+    def snapshotTagModify(self, src, dst, config=True, pkgs=True, builds=True, groups=True,
+                          latest_only=True, inherit_builds=True, event=None, force=False,
+                          remove=False):
+        """
+        Copy the tag and its current (or event) contents to existing one. It doesn't copy
+        inheritance. Suitable for creating snapshots of tags. External repos are not linked.
+        Destination tag must not exist. For creating new snapshots use snapshotTag
+
+        Calling user needs to have 'admin' or 'tag' permission.
+
+        :param [int|str] src: source tag
+        :param [int|str] dst: destination tag
+        :param bool config: copy basic config (arches, permission, lock, maven_support,
+                            maven_include_all, extra)
+        :param bool pkgs: copy package lists
+        :param bool builds: copy tagged builds
+        :param bool latest_only: copy only latest builds instead of all
+        :param bool inherit_builds: use inherited builds, not only explicitly tagged
+        :param int event: copy state of tag in given event id
+        :param bool force: use force for all underlying operations
+        :param remove: remove builds/groups/
+        :returns: None
+        """
+
+        context.session.assertPerm('tag')
+
+        if builds and not pkgs:
+            # It is necessarily not true (current pkgs can already cover all new builds),
+            # but it seems to be more consistent to require it anyway.
+            raise koji.ParameterError("builds can't be used without pkgs in snapshotTag")
+
+        src = get_tag(src, event=event, strict=True)
+        dst = get_tag(dst, strict=True)
+
+        if (src['locked'] or dst['locked']) and not force:
+            raise koji.GenericError("Source or destination tag is locked, use force to copy")
+
+        user = get_user(context.session.user_id, strict=True)
+
+        if config:
+            if dst['extra']:
+                remove_extra = list(set(dst['extra'].keys()) - set(src['extra'].keys()))
+            else:
+                remove_extra = []
+            edit_tag(dst['id'], parent=None, arches=src['arches'],
+                     perm=src['perm_id'], locked=src['locked'],
+                     maven_support=src['maven_support'],
+                     maven_include_all=src['maven_include_all'],
+                     extra=src['extra'],
+                     remove_extra=remove_extra)
+            _delete_event_id()
+            dst = get_tag(dst['id'], strict=True)
+
+        if pkgs:
+            srcpkgs = {}
+            dstpkgs = {}
+            for pkg in self.listPackages(tagID=src['id'], event=event, inherited=True):
+                srcpkgs[pkg['package_name']] = pkg
+            for pkg in self.listPackages(tagID=dst['id'], inherited=True):
+                dstpkgs[pkg['package_name']] = pkg
+
+            for pkg_name in set(dstpkgs.keys()) - set(srcpkgs.keys()):
+                pkg = dstpkgs[pkg_name]
+                _direct_pkglist_add(dst,
+                                    pkg_name,
+                                    owner=pkg['owner_name'],
+                                    block=True,
+                                    force=True,
+                                    update=True,
+                                    extra_arches=pkg['extra_arches'])
+                _delete_event_id()
+
+            for pkg_name in set(srcpkgs.keys()) - set(dstpkgs.keys()):
+                pkg = srcpkgs[pkg_name]
+                _direct_pkglist_add(dst,
+                                    pkg_name,
+                                    owner=pkg['owner_name'],
+                                    block=pkg['blocked'],
+                                    update=False,
+                                    force=True,
+                                    extra_arches=pkg['extra_arches'])
+                _delete_event_id()
+
+        if builds:
+            srcbldsbypkg = defaultdict(OrderedDict)
+            dstbldsbypkg = defaultdict(OrderedDict)
+            # listTagged orders builds latest-first
+            # so reversing that gives us oldest-first
+            for build in reversed(readTaggedBuilds(src['id'], event=event, inherit=inherit_builds,
+                                                   latest=latest_only)):
+                srcbldsbypkg[build['package_name']][build['nvr']] = build
+            # get builds in dst without inheritance.
+            # latest=False to get all builds even when latest_only = True,
+            # so that only the *latest* build per tag will live in.
+            for build in reversed(readTaggedBuilds(dst['id'], inherit=False, latest=False)):
+                dstbldsbypkg[build['package_name']][build['nvr']] = build
+
+            if remove:
+                for (pkg, dstblds) in dstbldsbypkg.items():
+                    if pkg not in srcbldsbypkg:
+                        # untag all builds for packages which are not in dst
+                        for build in dstblds:
+                            # don't untag inherited builds
+                            if build['tag_name'] == dst['name']:
+                                _direct_untag_build(dst, build, user, force=force)
+                                _delete_event_id()
+
+            # add and/or remove builds from dst to match src contents and order
+            for (pkg, srcblds) in srcbldsbypkg.items():
+                dstblds = dstbldsbypkg[pkg]
+                # firstly, deal with extra builds in dst
+                removed_nvrs = set(dstblds.keys()) - set(srcblds.keys())
+                bld_order = srcblds.copy()
+                if remove:
+                    # mark the extra builds for deletion
+                    dnvrs = []
+                    for (dstnvr, dstbld) in dstblds.items():
+                        if dstnvr in removed_nvrs:
+                            dnvrs.append(dstnvr)
+                            if dstbld['tag_name'] == dst['name']:
+                                _untag_build(dst['name'], dstbld, force=force)
+                                _delete_event_id()
+                    # we also remove them from dstblds now so that they do not
+                    # interfere with the order comparison below
+                    for dnvr in dnvrs:
+                        del dstblds[dnvr]
+                else:
+                    # in the no-removal case, the extra builds should be forced
+                    # to last in the tag
+                    bld_order = OrderedDict()
+                    for (dstnvr, dstbld) in dstblds.items():
+                        if dstnvr in removed_nvrs:
+                            bld_order[dstnvr] = dstbld
+                    for (nvr, srcbld) in srcblds.items():
+                        bld_order[nvr] = srcbld
+                # secondly, add builds from src tag and adjust the order
+                for (nvr, srcbld) in bld_order.items():
+                    found = False
+                    out_of_order = []
+                    # note that dstblds is trimmed as we go, so we are only
+                    # considering the tail corresponding to where we are at
+                    # in the srcblds loop
+                    for (dstnvr, dstbld) in dstblds.items():
+                        if nvr == dstnvr:
+                            found = True
+                            break
+                        else:
+                            out_of_order.append(dstnvr)
+                            if dstbld['tag_name'] == dst['name']:
+                                _untag_build(dst['name'], dstbld, force=force)
+                                _delete_event_id()
+                    for dnvr in out_of_order:
+                        del dstblds[dnvr]
+                        # these will be re-added in the proper order later
+                    if found:
+                        # remove it for next pass so we stay aligned with outer
+                        # loop
+                        del dstblds[nvr]
+                    else:
+                        # missing from dst, so we need to add it
+                        _direct_tag_build(dst, srcbld, user, force=force)
+                        _delete_event_id()
+
+        if groups:
+            srcgroups = OrderedDict()
+            dstgroups = OrderedDict()
+            for group in readTagGroups(src['name'], event=event):
+                srcgroups[group['name']] = group
+            for group in readTagGroups(dst['name']):
+                dstgroups[group['name']] = group
+
+            for (grpname, group) in srcgroups.items():
+                if grpname not in dstgroups:
+                    _grplist_add(dst['id'], group['name'], block=group['blocked'], force=force)
+                    _delete_event_id()
+
+            if remove:
+                for (grpname, group) in dstgroups.items():
+                    if grpname not in srcgroups and group['tag_id'] == dst['id']:
+                        _grplist_remove(dst['id'], group['id'], force=force)
+                        _delete_event_id()
+
+            grpchanges = OrderedDict()  # dict of changes to make in shared groups
+            for (grpname, group) in srcgroups.items():
+                if grpname in dstgroups:
+                    dstgroup = dstgroups[grpname]
+                    # Store whether group is inherited or not
+                    grpchanges[grpname]['inherited'] = False
+                    if dstgroup['tag_id'] != dst['id']:
+                        grpchanges[grpname]['inherited'] = True
+                    srcgrppkglist = []
+                    dstgrppkglist = []
+                    for pkg in group['packagelist']:
+                        srcgrppkglist.append(pkg['package'])
+                    for pkg in dstgroups[grpname]['packagelist']:
+                        dstgrppkglist.append(pkg['package'])
+                    for pkg in srcgrppkglist:
+                        if pkg not in dstgrppkglist:
+                            _grp_pkg_add(dst['name'], grpname, pkg['package'],
+                                         force=force, block=False)
+                            _delete_event_id()
+                    srcgrpreqlist = []
+                    dstgrpreqlist = []
+                    for grp in group['grouplist']:
+                        srcgrpreqlist.append(grp['name'])
+                    for grp in dstgroups[grpname]['grouplist']:
+                        dstgrpreqlist.append(grp['name'])
+                    for grp in srcgrpreqlist:
+                        if grp not in dstgrpreqlist:
+                            _grp_req_add(dst['name'], grpname, grp['name'],
+                                         force=force, block=grp['blocked'])
+                            _delete_event_id()
+                    if remove:
+                        for pkg in dstgrppkglist:
+                            if pkg not in srcgrppkglist and pkg['tag_id'] == dst['id']:
+                                _grp_pkg_remove(dst['name'], grpname, pkg['package'], force=force)
+                                _delete_event_id()
+                        for grp in dstgrpreqlist:
+                            if grp not in srcgrpreqlist and grp['group_id'] == dst['id']:
+                                _grp_req_remove(dst['name'], grpname, grp['name'], force=force)
+                                _delete_event_id()
 
     def moveBuild(self, tag1, tag2, build, force=False):
         """Move a build from tag1 to tag2
