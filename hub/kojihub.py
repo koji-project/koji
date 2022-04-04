@@ -11839,13 +11839,13 @@ class RootExports(object):
         if groups:
             srcgroups = OrderedDict()
             dstgroups = OrderedDict()
-            for group in readTagGroups(src['name'], event=event):
+            for group in readTagGroups(src['name'], event=event, incl_blocked=True):
                 srcgroups[group['name']] = group
-            for group in readTagGroups(dst['name']):
+            for group in readTagGroups(dst['name'], incl_blocked=True):
                 dstgroups[group['name']] = group
 
             for (grpname, group) in srcgroups.items():
-                if grpname not in dstgroups:
+                if grpname not in dstgroups or group['blocked'] != dstgroups[grpname]['blocked']:
                     _grplist_add(dst['id'], group['name'], block=group['blocked'], force=force)
                     _delete_event_id()
 
@@ -11862,42 +11862,43 @@ class RootExports(object):
 
             for (grpname, group) in srcgroups.items():
                 if grpname in dstgroups:
-                    _grplist_add(dst['id'], grpname, block=group['blocked'], force=force,
-                                 opts=group)
-                    srcgrppkglist = []
-                    dstgrppkglist = []
+                    srcgrppkglist = {}
+                    dstgrppkglist = {}
                     for pkg in group['packagelist']:
-                        srcgrppkglist.append(pkg)
+                        srcgrppkglist[pkg['package']] = pkg
                     for pkg in dstgroups[grpname]['packagelist']:
-                        dstgrppkglist.append(pkg)
-                    for pkg in srcgrppkglist:
-                        if pkg not in dstgrppkglist:
+                        dstgrppkglist[pkg['package']] = pkg
+                    for pkg in srcgrppkglist.values():
+                        if pkg['package'] not in dstgrppkglist:
                             _grp_pkg_add(dst['name'], grpname, pkg['package'],
                                          force=force, block=False)
                             _delete_event_id()
-                    srcgrpreqlist = []
-                    dstgrpreqlist = []
+                    srcgrpreqlist = {}
+                    dstgrpreqlist = {}
                     for grp in group['grouplist']:
-                        srcgrpreqlist.append(grp)
+                        srcgrpreqlist[grp['name']] = grp
                     for grp in dstgroups[grpname]['grouplist']:
-                        dstgrpreqlist.append(grp)
-                    for grp in srcgrpreqlist:
-                        if grp not in dstgrpreqlist:
+                        dstgrpreqlist[grp['name']] = grp
+                    for grp in srcgrpreqlist.values():
+                        if grp['name'] not in dstgrpreqlist:
                             _grp_req_add(dst['name'], grpname, grp['name'],
                                          force=force, block=grp['blocked'])
                             _delete_event_id()
                     if remove:
-                        for pkg in dstgrppkglist:
-                            if pkg not in srcgrppkglist:
-                                if pkg['tag_id'] == dst['id']:
-                                    _grp_pkg_remove(dst['name'], grpname, pkg['package'],
-                                                    force=force)
-                                else:
-                                    _grp_pkg_add(dst['id'], grpname, pkg['package'],
-                                                 block=True, force=force)
+                        for pkgname, pkg in dstgrppkglist.items():
+                            if pkg['blocked']:
+                                continue
+                            if srcgrppkglist.get(pkgname, {}).get('blocked'):
+                                _grp_pkg_add(dst['id'], grpname, pkg['package'],
+                                             block=True, force=force)
                                 _delete_event_id()
-                        for grp in dstgrpreqlist:
-                            if grp not in srcgrpreqlist:
+                            elif pkgname not in srcgrppkglist and pkg['tag_id'] == dst['id']:
+                                _grp_pkg_remove(dst['name'], grpname, pkg['package'], force=force)
+                                _delete_event_id()
+                        for grp in dstgrpreqlist.values():
+                            if grp['blocked']:
+                                continue
+                            if grp['name'] not in srcgrpreqlist:
                                 if grp['group_id'] == dst['id']:
                                     _grp_req_remove(dst['name'], grpname, grp['name'], force=force)
                                 else:

@@ -117,7 +117,13 @@ class TestSnapshotTagModify(unittest.TestCase):
             'id': 1,
             'name': 'group1',
             'blocked': False,
-            'packagelist': [{'package': pkg1['package_name'], 'tag_id': src['id']}],
+            'packagelist': [
+                {
+                    'package': pkg1['package_name'],
+                    'tag_id': src['id'],
+                    'blocked': False,
+                }
+            ],
             'grouplist': [{'group_id': 5, 'name': 'group5', 'blocked': False}],
             'inherited': False,
         }
@@ -125,7 +131,7 @@ class TestSnapshotTagModify(unittest.TestCase):
             'id': 2,
             'name': 'group2',
             'blocked': False,
-            'package_list': [],
+            'packagelist': [],
             'grouplist': [],
             'inherited': False,
         }
@@ -133,7 +139,13 @@ class TestSnapshotTagModify(unittest.TestCase):
             'id': 3,
             'name': 'group1',
             'blocked': False,
-            'packagelist': [{'package': pkg2['package_name'], 'tag_id': dst['id']}],
+            'packagelist': [
+                {
+                    'package': pkg2['package_name'],
+                    'tag_id': dst['id'],
+                    'blocked': False,
+                }
+            ],
             'grouplist': [{'group_id': 4, 'name': 'group4', 'blocked': False}],
             'inherited': False,
         }
@@ -201,9 +213,6 @@ class TestSnapshotTagModify(unittest.TestCase):
             mock.call('dst', 'group1', 'group5', block=False, force=True),
             mock.call('dst', 'group1', 'group4', block=True, force=True),
         ])
-        self._grplist_add.assert_has_calls([
-            mock.call(dst['id'], 'group2', block=False, force=True),
-            mock.call(dst['id'], 'group1', block=False, force=True, opts=src_group1),
-        ])
+        self._grplist_add.assert_called_once_with(dst['id'], 'group2', block=False, force=True)
         self._grplist_remove.assert_not_called()
         self.hub.massTag.assert_not_called()
