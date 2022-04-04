@@ -2052,7 +2052,7 @@ def grp_pkg_remove(taginfo, grpinfo, pkg_name):
 
 
 def _grp_pkg_remove(taginfo, grpinfo, pkg_name):
-    """grp_pkg_remove without permssion checks"""
+    """grp_pkg_remove without permission checks"""
     tag_id = get_tag_id(taginfo, strict=True)
     grp_id = get_group_id(grpinfo, strict=True)
     update = UpdateProcessor('group_package_listing', values=locals(),
@@ -11851,24 +11851,25 @@ class RootExports(object):
 
             if remove:
                 for (grpname, group) in dstgroups.items():
-                    if grpname not in srcgroups and group['tag_id'] == dst['id']:
-                        _grplist_remove(dst['id'], group['id'], force=force)
+                    if grpname not in srcgroups:
+                        if group['tag_id'] == dst['id']:
+                            # not inherited
+                            _grplist_remove(dst['id'], group['id'], force=force)
+                        else:
+                            # block inherited groups
+                            _grplist_add(dst['id'], group['name'], block=True, force=force)
                         _delete_event_id()
 
-            grpchanges = OrderedDict()  # dict of changes to make in shared groups
             for (grpname, group) in srcgroups.items():
                 if grpname in dstgroups:
-                    dstgroup = dstgroups[grpname]
-                    # Store whether group is inherited or not
-                    grpchanges[grpname]['inherited'] = False
-                    if dstgroup['tag_id'] != dst['id']:
-                        grpchanges[grpname]['inherited'] = True
+                    _grplist_add(dst['id'], grpname, block=group['blocked'], force=force,
+                                 opts=group)
                     srcgrppkglist = []
                     dstgrppkglist = []
                     for pkg in group['packagelist']:
-                        srcgrppkglist.append(pkg['package'])
+                        srcgrppkglist.append(pkg)
                     for pkg in dstgroups[grpname]['packagelist']:
-                        dstgrppkglist.append(pkg['package'])
+                        dstgrppkglist.append(pkg)
                     for pkg in srcgrppkglist:
                         if pkg not in dstgrppkglist:
                             _grp_pkg_add(dst['name'], grpname, pkg['package'],
@@ -11877,9 +11878,9 @@ class RootExports(object):
                     srcgrpreqlist = []
                     dstgrpreqlist = []
                     for grp in group['grouplist']:
-                        srcgrpreqlist.append(grp['name'])
+                        srcgrpreqlist.append(grp)
                     for grp in dstgroups[grpname]['grouplist']:
-                        dstgrpreqlist.append(grp['name'])
+                        dstgrpreqlist.append(grp)
                     for grp in srcgrpreqlist:
                         if grp not in dstgrpreqlist:
                             _grp_req_add(dst['name'], grpname, grp['name'],
@@ -11887,12 +11888,21 @@ class RootExports(object):
                             _delete_event_id()
                     if remove:
                         for pkg in dstgrppkglist:
-                            if pkg not in srcgrppkglist and pkg['tag_id'] == dst['id']:
-                                _grp_pkg_remove(dst['name'], grpname, pkg['package'], force=force)
+                            if pkg not in srcgrppkglist:
+                                if pkg['tag_id'] == dst['id']:
+                                    _grp_pkg_remove(dst['name'], grpname, pkg['package'],
+                                                    force=force)
+                                else:
+                                    _grp_pkg_add(dst['id'], grpname, pkg['package'],
+                                                 block=True, force=force)
                                 _delete_event_id()
                         for grp in dstgrpreqlist:
-                            if grp not in srcgrpreqlist and grp['group_id'] == dst['id']:
-                                _grp_req_remove(dst['name'], grpname, grp['name'], force=force)
+                            if grp not in srcgrpreqlist:
+                                if grp['group_id'] == dst['id']:
+                                    _grp_req_remove(dst['name'], grpname, grp['name'], force=force)
+                                else:
+                                    _grp_req_add(dst['name'], grpname, grp['name'],
+                                                 block=True, force=force)
                                 _delete_event_id()
 
     def moveBuild(self, tag1, tag2, build, force=False):
