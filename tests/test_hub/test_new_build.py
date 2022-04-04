@@ -6,6 +6,7 @@ import kojihub
 
 IP = kojihub.InsertProcessor
 
+
 class TestNewBuild(unittest.TestCase):
     def setUp(self):
         self.get_rpm = mock.patch('kojihub.get_rpm').start()
@@ -13,7 +14,7 @@ class TestNewBuild(unittest.TestCase):
         self.nextval = mock.patch('kojihub.nextval').start()
         self.Savepoint = mock.patch('kojihub.Savepoint').start()
         self.InsertProcessor = mock.patch('kojihub.InsertProcessor',
-                side_effect=self.getInsert).start()
+                                          side_effect=self.getInsert).start()
         self.inserts = []
         self.insert_execute = mock.MagicMock()
         self.lookup_package = mock.patch('kojihub.lookup_package').start()
@@ -35,7 +36,7 @@ class TestNewBuild(unittest.TestCase):
 
     def test_valid(self):
         self.get_build.return_value = None
-        self._singleValue.return_value = 65 # free build id
+        self._singleValue.return_value = 65  # free build id
         self.new_package.return_value = 54
         self.get_user.return_value = {'id': 123}
         data = {
@@ -99,10 +100,11 @@ class TestNewBuild(unittest.TestCase):
             'extra': {'extra_key': 'extra_value'},
         }
 
-        with self.assertRaises(koji.GenericError):
+        with self.assertRaises(koji.GenericError) as cm:
             kojihub.new_build(data)
 
         self.assertEqual(len(self.inserts), 0)
+        self.assertEqual("No name or package id provided for build", str(cm.exception))
 
     def test_wrong_owner(self):
         self.get_user.side_effect = koji.GenericError
@@ -121,7 +123,6 @@ class TestNewBuild(unittest.TestCase):
         self.assertEqual(len(self.inserts), 0)
 
     def test_missing_vre(self):
-        self.get_user.side_effect = koji.GenericError
         data = {
             'name': 'test_name',
             'version': 'test_version',

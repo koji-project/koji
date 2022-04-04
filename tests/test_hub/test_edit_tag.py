@@ -236,7 +236,7 @@ WHERE id = %(tagID)i""", {'name': 'newtag', 'tagID': 333})
         with self.assertRaises(koji.GenericError):
             kojihub._edit_tag('tag', **kwargs)
 
-    def test_edit_wrong_format_tag(self):
+    def test_edit_wrong_tag(self):
         tag_name_new = 'new-test-tag+'
         tag_name = 'tag'
         self.get_tag.return_value = {'id': 333,
@@ -268,3 +268,36 @@ WHERE id = %(tagID)i""", {'name': 'newtag', 'tagID': 333})
         self.verify_name_internal.side_effect = koji.GenericError
         with self.assertRaises(koji.GenericError):
             kojihub._edit_tag('tag', **kwargs)
+
+    def test_edit_tag_remove_extra_wrong_format(self):
+        kwargs = {
+            'perm': None,
+            'name': 'tag_name_new',
+            'arches': 'arch1 arch2',
+            'locked': True,
+            'maven_support': False,
+            'maven_include_all': False,
+            'extra': {},
+            'remove_extra': 'remove-extra'
+        }
+        with self.assertRaises(koji.ParameterError) as ex:
+            kojihub._edit_tag('tag', **kwargs)
+        self.assertEqual(f"Invalid type for value '{kwargs['remove_extra']}': "
+                         f"{type(kwargs['remove_extra'])}", str(ex.exception))
+
+    def test_edit_tag_block_extra_wrong_format(self):
+        kwargs = {
+            'perm': None,
+            'name': 'tag_name_new',
+            'arches': 'arch1 arch2',
+            'locked': True,
+            'maven_support': False,
+            'maven_include_all': False,
+            'extra': {},
+            'remove_extra': [],
+            'block_extra': 'block-extra'
+        }
+        with self.assertRaises(koji.ParameterError) as ex:
+            kojihub._edit_tag('tag', **kwargs)
+        self.assertEqual(f"Invalid type for value '{kwargs['block_extra']}': "
+                         f"{type(kwargs['block_extra'])}", str(ex.exception))

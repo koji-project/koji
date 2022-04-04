@@ -21,7 +21,8 @@ from kojihub import (  # noqa: E402
     get_tag,
     get_user,
     nextval,
-    policy_get_user
+    policy_get_user,
+    check_value_type
 )
 
 CONFIG_FILE = "/etc/koji-hub/plugins/sidetag.conf"
@@ -270,9 +271,11 @@ def editSideTag(sidetag, debuginfo=None, rpm_macros=None, remove_rpm_macros=None
     if debuginfo is not None:
         kwargs['extra']['with_debuginfo'] = bool(debuginfo)
     if rpm_macros is not None:
+        check_value_type(rpm_macros, cast=dict)
         for macro, value in rpm_macros.items():
             kwargs['extra']['rpm.macro.%s' % macro] = value
     if remove_rpm_macros is not None:
+        check_value_type(remove_rpm_macros, cast=list)
         kwargs['remove_extra'] = ['rpm.macro.%s' % m for m in remove_rpm_macros]
 
     _edit_tag(sidetag['id'], **kwargs)

@@ -17,7 +17,7 @@ class TestGetExternalRepo(unittest.TestCase):
         self.get_external_repos.return_value = []
         with self.assertRaises(koji.GenericError) as cm:
             self.exports.getExternalRepo(repo, strict=True)
-        self.assertEqual("No such repo: %s" % repo, str(cm.exception))
+        self.assertEqual(f"No such repo: {repo}", str(cm.exception))
 
     def test_non_exist_repo_without_strict(self):
         repo = 'test-repo'

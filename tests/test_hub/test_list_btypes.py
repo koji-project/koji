@@ -8,64 +8,58 @@ QP = kojihub.QueryProcessor
 
 class TestListBTypes(unittest.TestCase):
 
-    @mock.patch('kojihub.QueryProcessor')
-    def test_list_btypes(self, QueryProcessor):
+    def setUp(self):
+        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
+                                         side_effect=self.get_query).start()
+        self.queries = []
+        self.exports = kojihub.RootExports()
 
-        # default query
-        query = QueryProcessor.return_value
-        query.execute.return_value = "return value"
-        ret = kojihub.list_btypes()
-        QueryProcessor.assert_called_once()
-        query.execute.assert_called_once()
-        self.assertEqual(ret, "return value")
+    def tearDown(self):
+        mock.patch.stopall()
 
-        args, kwargs = QueryProcessor.call_args
+    def get_query(self, *args, **kwargs):
+        query = QP(*args, **kwargs)
+        query.execute = mock.MagicMock()
+        self.queries.append(query)
+        return query
+
+    def test_list_btypes_default(self):
+        kojihub.list_btypes()
+        self.QueryProcessor.assert_called_once()
+
+        args, kwargs = self.QueryProcessor.call_args
         self.assertEqual(args, ())
-        qp = QP(**kwargs)
-        self.assertEqual(qp.tables, ['btype'])
-        self.assertEqual(qp.columns, ['id', 'name'])
-        self.assertEqual(qp.clauses, [])
-        self.assertEqual(qp.joins, None)
+        self.assertEqual(len(self.queries), 1)
+        query = self.queries[0]
+        self.assertEqual(query.tables, ['btype'])
+        self.assertEqual(query.columns, ['id', 'name'])
+        self.assertEqual(query.clauses, [])
+        self.assertEqual(query.joins, None)
 
-        QueryProcessor.reset_mock()
+    def test_list_btypes_by_name(self):
+        kojihub.list_btypes({'name': 'rpm'})
+        self.QueryProcessor.assert_called_once()
 
-        # query by name
-        query = QueryProcessor.return_value
-        query.execute.return_value = "return value"
-        ret = kojihub.list_btypes({'name': 'rpm'})
-        QueryProcessor.assert_called_once()
-        query.execute.assert_called_once()
-        self.assertEqual(ret, "return value")
-
-        args, kwargs = QueryProcessor.call_args
+        args, kwargs = self.QueryProcessor.call_args
         self.assertEqual(args, ())
-        qp = QP(**kwargs)
-        self.assertEqual(qp.tables, ['btype'])
-        self.assertEqual(qp.columns, ['id', 'name'])
-        self.assertEqual(qp.clauses, ['btype.name = %(name)s'])
-        self.assertEqual(qp.values, {'name': 'rpm'})
-        self.assertEqual(qp.joins, None)
+        self.assertEqual(len(self.queries), 1)
+        query = self.queries[0]
+        self.assertEqual(query.tables, ['btype'])
+        self.assertEqual(query.columns, ['id', 'name'])
+        self.assertEqual(query.clauses, ['btype.name = %(name)s'])
+        self.assertEqual(query.values, {'name': 'rpm'})
+        self.assertEqual(query.joins, None)
 
-        QueryProcessor.reset_mock()
+    def test_list_btypes_by_it_with_opts(self):
+        kojihub.list_btypes({'id': 1}, {'order': 'id'})
+        self.QueryProcessor.assert_called_once()
 
-        # query by id, with opts
-        query = QueryProcessor.return_value
-        query.execute.return_value = "return value"
-        ret = kojihub.list_btypes({'id': 1}, {'order': 'id'})
-        QueryProcessor.assert_called_once()
-        query.execute.assert_called_once()
-        self.assertEqual(ret, "return value")
-
-        args, kwargs = QueryProcessor.call_args
+        args, kwargs = self.QueryProcessor.call_args
         self.assertEqual(args, ())
-        qp = QP(**kwargs)
-        self.assertEqual(qp.tables, ['btype'])
-        self.assertEqual(qp.columns, ['id', 'name'])
-        self.assertEqual(qp.clauses, ['btype.id = %(id)s'])
-        self.assertEqual(qp.values, {'id': 1})
-        self.assertEqual(qp.opts, {'order': 'id'})
-        self.assertEqual(qp.joins, None)
-
-        QueryProcessor.reset_mock()
-
-        # query by name
+        query = self.queries[0]
+        self.assertEqual(query.tables, ['btype'])
+        self.assertEqual(query.columns, ['id', 'name'])
+        self.assertEqual(query.clauses, ['btype.id = %(id)s'])
+        self.assertEqual(query.values, {'id': 1})
+        self.assertEqual(query.opts, {'order': 'id'})
+        self.assertEqual(query.joins, None)

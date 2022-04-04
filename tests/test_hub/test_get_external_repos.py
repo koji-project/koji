@@ -1,4 +1,3 @@
-import koji
 import kojihub
 from .utils import DBQueryTestCase
 
@@ -97,9 +96,3 @@ class TestGetExternalRepos(DBQueryTestCase):
         self.assertEqual(rv, [{'id': 1,
                                'name': 'ext_repo_1',
                                'url': 'http://example.com/repo/'}])
-
-    def test_get_external_repos_wrong_type(self):
-        info = {'info_key': 'info_value'}
-        with self.assertRaises(koji.GenericError) as cm:
-            kojihub.get_external_repos(info=info)
-        self.assertEqual("Invalid name or id value: %s" % info, str(cm.exception))

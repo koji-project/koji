@@ -10,6 +10,7 @@ from koji import GenericError
 IP = kojihub.InsertProcessor
 UP = kojihub.UpdateProcessor
 
+
 class TestCGImporter(unittest.TestCase):
     TMP_PATH = os.path.join(os.path.dirname(__file__), 'tmptest')
 
@@ -36,7 +37,8 @@ class TestCGImporter(unittest.TestCase):
         metadata = 42
         with self.assertRaises(GenericError) as ex:
             x.get_metadata(metadata, '')
-        self.assertEqual('Invalid type for metadata value: %s' % type(metadata), str(ex.exception))
+        self.assertEqual(f"Invalid type for value '{metadata}': {type(metadata)}",
+                         str(ex.exception))
 
     def test_get_metadata_is_none(self):
         x = kojihub.CG_Importer()
@@ -158,7 +160,7 @@ class TestCGImporter(unittest.TestCase):
                                   'start_time': None, 'start_ts': None,
                                   'completion_time': None, 'completion_ts': None,
                                   'source': 'https://example.com', 'extra': {}
-                                 }
+                                  }
         new_build_id.return_value = 43
         x.get_build()
         assert x.buildinfo
@@ -187,7 +189,7 @@ class TestCGImporter(unittest.TestCase):
         get_metadata.return_value = metadata
         with self.assertRaises(koji.GenericError) as ex:
             x.do_import(metadata, '/test/dir')
-        self.assertEqual('No such metadata version: %s' % metadata['metadata_version'],
+        self.assertEqual(f"No such metadata version: {metadata['metadata_version']}",
                          str(ex.exception))
 
     def test_match_componemt_wrong_component(self):
@@ -195,7 +197,7 @@ class TestCGImporter(unittest.TestCase):
         components = [{'type': 'type'}]
         with self.assertRaises(koji.GenericError) as ex:
             x.match_components(components)
-        self.assertEqual('No such component type: %s' % components[0]['type'], str(ex.exception))
+        self.assertEqual(f"No such component type: {components[0]['type']}", str(ex.exception))
 
 
 class TestMatchKojiFile(unittest.TestCase):
@@ -203,23 +205,23 @@ class TestMatchKojiFile(unittest.TestCase):
     def setUp(self):
         self.importer = kojihub.CG_Importer()
         self.archive1 = {
-                'id': 99,
-                'build_id': 42,
-                'checksum': 'e1f95555eae04b8e1ebdc5555c5555f0',
-                'checksum_type': 0,
-                'filename': 'foo-bar-3.0.jar',
-                'size': 42710,
-                }
+            'id': 99,
+            'build_id': 42,
+            'checksum': 'e1f95555eae04b8e1ebdc5555c5555f0',
+            'checksum_type': 0,
+            'filename': 'foo-bar-3.0.jar',
+            'size': 42710,
+        }
         self.build1 = {
-                'id': 79218,
-                'nvr': 'foo-3.0-1',
-                }
+            'id': 79218,
+            'nvr': 'foo-3.0-1',
+        }
         self.comp1 = {
-                'type': 'kojifile',
-                'archive_id': self.archive1['id'],
-                'nvr': self.build1['nvr'],
-                'filename': self.archive1['filename'],
-                }
+            'type': 'kojifile',
+            'archive_id': self.archive1['id'],
+            'nvr': self.build1['nvr'],
+            'filename': self.archive1['filename'],
+        }
         self.get_archive = mock.patch('kojihub.get_archive').start()
         self.get_build = mock.patch('kojihub.get_build').start()
 
@@ -270,7 +272,6 @@ class TestCGReservation(unittest.TestCase):
         self.updates.append(update)
         return update
 
-
     def setUp(self):
         self.InsertProcessor = mock.patch('kojihub.InsertProcessor',
                                           side_effect=self.getInsert).start()
@@ -298,8 +299,8 @@ class TestCGReservation(unittest.TestCase):
         new_build.return_value = 654
         cg = 'content_generator_name'
         self.mock_cursor.fetchone.side_effect = [
-            [333], # get pkg_id
-            [1234], # get nextval pkg_id
+            [333],  # get pkg_id
+            [1234],  # get nextval pkg_id
         ]
         self.mock_cursor.fetchall.side_effect = [
             [[]],

@@ -44,12 +44,11 @@ class TestLookupName(unittest.TestCase):
             {'id': 'not a valid int'},
             ['something'],
             set(),
-            ]
+        ]
         for value in bad_values:
             with self.assertRaises(koji.GenericError) as cm:
                 kojihub.lookup_name('mytable', value)
-            self.assertEqual('Invalid name or id value: %s' % value,
-                             str(cm.exception))
+            self.assertEqual(f'Invalid name or id value: {value}', str(cm.exception))
         self.assertEqual(len(self.queries), 0)
         self.assertEqual(len(self.inserts), 0)
 
@@ -78,7 +77,7 @@ class TestLookupName(unittest.TestCase):
         self.assertEqual(len(self.inserts), 0)
 
     def test_query_by_dict(self):
-        kojihub.lookup_name('some_table', {'id':12345, 'name': 'whatever'})
+        kojihub.lookup_name('some_table', {'id': 12345, 'name': 'whatever'})
         self.assertEqual(len(self.queries), 1)
         query = self.queries[0]
         clauses = ['(some_table.id = %(some_table_id)s)']
@@ -110,7 +109,7 @@ class TestLookupName(unittest.TestCase):
 
     def test_lookup_name_strict(self):
         self.query_executeOne.return_value = None
-        with self.assertRaises(koji.GenericError) as cm:
+        with self.assertRaises(koji.GenericError):
             kojihub.lookup_name('package', 'python', strict=True)
         self.assertEqual(len(self.queries), 1)
         self.assertEqual(len(self.inserts), 0)
@@ -134,7 +133,7 @@ class TestLookupName(unittest.TestCase):
         bad_values = [
             {'id': 100},
             100
-            ]
+        ]
         for value in bad_values:
             with self.assertRaises(koji.GenericError) as cm:
                 kojihub.lookup_name('package', value, create=True)

@@ -18,4 +18,4 @@ class TestSearch(unittest.TestCase):
         type = 'test-type'
         with self.assertRaises(koji.GenericError) as cm:
             self.exports.search('item', type, 'glob')
-        self.assertEqual("No such search type: %s" % type, str(cm.exception))
+        self.assertEqual(f"No such search type: {type}", str(cm.exception))

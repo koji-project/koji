@@ -31,6 +31,7 @@ class TestDistRepoInit(unittest.TestCase):
         self.get_event = mock.patch('kojihub.get_event').start()
         self.nextval = mock.patch('kojihub.nextval').start()
         self.copyfile = mock.patch('shutil.copyfile').start()
+        self.lookup_name = mock.patch('kojihub.lookup_name').start()
 
         self.get_tag.return_value = {'id': 42, 'name': 'tag'}
         self.get_event.return_value = 12345
@@ -69,6 +70,34 @@ class TestDistRepoInit(unittest.TestCase):
         self.assertEqual(ip.rawdata, {})
 
         self.copyfile.assert_called_once()
+
+    def test_simple_dist_repo_init_wrong_type_keys(self):
+        keys = 'key1 key2'
+        with self.assertRaises(koji.ParameterError) as cm:
+            kojihub.dist_repo_init('tag', keys, {'arch': ['x86_64']})
+        self.assertEqual(f"Invalid type for value '{keys}': {type(keys)}", str(cm.exception))
+        self.InsertProcessor.assert_not_called()
+
+    def test_simple_dist_repo_init_wrong_type_task_opts(self):
+        task_opts = 'opts'
+        with self.assertRaises(koji.ParameterError) as cm:
+            kojihub.dist_repo_init('tag', ['key'], task_opts)
+        self.assertEqual(f"Invalid type for value '{task_opts}': {type(task_opts)}",
+                         str(cm.exception))
+        self.InsertProcessor.assert_not_called()
+
+    def test_simple_dist_repo_init_wrong_type_event(self):
+        event = 'test-event'
+        with self.assertRaises(koji.ParameterError) as cm:
+            kojihub.dist_repo_init('tag', ['key'], {'arch': ['x86_64'], 'event': event})
+        self.assertEqual(f"Invalid type for value '{event}': {type(event)}", str(cm.exception))
+        self.InsertProcessor.assert_not_called()
+
+    def test_simple_dist_repo_init_wrong_type_volume(self):
+        self.lookup_name.side_effect = koji.GenericError
+        with self.assertRaises(koji.GenericError):
+            kojihub.dist_repo_init('tag', ['key'], {'arch': ['x86_64'], 'volume': 'test-volume'})
+        self.InsertProcessor.assert_not_called()
 
 
 class TestDistRepo(unittest.TestCase):
@@ -206,7 +235,7 @@ class TestDistRepoMove(unittest.TestCase):
             path = os.path.join(repodir, relpath)
             basename = os.path.basename(path)
             if not os.path.exists(path):
-                raise Exception("Missing file: %s" % path)
+                raise Exception(f"Missing file: {path}")
             data = open(path, 'rt', encoding='utf-8').read()
             data.strip()
             self.assertEqual(data, basename)

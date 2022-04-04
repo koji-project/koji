@@ -24,13 +24,13 @@ class TestGetChangelogEntries(unittest.TestCase):
         self.get_build.return_value = None
         with self.assertRaises(koji.GenericError) as cm:
             self.exports.getChangelogEntries(buildID=build_id, strict=True)
-        self.assertEqual("No such build: %s" % build_id, str(cm.exception))
+        self.assertEqual(f"No such build: {build_id}", str(cm.exception))
 
     def test_taskid_invalid_path(self):
         filepath = '../test/path'
         with self.assertRaises(koji.GenericError) as cm:
             self.exports.getChangelogEntries(taskID=99, filepath=filepath)
-        self.assertEqual("Invalid filepath: %s" % filepath, str(cm.exception))
+        self.assertEqual(f"Invalid filepath: {filepath}", str(cm.exception))
 
     def test_taskid_without_filepath(self):
         with self.assertRaises(koji.GenericError) as cm:
@@ -43,7 +43,7 @@ class TestGetChangelogEntries(unittest.TestCase):
         self.os_path_exists.return_value = True
         with self.assertRaises(koji.GenericError) as cm:
             self.exports.getChangelogEntries(taskID=99, before=before, filepath=filepath)
-        self.assertEqual("Invalid type for before: %s" % type(before), str(cm.exception))
+        self.assertEqual(f"Invalid type for before: {type(before)}", str(cm.exception))
 
     def test_after_invalid_type(self):
         after = {'after': '1133456'}
@@ -51,7 +51,7 @@ class TestGetChangelogEntries(unittest.TestCase):
         self.os_path_exists.return_value = True
         with self.assertRaises(koji.GenericError) as cm:
             self.exports.getChangelogEntries(taskID=99, after=after, filepath=filepath)
-        self.assertEqual("Invalid type for after: %s" % type(after), str(cm.exception))
+        self.assertEqual(f"Invalid type for after: {type(after)}", str(cm.exception))
 
     def test_srpm_path_not_exist(self):
         filepath = 'test/path'
@@ -62,4 +62,4 @@ class TestGetChangelogEntries(unittest.TestCase):
         self.os_path_exists.return_value = False
         with self.assertRaises(koji.GenericError) as cm:
             self.exports.getChangelogEntries(taskID=task_id, filepath=filepath, strict=True)
-        self.assertEqual("SRPM %s doesn't exist" % srpm_path, str(cm.exception))
+        self.assertEqual(f"SRPM {srpm_path} doesn't exist", str(cm.exception))

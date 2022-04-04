@@ -14,7 +14,7 @@ class TestGetRPM(unittest.TestCase):
         rpminfo = ['test-user']
         with self.assertRaises(koji.GenericError) as cm:
             kojihub.get_rpm(rpminfo)
-        self.assertEqual("Invalid type for rpminfo: %s" % type(rpminfo), str(cm.exception))
+        self.assertEqual(f"Invalid type for rpminfo: {type(rpminfo)}", str(cm.exception))
 
 
 class TestGetRPMHeaders(unittest.TestCase):
@@ -41,7 +41,7 @@ class TestGetRPMHeaders(unittest.TestCase):
         filepath = '../test/path'
         with self.assertRaises(koji.GenericError) as cm:
             self.exports.getRPMHeaders(taskID=99, filepath=filepath)
-        self.assertEqual("Invalid filepath: %s" % filepath, str(cm.exception))
+        self.assertEqual(f"Invalid filepath: {filepath}", str(cm.exception))
         self.get_rpm.assert_not_called()
         self.get_build.assert_not_called()
         self.get_header_fields.assert_not_called()

@@ -26,6 +26,7 @@ class TestRepoFunctions(unittest.TestCase):
         self.updates = []
         self._dml = mock.patch('kojihub._dml').start()
         self.exports = kojihub.RootExports()
+        self.get_tag = mock.patch('kojihub.get_tag').start()
 
     def tearDown(self):
         mock.patch.stopall()
@@ -83,7 +84,8 @@ class TestRepoFunctions(unittest.TestCase):
                     'state': 0,
                     'task_id': 15,
                     'create_event': 32,
-                    'creation_time': datetime.datetime(2021, 3, 30, 12, 34, 5, 204023, tzinfo=datetime.timezone.utc),
+                    'creation_time': datetime.datetime(2021, 3, 30, 12, 34, 5, 204023,
+                                                       tzinfo=datetime.timezone.utc),
                     'create_ts': 1617107645.204023,
                     'tag_id': 3,
                     'tag_name': 'test-tag',
@@ -92,8 +94,8 @@ class TestRepoFunctions(unittest.TestCase):
         rv = kojihub.repo_info(3)
         self.assertEqual(rv, repo_row)
 
-    def test_get_repo(self):
-        rv = self.exports.getRepo(2)
+    def test_get_repo_default(self):
+        self.exports.getRepo(2)
         self.assertEqual(len(self.queries), 1)
         query = self.queries[0]
         # make sure the following does not error
@@ -104,4 +106,18 @@ class TestRepoFunctions(unittest.TestCase):
         self.assertEqual(set(query.columns), set(columns))
         self.assertEqual(query.joins, ['events ON repo.create_event = events.id'])
         self.assertEqual(query.clauses, ['repo.dist is false', 'repo.state = %(state)s',
+                                         'repo.tag_id = %(id)i'])
+
+    def test_get_repo_with_dist_and_event(self):
+        self.exports.getRepo(2, event=111, dist=True)
+        self.assertEqual(len(self.queries), 1)
+        query = self.queries[0]
+        # make sure the following does not error
+        str(query)
+        self.assertEqual(query.tables, ['repo'])
+        columns = ['repo.id', 'repo.state', 'repo.task_id', 'repo.create_event',
+                   'EXTRACT(EPOCH FROM events.time)', 'repo.dist', 'events.time']
+        self.assertEqual(set(query.columns), set(columns))
+        self.assertEqual(query.joins, ['events ON repo.create_event = events.id'])
+        self.assertEqual(query.clauses, ['create_event <= %(event)i', 'repo.dist is true',
                                          'repo.tag_id = %(id)i'])

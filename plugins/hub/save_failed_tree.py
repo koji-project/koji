@@ -22,7 +22,7 @@ def saveFailedTree(buildrootID, full=False, **opts):
     global config, allowed_methods
 
     # let it raise errors
-    buildrootID = int(buildrootID)
+    buildrootID = kojihub.convert_value(buildrootID, cast=int)
     full = bool(full)
 
     # read configuration only once

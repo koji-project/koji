@@ -1,201 +1,11 @@
 import copy
 import mock
+import unittest
 import shutil
 import tempfile
-import unittest
 
 import koji
 import kojihub
-
-
-class TestImportRPM(unittest.TestCase):
-    def setUp(self):
-        self.tempdir = tempfile.mkdtemp()
-        self.filename = self.tempdir + "/name-version-release.arch.rpm"
-        # Touch a file
-        with open(self.filename, 'w'):
-            pass
-        self.src_filename = self.tempdir + "/name-version-release.src.rpm"
-        # Touch a file
-        with open(self.src_filename, 'w'):
-            pass
-        self.context = mock.patch('kojihub.context').start()
-        self.cursor = mock.MagicMock()
-
-        self.rpm_header_retval = {
-            'filename': 'name-version-release.arch.rpm',
-            'sourcepackage': 2,
-            1000: 'name',
-            1001: 'version',
-            1002: 'release',
-            1003: 'epoch',
-            1006: 'buildtime',
-            1022: 'arch',
-            1044: 'name-version-release.arch',
-            1106: 'sourcepackage',
-            261: 'payload hash',
-        }
-
-    def tearDown(self):
-        shutil.rmtree(self.tempdir)
-
-    def test_nonexistant_rpm(self):
-        with self.assertRaises(koji.GenericError):
-            kojihub.import_rpm("this does not exist")
-
-    @mock.patch('kojihub.get_build')
-    @mock.patch('koji.get_rpm_header')
-    def test_import_rpm_failed_build(self, get_rpm_header, get_build):
-        get_rpm_header.return_value = self.rpm_header_retval
-        get_build.return_value = {
-            'state': koji.BUILD_STATES['FAILED'],
-            'name': 'name',
-            'version': 'version',
-            'release': 'release',
-        }
-        with self.assertRaises(koji.GenericError):
-            kojihub.import_rpm(self.filename)
-
-    @mock.patch('kojihub.new_typed_build')
-    @mock.patch('kojihub._dml')
-    @mock.patch('kojihub._singleValue')
-    @mock.patch('kojihub.get_build')
-    @mock.patch('koji.get_rpm_header')
-    def test_import_rpm_completed_build(self, get_rpm_header, get_build,
-                                        _singleValue, _dml,
-                                        new_typed_build):
-        get_rpm_header.return_value = self.rpm_header_retval
-        get_build.return_value = {
-            'state': koji.BUILD_STATES['COMPLETE'],
-            'name': 'name',
-            'version': 'version',
-            'release': 'release',
-            'id': 12345,
-        }
-        _singleValue.return_value = 9876
-        kojihub.import_rpm(self.filename)
-        fields = [
-            'arch',
-            'build_id',
-            'buildroot_id',
-            'buildtime',
-            'epoch',
-            'external_repo_id',
-            'id',
-            'name',
-            'payloadhash',
-            'release',
-            'size',
-            'version',
-        ]
-        statement = 'INSERT INTO rpminfo (%s) VALUES (%s)' % (
-            ", ".join(fields),
-            ", ".join(['%%(%s)s' % field for field in fields])
-        )
-        values = {
-            'build_id': 12345,
-            'name': 'name',
-            'arch': 'arch',
-            'buildtime': 'buildtime',
-            'payloadhash': '7061796c6f61642068617368',
-            'epoch': 'epoch',
-            'version': 'version',
-            'buildroot_id': None,
-            'release': 'release',
-            'external_repo_id': 0,
-            'id': 9876,
-            'size': 0,
-        }
-        _dml.assert_called_once_with(statement, values)
-
-    @mock.patch('kojihub.new_typed_build')
-    @mock.patch('kojihub._dml')
-    @mock.patch('kojihub._singleValue')
-    @mock.patch('kojihub.get_build')
-    @mock.patch('koji.get_rpm_header')
-    def test_import_rpm_completed_source_build(self, get_rpm_header, get_build,
-                                               _singleValue, _dml,
-                                               new_typed_build):
-        retval = copy.copy(self.rpm_header_retval)
-        retval.update({
-            'filename': 'name-version-release.arch.rpm',
-            1044: 'name-version-release.src',
-            1022: 'src',
-            1106: 1,
-        })
-        get_rpm_header.return_value = retval
-        get_build.return_value = {
-            'state': koji.BUILD_STATES['COMPLETE'],
-            'name': 'name',
-            'version': 'version',
-            'release': 'release',
-            'id': 12345,
-        }
-        _singleValue.return_value = 9876
-        kojihub.import_rpm(self.src_filename)
-        fields = [
-            'arch',
-            'build_id',
-            'buildroot_id',
-            'buildtime',
-            'epoch',
-            'external_repo_id',
-            'id',
-            'name',
-            'payloadhash',
-            'release',
-            'size',
-            'version',
-        ]
-        statement = 'INSERT INTO rpminfo (%s) VALUES (%s)' % (
-            ", ".join(fields),
-            ", ".join(['%%(%s)s' % field for field in fields])
-        )
-        values = {
-            'build_id': 12345,
-            'name': 'name',
-            'arch': 'src',
-            'buildtime': 'buildtime',
-            'payloadhash': '7061796c6f61642068617368',
-            'epoch': 'epoch',
-            'version': 'version',
-            'buildroot_id': None,
-            'release': 'release',
-            'external_repo_id': 0,
-            'id': 9876,
-            'size': 0,
-        }
-        _dml.assert_called_once_with(statement, values)
-
-    @mock.patch('os.path.exists')
-    def test_non_exist_file(self, os_path_exist):
-        exports = kojihub.RootExports()
-        basename = 'rpm-1-34'
-        uploadpath = koji.pathinfo.work()
-        filepath = '%s/%s/%s' % (uploadpath, self.filename, basename)
-        os_path_exist.return_value = False
-        with self.assertRaises(koji.GenericError) as cm:
-            exports.importRPM(self.filename, basename)
-        self.assertEqual("No such file: %s" % filepath, str(cm.exception))
-
-    @mock.patch('koji.get_rpm_header')
-    @mock.patch('os.path.exists')
-    @mock.patch('os.path.basename')
-    def test_non_exist_file(self, os_path_basename, os_path_exist, get_rpm_header):
-        self.cursor.fetchone.return_value = None
-        self.context.cnx.cursor.return_value = self.cursor
-        retval = copy.copy(self.rpm_header_retval)
-        retval.update({
-            'filename': 'name-version-release.arch.rpm',
-            'sourcepackage': 2
-        })
-        get_rpm_header.return_value = retval
-        os_path_exist.return_value = True
-        os_path_basename.return_value = 'name-version-release.arch.rpm'
-        kojihub.get_build.return_value = None
-        with self.assertRaises(koji.GenericError) as cm:
-            kojihub.import_rpm(self.src_filename)
-        self.assertEqual("No such build", str(cm.exception))
 
 
 class TestImportBuild(unittest.TestCase):
@@ -210,6 +20,22 @@ class TestImportBuild(unittest.TestCase):
         with open(self.src_filename, 'w'):
             pass
 
+        self.check_volume_policy = mock.patch('kojihub.check_volume_policy').start()
+        self.new_typed_build = mock.patch('kojihub.new_typed_build').start()
+        self._dml = mock.patch('kojihub._dml').start()
+        self._singleValue = mock.patch('kojihub._singleValue').start()
+        self.get_build = mock.patch('kojihub.get_build').start()
+        self.add_rpm_sig = mock.patch('kojihub.add_rpm_sig').start()
+        self.rip_rpm_sighdr = mock.patch('koji.rip_rpm_sighdr').start()
+        self.import_rpm_file = mock.patch('kojihub.import_rpm_file').start()
+        self.import_rpm = mock.patch('kojihub.import_rpm').start()
+        self.QueryProcessor = mock.patch('kojihub.QueryProcessor').start()
+        self.context = mock.patch('kojihub.context').start()
+        self.new_package = mock.patch('kojihub.new_package').start()
+        self.get_rpm_header = mock.patch('koji.get_rpm_header').start()
+        self.pathinfo_work = mock.patch('koji.pathinfo.work').start()
+        self.os_path_exists = mock.patch('os.path.exists').start()
+
         self.rpm_header_retval = {
             'filename': 'name-version-release.arch.rpm',
             1000: 'name',
@@ -225,39 +51,21 @@ class TestImportBuild(unittest.TestCase):
 
     def tearDown(self):
         shutil.rmtree(self.tempdir)
+        mock.patch.stopall()
 
-    @mock.patch('kojihub.check_volume_policy')
-    @mock.patch('kojihub.new_typed_build')
-    @mock.patch('kojihub._dml')
-    @mock.patch('kojihub._singleValue')
-    @mock.patch('kojihub.get_build')
-    @mock.patch('kojihub.add_rpm_sig')
-    @mock.patch('koji.rip_rpm_sighdr')
-    @mock.patch('kojihub.import_rpm_file')
-    @mock.patch('kojihub.import_rpm')
-    @mock.patch('kojihub.QueryProcessor')
-    @mock.patch('kojihub.context')
-    @mock.patch('kojihub.new_package')
-    @mock.patch('koji.get_rpm_header')
-    @mock.patch('koji.pathinfo.work')
-    def test_import_build_completed_build(self, work, get_rpm_header,
-                                          new_package, context, query,
-                                          import_rpm, import_rpm_file,
-                                          rip_rpm_sighdr, add_rpm_sig,
-                                          get_build, _singleValue, _dml,
-                                          new_typed_build, check_volume_policy):
+    def test_import_build_completed_build(self):
 
-        rip_rpm_sighdr.return_value = (0, 0)
+        self.rip_rpm_sighdr.return_value = (0, 0)
 
         processor = mock.MagicMock()
         processor.executeOne.return_value = None
-        query.return_value = processor
+        self.QueryProcessor.return_value = processor
 
-        context.session.user_id = 99
+        self.context.session.user_id = 99
 
-        work.return_value = '/'
+        self.pathinfo_work.return_value = '/'
 
-        check_volume_policy.return_value = {'id':0, 'name': 'DEFAULT'}
+        self.check_volume_policy.return_value = {'id': 0, 'name': 'DEFAULT'}
 
         retval = copy.copy(self.rpm_header_retval)
         retval.update({
@@ -266,7 +74,7 @@ class TestImportBuild(unittest.TestCase):
             1022: 'src',
             1106: 1,
         })
-        get_rpm_header.return_value = retval
+        self.get_rpm_header.return_value = retval
         binfo = {
             'state': koji.BUILD_STATES['COMPLETE'],
             'name': 'name',
@@ -277,7 +85,7 @@ class TestImportBuild(unittest.TestCase):
         # get_build called once to check for existing,
         # if it doesn't exist, called another time after creating
         # then 3rd later to get the build info
-        get_build.side_effect = [None, binfo, binfo]
+        self.get_build.side_effect = [None, binfo, binfo]
 
         kojihub.import_build(self.src_filename, [self.filename])
 
@@ -315,13 +123,29 @@ class TestImportBuild(unittest.TestCase):
             'pkg_id': mock.ANY,
             'id': mock.ANY,
         }
-        _dml.assert_called_once_with(statement, values)
+        self._dml.assert_called_once_with(statement, values)
 
-    @mock.patch('os.path.exists')
-    def test_import_build_non_exist_file(self, os_path_exists):
+    def test_import_build_non_exist_file(self):
         uploadpath = koji.pathinfo.work()
-        os_path_exists.return_value = False
+        self.os_path_exists.return_value = False
         with self.assertRaises(koji.GenericError) as cm:
             kojihub.import_build(self.src_filename, [self.filename])
-        self.assertEqual("No such file: %s/%s" % (uploadpath, self.src_filename),
+        self.assertEqual(f"No such file: {uploadpath}/{self.src_filename}", str(cm.exception))
+
+    def test_import_build_wrong_type_brmap(self):
+        brmap = 'test-brmap'
+        with self.assertRaises(koji.GenericError) as cm:
+            kojihub.import_build(self.src_filename, [self.filename], brmap=brmap)
+        self.assertEqual(f"Invalid type for value '{brmap}': {type(brmap)}", str(cm.exception))
+
+    def test_import_build_wrong_type_srpm(self):
+        srpm = ['test-srpm']
+        with self.assertRaises(koji.GenericError) as cm:
+            kojihub.import_build(srpm, [self.filename])
+        self.assertEqual(f"Invalid type for value '{srpm}': {type(srpm)}", str(cm.exception))
+
+    def test_import_build_wrong_type_rpms(self):
+        with self.assertRaises(koji.GenericError) as cm:
+            kojihub.import_build(self.src_filename, self.filename)
+        self.assertEqual(f"Invalid type for value '{self.filename}': {type(self.filename)}",
                          str(cm.exception))

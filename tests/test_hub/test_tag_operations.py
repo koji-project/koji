@@ -252,16 +252,22 @@ class TestGetTag(unittest.TestCase):
         self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
                                          side_effect=self.getQuery).start()
         self.queries = []
+        self.tagname = 'test-tag'
 
     def test_get_tag_invalid_taginfo(self):
         taginfo = {'test-tag': 'value'}
         with self.assertRaises(koji.GenericError) as ex:
             kojihub.get_tag(taginfo, strict=True)
-        self.assertEqual("Invalid name or id value: %s" % taginfo, str(ex.exception))
+        self.assertEqual(f"Invalid name or id value: {taginfo}", str(ex.exception))
 
     def test_get_tag_non_exist_tag(self):
-        taginfo = 'test-tag'
         self.query_executeOne.return_value = None
         with self.assertRaises(koji.GenericError) as ex:
-            kojihub.get_tag(taginfo, strict=True)
-        self.assertEqual("No such tagInfo: '%s'" % taginfo, str(ex.exception))
+            kojihub.get_tag(self.tagname, strict=True)
+        self.assertEqual(f"No such tagInfo: '{self.tagname}'", str(ex.exception))
+
+    def test_get_tag_wrong_event(self):
+        event = 'unsupported-event'
+        with self.assertRaises(koji.GenericError) as ex:
+            kojihub.get_tag(self.tagname, event=event)
+        self.assertEqual(f"Invalid event: '{event}'", str(ex.exception))

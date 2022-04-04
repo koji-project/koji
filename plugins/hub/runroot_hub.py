@@ -30,12 +30,17 @@ def get_channel_arches(channel):
 def runroot(tagInfo, arch, command, channel=None, **opts):
     """ Create a runroot task """
     context.session.assertPerm('runroot')
+    arch = koji.parse_arches(arch, strict=True, allow_none=False)
+    kojihub.check_value_type(command, cast=str)
     taskopts = {
         'priority': 15,
         'arch': arch,
     }
 
-    taskopts['channel'] = channel or 'runroot'
+    if channel is None:
+        taskopts['channel'] = 'runroot'
+    else:
+        taskopts['channel'] = kojihub.get_channel(channel, strict=True)['name']
 
     tag = kojihub.get_tag(tagInfo, strict=True)
     if arch == 'noarch':
