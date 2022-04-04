@@ -4442,7 +4442,7 @@ def anon_handle_list_tags(goptions, session, args):
     parser.add_option("--unlocked", action="store_true", help="Only show unlocked tags")
     parser.add_option("--build", help="Show tags associated with a build")
     parser.add_option("--package", help="Show tags associated with a package")
-    (options, args) = parser.parse_args(args)
+    (options, patterns) = parser.parse_args(args)
     ensure_connection(session, goptions)
 
     pkginfo = {}
@@ -4458,7 +4458,7 @@ def anon_handle_list_tags(goptions, session, args):
         if not buildinfo:
             parser.error("No such build: %s" % options.build)
 
-    if not args:
+    if not patterns:
         # list everything if no pattern is supplied
         tags = session.listTags(build=buildinfo.get('id', None),
                                 package=pkginfo.get('id', None))
@@ -4469,17 +4469,17 @@ def anon_handle_list_tags(goptions, session, args):
         try:
             tags = []
             with session.multicall(strict=True) as m:
-                for arg in args:
+                for pattern in patterns:
                     tags.append(m.listTags(build=buildinfo.get('id', None),
                                            package=pkginfo.get('id', None),
-                                           pattern=arg))
+                                           pattern=pattern))
             tags = list(itertools.chain(*[t.result for t in tags]))
         except koji.ParameterError:
             fallback = True
         if fallback:
             # without the pattern option, we have to filter client side
             tags = session.listTags(buildinfo.get('id', None), pkginfo.get('id', None))
-            tags = [t for t in tags if koji.util.multi_fnmatch(t['name'], args)]
+            tags = [t for t in tags if koji.util.multi_fnmatch(t['name'], patterns)]
 
     tags.sort(key=lambda x: x['name'])
     # if options.verbose:
