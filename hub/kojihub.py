@@ -10859,10 +10859,17 @@ class RootExports(object):
             return None
         return context.session.session_data
 
-    def showOpts(self):
-        """Returns hub options"""
+    def showOpts(self, as_string=True):
+        """Returns hub options
+
+        :param bool as_string: if True (default) returns hub options as raw string,
+                               if False, returns hub options as dict
+        """
         context.session.assertPerm('admin')
-        return "%r" % context.opts
+        if as_string:
+            return "%r" % context.opts
+        else:
+            return context.opts
 
     def getEvent(self, id):
         """

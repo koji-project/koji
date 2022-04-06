@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 from six.moves import range
 import unittest
+import re
 
 from six.moves import xmlrpc_client
 from koji import xmlrpcplus
@@ -9,19 +10,21 @@ from koji import xmlrpcplus
 
 class TestDump(unittest.TestCase):
 
+    maxDiff = None
+
     standard_data = [
-            "Hello World",
-            5,
-            5.5,
-            None,
-            True,
-            False,
-            u'Hævē s°mə ŭnıčođė',
-            [1],
-            {"a": 1},
-            ["fnord"],
-            {"a": ["b", 1, 2, None], "b": {"c": 1}},
-        ]
+        "Hello World",
+        5,
+        5.5,
+        None,
+        True,
+        False,
+        u'Hævē s°mə ŭnıčođė',
+        [1],
+        {"a": 1},
+        ["fnord"],
+        {"a": ["b", 1, 2, None], "b": {"c": 1}},
+    ]
 
     def test_call(self):
         method = 'my_rpc_method'
@@ -69,11 +72,11 @@ class TestDump(unittest.TestCase):
         self.assertEqual(method, None)
 
     long_data = [
-            2 ** 63 - 1,
-            -(2 ** 63),
-            [2**n - 1 for n  in range(64)],
-            {"a": [2 ** 63 - 23, 5], "b": 2**63 - 42},
-            ]
+        2 ** 63 - 1,
+        -(2 ** 63),
+        [2**n - 1 for n in range(64)],
+        {"a": [2 ** 63 - 23, 5], "b": 2**63 - 42},
+    ]
 
     def test_i8(self):
         for value in self.long_data:
@@ -82,6 +85,24 @@ class TestDump(unittest.TestCase):
             params, method = xmlrpc_client.loads(enc)
             self.assertEqual(params, value)
             self.assertEqual(method, None)
+        # and as a call
+        method = "foomethod"
+        value = tuple(self.long_data)
+        enc = xmlrpcplus.dumps(value, methodname=method)
+        params, method = xmlrpc_client.loads(enc)
+        self.assertEqual(params, value)
+        self.assertEqual(method, method)
+
+    def test_dict_data(self):
+        dict_data = {'MaxNameLengthInternal': 15,
+                     'RegexNameInternal.compiled': re.compile('^[A-Za-z0-9/_.+-]+$')}
+        dist_data_output = ({'MaxNameLengthInternal': 15,
+                             'RegexNameInternal.compiled': "re.compile('^[A-Za-z0-9/_.+-]+$')"},)
+        dict_data = (dict_data,)
+        enc = xmlrpcplus.dumps(dict_data, methodresponse=1)
+        params, method = xmlrpc_client.loads(enc)
+        self.assertEqual(params, dist_data_output)
+        self.assertEqual(method, None)
         # and as a call
         method = "foomethod"
         value = tuple(self.long_data)
@@ -133,10 +154,10 @@ class TestDump(unittest.TestCase):
 
     def test_encoding(self):
         data = [
-                45,
-                ["hello", "world"],
-                {"a": 5.5, "b": [None]},
-                ]
+            45,
+            ["hello", "world"],
+            {"a": 5.5, "b": [None]},
+        ]
         for value in data:
             value = (value,)
             enc = xmlrpcplus.dumps(value, methodresponse=1, encoding='us-ascii')
@@ -149,14 +170,14 @@ class TestDump(unittest.TestCase):
     def test_no_i8(self):
         # we shouldn't use i8 if we don't have to
         data = [
-                23,
-                42,
-                -1024,
-                2 ** 31 - 1,
-                -2 ** 31,
-                [2**31 -1],
-                {"a": -2 ** 31, "b": 3.14},
-                ]
+            23,
+            42,
+            -1024,
+            2 ** 31 - 1,
+            -2 ** 31,
+            [2**31 - 1],
+            {"a": -2 ** 31, "b": 3.14},
+        ]
         for value in data:
             value = (value,)
             enc = xmlrpcplus.dumps(value, methodresponse=1, encoding='us-ascii')
