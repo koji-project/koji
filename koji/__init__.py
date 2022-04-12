@@ -65,7 +65,7 @@ import six.moves.http_client
 import six.moves.urllib
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
-from requests.packages.urllib3.exceptions import MaxRetryError
+from requests.packages.urllib3.exceptions import MaxRetryError, HostChangedError
 from six.moves import range, zip
 
 from koji.tasks import parse_task_params
@@ -2713,23 +2713,38 @@ class ClientSession(object):
         ]
         return handler, headers, request
 
+    def _sanitize_url(self, url):
+        """Replace sensitive values in hub url"""
+        url = re.sub(r'session-id=\d+', 'session-id=XXXXX', url)
+        url = re.sub(r'session-key=[^&]+', 'session-key=XXXXX', url)
+        return url
+
+    def _sanitize_connection_error(self, exc, top=True):
+        """Replace sensitive values in nested exceptions"""
+        if isinstance(exc, requests.exceptions.ConnectionError) or not top:
+            # mask sensitive values, ConnectionError could contain underlying
+            # urllib3 exception which displays full URL with session-id, etc.
+            new_args = []
+            for mre in exc.args:
+                if isinstance(mre, (MaxRetryError, HostChangedError)):
+                    mre = self._sanitize_connection_error(mre, top=False)
+                elif isinstance(mre, str):
+                    mre = self._sanitize_url(mre)
+                new_args.append(mre)
+            exc.args = tuple(new_args)
+        if isinstance(exc, requests.exceptions.ConnectionError) and exc.request:
+            exc.request.url = self._sanitize_url(exc.request.url)
+        return exc
+
     def _sendCall(self, handler, headers, request):
         # handle expired connections
         for i in (0, 1):
             try:
                 return self._sendOneCall(handler, headers, request)
             except Exception as e:
-                if isinstance(e, requests.exceptions.ConnectionError):
-                    # mask sensitive values, ConnectionError could contain underlying
-                    # urllib3 exception which displays full URL with session-id, etc.
-                    if e.args and isinstance(e.args[0], MaxRetryError):
-                        mre = e.args[0]
-                        s = mre.args[0]
-                        s = re.sub(r'session-id=\d+', 'session-id=XXXXX', s)
-                        s = re.sub(r'session-key=[^&]+', 'session-key=XXXXX', s)
-                        mre.args = (s, mre.args[1:])
+                e = self._sanitize_connection_error(e)
                 if i or not is_conn_error(e):
-                    raise
+                    raise e
                 self.logger.debug("Connection Error: %s", e)
                 self.new_session()
 
