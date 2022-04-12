@@ -10705,6 +10705,9 @@ class RootExports(object):
 
         taskOpts = {}
         if priority:
+            if priority < 0:
+                if not context.session.hasPerm('admin'):
+                    raise koji.ActionNotAllowed('only admins may create high-priority tasks')
             taskOpts['priority'] = koji.PRIO_DEFAULT + priority
         convert_value(channel, cast=str, check_only=True)
         taskOpts['channel'] = channel
