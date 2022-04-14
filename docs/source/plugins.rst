@@ -282,9 +282,8 @@ option. Similarly to other image tasks, alternative architecture failures can be
 ignored for successful build by ``--can-fail`` option. ``--arch`` can be used to
 limit build tag architectures.
 
-
 Driver Update Disks building
-===========================
+============================
 
 **This is just a tech-preview. API/usage can drastically change in upcoming
 releases**
@@ -329,3 +328,91 @@ inside the produced ISO.
 Similarly to other image tasks, alternative architecture failures can be
 ignored for successful build by ``--can-fail`` option. ``--arch`` can be used
 to limit build tag architectures.
+
+tag2distrepo
+============
+
+Koji plugin to automatically regenerate distrepos on tag operations
+
+It uses the following options on a tag to control behaviour:
+
+- ``tag2distrepo.enabled``: set to "true" to enable automatic distrepos
+- ``tag2distrepo.keys``: set to a space-separated list of keys to use for distrepos
+
+The tag must have at least one arch configured on it.
+
+Installing plugin on Koji Hub
+-----------------------------
+
+1. Edit the following settings in ``/etc/koji-hub/hub.conf`` to enable the plugin:
+
+.. code-block:: ini
+
+         PluginPath = /usr/lib/koji-hub-plugins
+         Plugins = tag2distrepo
+
+2. Reload Apache
+
+.. code-block:: shell
+
+        $ systemctl reload httpd
+
+Example usage
+-------------
+
+Here is an example of enabling the plugin on an "f33-infra" tag. Create the tag and ensure it has
+at least one arch and a package list (direct or inherited) so we can tag packages into it.
+
+.. code-block:: shell
+
+    $ koji add-tag f33-infra --arches=x86_64
+    $ koji add-pkg --owner kdreyer f33-infra bash
+
+Set the extra options on the tag so the plugin will generate the repository:
+
+.. code-block:: shell
+
+    $ koji edit-tag -x tag2distrepo.enabled=True -x tag2distrepo.keys=47dd8ef9 f33-infra
+
+Tag a new build to trigger the plugin:
+
+.. code-block:: shell
+
+    $ koji tag f33-infra bash-5.0.17-2.fc33
+
+The hub will immediately queue a new distRepo task, using the tagBuild task host as the distRepo
+task owner. When the distRepo task completes, you can find the new repository under the ``topurl``
+for your Koji instance.
+
+To confirm that the tag has the correct options set, use the `koji taginfo` command:
+
+.. code-block:: shell
+
+    $ koji taginfo f33-infra
+    Tag: f33-infra [18680]
+    Arches: x86_64
+    Tag options:
+      tag2distrepo.enabled : 'true'
+      tag2distrepo.keys : '47dd8ef9'
+
+To disable the plugin for the same tag:
+
+.. code-block:: shell
+
+    $ koji edit-tag -r tag2distrepo.enabled -r tag2distrepo.keys f33-infra
+
+Using Multiple Keys
+-------------------
+
+If you want to create a repository that contains builds signed by more than one key, list your
+desired key IDs ordered by preference.
+
+For example:
+
+.. code-block:: shell
+
+    $ koji edit-tag coreos-pool -x tag2distrepo.keys="45719a39 9867c58f 38ab71f4 5323552a"
+
+For each RPM in the tag, Koji will use the first signed copy that it finds. In other words,
+Koji will try the first key (`45719a39`), and if Koji does not have the first key's signature
+for that RPM, then it will try the second key (`9867c58f`), third key (`38ab71f4`), and so on.
