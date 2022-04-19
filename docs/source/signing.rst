@@ -74,8 +74,8 @@ A lower-level command that shows the signature on an RPM file (the
 Learn more about RPM signatures and digests in `RPM's reference manual
 <https://rpm-software-management.github.io/rpm/manual/signatures_digests.html>`_.
 
-Uploding signed RPMs to Koji
-----------------------------
+Uploading signed RPMs to Koji
+-----------------------------
 
 Koji does not sign RPMs. Instead, Koji imports RPMs that are signed with a separate key.
 
@@ -94,6 +94,14 @@ then upload the signed copy with ``koji import-sig``::
 The ``koji import-sig`` command uploads the signed RPM headers to the Koji
 Hub, which stores the headers on disk alongside the main unsigned RPM.
 It also writes out a full signed RPM.
+
+Another variant is to import whole signed rpms (e.g. during :doc:`bootstrapping
+<server_bootstrap>` via ``koji import`` command.) If such an imported rpm
+contains an rpm signature, the import does not automatically write out a signed
+copy for that signature (in contrast with ``import-sig``). The primary copy will
+be the signed rpm, and the signature will be noted. If a signed copy is desired
+(e.g. for generating :doc:`distrepos <exporting_repositories>`), you can use the
+koji write-signed-rpm command.
 
 Downloading a signed RPM from Koji
 ----------------------------------

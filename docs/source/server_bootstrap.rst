@@ -12,7 +12,7 @@ Koji repo administration daemon (``kojira``) is properly configured and
 running, and at least one Koji builder (``kojid``) is properly
 configured and running. All koji cli commands assume that the user is a
 Koji *admin*. If you need help with these tasks, see the
-`ServerHowTo <Koji/ServerHowTo>`__ .
+:doc:`ServerHowTo <server_howto>`.
 
 -  Download all source rpms and binary rpms for the arches you're
    interested in
@@ -28,6 +28,12 @@ If the files are on the same volume as /mnt/koji, you can use
 the need to upload them to the hub and **very significantly** increasing
 import speed. When using ``--link``, you must run as root. It is
 **highly** recommended that you use ``--link``.
+
+If an imported rpm contains an rpm signature, the import does not automatically
+write out a signed copy for that signature. The primary copy will be the signed
+rpm, and the signature will be noted. If a signed copy is desired (e.g. for
+generating :doc:`distrepos <exporting_repositories>`), you can use the koji
+write-signed-rpm command.
 
 -  Import all binary rpms using the same method as above
 
