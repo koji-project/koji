@@ -245,11 +245,14 @@ project. Minimal supported version of kiwi is ``kiwi-9.24.2``.
 All three parts (cli/hub/builder) needs to be installed. There is currently no
 configuration except allowing the plugins (name is 'kiwi' for all components).
 
-Builders have to be part of ``image`` channel and don't need to have any
-specific library installed (kiwi invocation/usage is only in buildroots not on
-builder itself). (Temporarily ``python3-kiwi`` needs to be installed on builder
-for kojid to be able to parse kiwi output. It will be changed to json in next
-version and this requirement will be dropped.)
+Builders don't need to have any specific library installed (kiwi
+invocation/usage is only in buildroots not on builder itself). (Temporarily
+``python3-kiwi`` needs to be installed on builder for kojid to be able to parse
+kiwi output. It will be changed to json in next version and this requirement
+will be dropped.)
+
+``image`` channel is the default one and ``channel`` policy can be used to
+request other channel for this type of tasks as usual.
 
 Buildtag needs to be configured by adding special group ``kiwi`` which should
 contain at least ``kiwi-cli``, potentially ``jing`` for better description files
