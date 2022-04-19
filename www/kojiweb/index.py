@@ -915,7 +915,7 @@ _PREFIX_CHARS = [chr(char) for char in list(range(48, 58)) + list(range(97, 123)
 
 
 def packages(environ, tagID=None, userID=None, order='package_name', start=None, prefix=None,
-             inherited='1'):
+             inherited='1', blocked='1'):
     values = _initValues(environ, 'Packages', 'packages')
     server = _getServer(environ)
     tag = None
@@ -938,12 +938,15 @@ def packages(environ, tagID=None, userID=None, order='package_name', start=None,
     values['prefix'] = prefix
     inherited = int(inherited)
     values['inherited'] = inherited
+    blocked = int(blocked)
+    values['blocked'] = blocked
 
     kojiweb.util.paginateMethod(server, values, 'listPackages',
                                 kw={'tagID': tagID,
                                     'userID': userID,
                                     'prefix': prefix,
-                                    'inherited': bool(inherited)},
+                                    'inherited': bool(inherited),
+                                    'with_blocked': bool(blocked)},
                                 start=start, dataName='packages', prefix='package', order=order)
 
     values['chars'] = _PREFIX_CHARS
