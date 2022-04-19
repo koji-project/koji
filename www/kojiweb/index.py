@@ -807,6 +807,15 @@ def canceltask(environ, taskID):
     _redirect(environ, 'taskinfo?taskID=%i' % taskID)
 
 
+def freetask(environ, taskID):
+    server = _getServer(environ)
+    _assertLogin(environ)
+
+    taskID = int(taskID)
+    server.freeTask(taskID)
+    _redirect(environ, 'taskinfo?taskID=%i' % taskID)
+
+
 def _sortByExtAndName(item):
     """Sort filename tuples key function, first by extension, and then by name."""
     kRoot, kExt = os.path.splitext(os.path.basename(item[1]))
