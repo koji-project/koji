@@ -730,6 +730,8 @@ def warn(msg):
 
 def activate_session(session, options):
     """Test and login the session is applicable"""
+    if session.logged_in:
+        return
     if isinstance(options, dict):
         options = optparse.Values(options)
     noauth = options.authtype == "noauth" or getattr(options, 'noauth', False)
