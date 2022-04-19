@@ -294,9 +294,8 @@ Plugin for creating Driver Update Disks with ``xorrisofs``.
 All three parts (cli/hub/builder) needs to be installed. There is currently no
 configuration except allowing the plugins (name is 'dud' for all components).
 
-Builders have to be part of ``image`` channel and don't need to have any
-specific library installed (mkisofs invocation/usage is only in buildroots not on
-builder itself)
+Builders don't need to have any specific library installed (xorrisofs
+invocation/usage is only in buildroots not on builder itself).
 
 Buildtag needs to be configured by adding special group ``dud-build`` which should contain
 the following packages:
