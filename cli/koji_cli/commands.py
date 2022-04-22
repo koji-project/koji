@@ -3059,7 +3059,9 @@ def anon_handle_list_channels(goptions, session, args):
         longest_channel = 8
     if options.simple:
         if not options.quiet:
-            print('Channel')
+            hdr = 'Channel'
+            print(hdr)
+            print(len(hdr) * '-')
         for channel in channels:
             print(channel['name'])
     else:
@@ -3072,6 +3074,7 @@ def anon_handle_list_channels(goptions, session, args):
             if options.comment and 'comment' in first_item:
                 hdr += "Comment".ljust(53)
             print(hdr)
+            print(len(hdr) * '-')
         mask = "%%(name)-%ss %%(enabled_host)6d %%(ready)6d %%(disabled)6d %%(load)6d %%(" \
                "capacity)6d %%(perc_load)6d%%%%" % longest_channel
         if options.description and 'description' in first_item:
@@ -3185,6 +3188,7 @@ def anon_handle_list_hosts(goptions, session, args):
         if options.show_channels:
             hdr += "Channels"
         print(hdr)
+        print(len(hdr) * '-')
     mask = "%%(name)-%ss %%(enabled)-3s %%(ready)-3s %%(task_load)4.1f/%%(capacity)-4.1f " \
            "%%(arches)-16s %%(update)-35s" % longest_host
     if options.description:

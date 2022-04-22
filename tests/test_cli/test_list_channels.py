@@ -56,6 +56,7 @@ class TestListChannels(utils.CliTestCase):
 
         actual = stdout.getvalue()
         expected = "Channel        Enabled  Ready Disbld   Load    Cap   Perc    \n" \
+                   "-------------------------------------------------------------\n" \
                    "default              3      1      0      1      6     22%\n" \
                    "test [disabled]      2      2      1      1      6     28%\n"
 
@@ -105,6 +106,9 @@ class TestListChannels(utils.CliTestCase):
         expected = "Channel        Enabled  Ready Disbld   Load    Cap   Perc    " \
                    "Description                                          " \
                    "Comment                                              \n" \
+                   "---------------------------------------------------------------------------" \
+                   "---------------------------------------------------------------------------" \
+                   "-----------------\n" \
                    "default              3      1      0      1      6     22%   " \
                    "test-description-1                                   " \
                    "test-comment-1                                    \n" \
@@ -199,6 +203,7 @@ class TestListChannels(utils.CliTestCase):
 
         actual = stdout.getvalue()
         expected = """Channel
+-------
 default
 test [disabled]
 """
