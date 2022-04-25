@@ -10,6 +10,7 @@ from . import utils
 
 class TestDownloadBuild(utils.CliTestCase):
     def setUp(self):
+        self.maxDiff = None
         self.options = mock.MagicMock()
         self.options.debug = False
         self.session = mock.MagicMock()
@@ -182,6 +183,48 @@ class TestDownloadBuild(utils.CliTestCase):
             ['--task-id', build_id],
             stderr='No associated builds for task %s\n' % build_id,
             stdout='',
+            activate_session=None,
+            exit_code=1
+        )
+
+    def test_download_build_latest_from_error_find_build(self):
+        build_id = 'package-name'
+        self.session.listTagged.side_effect = koji.GenericError
+        self.assert_system_exit(
+            anon_handle_download_build,
+            self.options,
+            self.session,
+            [build_id, '--latestfrom', self.tag],
+            stderr='Error finding latest build: {}\n',
+            activate_session=None,
+            exit_code=1
+        )
+
+    def test_download_build_topurl_none(self):
+        build_id = '1'
+        self.assert_system_exit(
+            anon_handle_download_build,
+            self.options,
+            self.session,
+            [build_id, '--topurl', None],
+            stderr='You must specify --topurl to download files\n',
+            activate_session=None,
+            exit_code=1
+        )
+
+    @mock.patch('koji.buildLabel')
+    def test_download_build_type_not_scratch(self, build_label):
+        build_id = '1'
+        type = 'rpm'
+        self.session.listArchives.return_value = []
+        nvr = self.build_templ['nvr']
+        build_label.return_value = nvr
+        self.assert_system_exit(
+            anon_handle_download_build,
+            self.options,
+            self.session,
+            [build_id, '--type', type],
+            stderr='No %s archives available for %s\n' % (type, nvr),
             activate_session=None,
             exit_code=1
         )
