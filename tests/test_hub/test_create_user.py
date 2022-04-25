@@ -53,12 +53,3 @@ class TestCreateUser(unittest.TestCase):
         with self.assertRaises(koji.GenericError) as cm:
             self.exports.createUser(self.user_name, krb_principal=krb_principal)
         self.assertEqual(expected, str(cm.exception))
-
-    def test_create_user_wrong_type_status(self):
-        status = 'test-status'
-        self.verify_name_user.return_value = None
-        self.get_user.return_value = None
-        self.get_user_by_krb_principal.return_value = self.user_info_krb
-        with self.assertRaises(koji.ParameterError) as cm:
-            self.exports.createUser(self.user_name, status=status)
-        self.assertEqual(f"Invalid type for value '{status}': {type(status)}", str(cm.exception))

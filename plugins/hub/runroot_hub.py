@@ -31,7 +31,7 @@ def runroot(tagInfo, arch, command, channel=None, **opts):
     """ Create a runroot task """
     context.session.assertPerm('runroot')
     arch = koji.parse_arches(arch, strict=True, allow_none=False)
-    kojihub.check_value_type(command, cast=str)
+    kojihub.convert_value(command, cast=str, check_only=True)
     taskopts = {
         'priority': 15,
         'arch': arch,

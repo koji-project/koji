@@ -91,28 +91,32 @@ def xform_user_krb(entry):
     return entry
 
 
-def convert_value(value, cast=None, message=None, exc_type=None, none_allowed=False):
-    if exc_type is None:
-        exc_type = koji.ParameterError
+def convert_value(value, cast=None, message=None,
+                  exc_type=koji.ParameterError, none_allowed=False, check_only=False):
+    """Cast to another type with tailored exception
+
+    :param any value: tested object
+    :param type cast: To which type value should be cast
+    :param type exc_type: Raise this exception
+    :param bool none_allowed: Is None valid value?
+    :param check_only: Don't convert but raise an exception if type(value) != cast
+
+    :returns any value: returns converted value
+    """
     if value is None:
         if not none_allowed:
             raise(exc_type(message or "Invalid type"))
         else:
             return value
-    try:
-        return cast(value)
-    except (ValueError, TypeError):
-        raise(exc_type(message or f"Invalid type for value '{value}': {type(value)}"))
-
-
-def check_value_type(value, cast=None, message=None, exc_type=None, none_allowed=False):
-    if none_allowed:
-        if value is None:
-            return value
-    if exc_type is None:
-        exc_type = koji.ParameterError
-    if not isinstance(value, cast):
-        raise (exc_type(message or f"Invalid type for value '{value}': {type(value)}"))
+    if check_only:
+        if not isinstance(value, cast):
+            raise(exc_type(message or f"Invalid type for value '{value}': {type(value)}"))
+    else:
+        try:
+            value = cast(value)
+        except (ValueError, TypeError):
+            raise(exc_type(message or f"Invalid type for value '{value}': {type(value)}"))
+    return value
 
 
 class Task(object):
@@ -564,11 +568,11 @@ def make_task(method, arglist, **opts):
         priority: the priority of the task
         assign: a host_id to assign the task to
     """
-    check_value_type(method, cast=str)
+    convert_value(method, cast=str, check_only=True)
     if 'parent' in opts:
         opts['parent'] = convert_value(opts['parent'], cast=int)
     if 'label' in opts:
-        check_value_type(opts['label'], cast=str)
+        convert_value(opts['label'], cast=str, check_only=True)
     if 'owner' in opts:
         if not isinstance(opts['owner'], int):
             opts['owner'] = get_user(opts['owner'], strict=True)['id']
@@ -1429,8 +1433,6 @@ def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None,
         'build.state = %(st_complete)i'
     ]
     if package:
-        if not isinstance(package, str):
-            package = lookup_package(package, strict=True)['name']
         clauses.append('package.name = %(package)s')
     if owner:
         clauses.append('users.name = %(owner)s')
@@ -1678,10 +1680,9 @@ def check_tag_access(tag_id, user_id=None):
     """
     if user_id is None:
         user_id = context.session.user_id
-        if not user_id:
-            raise koji.GenericError("a user_id is required")
-    else:
-        user_id = convert_value(user_id, cast=int)
+    if user_id is None:
+        raise koji.GenericError("a user_id is required")
+    user_id = convert_value(user_id, cast=int)
     perms = koji.auth.get_user_perms(user_id)
     override = False
     if 'admin' in perms:
@@ -2424,10 +2425,10 @@ def edit_channel(channelInfo, **kw):
         dup_check = get_channel(kw['name'], strict=False)
         if dup_check:
             raise koji.GenericError("channel %(name)s already exists (id=%(id)i)" % dup_check)
-    if kw.get('description'):
-        check_value_type(kw['description'], cast=str)
-    if kw.get('comment'):
-        check_value_type(kw['comment'], cast=str)
+    if 'description' in kw:
+        convert_value(kw['description'], cast=str, check_only=True)
+    if 'comment' in kw:
+        convert_value(kw['comment'], cast=str, check_only=True)
 
     update = UpdateProcessor('channels',
                              values={'channelID': channel['id']},
@@ -2479,7 +2480,8 @@ def add_channel(channel_name, description=None):
     :param str description: description of channel
     """
     context.session.assertPerm('admin')
-    check_value_type(description, cast=str, none_allowed=True)
+    convert_value(description, cast=str, none_allowed=True,
+                  message="Channel name must be a string")
     verify_name_internal(channel_name)
     dup_check = get_channel(channel_name, strict=False)
     if dup_check:
@@ -2494,7 +2496,7 @@ def add_channel(channel_name, description=None):
 
 def set_channel_enabled(channelname, enabled=True, comment=None):
     context.session.assertPerm('host')
-    check_value_type(comment, cast=str, none_allowed=True)
+    convert_value(comment, cast=str, none_allowed=True, check_only=True)
     channel = get_channel(channelname)
     if not channel:
         raise koji.GenericError('No such channel: %s' % channelname)
@@ -2870,10 +2872,10 @@ def _write_maven_repo_metadata(destdir, artifacts):
 def dist_repo_init(tag, keys, task_opts):
     """Create a new repo entry in the INIT state, return full repo data"""
     state = koji.REPO_INIT
-    check_value_type(keys, cast=list)
+    convert_value(keys, cast=list, check_only=True)
     tinfo = get_tag(tag, strict=True)
     tag_id = tinfo['id']
-    check_value_type(task_opts, cast=dict)
+    convert_value(task_opts, cast=dict, check_only=True)
     event = task_opts.get('event')
     event = convert_value(event, cast=int, none_allowed=True)
     volume = task_opts.get('volume')
@@ -2903,7 +2905,7 @@ def dist_repo_init(tag, keys, task_opts):
         os.symlink(relpath, basedir)
     # handle comps
     if task_opts.get('comps'):
-        check_value_type(task_opts['comps'], cast=str)
+        convert_value(task_opts['comps'], cast=str, check_only=True)
         groupsdir = joinpath(repodir, 'groups')
         koji.ensuredir(groupsdir)
         shutil.copyfile(joinpath(koji.pathinfo.work(),
@@ -2931,7 +2933,7 @@ def repo_set_state(repo_id, state, check=True):
     repo_id = convert_value(repo_id, cast=int)
     if check:
         # The repo states are sequential, going backwards makes no sense
-        q = """SELECT state FROM repo WHERE id = %(repo_id)s FOR UPDATE"""
+        q = """SELECT state FROM repo WHERE id = %(repo_id)i FOR UPDATE"""
         oldstate = _singleValue(q, locals())
         if oldstate > state:
             raise koji.GenericError("Invalid repo state transition %s->%s"
@@ -2988,7 +2990,7 @@ def repo_delete(repo_id):
     If the number of references is nonzero, no change is made"""
     repo_id = convert_value(repo_id, cast=int)
     # get a row lock on the repo
-    q = """SELECT state FROM repo WHERE id = %(repo_id)s FOR UPDATE"""
+    q = """SELECT state FROM repo WHERE id = %(repo_id)i FOR UPDATE"""
     _singleValue(q, locals())
     references = repo_references(repo_id)
     if not references:
@@ -3609,9 +3611,9 @@ def _edit_tag(tagInfo, **kwargs):
             and dslice(kwargs, ['maven_support', 'maven_include_all'], strict=False):
         raise koji.GenericError("Maven support not enabled")
     if kwargs.get('remove_extra'):
-        check_value_type(kwargs['remove_extra'], cast=list, none_allowed=True)
+        convert_value(kwargs['remove_extra'], cast=list, none_allowed=True, check_only=True)
     if kwargs.get('block_extra'):
-        check_value_type(kwargs['block_extra'], cast=list, none_allowed=True)
+        convert_value(kwargs['block_extra'], cast=list, none_allowed=True, check_only=True)
 
     tag = get_tag(tagInfo, strict=True)
     if 'perm' in kwargs and 'perm_id' not in kwargs:
@@ -5580,7 +5582,7 @@ def edit_host(hostInfo, **kw):
 
     for change in changes:
         if change in ['description', 'comment', 'arches']:
-            check_value_type(kw[change], cast=str)
+            convert_value(kw[change], cast=str, check_only=True)
 
     update = UpdateProcessor('host_config', values=host, clauses=['host_id = %(id)i'])
     update.make_revoke()
@@ -6233,9 +6235,9 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
     if brmap is None:
         brmap = {}
     else:
-        check_value_type(brmap, cast=dict)
-    check_value_type(srpm, cast=str)
-    check_value_type(rpms, cast=list)
+        convert_value(brmap, cast=dict, check_only=True)
+    convert_value(srpm, cast=str, check_only=True)
+    convert_value(rpms, cast=list, check_only=True)
     koji.plugin.run_callbacks('preImport', type='build', srpm=srpm, rpms=rpms, brmap=brmap,
                               task_id=task_id, build_id=build_id, build=None, logs=logs)
     uploadpath = koji.pathinfo.work()
@@ -6612,7 +6614,7 @@ class CG_Importer(object):
         if metadata is None:
             # default to looking for uploaded file
             metadata = 'metadata.json'
-        check_value_type(metadata, cast=str)
+        convert_value(metadata, cast=str, check_only=True)
         if metadata.endswith('.json'):
             # handle uploaded metadata
             workdir = koji.pathinfo.work()
@@ -7387,7 +7389,7 @@ def get_archive_type(filename=None, type_name=None, type_id=None, strict=False):
     elif type_name:
         return _get_archive_type_by_name(type_name, strict)
     elif filename:
-        check_value_type(filename, cast=str)
+        convert_value(filename, cast=str, check_only=True)
     else:
         raise koji.GenericError('one of filename, type_name, or type_id must be specified')
 
@@ -7427,8 +7429,8 @@ def add_archive_type(name, description, extensions):
     """
     context.session.assertPerm('admin')
     verify_name_internal(name)
-    check_value_type(description, cast=str)
-    check_value_type(extensions, cast=str)
+    convert_value(description, cast=str, check_only=True)
+    convert_value(extensions, cast=str, check_only=True)
     data = {'name': name,
             'description': description,
             'extensions': extensions,
@@ -10387,7 +10389,7 @@ def policy_data_from_task_args(method, arglist):
             # newRepo has a 'src' parameter that means something else
             break
         if k in params:
-            check_value_type(params[k], cast=str)
+            convert_value(params[k], cast=str, check_only=True)
             policy_data['source'] = params.get(k)
             break
     # parameters that indicate build target
@@ -10569,7 +10571,7 @@ class RootExports(object):
         if not opts:
             opts = {}
         taskOpts = {}
-        check_value_type(src, cast=str)
+        convert_value(src, cast=str, check_only=True)
         if priority:
             if priority < 0:
                 if not context.session.hasPerm('admin'):
@@ -10593,7 +10595,7 @@ class RootExports(object):
         Returns a list of all the dependent task ids
         """
         context.session.assertLogin()
-        check_value_type(srcs, cast=list)
+        convert_value(srcs, cast=list, check_only=True)
         if not opts:
             opts = {}
         taskOpts = {}
@@ -10622,7 +10624,7 @@ class RootExports(object):
         context.session.assertLogin()
         if not context.opts.get('EnableMaven'):
             raise koji.GenericError("Maven support not enabled")
-        check_value_type(url, cast=str)
+        convert_value(url, cast=str, check_only=True)
         if not opts:
             opts = {}
         taskOpts = {}
@@ -10659,7 +10661,7 @@ class RootExports(object):
         if not opts:
             opts = {}
 
-        check_value_type(url, cast=str)
+        convert_value(url, cast=str, check_only=True)
 
         build = self.getBuild(build, strict=True)
         if list_rpms(build['id']) and not (opts.get('scratch') or opts.get('create_build')):
@@ -10675,8 +10677,8 @@ class RootExports(object):
         taskOpts = {}
         if priority:
             taskOpts['priority'] = koji.PRIO_DEFAULT + priority
-        if channel:
-            taskOpts['channel'] = channel
+        convert_value(channel, cast=str, check_only=True)
+        taskOpts['channel'] = channel
 
         return make_task('wrapperRPM', [url, build_target, build, None, opts], **taskOpts)
 
@@ -10695,7 +10697,7 @@ class RootExports(object):
         context.session.assertLogin()
         if not context.opts.get('EnableMaven'):
             raise koji.GenericError("Maven support not enabled")
-        check_value_type(builds, cast=list)
+        convert_value(builds, cast=list, check_only=True)
         taskOpts = {}
         if priority:
             if priority < 0:
@@ -10725,8 +10727,8 @@ class RootExports(object):
         context.session.assertLogin()
         if not context.opts.get('EnableWin'):
             raise koji.GenericError("Windows support not enabled")
-        check_value_type(vm, cast=str)
-        check_value_type(url, cast=str)
+        convert_value(vm, cast=str, check_only=True)
+        convert_value(url, cast=str, check_only=True)
         targ_info = get_build_target(target, strict=True)
         policy_data = {'vm_name': vm,
                        'tag': targ_info['dest_tag']}
@@ -10754,7 +10756,7 @@ class RootExports(object):
         if img_type not in ('livecd', 'appliance', 'livemedia'):
             raise koji.GenericError('Unrecognized image type: %s' % img_type)
         for i in [name, ksfile, version]:
-            check_value_type(i, cast=str)
+            convert_value(i, cast=str, check_only=True)
 
         context.session.assertPerm(img_type)
 
@@ -10803,7 +10805,7 @@ class RootExports(object):
         Create an image using a kickstart file and group package list.
         """
         for i in [name, inst_tree, version]:
-            check_value_type(i, cast=str)
+            convert_value(i, cast=str, check_only=True)
         context.session.assertPerm('image')
         taskOpts = {'channel': 'image'}
         if priority:
@@ -12577,7 +12579,7 @@ class RootExports(object):
             verify_name_internal(permission)
         if description is not None and not create:
             raise koji.GenericError('Description should be specified only with create.')
-        check_value_type(description, cast=str, none_allowed=True)
+        convert_value(description, cast=str, none_allowed=True, check_only=True)
         user_id = get_user(userinfo, strict=True)['id']
         perm = lookup_perm(permission, strict=(not create), create=create)
         perm_id = perm['id']
@@ -12611,7 +12613,7 @@ class RootExports(object):
     def editPermission(self, permission, description):
         """Edit a permission description"""
         context.session.assertPerm('admin')
-        check_value_type(description, cast=str)
+        convert_value(description, cast=str, check_only=True)
         perm = lookup_perm(permission, strict=True)
         perm_id = perm['id']
         update = UpdateProcessor('permissions', clauses=['id=%(perm_id)i'],
@@ -12636,8 +12638,7 @@ class RootExports(object):
             raise koji.GenericError('user already exists: %s' % username)
         if krb_principal and get_user_by_krb_principal(krb_principal):
             raise koji.GenericError(
-                'user with this Kerberos principal already exists: %s' % krb_principal)
-        status = convert_value(status, cast=int, none_allowed=True)
+                f'user with this Kerberos principal already exists: {krb_principal}')
         return context.session.createUser(username, status=status, krb_principal=krb_principal)
 
     def addUserKrbPrincipal(self, user, krb_principal):
@@ -12647,7 +12648,7 @@ class RootExports(object):
         verify_name_user(krb=krb_principal)
         if get_user_by_krb_principal(krb_principal):
             raise koji.GenericError(
-                'user with this Kerberos principal already exists: %s' % krb_principal)
+                f'user with this Kerberos principal already exists: {krb_principal}')
         return context.session.setKrbPrincipal(userinfo['name'], krb_principal)
 
     def removeUserKrbPrincipal(self, user, krb_principal):
@@ -13118,7 +13119,7 @@ class RootExports(object):
         # builder user can already exist, if host tried to log in before adding into db
         userinfo = {'name': hostname}
         if krb_principal:
-            verify_name_user(krb=krb_principal)
+            convert_value(krb_principal, cast=str, check_only=True)
             userinfo['krb_principal'] = krb_principal
         user = get_user(userInfo=userinfo)
         if user:
@@ -14100,7 +14101,7 @@ class Host(object):
 
     def taskSetWait(self, parent, tasks):
         """Mark task waiting and subtasks awaited"""
-        check_value_type(tasks, cast=list, none_allowed=True)
+        convert_value(tasks, cast=list, none_allowed=True, check_only=True)
         # mark parent as waiting
         update = UpdateProcessor('task', clauses=['id=%(parent)s'], values=locals())
         update.set(waiting=True)
@@ -14218,11 +14219,11 @@ class Host(object):
 
     def updateHost(self, task_load, ready):
         host_data = get_host(self.id)
-        task_load = convert_value(task_load, cast=float)
+        task_load = float(task_load)
         if task_load != host_data['task_load'] or ready != host_data['ready']:
             c = context.cnx.cursor()
             id = self.id
-            q = """UPDATE host SET task_load=%(task_load)s,ready=%(ready)s WHERE id=%(id)s"""
+            q = "UPDATE host SET task_load=%(task_load)f,ready=%(ready)s WHERE id=%(id)i"
             c.execute(q, locals())
             context.commit_pending = True
 
@@ -14501,7 +14502,7 @@ class HostExports(object):
 
     def moveImageBuildToScratch(self, task_id, results):
         """move a completed image scratch build into place"""
-        check_value_type(results, cast=dict)
+        convert_value(results, cast=dict, check_only=True)
         host = Host()
         host.verify()
         task = Task(task_id)
@@ -14947,8 +14948,8 @@ class HostExports(object):
         pkg_id = build['package_id']
         tag_id = get_tag(tag, strict=True)['id']
         user_id = task.getOwner()
-        if not isinstance(fromtag, str):
-            tag = get_tag(tag, strict=True)['name']
+        if fromtag and not isinstance(fromtag, str):
+            fromtag = get_tag(fromtag, strict=True)['name']
         policy_data = {'tag': tag, 'build': build, 'fromtag': fromtag}
         policy_data['user_id'] = user_id
         if fromtag is None:
@@ -15244,7 +15245,7 @@ class HostExports(object):
         host = Host()
         host.verify()
         rinfo = repo_info(repo_id, strict=True)
-        check_value_type(data, cast=dict)
+        convert_value(data, cast=dict, check_only=True)
         koji.plugin.run_callbacks('preRepoDone', repo=rinfo, data=data, expire=expire)
         if rinfo['state'] != koji.REPO_INIT:
             raise koji.GenericError("Repo %(id)s not in INIT state (got %(state)s)" % rinfo)

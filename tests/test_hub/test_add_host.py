@@ -165,4 +165,3 @@ class TestAddHost(unittest.TestCase):
         self.assertEqual(self._singleValue.call_count, 1)
         self._singleValue.assert_called_once_with("SELECT id FROM channels WHERE name = 'default'")
         self.verify_host_name.assert_called_once_with('hostname')
-        self.verify_name_user.assert_called_once_with(krb=krb_principal)

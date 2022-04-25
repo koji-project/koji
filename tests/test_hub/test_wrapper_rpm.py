@@ -53,4 +53,6 @@ class TestWrapperRPM(unittest.TestCase):
         self.make_task.return_value = 123
         self.get_channel.return_value = {'comment': None, 'description': None, 'enabled': True,
                                          'id': 2, 'name': 'maven'}
-        self.exports.wrapperRPM(self.build, self.url, self.target, priority=priority, channel=2)
+        with self.assertRaises(koji.ParameterError):
+            self.exports.wrapperRPM(self.build, self.url, self.target,
+                                    priority=priority, channel=2)
