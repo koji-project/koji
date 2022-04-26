@@ -6484,6 +6484,7 @@ class CG_Importer(object):
     def __init__(self):
         self.buildinfo = None
         self.metadata_only = False
+        self.rpm_log_file = None
 
     def do_import(self, metadata, directory, token=None):
         metadata = self.get_metadata(metadata, directory)
@@ -6519,10 +6520,19 @@ class CG_Importer(object):
             self.check_build_dir(delete=True)
             raise
 
+        self.move_rpm_log_file()
+
         koji.plugin.run_callbacks('postImport', type='cg', metadata=metadata,
                                   directory=directory, build=self.buildinfo)
 
         return self.buildinfo
+
+    def move_rpm_log_file(self):
+        if self.rpm_log_file is not None:
+            logsdir = joinpath(koji.pathinfo.build(self.buildinfo), 'data/logs/')
+            koji.ensuredir(logsdir)
+            path = joinpath(logsdir, 'external_rpm_warning.log')
+            safer_move(self.rpm_log_file.name, path)
 
     def get_metadata(self, metadata, directory):
         """Get the metadata from the args"""
@@ -6828,6 +6838,12 @@ class CG_Importer(object):
                 raise koji.GenericError("No such component type: %(type)s" % comp)
         return rpms, files
 
+    def unmatched_rpm_log(self, msg):
+        if self.rpm_log_file is None:
+            self.rpm_log_file = tempfile.NamedTemporaryFile(mode='w+', dir=koji.pathinfo.work())
+        logger.warning(msg)
+        self.rpm_log_file.write(msg + '\n')
+
     def match_rpm(self, comp):
         # TODO: do we allow inclusion of external rpms?
         if 'location' in comp:
@@ -6838,11 +6854,11 @@ class CG_Importer(object):
         rinfo = get_rpm(comp, strict=False)
         if not rinfo:
             # XXX - this is a temporary workaround until we can better track external refs
-            logger.warning("IGNORING unmatched rpm component: %r", comp)
+            self.unmatched_rpm_log("IGNORING unmatched rpm component: %r" % comp)
             return None
         if rinfo['payloadhash'] != comp['sigmd5']:
             # XXX - this is a temporary workaround until we can better track external refs
-            logger.warning("IGNORING rpm component (md5 mismatch): %r", comp)
+            self.unmatched_rpm_log("IGNORING rpm component (md5 mismatch): %r" % comp)
             # nvr = "%(name)s-%(version)s-%(release)s" % rinfo
             # raise koji.GenericError("md5sum mismatch for %s: %s != %s"
             #            % (nvr, comp['sigmd5'], rinfo['payloadhash']))
