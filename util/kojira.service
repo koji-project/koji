@@ -11,6 +11,7 @@ ExecStart=/usr/sbin/kojira \
        --verbose
 Restart=on-failure
 RestartSec=60s
+PrivateTmp=true
 
 [Install]
 WantedBy=multi-user.target
