@@ -361,8 +361,12 @@ def handle_db_msgs(urls, CONFIG):
         LOG.debug('skipping db queue due to lock')
         return
     try:
-        c.execute("DELETE FROM proton_queue WHERE created_ts < NOW() -'%s hours'::interval" %
-                  CONFIG.getint('queue', 'age', fallback=24))
+        max_age = CONFIG.getint('queue', 'max_age', fallback=None)
+        if not max_age:
+            # age in config file is deprecated
+            max_age = CONFIG.getint('queue', 'age', fallback=24)
+        c.execute("DELETE FROM proton_queue WHERE created_ts < NOW() -'%s hours'::interval"
+                  % max_age)
         query = QueryProcessor(tables=('proton_queue',),
                                columns=('id', 'address', 'props', 'body::TEXT'),
                                aliases=('id', 'address', 'props', 'body'),
