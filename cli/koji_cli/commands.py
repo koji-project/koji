@@ -2250,7 +2250,8 @@ def handle_edit_user(goptions, session, args):
 def handle_list_signed(goptions, session, args):
     "[admin] List signed copies of rpms"
     usage = "usage: %prog list-signed [options]"
-    parser = OptionParser(usage=get_usage_str(usage))
+    description = "You must have local access to Koji's topdir filesystem."
+    parser = OptionParser(usage=get_usage_str(usage), description=description)
     # Don't use local debug option, this one stays here for backward compatibility
     # https://pagure.io/koji/issue/2084
     parser.add_option("--debug", action="store_true", default=goptions.debug, help=SUPPRESS_HELP)
