@@ -23,7 +23,7 @@ def kiwiBuild(target, arches, desc_url, desc_path, optional_arches=None, profile
             kojihub.convert_value(i, cast=str, check_only=True)
     if repos:
         kojihub.convert_value(repos, cast=list, check_only=True)
-    kojihub.get_build_targets(target, strict=True)
+    kojihub.get_build_target(target, strict=True)
     arches = koji.parse_arches(arches, strict=True, allow_none=False)
     optional_arches = koji.parse_arches(optional_arches, strict=True, allow_none=True)
     taskOpts = {
