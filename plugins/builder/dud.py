@@ -230,7 +230,7 @@ class DudCreateImageTask(BaseBuildTask):
         # for this dirty hack
         cmd = ['/usr/bin/sh', '-c']
         cmd.extend([
-            '/usr/bin/echo -e "Driver Update Disk version 3\c" > ./dd/rhdd3',
+            '/usr/bin/echo -e "Driver Update Disk version 3\\c" > ./dd/rhdd3',
         ])
         rv = broot.mock(['--cwd', broot.tmpdir(within=True), '--chroot', '--'] + cmd)
         if rv:
