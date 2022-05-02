@@ -20,20 +20,20 @@ class TestAddExternalRPM(unittest.TestCase):
         self.nextval = mock.patch('kojihub.nextval').start()
         self.Savepoint = mock.patch('kojihub.Savepoint').start()
         self.InsertProcessor = mock.patch('kojihub.InsertProcessor',
-                side_effect=self.getInsert).start()
+                                          side_effect=self.getInsert).start()
         self.inserts = []
         self.insert_execute = mock.MagicMock()
 
         self.rpminfo = {
-                'name': 'NAME',
-                'version': 'VERSION',
-                'release': 'RELEASE',
-                'epoch': None,
-                'arch': 'noarch',
-                'payloadhash': 'fakehash',
-                'size': 42,
-                'buildtime': 0,
-                }
+            'name': 'NAME',
+            'version': 'VERSION',
+            'release': 'RELEASE',
+            'epoch': None,
+            'arch': 'noarch',
+            'payloadhash': 'fakehash',
+            'size': 42,
+            'buildtime': 0,
+        }
         self.repo = 'myrepo'
 
     def tearDown(self):
@@ -63,8 +63,9 @@ class TestAddExternalRPM(unittest.TestCase):
         rpminfo = self.rpminfo.copy()
         del rpminfo['size']
 
-        with self.assertRaises(koji.GenericError):
+        with self.assertRaises(koji.GenericError) as ex:
             kojihub.add_external_rpm(rpminfo, self.repo)
+        self.assertEqual(f"size field missing: {rpminfo}", str(ex.exception))
 
         self.get_rpm.assert_not_called()
         self.nextval.assert_not_called()
@@ -73,8 +74,10 @@ class TestAddExternalRPM(unittest.TestCase):
         rpminfo = self.rpminfo.copy()
         rpminfo['size'] = ['invalid type']
 
-        with self.assertRaises(koji.GenericError):
+        with self.assertRaises(koji.GenericError) as ex:
             kojihub.add_external_rpm(rpminfo, self.repo)
+        self.assertEqual(f"Invalid value for size: {rpminfo['size']}",
+                         str(ex.exception))
 
         self.get_rpm.assert_not_called()
         self.nextval.assert_not_called()
@@ -88,8 +91,11 @@ class TestAddExternalRPM(unittest.TestCase):
         self.get_external_repo_id.return_value = mock.sentinel.repo_id
 
         # call it (default is strict)
-        with self.assertRaises(koji.GenericError):
+        nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" % self.rpminfo
+        disp = f"{nvra}@{self.repo}"
+        with self.assertRaises(koji.GenericError) as ex:
             kojihub.add_external_rpm(self.rpminfo, self.repo)
+        self.assertEqual(f"external rpm already exists: {disp}", str(ex.exception))
 
         self.assertEqual(len(self.inserts), 0)
         self.nextval.assert_not_called()
@@ -103,8 +109,12 @@ class TestAddExternalRPM(unittest.TestCase):
 
         # different hash
         prev['payloadhash'] = 'different hash'
-        with self.assertRaises(koji.GenericError):
+        nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" % self.rpminfo
+        disp = f"{nvra}@{self.repo}"
+        with self.assertRaises(koji.GenericError) as ex:
             kojihub.add_external_rpm(self.rpminfo, self.repo, strict=False)
+        self.assertEqual(f"hash changed for external rpm: {disp} (different hash -> fakehash)",
+                         str(ex.exception))
 
         self.assertEqual(len(self.inserts), 0)
         self.nextval.assert_not_called()
@@ -118,8 +128,11 @@ class TestAddExternalRPM(unittest.TestCase):
         self.insert_execute.side_effect = FakeException('insert failed')
 
         # call it (default is strict)
-        with self.assertRaises(koji.GenericError):
+        nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" % self.rpminfo
+        disp = f"{nvra}@{self.repo}"
+        with self.assertRaises(koji.GenericError) as ex:
             kojihub.add_external_rpm(self.rpminfo, self.repo)
+        self.assertEqual(f"external rpm already exists: {disp}", str(ex.exception))
 
         self.assertEqual(len(self.inserts), 1)
         self.nextval.assert_called_once()
@@ -139,8 +152,12 @@ class TestAddExternalRPM(unittest.TestCase):
         self.nextval.reset_mock()
         self.get_rpm.side_effect = [None, prev]
         prev['payloadhash'] = 'different hash'
-        with self.assertRaises(koji.GenericError):
+        nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" % self.rpminfo
+        disp = f"{nvra}@{self.repo}"
+        with self.assertRaises(koji.GenericError) as ex:
             kojihub.add_external_rpm(self.rpminfo, self.repo, strict=False)
+        self.assertEqual(f"hash changed for external rpm: {disp} (different hash -> fakehash)",
+                         str(ex.exception))
 
         self.assertEqual(len(self.inserts), 1)
         self.nextval.assert_called_once()
@@ -149,10 +166,9 @@ class TestAddExternalRPM(unittest.TestCase):
         self.inserts[:] = []
         self.nextval.reset_mock()
         self.get_rpm.side_effect = [None, None]
-        with self.assertRaises(FakeException):
+        with self.assertRaises(FakeException) as ex:
             kojihub.add_external_rpm(self.rpminfo, self.repo, strict=False)
+        self.assertEqual('insert failed', str(ex.exception))
 
         self.assertEqual(len(self.inserts), 1)
         self.nextval.assert_called_once()
-
-

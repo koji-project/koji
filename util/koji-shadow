@@ -389,6 +389,8 @@ class TrackedBuild(object):
             log("Downloading %s" % url)
             # XXX - this is not really the right place for this
             resp = request_with_retry().get(url, stream=True)
+            if not isinstance(options.workpath, str):
+                raise koji.ParameterError('Invalid type of workpath: %s' % type(options.workpath))
             fn = "%s/%s.src.rpm" % (options.workpath, self.nvr)
             koji.ensuredir(os.path.dirname(fn))
             try:

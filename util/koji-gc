@@ -168,6 +168,8 @@ def get_options():
     # figure out actions
     actions = ('prune', 'trash', 'delete', 'salvage')
     if options.action:
+        if not isinstance(options.action, str):
+            raise koji.ParameterError('Invalid type of action: %s' % type(options.action))
         options.action = options.action.lower().replace(',', ' ').split()
         for x in options.action:
             if x not in actions:
@@ -177,6 +179,9 @@ def get_options():
 
     # split patterns for unprotected keys
     if options.unprotected_keys:
+        if not isinstance(options.unprotected_keys, str):
+            raise koji.ParameterError('Invalid type of unprotected_keys: %s'
+                                      % type(options.unprotected_keys))
         options.unprotected_key_patterns = options.unprotected_keys.replace(',', ' ').split()
     else:
         options.unprotected_key_patterns = []
@@ -250,10 +255,15 @@ def check_tag(name):
     Returns True if we should process the tag, False otherwise
     """
     if options.ignore_tags:
+        if not isinstance(options.ignore_tags, list):
+            raise koji.ParameterError('Invalid type of ignore_tags: %s'
+                                      % type(options.ignore_tags))
         for pattern in options.ignore_tags:
             if fnmatch.fnmatch(name, pattern):
                 return False
     if options.tag_filter:
+        if not isinstance(options.tag_filter, list):
+            raise koji.ParameterError('Invalid type of tag_filter: %s' % type(options.tag_filter))
         for pattern in options.tag_filter:
             if fnmatch.fnmatch(name, pattern):
                 return True
@@ -270,6 +280,8 @@ def check_package(name):
     Returns True if we should process the package, False otherwise
     """
     if options.pkg_filter:
+        if not isinstance(options.pkg_filter, list):
+            raise koji.ParameterError('Invalid type of pkg_filter: %s' % type(options.pkg_filter))
         for pattern in options.pkg_filter:
             if fnmatch.fnmatch(name, pattern):
                 return True
@@ -417,13 +429,21 @@ Build: %%(name)s-%%(version)s-%%(release)s
         msg['Subject'] = "1 build marked for deletion"
     else:
         msg['Subject'] = "%i builds marked for deletion" % len(builds)
+    if not isinstance(options.from_addr, str):
+        raise koji.ParameterError('Invalid type of from_addr: %s' % type(options.from_addr))
     msg['From'] = options.from_addr
+    if not isinstance(options.email_domain, str):
+        raise koji.ParameterError('Invalid type of email_domain: %s' % type(options.email_domain))
     msg['To'] = "%s@%s" % (owner_name, options.email_domain)  # XXX!
     emails = [msg['To']]
     if options.cc_addr:
+        if not isinstance(options.cc_addr, str):
+            raise koji.ParameterError('Invalid type of cc_addr: %s' % type(options.cc_addr))
         msg['Cc'] = ','.join(options.cc_addr)
         emails += options.cc_addr
     if options.bcc_addr:
+        if not isinstance(options.bcc_addr, str):
+            raise koji.ParameterError('Invalid type of bcc_addr: %s' % type(options.bcc_addr))
         emails += options.bcc_addr
     msg['X-Koji-Builder'] = owner_name
     if options.test:
@@ -894,6 +914,9 @@ def handle_prune():
         bypass = False
         if taginfo['locked']:
             if options.bypass_locks:
+                if not isinstance(options.bypass_locks, list):
+                    raise koji.ParameterError('Invalid type of bypass_locks: %s'
+                                              % type(options.bypass_locks))
                 for pattern in options.bypass_locks:
                     if fnmatch.fnmatch(tagname, pattern):
                         bypass = True

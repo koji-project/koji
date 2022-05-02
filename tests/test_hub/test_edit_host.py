@@ -8,7 +8,7 @@ UP = kojihub.UpdateProcessor
 IP = kojihub.InsertProcessor
 
 
-class TestSetHostEnabled(unittest.TestCase):
+class TestEditHost(unittest.TestCase):
     def getInsert(self, *args, **kwargs):
         insert = IP(*args, **kwargs)
         insert.execute = mock.MagicMock()
@@ -22,6 +22,7 @@ class TestSetHostEnabled(unittest.TestCase):
         return update
 
     def setUp(self):
+        self.diff = None
         self.InsertProcessor = mock.patch('kojihub.InsertProcessor',
                                           side_effect=self.getInsert).start()
         self.inserts = []
@@ -34,12 +35,22 @@ class TestSetHostEnabled(unittest.TestCase):
         self.context.session.assertLogin = mock.MagicMock()
         self.context.session.assertPerm = mock.MagicMock()
         self.exports = kojihub.RootExports()
+        self.get_host = mock.patch('kojihub.get_host').start()
+        self.hostinfo = {
+            'id': 123,
+            'user_id': 234,
+            'name': 'hostname',
+            'arches': 'x86_64',
+            'capacity': 100.0,
+            'description': 'description',
+            'comment': 'comment',
+            'enabled': False,
+        }
 
     def tearDown(self):
         mock.patch.stopall()
 
     def test_edit_host_missing(self):
-        kojihub.get_host = mock.MagicMock()
         kojihub.get_host.side_effect = koji.GenericError
         with self.assertRaises(koji.GenericError):
             self.exports.editHost('hostname')
@@ -47,23 +58,47 @@ class TestSetHostEnabled(unittest.TestCase):
         self.assertEqual(self.inserts, [])
         self.assertEqual(self.updates, [])
 
+    def test_edit_host_invalid_description(self):
+        description = ['description']
+        kojihub.get_host.return_value = self.hostinfo
+        with self.assertRaises(koji.ParameterError) as ex:
+            self.exports.editHost('hostname', description=description)
+            self.assertEqual('Invalid type for description parameter: %s' % type(description),
+                             str(ex.exception))
+        kojihub.get_host.assert_called_once_with('hostname', strict=True)
+        self.assertEqual(self.inserts, [])
+        self.assertEqual(self.updates, [])
+
+    def test_edit_host_invalid_comment_parameter(self):
+        comment = ['comment']
+        kojihub.get_host.return_value = self.hostinfo
+        with self.assertRaises(koji.ParameterError) as ex:
+            self.exports.editHost('hostname', comment=comment)
+            self.assertEqual('Invalid type for comment parameter: %s' % type(comment),
+                             str(ex.exception))
+        kojihub.get_host.assert_called_once_with('hostname', strict=True)
+        self.assertEqual(self.inserts, [])
+        self.assertEqual(self.updates, [])
+
+    def test_edit_host_invalid_arches_parameter(self):
+        arches = ['arches arches']
+        kojihub.get_host.return_value = self.hostinfo
+        with self.assertRaises(koji.ParameterError) as ex:
+            self.exports.editHost('hostname', arches=arches)
+            self.assertEqual('Invalid type for arches parameter: %s' % type(arches),
+                             str(ex.exception))
+        kojihub.get_host.assert_called_once_with('hostname', strict=True)
+        self.assertEqual(self.inserts, [])
+        self.assertEqual(self.updates, [])
+
     def test_edit_host_valid(self):
         kojihub.get_host = mock.MagicMock()
-        kojihub.get_host.return_value = {
-            'id': 123,
-            'user_id': 234,
-            'name': 'hostname',
-            'arches': ['x86_64'],
-            'capacity': 100.0,
-            'description': 'description',
-            'comment': 'comment',
-            'enabled': False,
-        }
+        kojihub.get_host.return_value = self.hostinfo
         self.context.event_id = 42
         self.context.session.user_id = 23
 
-        r = self.exports.editHost('hostname', arches=['x86_64', 'i386'],
-                capacity=12.0, comment='comment_new', non_existing_kw='bogus')
+        r = self.exports.editHost('hostname', arches='x86_64 i386', capacity=12.0,
+                                  comment='comment_new', non_existing_kw='bogus')
 
         self.assertTrue(r)
         kojihub.get_host.assert_called_once_with('hostname', strict=True)
@@ -87,12 +122,11 @@ class TestSetHostEnabled(unittest.TestCase):
         # insert
         self.assertEqual(len(self.inserts), 1)
         insert = self.inserts[0]
-        #data = kojihub.get_host.return_value
         data = {
             'create_event': 42,
             'creator_id': 23,
             'host_id': 123,
-            'arches': ['x86_64', 'i386'],
+            'arches': 'x86_64 i386',
             'capacity': 12.0,
             'comment': 'comment_new',
             'description': 'description',
@@ -105,16 +139,7 @@ class TestSetHostEnabled(unittest.TestCase):
 
     def test_edit_host_no_change(self):
         kojihub.get_host = mock.MagicMock()
-        kojihub.get_host.return_value = {
-            'id': 123,
-            'user_id': 234,
-            'name': 'hostname',
-            'arches': ['x86_64'],
-            'capacity': 100.0,
-            'description': 'description',
-            'comment': 'comment',
-            'enabled': False,
-        }
+        kojihub.get_host.return_value = self.hostinfo
         self.context.event_id = 42
         self.context.session.user_id = 23
 

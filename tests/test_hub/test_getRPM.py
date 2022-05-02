@@ -14,7 +14,7 @@ class TestGetRPM(unittest.TestCase):
         rpminfo = ['test-user']
         with self.assertRaises(koji.GenericError) as cm:
             kojihub.get_rpm(rpminfo)
-        self.assertEqual("Invalid type for rpminfo: %s" % type(rpminfo), str(cm.exception))
+        self.assertEqual(f"Invalid type for rpminfo: {type(rpminfo)}", str(cm.exception))
 
 
 class TestGetRPMHeaders(unittest.TestCase):
@@ -41,7 +41,7 @@ class TestGetRPMHeaders(unittest.TestCase):
         filepath = '../test/path'
         with self.assertRaises(koji.GenericError) as cm:
             self.exports.getRPMHeaders(taskID=99, filepath=filepath)
-        self.assertEqual("Invalid filepath: %s" % filepath, str(cm.exception))
+        self.assertEqual(f"Invalid filepath: {filepath}", str(cm.exception))
         self.get_rpm.assert_not_called()
         self.get_build.assert_not_called()
         self.get_header_fields.assert_not_called()
@@ -57,10 +57,14 @@ class TestGetRPMHeaders(unittest.TestCase):
         self.get_header_fields.assert_not_called()
 
     def test_insufficient_args(self):
-        with self.assertRaises(koji.GenericError):
-            result = self.exports.getRPMHeaders(strict=False)
-        with self.assertRaises(koji.GenericError):
-            result = self.exports.getRPMHeaders(filepath='something')
+        with self.assertRaises(koji.GenericError) as cm:
+            self.exports.getRPMHeaders(strict=False)
+        self.assertEqual("either rpmID or taskID and filepath must be specified",
+                         str(cm.exception))
+        with self.assertRaises(koji.GenericError) as cm:
+            self.exports.getRPMHeaders(filepath='something')
+        self.assertEqual("either rpmID or taskID and filepath must be specified",
+                         str(cm.exception))
         # we already test taskid without filepath above
 
     def test_unknown_rpm(self):
@@ -71,50 +75,55 @@ class TestGetRPMHeaders(unittest.TestCase):
 
         # again with strict mode
         self.get_rpm.side_effect = koji.GenericError('NO SUCH RPM')
-        with self.assertRaises(koji.GenericError):
-            result = self.exports.getRPMHeaders(rpmID='FOO-1-1.noarch', strict=True)
+        with self.assertRaises(koji.GenericError) as cm:
+            self.exports.getRPMHeaders(rpmID='FOO-1-1.noarch', strict=True)
+        self.assertEqual("NO SUCH RPM", str(cm.exception))
         self.get_rpm.assert_called_with('FOO-1-1.noarch', strict=True)
         self.get_build.assert_not_called()
         self.get_header_fields.assert_not_called()
 
     def test_external_rpm(self):
-        self.get_rpm.return_value = {'external_repo_id': 1, 'id': 'RPMID'}
+        rpm_info = {'external_repo_id': 1, 'id': 'RPMID'}
+        self.get_rpm.return_value = rpm_info
         result = self.exports.getRPMHeaders(rpmID='FOO-1-1.noarch', strict=False)
         self.assertEqual(result, {})
 
         # again with strict mode
-        with self.assertRaises(koji.GenericError):
-            result = self.exports.getRPMHeaders(rpmID='FOO-1-1.noarch', strict=True)
+        with self.assertRaises(koji.GenericError) as cm:
+            self.exports.getRPMHeaders(rpmID='FOO-1-1.noarch', strict=True)
+        self.assertEqual(f"External rpm: {rpm_info['id']}", str(cm.exception))
         self.get_build.assert_not_called()
         self.get_header_fields.assert_not_called()
 
     def test_deleted_build(self):
         self.get_rpm.return_value = {'build_id': 'BUILDID', 'external_repo_id': 0}
-        self.get_build.return_value = {'nvr': 'NVR', 'state': koji.BUILD_STATES['DELETED']}
+        build_info = {'nvr': 'NVR', 'state': koji.BUILD_STATES['DELETED']}
+        self.get_build.return_value = build_info
         result = self.exports.getRPMHeaders(rpmID='FOO-1-1.noarch', strict=False)
         self.assertEqual(result, {})
         self.get_build.assert_called_with('BUILDID', strict=True)
 
         # again with strict mode
-        with self.assertRaises(koji.GenericError):
-            result = self.exports.getRPMHeaders(rpmID='FOO-1-1.noarch', strict=True)
+        with self.assertRaises(koji.GenericError) as cm:
+            self.exports.getRPMHeaders(rpmID='FOO-1-1.noarch', strict=True)
+        self.assertEqual(f"Build {build_info['nvr']} is deleted", str(cm.exception))
         self.get_build.assert_called_with('BUILDID', strict=True)
         self.get_header_fields.assert_not_called()
 
     def test_missing_rpm(self):
         self.get_rpm.return_value = {
-                'build_id': 'BUILDID',
-                'external_repo_id': 0,
-                'name': 'pkg',
-                'version': '1',
-                'release': '2',
-                'arch': 'noarch'}
+            'build_id': 'BUILDID',
+            'external_repo_id': 0,
+            'name': 'pkg',
+            'version': '1',
+            'release': '2',
+            'arch': 'noarch'}
         self.get_build.return_value = {
-                'name': 'pkg',
-                'version': '1',
-                'release': '2',
-                'nvr': 'pkg-1-2',
-                'state': koji.BUILD_STATES['COMPLETE']}
+            'name': 'pkg',
+            'version': '1',
+            'release': '2',
+            'nvr': 'pkg-1-2',
+            'state': koji.BUILD_STATES['COMPLETE']}
         rpmpath = '%s/packages/pkg/1/2/noarch/pkg-1-2.noarch.rpm' % self.tempdir
 
         # rpm does not exist
@@ -124,24 +133,25 @@ class TestGetRPMHeaders(unittest.TestCase):
 
         # again with strict mode
         with self.assertRaises(koji.GenericError) as e:
-            result = self.exports.getRPMHeaders(rpmID='FOO-1-1.noarch', strict=True)
+            self.exports.getRPMHeaders(rpmID='FOO-1-1.noarch', strict=True)
+        self.assertEqual(f"Missing rpm file: {rpmpath}", str(e.exception))
         self.get_build.assert_called_with('BUILDID', strict=True)
         self.get_header_fields.assert_not_called()
 
     def test_rpm_exists(self):
         self.get_rpm.return_value = {
-                'build_id': 'BUILDID',
-                'external_repo_id': 0,
-                'name': 'pkg',
-                'version': '1',
-                'release': '2',
-                'arch': 'noarch'}
+            'build_id': 'BUILDID',
+            'external_repo_id': 0,
+            'name': 'pkg',
+            'version': '1',
+            'release': '2',
+            'arch': 'noarch'}
         self.get_build.return_value = {
-                'name': 'pkg',
-                'version': '1',
-                'release': '2',
-                'nvr': 'pkg-1-2',
-                'state': koji.BUILD_STATES['COMPLETE']}
+            'name': 'pkg',
+            'version': '1',
+            'release': '2',
+            'nvr': 'pkg-1-2',
+            'state': koji.BUILD_STATES['COMPLETE']}
         rpmpath = '%s/packages/pkg/1/2/noarch/pkg-1-2.noarch.rpm' % self.tempdir
         koji.ensuredir(os.path.dirname(rpmpath))
         with open(rpmpath, 'w') as fo:
@@ -178,9 +188,9 @@ class TestGetRPMHeaders(unittest.TestCase):
         result = self.exports.getRPMHeaders(taskID=taskid, filepath=filepath, strict=False)
         self.assertEqual(result, {})
 
-        with self.assertRaises(koji.GenericError):
-            result = self.exports.getRPMHeaders(taskID=taskid, filepath=filepath, strict=True)
-
+        with self.assertRaises(koji.GenericError) as cm:
+            self.exports.getRPMHeaders(taskID=taskid, filepath=filepath, strict=True)
+        self.assertEqual(f"Missing rpm file: {rpmpath}", str(cm.exception))
         self.get_rpm.assert_not_called()
         self.get_build.assert_not_called()
         self.get_header_fields.assert_not_called()

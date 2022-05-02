@@ -42,8 +42,7 @@ class TestEditTagExternalRepo(unittest.TestCase):
         self.get_tag_external_repos.return_value = []
         with self.assertRaises(koji.GenericError) as cm:
             kojihub.edit_tag_external_repo('tag', 'ext_repo', priority=6, merge_mode='bare')
-        self.assertEqual(cm.exception.args[0],
-                         'external repo ext_repo not associated with tag tag')
+        self.assertEqual('external repo ext_repo not associated with tag tag', str(cm.exception))
         self.get_tag.assert_called_once_with('tag', strict=True)
         self.get_external_repo.assert_called_once_with('ext_repo', strict=True)
         self.get_tag_external_repos.assert_called_once_with(tag_info=1, repo_info=11)

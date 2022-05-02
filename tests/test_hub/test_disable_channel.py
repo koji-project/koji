@@ -28,7 +28,13 @@ class TestDisableChannel(unittest.TestCase):
         self.get_channel.return_value = None
         with self.assertRaises(koji.GenericError) as cm:
             self.exports.disableChannel(self.channelname)
-        self.assertEqual("No such channel: %s" % self.channelname, str(cm.exception))
+        self.assertEqual(f"No such channel: {self.channelname}", str(cm.exception))
+
+    def test_wrong_type_channel(self):
+        comment = ['test-comment']
+        with self.assertRaises(koji.GenericError) as cm:
+            self.exports.disableChannel(self.channelname, comment=comment)
+        self.assertEqual(f"Invalid type for value '{comment}': {type(comment)}", str(cm.exception))
 
     def test_valid(self):
         self.get_channel.return_value = {'comment': None, 'description': None,

@@ -141,6 +141,11 @@ def activate_session(session):
     elif options.keytab and options.principal:
         try:
             if options.keytab and options.principal:
+                if not isinstance(options.keytab, str):
+                    raise koji.ParameterError('Invalid type of keytab: %s' % type(options.keytab))
+                if not isinstance(options.principal, str):
+                    raise koji.ParameterError('Invalid type of principal: %s'
+                                              % type(options.principal))
                 session.gssapi_login(
                     principal=options.principal,
                     keytab=options.keytab,

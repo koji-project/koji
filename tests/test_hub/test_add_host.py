@@ -36,32 +36,31 @@ class TestAddHost(unittest.TestCase):
         self.context.session.assertPerm = mock.MagicMock()
         self.context.opts = {'HostPrincipalFormat': '-%s-'}
         self.exports = kojihub.RootExports()
+        self.verify_host_name = mock.patch('kojihub.verify_host_name').start()
+        self.verify_name_user = mock.patch('kojihub.verify_name_user').start()
+        self._dml = mock.patch('kojihub._dml').start()
+        self.get_host = mock.patch('kojihub.get_host').start()
+        self._singleValue = mock.patch('kojihub._singleValue').start()
+        self.get_user = mock.patch('kojihub.get_user').start()
 
     def tearDown(self):
         mock.patch.stopall()
 
-    @mock.patch('kojihub.verify_host_name')
-    @mock.patch('kojihub._dml')
-    @mock.patch('kojihub.get_host')
-    @mock.patch('kojihub._singleValue')
-    def test_add_host_exists(self, _singleValue, get_host, _dml, verify_host_name):
-        verify_host_name.return_value = None
-        get_host.return_value = {'id': 123}
+    def test_add_host_exists(self):
+        self.verify_host_name.return_value = None
+        self.get_host.return_value = {'id': 123}
         with self.assertRaises(koji.GenericError):
             self.exports.addHost('hostname', ['i386', 'x86_64'])
-        _dml.assert_not_called()
-        get_host.assert_called_once_with('hostname')
-        _singleValue.assert_not_called()
+        self._dml.assert_not_called()
+        self.get_host.assert_called_once_with('hostname')
+        self._singleValue.assert_not_called()
 
-    @mock.patch('kojihub.verify_host_name')
-    @mock.patch('kojihub._dml')
-    @mock.patch('kojihub.get_host')
-    @mock.patch('kojihub._singleValue')
-    def test_add_host_valid(self, _singleValue, get_host, _dml, verify_host_name):
-        verify_host_name.return_value = None
-        get_host.return_value = {}
-        _singleValue.side_effect = [333, 12]
+    def test_add_host_valid(self):
+        self.verify_host_name.return_value = None
+        self.get_host.return_value = {}
+        self._singleValue.side_effect = [333, 12]
         self.context.session.createUser.return_value = 456
+        self.get_user.return_value = None
 
         r = self.exports.addHost('hostname', ['i386', 'x86_64'])
         self.assertEqual(r, 12)
@@ -70,59 +69,48 @@ class TestAddHost(unittest.TestCase):
         kojihub.get_host.assert_called_once_with('hostname')
         self.context.session.createUser.assert_called_once_with(
             'hostname', usertype=koji.USERTYPES['HOST'], krb_principal='-hostname-')
-        self.assertEqual(_singleValue.call_count, 2)
-        _singleValue.assert_has_calls([
+        self.assertEqual(self._singleValue.call_count, 2)
+        self._singleValue.assert_has_calls([
             mock.call("SELECT id FROM channels WHERE name = 'default'"),
             mock.call("SELECT nextval('host_id_seq')", strict=True)
         ])
-        self.assertEqual(_dml.call_count, 1)
-        _dml.assert_called_once_with("INSERT INTO host (id, user_id, name) "
-                                     "VALUES (%(hostID)i, %(userID)i, %(hostname)s)",
-                                     {'hostID': 12, 'userID': 456, 'hostname': 'hostname'})
+        self.assertEqual(self._dml.call_count, 1)
+        self._dml.assert_called_once_with("INSERT INTO host (id, user_id, name) "
+                                          "VALUES (%(hostID)i, %(userID)i, %(hostname)s)",
+                                          {'hostID': 12, 'userID': 456, 'hostname': 'hostname'})
 
-    @mock.patch('kojihub.verify_host_name')
-    @mock.patch('kojihub.get_user')
-    @mock.patch('kojihub._dml')
-    @mock.patch('kojihub.get_host')
-    @mock.patch('kojihub._singleValue')
-    def test_add_host_wrong_user(self, _singleValue, get_host, _dml, get_user, verify_host_name):
-        verify_host_name.return_value = None
-        get_user.return_value = {
+    def test_add_host_wrong_user(self):
+        self.verify_host_name.return_value = None
+        self.get_user.return_value = {
             'id': 1,
             'name': 'hostname',
             'usertype': koji.USERTYPES['NORMAL']
         }
-        get_host.return_value = {}
+        self.get_host.return_value = {}
         with self.assertRaises(koji.GenericError):
             self.exports.addHost('hostname', ['i386', 'x86_64'])
-        _dml.assert_not_called()
-        get_user.assert_called_once_with(userInfo={'name': 'hostname'})
-        get_host.assert_called_once_with('hostname')
-        _singleValue.assert_called_once()
+        self._dml.assert_not_called()
+        self.get_user.assert_called_once_with(userInfo={'name': 'hostname'})
+        self.get_host.assert_called_once_with('hostname')
+        self._singleValue.assert_called_once()
         self.assertEqual(len(self.inserts), 0)
         self.assertEqual(len(self.updates), 0)
 
-    @mock.patch('kojihub.verify_host_name')
-    @mock.patch('kojihub.get_user')
-    @mock.patch('kojihub._dml')
-    @mock.patch('kojihub.get_host')
-    @mock.patch('kojihub._singleValue')
-    def test_add_host_wrong_user_forced(self, _singleValue, get_host, _dml, get_user,
-                                        verify_host_name):
-        verify_host_name.return_value = None
-        get_user.return_value = {
+    def test_add_host_wrong_user_forced(self):
+        self.verify_host_name.return_value = None
+        self.get_user.return_value = {
             'id': 123,
             'name': 'hostname',
             'usertype': koji.USERTYPES['NORMAL']
         }
-        get_host.return_value = {}
+        self.get_host.return_value = {}
 
         self.exports.addHost('hostname', ['i386', 'x86_64'], force=True)
 
-        _dml.assert_called_once()
-        get_user.assert_called_once_with(userInfo={'name': 'hostname'})
-        get_host.assert_called_once_with('hostname')
-        _singleValue.assert_called()
+        self._dml.assert_called_once()
+        self.get_user.assert_called_once_with(userInfo={'name': 'hostname'})
+        self.get_host.assert_called_once_with('hostname')
+        self._singleValue.assert_called()
         self.assertEqual(len(self.inserts), 2)
         self.assertEqual(len(self.updates), 1)
         update = self.updates[0]
@@ -131,40 +119,49 @@ class TestAddHost(unittest.TestCase):
         self.assertEqual(update.clauses, ['id = %(userID)i'])
         self.assertEqual(update.data, {'usertype': koji.USERTYPES['HOST']})
 
-    @mock.patch('kojihub.verify_host_name')
-    @mock.patch('kojihub.get_user')
-    @mock.patch('kojihub._dml')
-    @mock.patch('kojihub.get_host')
-    @mock.patch('kojihub._singleValue')
-    def test_add_host_superwrong_user_forced(self, _singleValue, get_host, _dml, get_user,
-                                             verify_host_name):
-        verify_host_name.return_value = None
-        get_user.return_value = {
+    def test_add_host_superwrong_user_forced(self):
+        self.verify_host_name.return_value = None
+        self.get_user.return_value = {
             'id': 123,
             'name': 'hostname',
             'usertype': koji.USERTYPES['GROUP']
         }
-        get_host.return_value = {}
+        self.get_host.return_value = {}
 
         with self.assertRaises(koji.GenericError):
             self.exports.addHost('hostname', ['i386', 'x86_64'], force=True)
 
-        _dml.assert_not_called()
-        get_user.assert_called_once_with(userInfo={'name': 'hostname'})
-        get_host.assert_called_once_with('hostname')
-        _singleValue.assert_called()
+        self._dml.assert_not_called()
+        self.get_user.assert_called_once_with(userInfo={'name': 'hostname'})
+        self.get_host.assert_called_once_with('hostname')
+        self._singleValue.assert_called()
         self.assertEqual(len(self.inserts), 0)
         self.assertEqual(len(self.updates), 0)
 
-    @mock.patch('kojihub.verify_host_name')
-    def test_add_host_wrong_format(self, verify_host_name):
+    def test_add_host_wrong_format(self):
         # name is longer as expected
         hostname = 'host-name+'
-        verify_host_name.side_effect = koji.GenericError
+        self.verify_host_name.side_effect = koji.GenericError
         with self.assertRaises(koji.GenericError):
             self.exports.addHost(hostname, ['i386', 'x86_64'], force=True)
 
         # not except regex rules
-        verify_host_name.side_effect = koji.GenericError
+        self.verify_host_name.side_effect = koji.GenericError
         with self.assertRaises(koji.GenericError):
             self.exports.addHost(hostname, ['i386', 'x86_64'], force=True)
+
+    def test_add_host_krbprincipal_wrong_type(self):
+        krb_principal = ['test-krb']
+        self.verify_host_name.return_value = None
+        self.get_host.return_value = {}
+        self._singleValue.side_effect = [333, 12]
+        self.verify_name_user.side_effect = koji.GenericError
+        with self.assertRaises(koji.GenericError):
+            self.exports.addHost('hostname', ['i386', 'x86_64'], krb_principal=krb_principal)
+
+        self.context.session.assertPerm.assert_called_once_with('host')
+        kojihub.get_host.assert_called_once_with('hostname')
+        self.context.session.createUser.assert_not_called()
+        self.assertEqual(self._singleValue.call_count, 1)
+        self._singleValue.assert_called_once_with("SELECT id FROM channels WHERE name = 'default'")
+        self.verify_host_name.assert_called_once_with('hostname')

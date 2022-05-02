@@ -122,3 +122,13 @@ class TestGrantPermission(unittest.TestCase):
         self.assertEqual(ip.table, 'user_perms')
         self.assertEqual(ip.rawdata, {})
         self.context.session.assertPerm.assert_called_with('admin')
+
+    def test_grant_permission_description_wrong_type(self):
+        description = ['test-description']
+        with self.assertRaises(koji.ParameterError) as ex:
+            self.exports.grantPermission(self.user_name, self.perms_name,
+                                         description=description, create=True)
+        self.assertEqual(f"Invalid type for value '{description}': {type(description)}",
+                         str(ex.exception))
+        self.insert_processor.assert_not_called()
+        self.context.session.assertPerm.assert_called_with('admin')

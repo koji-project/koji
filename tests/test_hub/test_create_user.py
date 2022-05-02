@@ -38,16 +38,15 @@ class TestCreateUser(unittest.TestCase):
             self.exports.createUser(user_name)
 
     def test_create_user_exists(self):
-        expected = 'user already exists: %s' % self.user_name
         self.verify_name_user.return_value = None
         self.get_user.return_value = self.user_info
         with self.assertRaises(koji.GenericError) as cm:
             self.exports.createUser(self.user_name)
-        self.assertEqual(expected, str(cm.exception))
+        self.assertEqual(f"user already exists: {self.user_name}", str(cm.exception))
 
     def test_create_user_exists_krb(self):
         krb_principal = 'test_user@fedora.org'
-        expected = 'user with this Kerberos principal already exists: %s' % krb_principal
+        expected = f"user with this Kerberos principal already exists: {krb_principal}"
         self.verify_name_user.return_value = None
         self.get_user.return_value = None
         self.get_user_by_krb_principal.return_value = self.user_info_krb

@@ -24,8 +24,9 @@ class TestCreateTag(unittest.TestCase):
         self._dml = mock.patch('kojihub._dml').start()
         self.get_tag = mock.patch('kojihub.get_tag').start()
         self.get_tag_id = mock.patch('kojihub.get_tag_id').start()
+        self.get_perm_id = mock.patch('kojihub.get_perm_id').start()
         self.verify_name_internal = mock.patch('kojihub.verify_name_internal').start()
-        self.writeInheritanceData = mock.patch('kojihub.writeInheritanceData').start()
+        self.writeInheritanceData = mock.patch('kojihub._writeInheritanceData').start()
         self.context = mock.patch('kojihub.context').start()
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"
@@ -42,12 +43,13 @@ class TestCreateTag(unittest.TestCase):
             kojihub.create_tag('duptag')
 
     def test_simple_create(self):
-        self.get_tag.return_value = None
+        self.get_tag.side_effect = [None, {'id': 1, 'name': 'parent-tag'}]
         self.get_tag_id.return_value = 99
         self.verify_name_internal.return_value = None
         self.context.event_id = 42
         self.context.session.user_id = 23
-        kojihub.create_tag('newtag')
+        self.writeInheritanceData.return_value = None
+        kojihub.create_tag('newtag', parent='parent-tag')
 
         # check the insert
         self.assertEqual(len(self.inserts), 1)
@@ -97,3 +99,21 @@ class TestCreateTag(unittest.TestCase):
         self.verify_name_internal.side_effect = koji.GenericError
         with self.assertRaises(koji.GenericError):
             kojihub.create_tag(tag_name)
+
+    def test_tag_non_exist_parent(self):
+        parent_tag = 'parent-tag'
+        self.verify_name_internal.return_value = None
+        self.get_tag.side_effect = [None, None]
+        with self.assertRaises(koji.GenericError) as ex:
+            kojihub.create_tag('new-tag', parent=parent_tag)
+        self.assertEqual("Parent tag '%s' could not be found" % parent_tag, str(ex.exception))
+
+    def test_tag_not_maven_support(self):
+        self.verify_name_internal.return_value = None
+        self.context.opts.get.return_value = False
+        with self.assertRaises(koji.GenericError) as ex:
+            kojihub.create_tag('new-tag', maven_support=True)
+        self.assertEqual("Maven support not enabled", str(ex.exception))
+        with self.assertRaises(koji.GenericError) as ex:
+            kojihub.create_tag('new-tag', maven_include_all=True)
+        self.assertEqual("Maven support not enabled", str(ex.exception))

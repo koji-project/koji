@@ -48,8 +48,8 @@ class TestRunrootHub(unittest.TestCase):
         context.handlers = mock.MagicMock()
         context.handlers.call = mock.MagicMock()
         context.handlers.call.side_effect = [
-            {'id': 2, 'name': 'runroot'}, # getChannel
-            [ # listHosts
+            {'id': 2, 'name': 'runroot'},  # getChannel
+            [  # listHosts
                 {
                     'arches': 'i386 x86_64',
                     'capacity': 20.0,
@@ -105,8 +105,8 @@ class TestRunrootHub(unittest.TestCase):
         context.handlers = mock.MagicMock()
         context.handlers.call = mock.MagicMock()
         context.handlers.call.side_effect = [
-            {'id': 2, 'name': 'runroot'}, # getChannel
-            [ # listHosts
+            {'id': 2, 'name': 'runroot'},  # getChannel
+            [  # listHosts
                 {
                     'arches': 'i386 x86_64',
                     'capacity': 20.0,
@@ -147,3 +147,31 @@ class TestRunrootHub(unittest.TestCase):
             mock.call('listHosts', channelID=2, enabled=True),
         ])
         make_task.assert_not_called()
+
+    @mock.patch('kojihub.get_channel')
+    @mock.patch('kojihub.get_tag')
+    @mock.patch('kojihub.make_task')
+    @mock.patch('runroot_hub.context')
+    def test_non_exist_channel(self, context, make_task, get_tag, get_channel):
+        context.session.assertPerm = mock.MagicMock()
+        get_channel.side_effect = koji.GenericError
+        with self.assertRaises(koji.GenericError):
+            runroot_hub.runroot(tagInfo='some_tag', arch='x86_64', command='ls',
+                                channel='non-exist-channel')
+        make_task.assert_not_called()
+        get_tag.assert_not_called()
+
+    @mock.patch('kojihub.get_channel')
+    @mock.patch('kojihub.get_tag')
+    @mock.patch('kojihub.make_task')
+    @mock.patch('runroot_hub.context')
+    def test_commang_wrong_format(self, context, make_task, get_tag, get_channel):
+        context.session.assertPerm = mock.MagicMock()
+        command = ['ls']
+        with self.assertRaises(koji.GenericError) as ex:
+            runroot_hub.runroot(tagInfo='some_tag', arch='x86_64', command=command,
+                                channel='non-exist-channel')
+        self.assertEqual(f"Invalid type for value '{command}': {type(command)}", str(ex.exception))
+        make_task.assert_not_called()
+        get_tag.assert_not_called()
+        get_channel.assert_not_called()

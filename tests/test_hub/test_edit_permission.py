@@ -42,3 +42,12 @@ class TestEditPermission(unittest.TestCase):
         self.assertEqual(up.table, 'permissions')
         self.assertEqual(up.rawdata, {})
         self.context.session.assertPerm.assert_called_with('admin')
+
+    def test_edit_permission_wrong_type_permission(self):
+        description = ['test-description']
+        with self.assertRaises(koji.GenericError) as ex:
+            self.exports.editPermission(self.perm_name, description=description)
+        self.assertEqual(f"Invalid type for value '{description}': {type(description)}",
+                         str(ex.exception))
+        self.update_processor.assert_not_called()
+        self.context.session.assertPerm.assert_called_with('admin')

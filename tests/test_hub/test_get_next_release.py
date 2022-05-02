@@ -7,7 +7,9 @@ import kojihub
 class TestGetNextRelease(unittest.TestCase):
 
     def setUp(self):
+        self.maxDiff = None
         self.QueryProcessor = mock.patch('kojihub.QueryProcessor').start()
+        self.get_build = mock.patch('kojihub.get_build').start()
         self._dml = mock.patch('kojihub._dml').start()
         self.query = self.QueryProcessor.return_value
         self.binfo = {'name': 'name', 'version': 'version'}
@@ -25,7 +27,7 @@ class TestGetNextRelease(unittest.TestCase):
         for n in [1, 2, 3, 5, 8, 13, 21, 34, 55]:
             self.query.executeOne.return_value = {'release': str(n)}
             result = kojihub.get_next_release(self.binfo)
-            self.assertEqual(result, str(n+1))
+            self.assertEqual(result, str(n + 1))
 
     def test_get_next_release_complex(self):
         data = [
@@ -59,10 +61,10 @@ class TestGetNextRelease(unittest.TestCase):
             # bad_incr_value
             "foo",
             None,
-            1.1,
-            {1:1},
+            {1: 1},
             [1],
         ]
         for val in data:
-            with self.assertRaises(koji.ParameterError):
+            with self.assertRaises(koji.ParameterError) as ex:
                 kojihub.get_next_release(self.binfo, incr=val)
+            self.assertEqual('incr parameter must be an integer', str(ex.exception))

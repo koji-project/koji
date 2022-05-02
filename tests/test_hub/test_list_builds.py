@@ -25,6 +25,8 @@ class TestListBuilds(unittest.TestCase):
         self.queries = []
 
         self.context = mock.patch('kojihub.context').start()
+        self.get_package_id = mock.patch('kojihub.get_package_id').start()
+        self.get_user = mock.patch('kojihub.get_user').start()
         self.cursor = mock.MagicMock()
         self.build_list = [{'build_id': 9,
                             'epoch': 0,
@@ -41,18 +43,16 @@ class TestListBuilds(unittest.TestCase):
                             'volume_id': 0,
                             'volume_name': 'DEFAULT'}]
 
-    @mock.patch('kojihub.get_package_id')
-    def test_wrong_package(self, get_package_id):
+    def test_wrong_package(self):
         package = 'test-package'
-        get_package_id.return_value = None
+        self.get_package_id.return_value = None
         rv = self.exports.listBuilds(packageID=package)
         self.assertEqual(rv, [])
 
-    @mock.patch('kojihub.get_package_id')
-    def test_package_string(self, get_package_id):
+    def test_package_string(self):
         package = 'test-package'
         package_id = 1
-        get_package_id.return_value = package_id
+        self.get_package_id.return_value = package_id
         self.query_executeOne.return_value = None
         self.exports.listBuilds(packageID=package)
         self.assertEqual(len(self.queries), 1)
@@ -76,9 +76,8 @@ class TestListBuilds(unittest.TestCase):
                                     'LEFT JOIN volume ON build.volume_id = volume.id',
                                     'LEFT JOIN users ON build.owner = users.id'])
 
-    @mock.patch('kojihub.get_user')
-    def test_wrong_user(self, get_user):
+    def test_wrong_user(self):
         user = 'test-user'
-        get_user.return_value = None
+        self.get_user.return_value = None
         rv = self.exports.listBuilds(userID=user)
         self.assertEqual(rv, [])
