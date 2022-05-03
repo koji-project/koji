@@ -31,17 +31,14 @@ def runroot(tagInfo, arch, command, channel=None, **opts):
     """ Create a runroot task """
     context.session.assertPerm('runroot')
     arch = koji.parse_arches(arch, strict=True, allow_none=False)
-    kojihub.convert_value(command, cast=str, check_only=True)
+    if not isinstance(command, (str, list)):
+        raise koji.GenericError(fr"Invalid type for value '{command}': {type(command)}")
     taskopts = {
         'priority': 15,
         'arch': arch,
     }
 
-    if channel is None:
-        taskopts['channel'] = 'runroot'
-    else:
-        taskopts['channel'] = kojihub.get_channel(channel, strict=True)['name']
-
+    taskopts['channel'] = channel or 'runroot'
     tag = kojihub.get_tag(tagInfo, strict=True)
     if arch == 'noarch':
         # not all arches can generate a proper buildroot for all tags

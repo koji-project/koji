@@ -10,4 +10,5 @@ class TestRepoSetState(unittest.TestCase):
         repo_id = 'test-repo-id'
         with self.assertRaises(koji.ParameterError) as cm:
             kojihub.repo_set_state(repo_id, 'failed')
-        self.assertEqual(f"Invalid type for value '{repo_id}': {type(repo_id)}", str(cm.exception))
+        self.assertEqual(f"Invalid type for value '{repo_id}': {type(repo_id)}, "
+                         f"expected type <class 'int'>", str(cm.exception))

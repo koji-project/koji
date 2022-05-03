@@ -35,21 +35,24 @@ class TestBuildImage(unittest.TestCase):
         with self.assertRaises(koji.GenericError) as cm:
             self.exports.buildImage(name, self.version, self.arch, self.target, self.ksfile,
                                     self.image_type)
-        self.assertEqual(f"Invalid type for value '{name}': {type(name)}", str(cm.exception))
+        self.assertEqual(f"Invalid type for value '{name}': {type(name)}, "
+                         f"expected type <class 'str'>", str(cm.exception))
 
     def test_version_wrong_type(self):
         version = ['test-version']
         with self.assertRaises(koji.GenericError) as cm:
             self.exports.buildImage(self.name, version, self.arch, self.target, self.ksfile,
                                     self.image_type)
-        self.assertEqual(f"Invalid type for value '{version}': {type(version)}", str(cm.exception))
+        self.assertEqual(f"Invalid type for value '{version}': {type(version)}, "
+                         f"expected type <class 'str'>", str(cm.exception))
 
     def test_ksfile_wrong_type(self):
         ksfile = ['test-ksfile']
         with self.assertRaises(koji.GenericError) as cm:
             self.exports.buildImage(self.name, self.version, self.arch, self.target, ksfile,
                                     self.image_type)
-        self.assertEqual(f"Invalid type for value '{ksfile}': {type(ksfile)}", str(cm.exception))
+        self.assertEqual(f"Invalid type for value '{ksfile}': {type(ksfile)}, "
+                         f"expected type <class 'str'>", str(cm.exception))
 
     def test_priority_without_admin(self):
         priority = -10

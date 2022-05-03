@@ -30,7 +30,8 @@ class TestChainMaven(unittest.TestCase):
         self.context.opts.get.return_value = True
         with self.assertRaises(koji.ParameterError) as cm:
             self.exports.chainMaven(builds, self.target)
-        self.assertEqual(f"Invalid type for value '{builds}': {type(builds)}", str(cm.exception))
+        self.assertEqual(f"Invalid type for value '{builds}': {type(builds)}, "
+                         f"expected type <class 'list'>", str(cm.exception))
 
     def test_priority_without_admin(self):
         priority = -10

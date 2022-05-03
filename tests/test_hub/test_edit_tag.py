@@ -283,7 +283,8 @@ WHERE id = %(tagID)i""", {'name': 'newtag', 'tagID': 333})
         with self.assertRaises(koji.ParameterError) as ex:
             kojihub._edit_tag('tag', **kwargs)
         self.assertEqual(f"Invalid type for value '{kwargs['remove_extra']}': "
-                         f"{type(kwargs['remove_extra'])}", str(ex.exception))
+                         f"{type(kwargs['remove_extra'])}, expected type <class 'list'>",
+                         str(ex.exception))
 
     def test_edit_tag_block_extra_wrong_format(self):
         kwargs = {
@@ -300,4 +301,5 @@ WHERE id = %(tagID)i""", {'name': 'newtag', 'tagID': 333})
         with self.assertRaises(koji.ParameterError) as ex:
             kojihub._edit_tag('tag', **kwargs)
         self.assertEqual(f"Invalid type for value '{kwargs['block_extra']}': "
-                         f"{type(kwargs['block_extra'])}", str(ex.exception))
+                         f"{type(kwargs['block_extra'])}, expected type <class 'list'>",
+                         str(ex.exception))
