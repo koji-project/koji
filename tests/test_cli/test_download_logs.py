@@ -26,7 +26,17 @@ class TestDownloadLogs(utils.CliTestCase):
         self.download_file = mock.patch('koji_cli.commands.download_file').start()
         self.ensure_connection = mock.patch('koji_cli.commands.ensure_connection').start()
         self.stdout = mock.patch('sys.stdout', new_callable=six.StringIO).start()
-        self.stderr = mock.patch('sys.stderr', new_callable=six.StringIO).start()
+        self.error_format = """Usage: %s download-logs [options] <task_id> [<task_id> ...]
+       %s download-logs [options] --nvr <n-v-r> [<n-v-r> ...]
+
+Note this command only downloads task logs, not build logs.
+
+(Specify the --help global option for a list of other help options)
+
+%s: error: {message}
+""" % (self.progname, self.progname, self.progname)
+        self.nvr = 'bash-1.2.3-f26'
+        self.task_id = 123456
 
         self.builtin_open = None
         if six.PY2:
@@ -40,26 +50,55 @@ class TestDownloadLogs(utils.CliTestCase):
         mock.patch.stopall()
 
     def test_anon_handle_download_logs_wrong_value(self):
-        with self.assertRaises(SystemExit):
-            anon_handle_download_logs(self.options, self.session, ['bogus_task_id'])
+        task_id = 'bogus_task_id'
+        self.assert_system_exit(
+            anon_handle_download_logs,
+            self.options, self.session, [task_id],
+            stdout='',
+            stderr='Task id must be number: %r\n' % task_id,
+            activate_session=None,
+            exit_code=1
+        )
+        self.session.getBuild.assert_not_called()
+        self.session.getTaskInfo.assert_not_called()
+        self.session.downloadTaskOutput.assert_not_called()
+        self.session.getTaskChildren.assert_not_called()
 
     def test_anon_handle_download_logs_no_arg(self):
-        with self.assertRaises(SystemExit):
-            anon_handle_download_logs(self.options, self.session, [])
+        expected = self.format_error_message('Please specify at least one task id or n-v-r')
+        self.assert_system_exit(
+            anon_handle_download_logs,
+            self.options, self.session, [],
+            stdout='',
+            stderr=expected,
+            activate_session=None,
+            exit_code=2
+        )
+        self.session.getBuild.assert_not_called()
+        self.session.getTaskInfo.assert_not_called()
+        self.session.downloadTaskOutput.assert_not_called()
+        self.session.getTaskChildren.assert_not_called()
 
     def test_anon_handle_download_logs_wrong_nvr(self):
-        nvr = 'bash-1.2.3-f26'
+
         self.session.getBuild.return_value = None
 
-        with self.assertRaises(SystemExit):
-            anon_handle_download_logs(self.options, self.session, ['--nvr', nvr])
+        self.assert_system_exit(
+            anon_handle_download_logs,
+            self.options, self.session, ['--nvr', self.nvr],
+            stdout='',
+            stderr='There is no build with n-v-r: %s\n' % self.nvr,
+            activate_session=None,
+            exit_code=1
+        )
 
-        self.session.getBuild.assert_called_once_with(nvr)
+        self.session.getBuild.assert_called_once_with(self.nvr)
+        self.session.getTaskInfo.assert_not_called()
+        self.session.downloadTaskOutput.assert_not_called()
+        self.session.getTaskChildren.assert_not_called()
 
     def test_anon_handle_download_logs_nvr(self):
-        nvr = 'bash-1.2.3-f26'
-        task_id = 123456
-        self.session.getBuild.return_value = {'task_id': task_id}
+        self.session.getBuild.return_value = {'task_id': self.task_id}
         self.session.getTaskInfo.return_value = {
             'arch': 'x86_64',
             'state': 'CLOSED',
@@ -67,17 +106,31 @@ class TestDownloadLogs(utils.CliTestCase):
         self.list_task_output_all_volumes.return_value = {}
         self.session.getTaskChildren.side_effect = [[{'id': 23}], []]
 
-        anon_handle_download_logs(self.options, self.session, ['--nvr', nvr])
+        rv = anon_handle_download_logs(self.options, self.session, ['--nvr', self.nvr])
+        actual = self.stdout.getvalue()
+        expected = 'Using task ID: %s\n' % self.task_id
+        self.assertMultiLineEqual(actual, expected)
+        self.assertIsNone(rv)
 
-        self.session.getBuild.assert_called_once_with(nvr)
-        self.session.getTaskInfo.assert_has_calls([
-            mock.call(task_id),
-            mock.call(23),
-        ])
+        self.session.getBuild.assert_called_once_with(self.nvr)
+        self.session.getTaskInfo.assert_has_calls([mock.call(self.task_id), mock.call(23), ])
         self.session.downloadTaskOutput.assert_not_called()
+        self.session.getTaskChildren.assert_has_calls([mock.call(self.task_id), mock.call(23), ])
+
+    def test_anon_handle_download_logs_nvr_without_task_id(self):
+        self.session.getBuild.return_value = {'build_id': 1, 'nvr': self.nvr}
+        rv = anon_handle_download_logs(self.options, self.session, ['--nvr', self.nvr])
+        actual = self.stdout.getvalue()
+        expected = 'Using build ID: 1\n'
+        self.assertMultiLineEqual(actual, expected)
+        self.assertIsNone(rv)
+
+        self.session.getBuild.assert_called_once_with(self.nvr)
+        self.session.getTaskInfo.assert_not_called()
+        self.session.downloadTaskOutput.assert_not_called()
+        self.session.getTaskChildren.assert_not_called()
 
     def test_anon_handle_download_logs(self):
-        task_id = 123456
         self.session.getTaskInfo.return_value = {
             'arch': 'x86_64',
             'state': 'CLOSED',
@@ -95,23 +148,28 @@ class TestDownloadLogs(utils.CliTestCase):
         else:
             target = 'builtins.open'
         with mock.patch(target, new=self.mock_builtin_open):
-            anon_handle_download_logs(self.options, self.session, [str(task_id)])
+            anon_handle_download_logs(self.options, self.session, [str(self.task_id)])
 
-        self.session.getTaskInfo.assert_called_once_with(task_id)
-        self.list_task_output_all_volumes.assert_called_once_with(self.session, task_id)
+        self.session.getTaskInfo.assert_called_once_with(self.task_id)
+        self.list_task_output_all_volumes.assert_called_once_with(self.session, self.task_id)
         self.assertTrue(out_file.closed)
         self.assertEqual(self.session.downloadTaskOutput.call_count, 2)
         self.session.downloadTaskOutput.assert_has_calls([
-            mock.call(123456, 'file1.log', offset=0, size=102400, volume='volume1'),
-            mock.call(123456, 'file1.log', offset=5, size=102400, volume='volume1'),
+            mock.call(self.task_id, 'file1.log', offset=0, size=102400, volume='volume1'),
+            mock.call(self.task_id, 'file1.log', offset=5, size=102400, volume='volume1'),
         ])
 
     def test_anon_handle_download_logs_task_not_found(self):
-        task_id = '123333'
         self.session.getTaskInfo.return_value = None
-        with self.assertRaises(SystemExit) as ex:
-            anon_handle_download_logs(self.options, self.session, [task_id])
-        self.assertExitCode(ex, 1)
-        actual = self.stderr.getvalue()
-        expected = 'No such task: %s\n' % task_id
-        self.assertMultiLineEqual(actual, expected)
+        self.assert_system_exit(
+            anon_handle_download_logs,
+            self.options, self.session, [str(self.task_id)],
+            stdout='',
+            stderr='No such task: %s\n' % str(self.task_id),
+            activate_session=None,
+            exit_code=1
+        )
+        self.session.getBuild.assert_not_called()
+        self.session.getTaskInfo.assert_called_once_with(self.task_id)
+        self.session.downloadTaskOutput.assert_not_called()
+        self.session.getTaskChildren.assert_not_called()
