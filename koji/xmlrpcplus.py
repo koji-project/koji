@@ -6,6 +6,7 @@ from __future__ import absolute_import
 
 import types
 
+import re
 import six
 import six.moves.xmlrpc_client as xmlrpc_client
 
@@ -49,6 +50,13 @@ class ExtendedMarshaller(xmlrpc_client.Marshaller):
         else:
             return xmlrpc_client.Marshaller.dump_int(self, value, write)
     dispatch[int] = dump_int
+
+    def dump_re(self, value, write):
+        return self._dump(repr(value), write)
+    if six.PY2:
+        dispatch[re._pattern_type] = dump_re
+    else:
+        dispatch[re.Pattern] = dump_re
 
 
 if six.PY2:
