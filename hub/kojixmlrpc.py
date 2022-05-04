@@ -219,12 +219,12 @@ class ModXMLRPCRequestHandler(object):
             except OSError as e:
                 str_e = str(e)
                 if 'timeout' in str_e:
-                    self.logger.exception("Timed out reading input stream. "
-                            f"Content-Length: {context.environ.get('CONTENT_LENGTH')}")
+                    self.logger.exception("Timed out reading input stream. Content-Length: "
+                                          f"{context.environ.get('CONTENT_LENGTH')}")
                     raise RequestTimeout(str_e)
                 else:
-                    self.logger.exception("Error reading input stream. "
-                            f"Content-Length: {context.environ.get('CONTENT_LENGTH')}")
+                    self.logger.exception("Error reading input stream. Content-Length: "
+                                          f"{context.environ.get('CONTENT_LENGTH')}")
                     raise BadRequest(str_e)
             if not chunk:
                 break
