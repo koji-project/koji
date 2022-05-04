@@ -122,7 +122,7 @@
     </tr>
     <tr>
       <th>Packages</th>
-      <td><a href="packages?tagID=$tag.id">$numPackages</a></td>
+      <td><a href="packages?blocked=0&tagID=$tag.id">$numPackages</a></td>
     </tr>
     <tr>
       <th>Packages (blocked packages included)</th>
