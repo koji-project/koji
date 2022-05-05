@@ -4673,8 +4673,8 @@ def get_rpm(rpminfo, strict=False, multi=False):
     if 'id' in data:
         clauses.append("rpminfo.id=%(id)s")
     else:
-        clauses.append("""rpminfo.name=%(name)s AND version=%(version)s
-        AND release=%(release)s AND arch=%(arch)s""")
+        clauses.append("rpminfo.name=%(name)s AND version=%(version)s "
+                       "AND release=%(release)s AND arch=%(arch)s")
     retry = False
     if 'location' in data:
         data['external_repo_id'] = get_external_repo_id(data['location'], strict=True)
