@@ -23,6 +23,9 @@ def tag2distrepo(cbtype, tag, build, user, force=False, strict=True):
             "Tag %s has no arches configured but tag2distrepo is enabled" % tag['name'])
 
     keys = tag['extra'].get("tag2distrepo.keys", '').split()
+    inherit = tag['extra'].get("tag2distrepo.inherit", False)
+    latest = tag['extra'].get("tag2distrepo.latest", False)
+    split_debuginfo = tag['extra'].get("tag2distrepo.split_debuginfo", False)
 
     if keys:
         logger.debug("Ensuring signed RPMs are written out")
@@ -37,10 +40,10 @@ def tag2distrepo(cbtype, tag, build, user, force=False, strict=True):
         'comp': None,
         'delta': [],
         'event': None,
-        'inherit': False,
-        'latest': False,
+        'inherit': inherit,
+        'latest': latest,
         'multilib': False,
-        'split_debuginfo': False,
+        'split_debuginfo': split_debuginfo,
         'skip_missing_signatures': False,
         'allow_missing_signatures': not keys,
     }
