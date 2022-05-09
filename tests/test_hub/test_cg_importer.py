@@ -37,8 +37,8 @@ class TestCGImporter(unittest.TestCase):
         metadata = 42
         with self.assertRaises(GenericError) as ex:
             x.get_metadata(metadata, '')
-        self.assertEqual(f"Invalid type for value '{metadata}': {type(metadata)}",
-                         str(ex.exception))
+        self.assertEqual(f"Invalid type for value '{metadata}': {type(metadata)}, "
+                         f"expected type <class 'str'>", str(ex.exception))
 
     def test_get_metadata_is_none(self):
         x = kojihub.CG_Importer()

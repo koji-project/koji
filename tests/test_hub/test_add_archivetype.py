@@ -60,15 +60,15 @@ class TestAddArchiveType(unittest.TestCase):
         description = ['Debian package']
         with self.assertRaises(koji.ParameterError) as ex:
             kojihub.add_archive_type('deb', description, 'deb')
-        self.assertEqual(f"Invalid type for value '{description}': {type(description)}",
-                         str(ex.exception))
+        self.assertEqual(f"Invalid type for value '{description}': {type(description)}, "
+                         f"expected type <class 'str'>", str(ex.exception))
 
     def test_add_archive_type_invalid_value_extensions(self):
         extensions = ['deb']
         with self.assertRaises(koji.ParameterError) as ex:
             kojihub.add_archive_type('deb', 'Debian package', extensions)
-        self.assertEqual(f"Invalid type for value '{extensions}': {type(extensions)}",
-                         str(ex.exception))
+        self.assertEqual(f"Invalid type for value '{extensions}': {type(extensions)}, "
+                         f"expected type <class 'str'>", str(ex.exception))
 
     def test_add_archive_type_wrong_name_verify(self):
         # name is longer as expected

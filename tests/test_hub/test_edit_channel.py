@@ -131,8 +131,8 @@ class TestEditChannel(unittest.TestCase):
         with self.assertRaises(koji.ParameterError) as ex:
             self.exports.editChannel(self.channel_name, description=description)
         self.assertEqual(self.updates, [])
-        self.assertEqual(f"Invalid type for value '{description}': {type(description)}",
-                         str(ex.exception))
+        self.assertEqual(f"Invalid type for value '{description}': {type(description)}, "
+                         f"expected type <class 'str'>", str(ex.exception))
         self.get_channel.assert_called_once_with(self.channel_name, strict=True)
         self.verify_name_internal.assert_not_called()
 
@@ -142,6 +142,7 @@ class TestEditChannel(unittest.TestCase):
         with self.assertRaises(koji.ParameterError) as ex:
             self.exports.editChannel(self.channel_name, comment=comment)
         self.assertEqual(self.updates, [])
-        self.assertEqual(f"Invalid type for value '{comment}': {type(comment)}", str(ex.exception))
+        self.assertEqual(f"Invalid type for value '{comment}': {type(comment)}, "
+                         f"expected type <class 'str'>", str(ex.exception))
         self.get_channel.assert_called_once_with(self.channel_name, strict=True)
         self.verify_name_internal.assert_not_called()

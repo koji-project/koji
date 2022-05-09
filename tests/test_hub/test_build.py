@@ -23,7 +23,8 @@ class TestBuild(unittest.TestCase):
         src = ['test-priority']
         with self.assertRaises(koji.GenericError) as cm:
             self.exports.build(src, self.target)
-        self.assertEqual(f"Invalid type for value '{src}': {type(src)}", str(cm.exception))
+        self.assertEqual(f"Invalid type for value '{src}': {type(src)}, "
+                         f"expected type <class 'str'>", str(cm.exception))
 
     def test_priority_without_admin(self):
         priority = -10

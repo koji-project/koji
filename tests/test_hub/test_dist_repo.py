@@ -75,14 +75,16 @@ class TestDistRepoInit(unittest.TestCase):
         keys = 'key1 key2'
         with self.assertRaises(koji.ParameterError) as cm:
             kojihub.dist_repo_init('tag', keys, {'arch': ['x86_64']})
-        self.assertEqual(f"Invalid type for value '{keys}': {type(keys)}", str(cm.exception))
+        self.assertEqual(f"Invalid type for value '{keys}': {type(keys)}, "
+                         f"expected type <class 'list'>", str(cm.exception))
         self.InsertProcessor.assert_not_called()
 
     def test_simple_dist_repo_init_wrong_type_task_opts(self):
         task_opts = 'opts'
         with self.assertRaises(koji.ParameterError) as cm:
             kojihub.dist_repo_init('tag', ['key'], task_opts)
-        self.assertEqual(f"Invalid type for value '{task_opts}': {type(task_opts)}",
+        self.assertEqual(f"Invalid type for value '{task_opts}': {type(task_opts)}, "
+                         f"expected type <class 'dict'>",
                          str(cm.exception))
         self.InsertProcessor.assert_not_called()
 
@@ -90,7 +92,8 @@ class TestDistRepoInit(unittest.TestCase):
         event = 'test-event'
         with self.assertRaises(koji.ParameterError) as cm:
             kojihub.dist_repo_init('tag', ['key'], {'arch': ['x86_64'], 'event': event})
-        self.assertEqual(f"Invalid type for value '{event}': {type(event)}", str(cm.exception))
+        self.assertEqual(f"Invalid type for value '{event}': {type(event)}, "
+                         f"expected type <class 'int'>", str(cm.exception))
         self.InsertProcessor.assert_not_called()
 
     def test_simple_dist_repo_init_wrong_type_volume(self):

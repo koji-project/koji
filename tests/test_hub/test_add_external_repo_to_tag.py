@@ -28,5 +28,5 @@ class TestAddExternalRepoToTag(unittest.TestCase):
         self.get_external_repo.return_value = {'id': 123}
         with self.assertRaises(koji.GenericError) as cm:
             kojihub.add_external_repo_to_tag(self.tag_name, 'repo', priority, merge_mode=None)
-        self.assertEqual(f"Invalid type for value '{priority}': {type(priority)}",
-                         str(cm.exception))
+        self.assertEqual(f"Invalid type for value '{priority}': {type(priority)}, "
+                         f"expected type <class 'int'>", str(cm.exception))

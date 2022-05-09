@@ -20,7 +20,8 @@ class TestDownloadTaskOutput(unittest.TestCase):
         size = 'test-size'
         with self.assertRaises(koji.ParameterError) as cm:
             self.exports.downloadTaskOutput(self.task_id, self.filename, size=size)
-        self.assertEqual(f"Invalid type for value '{size}': {type(size)}", str(cm.exception))
+        self.assertEqual(f"Invalid type for value '{size}': {type(size)}, "
+                         f"expected type <class 'int'>", str(cm.exception))
 
     def test_volume_non_exist_wrong_type(self):
         self.exports.getVolume.side_effect = koji.GenericError

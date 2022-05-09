@@ -40,7 +40,8 @@ class TestWrapperRPM(unittest.TestCase):
         self.context.opts.get.return_value = True
         with self.assertRaises(koji.GenericError) as cm:
             self.exports.wrapperRPM(self.build, url, self.target)
-        self.assertEqual(f"Invalid type for value '{url}': {type(url)}", str(cm.exception))
+        self.assertEqual(f"Invalid type for value '{url}': {type(url)}, "
+                         f"expected type <class 'str'>", str(cm.exception))
 
     def test_channel_not_str(self):
         priority = 10

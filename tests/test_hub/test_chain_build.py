@@ -23,7 +23,8 @@ class TestChainBuild(unittest.TestCase):
         srcs = 'pkg'
         with self.assertRaises(koji.GenericError) as cm:
             self.exports.chainBuild(srcs, self.target)
-        self.assertEqual(f"Invalid type for value '{srcs}': {type(srcs)}", str(cm.exception))
+        self.assertEqual(f"Invalid type for value '{srcs}': {type(srcs)}, "
+                         f"expected type <class 'list'>", str(cm.exception))
 
     def test_priority_without_admin(self):
         priority = -10

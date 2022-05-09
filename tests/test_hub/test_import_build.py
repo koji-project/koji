@@ -136,16 +136,19 @@ class TestImportBuild(unittest.TestCase):
         brmap = 'test-brmap'
         with self.assertRaises(koji.GenericError) as cm:
             kojihub.import_build(self.src_filename, [self.filename], brmap=brmap)
-        self.assertEqual(f"Invalid type for value '{brmap}': {type(brmap)}", str(cm.exception))
+        self.assertEqual(f"Invalid type for value '{brmap}': {type(brmap)}, "
+                         f"expected type <class 'dict'>", str(cm.exception))
 
     def test_import_build_wrong_type_srpm(self):
         srpm = ['test-srpm']
         with self.assertRaises(koji.GenericError) as cm:
             kojihub.import_build(srpm, [self.filename])
-        self.assertEqual(f"Invalid type for value '{srpm}': {type(srpm)}", str(cm.exception))
+        self.assertEqual(f"Invalid type for value '{srpm}': {type(srpm)}, "
+                         f"expected type <class 'str'>", str(cm.exception))
 
     def test_import_build_wrong_type_rpms(self):
         with self.assertRaises(koji.GenericError) as cm:
             kojihub.import_build(self.src_filename, self.filename)
-        self.assertEqual(f"Invalid type for value '{self.filename}': {type(self.filename)}",
+        self.assertEqual(f"Invalid type for value '{self.filename}': {type(self.filename)}, "
+                         f"expected type <class 'list'>",
                          str(cm.exception))

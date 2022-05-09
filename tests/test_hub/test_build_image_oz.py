@@ -25,20 +25,22 @@ class TestBuildImageOz(unittest.TestCase):
         name = ['image-name']
         with self.assertRaises(koji.ParameterError) as cm:
             self.exports.buildImageOz(name, self.version, self.arches, self.target, self.inst_tree)
-        self.assertEqual(f"Invalid type for value '{name}': {type(name)}", str(cm.exception))
+        self.assertEqual(f"Invalid type for value '{name}': {type(name)}, "
+                         f"expected type <class 'str'>", str(cm.exception))
 
     def test_inst_tree_wrong_type(self):
         inst_tree = ['test-tree']
         with self.assertRaises(koji.ParameterError) as cm:
             self.exports.buildImageOz(self.name, self.version, self.arches, self.target, inst_tree)
-        self.assertEqual(f"Invalid type for value '{inst_tree}': {type(inst_tree)}",
-                         str(cm.exception))
+        self.assertEqual(f"Invalid type for value '{inst_tree}': {type(inst_tree)}, "
+                         f"expected type <class 'str'>", str(cm.exception))
 
     def test_version_wrong_type(self):
         version = ['test-version']
         with self.assertRaises(koji.ParameterError) as cm:
             self.exports.buildImageOz(self.name, version, self.arches, self.target, self.inst_tree)
-        self.assertEqual(f"Invalid type for value '{version}': {type(version)}", str(cm.exception))
+        self.assertEqual(f"Invalid type for value '{version}': {type(version)}, "
+                         f"expected type <class 'str'>", str(cm.exception))
 
     def test_priority_without_admin(self):
         priority = -10

@@ -47,4 +47,5 @@ class TestEnableChannel(unittest.TestCase):
         comment = ['test-comment']
         with self.assertRaises(koji.GenericError) as cm:
             self.exports.enableChannel(self.channelname, comment=comment)
-        self.assertEqual(f"Invalid type for value '{comment}': {type(comment)}", str(cm.exception))
+        self.assertEqual(f"Invalid type for value '{comment}': {type(comment)}, "
+                         f"expected type <class 'str'>", str(cm.exception))
