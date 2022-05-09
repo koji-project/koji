@@ -54,6 +54,48 @@ class TestWrapperRPM(unittest.TestCase):
         self.make_task.return_value = 123
         self.get_channel.return_value = {'comment': None, 'description': None, 'enabled': True,
                                          'id': 2, 'name': 'maven'}
-        with self.assertRaises(koji.ParameterError):
+        with self.assertRaises(koji.ParameterError) as cm:
             self.exports.wrapperRPM(self.build, self.url, self.target,
                                     priority=priority, channel=2)
+        self.assertEqual(f"Invalid type for value '2': {type(2)}", str(cm.exception))
+
+    def test_maven_not_supported(self):
+        self.context.opts.get.return_value = False
+        with self.assertRaises(koji.GenericError) as cm:
+            self.exports.wrapperRPM(self.build, self.url, self.target)
+        self.assertEqual("Maven support not enabled", str(cm.exception))
+
+    def test_wrapper_rpms_exists(self):
+        self.context.opts.get.return_value = True
+        self.exports.getBuild.return_value = self.buildinfo
+        self.list_rpms.return_value = [{'id': 1, 'buildroot_id': None}]
+
+        with self.assertRaises(koji.GenericError) as cm:
+            self.exports.wrapperRPM(self.build, self.url, self.target)
+        self.assertEqual("wrapper rpms for %s have already been built" % self.build,
+                         str(cm.exception))
+
+    def test_no_repo_for_tag(self):
+        self.context.opts.get.return_value = True
+        self.exports.getBuild.return_value = self.buildinfo
+        self.list_rpms.return_value = []
+        self.exports.getBuildTarget.return_value = self.targetinfo
+        self.exports.getTag.return_value = self.taginfo
+        self.exports.getRepo.return_value = None
+
+        with self.assertRaises(koji.PreBuildError) as cm:
+            self.exports.wrapperRPM(self.build, self.url, self.target)
+        self.assertEqual("no repo for tag: %s" % self.taginfo['name'], str(cm.exception))
+
+    def test_priority_without_admin(self):
+        priority = -10
+        self.context.opts.get.return_value = True
+        self.exports.getBuild.return_value = self.buildinfo
+        self.exports.getBuildTarget.return_value = self.targetinfo
+        self.list_rpms.return_value = []
+        self.exports.getTag.return_value = self.taginfo
+        self.exports.getRepo.return_value = self.repoinfo
+        self.context.session.hasPerm.return_value = False
+        with self.assertRaises(koji.GenericError) as cm:
+            self.exports.wrapperRPM(self.build, self.url, self.target, priority=priority)
+        self.assertEqual("only admins may create high-priority tasks", str(cm.exception))
