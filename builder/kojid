@@ -5072,6 +5072,8 @@ class BuildSRPMFromSCMTask(BaseBuildTask):
                            scratch=opts.get('scratch'),
                            srcdir=sourcedir,
                            buildroot=broot)
+        # get the source before chown, git > 2.35.2 would refuse to that later
+        source = scm.get_source()
         # chown the sourcedir and everything under it to the mockuser
         # so we can build the srpm as non-root
         uid = pwd.getpwnam(self.options.mockuser)[2]
@@ -5143,7 +5145,6 @@ class BuildSRPMFromSCMTask(BaseBuildTask):
         brootid = broot.id
         log_files = glob.glob('%s/*.log' % broot.resultdir())
 
-        source = scm.get_source()
         broot.expire()
 
         return {'srpm': "%s/%s" % (uploadpath, srpm_name),
