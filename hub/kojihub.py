@@ -2039,7 +2039,7 @@ def _grp_pkg_add(taginfo, grpinfo, pkg_name, block, force, **opts):
     insert.execute()
 
 
-def grp_pkg_remove(taginfo, grpinfo, pkg_name, force=None):
+def grp_pkg_remove(taginfo, grpinfo, pkg_name):
     """Remove package from the list for group-tag
 
     Really this shouldn't be used except in special cases
@@ -2047,14 +2047,11 @@ def grp_pkg_remove(taginfo, grpinfo, pkg_name, force=None):
     """
     # only admins....
     context.session.assertPerm('tag')
-    _grp_pkg_remove(taginfo, grpinfo, pkg_name, force)
+    _grp_pkg_remove(taginfo, grpinfo, pkg_name)
 
 
-def _grp_pkg_remove(taginfo, grpinfo, pkg_name, force):
+def _grp_pkg_remove(taginfo, grpinfo, pkg_name):
     """grp_pkg_remove without permssion checks"""
-    if force is not None:
-        logger.warning("force option in groupPackageListRemove call is deprecated and "
-                       "will be removed in 1.30")
     tag_id = get_tag_id(taginfo, strict=True)
     grp_id = get_group_id(grpinfo, strict=True)
     update = UpdateProcessor('group_package_listing', values=locals(),
