@@ -57,7 +57,8 @@ class TestWrapperRPM(unittest.TestCase):
         with self.assertRaises(koji.ParameterError) as cm:
             self.exports.wrapperRPM(self.build, self.url, self.target,
                                     priority=priority, channel=2)
-        self.assertEqual(f"Invalid type for value '2': {type(2)}", str(cm.exception))
+        self.assertEqual(f"Invalid type for value '2': {type(2)}, expected type <class 'str'>",
+                         str(cm.exception))
 
     def test_maven_not_supported(self):
         self.context.opts.get.return_value = False
