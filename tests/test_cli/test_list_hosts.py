@@ -52,6 +52,7 @@ class TestListHosts(utils.CliTestCase):
         self.options.quiet = False
         host_update = 1615875554.862938
         expected = """Hostname    Enb Rdy Load/Cap  Arches           Last Update                         
+-----------------------------------------------------------------------------------
 kojibuilder N   Y    0.0/2.0  x86_64           Tue, 16 Mar 2021 06:19:14 UTC      
 """
 
@@ -190,6 +191,9 @@ kojibuilder N   Y    0.0/2.0  x86_64           Tue, 16 Mar 2021 06:19:14 UTC
         expected = "Hostname    Enb Rdy Load/Cap  Arches           Last Update" \
                    "                         Description                                        " \
                    "Comment                                            \n" \
+                   "---------------------------------------------------------------------------" \
+                   "---------------------------------------------------------------------------" \
+                   "-----------------------------------\n" \
                    "kojibuilder N   Y    0.0/2.0  x86_64           Tue, 16 Mar 2021 06:19:14 UTC" \
                    "       test-description                                   test-comment" \
                    "                                      \n"
