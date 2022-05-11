@@ -53,10 +53,11 @@ class ExtendedMarshaller(xmlrpc_client.Marshaller):
 
     def dump_re(self, value, write):
         return self._dump(repr(value), write)
-    if six.PY2:
-        dispatch[re._pattern_type] = dump_re
-    else:
+    # re.Pattern is supported >= py3.7
+    try:
         dispatch[re.Pattern] = dump_re
+    except AttributeError:
+        dispatch[re._pattern_type] = dump_re
 
 
 if six.PY2:
