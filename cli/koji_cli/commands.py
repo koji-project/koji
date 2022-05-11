@@ -8078,18 +8078,18 @@ def anon_handle_userinfo(goptions, session, args):
             calls.append(results)
 
     for userinfo, (perms, pkgs, tasks, builds) in zip(user_infos, calls):
-        print("User name: %s" % user['name'])
-        print("User ID: %d" % user['id'])
-        if 'krb_principals' in user:
+        print("User name: %s" % userinfo['name'])
+        print("User ID: %d" % userinfo['id'])
+        if 'krb_principals' in userinfo:
             print("krb principals:")
-            for krb in user['krb_principals']:
+            for krb in userinfo['krb_principals']:
                 print("  %s" % krb)
         if perms.result:
             print("Permissions:")
             for perm in perms.result:
                 print("  %s" % perm)
-        print("Status: %s" % koji.USER_STATUS[user['status']])
-        print("Usertype: %s" % koji.USERTYPES[user['usertype']])
+        print("Status: %s" % koji.USER_STATUS[userinfo['status']])
+        print("Usertype: %s" % koji.USERTYPES[userinfo['usertype']])
         print("Number of packages: %d" % pkgs.result)
         print("Number of tasks: %d" % tasks.result)
         print("Number of builds: %d" % builds.result)
