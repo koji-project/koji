@@ -75,6 +75,7 @@ class TestListPermissions(utils.CliTestCase):
     def test_handle_list_permissions_empty_perms(self, stdout):
         """Test handle_list_permissions that perms is empty"""
         expected = """Permission name   
+------------------
 """
         self.options.quiet = False
         self.session.getUser.return_value = self.userinfo
@@ -92,12 +93,12 @@ class TestListPermissions(utils.CliTestCase):
     def test_handle_list_permissions_user_perms(self, stdout):
         """Test handle_list_permissions user permissions"""
         expected = """admin                    
+appliance                
 build                    
-repo                     
 image                    
 livecd                   
-appliance                
 long-permission-appliance
+repo                     
 """
         perms = [p['name'] for p in self.all_perms[::1]]
         self.session.getUserPerms.return_value = perms
@@ -133,13 +134,14 @@ repo
         """Test handle_list_permissions all permissions and quiet is false"""
         self.options.quiet = False
         expected = """Permission name             Description                                       
+------------------------------------------------------------------------------
 admin                       admin-description
+appliance                   appliance-description
 build                       build-description
-repo                        repo-description
 image                       image-description
 livecd                      livecd-description
-appliance                   appliance-description
 long-permission-appliance   long-permission-appliance-description
+repo                        repo-description
 """
         self.session.getAllPerms.return_value = self.all_perms
         handle_list_permissions(self.options, self.session, [])
@@ -156,12 +158,13 @@ long-permission-appliance   long-permission-appliance-description
         """Test handle_list_permissions all permissions, length perms shorter than eight"""
         self.options.quiet = False
         expected = """Permission name      Description                                       
+-----------------------------------------------------------------------
 admin                admin-description
+appliance            appliance-description
 build                build-description
-repo                 repo-description
 image                image-description
 livecd               livecd-description
-appliance            appliance-description
+repo                 repo-description
 """
         self.session.getAllPerms.return_value = self.all_perms[:-1]
         handle_list_permissions(self.options, self.session, [])

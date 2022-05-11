@@ -2151,6 +2151,7 @@ def handle_list_permissions(goptions, session, args):
             perms.append({'name': p['name'], 'description': p['description']})
     if perms:
         longest_perm = max([len(perm['name']) for perm in perms])
+        perms = sorted(perms, key=lambda x: x['name'])
     else:
         longest_perm = 8
     if longest_perm < len('Permission name   '):
@@ -2161,6 +2162,7 @@ def handle_list_permissions(goptions, session, args):
         if perms and perms[0].get('description'):
             hdr += "   Description".ljust(53)
         print(hdr)
+        print(len(hdr) * '-')
     for perm in perms:
         line = '{permname:<{longest_perm}}'
         line = line.format(longest_perm=longest_perm, permname=perm['name'])
