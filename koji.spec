@@ -83,7 +83,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.28.1
+Version: 1.29.0
 Release: %{release}%{?dist}
 License: LGPLv2 and GPLv2+
 # the included arch lib from yum's rpmUtils is GPLv2+
@@ -644,6 +644,57 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Thu May 12 2022  Tomas Kopecek <tkopecek at redhat.com> - 1.29.0-1
+- PR#3349: Py3 re pattern fix
+- PR#3338: Add header separaton to list-hosts and list-channels
+- PR#3336: Fix list-permissions ordering and header
+- PR#3325: cli: fix more users in userinfo
+- PR#3355: call git rev-parse before chowning source directory
+- PR#3353: Fix wrapper-rpm unit test
+- PR#3326: Add tag2distrepo plugin to hub
+- PR#3321: Add admin check when priority has negative value in wrapperRPM
+- PR#3347: Fix input validation
+- PR#3282: Add extra of builds to listTagged call result
+- PR#3344: Fix age to max_age in protonmsg
+- PR#3289: log content-length when we get an error reading request
+- PR#3334: Add blocked option to packages page
+- PR#3346: www: display load/capacity at hosts page
+- PR#3278: Download-logs with nvr without task ID downloads a logs
+- PR#3313: Add as_string option to showOpts for raw string or dict output
+- PR#3217: Adding Driver Update Disk building support
+- PR#3318: Hub, plugins and tools inputs validation
+- PR#3256: add strict option to getRPMHeaders
+- PR#3342: cli: document "list-signed" requires filesystem access
+- PR#3257: Add log file for match_rpm warnings in cg_import
+- PR#3276: Use PrivateTmp for kojid/kojira
+- PR#3333: doc: winbuild documentation updates
+- PR#3329: Fix number of packages without blocked
+- PR#3331: doc: better description for kiwi channel requirements
+- PR#3279: Skip activate_session when logged
+- PR#3272: Webui: add free task for admin
+- PR#3301: doc: clarify rpm imports
+- PR#3306: Koji 1.28.1 release notes
+- PR#3309: cli: rename "args" var for list-tags command
+- PR#3248: Retry gssapi_login if it makes sense
+- PR#3303: www: fix attribute test
+- PR#3292: docs: Task flow diagram
+- PR#3290: web: encode filename as UTF-8
+- PR#3259: kojira: don't call listTags more than once
+- PR#3262: Fix parsing of URLs with port numbers
+- PR#3298: Use buildins.type when option is called type in readTaggedRPMS
+- PR#3300: Same format output for list-builroot with verbose for py3/py2
+- PR#3297: doc: fix readTaggedRPMs rpmsigs option description
+- PR#3234: Check ccache size before trying to use it
+- PR#3270: Increase CLI test cases
+- PR#3208: hub: improve inheritance priority collision error message
+- PR#3269: return 400 codes when client fails to send a full request
+- PR#3265: Set dst permissions same as src permissions
+- PR#3255: allow untag-build for blocked packages
+- PR#3252: Fix tag and target shows as string, not as dict to string
+- PR#3238: Remove koji.listFaults
+- PR#3237: Remove taskReport API call
+
+
 * Mon Mar 28 2022  Tomas Kopecek <tkopecek at redhat.com> - 1.28.0-1
 - PR#3263: Fix syntax error
 - PR#3303: www: fix attribute test
@@ -659,7 +710,7 @@ rm -rf $RPM_BUILD_ROOT
 - PR#3265: Set dst permissions same as src permissions
 - PR#3252: Fix tag and target shows as string, not as dict to string
 
-* Wed Feb  2 2022  Tomas Kopecek <tkopecek at redhat.com> - 1.28.0-1
+* Wed Feb  2 2022  Tomas Kopecek <tkopecek at redhat.com> - 1.27.0-1
 - PR#3028: Add limits on name values
 - PR#3105: Deprecated --paths option in list-buildroot
 - PR#3108: Remove rename-channel CLI and use editChannel in renameChannel
