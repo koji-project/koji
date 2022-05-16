@@ -1629,6 +1629,8 @@ def genMockConfig(name, arch, managed=False, repoid=None, tag_name=None, **opts)
         # turn off warning for yum being used in place of dnf
         'dnf_warning': False,
     }
+    if 'forcearch' in opts:
+        config_opts['forcearch'] = opts['forcearch']
     if opts.get('package_manager'):
         config_opts['package_manager'] = opts['package_manager']
     if opts.get('bootstrap_image'):
@@ -1638,6 +1640,8 @@ def genMockConfig(name, arch, managed=False, repoid=None, tag_name=None, **opts)
         config_opts['use_bootstrap'] = bool(opts['use_bootstrap'])
     if 'module_setup_commands' in opts:
         config_opts['module_setup_commands'] = opts['module_setup_commands']
+    if 'releasever' in opts:
+        config_opts['releasever'] = opts['releasever']
 
     # bind_opts are used to mount parts (or all of) /dev if needed.
     # See kojid::LiveCDTask for a look at this option in action.

@@ -1131,11 +1131,14 @@ def anon_handle_mock_config(goptions, session, args):
     if opts['repoid'] != 'latest':
         event = session.repoInfo(opts['repoid'])['create_event']
     buildcfg = session.getBuildConfig(opts['tag_name'], event=event)
-    if options.arch:
+    if arch:
         if not buildcfg['arches']:
             warn("Tag %s has an empty arch list" % opts['tag_name'])
         elif arch not in buildcfg['arches']:
             warn('%s is not in the list of tag arches' % arch)
+        if 'mock.forcearch' in buildcfg['extra']:
+            if bool(buildcfg['extra']['mock.forcearch']):
+                opts['forcearch'] = arch
     if 'mock.package_manager' in buildcfg['extra']:
         opts['package_manager'] = buildcfg['extra']['mock.package_manager']
     if 'mock.yum.module_hotfixes' in buildcfg['extra']:
@@ -1149,6 +1152,8 @@ def anon_handle_mock_config(goptions, session, args):
         opts['use_bootstrap'] = buildcfg['extra']['mock.use_bootstrap']
     if 'mock.module_setup_commands' in buildcfg['extra']:
         opts['module_setup_commands'] = buildcfg['extra']['mock.module_setup_commands']
+    if 'mock.releasever' in buildcfg['extra']:
+        opts['releasever'] = buildcfg['extra']['mock.releasever']
     opts['tag_macros'] = {}
     for key in buildcfg['extra']:
         if key.startswith('rpm.macro.'):

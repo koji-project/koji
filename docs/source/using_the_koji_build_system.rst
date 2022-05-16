@@ -393,6 +393,8 @@ environment follows:
 * ``mock.new_chroot`` - 0/1 value. If it is set, ``--new-chroot`` or
   `--old-chroot` option is appended to any mock call. If it is not set,
   mock's default behavior is used.
+* ``mock.releasever`` - When doing cross-compiles it may be necessary
+  to explicitly set the ``releasever`` to be used.
 * ``mock.use_bootstrap`` - 0/1 value. If it is set, ``--bootstrap-chroot``
   is appended to the mock init call.  This tells mock to build in two stages,
   using chroot rpm for creating the build chroot. If it is not set, mock's
@@ -431,6 +433,8 @@ environment follows:
 * ``mock.module_setup_commands`` - commands for configuring the modules active
   in a buildroot. Available in `mock 2.4
   <https://github.com/rpm-software-management/mock/wiki/Release-Notes-2.4>`__.
+* ``mock.forcearch`` - 0/1 value. If true mock will set the ``forcearch``
+  config option to match the target arch of each buildroot.
 * ``mock.yum.best`` - 0/1 value. If set yum/dnf will use highest available rpm
   version (see man yum.conf)
 * ``mock.yum.module_hotfixes`` - 0/1 value. If set, yum/dnf will use packages
