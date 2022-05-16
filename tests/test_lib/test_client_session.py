@@ -2,7 +2,9 @@ from __future__ import absolute_import
 import mock
 import six
 import weakref
+import requests
 import unittest
+from requests.packages.urllib3.exceptions import MaxRetryError, HostChangedError
 
 import koji
 
@@ -207,3 +209,17 @@ class TestMultiCall(unittest.TestCase):
 
         # This should not raise an exception
         koji.MultiCallHack(weakref.ref(self.ksession))
+
+    def test_sanitize_connection_error(self):
+        url = "https://example.com/kojihub?session-id=12345&session-key=key"
+        sanitized = "https://example.com/kojihub?session-id=XXXXX&session-key=XXXXX"
+        exceptions = [
+            requests.exceptions.ConnectionError("url: %s" % url),
+            requests.exceptions.ConnectionError(MaxRetryError(pool="pool", url=url)),
+            requests.exceptions.ConnectionError(HostChangedError(pool="pool", url=url))
+        ]
+        for exc in exceptions:
+            res = self.ksession._sanitize_connection_error(exc)
+            res = str(res)
+            self.assertNotIn(url, res)
+            self.assertIn(sanitized, res)
