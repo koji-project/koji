@@ -3025,6 +3025,7 @@ def anon_handle_list_channels(goptions, session, args):
                       help="Limit to not enabled channels")
     parser.add_option("--disabled", action="store_false", dest="enabled",
                       help="Alias for --not-enabled")
+    parser.add_option("--arch", help="Limit to channels with specific arch")
     (options, args) = parser.parse_args(args)
     ensure_connection(session, goptions)
     opts = {}
@@ -3040,7 +3041,10 @@ def anon_handle_list_channels(goptions, session, args):
         first_item = {}
     session.multicall = True
     for channel in channels:
-        session.listHosts(channelID=channel['id'])
+        if options.arch is not None:
+            session.listHosts(channelID=channel['id'], arches=options.arch)
+        else:
+            session.listHosts(channelID=channel['id'])
     for channel, [hosts] in zip(channels, session.multiCall()):
         channel['enabled_host'] = len([x for x in hosts if x['enabled']])
         channel['disabled'] = len(hosts) - channel['enabled_host']
