@@ -159,6 +159,10 @@ def main(options, session):
             logger.error('Session expired')
             exit_code = 1
             break
+        except koji.AuthError:
+            logger.error('Authentication error')
+            exit_code = 1
+            break
         except koji.RetryError:
             raise
         except Exception:

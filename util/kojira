@@ -1159,6 +1159,9 @@ def main(options, session):
         except koji.AuthExpired:
             logger.warning("Session expired")
             break
+        except koji.AuthError:
+            logger.warning("Authentication error")
+            break
         except SystemExit:
             logger.warning("Shutting down")
             break
