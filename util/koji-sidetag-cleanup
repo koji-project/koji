@@ -53,7 +53,7 @@ def get_options():
                       help="delete older tags than timestamp")
     parser.add_option("--ignore-tags", metavar="PATTERN", action="append",
                       help="Ignore tags matching PATTERN when pruning")
-    parser.add_option("--no-inactive", dest="clean_inactive", default=True,
+    parser.add_option("--no-inactive", action="store_false", dest="clean_inactive", default=True,
                       help="don't run inactive check")
     parser.add_option("--inactive-delay", action="store", metavar="DAYS", default=10, type=int,
                       help="delete tags inactive for DAYS (no build was un/tagged there)")
