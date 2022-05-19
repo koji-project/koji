@@ -339,6 +339,12 @@ It uses the following options on a tag to control behaviour:
 - ``tag2distrepo.enabled``: set to "true" to enable automatic distrepos
 - ``tag2distrepo.keys``: set to a space-separated list of keys to use for distrepos
 
+Following parameters correspond to relevant ``brew dist-repo`` options.
+
+- ``tag2distrepo.inherit``: follow inheritance (default: False)
+- ``tag2distrepo.latest``: use only latest tagged builds (default: False)
+- ``tag2distrepo.split_debuginfo``: separate directory for debuginfo default: False
+
 The tag must have at least one arch configured on it.
 
 Installing plugin on Koji Hub
