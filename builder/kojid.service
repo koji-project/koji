@@ -13,7 +13,6 @@ ExecStart=/usr/sbin/kojid \
 ExecReload=/bin/kill -USR1 $MAINPID
 Restart=on-failure
 RestartSec=60s
-PrivateTmp=true
 
 [Install]
 WantedBy=multi-user.target
