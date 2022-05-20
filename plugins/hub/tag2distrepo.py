@@ -29,7 +29,7 @@ def tag2distrepo(cbtype, tag, build, user, force=False, strict=True):
 
     if keys:
         logger.debug("Ensuring signed RPMs are written out")
-        [rpms, _] = readTaggedRPMS(tag['id'], rpmsigs=True)
+        [rpms, _] = readTaggedRPMS(tag['id'], latest=latest, rpmsigs=True)
         for rpm in rpms:
             for key in keys:
                 if rpm['sigkey'] == key:
