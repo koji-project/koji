@@ -1685,7 +1685,8 @@ def hosts(environ, state='enabled', start=None, order='name', ready='all', chann
         host['channels'] = []
         host['channels_id'] = []
         host['channels_enabled'] = []
-        for chan in channels.result:
+        channels = sorted(channels.result, key=lambda x: x['name'])
+        for chan in channels:
             host['channels'].append(chan['name'])
             host['channels_id'].append(chan['id'])
             if chan['enabled']:
