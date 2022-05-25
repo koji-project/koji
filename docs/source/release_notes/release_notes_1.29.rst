@@ -35,15 +35,6 @@ work.
 Userinfo regressions - it now correctly list information for all users specified
 on command line.
 
-**Download output for all task types in download-task**
-
-| PR: https://pagure.io/koji/pull-request/3343
-
-Some types of output were not reachable via CLI (but via web yes). E.g. scratch
-image builds. All content now should be downloadble via CLI (see ``--all`` and
-older ``--logs`` options). Also new ``--dirperarch`` option is there now to
-handle same-named artifacts/logs for different archs.
-
 **Allow untag-build for blocked packages**
 
 | PR: https://pagure.io/koji/pull-request/3255
