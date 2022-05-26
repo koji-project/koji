@@ -170,14 +170,6 @@ New filter to see blocked packages in webui.
 
 It is sometimes useful to see these values there.
 
-Kojira
-------
-**Use PrivateTmp for kojid/kojira**
-
-| PR: https://pagure.io/koji/pull-request/3276
-
-More safe/secure handling of tempdirs.
-
 Plugins
 -------
 **Adding Driver Update Disk building support**
