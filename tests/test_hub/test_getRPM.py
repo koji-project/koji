@@ -7,14 +7,91 @@ import mock
 import koji
 import kojihub
 
+QP = kojihub.QueryProcessor
+
 
 class TestGetRPM(unittest.TestCase):
+
+    def setUp(self):
+        self.exports = kojihub.RootExports()
+        self.context = mock.patch('kojihub.context').start()
+        self.get_external_repo_id = mock.patch('kojihub.get_external_repo_id').start()
+        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
+                                         side_effect=self.getQuery).start()
+        self.queries = []
+
+    def getQuery(self, *args, **kwargs):
+        query = QP(*args, **kwargs)
+        query.execute = mock.MagicMock()
+        self.queries.append(query)
+        return query
+
+    def tearDown(self):
+        mock.patch.stopall()
 
     def test_wrong_type_rpminfo(self):
         rpminfo = ['test-user']
         with self.assertRaises(koji.GenericError) as cm:
             kojihub.get_rpm(rpminfo)
         self.assertEqual(f"Invalid type for rpminfo: {type(rpminfo)}", str(cm.exception))
+
+    def test_rpm_info_int(self):
+        rpminfo = 123
+        kojihub.get_rpm(rpminfo)
+
+        self.assertEqual(len(self.queries), 1)
+        query = self.queries[0]
+        str(query)
+        self.assertEqual(query.tables, ['rpminfo'])
+        columns = ['rpminfo.id', 'build_id', 'buildroot_id', 'rpminfo.name', 'version', 'release',
+                   'epoch', 'arch', 'external_repo_id', 'external_repo.name', 'payloadhash',
+                   'size', 'buildtime', 'metadata_only', 'extra']
+        self.assertEqual(set(query.columns), set(columns))
+        self.assertEqual(query.clauses, ['external_repo_id = 0', "rpminfo.id=%(id)s"])
+        self.assertEqual(query.joins,
+                         ['external_repo ON rpminfo.external_repo_id = external_repo.id'])
+        self.assertEqual(query.values, {'id': rpminfo})
+
+    def test_rpm_info_str(self):
+        rpminfo = 'testrpm-1.23-4.x86_64.rpm'
+        kojihub.get_rpm(rpminfo, multi=True)
+
+        self.assertEqual(len(self.queries), 1)
+        query = self.queries[0]
+        str(query)
+        self.assertEqual(query.tables, ['rpminfo'])
+        columns = ['rpminfo.id', 'build_id', 'buildroot_id', 'rpminfo.name', 'version', 'release',
+                   'epoch', 'arch', 'external_repo_id', 'external_repo.name', 'payloadhash',
+                   'size', 'buildtime', 'metadata_only', 'extra']
+        self.assertEqual(set(query.columns), set(columns))
+        self.assertEqual(query.clauses, ["rpminfo.name=%(name)s AND version=%(version)s "
+                                         "AND release=%(release)s AND arch=%(arch)s"])
+        self.assertEqual(query.joins,
+                         ['external_repo ON rpminfo.external_repo_id = external_repo.id'])
+        self.assertEqual(query.values, {'arch': 'x86_64', 'epoch': '', 'name': 'testrpm',
+                                        'release': '4', 'src': False, 'version': '1.23'})
+
+    def test_rpm_info_dict_location(self):
+        rpminfo = {'id': 123, 'name': 'testrpm-1.23-4.x86_64.rpm', 'location': 'test-location'}
+        self.get_external_repo_id.return_value = 125
+        rpminfo_data = rpminfo.copy()
+        rpminfo_data['external_repo_id'] = 125
+
+        kojihub.get_rpm(rpminfo, multi=True)
+
+        self.assertEqual(len(self.queries), 1)
+        query = self.queries[0]
+        str(query)
+        self.assertEqual(query.tables, ['rpminfo'])
+        columns = ['rpminfo.id', 'build_id', 'buildroot_id', 'rpminfo.name', 'version', 'release',
+                   'epoch', 'arch', 'external_repo_id', 'external_repo.name', 'payloadhash',
+                   'size', 'buildtime', 'metadata_only', 'extra']
+        self.assertEqual(set(query.columns), set(columns))
+        self.assertEqual(query.clauses,
+                         ["external_repo_id = %(external_repo_id)i", "rpminfo.id=%(id)s"])
+        self.assertEqual(query.joins,
+                         ['external_repo ON rpminfo.external_repo_id = external_repo.id'])
+        self.assertEqual(query.values, rpminfo_data)
 
 
 class TestGetRPMHeaders(unittest.TestCase):
