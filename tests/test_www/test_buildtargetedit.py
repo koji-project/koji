@@ -5,6 +5,7 @@ import cgi
 import koji
 from io import BytesIO
 from .loadwebindex import webidx
+from koji.server import ServerRedirect
 
 
 class TestBuildTargetEdit(unittest.TestCase):
@@ -23,7 +24,10 @@ class TestBuildTargetEdit(unittest.TestCase):
             'koji.currentUser': None,
         }
 
-        urlencode_data = b"save=True&name=testname&buildTag=11&destTag=99"
+    def tearDown(self):
+        mock.patch.stopall()
+
+    def get_fs(self, urlencode_data):
         urlencode_environ = {
             'CONTENT_LENGTH': str(len(urlencode_data)),
             'CONTENT_TYPE': 'application/x-www-form-urlencoded',
@@ -32,43 +36,104 @@ class TestBuildTargetEdit(unittest.TestCase):
         }
         data = BytesIO(urlencode_data)
         data.seek(0)
-        self.fs = cgi.FieldStorage(fp=data, environ=urlencode_environ)
+        return cgi.FieldStorage(fp=data, environ=urlencode_environ)
+
+    def test_buildtargetedit_exception(self):
+        """Test buildtargetedit function raises exception when build target not exists."""
+        urlencode_data = b"save=True&name=testname&buildTag=11&destTag=99"
+        fs = self.get_fs(urlencode_data)
 
         def __get_server(env):
             env['koji.session'] = self.server
-            env['koji.form'] = self.fs
+            env['koji.form'] = fs
             return self.server
 
         self.get_server.side_effect = __get_server
-
-    def tearDown(self):
-        mock.patch.stopall()
-
-    def test_buildtargetedit_exception(self):
-        """Test taskinfo function raises exception"""
         self.server.getBuildTarget.return_value = None
         self.get_server.return_value = self.server
 
         with self.assertRaises(koji.GenericError) as cm:
             webidx.buildtargetedit(self.environ, self.buildtarget_id)
-        self.assertEqual(str(cm.exception), 'No such build target: %s' % self.buildtarget_id)
+        self.assertEqual(str(cm.exception), f'No such build target: {self.buildtarget_id}')
 
     def test_buildtargetedit_exception_build_tag(self):
-        """Test taskinfo function raises exception"""
-        self.server.getBuildTarget.return_value = {'id': 1}
+        """Test buildtargetedit function raises exception when build tag not exists."""
+        urlencode_data = b"save=True&name=testname&buildTag=11&destTag=99"
+        fs = self.get_fs(urlencode_data)
+
+        def __get_server(env):
+            env['koji.session'] = self.server
+            env['koji.form'] = fs
+            return self.server
+
+        self.get_server.side_effect = __get_server
+        self.server.getBuildTarget.return_value = {'id': int(self.buildtarget_id)}
         self.server.getTag.return_value = None
         self.get_server.return_value = self.server
 
         with self.assertRaises(koji.GenericError) as cm:
             webidx.buildtargetedit(self.environ, self.buildtarget_id)
-        self.assertEqual(str(cm.exception), 'No such tag ID: %s' % self.buildtag_id)
+        self.assertEqual(str(cm.exception), f'No such tag ID: {self.buildtag_id}')
 
     def test_buildtargetedit_exception_dest_tag(self):
-        """Test taskinfo function raises exception"""
-        self.server.getBuildTarget.return_value = {'id': 1}
-        self.server.getTag.side_effect = [{'id': 11}, None]
+        """Test buildtargetedit function raises exception when destination tag not exists."""
+        urlencode_data = b"save=True&name=testname&buildTag=11&destTag=99"
+        fs = self.get_fs(urlencode_data)
+
+        def __get_server(env):
+            env['koji.session'] = self.server
+            env['koji.form'] = fs
+            return self.server
+
+        self.get_server.side_effect = __get_server
+        self.server.getBuildTarget.return_value = {'id': int(self.buildtarget_id)}
+        self.server.getTag.side_effect = [{'id': int(self.buildtag_id)}, None]
         self.get_server.return_value = self.server
 
         with self.assertRaises(koji.GenericError) as cm:
             webidx.buildtargetedit(self.environ, self.buildtarget_id)
-        self.assertEqual(str(cm.exception), 'No such tag ID: %s' % self.desttag_id)
+        self.assertEqual(str(cm.exception), f'No such tag ID: {self.desttag_id}')
+
+    def test_buildtargetedit_save_case_valid(self):
+        """Test buildtargetedit function valid case (save)."""
+        urlencode_data = b"save=True&name=testname&buildTag=11&destTag=99"
+        fs = self.get_fs(urlencode_data)
+
+        def __get_server(env):
+            env['koji.session'] = self.server
+            env['koji.form'] = fs
+            return self.server
+
+        self.get_server.side_effect = __get_server
+
+        self.server.getBuildTarget.return_value = {'id': int(self.buildtarget_id)}
+        self.server.getTag.side_effect = [{'id': int(self.buildtag_id)},
+                                          {'id': int(self.desttag_id)}]
+        self.server.editBuildTarget.return_value = None
+        self.get_server.return_value = self.server
+
+        with self.assertRaises(ServerRedirect):
+            webidx.buildtargetedit(self.environ, self.buildtarget_id)
+        self.assertEqual(self.environ['koji.redirect'],
+                         f'buildtargetinfo?targetID={self.buildtarget_id}')
+
+    def test_buildtargetedit_cancel_case(self):
+        """Test buildtargetedit function valid case (cancel)."""
+        self.server.getBuildTarget.return_value = {'id': int(self.buildtarget_id)}
+        urlencode_data = b"cancel=True"
+        fs = self.get_fs(urlencode_data)
+
+        def __get_server(env):
+            env['koji.session'] = self.server
+            env['koji.form'] = fs
+            return self.server
+
+        self.get_server.side_effect = __get_server
+
+        with self.assertRaises(ServerRedirect):
+            webidx.buildtargetedit(self.environ, self.buildtarget_id)
+        self.server.getBuildTarget.assert_called_with(int(self.buildtarget_id))
+        self.server.getTag.assert_not_called()
+        self.server.editBuildTarget.assert_not_called()
+        self.assertEqual(self.environ['koji.redirect'],
+                         f'buildtargetinfo?targetID={self.buildtarget_id}')

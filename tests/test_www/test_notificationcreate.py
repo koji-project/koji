@@ -1,0 +1,115 @@
+import mock
+import unittest
+import cgi
+
+import koji
+from io import BytesIO
+from .loadwebindex import webidx
+from koji.server import ServerRedirect
+
+
+class TestNotificationCreate(unittest.TestCase):
+    def setUp(self):
+        self.get_server = mock.patch.object(webidx, "_getServer").start()
+        self.assert_login = mock.patch.object(webidx, "_assertLogin").start()
+        self.server = mock.MagicMock()
+        self.buildtag_id = '11'
+        self.pkg_id = '2'
+        self.environ = {
+            'koji.options': {
+                'SiteName': 'test',
+                'KojiFilesURL': 'https://server.local/files',
+            },
+            'koji.currentUser': {'id': '1'},
+        }
+
+    def tearDown(self):
+        mock.patch.stopall()
+
+    def get_fs(self, urlencode_data):
+        urlencode_environ = {
+            'CONTENT_LENGTH': str(len(urlencode_data)),
+            'CONTENT_TYPE': 'application/x-www-form-urlencoded',
+            'QUERY_STRING': '',
+            'REQUEST_METHOD': 'POST',
+        }
+        data = BytesIO(urlencode_data)
+        data.seek(0)
+        return cgi.FieldStorage(fp=data, environ=urlencode_environ)
+
+    def test_notificationcreate_add_case_not_logged(self):
+        """Test notificationcreate function raises exception when user is not logged."""
+        environ = {
+            'koji.options': {
+                'SiteName': 'test',
+                'KojiFilesURL': 'https://server.local/files',
+            },
+            'koji.currentUser': None,
+        }
+        urlencode_data = b"add=True&package=2&tag=11"
+        fs = self.get_fs(urlencode_data)
+
+        def __get_server(env):
+            env['koji.session'] = self.server
+            env['koji.form'] = fs
+            return self.server
+
+        self.get_server.side_effect = __get_server
+
+        with self.assertRaises(koji.GenericError) as cm:
+            webidx.notificationcreate(environ)
+        self.assertEqual(str(cm.exception), 'not logged-in')
+
+    def test_notificationcreate_add_case_int(self):
+        """Test notificationcreate function valid case (add)"""
+        urlencode_data = b"add=True&package=2&tag=11&success_only=True"
+        fs = self.get_fs(urlencode_data)
+
+        def __get_server(env):
+            env['koji.session'] = self.server
+            env['koji.form'] = fs
+            return self.server
+
+        self.get_server.side_effect = __get_server
+        self.server.createNotification.return_value = 11
+
+        with self.assertRaises(ServerRedirect):
+            webidx.notificationcreate(self.environ)
+        self.server.createNotification.assert_called_with('1', int(self.pkg_id),
+                                                          int(self.buildtag_id), True)
+        self.assertEqual(self.environ['koji.redirect'], 'index')
+
+    def test_notificationcreate_add_case_all(self):
+        """Test notificationcreate function valid case (add)"""
+        urlencode_data = b"add=True&package=all&tag=all"
+        fs = self.get_fs(urlencode_data)
+
+        def __get_server(env):
+            env['koji.session'] = self.server
+            env['koji.form'] = fs
+            return self.server
+
+        self.get_server.side_effect = __get_server
+        self.server.createNotification.return_value = 11
+
+        with self.assertRaises(ServerRedirect):
+            webidx.notificationcreate(self.environ)
+        self.server.createNotification.assert_called_with('1', None, None, False)
+        self.assertEqual(self.environ['koji.redirect'], 'index')
+
+    def test_notificationcreate_cancel_case(self):
+        """Test notificationcreate function valid case (cancel)."""
+        urlencode_data = b"cancel=True"
+        fs = self.get_fs(urlencode_data)
+
+        def __get_server(env):
+            env['koji.session'] = self.server
+            env['koji.form'] = fs
+            return self.server
+
+        self.get_server.side_effect = __get_server
+
+        with self.assertRaises(ServerRedirect):
+            webidx.notificationcreate(self.environ)
+        self.server.createNotification.assert_not_called()
+        self.assertEqual(self.environ['koji.redirect'], 'index')
