@@ -1,0 +1,86 @@
+import unittest
+import koji
+import cgi
+
+import mock
+from io import BytesIO
+from .loadwebindex import webidx
+from koji.server import ServerRedirect
+
+
+class TestTagEdit(unittest.TestCase):
+    def setUp(self):
+        self.get_server = mock.patch.object(webidx, "_getServer").start()
+        self.assert_login = mock.patch.object(webidx, "_assertLogin").start()
+        self.server = mock.MagicMock()
+        self.environ = {
+            'koji.options': {
+                'SiteName': 'test',
+                'KojiFilesURL': 'https://server.local/files',
+            },
+            'koji.currentUser': None
+        }
+        self.tag_id = '1'
+
+    def tearDown(self):
+        mock.patch.stopall()
+
+    def get_fs(self, urlencode_data):
+        urlencode_environ = {
+            'CONTENT_LENGTH': str(len(urlencode_data)),
+            'CONTENT_TYPE': 'application/x-www-form-urlencoded',
+            'QUERY_STRING': '',
+            'REQUEST_METHOD': 'POST',
+        }
+        data = BytesIO(urlencode_data)
+        data.seek(0)
+        return cgi.FieldStorage(fp=data, environ=urlencode_environ)
+
+    def test_tagedit_exception(self):
+        """Test tagedit function raises exception when tag ID not exists."""
+        self.get_server.return_value = self.server
+        self.server.getTag.return_value = None
+
+        with self.assertRaises(koji.GenericError) as cm:
+            webidx.tagedit(self.environ, self.tag_id)
+        self.assertEqual(str(cm.exception), f'no tag with ID: {self.tag_id}')
+
+    def test_tagedit_add_case_valid(self):
+        """Test tagedit function valid case (save)."""
+        urlencode_data = b"save=True&name=testname&arches=x86_64&locked=True&permission=1" \
+                         b"&maven_support=True&maven_include_all=True"
+        fs = self.get_fs(urlencode_data)
+
+        def __get_server(env):
+            env['koji.session'] = self.server
+            env['koji.form'] = fs
+            return self.server
+
+        self.get_server.side_effect = __get_server
+        self.server.editTag2.return_value = None
+        self.server.getTag.return_value = {'id': int(self.tag_id)}
+
+        with self.assertRaises(ServerRedirect):
+            webidx.tagedit(self.environ, self.tag_id)
+        self.server.editTag2.assert_called_with(1, arches='x86_64', locked=True, perm=1,
+                                                maven_support=True, maven_include_all=True,
+                                                name='testname')
+        self.assertEqual(self.environ['koji.redirect'], f'taginfo?tagID={self.tag_id}')
+
+    def test_tagedit_cancel_case_valid(self):
+        """Test tagedit function valid case (cancel)."""
+        urlencode_data = b"cancel=True"
+        fs = self.get_fs(urlencode_data)
+
+        def __get_server(env):
+            env['koji.session'] = self.server
+            env['koji.form'] = fs
+            return self.server
+
+        self.get_server.side_effect = __get_server
+        self.server.getTag.return_value = {'id': int(self.tag_id)}
+
+        with self.assertRaises(ServerRedirect):
+            webidx.tagedit(self.environ, self.tag_id)
+        self.server.editTag2.assert_not_called()
+        self.assertEqual(self.environ['koji.redirect'], f'taginfo?tagID={self.tag_id}')
