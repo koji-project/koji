@@ -1916,7 +1916,10 @@ def rpmlist(environ, type, buildrootID=None, imageID=None, start=None, order='nv
 
     elif imageID is not None:
         imageID = int(imageID)
-        values['image'] = server.getArchive(imageID)
+        image = server.getArchive(imageID)
+        values['image'] = image
+        if image is None:
+            raise koji.GenericError('unknown image ID: %i' % imageID)
         # If/When future image types are supported, add elifs here if needed.
         if type == 'image':
             kojiweb.util.paginateMethod(server, values, 'listRPMs',
@@ -1962,14 +1965,17 @@ def archivelist(environ, type, buildrootID=None, imageID=None, start=None, order
             raise koji.GenericError('unrecognized type of archivelist')
     elif imageID is not None:
         imageID = int(imageID)
-        values['image'] = server.getArchive(imageID)
+        image = server.getArchive(imageID)
+        values['image'] = image
+        if image is None:
+            raise koji.GenericError('unknown image ID: %i' % imageID)
         # If/When future image types are supported, add elifs here if needed.
         if type == 'image':
             kojiweb.util.paginateMethod(server, values, 'listArchives', kw={'imageID': imageID},
                                         start=start, dataName='archives', prefix='archive',
                                         order=order)
         else:
-            raise koji.GenericError('unrecognized type of archivelist')
+            raise koji.GenericError('unrecognized type of image archivelist')
     else:
         # It is an error if neither buildrootID and imageID are defined.
         raise koji.GenericError('Both buildrootID and imageID are None')
