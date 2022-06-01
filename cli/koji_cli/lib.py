@@ -568,13 +568,18 @@ def download_file(url, relpath, quiet=False, noprogress=False, size=None,
         else:
             print("Downloading: %s" % relpath)
 
+    if not filesize:
+        response = requests.head(url, timeout=10)
+        if response.status_code == 200 and response.headers.get('Content-Length'):
+            filesize = int(response.headers['Content-Length'])
+
     pos = 0
     headers = {}
     if filesize:
         # append the file
         f = open(relpath, 'ab')
         pos = f.tell()
-        if pos:
+        if pos != 0:
             if filesize == pos:
                 if not quiet:
                     print("File %s already downloaded, skipping" % relpath)
@@ -588,7 +593,7 @@ def download_file(url, relpath, quiet=False, noprogress=False, size=None,
 
     try:
         # closing needs to be used for requests < 2.18.0
-        with closing(requests.get(url, headers=headers, stream=True)) as response:
+        with closing(koji.request_with_retry().get(url, headers=headers, stream=True)) as response:
             if response.status_code in (200, 416):  # full content provided or reaching behind EOF
                 # rewrite in such case
                 f.close()
