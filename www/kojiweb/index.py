@@ -87,9 +87,9 @@ def _setUserCookie(environ, user):
     # the Cookie module treats integer expire times as relative seconds
     c['expires'] = int(options['LoginTimeout']) * 60 * 60
     out = c.OutputString()
-    out += '; HttpOnly'
+    out += '; HttpOnly; SameSite=Strict'
     environ['koji.headers'].append(['Set-Cookie', out])
-    environ['koji.headers'].append(['Cache-Control', 'no-cache="set-cookie"'])
+    environ['koji.headers'].append(['Cache-Control', 'no-cache="Set-Cookie, Set-Cookie2"'])
 
 
 def _clearUserCookie(environ):
