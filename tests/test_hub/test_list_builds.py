@@ -60,14 +60,14 @@ class TestListBuilds(unittest.TestCase):
         qp = QP(**kwargs)
         self.assertEqual(qp.tables, ['build'])
         self.assertEqual(qp.columns, ['build.id', 'build.completion_time',
-                                      'EXTRACT(EPOCH FROM build.completion_time)',
+                                      "date_part('epoch', build.completion_time)",
                                       'events.id', 'events.time',
-                                      'EXTRACT(EPOCH FROM events.time)', 'build.epoch',
+                                      "date_part('epoch', events.time)", 'build.epoch',
                                       'build.extra', 'package.name',
                                       "package.name || '-' || build.version || '-' || "
                                       "build.release", 'users.id', 'users.name', 'package.id',
                                       'package.name', 'build.release', 'build.source',
-                                      'build.start_time', 'EXTRACT(EPOCH FROM build.start_time)',
+                                      'build.start_time', "date_part('epoch', build.start_time)",
                                       'build.state', 'build.task_id', 'build.version',
                                       'volume.id', 'volume.name'])
         self.assertEqual(qp.clauses, ['package.id = %(packageID)i'])
