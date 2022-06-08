@@ -5031,6 +5031,7 @@ def list_archives(buildID=None, buildrootID=None, componentBuildrootID=None, hos
               ('archivetypes.name', 'type_name'),
               ('archivetypes.description', 'type_description'),
               ('archivetypes.extensions', 'type_extensions'),
+              ('archivetypes.compression_type', 'compression_type')
               ]
     clauses = []
 
@@ -5337,9 +5338,9 @@ def list_archive_files(archive_id, queryOpts=None, strict=False):
         # should not happen
         raise koji.GenericError("Missing build type info for archive %s" % archive_id)
 
-    if archive_type['name'] in ('zip', 'jar'):
+    if archive_type['compression_type'] == 'zip':
         filelist = _get_zipfile_list(archive_id, file_path)
-    elif archive_type['name'] == 'tar':
+    elif archive_type['compression_type'] == 'tar':
         filelist = _get_tarball_list(archive_id, file_path)
     else:
         # TODO: support other archive types
@@ -7391,21 +7392,23 @@ def merge_scratch(task_id):
 
 def get_archive_types():
     """Return a list of all supported archive types."""
-    select = """SELECT id, name, description, extensions FROM archivetypes
+    select = """SELECT id, name, description, extensions, compression_type FROM archivetypes
     ORDER BY id"""
-    return _multiRow(select, {}, ('id', 'name', 'description', 'extensions'))
+    return _multiRow(select, {}, ('id', 'name', 'description', 'extensions', 'compression_type'))
 
 
 def _get_archive_type_by_name(name, strict=True):
-    select = """SELECT id, name, description, extensions FROM archivetypes
+    select = """SELECT id, name, description, extensions, compression_type FROM archivetypes
     WHERE name = %(name)s"""
-    return _singleRow(select, locals(), ('id', 'name', 'description', 'extensions'), strict)
+    return _singleRow(select, locals(),
+                      ('id', 'name', 'description', 'extensions', 'compression_type'), strict)
 
 
 def _get_archive_type_by_id(type_id, strict=False):
-    select = """SELECT id, name, description, extensions FROM archivetypes
+    select = """SELECT id, name, description, extensions, compression_type FROM archivetypes
     WHERE id = %(type_id)i"""
-    return _singleRow(select, locals(), ('id', 'name', 'description', 'extensions'), strict)
+    return _singleRow(select, locals(),
+                      ('id', 'name', 'description', 'extensions', 'compression_type'), strict)
 
 
 def get_archive_type(filename=None, type_name=None, type_id=None, strict=False):
@@ -7424,7 +7427,7 @@ def get_archive_type(filename=None, type_name=None, type_id=None, strict=False):
     parts = filename.split('.')
     query = QueryProcessor(
         tables=['archivetypes'],
-        columns=['id', 'name', 'description', 'extensions'],
+        columns=['id', 'name', 'description', 'extensions', 'compression_type'],
         clauses=['extensions ~* %(pattern)s'],
     )
     for start in range(len(parts) - 1, -1, -1):
@@ -7444,7 +7447,7 @@ def get_archive_type(filename=None, type_name=None, type_id=None, strict=False):
         return None
 
 
-def add_archive_type(name, description, extensions):
+def add_archive_type(name, description, extensions, compression_type=None):
     """
     Add new archive type.
 
@@ -7459,21 +7462,25 @@ def add_archive_type(name, description, extensions):
     verify_name_internal(name)
     convert_value(description, cast=str, check_only=True)
     convert_value(extensions, cast=str, check_only=True)
+    convert_value(compression_type, cast=str, none_allowed=True, check_only=True)
+    if compression_type not in ['zip', 'tar', None]:
+        raise koji.GenericError(f"Unsupported compression type {compression_type}")
     data = {'name': name,
             'description': description,
             'extensions': extensions,
+            'compression_type': compression_type,
             }
     if get_archive_type(type_name=name):
-        raise koji.GenericError("archivetype %s already exists" % name)
+        raise koji.GenericError(f"archivetype {name} already exists")
     # No invalid or duplicate extensions
     for ext in extensions.split(' '):
         if not ext.replace('.', '').isalnum():
-            raise koji.GenericError('No such %s file extension' % ext)
+            raise koji.GenericError(f'No such {ext} file extension')
         select = r"""SELECT id FROM archivetypes
                       WHERE extensions ~* E'(\\s|^)%s(\\s|$)'""" % ext
         results = _multiRow(select, {}, ('id',))
         if len(results) > 0:
-            raise koji.GenericError('file extension %s already exists' % ext)
+            raise koji.GenericError(f'file extension {ext} already exists')
     insert = InsertProcessor('archivetypes', data=data)
     insert.execute()
 

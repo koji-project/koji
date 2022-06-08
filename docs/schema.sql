@@ -802,13 +802,14 @@ CREATE TABLE archivetypes (
         id SERIAL NOT NULL PRIMARY KEY,
         name TEXT NOT NULL UNIQUE,
         description TEXT NOT NULL,
-        extensions TEXT NOT NULL
+        extensions TEXT NOT NULL,
+        compression_type TEXT
 ) WITHOUT OIDS;
 
-INSERT INTO archivetypes (name, description, extensions) VALUES ('jar', 'Jar file', 'jar war rar ear sar jdocbook jdocbook-style');
-INSERT INTO archivetypes (name, description, extensions) VALUES ('zip', 'Zip file', 'zip');
+INSERT INTO archivetypes (name, description, extensions, compression_type) VALUES ('jar', 'Jar file', 'jar war rar ear sar jdocbook jdocbook-style', 'zip');
+INSERT INTO archivetypes (name, description, extensions, compression_type) VALUES ('zip', 'Zip file', 'zip', 'zip');
 INSERT INTO archivetypes (name, description, extensions) VALUES ('pom', 'Maven Project Object Management file', 'pom');
-INSERT INTO archivetypes (name, description, extensions) VALUES ('tar', 'Tar file', 'tar tar.gz tar.bz2 tar.xz tgz');
+INSERT INTO archivetypes (name, description, extensions, compression_type) VALUES ('tar', 'Tar file', 'tar tar.gz tar.bz2 tar.xz tgz', 'tar');
 INSERT INTO archivetypes (name, description, extensions) VALUES ('xml', 'XML file', 'xml');
 INSERT INTO archivetypes (name, description, extensions) VALUES ('xmlcompressed', 'Compressed XML file', 'xml.gz xml.bz2 xml.xz');
 INSERT INTO archivetypes (name, description, extensions) VALUES ('xsd', 'XML Schema Definition', 'xsd');
