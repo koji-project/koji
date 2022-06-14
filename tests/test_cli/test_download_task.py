@@ -217,15 +217,13 @@ Default behavior without --all option downloads .rpm files only for build and bu
 
         # Run it and check immediate output
         # args: task_id --arch=s390,ppc
-        # expected: failure
-        with self.assertRaises(SystemExit) as ex:
-            anon_handle_download_task(self.options, self.session, args)
-        self.assertExitCode(ex, 1)
+        # expected: pass
+        anon_handle_download_task(self.options, self.session, args)
         actual = self.stdout.getvalue()
-        expected = ''
+        expected = 'No files for download found.\n'
         self.assertMultiLineEqual(actual, expected)
         actual = self.stderr.getvalue()
-        expected = 'No files for download found.\n'
+        expected = ''
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
         self.ensure_connection.assert_called_once_with(self.session, self.options)

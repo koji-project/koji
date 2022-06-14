@@ -7441,7 +7441,8 @@ def anon_handle_download_task(options, session, args):
                         downloads.append((task, filename, volume, new_filename, task_id))
 
     if len(downloads) == 0:
-        error("No files for download found.")
+        print("No files for download found.")
+        return
 
     downloads_new_names = [(new_filename, vol) for (_, _, vol, new_filename, _) in downloads]
     if not suboptions.dirpertask:
