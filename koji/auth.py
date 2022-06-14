@@ -101,8 +101,8 @@ class Session(object):
             'master': 'master',
             'start_time': 'start_time',
             'update_time': 'update_time',
-            'EXTRACT(EPOCH FROM start_time)': 'start_ts',
-            'EXTRACT(EPOCH FROM update_time)': 'update_ts',
+            "date_part('epoch', start_time)": 'start_ts',
+            "date_part('epoch', update_time)": 'update_ts',
             'user_id': 'user_id',
         }
         # sort for stability (unittests)
