@@ -7393,7 +7393,8 @@ def anon_handle_download_task(options, session, args):
                     downloads.append((task, filename, volume, new_filename))
 
     if len(downloads) == 0:
-        error("No files for download found.")
+        print("No files for download found.")
+        return
 
     required_tasks = {}
     for (task, nop, nop, nop) in downloads:
