@@ -128,11 +128,11 @@ class Task(object):
         ('task.id', 'id'),
         ('task.state', 'state'),
         ('task.create_time', 'create_time'),
-        ('EXTRACT(EPOCH FROM create_time)', 'create_ts'),
+        ("date_part('epoch', create_time)", 'create_ts'),
         ('task.start_time', 'start_time'),
-        ('EXTRACT(EPOCH FROM task.start_time)', 'start_ts'),
+        ("date_part('epoch', task.start_time)", 'start_ts'),
         ('task.completion_time', 'completion_time'),
-        ('EXTRACT(EPOCH FROM completion_time)', 'completion_ts'),
+        ("date_part('epoch', completion_time)", 'completion_ts'),
         ('task.channel_id', 'channel_id'),
         ('task.host_id', 'host_id'),
         ('task.parent', 'parent'),
@@ -2986,7 +2986,7 @@ def repo_info(repo_id, strict=False):
         ('repo.task_id', 'task_id'),
         ('repo.create_event', 'create_event'),
         ('events.time', 'creation_time'),  # for compatibility with getRepo
-        ('EXTRACT(EPOCH FROM events.time)', 'create_ts'),
+        ("date_part('epoch', events.time)", 'create_ts'),
         ('repo.tag_id', 'tag_id'),
         ('tag.name', 'tag_name'),
         ('repo.dist', 'dist'),
@@ -3076,7 +3076,7 @@ def get_active_repos():
         ('repo.state', 'state'),
         ('repo.task_id', 'task_id'),
         ('repo.create_event', 'create_event'),
-        ('EXTRACT(EPOCH FROM events.time)', 'create_ts'),
+        ("date_part('epoch', events.time)", 'create_ts'),
         ('repo.tag_id', 'tag_id'),
         ('repo.dist', 'dist'),
         ('tag.name', 'tag_name'),
@@ -4432,9 +4432,9 @@ def get_build(buildInfo, strict=False):
               ('package.name', 'name'),
               ('volume.id', 'volume_id'), ('volume.name', 'volume_name'),
               ("package.name || '-' || build.version || '-' || build.release", 'nvr'),
-              ('EXTRACT(EPOCH FROM events.time)', 'creation_ts'),
-              ('EXTRACT(EPOCH FROM build.start_time)', 'start_ts'),
-              ('EXTRACT(EPOCH FROM build.completion_time)', 'completion_ts'),
+              ("date_part('epoch', events.time)", 'creation_ts'),
+              ("date_part('epoch', build.start_time)", 'start_ts'),
+              ("date_part('epoch', build.completion_time)", 'completion_ts'),
               ('users.id', 'owner_id'), ('users.name', 'owner_name'),
               ('build.cg_id', 'cg_id'),
               ('build.source', 'source'),
@@ -5681,9 +5681,9 @@ def query_buildroots(hostID=None, tagID=None, state=None, rpmID=None, archiveID=
               ('repo.id', 'repo_id'), ('repo.state', 'repo_state'),
               ('tag.id', 'tag_id'), ('tag.name', 'tag_name'),
               ('create_events.id', 'create_event_id'), ('create_events.time', 'create_event_time'),
-              ('EXTRACT(EPOCH FROM create_events.time)', 'create_ts'),
+              ("date_part('epoch', create_events.time)", 'create_ts'),
               ('retire_events.id', 'retire_event_id'), ('retire_events.time', 'retire_event_time'),
-              ('EXTRACT(EPOCH FROM retire_events.time)', 'retire_ts'),
+              ("date_part('epoch', retire_events.time)", 'retire_ts'),
               ('repo_create.id', 'repo_create_event_id'),
               ('repo_create.time', 'repo_create_event_time')]
 
@@ -8108,8 +8108,8 @@ def query_history(tables=None, **kwargs):
     common_joined_fields = {
         'creator.name': 'creator_name',
         'revoker.name': 'revoker_name',
-        'EXTRACT(EPOCH FROM ev1.time) AS create_ts': 'create_ts',
-        'EXTRACT(EPOCH FROM ev2.time) AS revoke_ts': 'revoke_ts',
+        "date_part('epoch', ev1.time) AS create_ts": 'create_ts',
+        "date_part('epoch', ev2.time) AS revoke_ts": 'revoke_ts',
     }
     table_fields = {
         'user_perms': ['user_id', 'perm_id'],
@@ -8311,8 +8311,8 @@ def query_history(tables=None, **kwargs):
                 clauses.append('ev1.time > %(after)s OR ev2.time > %(after)s')
                 fields['ev1.time > %(after)s'] = '_created_after'
                 fields['ev2.time > %(after)s'] = '_revoked_after'
-                # clauses.append('EXTRACT(EPOCH FROM ev1.time) > %(after)s OR '
-                #                'EXTRACT(EPOCH FROM ev2.time) > %(after)s')
+                # clauses.append("date_part('epoch', ev1.time) > %(after)s OR "
+                #                "date_part('epoch', ev2.time) > %(after)s")
             elif arg == 'afterEvent':
                 data['afterEvent'] = value
                 c_test = '%s.create_event > %%(afterEvent)i' % table
@@ -8325,8 +8325,8 @@ def query_history(tables=None, **kwargs):
                     value = datetime.datetime.fromtimestamp(value).isoformat(' ')
                 data['before'] = value
                 clauses.append('ev1.time < %(before)s OR ev2.time < %(before)s')
-                # clauses.append('EXTRACT(EPOCH FROM ev1.time) < %(before)s OR '
-                #                'EXTRACT(EPOCH FROM ev2.time) < %(before)s')
+                # clauses.append("date_part('epoch', ev1.time) < %(before)s OR "
+                #                "date_part('epoch', ev2.time) < %(before)s")
                 fields['ev1.time < %(before)s'] = '_created_before'
                 fields['ev2.time < %(before)s'] = '_revoked_before'
             elif arg == 'beforeEvent':
@@ -8527,7 +8527,7 @@ def build_references(build_id, limit=None, lazy=False):
         event_id2 = (_fetchSingle(q, {'archive_ids': build_archive_ids}) or (0,))[0] or 0
         event_id = max(event_id, event_id2)
     if event_id:
-        q = """SELECT EXTRACT(EPOCH FROM get_event_time(%(event_id)i))"""
+        q = """SELECT date_part('epoch', get_event_time(%(event_id)i))"""
         ret['last_used'] = _singleValue(q, locals())
     else:
         ret['last_used'] = None
@@ -10916,8 +10916,7 @@ class RootExports(object):
         """
         fields = ('id', 'ts')
         values = {'id': id}
-        q = """SELECT id, EXTRACT(EPOCH FROM time) FROM events
-                WHERE id = %(id)i"""
+        q = """SELECT id, date_part('epoch', time) FROM events WHERE id = %(id)i"""
         return _singleRow(q, values, fields, strict=True)
 
     def getLastEvent(self, before=None):
@@ -10939,13 +10938,13 @@ class RootExports(object):
         """
         fields = ('id', 'ts')
         values = {}
-        q = """SELECT id, EXTRACT(EPOCH FROM time) FROM events"""
+        q = """SELECT id, date_part('epoch', time) FROM events"""
         if before is not None:
             if not isinstance(before, NUMERIC_TYPES):
                 raise koji.GenericError('Invalid type for before: %s' % type(before))
             # use the repr() conversion because it retains more precision than the
             # string conversion
-            q += """ WHERE EXTRACT(EPOCH FROM time) < %(before)r"""
+            q += """ WHERE date_part('epoch', time) < %(before)r"""
             values['before'] = before
         q += """ ORDER BY id DESC LIMIT 1"""
         return _singleRow(q, values, fields, strict=True)
@@ -11970,9 +11969,9 @@ class RootExports(object):
                   ('build.extra', 'extra'),
                   ('events.id', 'creation_event_id'), ('events.time', 'creation_time'),
                   ('build.task_id', 'task_id'),
-                  ('EXTRACT(EPOCH FROM events.time)', 'creation_ts'),
-                  ('EXTRACT(EPOCH FROM build.start_time)', 'start_ts'),
-                  ('EXTRACT(EPOCH FROM build.completion_time)', 'completion_ts'),
+                  ("date_part('epoch', events.time)", 'creation_ts'),
+                  ("date_part('epoch', build.start_time)", 'start_ts'),
+                  ("date_part('epoch', build.completion_time)", 'completion_ts'),
                   ('package.id', 'package_id'), ('package.name', 'package_name'),
                   ('package.name', 'name'),
                   ('volume.id', 'volume_id'), ('volume.name', 'volume_name'),
@@ -12113,7 +12112,7 @@ class RootExports(object):
         if not packageID:
             return None
         st_complete = koji.BUILD_STATES['COMPLETE']
-        query = """SELECT EXTRACT(epoch FROM avg(build.completion_time - events.time))
+        query = """SELECT date_part('epoch', avg(build.completion_time - events.time))
                      FROM build
                      JOIN events ON build.create_event = events.id
                      WHERE build.pkg_id = %(packageID)i
@@ -12802,7 +12801,7 @@ class RootExports(object):
             id = get_tag_id(tag, strict=True)
 
         fields = ['repo.id', 'repo.state', 'repo.task_id', 'repo.create_event', 'events.time',
-                  'EXTRACT(EPOCH FROM events.time)', 'repo.dist']
+                  "date_part('epoch', events.time)", 'repo.dist']
         aliases = ['id', 'state', 'task_id', 'create_event', 'creation_time', 'create_ts', 'dist']
         joins = ['events ON repo.create_event = events.id']
         clauses = ['repo.tag_id = %(id)i']

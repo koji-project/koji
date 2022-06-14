@@ -12,7 +12,7 @@ class TestGetActiveRepos(unittest.TestCase):
 
     def setUp(self):
         self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
-                side_effect=self.getQuery).start()
+                                         side_effect=self.getQuery).start()
         self.queries = []
 
     def getQuery(self, *args, **kwargs):
@@ -33,7 +33,7 @@ class TestGetActiveRepos(unittest.TestCase):
         str(query)
         self.assertEqual(query.tables, ['repo'])
         columns = ['repo.id', 'repo.state', 'repo.task_id', 'repo.create_event',
-                   'EXTRACT(EPOCH FROM events.time)', 'repo.tag_id', 'repo.dist', 'tag.name']
+                   "date_part('epoch', events.time)", 'repo.tag_id', 'repo.dist', 'tag.name']
         self.assertEqual(set(query.columns), set(columns))
         self.assertEqual(query.clauses, ['repo.state != %(st_deleted)s'])
         self.assertEqual(query.joins, ['tag ON repo.tag_id=tag.id',

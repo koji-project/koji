@@ -102,7 +102,7 @@ class TestRepoFunctions(unittest.TestCase):
         str(query)
         self.assertEqual(query.tables, ['repo'])
         columns = ['repo.id', 'repo.state', 'repo.task_id', 'repo.create_event',
-                   'EXTRACT(EPOCH FROM events.time)', 'repo.dist', 'events.time']
+                   "date_part('epoch', events.time)", 'repo.dist', 'events.time']
         self.assertEqual(set(query.columns), set(columns))
         self.assertEqual(query.joins, ['events ON repo.create_event = events.id'])
         self.assertEqual(query.clauses, ['repo.dist is false', 'repo.state = %(state)s',
@@ -116,7 +116,7 @@ class TestRepoFunctions(unittest.TestCase):
         str(query)
         self.assertEqual(query.tables, ['repo'])
         columns = ['repo.id', 'repo.state', 'repo.task_id', 'repo.create_event',
-                   'EXTRACT(EPOCH FROM events.time)', 'repo.dist', 'events.time']
+                   "date_part('epoch', events.time)", 'repo.dist', 'events.time']
         self.assertEqual(set(query.columns), set(columns))
         self.assertEqual(query.joins, ['events ON repo.create_event = events.id'])
         self.assertEqual(query.clauses, ['create_event <= %(event)i', 'repo.dist is true',
