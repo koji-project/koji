@@ -584,8 +584,9 @@ def daemonize():
     if pid:
         os._exit(0)
     os.setsid()
-    signal.signal(signal.SIGHUP, signal.SIG_IGN)
-    # fork again
+    # fork again, no need to ignore SIGHUP
+    # https://pagure.io/koji/issue/672
+    # https://code.activestate.com/recipes/278731-creating-a-daemon-the-/
     pid = os.fork()
     if pid:
         os._exit(0)
