@@ -940,3 +940,28 @@ def to_list(lst):
         return lst
     else:
         return list(lst)
+
+
+def format_shell_cmd(cmd, text_width=80):
+    """
+    Helper for wrapping shell command lists to human-readable form, while
+    they still can be copied (from logs) and run in shell.
+
+    :param [str] cmd: command list
+    :returns str:
+    """
+    # account for " \"
+    text_width -= 2
+    s = []
+    line = ''
+    for bit in cmd:
+        if len(line + bit) > text_width:
+            if line:
+                s.append(line)
+                line = ''
+        if line:
+            line += ' '
+        line += bit
+    if line:
+        s.append(line)
+    return ' \\\n'.join(s)

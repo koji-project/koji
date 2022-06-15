@@ -80,7 +80,7 @@ from koji.tasks import (
     ServerExit,
     ServerRestart
 )
-from koji.util import dslice, dslice_ex, isSuccess, parseStatus, to_list
+from koji.util import dslice, dslice_ex, isSuccess, parseStatus, to_list, format_shell_cmd
 
 try:
     import requests_gssapi as reqgssapi
@@ -445,7 +445,7 @@ class BuildRoot(object):
             else:
                 cmd.append('--old-chroot')
         cmd.extend(args)
-        self.logger.info(' '.join(cmd))
+        self.logger.info(format_shell_cmd(cmd))
         workdir = getattr(self, 'workdir', None)
         mocklog = 'mock_output.log'
         pid = os.fork()
@@ -5638,7 +5638,7 @@ class CreaterepoTask(BaseTaskHandler):
         status = log_output(self.session, cmd[0], cmd, logfile, self.getUploadDir(), logerror=True)
         if not isSuccess(status):
             raise koji.GenericError('failed to create repo: %s'
-                                    % parseStatus(status, ' '.join(cmd)))
+                                    % parseStatus(status, format_shell_cmd(cmd)))
 
     def _get_mergerepo_c_version(self):
         cmd = ['/usr/bin/mergerepo_c', '--version']
@@ -5737,7 +5737,7 @@ class CreaterepoTask(BaseTaskHandler):
                             logerror=True, env=env)
         if not isSuccess(status):
             raise koji.GenericError('failed to merge repos: %s'
-                                    % parseStatus(status, ' '.join(cmd)))
+                                    % parseStatus(status, format_shell_cmd(cmd)))
 
 
 class NewDistRepoTask(BaseTaskHandler):
@@ -5988,7 +5988,7 @@ class createDistRepoTask(BaseTaskHandler):
         status = log_output(self.session, cmd[0], cmd, logfile, self.getUploadDir(), logerror=True)
         if not isSuccess(status):
             raise koji.GenericError('failed to create repo: %s'
-                                    % parseStatus(status, ' '.join(cmd)))
+                                    % parseStatus(status, format_shell_cmd(cmd)))
 
     def do_multilib(self, arch, ml_arch, conf):
         repodir = koji.pathinfo.distrepo(self.rinfo['id'], self.rinfo['tag_name'])
