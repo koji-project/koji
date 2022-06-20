@@ -831,25 +831,23 @@ def _list_tasks(options, session):
     return tasklist
 
 
-def watch_builds(session, tag_id, builds, quiet=False, poll_interval=5, timeout=120):
-    """Watch for given builds to appear in given tag. If no build are given,
+def watch_builds(session, tag_id, builds, poll_interval=5, timeout=120):
+    """Watch for given builds to appear in given tag. If no builds are given,
     watch for new repo for given tag.
 
     :param session: Koji session object
-    :param tag_id: Tag id
-    :param builds: List of builds as NVR dicts
-    :param quiet: no/verbose
-    :param poll_interval: Poll interval in seconds
-    :param timeout: Watch timeout in minutes"""
+    :param int tag_id: Tag id
+    :param [dict] builds: List of builds as NVR dicts
+    :param int poll_interval: Poll interval in seconds
+    :param int timeout: Watch timeout in minutes
+    :returns bool, msg: False if timeouted
+    """
     last_repo = None
     repo = session.getRepo(tag_id)
 
     # String representations for logs and exceptions
-    builds_str = koji.util.printList(
-        [koji.buildLabel(build) for build in builds])
-    tag_info = session.getTag(tag_id)
-    if not tag_info:
-        raise koji.GenericError("No tag with id: %s" % tag_id)
+    builds_str = koji.util.printList([koji.buildLabel(build) for build in builds])
+    tag_info = session.getTag(tag_id, strict=True)
     tag_name = tag_info['name']
 
     start = time.time()
@@ -857,24 +855,16 @@ def watch_builds(session, tag_id, builds, quiet=False, poll_interval=5, timeout=
         if builds and repo and repo != last_repo:
             if koji.util.checkForBuilds(session, tag_id, builds,
                                         repo['create_event'], latest=True):
-                if not quiet:
-                    print("Successfully waited %s for %s "
-                          "to appear in the %s repo" %
-                          (koji.util.duration(start), builds_str, tag_name))
-                return
+                return (True, "Successfully waited %s for %s to appear in the %s repo" %
+                        (koji.util.duration(start), builds_str, tag_name))
 
         if (time.time() - start >= timeout * 60.0):
-            if not quiet:
-                if builds:
-                    raise koji.GenericError(
-                        "Unsuccessfully waited %s for %s "
-                        "to appear in the %s repo" %
+            if builds:
+                return (False, "Unsuccessfully waited %s for %s to appear in the %s repo" %
                         (koji.util.duration(start), builds_str, tag_name))
-                else:
-                    raise koji.GenericError(
-                        "Unsuccessfully waited %s for a new %s repo" %
+            else:
+                return (False, "Unsuccessfully waited %s for a new %s repo" %
                         (koji.util.duration(start), tag_name))
-            raise koji.GenericError()
 
         time.sleep(poll_interval)
         last_repo = repo
@@ -882,10 +872,8 @@ def watch_builds(session, tag_id, builds, quiet=False, poll_interval=5, timeout=
 
         if not builds:
             if repo != last_repo:
-                if not quiet:
-                    print("Successfully waited %s for a new %s repo" %
-                          (koji.util.duration(start), tag_name))
-                return
+                return (True, "Successfully waited %s for a new %s repo" %
+                        (koji.util.duration(start), tag_name))
 
 
 def format_inheritance_flags(parent):

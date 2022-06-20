@@ -7086,12 +7086,13 @@ def anon_handle_wait_repo(options, session, args):
                 warn("nvr %s is not current in tag %s\n  latest build in %s is %s" %
                      (expected_nvr, tag, tag, present_nvr))
 
-    try:
-        watch_builds(
-            session, tag_id, builds, quiet=suboptions.quiet,
-            poll_interval=options.poll_interval, timeout=suboptions.timeout)
-    except koji.GenericError as e:
-        error(str(e))
+    success, msg = watch_builds(session, tag_id, builds,
+                                poll_interval=options.poll_interval, timeout=suboptions.timeout)
+    if success:
+        if not suboptions.quiet:
+            print(msg)
+    else:
+        error('' if suboptions.quiet else msg)
 
 
 def handle_regen_repo(options, session, args):
