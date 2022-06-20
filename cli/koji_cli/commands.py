@@ -7325,7 +7325,8 @@ def anon_handle_download_task(options, session, args):
     usage = "usage: %prog download-task <task_id>"
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--arch", dest="arches", metavar="ARCH", action="append", default=[],
-                      help="Only download packages for this arch (may be used multiple times)")
+                      help="Only download packages for this arch (may be used multiple times), "
+                           "only for build and buildArch task methods")
     parser.add_option("--logs", dest="logs", action="store_true", default=False,
                       help="Also download build logs")
     parser.add_option("--topurl", metavar="URL", default=options.topurl,
@@ -7337,6 +7338,10 @@ def anon_handle_download_task(options, session, args):
                       help="Do not wait for running tasks to finish")
     parser.add_option("-q", "--quiet", action="store_true",
                       help="Suppress output", default=options.quiet)
+    parser.add_option("--all", action="store_true",
+                      help="Download all files, all methods instead of build and buildArch")
+    parser.add_option("--dirpertask", action="store_true", help="Download files to dir per task")
+    parser.add_option("--parentonly", action="store_true", help="Download parent's files only")
 
     (suboptions, args) = parser.parse_args(args)
     if len(args) == 0:
@@ -7364,40 +7369,78 @@ def anon_handle_download_task(options, session, args):
         watch_tasks(session, [base_task_id], quiet=suboptions.quiet,
                     poll_interval=options.poll_interval, topurl=options.topurl)
 
-    def check_downloadable(task):
-        return task["method"] == "buildArch"
+    list_tasks = [base_task]
+    if not suboptions.parentonly:
+        list_tasks.extend(session.getTaskChildren(base_task_id))
 
-    downloadable_tasks = []
-
-    if check_downloadable(base_task):
-        downloadable_tasks.append(base_task)
-    else:
-        subtasks = session.getTaskChildren(base_task_id)
-        downloadable_tasks.extend(list(filter(check_downloadable, subtasks)))
+    # support file types
+    expected_types = ['rpm', 'log']
+    for type in session.getArchiveTypes():
+        expected_types.extend(type['extensions'].split(' '))
 
     # get files for download
     downloads = []
+    build_methods_list = ['buildArch', 'build']
+    for task in list_tasks:
+        taskarch = task['arch']
+        task_id = str(task['id'])
+        if len(suboptions.arches) == 0 or taskarch in suboptions.arches:
+            files = list_task_output_all_volumes(session, task["id"])
+            filetype = None
+            for filename in files:
+                if filename.endswith('src.rpm'):
+                    filetype = 'src.rpm'
+                else:
+                    for ft in expected_types:
+                        if filename.endswith('.%s' % ft):
+                            filetype = ft
+                            break
+                if not filetype:
+                    warn('Unsupported file type for download-task: %s' % filename)
+                else:
+                    if suboptions.all and task['method'] not in build_methods_list:
+                        if filetype != 'log':
+                            for volume in files[filename]:
+                                if suboptions.dirpertask:
+                                    new_filename = '%s/%s' % (task_id, filename)
+                                else:
+                                    if taskarch not in filename and filetype != 'src.rpm':
+                                        part_filename = filename[:-len('.%s' % filetype)]
+                                        new_filename = "%s.%s.%s" % (part_filename,
+                                                                     taskarch, filetype)
+                                    else:
+                                        new_filename = filename
+                                downloads.append((task, filename, volume, new_filename, task_id))
+                    elif task['method'] in build_methods_list:
+                        if filetype in ['rpm', 'src.rpm']:
+                            filearch = filename.split(".")[-2]
+                            for volume in files[filename]:
+                                if len(suboptions.arches) == 0 or filearch in suboptions.arches:
+                                    if suboptions.dirpertask:
+                                        new_filename = '%s/%s' % (task_id, filename)
+                                    else:
+                                        new_filename = filename
+                                    downloads.append((task, filename, volume, new_filename,
+                                                      task_id))
 
-    for task in downloadable_tasks:
-        files = list_task_output_all_volumes(session, task["id"])
-        for filename in files:
-            if filename.endswith(".rpm"):
-                for volume in files[filename]:
-                    filearch = filename.split(".")[-2]
-                    if len(suboptions.arches) == 0 or filearch in suboptions.arches:
-                        downloads.append((task, filename, volume, filename))
-            elif filename.endswith(".log") and suboptions.logs:
-                for volume in files[filename]:
-                    # rename logs, they would conflict
-                    new_filename = "%s.%s.log" % (filename.rstrip(".log"), task["arch"])
-                    downloads.append((task, filename, volume, new_filename))
+                    if filetype == 'log' and suboptions.logs:
+                        for volume in files[filename]:
+                            if suboptions.dirpertask:
+                                new_filename = '%s/%s' % (task_id, filename)
+                            else:
+                                if taskarch not in filename:
+                                    part_filename = filename[:-len('.log')]
+                                    new_filename = "%s.%s.log" % (part_filename, taskarch)
+                                else:
+                                    new_filename = filename
+                            downloads.append((task, filename, volume, new_filename, task_id))
 
     if len(downloads) == 0:
         print("No files for download found.")
         return
 
     required_tasks = {}
-    for (task, nop, nop, nop) in downloads:
+    for (task, nop, nop, nop, nop) in downloads:
         if task["id"] not in required_tasks:
             required_tasks[task["id"]] = task
 
@@ -7408,14 +7451,26 @@ def anon_handle_download_task(options, session, args):
             else:
                 error("Child task %d has not finished yet." % task_id)
 
+    downloads_new_names = [(new_filename, vol) for (_, _, vol, new_filename, _) in downloads]
+    if not suboptions.dirpertask:
+        not_uniques = list({x for x in downloads_new_names if downloads_new_names.count(x) > 1})
+        if not_uniques:
+            error("Download files names conflict, use --dirpertask")
+
     # perform the download
     number = 0
     pathinfo = koji.PathInfo(topdir=suboptions.topurl)
-    for (task, filename, volume, new_filename) in downloads:
+    for (task, filename, volume, new_filename, task_id) in downloads:
+        if suboptions.dirpertask:
+            koji.ensuredir(task_id)
         number += 1
         if volume not in (None, 'DEFAULT'):
-            koji.ensuredir(volume)
-            new_filename = os.path.join(volume, new_filename)
+            if suboptions.dirpertask:
+                koji.ensuredir('%s/%s' % (task_id, volume))
+                new_filename = os.path.join(task_id, volume, filename)
+            else:
+                koji.ensuredir(volume)
+                new_filename = os.path.join(volume, new_filename)
         if '..' in filename:
             error('Invalid file name: %s' % filename)
         url = '%s/%s/%s' % (pathinfo.work(volume), pathinfo.taskrelpath(task["id"]), filename)
