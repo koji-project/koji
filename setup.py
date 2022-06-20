@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from __future__ import absolute_import
 
+import os.path
 from setuptools import setup
 
 
@@ -23,8 +24,14 @@ def get_install_requires():
 
 
 def get_version():
-    exec(open('koji/_version.py', 'rt').read())
+    cwd = os.path.dirname(__file__)
+    exec(open(os.path.join(cwd, 'koji/_version.py'), 'rt').read())
     return(locals()['__version__'])
+
+
+def get_long_description():
+    cwd = os.path.dirname(__file__)
+    return open(os.path.join(cwd, "README.md"), "rt").read()
 
 
 setup(
@@ -33,6 +40,9 @@ setup(
     description=("Koji is a system for building and tracking RPMS. The base"
                  " package contains shared libraries and the command-line"
                  " interface."),
+    long_description=get_long_description(),
+    long_description_content_type='text/markdown',
+    include_package_data=True,
     license="LGPLv2 and GPLv2+",
     url="http://pagure.io/koji/",
     author='Koji developers',
@@ -57,6 +67,9 @@ setup(
         'koji': 'koji',
         'koji_cli': 'cli/koji_cli',
         'koji_cli_plugins': 'plugins/cli',
+    },
+    package_data={
+        '': ['README.md'],
     },
     # doesn't make sense, as we have only example config
     # data_files=[

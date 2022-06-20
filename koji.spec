@@ -146,6 +146,7 @@ BuildRequires: python%{python3_pkgversion}-devel
 BuildRequires: python3-pip
 BuildRequires: python3-wheel
 BuildRequires: python3-setuptools
+BuildRequires: python3-six
 %if 0%{?fedora} || 0%{?rhel} >= 8
 Requires: python%{python3_pkgversion}-rpm
 %else
