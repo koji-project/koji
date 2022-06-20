@@ -34,14 +34,33 @@ class TestListChannels(utils.CliTestCase):
 
         self.list_hosts_mc = [
             [[
-                {'enabled': True, 'ready': True, 'capacity': 2.0, 'task_load': 1.34},
-                {'enabled': True, 'ready': False, 'capacity': 2.0, 'task_load': 0.0},
-                {'enabled': True, 'ready': False, 'capacity': 2.0, 'task_load': 0.0},
+                {'arch': 'x86_64', 'enabled': True, 'ready': True, 'capacity': 2.0,
+                 'task_load': 1.34},
+                {'arch': 'ppc', 'enabled': True, 'ready': False, 'capacity': 2.0,
+                 'task_load': 0.0},
+                {'arch': 'x86_64', 'enabled': True, 'ready': False, 'capacity': 2.0,
+                 'task_load': 0.0},
             ]],
             [[
-                {'enabled': True, 'ready': True, 'capacity': 2.0, 'task_load': 1.34},
-                {'enabled': False, 'ready': True, 'capacity': 2.0, 'task_load': 0.34},
-                {'enabled': True, 'ready': False, 'capacity': 2.0, 'task_load': 0.0},
+                {'arch': 'ppc', 'enabled': True, 'ready': True, 'capacity': 2.0,
+                 'task_load': 1.34},
+                {'arch': 'x86_64', 'enabled': False, 'ready': True, 'capacity': 2.0,
+                 'task_load': 0.34},
+                {'arch': 'ppc', 'enabled': True, 'ready': False, 'capacity': 2.0,
+                 'task_load': 0.0},
+            ]]
+        ]
+
+        self.list_hosts_mc_arch = [
+            [[
+                {'arch': 'x86_64', 'enabled': True, 'ready': True, 'capacity': 2.0,
+                 'task_load': 1.34},
+                {'arch': 'x86_64', 'enabled': True, 'ready': False, 'capacity': 2.0,
+                 'task_load': 0.0},
+            ]],
+            [[
+                {'arch': 'x86_64', 'enabled': False, 'ready': True, 'capacity': 2.0,
+                 'task_load': 0.34},
             ]]
         ]
 
@@ -225,6 +244,24 @@ test [disabled]
         self.assertMultiLineEqual(actual, expected)
         self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
 
+    @mock.patch('sys.stdout', new_callable=StringIO)
+    def test_list_channels_with_arch(self, stdout):
+        self.session.listChannels.return_value = self.list_channels
+        self.session.multiCall.return_value = self.list_hosts_mc_arch
+        args = []
+        self.options.quiet = False
+
+        anon_handle_list_channels(self.options, self.session, args)
+
+        actual = stdout.getvalue()
+        expected = "Channel        Enabled  Ready Disbld   Load    Cap   Perc    \n" \
+                   "-------------------------------------------------------------\n" \
+                   "default              2      1      0      1      4     33%\n" \
+                   "test [disabled]      0      1      1      0      2     17%\n"
+
+        self.assertMultiLineEqual(actual, expected)
+        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
+
     def test_list_channels_help(self):
         self.assert_help(
             anon_handle_list_channels,
@@ -240,6 +277,7 @@ Options:
   --enabled      Limit to enabled channels
   --not-enabled  Limit to not enabled channels
   --disabled     Alias for --not-enabled
+  --arch=ARCH    Limit to channels with specific arch
 """ % self.progname)
 
 
