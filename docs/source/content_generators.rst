@@ -144,6 +144,10 @@ Relevant API calls for Content Generator are:
   call of ``CGImport`` while ``build_id`` needs to be part of metadata (as item
   in ``build`` key).
 
+- ``CGRefundBuild(cg, build_id, token, state=koji.BUILD_STATES['FAILED'])`` -
+  content generator can drop the reservation created by ``CGInitBuild`` in case
+  that build failed or was cancelled. Caller must know ``build_id`` and ``token``.
+
 Current Public Implementations
 ==============================
 
