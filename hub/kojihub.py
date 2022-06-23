@@ -6627,7 +6627,8 @@ class CG_Importer(object):
         if self.rpm_log_file is not None:
             logsdir = joinpath(koji.pathinfo.build(self.buildinfo), 'data/logs/')
             koji.ensuredir(logsdir)
-            path = joinpath(logsdir, 'external_rpm_warning.log')
+            path = joinpath(logsdir, 'cg_import.log')
+            self.rpm_log_file.write('CG import was SUCCESSFUL.\n')
             safer_move(self.rpm_log_file.name, path)
 
     def get_metadata(self, metadata, directory):
