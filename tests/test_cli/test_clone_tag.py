@@ -200,81 +200,12 @@ clone-tag will create the destination tag if it does not already exist
         self.session.assert_has_calls([call.hasPerm('admin'),
                                        call.getBuildConfig('src-tag', event=None),
                                        call.getTag('dst-tag'),
-                                       call.createTag('dst-tag', arches='arch1 arch2',
-                                                      locked=False, maven_include_all=True,
-                                                      maven_support=False, parent=None, perm=1,
-                                                      extra={}),
-                                       call.getTag('dst-tag', strict=True),
-                                       call.listPackages(event=None, inherited=True, tagID=1),
-                                       call.packageListAdd('dst-tag', 'apkg', block=False,
-                                                           extra_arches='arch4', owner='userA'),
-                                       call.packageListAdd('dst-tag', 'pkg1', block=False,
-                                                           extra_arches=None, owner='userA'),
-                                       call.packageListAdd('dst-tag', 'pkg2', block=True,
-                                                           extra_arches='arch3 arch4',
-                                                           owner='userB'),
-                                       call.multiCall(batch=100),
-                                       call.listTagged(1, event=None, inherit=None, latest=None),
-                                       call.tagBuildBypass('dst-tag', {
-                                           'owner_name': 'b_owner',
-                                           'nvr': 'pkg2-1.0-1',
-                                           'package_name': 'pkg2', 'state': 2,
-                                           'tag_name': 'src-tag-p',
-                                           'name': 'pkg2'}, force=None, notify=False),
-                                       call.tagBuildBypass('dst-tag', {
-                                           'owner_name': 'b_owner',
-                                           'nvr': 'pkg1-1.0-1',
-                                           'package_name': 'pkg1', 'state': 1,
-                                           'tag_name': 'src-tag',
-                                           'name': 'pkg1'}, force=None, notify=False),
-                                       call.tagBuildBypass('dst-tag', {
-                                           'owner_name': 'b_owner',
-                                           'nvr': 'pkg1-1.0-2',
-                                           'package_name': 'pkg1', 'state': 1,
-                                           'tag_name': 'src-tag',
-                                           'name': 'pkg1'}, force=None, notify=False),
-                                       call.tagBuildBypass('dst-tag', {
-                                           'owner_name': 'b_owner',
-                                           'nvr': 'pkg1-1.1-2',
-                                           'package_name': 'pkg1', 'state': 1,
-                                           'tag_name': 'src-tag',
-                                           'name': 'pkg1'}, force=None, notify=False),
-                                       call.multiCall(batch=100),
-                                       call.getTagGroups('src-tag', event=None),
-                                       call.groupListAdd('dst-tag', 'group1'),
-                                       call.groupPackageListAdd('dst-tag', 'group1', 'pkg1',
-                                                                block=False),
-                                       call.groupPackageListAdd('dst-tag', 'group1', 'pkg2',
-                                                                block=False),
-                                       call.groupListAdd('dst-tag', 'group2'),
-                                       call.groupPackageListAdd('dst-tag', 'group2', 'apkg',
-                                                                block=False),
-                                       call.groupPackageListAdd('dst-tag', 'group2', 'bpkg',
-                                                                block=False),
-                                       call.multiCall(batch=100)])
-        self.assert_console_message(stdout, """
-List of changes:
-
-    Action  Package                      Blocked    Owner      From Tag  
-    ------- ---------------------------- ---------- ---------- ----------
-    [new]   apkg                         False      userA      src-tag-p 
-    [new]   pkg1                         False      userA      src-tag   
-    [new]   pkg2                         True       userB      src-tag-p 
-
-    Action  From/To Package              Build(s)                                 State      Owner      From Tag  
-    ------- ---------------------------- ---------------------------------------- ---------- ---------- ----------
-    [new]   pkg2                         pkg2-1.0-1                               DELETED    b_owner    src-tag-p 
-    [new]   pkg1                         pkg1-1.0-1                               COMPLETE   b_owner    src-tag   
-    [new]   pkg1                         pkg1-1.0-2                               COMPLETE   b_owner    src-tag   
-    [new]   pkg1                         pkg1-1.1-2                               COMPLETE   b_owner    src-tag   
-
-    Action  Package                      Group                       
-    ------- ---------------------------- ----------------------------
-    [new]   pkg1                         group1                      
-    [new]   pkg2                         group1                      
-    [new]   apkg                         group2                      
-    [new]   bpkg                         group2                      
-""")
+                                       call.snapshotTag(1, 'dst-tag',
+                                                        builds=True, config=True, event=None,
+                                                        force=None, groups=True,
+                                                        inherit_builds=None, latest_only=None,
+                                                        pkgs=True),
+                                       ])
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     def test_handle_clone_tag_existing_dsttag(self, stdout):
@@ -460,114 +391,13 @@ List of changes:
         self.session.assert_has_calls([call.hasPerm('admin'),
                                        call.getBuildConfig('src-tag', event=None),
                                        call.getTag('dst-tag'),
-                                       call.editTag2(2, arches='arch1 arch2',
-                                                     extra={}, locked=False,
-                                                     maven_include_all=True,
-                                                     maven_support=False,
-                                                     parent=None, perm=1),
-                                       call.getTag(2, strict=True),
-                                       call.listPackages(event=None, inherited=True, tagID=1),
-                                       call.listPackages(inherited=True, tagID=2),
-                                       call.listTagged(1, event=None, inherit=None, latest=None),
-                                       call.listTagged(2, inherit=False, latest=False),
-                                       call.getTagGroups('src-tag', event=None),
-                                       call.getTagGroups('dst-tag'),
-                                       call.packageListAdd('dst-tag', 'pkg2', block=True,
-                                                           extra_arches='arch3 arch4',
-                                                           owner='userB'),
-                                       call.multiCall(batch=100),
-                                       call.untagBuildBypass('dst-tag', {
-                                           'owner_name': 'b_owner',
-                                           'nvr': 'pkg1-2.1-2',
-                                           'package_name': 'pkg1', 'state': 1,
-                                           'tag_name': 'dst-tag',
-                                           'name': 'pkg1'}, force=None, notify=False),
-                                       call.untagBuildBypass('dst-tag', {
-                                           'owner_name': 'b_owner',
-                                           'nvr': 'pkg1-0.1-1',
-                                           'package_name': 'pkg1', 'state': 1,
-                                           'tag_name': 'dst-tag',
-                                           'name': 'pkg1'}, force=None, notify=False),
-                                       call.untagBuildBypass('dst-tag', {
-                                           'owner_name': 'b_owner',
-                                           'nvr': 'pkg3-1.0-1',
-                                           'package_name': 'pkg3', 'state': 1,
-                                           'tag_name': 'dst-tag',
-                                           'name': 'pkg3'}, force=None, notify=False),
-                                       call.multiCall(batch=100),
-                                       call.tagBuildBypass('dst-tag', {
-                                           'owner_name': 'b_owner',
-                                           'nvr': 'pkg1-0.1-1',
-                                           'package_name': 'pkg1', 'state': 1,
-                                           'tag_name': 'src-tag',
-                                           'name': 'pkg1'}, force=None, notify=False),
-                                       call.tagBuildBypass('dst-tag', {
-                                           'owner_name': 'b_owner',
-                                           'nvr': 'pkg1-1.0-2',
-                                           'package_name': 'pkg1', 'state': 1,
-                                           'tag_name': 'src-tag',
-                                           'name': 'pkg1'}, force=None, notify=False),
-                                       call.tagBuildBypass('dst-tag', {
-                                           'owner_name': 'b_owner',
-                                           'nvr': 'pkg1-1.1-2',
-                                           'package_name': 'pkg1', 'state': 1,
-                                           'tag_name': 'src-tag',
-                                           'name': 'pkg1'}, force=None, notify=False),
-                                       call.multiCall(batch=100),
-                                       call.multiCall(batch=100),
-                                       call.groupPackageListAdd('dst-tag', 'group1', 'pkg2',
-                                                                force=None),
-                                       call.groupPackageListAdd('dst-tag', 'group1', 'pkg3',
-                                                                force=None),
-                                       call.groupPackageListAdd('dst-tag', 'group1', 'pkg4',
-                                                                force=None),
-                                       call.groupPackageListAdd('dst-tag', 'group2', 'bpkg',
-                                                                force=None),
-                                       call.multiCall(batch=100),
-                                       call.multiCall(batch=100),
-                                       call.packageListBlock('dst-tag', 'bpkg'),
-                                       call.packageListBlock('dst-tag', 'cpkg'),
-                                       call.packageListBlock('dst-tag', 'dpkg'),
-                                       call.multiCall(batch=100),
-                                       call.groupListRemove('dst-tag', 'group3', force=None),
-                                       call.groupListBlock('dst-tag', 'group4'),
-                                       call.multiCall(batch=100),
-                                       call.groupPackageListRemove('dst-tag', 'group1', 'pkg5',
-                                                                   force=None),
-                                       call.groupPackageListBlock('dst-tag', 'group2', 'cpkg'),
-                                       call.multiCall(batch=100)])
-        self.assert_console_message(stdout, """
-List of changes:
-
-    Action  Package                      Blocked    Owner      From Tag  
-    ------- ---------------------------- ---------- ---------- ----------
-    [add]   pkg2                         True       userB      src-tag-p 
-    [blk]   bpkg                         False      userC      src-tag   
-    [blk]   cpkg                         True       userC      src-tag-p 
-    [blk]   dpkg                         True       userC      src-tag   
-
-    Action  From/To Package              Build(s)                                 State      Owner      From Tag  
-    ------- ---------------------------- ---------------------------------------- ---------- ---------- ----------
-    [del]   pkg1                         pkg1-2.1-2                               COMPLETE   b_owner    dst-tag   
-    [del]   pkg1                         pkg1-0.1-1                               COMPLETE   b_owner    dst-tag   
-    [del]   pkg3                         pkg3-1.0-1                               COMPLETE   b_owner    dst-tag   
-    [add]   pkg1                         pkg1-0.1-1                               COMPLETE   b_owner    src-tag   
-    [add]   pkg1                         pkg1-1.0-2                               COMPLETE   b_owner    src-tag   
-    [add]   pkg1                         pkg1-1.1-2                               COMPLETE   b_owner    src-tag   
-
-    Action  Package                      Group                       
-    ------- ---------------------------- ----------------------------
-    [new]   pkg2                         group1                      
-    [new]   pkg3                         group1                      
-    [new]   pkg4                         group1                      
-    [new]   bpkg                         group2                      
-    [del]   cpkg                         group3                      
-    [del]   dpkg                         group3                      
-    [blk]   epkg                         group4                      
-    [blk]   fpkg                         group4                      
-    [del]   pkg5                         group1                      
-    [blk]   cpkg                         group2                      
-""")
+                                       call.snapshotTagModify(1, 'dst-tag',
+                                                              builds=True, config=True,
+                                                              event=None, force=None,
+                                                              groups=True, inherit_builds=None,
+                                                              latest_only=None, pkgs=True,
+                                                              remove=True)
+                                       ])
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     def test_handle_clone_tag_existing_dsttag_nodelete(self, stdout):
@@ -622,21 +452,6 @@ List of changes:
                                             'extra': {}}]
         handle_clone_tag(self.options, self.session, args)
         self.activate_session.assert_called_once()
-        self.assert_console_message(stdout, """
-List of changes:
-
-    Action  Package                      Blocked    Owner      From Tag  
-    ------- ---------------------------- ---------- ---------- ----------
-
-    Action  From/To Package              Build(s)                                 State      Owner      From Tag  
-    ------- ---------------------------- ---------------------------------------- ---------- ---------- ----------
-    [add]   pkg                          pkg-0.1-1                                COMPLETE   b_owner    src-tag   
-    [add]   pkg                          pkg-1.0-21                               COMPLETE   b_owner    src-tag   
-    [add]   pkg                          pkg-1.0-23                               COMPLETE   b_owner    src-tag   
-
-    Action  Package                      Group                       
-    ------- ---------------------------- ----------------------------
-""")
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     def test_handle_clone_tag_existing_dsttag_nodelete_1(self, stdout):
@@ -710,20 +525,6 @@ List of changes:
             'extra': {}}
         handle_clone_tag(self.options, self.session, args)
         self.activate_session.assert_called_once()
-        self.assert_console_message(stdout, """
-List of changes:
-
-    Action  Package                      Blocked    Owner      From Tag  
-    ------- ---------------------------- ---------- ---------- ----------
-
-    Action  From/To Package              Build(s)                                 State      Owner      From Tag  
-    ------- ---------------------------- ---------------------------------------- ---------- ---------- ----------
-    [add]   pkg                          pkg-1.0-21                               COMPLETE   b_owner    src-tag   
-    [add]   pkg                          pkg-1.0-23                               COMPLETE   b_owner    src-tag   
-
-    Action  Package                      Group                       
-    ------- ---------------------------- ----------------------------
-""")
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     def test_handle_clone_tag_existing_dsttag_nodelete_2(self, stdout):
@@ -791,19 +592,6 @@ List of changes:
                                                    ]
         handle_clone_tag(self.options, self.session, args)
         self.activate_session.assert_called_once()
-        self.assert_console_message(stdout, """
-List of changes:
-
-    Action  Package                      Blocked    Owner      From Tag  
-    ------- ---------------------------- ---------- ---------- ----------
-
-    Action  From/To Package              Build(s)                                 State      Owner      From Tag  
-    ------- ---------------------------- ---------------------------------------- ---------- ---------- ----------
-    [add]   pkg                          pkg-1.0-23                               COMPLETE   b_owner    src-tag   
-
-    Action  Package                      Group                       
-    ------- ---------------------------- ----------------------------
-""")
 
     def test_handle_clone_tag_help(self):
         self.assert_help(
@@ -826,10 +614,8 @@ Options:
   --no-delete       Don't delete any existing content in dest tag.
   --event=EVENT     Clone tag at a specific event
   --repo=REPO       Clone tag at a specific repo event
-  -v, --verbose     show changes
   --notify          Send tagging/untagging notifications
   -f, --force       override tag locks if necessary
-  -n, --test        test mode
   --batch=SIZE      batch size of multicalls [0 to disable, default: 100]
 """ % self.progname)
 
