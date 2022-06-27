@@ -19,6 +19,7 @@
 #       Mike McLean <mikem@redhat.com>
 
 import datetime
+import http.cookies
 import inspect
 import logging
 import os
@@ -811,6 +812,19 @@ def application(environ, start_response):
                 ('Content-Length', str(len(response))),
                 ('Content-Type', "text/xml"),
             ]
+            cookies = http.cookies.SimpleCookie(environ.get('HTTP_SET_COOKIE'))
+            if hasattr(context, 'session') and context.session.logged_in:
+                cookies['session-id'] = context.session.id
+                cookies['session-key'] = context.session.key
+                cookies['callnum'] = context.session.callnum
+                cookies['logged_in'] = "1"
+            else:
+                # good for not mistaking for the older hub with small overhead
+                cookies['logged_in'] = "0"
+            for c in cookies.values():
+                c.path = '/'
+                c.secure = True
+                headers.append(('Set-Cookie', c.OutputString()))
             start_response('200 OK', headers)
             if h.traceback:
                 # rollback

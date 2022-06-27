@@ -29,7 +29,6 @@ import string
 
 import six
 from six.moves import range, urllib
-
 import koji
 from .context import context
 from .util import to_list
@@ -79,24 +78,23 @@ class Session(object):
         self._perms = None
         self._groups = None
         self._host_id = ''
-        # get session data from request
-        if args is None:
-            environ = getattr(context, 'environ', {})
-            args = environ.get('QUERY_STRING', '')
-            if not args:
-                self.message = 'no session args'
-                return
-            args = urllib.parse.parse_qs(args, strict_parsing=True)
+        environ = getattr(context, 'environ', {})
+        # prefer new cookie-based sessions
+        if 'HTTP_COOKIE' in environ:
+            cookies = http.cookies.SimpleCookie(environ['HTTP_COOKIE'])
+            try:
+                id = int(cookies['session-id'].value)
+                key = str(cookies['session-key'].value)
+            except KeyError as field:
+                raise koji.AuthError('%s not specified in session args' % field)
+            try:
+                callnum = int(cookies['callnum'].value)
+            except KeyError:
+                callnum = None
+        else:
+            self.message = 'no session cookies'
+            return
         hostip = self.get_remote_ip(override=hostip)
-        try:
-            id = int(args['session-id'][0])
-            key = args['session-key'][0]
-        except KeyError as field:
-            raise koji.AuthError('%s not specified in session args' % field)
-        try:
-            callnum = args['callnum'][0]
-        except Exception:
-            callnum = None
         # lookup the session
         # sort for stability (unittests)
 
@@ -499,6 +497,12 @@ class Session(object):
                                        'hostip': hostip, 'authtype': authtype, 'master': master})
         insert.execute()
         context.cnx.commit()
+
+        # update it here, so it can be propagated to the cookies in kojixmlrpc.py
+        context.session.id = session_id
+        context.session.key = key
+        context.session.logged_in = True
+        context.session.callnum = 0
 
         # return session info
         return {'session-id': session_id, 'session-key': key}

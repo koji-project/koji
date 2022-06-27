@@ -57,6 +57,7 @@ except ImportError:  # pragma: no cover
 from fnmatch import fnmatch
 
 import dateutil.parser
+import http.cookies
 import requests
 import six
 import six.moves.configparser
@@ -2701,10 +2702,11 @@ class ClientSession(object):
             return self._prepUpload(*args, **kwargs)
         args = encode_args(*args, **kwargs)
         if self.logged_in:
-            sinfo = self.sinfo.copy()
-            sinfo['callnum'] = self.callnum
+            for c in self.rsession.cookies:
+                if c.name == 'callnum':
+                    c.value = str(self.callnum)
             self.callnum += 1
-            handler = "%s?%s" % (self.baseurl, six.moves.urllib.parse.urlencode(sinfo))
+            handler = self.baseurl
         elif name == 'sslLogin':
             handler = self.baseurl + '/ssllogin'
         else:
@@ -2799,6 +2801,13 @@ class ClientSession(object):
             warnings.simplefilter("ignore")
             r = self.rsession.post(handler, **callopts)
             r.raise_for_status()
+            if self.logged_in and len(r.cookies.items()) == 0:
+                # we have session, sent the cookies, but server is old
+                # and didn't sent them back, use old url-encoded style
+                sinfo = self.sinfo.copy()
+                handler = "%s?%s" % (handler, six.moves.urllib.parse.urlencode(sinfo))
+                r = self.rsession.post(handler, **callopts)
+                r.raise_for_status()
             try:
                 ret = self._read_xmlrpc_response(r)
             finally:
