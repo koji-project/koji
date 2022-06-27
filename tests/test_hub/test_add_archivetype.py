@@ -34,7 +34,7 @@ class TestAddArchiveType(unittest.TestCase):
         self.inserts.append(insert)
         return insert
 
-    def test_add_archive_type_valid(self):
+    def test_add_archive_type_valid_empty_compression_type(self):
         self.verify_name_internal.return_value = None
         self.get_archive_type.return_value = None
         kojihub.add_archive_type('deb', 'Debian package', 'deb')
@@ -44,7 +44,23 @@ class TestAddArchiveType(unittest.TestCase):
         self.assertEqual(insert.table, 'archivetypes')
         self.assertEqual(insert.data, {'name': 'deb',
                                        'description': 'Debian package',
-                                       'extensions': 'deb'})
+                                       'extensions': 'deb',
+                                       'compression_type': None})
+        self.assertEqual(insert.rawdata, {})
+        self.context.session.assertPerm.assert_called_with('admin')
+
+    def test_add_archive_type_valid_with_compression_type(self):
+        self.verify_name_internal.return_value = None
+        self.get_archive_type.return_value = None
+        kojihub.add_archive_type('jar', 'Jar package', 'jar', 'zip')
+
+        self.assertEqual(len(self.inserts), 1)
+        insert = self.inserts[0]
+        self.assertEqual(insert.table, 'archivetypes')
+        self.assertEqual(insert.data, {'name': 'jar',
+                                       'description': 'Jar package',
+                                       'extensions': 'jar',
+                                       'compression_type': 'zip'})
         self.assertEqual(insert.rawdata, {})
         self.context.session.assertPerm.assert_called_with('admin')
 
