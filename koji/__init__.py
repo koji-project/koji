@@ -3541,9 +3541,11 @@ if six.PY3:
 def removeNonprintable(value):
     # expects raw-encoded string, not unicode
     if six.PY2:
-        return value.translate(None, NONPRINTABLE_CHARS)
+        value = value.translate(None, NONPRINTABLE_CHARS)
     else:
-        return value.translate(NONPRINTABLE_CHARS_TABLE)
+        value = value.translate(NONPRINTABLE_CHARS_TABLE)
+    # remove broken unicode chars (some changelogs, etc.)
+    return value.encode('utf-8', errors='replace').decode()
 
 
 def _fix_print(value):
