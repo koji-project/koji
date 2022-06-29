@@ -1,0 +1,28 @@
+#include "includes/header.chtml"
+#import koji
+#from kojiweb import util
+
+#attr _PASSTHROUGH = ['userID']
+
+<h4>Active sessions for $loggedInUser.name user</h4>
+<br>
+  <table class="data-list">
+     <tr class="list-header">
+      <th><a href="activesession?order=$util.toggleOrder($self, 'id')$util.passthrough_except($self, 'order')">Session ID</a> $util.sortImage($self, 'id')</th>
+      <th><a href="activesession?order=$util.toggleOrder($self, 'hostip')$util.passthrough_except($self, 'order')">Client IP</a> $util.sortImage($self, 'hostip')</th>
+      <th><a href="activesession?order=$util.toggleOrder($self, 'authtype')$util.passthrough_except($self, 'order')">Auth type</a> $util.sortImage($self, 'authtype')</th>
+      <th><a href="activesession?order=$util.toggleOrder($self, 'start_time')$util.passthrough_except($self, 'order')">Session start time</a> $util.sortImage($self, 'start_time')</th>
+      <th><a href="activesession?order=$util.toggleOrder($self, 'start_time')$util.passthrough_except($self, 'order')">Length session</a> $util.sortImage($self, 'start_time')</th>
+      <th><a href="activesession?order=$util.toggleOrder($self, 'id')$util.passthrough_except($self, 'order')">Logout?</a> $util.sortImage($self, 'id')</th>
+   </tr>
+    #for $act in $activesess
+    <tr class="$util.rowToggle($self)">
+      <td>$act.id</td>
+      <td>$util.escapeHTML($act.hostip)</td>
+      <td>$act.authtype</td>
+      <td>$util.formatTimeLong($act.start_time)</td>
+      <td>$act.lengthSession days</td>
+      <td><a href="activesessiondelete?sessionID=$act.id$util.authToken($self)">Logout</a></td>
+    </tr>
+    #end for
+  </table>

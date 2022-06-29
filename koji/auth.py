@@ -443,17 +443,29 @@ class Session(object):
         update.execute()
         context.cnx.commit()
 
-    def logout(self):
+    def logout(self, session_id=None):
         """expire a login session"""
         if not self.logged_in:
             # XXX raise an error?
             raise koji.AuthError("Not logged in")
+
+        if session_id:
+            if not context.session.hasPerm('admin'):
+                query = QueryProcessor(tables=['sessions'], columns=['id'],
+                                       clauses=['user_id = %(user_id)i', 'id = %(session_id)s'],
+                                       values={'user_id': self.user_id, 'session_id': session_id})
+                if not query.singleValue():
+                    raise koji.ActionNotAllowed('only admins or owner may logout other session')
+            ses_id = session_id
+        else:
+            ses_id = self.id
         update = UpdateProcessor('sessions', data={'expired': True, 'exclusive': None},
                                  clauses=['id = %(id)i OR master = %(id)i'],
-                                 values={'id': self.id})
+                                 values={'id': ses_id})
         update.execute()
         context.cnx.commit()
-        self.logged_in = False
+        if not session_id:
+            self.logged_in = False
 
     def logoutChild(self, session_id):
         """expire a subsession"""
@@ -749,9 +761,9 @@ def sslLogin(*args, **opts):
     return context.session.sslLogin(*args, **opts)
 
 
-def logout():
+def logout(session_id=None):
     """expire a login session"""
-    return context.session.logout()
+    return context.session.logout(session_id)
 
 
 def subsession():

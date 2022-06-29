@@ -10257,11 +10257,54 @@ class RootExports(object):
         """Return string representation of session for current user"""
         return "%s" % context.session
 
-    def getSessionInfo(self):
-        """Return session info for current user"""
+    def getSessionInfo(self, details=False, user_id=None):
+        """Return session info for current user or all not expired sessions to specific user
+
+        :param boolean details: add session ID and hostip to result
+        :param str user_id: show all not expired sessions related to specific user
+
+        :returns: dict or list of dicts session data
+        """
         if not context.session.logged_in:
             return None
-        return context.session.session_data
+        clauses = ['expired is FALSE']
+        fields = {'user_id': 'user_id',
+                  'expired': 'expired',
+                  'master': 'master',
+                  'authtype': 'authtype',
+                  'callnum': 'callnum',
+                  "date_part('epoch', start_time)": 'start_time',
+                  'update_time': 'update_time',
+                  'exclusive': 'exclusive',
+                  }
+        columns, aliases = zip(*fields.items())
+        if details:
+            columns += ('hostip', 'id')
+            aliases += ('hostip', 'id')
+        if user_id:
+            user_id = get_user(user_id, strict=True)['id']
+            logged_user_id = self.getLoggedInUser()['id']
+            if not context.session.hasPerm('admin') and user_id != logged_user_id:
+                raise koji.ActionNotAllowed('only admins or owners may see all active sessions')
+            clauses.append('user_id = %(user_id)i')
+        else:
+            result = context.session.session_data
+            if details:
+                id = context.session.id
+                clauses.append('id = %(id)i')
+            else:
+                return result
+        query = QueryProcessor(tables=['sessions'],
+                               columns=columns, aliases=aliases,
+                               clauses=clauses,
+                               values=locals())
+        if details and not user_id:
+            result_query = query.executeOne()
+            result['hostip'] = result_query['hostip']
+            result['id'] = result_query['id']
+        else:
+            result = query.execute()
+        return result
 
     def showOpts(self, as_string=True):
         """Returns hub options

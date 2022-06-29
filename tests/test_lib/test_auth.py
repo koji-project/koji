@@ -624,3 +624,25 @@ class TestAuthSession(unittest.TestCase):
         self.assertEqual(query.joins, ['permissions ON perm_id = permissions.id'])
         self.assertEqual(query.clauses, ['active = TRUE', 'user_id=%(user_id)s'])
         self.assertEqual(query.columns, ['name'])
+
+    def test_logout_not_logged(self):
+        s, cntext = self.get_session()
+
+        # not logged
+        s.logged_in = False
+        with self.assertRaises(koji.AuthError) as ex:
+            s.logout()
+        self.assertEqual("Not logged in", str(ex.exception))
+
+    @mock.patch('koji.auth.context')
+    def test_logout_logged_not_owner(self, context):
+        s, cntext = self.get_session()
+
+        s.logged_in = True
+        # session_id without admin perms and not owner
+        context.session.hasPerm.return_value = False
+        context.session.user_id.return_value = 123
+        self.query_singleValue.return_value = None
+        with self.assertRaises(koji.ActionNotAllowed) as ex:
+            s.logout(session_id=1)
+        self.assertEqual("only admins or owner may logout other session", str(ex.exception))
