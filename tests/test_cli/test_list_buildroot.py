@@ -22,17 +22,6 @@ class TestListBuilds(utils.CliTestCase):
 %s: error: {message}
 """ % (self.progname, self.progname)
 
-    def test_list_buildroot_with_paths_option(self):
-        expected = "--paths option is deprecated and will be removed in 1.30"
-        self.assert_system_exit(
-            anon_handle_list_buildroot,
-            self.options, self.session, ['--paths', '1'],
-            stderr=self.format_error_message(expected),
-            exit_code=2,
-            activate_session=None)
-        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
-        self.session.listRPMs.assert_not_called()
-
     def test_list_buildroot_without_args(self):
         self.assert_system_exit(
             anon_handle_list_buildroot,
