@@ -46,7 +46,6 @@ admin commands:
         make-task                 Create an arbitrary task
         prune-signed-copies       Prune signed copies
         regen-repo                Force a repo to be regenerated
-        remove-channel            Remove a channel entirely
         remove-external-repo      Remove an external repo from a tag or tags, or remove entirely
         remove-group              Remove group from tag
         remove-host-from-channel  Remove a host from a channel
