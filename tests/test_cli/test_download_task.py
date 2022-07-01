@@ -57,6 +57,8 @@ class TestDownloadTask(utils.CliTestCase):
         self.parent_task_info = {'id': self.parent_task_id, 'method': 'buildArch',
                                  'arch': 'taskarch', 'state': 2, 'parent': None}
         self.error_format = """Usage: %s download-task <task_id>
+Default behavior without --all option downloads .rpm files only for build and buildArch tasks.
+
 (Specify the --help global option for a list of other help options)
 
 %s: error: {message}
@@ -259,8 +261,7 @@ class TestDownloadTask(utils.CliTestCase):
         self.ensure_connection.assert_called_once_with(self.session, self.options)
         self.session.getTaskInfo.assert_called_once_with(self.parent_task_id)
         self.session.getTaskChildren.assert_called_once_with(self.parent_task_id)
-        self.list_task_output_all_volumes.assert_called_once_with(
-            self.session, self.parent_task_id)
+        self.list_task_output_all_volumes.assert_not_called()
         self.download_file.assert_not_called()
 
     def test_handle_download_child_not_finished(self):
@@ -287,8 +288,7 @@ class TestDownloadTask(utils.CliTestCase):
         self.ensure_connection.assert_called_once_with(self.session, self.options)
         self.session.getTaskInfo.assert_called_once_with(self.parent_task_id)
         self.session.getTaskChildren.assert_called_once_with(self.parent_task_id)
-        self.list_task_output_all_volumes.assert_has_calls(
-            [mock.call(self.session, self.parent_task_id), mock.call(self.session, 22222)])
+        self.list_task_output_all_volumes.assert_not_called()
         self.download_file.assert_not_called()
 
     def test_handle_download_invalid_file_name(self):
@@ -323,6 +323,8 @@ class TestDownloadTask(utils.CliTestCase):
         self.assertExitCode(ex, 0)
         actual = self.stdout.getvalue()
         expected = """Usage: %s download-task <task_id>
+Default behavior without --all option downloads .rpm files only for build and buildArch tasks.
+
 (Specify the --help global option for a list of other help options)
 
 Options:
@@ -449,7 +451,7 @@ Options:
                                                      ]
         self.list_task_output_all_volumes.side_effect = [
             {'somerpm.src.rpm': ['DEFAULT', 'vol1']},
-            {'somerpm.x86_64.rpm': ['DEFAULT', 'vol2']},
+            {'somerpm.json': ['DEFAULT', 'vol2']},
             {'somerpm.noarch.rpm': ['vol3'],
              'somelog.log': ['DEFAULT', 'vol1']},
         ]
@@ -470,10 +472,10 @@ Options:
             call(self.session, 33333),
             call(self.session, 55555)])
         self.assertListEqual(self.download_file.mock_calls, [
-            call('https://topurl/work/tasks/3333/33333/somerpm.x86_64.rpm',
-                 'somerpm.x86_64.rpm', quiet=None, noprogress=None, size=3, num=1),
-            call('https://topurl/vol/vol2/work/tasks/3333/33333/somerpm.x86_64.rpm',
-                 'vol2/somerpm.x86_64.rpm', quiet=None, noprogress=None, size=3, num=2),
+            call('https://topurl/work/tasks/3333/33333/somerpm.json',
+                 'somerpm.x86_64.json', quiet=None, noprogress=None, size=3, num=1),
+            call('https://topurl/vol/vol2/work/tasks/3333/33333/somerpm.json',
+                 'vol2/somerpm.x86_64.json', quiet=None, noprogress=None, size=3, num=2),
             call('https://topurl/vol/vol3/work/tasks/5555/55555/somerpm.noarch.rpm',
                  'vol3/somerpm.noarch.rpm', quiet=None, noprogress=None, size=3, num=3),
         ])
@@ -720,3 +722,36 @@ Options:
             call(self.session, 44444),
             call(self.session, 55555)])
         self.assertListEqual(self.download_file.mock_calls, [])
+
+    def test_handle_download_task_without_all_json_not_downloaded(self):
+        args = [str(self.parent_task_id)]
+        self.session.getTaskInfo.return_value = self.parent_task_info
+        self.session.getTaskChildren.return_value = []
+        self.list_task_output_all_volumes.return_value = {
+            'somerpm.src.rpm': ['DEFAULT', 'vol1'],
+            'somerpm.x86_64.rpm': ['DEFAULT', 'vol2'],
+            'somerpm.noarch.rpm': ['vol3'],
+            'somelog.log': ['DEFAULT', 'vol1'],
+            'somefile.json': ['DEFAULT', 'vol1'],
+        }
+
+        calls = self.gen_calls(self.list_task_output_all_volumes.return_value,
+                               'https://topurl/%swork/tasks/3333/123333/%s',
+                               ['somelog.log', 'somefile.json'])
+
+        # Run it and check immediate output
+        # args: task_id
+        # expected: success
+        rv = anon_handle_download_task(self.options, self.session, args)
+
+        actual = self.stdout.getvalue()
+        expected = ''
+        self.assertMultiLineEqual(actual, expected)
+        # Finally, assert that things were called as we expected.
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
+        self.session.getTaskInfo.assert_called_once_with(self.parent_task_id)
+        self.session.getTaskChildren.assert_called_once_with(self.parent_task_id)
+        self.list_task_output_all_volumes.assert_called_once_with(self.session,
+                                                                  self.parent_task_id)
+        self.assertListEqual(self.download_file.mock_calls, calls)
+        self.assertIsNone(rv)
