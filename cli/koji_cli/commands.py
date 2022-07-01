@@ -6878,7 +6878,9 @@ def anon_handle_download_logs(options, session, args):
 
 def anon_handle_download_task(options, session, args):
     "[download] Download the output of a build task"
-    usage = "usage: %prog download-task <task_id>"
+    usage = "usage: %prog download-task <task_id>\n" \
+            "Default behavior without --all option downloads .rpm files only for build " \
+            "and buildArch tasks.\n"
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--arch", dest="arches", metavar="ARCH", action="append", default=[],
                       help="Only download packages for this arch (may be used multiple times), "
@@ -6929,67 +6931,69 @@ def anon_handle_download_task(options, session, args):
     if not suboptions.parentonly:
         list_tasks.extend(session.getTaskChildren(base_task_id))
 
-    # support file types
-    expected_types = ['rpm', 'log']
-    for type in session.getArchiveTypes():
-        expected_types.extend(type['extensions'].split(' '))
+    required_tasks = {}
+    for task in list_tasks:
+        if task["id"] not in required_tasks:
+            required_tasks[task["id"]] = task
+
+    for task_id in required_tasks:
+        if required_tasks[task_id]["state"] != koji.TASK_STATES.get("CLOSED"):
+            if task_id == base_task_id:
+                error("Task %d has not finished yet." % task_id)
+            else:
+                error("Child task %d has not finished yet." % task_id)
 
     # get files for download
     downloads = []
     build_methods_list = ['buildArch', 'build']
+    rpm_file_types = ['rpm', 'src.rpm']
     for task in list_tasks:
         taskarch = task['arch']
         task_id = str(task['id'])
         if len(suboptions.arches) == 0 or taskarch in suboptions.arches:
             files = list_task_output_all_volumes(session, task["id"])
-            filetype = None
             for filename in files:
                 if filename.endswith('src.rpm'):
                     filetype = 'src.rpm'
                 else:
-                    for ft in expected_types:
-                        if filename.endswith('.%s' % ft):
-                            filetype = ft
-                            break
-                if not filetype:
-                    warn('Unsupported file type for download-task: %s' % filename)
-                else:
-                    if suboptions.all and task['method'] not in build_methods_list:
-                        if filetype != 'log':
-                            for volume in files[filename]:
-                                if suboptions.dirpertask:
-                                    new_filename = '%s/%s' % (task_id, filename)
-                                else:
-                                    if taskarch not in filename and filetype != 'src.rpm':
-                                        part_filename = filename[:-len('.%s' % filetype)]
-                                        new_filename = "%s.%s.%s" % (part_filename,
-                                                                     taskarch, filetype)
-                                    else:
-                                        new_filename = filename
-                                downloads.append((task, filename, volume, new_filename, task_id))
-                    elif task['method'] in build_methods_list:
-                        if filetype in ['rpm', 'src.rpm']:
-                            filearch = filename.split(".")[-2]
-                            for volume in files[filename]:
-                                if len(suboptions.arches) == 0 or filearch in suboptions.arches:
-                                    if suboptions.dirpertask:
-                                        new_filename = '%s/%s' % (task_id, filename)
-                                    else:
-                                        new_filename = filename
-                                    downloads.append((task, filename, volume, new_filename,
-                                                      task_id))
-
-                    if filetype == 'log' and suboptions.logs:
+                    filetype = filename.rsplit('.', 1)[1]
+                if suboptions.all and not (task['method'] in build_methods_list and
+                                           filetype in rpm_file_types):
+                    if filetype != 'log':
                         for volume in files[filename]:
                             if suboptions.dirpertask:
                                 new_filename = '%s/%s' % (task_id, filename)
                             else:
-                                if taskarch not in filename:
-                                    part_filename = filename[:-len('.log')]
-                                    new_filename = "%s.%s.log" % (part_filename, taskarch)
+                                if taskarch not in filename and filetype != 'src.rpm':
+                                    part_filename = filename[:-len('.%s' % filetype)]
+                                    new_filename = "%s.%s.%s" % (part_filename,
+                                                                 taskarch, filetype)
                                 else:
                                     new_filename = filename
                             downloads.append((task, filename, volume, new_filename, task_id))
+                elif task['method'] in build_methods_list:
+                    if filetype in rpm_file_types:
+                        filearch = filename.split(".")[-2]
+                        for volume in files[filename]:
+                            if len(suboptions.arches) == 0 or filearch in suboptions.arches:
+                                if suboptions.dirpertask:
+                                    new_filename = '%s/%s' % (task_id, filename)
+                                else:
+                                    new_filename = filename
+                                downloads.append((task, filename, volume, new_filename,
+                                                  task_id))
+
+                if filetype == 'log' and suboptions.logs:
+                    for volume in files[filename]:
+                        if suboptions.dirpertask:
+                            new_filename = '%s/%s' % (task_id, filename)
+                        else:
+                            if taskarch not in filename:
+                                part_filename = filename[:-len('.log')]
+                                new_filename = "%s.%s.log" % (part_filename, taskarch)
+                            else:
+                                new_filename = filename
+                        downloads.append((task, filename, volume, new_filename, task_id))
 
     if len(downloads) == 0:
         print("No files for download found.")
