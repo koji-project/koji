@@ -7370,6 +7370,7 @@ def anon_handle_download_task(options, session, args):
             koji.TASK_STATES['FAILED']):
         watch_tasks(session, [base_task_id], quiet=suboptions.quiet,
                     poll_interval=options.poll_interval, topurl=options.topurl)
+        base_task = session.getTaskInfo(base_task_id)
 
     list_tasks = [base_task]
     if not suboptions.parentonly:
@@ -7441,18 +7442,6 @@ def anon_handle_download_task(options, session, args):
 
     if len(downloads) == 0:
         error("No files for download found.")
-
-    required_tasks = {}
-    for (task, nop, nop, nop, nop) in downloads:
-        if task["id"] not in required_tasks:
-            required_tasks[task["id"]] = task
-
-    for task_id in required_tasks:
-        if required_tasks[task_id]["state"] != koji.TASK_STATES.get("CLOSED"):
-            if task_id == base_task_id:
-                error("Task %d has not finished yet." % task_id)
-            else:
-                error("Child task %d has not finished yet." % task_id)
 
     downloads_new_names = [(new_filename, vol) for (_, _, vol, new_filename, _) in downloads]
     if not suboptions.dirpertask:
