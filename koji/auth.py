@@ -289,7 +289,7 @@ class Session(object):
         self.checkLoginAllowed(user_id)
 
         # create session and return
-        sinfo = self.createSession(user_id, hostip, koji.AUTHTYPE_NORMAL)
+        sinfo = self.createSession(user_id, hostip, koji.AUTHTYPES['NORMAL'])
         session_id = sinfo['session-id']
         context.cnx.commit()
         return sinfo
@@ -320,7 +320,7 @@ class Session(object):
         """Login into brew via SSL. proxyuser name can be specified and if it is
         allowed in the configuration file then connection is allowed to login as
         that user. By default we assume that proxyuser is coming via same
-        authentication mechanism but proxyauthtype can be set to koji.AUTHTYPE_*
+        authentication mechanism but proxyauthtype can be set to koji.AUTHTYPE['*']
         value for different handling. Typical case is proxying kerberos user via
         web ui which itself is authenticated via SSL certificate. (See kojiweb
         for usage).
@@ -336,7 +336,7 @@ class Session(object):
             # it is kerberos principal rather than user's name.
             username = context.environ.get('REMOTE_USER')
             client_dn = username
-            authtype = koji.AUTHTYPE_GSSAPI
+            authtype = koji.AUTHTYPES['GSSAPI']
         else:
             if context.environ.get('SSL_CLIENT_VERIFY') != 'SUCCESS':
                 raise koji.AuthError('could not verify client: %s' %
@@ -349,10 +349,10 @@ class Session(object):
                     'unable to get user information (%s) from client certificate' %
                     name_dn_component)
             client_dn = context.environ.get('SSL_CLIENT_S_DN')
-            authtype = koji.AUTHTYPE_SSL
+            authtype = koji.AUTHTYPES['SSL']
 
         if proxyuser:
-            if authtype == koji.AUTHTYPE_GSSAPI:
+            if authtype == koji.AUTHTYPES['GSSAPI']:
                 delimiter = ','
                 proxy_opt = 'ProxyPrincipals'
             else:
@@ -363,7 +363,7 @@ class Session(object):
             # backwards compatible for GSSAPI.
             # in old way, proxy user whitelist is ProxyDNs.
             # TODO: this should be removed in future release
-            if authtype == koji.AUTHTYPE_GSSAPI and not context.opts.get(
+            if authtype == koji.AUTHTYPES['GSSAPI'] and not context.opts.get(
                     'DisableGSSAPIProxyDNFallback', False):
                 proxy_dns += [dn.strip() for dn in
                               context.opts.get('ProxyDNs', '').split('|')]
@@ -379,18 +379,18 @@ class Session(object):
                 if not context.opts['AllowProxyAuthType'] and authtype != proxyauthtype:
                     raise koji.AuthError("Proxy must use same auth mechanism as hub (behaviour "
                                          "can be overriden via AllowProxyAuthType hub option)")
-                if proxyauthtype not in (koji.AUTHTYPE_GSSAPI, koji.AUTHTYPE_SSL):
+                if proxyauthtype not in (koji.AUTHTYPES['GSSAPI'], koji.AUTHTYPES['SSL']):
                     raise koji.AuthError(
                         "Proxied authtype %s is not valid for sslLogin" % proxyauthtype)
                 authtype = proxyauthtype
 
-        if authtype == koji.AUTHTYPE_GSSAPI and '@' in username:
+        if authtype == koji.AUTHTYPES['GSSAPI'] and '@' in username:
             user_id = self.getUserIdFromKerberos(username)
         else:
             user_id = self.getUserId(username)
         if not user_id:
             if context.opts.get('LoginCreatesUser'):
-                if authtype == koji.AUTHTYPE_GSSAPI and '@' in username:
+                if authtype == koji.AUTHTYPES['GSSAPI'] and '@' in username:
                     user_id = self.createUserFromKerberos(username)
                 else:
                     user_id = self.createUser(username)

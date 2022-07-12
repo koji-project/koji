@@ -217,10 +217,19 @@ USER_STATUS = Enum((
 
 # authtype values
 # normal == username/password
-AUTHTYPE_NORMAL = 0
-AUTHTYPE_KERB = 1
-AUTHTYPE_SSL = 2
-AUTHTYPE_GSSAPI = 3
+AUTHTYPES = Enum((
+    'NORMAL',
+    'KERBEROS',
+    'SSL',
+    'GSSAPI',
+))
+
+# authtype values - BACKWARD COMPATIBILITY (could be dropped in Koji 1.34)
+# normal == username/password
+AUTHTYPE_NORMAL = AUTHTYPES['NORMAL']
+AUTHTYPE_KERB = AUTHTYPES['KERBEROS']
+AUTHTYPE_SSL = AUTHTYPES['SSL']
+AUTHTYPE_GSSAPI = AUTHTYPES['GSSAPI']
 
 # dependency types
 DEP_REQUIRE = 0
@@ -2473,7 +2482,7 @@ class ClientSession(object):
         if not sinfo:
             return False
         self.setSession(sinfo)
-        self.authtype = AUTHTYPE_NORMAL
+        self.authtype = AUTHTYPES['NORMAL']
         return True
 
     def subsession(self):
@@ -2577,7 +2586,7 @@ class ClientSession(object):
 
         self.setSession(sinfo)
 
-        self.authtype = AUTHTYPE_GSSAPI
+        self.authtype = AUTHTYPES['GSSAPI']
         return True
 
     def ssl_login(self, cert=None, ca=None, serverca=None, proxyuser=None, proxyauthtype=None):
@@ -2631,7 +2640,7 @@ class ClientSession(object):
         self.opts['serverca'] = serverca
         self.setSession(sinfo)
 
-        self.authtype = AUTHTYPE_SSL
+        self.authtype = AUTHTYPES['SSL']
         return True
 
     def logout(self):

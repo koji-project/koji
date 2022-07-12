@@ -73,12 +73,11 @@ class TestHello(utils.CliTestCase):
 
         # valid authentication
         auth_tests = {
-            koji.AUTHTYPE_NORMAL: 'Authenticated via password',
-            koji.AUTHTYPE_GSSAPI: 'Authenticated via GSSAPI',
-            koji.AUTHTYPE_KERB: 'Authenticated via Kerberos principal %s' %
-                                user['krb_principal'],
-            koji.AUTHTYPE_SSL: 'Authenticated via client certificate %s' %
-                               cert
+            koji.AUTHTYPES['NORMAL']: 'Authenticated via password',
+            koji.AUTHTYPES['GSSAPI']: 'Authenticated via GSSAPI',
+            koji.AUTHTYPES['KERBEROS']: 'Authenticated via Kerberos principal %s' %
+                                        user['krb_principal'],
+            koji.AUTHTYPES['SSL']: 'Authenticated via client certificate %s' % cert
         }
         hubinfo = "You are using the hub at %s" % self.huburl
         session.getLoggedInUser.return_value = user

@@ -7371,13 +7371,13 @@ def handle_moshimoshi(options, session, args):
     print("")
     print("You are using the hub at %s" % session.baseurl)
     authtype = u.get('authtype', getattr(session, 'authtype', None))
-    if authtype == koji.AUTHTYPE_NORMAL:
+    if authtype == koji.AUTHTYPES['NORMAL']:
         print("Authenticated via password")
-    elif authtype == koji.AUTHTYPE_GSSAPI:
+    elif authtype == koji.AUTHTYPES['GSSAPI']:
         print("Authenticated via GSSAPI")
-    elif authtype == koji.AUTHTYPE_KERB:
+    elif authtype == koji.AUTHTYPES['KERBEROS']:
         print("Authenticated via Kerberos principal %s" % session.krb_principal)
-    elif authtype == koji.AUTHTYPE_SSL:
+    elif authtype == koji.AUTHTYPES['SSL']:
         print("Authenticated via client certificate %s" % options.cert)
 
 

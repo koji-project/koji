@@ -266,7 +266,7 @@ def login(environ, page=None):
     session = _getServer(environ)
     options = environ['koji.options']
 
-    if options['WebAuthType'] == koji.AUTHTYPE_SSL:
+    if options['WebAuthType'] == koji.AUTHTYPES['SSL']:
         ## Clients authenticate to KojiWeb by SSL, so extract
         ## the username via the (verified) client certificate
         if environ['wsgi.url_scheme'] != 'https':
@@ -283,7 +283,7 @@ def login(environ, page=None):
         username = environ.get('SSL_CLIENT_S_DN_CN')
         if not username:
             raise koji.AuthError('unable to get user information from client certificate')
-    elif options['WebAuthType'] == koji.AUTHTYPE_GSSAPI:
+    elif options['WebAuthType'] == koji.AUTHTYPES['GSSAPI']:
         ## Clients authenticate to KojiWeb by Kerberos, so extract
         ## the username via the REMOTE_USER which will be the
         ## Kerberos principal

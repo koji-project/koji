@@ -3,7 +3,6 @@ from __future__ import absolute_import
 import mock
 
 import unittest
-import six
 
 import koji
 import koji.auth
@@ -28,7 +27,7 @@ class TestAuthSession(unittest.TestCase):
         context.cnx.cursor.return_value = cursor
         cursor.fetchone.side_effect = [
             # get session
-            [koji.AUTHTYPE_NORMAL, 344, False, False, 'master', 'start_time',
+            [koji.AUTHTYPES['NORMAL'], 344, False, False, 'master', 'start_time',
              'start_ts', 'update_time', 'update_ts', 'user_id'],
             # get user
             ['name', koji.USER_STATUS['NORMAL'], koji.USERTYPES['NORMAL']],
@@ -54,7 +53,7 @@ class TestAuthSession(unittest.TestCase):
         self.assertEqual(s.hostip, 'remote-addr')
         self.assertEqual(s.callnum, 345)
         self.assertEqual(s.user_id, 'user_id')
-        self.assertEqual(s.authtype, koji.AUTHTYPE_NORMAL)
+        self.assertEqual(s.authtype, koji.AUTHTYPES['NORMAL'])
         self.assertEqual(s.master, 'master')
         self.assertTrue(s.logged_in)
 
