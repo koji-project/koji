@@ -83,7 +83,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.29.0
+Version: 1.29.1
 Release: %{release}%{?dist}
 License: LGPLv2 and GPLv2+
 # the included arch lib from yum's rpmUtils is GPLv2+
@@ -645,6 +645,16 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Mon Jun 27 2022  Tomas Kopecek <tkopecek at redhat.com> - 1.29.1-1
+- PR#3343 Download output for all type of task in download-task
+- PR#3388 postgresql hub: date_part instead of EXTRACT
+- PR#3368 Order channels at hosts page
+- PR#3374 Add long description to setup.py
+- PR#3411 doc: mention CGRefundBuild in CG docs
+- PR#3415 Rename log to cg_import.log and add successful import log message.
+- PR#3398 more verbose default policy denials
+- PR#3413 Fix wrong encoding in changelog entries
+
 * Thu May 12 2022  Tomas Kopecek <tkopecek at redhat.com> - 1.29.0-1
 - PR#3349: Py3 re pattern fix
 - PR#3338: Add header separaton to list-hosts and list-channels
