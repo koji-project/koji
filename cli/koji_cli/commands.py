@@ -7005,6 +7005,15 @@ def anon_handle_download_task(options, session, args):
     if not suboptions.dirpertask:
         not_uniques = list({x for x in downloads_new_names if downloads_new_names.count(x) > 1})
         if not_uniques:
+            files_dict = {}
+            for nu in not_uniques:
+                for (_, _, vol, new_filename, task_id) in downloads:
+                    if new_filename == nu[0] and vol == nu[1]:
+                        files_dict.setdefault(new_filename, {'vol': vol, 'tasks': []})
+                        files_dict[new_filename]['tasks'].append(task_id)
+            for key, value in files_dict.items():
+                warn('Duplicate file %s for volume %s (tasks [%s])' % (key, value['vol'],
+                                                                       ", ".join(value['tasks'])))
             error("Download files names conflict, use --dirpertask")
 
     # perform the download

@@ -702,7 +702,8 @@ Options:
         self.assert_system_exit(
             anon_handle_download_task,
             self.options, self.session, args,
-            stderr="Download files names conflict, use --dirpertask\n",
+            stderr="Duplicate file somerpm.noarch.rpm for volume DEFAULT (tasks [22222, 55555])\n"
+                   "Download files names conflict, use --dirpertask\n",
             stdout='',
             activate_session=None,
             exit_code=1)
