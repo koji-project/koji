@@ -24,8 +24,13 @@ def kiwiBuild(target, arches, desc_url, desc_path, optional_arches=None, profile
     if repos:
         kojihub.convert_value(repos, cast=list, check_only=True)
     kojihub.get_build_target(target, strict=True)
-    arches = koji.parse_arches(arches, strict=True, allow_none=False)
-    optional_arches = koji.parse_arches(optional_arches, strict=True, allow_none=True)
+    if isinstance(arches, list):
+        arches = " ".join(arches)
+    arches = koji.parse_arches(arches, to_list=True, strict=True, allow_none=False)
+    if isinstance(optional_arches, list):
+        optional_arches = " ".join(optional_arches)
+    optional_arches = koji.parse_arches(
+        optional_arches, to_list=True, strict=True, allow_none=True)
     taskOpts = {
         'channel': 'image',
     }
