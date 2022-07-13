@@ -1229,14 +1229,14 @@ def canonArch(arch):
 def parse_arches(arches, to_list=False, strict=False, allow_none=False):
     """Normalize user input for a list of arches.
 
-    This method parses a single comma- or space-separated string of arches and
+    This method parses a single comma-, space-separated string or list of arches and
     returns a space-separated string.
 
     Raise an error if arches string contain non-allowed characters. In strict
     version allow only space-separated strings (db input).
 
-    :param str arches: comma- or space-separated string of arches, eg.
-                       "x86_64,ppc64le", or "x86_64 ppc64le"
+    :param str|list arches: comma- or space-separated string of arches or list of arches, eg.
+                       "x86_64,ppc64le", "x86_64 ppc64le", or "['x86_64', 'ppc64le']"
     :param bool to_list: return a list of each arch, instead of a single
                          string. This is False by default.
     :param bool allow_none: convert None to ""
@@ -1244,13 +1244,14 @@ def parse_arches(arches, to_list=False, strict=False, allow_none=False):
               ['x86_64', 'ppc64le'].
     """
     if allow_none and arches is None:
-        arches = ''
-    if not strict:
-        arches = arches.replace(',', ' ')
-    if not re.match(r'^[a-zA-Z0-9_\- ]*$', arches):
-        raise GenericError("Architecture can be only [a-zA-Z0-9_-]")
-
-    arches = arches.split()
+        arches = []
+    if not isinstance(arches, list):
+        if not strict:
+            arches = arches.replace(',', ' ')
+        arches = arches.split()
+    for arch in arches:
+        if not re.match(r'^[a-zA-Z0-9_\-]*$', arch):
+            raise GenericError("Architecture can be only [a-zA-Z0-9_-]")
     if to_list:
         return arches
     else:

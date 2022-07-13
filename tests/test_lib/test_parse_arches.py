@@ -3,8 +3,21 @@ from __future__ import absolute_import
 import unittest
 import koji
 
+
 class TestParseArchesString(unittest.TestCase):
     def test_parse_valid_arches(self):
+        r = koji.parse_arches('i386 x86_64')
+        self.assertEqual('i386 x86_64', r)
+
+        r = koji.parse_arches('i386')
+        self.assertEqual('i386', r)
+
+        r = koji.parse_arches('i386 x86_64   ')
+        self.assertEqual('i386 x86_64', r)
+
+        r = koji.parse_arches('i386,x86_64')
+        self.assertEqual('i386 x86_64', r)
+
         r = koji.parse_arches('i386', to_list=True)
         self.assertEqual(['i386'], r)
 
@@ -15,6 +28,18 @@ class TestParseArchesString(unittest.TestCase):
         self.assertEqual(['i386', 'x86_64'], r)
 
         r = koji.parse_arches('i386,x86_64', to_list=True)
+        self.assertEqual(['i386', 'x86_64'], r)
+
+        r = koji.parse_arches(['i386'])
+        self.assertEqual('i386', r)
+
+        r = koji.parse_arches(['i386', 'x86_64'])
+        self.assertEqual('i386 x86_64', r)
+
+        r = koji.parse_arches(['i386'], to_list=True)
+        self.assertEqual(['i386'], r)
+
+        r = koji.parse_arches(['i386', 'x86_64'], to_list=True)
         self.assertEqual(['i386', 'x86_64'], r)
 
     def test_parse_invalid_arches(self):
