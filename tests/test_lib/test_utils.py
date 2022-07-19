@@ -3,6 +3,7 @@ from __future__ import absolute_import
 import calendar
 import errno
 import locale
+from unittest.case import TestCase
 import mock
 import optparse
 import os
@@ -19,6 +20,8 @@ from mock import call, patch
 from datetime import datetime
 import koji
 import koji.util
+
+from koji.util import format_shell_cmd
 
 
 class EnumTestCase(unittest.TestCase):
@@ -1598,6 +1601,29 @@ class TestMoveAndSymlink(unittest.TestCase):
         safer_move.assert_called_once_with('a/src', 'b/dst')
         symlink.assert_called_once_with('../b/dst', 'a/src')
         ensuredir.assert_called_once_with('b')
+
+
+class TestFormatShellCmd(unittest.TestCase):
+    def test_formats(self):
+        cases = (
+            ([], ''),
+            (['random cmd'], 'random cmd'),
+            (['aa', 'bb'], 'aa bb'),
+            (['long', 'command', 'with', 'many', 'simple', 'options',
+              'like', '--option', 'x', '--another-option=x', 'and',
+              'many', 'more', 'others'],
+             'long command with many simple options \\\n'
+             'like --option x --another-option=x and \\\n'
+             'many more others'),
+            (['one long line which exceeds the text_width by some amount'],
+             'one long line which exceeds the text_width by some amount'),
+            (['one long line which exceeds the text_width by some amount',
+              'second long line which exceeds the text_width by some amount'],
+             'one long line which exceeds the text_width by some amount \\\n'
+             'second long line which exceeds the text_width by some amount'),
+        )
+        for inp, out in cases:
+            self.assertEqual(koji.util.format_shell_cmd(inp, text_width=40), out)
 
 
 if __name__ == '__main__':
