@@ -4164,7 +4164,8 @@ class BaseImageTask(OzImageTask):
             if scrnshot:
                 ext = scrnshot[-3:]
                 self.uploadFile(scrnshot, remoteName='screenshot.%s' % ext)
-            image.os_plugin.abort()  # forcibly tear down the VM
+            if image.os_plugin:
+                image.os_plugin.abort()  # forcibly tear down the VM
             # TODO abort when a task is CANCELLED
             if not self.session.checkUpload('', os.path.basename(self.ozlog)):
                 self.tlog.removeHandler(self.fhandler)
