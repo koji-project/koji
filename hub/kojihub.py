@@ -10710,7 +10710,7 @@ class RootExports(object):
         context.session.assertLogin()
         if not context.opts.get('EnableMaven'):
             raise koji.GenericError("Maven support not enabled")
-        convert_value(builds, cast=list, check_only=True)
+        convert_value(builds, cast=dict, check_only=True)
         taskOpts = {}
         if priority:
             if priority < 0:
