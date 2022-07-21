@@ -13,7 +13,7 @@ class TestChainMaven(unittest.TestCase):
         self.context.session.hasPerm = mock.MagicMock()
         self.get_channel = mock.patch('kojihub.get_channel').start()
         self.make_task = mock.patch('kojihub.make_task').start()
-        self.builds = ['build1', 'build2', 'build3']
+        self.builds = {'build1': {}, 'build2': {}, 'build3': {}}
         self.target = 'test-target'
 
     def tearDown(self):
@@ -31,7 +31,7 @@ class TestChainMaven(unittest.TestCase):
         with self.assertRaises(koji.ParameterError) as cm:
             self.exports.chainMaven(builds, self.target)
         self.assertEqual(f"Invalid type for value '{builds}': {type(builds)}, "
-                         f"expected type <class 'list'>", str(cm.exception))
+                         f"expected type <class 'dict'>", str(cm.exception))
 
     def test_priority_without_admin(self):
         priority = -10
