@@ -6457,6 +6457,9 @@ def cg_init_build(cg, data):
     data['cg_id'] = cg_id
     # CGs shouldn't have to worry about epoch
     data.setdefault('epoch', None)
+
+    koji.check_NVR(data, strict=True)
+
     build_id = new_build(data, strict=False)
 
     # check potentially existing token
