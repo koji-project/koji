@@ -1017,10 +1017,6 @@ def _direct_pkglist_add(taginfo, pkginfo, owner, block, extra_arches, force,
     # validate arches before running callbacks
     extra_arches = koji.parse_arches(extra_arches, strict=True, allow_none=True)
     user = get_user(context.session.user_id)
-    koji.plugin.run_callbacks('prePackageListChange', action=action,
-                              tag=tag, package=pkg, owner=owner,
-                              block=block, extra_arches=extra_arches,
-                              force=force, update=update, user=user)
     # first check to see if package is:
     #   already present (via inheritance)
     #   blocked
@@ -1061,6 +1057,10 @@ def _direct_pkglist_add(taginfo, pkginfo, owner, block, extra_arches, force,
             owner = context.session.user_id
         else:
             raise koji.GenericError("owner not specified")
+    koji.plugin.run_callbacks('prePackageListChange', action=action,
+                              tag=tag, package=pkg, owner=owner,
+                              block=block, extra_arches=extra_arches,
+                              force=force, update=update, user=user)
     if not previous or changed:
         _pkglist_add(tag_id, pkg['id'], owner, block, extra_arches)
     elif changed_owner:
@@ -1137,8 +1137,6 @@ def pkglist_unblock(taginfo, pkginfo, force=False):
     # don't check policy for admins using force
     assert_policy('package_list', policy_data, force=force)
     user = get_user(context.session.user_id)
-    koji.plugin.run_callbacks(
-        'prePackageListChange', action='unblock', tag=tag, package=pkg, user=user)
     tag_id = tag['id']
     pkg_id = pkg['id']
     pkglist = readPackageList(tag_id, pkgID=pkg_id, inherit=True)
@@ -1148,6 +1146,8 @@ def pkglist_unblock(taginfo, pkginfo, force=False):
                                 % (pkg['name'], tag['name']))
     if not previous['blocked']:
         raise koji.GenericError("package %s NOT blocked in tag %s" % (pkg['name'], tag['name']))
+    koji.plugin.run_callbacks(
+        'prePackageListChange', action='unblock', tag=tag, package=pkg, user=user)
     if previous['tag_id'] != tag_id:
         _pkglist_add(tag_id, pkg_id, previous['owner_id'], False, previous['extra_arches'])
     else:
