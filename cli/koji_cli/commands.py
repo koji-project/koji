@@ -45,7 +45,7 @@ from koji_cli.lib import (
     print_task_recurse,
     unique_path,
     warn,
-    watch_builds,
+    wait_repo,
     watch_logs,
     watch_tasks,
     truncate_string
@@ -7086,8 +7086,8 @@ def anon_handle_wait_repo(options, session, args):
                 warn("nvr %s is not current in tag %s\n  latest build in %s is %s" %
                      (expected_nvr, tag, tag, present_nvr))
 
-    success, msg = watch_builds(session, tag_id, builds,
-                                poll_interval=options.poll_interval, timeout=suboptions.timeout)
+    success, msg = wait_repo(session, tag_id, builds,
+                             poll_interval=options.poll_interval, timeout=suboptions.timeout)
     if success:
         if not suboptions.quiet:
             print(msg)

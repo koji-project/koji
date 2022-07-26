@@ -831,7 +831,7 @@ def _list_tasks(options, session):
     return tasklist
 
 
-def watch_builds(session, tag_id, builds, poll_interval=5, timeout=120):
+def wait_repo(session, tag_id, builds, poll_interval=5, timeout=120):
     """Watch for given builds to appear in given tag. If no builds are given,
     watch for new repo for given tag.
 
