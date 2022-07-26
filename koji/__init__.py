@@ -648,7 +648,7 @@ def rpm_hdr_size(f, ofs=None):
     # add eight bytes for section header
     hdrsize = hdrsize + 8
 
-    if not isinstance(f, six.string_types):
+    if isinstance(f, six.string_types):
         fo.close()
     return hdrsize
 
