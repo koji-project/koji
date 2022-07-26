@@ -155,14 +155,14 @@ class Dispatcher(object):
             raise koji.ConfigurationError(f"Invalid value {opts['WebAuthType']} for "
                                           "WebAuthType (ssl/gssapi)")
         if opts['WebAuthType'] == 'gssapi':
-            opts['WebAuthType'] = koji.AUTHTYPE_GSSAPI
+            opts['WebAuthType'] = koji.AUTHTYPES['GSSAPI']
         elif opts['WebAuthType'] == 'ssl':
-            opts['WebAuthType'] = koji.AUTHTYPE_SSL
+            opts['WebAuthType'] = koji.AUTHTYPES['SSL']
         # if there is no explicit request, use same authtype as web has
         elif opts['WebPrincipal']:
-            opts['WebAuthType'] = koji.AUTHTYPE_GSSAPI
+            opts['WebAuthType'] = koji.AUTHTYPES['GSSAPI']
         elif opts['WebCert']:
-            opts['WebAuthType'] = koji.AUTHTYPE_SSL
+            opts['WebAuthType'] = koji.AUTHTYPES['SSL']
 
         self.options = opts
         return opts
