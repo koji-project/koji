@@ -323,8 +323,13 @@ def prep_repo_done(cbtype, *args, **kws):
 def _send_msgs(urls, msgs, CONFIG):
     random.shuffle(urls)
     for url in urls:
-        container = Container(TimeoutHandler(url, msgs, CONFIG))
-        container.run()
+        try:
+            container = Container(TimeoutHandler(url, msgs, CONFIG))
+            container.run()
+        except Exception as ex:
+            # It's ok if we don't send messages for any reason. We'll try again later.
+            LOG.debug(f'container setup error ({url}): {ex}')
+
         if msgs:
             LOG.debug('could not send to %s, %s messages remaining',
                       url, len(msgs))
