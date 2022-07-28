@@ -625,7 +625,7 @@ def escapeHTML(value):
     if not value:
         return value
 
-    value = koji.fixEncoding(value)
+    value = koji.fixEncoding(str(value))
     return re.sub(r'&(?![a-zA-Z0-9#]+;)', '&amp;', value).\
         replace('<', '&lt;').\
         replace('>', '&gt;').\
