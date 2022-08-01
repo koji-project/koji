@@ -30,6 +30,65 @@
   #end if
 #end def
 
+#def printMap($vals, $prefix='')
+  #for $key, $value in $vals.items()
+  #if $key == 'properties'
+  ${prefix}properties&nbsp;=&nbsp;$printProperties($value)<br/>
+  #elif $key != '__starstar'
+  $prefix$key&nbsp;=&nbsp;$printValue($key, $value)<br/>
+  #end if
+  #end for
+#end def
+
+#def printOpts($opts)
+  #if $opts
+  <strong>Options:</strong><br/>
+  $printMap($opts, '&nbsp;&nbsp;')
+  #end if
+#end def
+
+#def printValue($key, $value, $sep=', ')
+  #if $value is None
+None
+  #elif $key == 'user'
+<a href="userinfo?userID=$value['id']">$value['name']</a>
+  #elif $key == 'task'
+<a href="taskinfo?taskID=$value['id']">$value['id']</a>
+  #elif $key == 'host'
+<a href="hostinfo?hostID=$value['id']">$value['name']</a>
+  #elif $key == 'build'
+<a href="buildinfo?buildID=$value['id']">$value['nvr']</a>
+  #elif $key == 'buildroot'
+<a href="buildrootinfo?buildrootID=$value['id']">$value['id']</a>
+  #elif $key in ('tag', 'destination_tag', 'build_tag')
+<a href="taginfo?tagID=$value['id']">$value['name']</a>
+  #elif $key in ('build_target', 'target_info')
+<a href="targetinfo?targetID=$value['id']">$value['name']</a>
+  #elif $key in ('repo_info', 'oldrepo', 'repo')
+    #if $key == 'repo' and isinstance($value, list)
+$sep.join([$str($val) for $val in $value])
+    #else
+<a href="repoinfo?repoID=$value.id">$value.id</a> ($koji.formatTimeLong($value.create_ts))
+    #end if
+  #elif $key == 'task_list'
+    #for $task in $params['task_list']
+      <br/><strong>&nbsp;Task:</strong><br/>
+      $printMap($task, '&nbsp;&nbsp;')
+    #end for
+  #elif $isinstance($value, list)
+$sep.join([$str($val) for $val in $value])
+  #elif $isinstance($value, dict)
+$sep.join(['%s=%s' % (($n == '' and "''" or $n), $v) for $n, $v in $value.items()])
+  #else
+$value
+  #end if
+#end def
+
+#def printProperties($props)
+  #echo ', '.join([$v is not None and '%s=%s' % ($n, $v) or $str($n) for $n, $v in $props.items()])
+#end def
+
+
 #include "includes/header.chtml"
 
   <h4>Information for task <a href="taskinfo?taskID=$task.id">$util.escapeHTML($koji.taskLabel($task))</a></h4>
@@ -44,12 +103,12 @@
     <tr>
       <th>Parameters</th>
       <td>
-      #if $params_parsed
-      $params_parsed
-      #else
-      <div class="error">Parameters are not correct for this method.</div>
-      $params
-      #end if
+        #for key in $sorted($params)
+          #if $params[$key] is not None
+        <strong>$key.capitalize().replace('_', ' ')</strong>: $printValue($key, $params[$key])<br/>
+          #end if
+        #end for
+        $printOpts($opts)
       </td>
     </tr>
     <tr>
