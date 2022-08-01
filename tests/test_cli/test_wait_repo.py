@@ -36,7 +36,7 @@ class TestWaitRepo(utils.CliTestCase):
 
         self.options = mock.MagicMock()
         self.options.quiet = True
-        self.options.poll_interval = 1  # second
+        self.options.poll_interval = 0.0001  # keep it fast
         self.options.weburl = 'https://localhost.local'
 
         self.session = mock.MagicMock()

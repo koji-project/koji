@@ -831,6 +831,51 @@ def _list_tasks(options, session):
     return tasklist
 
 
+def wait_repo(session, tag_id, builds, poll_interval=5, timeout=120):
+    """Watch for given builds to appear in given tag. If no builds are given,
+    watch for new repo for given tag.
+
+    :param session: Koji session object
+    :param int tag_id: Tag id
+    :param [dict] builds: List of builds as NVR dicts
+    :param int poll_interval: Poll interval in seconds
+    :param int timeout: Watch timeout in minutes
+    :returns bool, msg: False if timeouted
+    """
+    last_repo = None
+    repo = session.getRepo(tag_id)
+
+    # String representations for logs and exceptions
+    builds_str = koji.util.printList([koji.buildLabel(build) for build in builds])
+    tag_info = session.getTag(tag_id, strict=True)
+    tag_name = tag_info['name']
+
+    start = time.time()
+    while True:
+        if builds and repo and repo != last_repo:
+            if koji.util.checkForBuilds(session, tag_id, builds,
+                                        repo['create_event'], latest=True):
+                return (True, "Successfully waited %s for %s to appear in the %s repo" %
+                        (koji.util.duration(start), builds_str, tag_name))
+
+        if (time.time() - start >= timeout * 60.0):
+            if builds:
+                return (False, "Unsuccessfully waited %s for %s to appear in the %s repo" %
+                        (koji.util.duration(start), builds_str, tag_name))
+            else:
+                return (False, "Unsuccessfully waited %s for a new %s repo" %
+                        (koji.util.duration(start), tag_name))
+
+        time.sleep(poll_interval)
+        last_repo = repo
+        repo = session.getRepo(tag_id)
+
+        if not builds:
+            if repo != last_repo:
+                return (True, "Successfully waited %s for a new %s repo" %
+                        (koji.util.duration(start), tag_name))
+
+
 def format_inheritance_flags(parent):
     """Return a human readable string of inheritance flags"""
     flags = ''

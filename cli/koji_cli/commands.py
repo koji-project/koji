@@ -45,6 +45,7 @@ from koji_cli.lib import (
     print_task_recurse,
     unique_path,
     warn,
+    wait_repo,
     watch_logs,
     watch_tasks,
     truncate_string
@@ -7044,8 +7045,6 @@ def anon_handle_wait_repo(options, session, args):
                            "value only")
     (suboptions, args) = parser.parse_args(args)
 
-    start = time.time()
-
     builds = [koji.parse_NVR(build) for build in suboptions.builds]
     if len(args) < 1:
         parser.error("Please specify a tag name")
@@ -7087,38 +7086,13 @@ def anon_handle_wait_repo(options, session, args):
                 warn("nvr %s is not current in tag %s\n  latest build in %s is %s" %
                      (expected_nvr, tag, tag, present_nvr))
 
-    last_repo = None
-    repo = session.getRepo(tag_id)
-
-    while True:
-        if builds and repo and repo != last_repo:
-            if koji.util.checkForBuilds(session, tag_id, builds, repo['create_event'],
-                                        latest=True):
-                if not suboptions.quiet:
-                    print("Successfully waited %s for %s to appear in the %s repo" %
-                          (koji.util.duration(start), koji.util.printList(suboptions.builds), tag))
-                return
-
-        if (time.time() - start) >= (suboptions.timeout * 60.0):
-            if not suboptions.quiet:
-                if builds:
-                    error("Unsuccessfully waited %s for %s to appear in the %s repo" %
-                          (koji.util.duration(start), koji.util.printList(suboptions.builds), tag))
-                else:
-                    error("Unsuccessfully waited %s for a new %s repo" %
-                          (koji.util.duration(start), tag))
-            error()
-
-        time.sleep(options.poll_interval)
-        last_repo = repo
-        repo = session.getRepo(tag_id)
-
-        if not builds:
-            if repo != last_repo:
-                if not suboptions.quiet:
-                    print("Successfully waited %s for a new %s repo" %
-                          (koji.util.duration(start), tag))
-                return
+    success, msg = wait_repo(session, tag_id, builds,
+                             poll_interval=options.poll_interval, timeout=suboptions.timeout)
+    if success:
+        if not suboptions.quiet:
+            print(msg)
+    else:
+        error('' if suboptions.quiet else msg)
 
 
 def handle_regen_repo(options, session, args):
