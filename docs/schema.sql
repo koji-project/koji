@@ -734,6 +734,7 @@ CREATE TABLE rpminfo (
 	CONSTRAINT rpminfo_unique_nvra UNIQUE (name,version,release,arch,external_repo_id)
 ) WITHOUT OIDS;
 CREATE INDEX rpminfo_build ON rpminfo(build_id);
+CREATE INDEX rpminfo_filename ON rpminfo((name || '-' || version || '-' || release || '.' || arch || '.rpm')) INCLUDE (id);
 
 -- sighash is the checksum of the signature header
 CREATE TABLE rpmsigs (
