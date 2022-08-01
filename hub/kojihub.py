@@ -12449,12 +12449,17 @@ class RootExports(object):
         if not packageID:
             return None
         st_complete = koji.BUILD_STATES['COMPLETE']
+        # we need to filter out builds without tasks (imports) as they'll reduce
+        # time average. CG imported builds often contain *_koji_task_id instead.
         query = """SELECT date_part('epoch', avg(build.completion_time - events.time))
                      FROM build
                      JOIN events ON build.create_event = events.id
                      WHERE build.pkg_id = %(packageID)i
                        AND build.state = %(st_complete)i
-                       AND build.task_id IS NOT NULL"""
+                       AND (
+                         build.task_id IS NOT NULL OR
+                         build.extra LIKE '%koji_task_id%'
+                       )"""
         if age is not None:
             query += " AND build.completion_time >  NOW() - '%s months'::interval" % int(age)
 
