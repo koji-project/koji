@@ -6952,50 +6952,49 @@ def anon_handle_download_task(options, session, args):
     for task in list_tasks:
         taskarch = task['arch']
         task_id = str(task['id'])
-        if len(suboptions.arches) == 0 or taskarch in suboptions.arches:
-            files = list_task_output_all_volumes(session, task["id"])
-            for filename in files:
-                if filename.endswith('src.rpm'):
-                    filetype = 'src.rpm'
-                else:
-                    filetype = filename.rsplit('.', 1)[1]
-                if suboptions.all and not (task['method'] in build_methods_list and
-                                           filetype in rpm_file_types):
-                    if filetype != 'log':
-                        for volume in files[filename]:
-                            if suboptions.dirpertask:
-                                new_filename = '%s/%s' % (task_id, filename)
-                            else:
-                                if taskarch not in filename and filetype != 'src.rpm':
-                                    part_filename = filename[:-len('.%s' % filetype)]
-                                    new_filename = "%s.%s.%s" % (part_filename,
-                                                                 taskarch, filetype)
-                                else:
-                                    new_filename = filename
-                            downloads.append((task, filename, volume, new_filename, task_id))
-                elif task['method'] in build_methods_list:
-                    if filetype in rpm_file_types:
-                        filearch = filename.split(".")[-2]
-                        for volume in files[filename]:
-                            if len(suboptions.arches) == 0 or filearch in suboptions.arches:
-                                if suboptions.dirpertask:
-                                    new_filename = '%s/%s' % (task_id, filename)
-                                else:
-                                    new_filename = filename
-                                downloads.append((task, filename, volume, new_filename,
-                                                  task_id))
-
-                if filetype == 'log' and suboptions.logs:
+        files = list_task_output_all_volumes(session, task["id"])
+        for filename in files:
+            if filename.endswith('src.rpm'):
+                filetype = 'src.rpm'
+            else:
+                filetype = filename.rsplit('.', 1)[1]
+            if suboptions.all and not (task['method'] in build_methods_list and
+                                       filetype in rpm_file_types):
+                if filetype != 'log':
                     for volume in files[filename]:
                         if suboptions.dirpertask:
                             new_filename = '%s/%s' % (task_id, filename)
                         else:
-                            if taskarch not in filename:
-                                part_filename = filename[:-len('.log')]
-                                new_filename = "%s.%s.log" % (part_filename, taskarch)
+                            if taskarch not in filename and filetype != 'src.rpm':
+                                part_filename = filename[:-len('.%s' % filetype)]
+                                new_filename = "%s.%s.%s" % (part_filename,
+                                                             taskarch, filetype)
                             else:
                                 new_filename = filename
                         downloads.append((task, filename, volume, new_filename, task_id))
+            elif task['method'] in build_methods_list:
+                if filetype in rpm_file_types:
+                    filearch = filename.split(".")[-2]
+                    for volume in files[filename]:
+                        if len(suboptions.arches) == 0 or filearch in suboptions.arches:
+                            if suboptions.dirpertask:
+                                new_filename = '%s/%s' % (task_id, filename)
+                            else:
+                                new_filename = filename
+                            downloads.append((task, filename, volume, new_filename,
+                                              task_id))
+
+            if filetype == 'log' and suboptions.logs:
+                for volume in files[filename]:
+                    if suboptions.dirpertask:
+                        new_filename = '%s/%s' % (task_id, filename)
+                    else:
+                        if taskarch not in filename:
+                            part_filename = filename[:-len('.log')]
+                            new_filename = "%s.%s.log" % (part_filename, taskarch)
+                        else:
+                            new_filename = filename
+                    downloads.append((task, filename, volume, new_filename, task_id))
 
     if len(downloads) == 0:
         print("No files for download found.")
