@@ -12458,7 +12458,7 @@ class RootExports(object):
                        AND build.state = %(st_complete)i
                        AND (
                          build.task_id IS NOT NULL OR
-                         build.extra LIKE '%koji_task_id%'
+                         build.extra LIKE '%%' || 'koji_task_id' || '%%'
                        )"""
         if age is not None:
             query += " AND build.completion_time >  NOW() - '%s months'::interval" % int(age)
