@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 
 import mock
-from six.moves import StringIO
 
 import koji
 from koji_cli.commands import handle_remove_sig
@@ -16,6 +15,11 @@ class TestRemoveSig(utils.CliTestCase):
         self.options.debug = False
         self.session = mock.MagicMock()
         self.session.getAPIVersion.return_value = koji.API_VERSION
+        self.error_format = """Usage: %s remove-sig [options] <rpm-id/n-v-r.a/rpminfo>
+(Specify the --help global option for a list of other help options)
+
+%s: error: {message}
+""" % (self.progname, self.progname)
 
     def test_remove_sig_help(self):
         self.assert_help(
@@ -32,18 +36,18 @@ Options:
   --all            Remove all signed copies for specified RPM
 """ % self.progname)
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_remove_sig_without_option(self, stderr):
-        expected = "Usage: %s remove-sig [options] <rpm-id/n-v-r.a/rpminfo>\n" \
-                   "(Specify the --help global option for a list of other help options)\n\n" \
-                   "%s: error: Please specify an RPM\n" % (self.progname, self.progname)
-        with self.assertRaises(SystemExit) as ex:
-            handle_remove_sig(self.options, self.session, [])
-        self.assertExitCode(ex, 2)
-        self.assert_console_message(stderr, expected)
+    def test_remove_sig_without_option(self):
+        arguments = []
+        self.assert_system_exit(
+            handle_remove_sig,
+            self.options, self.session, arguments,
+            stdout='',
+            stderr=self.format_error_message("Please specify an RPM"),
+            exit_code=2,
+            activate_session=None)
+        self.session.deleteRPMSig.assert_not_called()
 
-    @mock.patch('sys.stdout', new_callable=StringIO)
-    def test_remove_sig_non_exist_rpm(self, stdout):
+    def test_remove_sig_non_exist_rpm(self):
         rpm = '1234'
         expected = "No such rpm in system: %s\n" % rpm
         self.session.deleteRPMSig.side_effect = koji.GenericError('No such rpm: DATA')
@@ -53,7 +57,7 @@ Options:
             self.options,
             self.session,
             [rpm, '--all'],
-            stderr=self.format_error_message(expected),
+            stderr=expected,
             exit_code=1,
             activate_session=None)
         self.session.deleteRPMSig.assert_called_with('1234', sigkey=None, all_sigs=True)
@@ -64,8 +68,7 @@ Options:
         handle_remove_sig(self.options, self.session, [rpm, '--sigkey', 'testkey'])
         self.session.deleteRPMSig.assert_called_with('1', sigkey='testkey', all_sigs=False)
 
-    @mock.patch('sys.stdout', new_callable=StringIO)
-    def test_remove_sig_without_all_and_sigkey(self, stdout):
+    def test_remove_sig_without_all_and_sigkey(self):
         rpm = '1234'
         expected = "Either --sigkey or --all options must be given\n"
 
@@ -74,12 +77,11 @@ Options:
             self.options,
             self.session,
             [rpm],
-            stderr=self.format_error_message(expected),
+            stderr=expected,
             exit_code=1,
             activate_session=None)
 
-    @mock.patch('sys.stdout', new_callable=StringIO)
-    def test_remove_sig_with_all_and_sigkey(self, stdout):
+    def test_remove_sig_with_all_and_sigkey(self):
         rpm = '1234'
         expected = "Conflicting options specified\n"
 
@@ -88,6 +90,23 @@ Options:
             self.options,
             self.session,
             [rpm, '--all', '--sigkey', 'testkey'],
-            stderr=self.format_error_message(expected),
+            stderr=expected,
             exit_code=1,
             activate_session=None)
+
+    def test_remove_sig_signature_removal_failed(self):
+        rpm = '1234'
+        nvra = 'test-1.23-1.arch'
+        error_msg = "%s has no matching signatures to delete" % nvra
+        expected = "Signature removal failed: %s\n" % error_msg
+        self.session.deleteRPMSig.side_effect = koji.GenericError(error_msg)
+
+        self.assert_system_exit(
+            handle_remove_sig,
+            self.options,
+            self.session,
+            [rpm, '--all'],
+            stderr=expected,
+            exit_code=1,
+            activate_session=None)
+        self.session.deleteRPMSig.assert_called_with('1234', sigkey=None, all_sigs=True)
