@@ -1,7 +1,7 @@
 Migrating to Koji 1.29
 ======================
 
-You should consider the following changes when migrating to 1.28:
+You should consider the following changes when migrating to 1.29:
 
 DB Updates
 ----------
