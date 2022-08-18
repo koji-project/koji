@@ -2638,6 +2638,10 @@ def repoinfo(environ, repoID):
             values['url'] = pathinfo.distrepo(repo_info['id'], repo_info['tag_name'])
         else:
             values['url'] = pathinfo.repo(repo_info['id'], repo_info['tag_name'])
-        values['repo_json'] = os.path.join(pathinfo.repo(repo_info['id'], repo_info['tag_name']),
-                                           'repo.json')
+        if repo_info['dist']:
+            values['repo_json'] = os.path.join(
+                pathinfo.distrepo(repo_info['id'], repo_info['tag_name']), 'repo.json')
+        else:
+            values['repo_json'] = os.path.join(
+                pathinfo.repo(repo_info['id'], repo_info['tag_name']), 'repo.json')
     return _genHTML(environ, 'repoinfo.chtml')
