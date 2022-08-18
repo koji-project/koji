@@ -120,26 +120,29 @@ Default behavior without --all option downloads .rpm files only for build and bu
     def test_handle_download_task_parent(self):
         args = [str(self.parent_task_id), '--arch=noarch,x86_64']
         self.session.getTaskInfo.return_value = self.parent_task_info
-        self.session.getTaskChildren.return_value = [{'id': 22222,
-                                                      'method': 'buildArch',
-                                                      'arch': 'noarch',
-                                                      'state': 2},
-                                                     {'id': 33333,
-                                                      'method': 'buildArch',
-                                                      'arch': 'x86_64',
-                                                      'state': 2},
-                                                     {'id': 44444,
-                                                      'method': 'buildArch',
-                                                      'arch': 's390',
-                                                      'state': 2},
-                                                     {'id': 55555,
-                                                      'method': 'tagBuild',
-                                                      'arch': 'noarch',
-                                                      'state': 2}
-                                                     ]
+        self.session.getTaskChildren.return_value = [
+            {'id': 22222,
+             'method': 'buildArch',
+             'arch': 'noarch',
+             'state': 2},
+            {'id': 33333,
+             'method': 'buildArch',
+             'arch': 'x86_64',
+             'state': 2},
+            {'id': 44444,
+             'method': 'buildArch',
+             'arch': 's390',
+             'state': 2},
+            {'id': 55555,
+             'method': 'tagBuild',
+             'arch': 'noarch',
+             'state': 2}
+        ]
         self.list_task_output_all_volumes.side_effect = [
+            {},
             {'somerpm.src.rpm': ['DEFAULT', 'vol1']},
             {'somerpm.x86_64.rpm': ['DEFAULT', 'vol2']},
+            {'somerpm.s390.rpm': ['DEFAULT']},
             {'somerpm.noarch.rpm': ['vol3'],
              'somelog.log': ['DEFAULT', 'vol1']},
         ]
@@ -156,8 +159,10 @@ Default behavior without --all option downloads .rpm files only for build and bu
         self.session.getTaskInfo.assert_called_once_with(self.parent_task_id)
         self.session.getTaskChildren.assert_called_once_with(self.parent_task_id)
         self.assertEqual(self.list_task_output_all_volumes.mock_calls, [
+            call(self.session, 123333),
             call(self.session, 22222),
             call(self.session, 33333),
+            call(self.session, 44444),
             call(self.session, 55555)])
         self.assertListEqual(self.download_file.mock_calls, [
             call('https://topurl/work/tasks/3333/33333/somerpm.x86_64.rpm',
@@ -169,10 +174,11 @@ Default behavior without --all option downloads .rpm files only for build and bu
     def test_handle_download_task_log(self):
         args = [str(self.parent_task_id), '--log']
         self.session.getTaskInfo.return_value = self.parent_task_info
-        self.session.getTaskChildren.return_value = [{'id': 22222,
-                                                      'method': 'buildArch',
-                                                      'arch': 'noarch',
-                                                      'state': 2}]
+        self.session.getTaskChildren.return_value = [
+            {'id': 22222,
+             'method': 'buildArch',
+             'arch': 'noarch',
+             'state': 2}]
         self.list_task_output_all_volumes.side_effect = [{}, {
             'somerpm.src.rpm': ['DEFAULT', 'vol1'],
             'somerpm.x86_64.rpm': ['DEFAULT', 'vol2'],
@@ -229,15 +235,17 @@ Default behavior without --all option downloads .rpm files only for build and bu
         self.ensure_connection.assert_called_once_with(self.session, self.options)
         self.session.getTaskInfo.assert_called_once_with(self.parent_task_id)
         self.session.getTaskChildren.assert_called_once_with(self.parent_task_id)
-        self.list_task_output_all_volumes.assert_not_called()
+        self.list_task_output_all_volumes.assert_called_once_with(
+            self.session, self.parent_task_id)
         self.download_file.assert_not_called()
 
     def test_handle_download_parent_not_finished(self):
         args = [str(self.parent_task_id)]
-        self.session.getTaskInfo.return_value = {'id': self.parent_task_id,
-                                                 'method': 'buildArch',
-                                                 'arch': 'taskarch',
-                                                 'state': 3}
+        self.session.getTaskInfo.return_value = {
+            'id': self.parent_task_id,
+            'method': 'buildArch',
+            'arch': 'taskarch',
+            'state': 3}
         self.list_task_output_all_volumes.return_value = {
             'somerpm.src.rpm': ['DEFAULT', 'vol1'],
             'somerpm.x86_64.rpm': ['DEFAULT', 'vol2'],
@@ -265,10 +273,11 @@ Default behavior without --all option downloads .rpm files only for build and bu
     def test_handle_download_child_not_finished(self):
         args = [str(self.parent_task_id)]
         self.session.getTaskInfo.return_value = self.parent_task_info
-        self.session.getTaskChildren.return_value = [{'id': 22222,
-                                                      'method': 'buildArch',
-                                                      'arch': 'noarch',
-                                                      'state': 3}]
+        self.session.getTaskChildren.return_value = [{
+            'id': 22222,
+            'method': 'buildArch',
+            'arch': 'noarch',
+            'state': 3}]
         self.list_task_output_all_volumes.side_effect = [
             {'somerpm.src.rpm': ['DEFAULT', 'vol1']},
             {'somenextrpm.src.rpm': ['DEFAULT', 'vol1']}]
@@ -374,26 +383,29 @@ Options:
     def test_handle_download_task_parent_dirpertask(self):
         args = [str(self.parent_task_id), '--arch=noarch,x86_64', '--dirpertask', '--log']
         self.session.getTaskInfo.return_value = self.parent_task_info
-        self.session.getTaskChildren.return_value = [{'id': 22222,
-                                                      'method': 'buildArch',
-                                                      'arch': 'noarch',
-                                                      'state': 2},
-                                                     {'id': 33333,
-                                                      'method': 'buildArch',
-                                                      'arch': 'x86_64',
-                                                      'state': 2},
-                                                     {'id': 44444,
-                                                      'method': 'buildArch',
-                                                      'arch': 's390',
-                                                      'state': 2},
-                                                     {'id': 55555,
-                                                      'method': 'tagBuild',
-                                                      'arch': 'noarch',
-                                                      'state': 2}
-                                                     ]
+        self.session.getTaskChildren.return_value = [
+            {'id': 22222,
+             'method': 'buildArch',
+             'arch': 'noarch',
+             'state': 2},
+            {'id': 33333,
+             'method': 'buildArch',
+             'arch': 'x86_64',
+             'state': 2},
+            {'id': 44444,
+             'method': 'buildArch',
+             'arch': 's390',
+             'state': 2},
+            {'id': 55555,
+             'method': 'tagBuild',
+             'arch': 'noarch',
+             'state': 2}
+        ]
         self.list_task_output_all_volumes.side_effect = [
+            {},
             {'somerpm.src.rpm': ['DEFAULT', 'vol1'], 'somerpm.noarch.rpm': ['DEFAULT']},
             {'somerpm.x86_64.rpm': ['DEFAULT', 'vol2']},
+            {'somerpm.s390.rpm': ['DEFAULT']},
             {'somerpm.noarch.rpm': ['vol3'],
              'somelog.log': ['DEFAULT', 'vol1']},
         ]
@@ -410,8 +422,10 @@ Options:
         self.session.getTaskInfo.assert_called_once_with(self.parent_task_id)
         self.session.getTaskChildren.assert_called_once_with(self.parent_task_id)
         self.assertEqual(self.list_task_output_all_volumes.mock_calls, [
+            call(self.session, 123333),
             call(self.session, 22222),
             call(self.session, 33333),
+            call(self.session, 44444),
             call(self.session, 55555)])
         self.assertListEqual(self.download_file.mock_calls, [
             call('https://topurl/work/tasks/2222/22222/somerpm.noarch.rpm',
@@ -430,26 +444,29 @@ Options:
     def test_handle_download_task_parent_all(self):
         args = [str(self.parent_task_id), '--arch=noarch,x86_64', '--all']
         self.session.getTaskInfo.return_value = self.parent_task_info
-        self.session.getTaskChildren.return_value = [{'id': 22222,
-                                                      'method': 'buildArch',
-                                                      'arch': 'noarch',
-                                                      'state': 2},
-                                                     {'id': 33333,
-                                                      'method': 'buildArch',
-                                                      'arch': 'x86_64',
-                                                      'state': 2},
-                                                     {'id': 44444,
-                                                      'method': 'buildArch',
-                                                      'arch': 's390',
-                                                      'state': 2},
-                                                     {'id': 55555,
-                                                      'method': 'tagBuild',
-                                                      'arch': 'noarch',
-                                                      'state': 2}
-                                                     ]
+        self.session.getTaskChildren.return_value = [
+            {'id': 22222,
+             'method': 'buildArch',
+             'arch': 'noarch',
+             'state': 2},
+            {'id': 33333,
+             'method': 'buildArch',
+             'arch': 'x86_64',
+             'state': 2},
+            {'id': 44444,
+             'method': 'buildArch',
+             'arch': 's390',
+             'state': 2},
+            {'id': 55555,
+             'method': 'tagBuild',
+             'arch': 'noarch',
+             'state': 2}
+        ]
         self.list_task_output_all_volumes.side_effect = [
+            {},
             {'somerpm.src.rpm': ['DEFAULT', 'vol1']},
             {'somerpm.json': ['DEFAULT', 'vol2']},
+            {'somerpm.s390.rpm': ['DEFAULT']},
             {'somerpm.noarch.rpm': ['vol3'],
              'somelog.log': ['DEFAULT', 'vol1']},
         ]
@@ -466,8 +483,10 @@ Options:
         self.session.getTaskInfo.assert_called_once_with(self.parent_task_id)
         self.session.getTaskChildren.assert_called_once_with(self.parent_task_id)
         self.assertEqual(self.list_task_output_all_volumes.mock_calls, [
+            call(self.session, 123333),
             call(self.session, 22222),
             call(self.session, 33333),
+            call(self.session, 44444),
             call(self.session, 55555)])
         self.assertListEqual(self.download_file.mock_calls, [
             call('https://topurl/work/tasks/3333/33333/somerpm.json',
@@ -504,23 +523,24 @@ Options:
     def test_handle_download_task_parent_dirpertask_all(self):
         args = [str(self.parent_task_id), '--dirpertask', '--all']
         self.session.getTaskInfo.return_value = self.parent_task_info
-        self.session.getTaskChildren.return_value = [{'id': 22222,
-                                                      'method': 'buildArch',
-                                                      'arch': 'noarch',
-                                                      'state': 2},
-                                                     {'id': 33333,
-                                                      'method': 'buildArch',
-                                                      'arch': 'x86_64',
-                                                      'state': 2},
-                                                     {'id': 44444,
-                                                      'method': 'buildArch',
-                                                      'arch': 's390',
-                                                      'state': 2},
-                                                     {'id': 55555,
-                                                      'method': 'tagBuild',
-                                                      'arch': 'noarch',
-                                                      'state': 2}
-                                                     ]
+        self.session.getTaskChildren.return_value = [
+            {'id': 22222,
+             'method': 'buildArch',
+             'arch': 'noarch',
+             'state': 2},
+            {'id': 33333,
+             'method': 'buildArch',
+             'arch': 'x86_64',
+             'state': 2},
+            {'id': 44444,
+             'method': 'buildArch',
+             'arch': 's390',
+             'state': 2},
+            {'id': 55555,
+             'method': 'tagBuild',
+             'arch': 'noarch',
+             'state': 2}
+        ]
         self.list_task_output_all_volumes.side_effect = [
             {},
             {'somerpm.src.rpm': ['DEFAULT', 'vol1'], 'somerpm.noarch.rpm': ['DEFAULT']},
@@ -568,11 +588,12 @@ Options:
     def test_handle_download_task_log_with_arch(self):
         args = [str(self.parent_task_id), '--arch=noarch', '--log']
         self.session.getTaskInfo.return_value = self.parent_task_info
-        self.session.getTaskChildren.return_value = [{'id': 22222,
-                                                      'method': 'buildArch',
-                                                      'arch': 'noarch',
-                                                      'state': 2}]
-        self.list_task_output_all_volumes.side_effect = [{
+        self.session.getTaskChildren.return_value = [
+            {'id': 22222,
+             'method': 'buildArch',
+             'arch': 'noarch',
+             'state': 2}]
+        self.list_task_output_all_volumes.side_effect = [{}, {
             'somerpm.src.rpm': ['DEFAULT', 'vol1'],
             'somerpm.x86_64.rpm': ['DEFAULT', 'vol2'],
             'somerpm.noarch.rpm': ['vol3'],
@@ -604,23 +625,24 @@ Options:
     def test_handle_download_task_all_log(self):
         args = [str(self.parent_task_id), '--all', '--log']
         self.session.getTaskInfo.return_value = self.parent_task_info
-        self.session.getTaskChildren.return_value = [{'id': 22222,
-                                                      'method': 'buildArch',
-                                                      'arch': 'noarch',
-                                                      'state': 2},
-                                                     {'id': 33333,
-                                                      'method': 'buildArch',
-                                                      'arch': 'x86_64',
-                                                      'state': 2},
-                                                     {'id': 44444,
-                                                      'method': 'buildArch',
-                                                      'arch': 's390',
-                                                      'state': 2},
-                                                     {'id': 55555,
-                                                      'method': 'tagBuild',
-                                                      'arch': 'noarch',
-                                                      'state': 2}
-                                                     ]
+        self.session.getTaskChildren.return_value = [
+            {'id': 22222,
+             'method': 'buildArch',
+             'arch': 'noarch',
+             'state': 2},
+            {'id': 33333,
+             'method': 'buildArch',
+             'arch': 'x86_64',
+             'state': 2},
+            {'id': 44444,
+             'method': 'buildArch',
+             'arch': 's390',
+             'state': 2},
+            {'id': 55555,
+             'method': 'tagBuild',
+             'arch': 'noarch',
+             'state': 2}
+        ]
         self.list_task_output_all_volumes.side_effect = [
             {},
             {'somerpm.src.rpm': ['DEFAULT', 'vol1'], 'somerpm.noarch.rpm': ['DEFAULT']},
@@ -671,23 +693,24 @@ Options:
     def test_handle_download_task_parent_dirpertask_all_conflict_names(self):
         args = [str(self.parent_task_id), '--all']
         self.session.getTaskInfo.return_value = self.parent_task_info
-        self.session.getTaskChildren.return_value = [{'id': 22222,
-                                                      'method': 'buildArch',
-                                                      'arch': 'noarch',
-                                                      'state': 2},
-                                                     {'id': 33333,
-                                                      'method': 'buildArch',
-                                                      'arch': 'x86_64',
-                                                      'state': 2},
-                                                     {'id': 44444,
-                                                      'method': 'buildArch',
-                                                      'arch': 's390',
-                                                      'state': 2},
-                                                     {'id': 55555,
-                                                      'method': 'tagBuild',
-                                                      'arch': 'noarch',
-                                                      'state': 2}
-                                                     ]
+        self.session.getTaskChildren.return_value = [
+            {'id': 22222,
+             'method': 'buildArch',
+             'arch': 'noarch',
+             'state': 2},
+            {'id': 33333,
+             'method': 'buildArch',
+             'arch': 'x86_64',
+             'state': 2},
+            {'id': 44444,
+             'method': 'buildArch',
+             'arch': 's390',
+             'state': 2},
+            {'id': 55555,
+             'method': 'tagBuild',
+             'arch': 'noarch',
+             'state': 2}
+        ]
         self.list_task_output_all_volumes.side_effect = [
             {},
             {'somerpm.src.rpm': ['DEFAULT', 'vol1'], 'somerpm.noarch.rpm': ['DEFAULT']},
