@@ -20,10 +20,11 @@ class TestDeleteTag(unittest.TestCase):
         self.updates = []
         self.get_tag = mock.patch('kojihub.get_tag').start()
         self.context = mock.patch('kojihub.context').start()
+        self.context_db = mock.patch('koji.db.context').start()
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"
         self.context.session.assertPerm = mock.MagicMock()
-        self.context.session.assertLogin = mock.MagicMock()
+        self.context_db.session.assertLogin = mock.MagicMock()
 
     def tearDown(self):
         mock.patch.stopall()
@@ -37,8 +38,8 @@ class TestDeleteTag(unittest.TestCase):
 
     def test_good_tag(self):
         self.get_tag.return_value = {'id': 'TAGID'}
-        self.context.event_id = "12345"
-        self.context.session.user_id = "42"
+        self.context_db.event_id = "12345"
+        self.context_db.session.user_id = "42"
         data = {'revoker_id': '42', 'revoke_event': '12345'}
         kojihub.delete_tag('goodtag')
         for u in self.updates:

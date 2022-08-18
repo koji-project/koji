@@ -30,9 +30,10 @@ class TestEditHost(unittest.TestCase):
                                           side_effect=self.getUpdate).start()
         self.updates = []
         self.context = mock.patch('kojihub.context').start()
+        self.context_db = mock.patch('koji.db.context').start()
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"
-        self.context.session.assertLogin = mock.MagicMock()
+        self.context_db.session.assertLogin = mock.MagicMock()
         self.context.session.assertPerm = mock.MagicMock()
         self.exports = kojihub.RootExports()
         self.get_host = mock.patch('kojihub.get_host').start()
@@ -94,8 +95,8 @@ class TestEditHost(unittest.TestCase):
     def test_edit_host_valid(self):
         kojihub.get_host = mock.MagicMock()
         kojihub.get_host.return_value = self.hostinfo
-        self.context.event_id = 42
-        self.context.session.user_id = 23
+        self.context_db.event_id = 42
+        self.context_db.session.user_id = 23
 
         r = self.exports.editHost('hostname', arches='x86_64 i386', capacity=12.0,
                                   comment='comment_new', non_existing_kw='bogus')
@@ -140,8 +141,8 @@ class TestEditHost(unittest.TestCase):
     def test_edit_host_no_change(self):
         kojihub.get_host = mock.MagicMock()
         kojihub.get_host.return_value = self.hostinfo
-        self.context.event_id = 42
-        self.context.session.user_id = 23
+        self.context_db.event_id = 42
+        self.context_db.session.user_id = 23
 
         r = self.exports.editHost('hostname')
 

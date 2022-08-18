@@ -344,7 +344,7 @@ class ModXMLRPCRequestHandler(object):
         results and errors, and return those as a list."""
         results = []
         for call in calls:
-            savepoint = kojihub.Savepoint('multiCall_loop')
+            savepoint = koji.db.Savepoint('multiCall_loop')
             try:
                 result = self._dispatch(call['methodName'], call['params'])
             except Fault as fault:

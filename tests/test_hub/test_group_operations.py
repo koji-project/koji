@@ -7,6 +7,7 @@ QP = kojihub.QueryProcessor
 IP = kojihub.InsertProcessor
 UP = kojihub.UpdateProcessor
 
+
 class TestGrouplist(unittest.TestCase):
     def getQuery(self, *args, **kwargs):
         query = QP(*args, **kwargs)
@@ -40,6 +41,7 @@ class TestGrouplist(unittest.TestCase):
 
     def setUp(self):
         self.context = mock.patch('kojihub.context').start()
+        self.context_db = mock.patch('koji.db.context').start()
         self.get_tag = mock.patch('kojihub.get_tag').start()
         self.lookup_tag = mock.patch('kojihub.lookup_tag').start()
         self.lookup_group = mock.patch('kojihub.lookup_group').start()
@@ -47,38 +49,40 @@ class TestGrouplist(unittest.TestCase):
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"
         self.context.session.assertPerm = mock.MagicMock()
-        self.context.session.assertLogin = mock.MagicMock()
+        self.context_db.session.assertLogin = mock.MagicMock()
 
         self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
-                side_effect=self.getQuery).start()
+                                         side_effect=self.getQuery).start()
         self.queries = []
         self.InsertProcessor = mock.patch('kojihub.InsertProcessor',
-                side_effect=self.getInsert).start()
+                                          side_effect=self.getInsert).start()
         self.inserts = []
         self.UpdateProcessor = mock.patch('kojihub.UpdateProcessor',
-                side_effect=self.getUpdate).start()
+                                          side_effect=self.getUpdate).start()
         self.updates = []
+        self.tag = 'tag'
+        self.group = 'group'
+        self.taginfo = {'name': self.tag, 'id': 1}
+        self.groupinfo = {'name': self.group, 'id': 2}
 
     def tearDown(self):
         mock.patch.stopall()
 
     def test_grplist_add(self):
-        tag = 'tag'
-        group = 'group'
-        self.get_tag.return_value = {'name': 'tag', 'id': 'tag_id'}
-        self.lookup_group.return_value = {'name': 'group', 'id': 'group_id'}
+        self.get_tag.return_value = self.taginfo
+        self.lookup_group.return_value = self.groupinfo
         self.get_tag_groups.return_value = {}
-        self.context.event_id = 42
-        self.context.session.user_id = 24
+        self.context_db.event_id = 42
+        self.context_db.session.user_id = 24
 
-        kojihub.grplist_add(tag, group)
+        kojihub.grplist_add(self.tag, self.group)
 
         # what was called
         self.context.session.assertPerm.assert_called_once_with('tag')
-        self.get_tag.assert_called_once_with(tag, strict=True)
-        self.lookup_group.assert_called_once_with(group, create=True)
-        self.get_tag_groups.assert_called_with('tag_id', inherit=True,
-                incl_pkgs=False, incl_reqs=False)
+        self.get_tag.assert_called_once_with(self.tag, strict=True)
+        self.lookup_group.assert_called_once_with(self.group, create=True)
+        self.get_tag_groups.assert_called_with(self.taginfo['id'], inherit=True, incl_pkgs=False,
+                                               incl_reqs=False)
         # db
         # revoke
         self.assertEqual(len(self.updates), 1)
@@ -96,8 +100,8 @@ class TestGrouplist(unittest.TestCase):
             'uservisible': True,
             'create_event': 42,
             'creator_id': 24,
-            'tag_id': 'tag_id',
-            'group_id': 'group_id',
+            'tag_id': self.taginfo['id'],
+            'group_id': self.groupinfo['id'],
             'blocked': False,
         }
         self.assertEqual(insert.table, 'group_config')
@@ -107,37 +111,35 @@ class TestGrouplist(unittest.TestCase):
     def test_grplist_add_no_admin(self):
         self.context.session.assertPerm.side_effect = koji.GenericError
         with self.assertRaises(koji.GenericError):
-            kojihub.grplist_add('tag', 'group')
-        self.context.session.assertPerm.assert_called_once_with('tag')
+            kojihub.grplist_add(self.tag, self.group)
+        self.context.session.assertPerm.assert_called_once_with(self.tag)
         self.assertEqual(len(self.inserts), 0)
         self.assertEqual(len(self.updates), 0)
 
     def test_grplist_add_no_tag(self):
         self.get_tag.side_effect = koji.GenericError
         with self.assertRaises(koji.GenericError):
-            kojihub.grplist_add('tag', 'group')
-        self.context.session.assertPerm.assert_called_once_with('tag')
+            kojihub.grplist_add(self.tag, self.group)
+        self.context.session.assertPerm.assert_called_once_with(self.tag)
         self.assertEqual(len(self.inserts), 0)
         self.assertEqual(len(self.updates), 0)
 
     def test_grplist_block(self):
         # identical with test_grplist_add except blocked=True
-        tag = 'tag'
-        group = 'group'
-        self.get_tag.return_value = {'name': 'tag', 'id': 'tag_id'}
-        self.lookup_group.return_value = {'name': 'group', 'id': 'group_id'}
+        self.get_tag.return_value = self.taginfo
+        self.lookup_group.return_value = self.groupinfo
         self.get_tag_groups.return_value = {}
-        self.context.event_id = 42
-        self.context.session.user_id = 24
+        self.context_db.event_id = 42
+        self.context_db.session.user_id = 24
 
-        kojihub.grplist_block(tag, group)
+        kojihub.grplist_block(self.tag, self.group)
 
         # what was called
         self.context.session.assertPerm.assert_called_once_with('tag')
-        self.get_tag.assert_called_once_with(tag, strict=True)
-        self.lookup_group.assert_called_once_with(group, create=True)
-        self.get_tag_groups.assert_called_with('tag_id', inherit=True,
-                incl_pkgs=False, incl_reqs=False)
+        self.get_tag.assert_called_once_with(self.tag, strict=True)
+        self.lookup_group.assert_called_once_with(self.group, create=True)
+        self.get_tag_groups.assert_called_with(self.taginfo['id'], inherit=True, incl_pkgs=False,
+                                               incl_reqs=False)
         # db
         # revoke
         self.assertEqual(len(self.updates), 1)
@@ -155,8 +157,8 @@ class TestGrouplist(unittest.TestCase):
             'uservisible': True,
             'create_event': 42,
             'creator_id': 24,
-            'tag_id': 'tag_id',
-            'group_id': 'group_id',
+            'tag_id': self.taginfo['id'],
+            'group_id': self.groupinfo['id'],
             'blocked': True,
         }
         self.assertEqual(insert.table, 'group_config')
@@ -164,19 +166,17 @@ class TestGrouplist(unittest.TestCase):
         self.assertEqual(insert.rawdata, {})
 
     def test_grplist_remove(self):
-        tag = 'tag'
-        group = 'group'
-        self.get_tag.return_value = {'name': 'tag', 'id': 'tag_id'}
-        self.lookup_group.return_value = {'name': 'group', 'id': 'group_id'}
-        self.context.event_id = 42
-        self.context.session.user_id = 24
+        self.get_tag.return_value = self.taginfo
+        self.lookup_group.return_value = self.groupinfo
+        self.context_db.event_id = 42
+        self.context_db.session.user_id = 24
 
-        kojihub.grplist_remove(tag, group)
+        kojihub.grplist_remove(self.tag, self.group)
 
         # what was called
-        self.context.session.assertPerm.assert_called_once_with('tag')
-        self.get_tag.assert_called_once_with(tag, strict=True)
-        self.lookup_group.assert_called_once_with(group, strict=True)
+        self.context.session.assertPerm.assert_called_once_with(self.tag)
+        self.get_tag.assert_called_once_with(self.tag, strict=True)
+        self.lookup_group.assert_called_once_with(self.group, strict=True)
 
         # db
         self.assertEqual(len(self.queries), 1)
@@ -197,7 +197,7 @@ class TestGrouplist(unittest.TestCase):
         self.reset_db_processors()
         with mock.patch('kojihub.QueryProcessor', side_effect=self.getEmptyQuery):
             with self.assertRaises(koji.GenericError) as cm:
-                kojihub.grplist_remove(tag, group)
+                kojihub.grplist_remove(self.tag, self.group)
 
         self.assertEqual(len(self.queries), 1)
         self.assertEqual(len(self.inserts), 0)
@@ -209,7 +209,7 @@ class TestGrouplist(unittest.TestCase):
         self.reset_db_processors()
         with mock.patch('kojihub.QueryProcessor',
                         side_effect=self.getEmptyQuery):
-            kojihub.grplist_remove(tag, group, force=True)
+            kojihub.grplist_remove(self.tag, self.group, force=True)
 
         self.assertEqual(len(self.queries), 0)
         self.assertEqual(len(self.inserts), 0)
@@ -217,27 +217,23 @@ class TestGrouplist(unittest.TestCase):
 
     def test_grplist_unblock(self):
         # identical with test_grplist_add except blocked=True
-        tag = 'tag'
-        group = 'group'
-        self.lookup_tag.return_value = {'name': 'tag', 'id': 'tag_id'}
-        self.lookup_group.return_value = {'name': 'group', 'id': 'group_id'}
-        #self.context.event_id = 42
-        #self.context.session.user_id = 24
+        self.lookup_tag.return_value = self.taginfo
+        self.lookup_group.return_value = self.groupinfo
 
         # will fail for non-blocked group
         with self.assertRaises(koji.GenericError):
-            kojihub.grplist_unblock(tag, group)
+            kojihub.grplist_unblock(self.tag, self.group)
 
         # what was called
         self.context.session.assertPerm.assert_called_once_with('tag')
-        self.lookup_tag.assert_called_once_with(tag, strict=True)
-        self.lookup_group.assert_called_once_with(group, strict=True)
+        self.lookup_tag.assert_called_once_with(self.tag, strict=True)
+        self.lookup_group.assert_called_once_with(self.group, strict=True)
 
         # db
         self.assertEqual(len(self.queries), 1)
         query = self.queries[0]
         self.assertEqual(query.tables, ['group_config'])
-        self.assertEqual(query.joins,None)
+        self.assertEqual(query.joins, None)
         self.assertEqual(query.clauses,
                          ['active = TRUE', 'group_id=%(grp_id)s', 'tag_id=%(tag_id)s'])
         self.assertEqual(len(self.updates), 0)
@@ -260,7 +256,7 @@ class TestGrouplist(unittest.TestCase):
         }
         self.get_tag_groups.return_value = {1: group}
 
-        r = kojihub.readTagGroups('tag')
+        r = kojihub.readTagGroups(self.tag)
         self.assertEqual(r, [{'name': 'a', 'packagelist': [], 'grouplist': [], 'blocked': False}])
 
     def test_readTagGroups_blocked(self):
@@ -273,10 +269,10 @@ class TestGrouplist(unittest.TestCase):
         self.get_tag_groups.return_value = {1: group.copy()}
 
         # without blocked
-        r = kojihub.readTagGroups('tag')
+        r = kojihub.readTagGroups(self.tag)
         self.assertEqual(r, [])
 
         # with blocked
         self.get_tag_groups.return_value = {1: group.copy()}
-        r = kojihub.readTagGroups('tag', incl_blocked=True)
+        r = kojihub.readTagGroups(self.tag, incl_blocked=True)
         self.assertEqual(r, [{'name': 'a', 'packagelist': [], 'grouplist': [], 'blocked': True}])

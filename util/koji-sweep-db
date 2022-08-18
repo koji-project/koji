@@ -1,62 +1,73 @@
-#!/usr/bin/python2
+#!/usr/bin/python3
 
 import os
 import xmlrpc.client
 from optparse import OptionParser
+from koji.context import context
 
 import koji.db
 
 
 def clean_sessions(cursor, vacuum, test, age):
-    q = " FROM sessions WHERE update_time < NOW() - '%s days'::interval" % int(age)
+    table = 'sessions'
+    clauses = [f"update_time < NOW() - '{int(age)} days'::interval"]
     if options.verbose:
-        cursor.execute("SELECT COUNT(*) " + q)
-        rows = cursor.fetchall()[0][0]
-        print("Deleting %d sessions" % rows)
+        query = koji.db.QueryProcessor(clauses=clauses, opts={'countOnly': True},
+                                       tables=[table], values=locals())
+        rows = query.iterate()
+        print(f"Deleting {rows} sessions")
 
     if not test:
-        cursor.execute("DELETE " + q)
+        cursor.execute(
+            f"DELETE FROM sessions WHERE update_time < NOW() - '{int(age)} days'::interval")
         if vacuum:
             cursor.execute("VACUUM ANALYZE sessions")
 
 
 def clean_reservations(cursor, vacuum, test, age):
-    q = " FROM build_reservations WHERE created < NOW() - '%s days'::interval" % int(age)
+    table = 'build_reservations'
+    clauses = [f"created < NOW() - '{int(age)} days'::interval"]
     if options.verbose:
-        cursor.execute("SELECT COUNT(*) " + q)
-        rows = cursor.fetchall()[0][0]
-        print("Deleting %d build reservations" % rows)
+        query = koji.db.QueryProcessor(clauses=clauses, opts={'countOnly': True},
+                                       tables=[table], values=locals())
+        rows = query.iterate()
+        print(f"Deleting {rows} build reservations")
 
     if not test:
-        cursor.execute("DELETE " + q)
+        cursor.execute(
+            f"DELETE FROM build_reservations WHERE created < NOW() - '{int(age)} days'::interval")
         if vacuum:
             cursor.execute("VACUUM ANALYZE build_reservations")
 
 
 def clean_notification_tasks(cursor, vacuum, test, age):
-    q = " FROM task WHERE method = 'tagNotification' AND" + \
-        " completion_time < NOW() - '%s days'::interval" % int(age)
+    table = 'task'
+    clauses = ["method = 'tagNotification'",
+               f"completion_time < NOW() - '{int(age)} days'::interval"]
     if options.verbose:
-        cursor.execute("SELECT COUNT(*) " + q)
-        rows = cursor.fetchall()[0][0]
-        print("Deleting %d tagNotification tasks" % rows)
+        query = koji.db.QueryProcessor(clauses=clauses, opts={'countOnly': True},
+                                       tables=[table], values=locals())
+        rows = query.iterate()
+        print(f"Deleting {rows} tagNotification tasks")
 
     if not test:
         # cascade
-        cursor.execute("DELETE " + q)
+        cursor.execute(f"DELETE FROM task WHERE method = 'tagNotification' AND "
+                       f"completion_time < NOW() - '{int(age)} days'::interval")
         if vacuum:
             cursor.execute("VACUUM ANALYZE task")
 
 
 def clean_scratch_tasks(cursor, vacuum, test, age):
-    q = """ FROM task
-              WHERE method = 'build' AND
-              completion_time < NOW()  - '%s days'::interval AND
-              request LIKE '%%%%<name>scratch</name>%%%%'""" % int(age)
+    table = 'task'
+    clauses = ["method = 'build'",
+               f"completion_time < NOW() - '{int(age)} days'::interval",
+               "request LIKE '%%%%<name>scratch</name>%%%%'"]
     if options.verbose:
-        cursor.execute("SELECT COUNT(*) " + q)
-        rows = cursor.fetchall()[0][0]
-        print("Deleting %d scratch build tasks" % rows)
+        query = koji.db.QueryProcessor(clauses=clauses, opts={'countOnly': True},
+                                       tables=[table], values=locals())
+        rows = query.iterate()
+        print(f"Deleting {rows} scratch build tasks")
 
     if test:
         return
@@ -65,14 +76,19 @@ def clean_scratch_tasks(cursor, vacuum, test, age):
     ids = []
     # will be dropped automatically in the end of script/connection
     cursor.execute("CREATE TEMPORARY TABLE temp_scratch_tasks (task_id INTEGER NOT NULL)")
-    cursor.execute("SELECT id, request " + q)
-    for row in cursor.fetchall():
+    query = koji.db.QueryProcessor(columns=['id', 'request'], clauses=clauses,
+                                   tables=[table], values=locals())
+    rows = query.execute()
+    for row in rows:
         task_id, request = row
         try:
             params, method = xmlrpc.client.loads(request)
             opts = params[2]
             if opts['scratch']:
-                cursor.execute("INSERT INTO temp_scratch_tasks VALUES (%s)", (task_id,))
+                insert = koji.db.InsertProcessor('temp_scratch_tasks')
+                insert.set((task_id,))
+                insert.make_create()
+                insert.execute()
                 ids.append(task_id)
         except Exception:
             continue
@@ -82,13 +98,21 @@ def clean_scratch_tasks(cursor, vacuum, test, age):
         if not parents:
             break
         children = []
-        cursor.execute("SELECT id FROM task WHERE parent IN %s", (parents,))
-        for row in cursor.fetchall():
+        string_parents = ', '.join(parents)
+        query = koji.db.QueryProcessor(columns=['id'],
+                                       clauses=[f"parent IN ({int(age)})"],
+                                       tables=['task'],
+                                       values=locals())
+        rows = query.execute()
+        for row in rows:
             children.append(row[0])
         parents = children
         if children:
             values = ', '.join(["(%d)" % task_id for task_id in children])
-            cursor.execute("INSERT INTO temp_scratch_tasks VALUES %s" % values)
+            insert = koji.db.InsertProcessor('temp_scratch_tasks')
+            insert.set(values)
+            insert.make_create()
+            insert.execute()
 
     if not ids:
         return
@@ -106,17 +130,19 @@ def clean_scratch_tasks(cursor, vacuum, test, age):
 
 
 def clean_buildroots(cursor, vacuum, test):
-    q = " FROM buildroot " \
-        "WHERE cg_id IS NULL AND id NOT IN (SELECT buildroot_id FROM standard_buildroot)"
-
     if options.verbose:
-        cursor.execute("SELECT COUNT(*) " + q)
-        rows = cursor.fetchall()[0][0]
-        print("Deleting %d buildroots" % rows)
+        clauses = ["cg_id IS NULL",
+                   "id NOT IN (SELECT buildroot_id FROM standard_buildroot)"]
+        query = koji.db.QueryProcessor(clauses=clauses, opts={'countOnly': True},
+                                       tables=['buildroot'], values=locals())
+        rows = query.iterate()
+        print(f"Deleting {rows} buildroots")
 
     if not test:
-        cursor.execute("DELETE FROM buildroot_listing WHERE buildroot_id IN (SELECT id %s)" % q)
-        cursor.execute("DELETE " + q)
+        q = " FROM buildroot WHERE cg_id IS NULL AND id NOT IN " \
+            "(SELECT buildroot_id FROM standard_buildroot)"
+        cursor.execute(f"DELETE FROM buildroot_listing WHERE buildroot_id IN (SELECT id {q})")
+        cursor.execute(f"DELETE {q}")
         if vacuum:
             cursor.execute("VACUUM ANALYZE buildroot_listing")
             cursor.execute("VACUUM ANALYZE buildroot")
@@ -205,9 +231,9 @@ if __name__ == "__main__":
                               host=opts.get("DBHost", None),
                               port=opts.get("DBPort", None))
 
-    conn = koji.db.connect()
-    conn.set_session(autocommit=True)
-    cursor = conn.cursor()
+    context.cnx = koji.db.connect()
+    context.cnx.set_session(autocommit=True)
+    cursor = context.cnx.cursor()
 
     clean_sessions(cursor, options.vacuum, options.test, options.sessions_age)
     clean_reservations(cursor, options.vacuum, options.test, options.reservations_age)

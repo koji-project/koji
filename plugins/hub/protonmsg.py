@@ -17,7 +17,8 @@ from proton.reactor import Container
 import koji
 from koji.context import context
 from koji.plugin import callback, convert_datetime, ignore_error
-from kojihub import QueryProcessor, InsertProcessor, get_build_type
+from kojihub import get_build_type
+from koji.db import QueryProcessor, InsertProcessor
 
 CONFIG_FILE = '/etc/koji-hub/plugins/protonmsg.conf'
 CONFIG = None

@@ -4,12 +4,12 @@
 import sys
 
 import koji
-import koji.policy
+from koji.db import QueryProcessor, nextval
 from koji.context import context
 from koji.plugin import callback, export
+import koji.policy
 sys.path.insert(0, "/usr/share/koji-hub/")
 from kojihub import (  # noqa: E402
-    QueryProcessor,
     _create_build_target,
     _create_tag,
     _delete_build_target,
@@ -20,10 +20,10 @@ from kojihub import (  # noqa: E402
     get_build_target,
     get_tag,
     get_user,
-    nextval,
     policy_get_user,
     readInheritanceData,
 )
+
 
 CONFIG_FILE = "/etc/koji-hub/plugins/sidetag.conf"
 CONFIG = None

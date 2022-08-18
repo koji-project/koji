@@ -22,6 +22,7 @@ class TestImportRPM(unittest.TestCase):
             pass
         self.context = mock.patch('kojihub.context').start()
         self.context.session.assertPerm = mock.MagicMock()
+        self.context_db = mock.patch('koji.db.context').start()
         self.cursor = mock.MagicMock()
 
         self.rpm_header_retval = {
@@ -40,7 +41,7 @@ class TestImportRPM(unittest.TestCase):
         self.get_build = mock.patch('kojihub.get_build').start()
         self.get_rpm_header = mock.patch('koji.get_rpm_header').start()
         self.new_typed_build = mock.patch('kojihub.new_typed_build').start()
-        self._dml = mock.patch('kojihub._dml').start()
+        self._dml = mock.patch('koji.db._dml').start()
         self._singleValue = mock.patch('kojihub._singleValue').start()
         self.os_path_exists = mock.patch('os.path.exists').start()
         self.os_path_basename = mock.patch('os.path.basename').start()
@@ -172,7 +173,7 @@ class TestImportRPM(unittest.TestCase):
 
     def test_non_exist_build(self):
         self.cursor.fetchone.return_value = None
-        self.context.cnx.cursor.return_value = self.cursor
+        self.context_db.cnx.cursor.return_value = self.cursor
         retval = copy.copy(self.rpm_header_retval)
         retval.update({
             'filename': 'name-version-release.arch.rpm',

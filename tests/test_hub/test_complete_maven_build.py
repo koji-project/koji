@@ -1,5 +1,4 @@
 import copy
-import json
 import mock
 import os
 import os.path
@@ -23,6 +22,7 @@ class TestCompleteMavenBuild(unittest.TestCase):
         mock.patch('koji.pathinfo', new=self.pathinfo).start()
         self.hostcalls = kojihub.HostExports()
         self.context = mock.patch('kojihub.context').start()
+        self.context_db = mock.patch('koji.db.context').start()
         self.context.opts = {'EnableMaven': True}
         mock.patch('kojihub.Host').start()
         self.Task = mock.patch('kojihub.Task').start()
@@ -33,13 +33,13 @@ class TestCompleteMavenBuild(unittest.TestCase):
         mock.patch('kojihub.lookup_name', new=self.my_lookup_name).start()
         mock.patch.object(kojihub.BuildRoot, 'load', new=self.my_buildroot_load).start()
         mock.patch('kojihub.import_archive_internal',
-                    new=self.my_import_archive_internal).start()
-        mock.patch('kojihub._dml').start()
-        mock.patch('kojihub._fetchSingle').start()
+                   new=self.my_import_archive_internal).start()
+        mock.patch('koji.db._dml').start()
+        mock.patch('koji.db._fetchSingle').start()
         mock.patch('kojihub.build_notification').start()
         mock.patch('kojihub.assert_policy').start()
         mock.patch('kojihub.check_volume_policy',
-                return_value={'id':0, 'name': 'DEFAULT'}).start()
+                   return_value={'id': 0, 'name': 'DEFAULT'}).start()
         self.set_up_callbacks()
 
     def tearDown(self):
@@ -65,7 +65,7 @@ class TestCompleteMavenBuild(unittest.TestCase):
             shutil.copy(src, dst)
         self.maven_data = data
         files = open(datadir + '/files', 'rt', encoding='utf-8').readlines()
-        files = [l.strip() for l in files]
+        files = [file.strip() for file in files]
         self.expected_files = files
 
     def my_lookup_name(self, table, info, **kw):
@@ -80,18 +80,20 @@ class TestCompleteMavenBuild(unittest.TestCase):
         br.id = id
         br.is_standard = True
         br.data = {
-                'br_type': koji.BR_TYPES['STANDARD'],
-                'id': id,
-                }
+            'br_type': koji.BR_TYPES['STANDARD'],
+            'id': id,
+        }
 
     def my_import_archive_internal(self, *a, **kw):
         # this is kind of odd, but we need this to fake the archiveinfo
         share = {}
+
         def my_ip(table, *a, **kw):
             if table == 'archiveinfo':
                 share['archiveinfo'] = kw['data']
                 # TODO: need to add id
             return mock.MagicMock()
+
         def my_ga(archive_id, **kw):
             return share['archiveinfo']
         with mock.patch('kojihub.InsertProcessor', new=my_ip):
@@ -141,7 +143,7 @@ class TestCompleteMavenBuild(unittest.TestCase):
             'postImport',
             'preBuildStateChange',  # building -> completed
             'postBuildStateChange',
-            ]
+        ]
         self.assertEqual(cbtypes, cb_expect)
 
         cb_idx = {}
@@ -157,7 +159,12 @@ class TestCompleteMavenBuild(unittest.TestCase):
                 key = cbtype
             cb_idx.setdefault(key, [])
             cb_idx[key].append(c[2])
-        key_expect = ['postBuildStateChange', 'preBuildStateChange', 'preImport:archive', 'postImport:archive']
+        key_expect = [
+            'postBuildStateChange',
+            'preBuildStateChange',
+            'preImport:archive',
+            'postImport:archive'
+        ]
         self.assertEqual(set(cb_idx.keys()), set(key_expect))
         # in this case, pre and post data is similar
         for key in ['preImport:archive', 'postImport:archive']:

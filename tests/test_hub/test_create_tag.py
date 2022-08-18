@@ -28,10 +28,11 @@ class TestCreateTag(unittest.TestCase):
         self.verify_name_internal = mock.patch('kojihub.verify_name_internal').start()
         self.writeInheritanceData = mock.patch('kojihub._writeInheritanceData').start()
         self.context = mock.patch('kojihub.context').start()
+        self.context_db = mock.patch('koji.db.context').start()
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"
         self.context.session.assertPerm = mock.MagicMock()
-        self.context.session.assertLogin = mock.MagicMock()
+        self.context_db.session.assertLogin = mock.MagicMock()
 
     def tearDown(self):
         mock.patch.stopall()
@@ -46,8 +47,8 @@ class TestCreateTag(unittest.TestCase):
         self.get_tag.side_effect = [None, {'id': 1, 'name': 'parent-tag'}]
         self.get_tag_id.return_value = 99
         self.verify_name_internal.return_value = None
-        self.context.event_id = 42
-        self.context.session.user_id = 23
+        self.context_db.event_id = 42
+        self.context_db.session.user_id = 23
         self.writeInheritanceData.return_value = None
         kojihub.create_tag('newtag', parent='parent-tag')
 
@@ -73,8 +74,8 @@ class TestCreateTag(unittest.TestCase):
         self.get_tag.return_value = None
         self.get_tag_id.return_value = 99
         self.verify_name_internal.return_value = None
-        self.context.event_id = 42
-        self.context.session.user_id = 23
+        self.context_db.event_id = 42
+        self.context_db.session.user_id = 23
 
         with self.assertRaises(koji.GenericError):
             kojihub.create_tag('newtag', arches=u'ěšč')

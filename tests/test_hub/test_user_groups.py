@@ -32,12 +32,13 @@ class TestGrouplist(unittest.TestCase):
 
     def setUp(self):
         self.context = mock.patch('kojihub.context').start()
+        self.context_db = mock.patch('koji.db.context').start()
         self.get_user = mock.patch('kojihub.get_user').start()
         self.verify_name_internal = mock.patch('kojihub.verify_name_internal').start()
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"
         self.context.session.assertPerm = mock.MagicMock()
-        self.context.session.assertLogin = mock.MagicMock()
+        self.context_db.session.assertLogin = mock.MagicMock()
 
         self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
                                          side_effect=self.getQuery).start()

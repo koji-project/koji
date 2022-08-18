@@ -21,10 +21,10 @@ class TestUpdateProcessor(unittest.TestCase):
         expected = {'data.foo': 'bar'}
         self.assertEqual(actual, expected)
 
-    @mock.patch('kojihub.context')
-    def test_simple_execution_with_iterate(self, context):
+    @mock.patch('koji.db.context')
+    def test_simple_execution_with_iterate(self, context_db):
         cursor = mock.MagicMock()
-        context.cnx.cursor.return_value = cursor
+        context_db.cnx.cursor.return_value = cursor
         proc = kojihub.UpdateProcessor('sometable', data={'foo': 'bar'})
         proc.execute()
         cursor.execute.assert_called_once_with(

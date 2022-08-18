@@ -30,9 +30,10 @@ class TestAddHost(unittest.TestCase):
                                           side_effect=self.getUpdate).start()
         self.updates = []
         self.context = mock.patch('kojihub.context').start()
+        self.context_db = mock.patch('koji.db.context').start()
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"
-        self.context.session.assertLogin = mock.MagicMock()
+        self.context_db.session.assertLogin = mock.MagicMock()
         self.context.session.assertPerm = mock.MagicMock()
         self.context.opts = {'HostPrincipalFormat': '-%s-'}
         self.exports = kojihub.RootExports()
