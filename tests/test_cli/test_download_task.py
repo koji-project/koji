@@ -777,3 +777,70 @@ Options:
                                                                   self.parent_task_id)
         self.assertListEqual(self.download_file.mock_calls, calls)
         self.assertIsNone(rv)
+
+    def test_handle_download_task_all_log_with_two_src(self):
+        args = [str(self.parent_task_id), '--all', '--log']
+        self.session.getTaskInfo.return_value = self.parent_task_info
+        self.session.getTaskChildren.return_value = [{'id': 22222,
+                                                      'method': 'buildArch',
+                                                      'arch': 'noarch',
+                                                      'state': 2},
+                                                     {'id': 33333,
+                                                      'method': 'buildArch',
+                                                      'arch': 'x86_64',
+                                                      'state': 2},
+                                                     {'id': 44444,
+                                                      'method': 'buildArch',
+                                                      'arch': 's390',
+                                                      'state': 2},
+                                                     {'id': 55555,
+                                                      'method': 'tagBuild',
+                                                      'arch': 'noarch',
+                                                      'state': 2}
+                                                     ]
+        self.list_task_output_all_volumes.side_effect = [
+            {},
+            {'somerpm.src.rpm': ['DEFAULT'], 'somerpm.noarch.rpm': ['DEFAULT']},
+            {'somerpm.src.rpm': ['DEFAULT'], 'somerpm.x86_64.rpm': ['DEFAULT', 'vol2']},
+            {'somerpm.s390.rpm': ['vol2']},
+            {'somelog.log': ['DEFAULT', 'vol1'], 'somerpm.noarch.rpm': ['vol3']},
+        ]
+        # Run it and check immediate output
+        # args: task_id --all --log
+        # expected: success
+        rv = anon_handle_download_task(self.options, self.session, args)
+
+        actual = self.stdout.getvalue()
+        expected = ''
+        self.assertMultiLineEqual(actual, expected)
+        # Finally, assert that things were called as we expected.
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
+        self.session.getTaskInfo.assert_called_once_with(self.parent_task_id)
+        self.session.getTaskChildren.assert_called_once_with(self.parent_task_id)
+        self.assertEqual(self.list_task_output_all_volumes.mock_calls, [
+            call(self.session, self.parent_task_id),
+            call(self.session, 22222),
+            call(self.session, 33333),
+            call(self.session, 44444),
+            call(self.session, 55555)])
+        self.assertListEqual(self.download_file.mock_calls, [
+            call('https://topurl/work/tasks/2222/22222/somerpm.src.rpm',
+                 'somerpm.src.rpm', quiet=None, noprogress=None, size=9, num=1),
+            call('https://topurl/work/tasks/2222/22222/somerpm.noarch.rpm',
+                 'somerpm.noarch.rpm', quiet=None, noprogress=None, size=9, num=2),
+            call('https://topurl/work/tasks/3333/33333/somerpm.src.rpm',
+                 'somerpm.src.rpm', quiet=None, noprogress=None, size=9, num=3),
+            call('https://topurl/work/tasks/3333/33333/somerpm.x86_64.rpm',
+                 'somerpm.x86_64.rpm', quiet=None, noprogress=None, size=9, num=4),
+            call('https://topurl/vol/vol2/work/tasks/3333/33333/somerpm.x86_64.rpm',
+                 'vol2/somerpm.x86_64.rpm', quiet=None, noprogress=None, size=9, num=5),
+            call('https://topurl/vol/vol2/work/tasks/4444/44444/somerpm.s390.rpm',
+                 'vol2/somerpm.s390.rpm', quiet=None, noprogress=None, size=9, num=6),
+            call('https://topurl/work/tasks/5555/55555/somelog.log',
+                 'somelog.noarch.log', quiet=None, noprogress=None, size=9, num=7),
+            call('https://topurl/vol/vol1/work/tasks/5555/55555/somelog.log',
+                 'vol1/somelog.noarch.log', quiet=None, noprogress=None, size=9, num=8),
+            call('https://topurl/vol/vol3/work/tasks/5555/55555/somerpm.noarch.rpm',
+                 'vol3/somerpm.noarch.rpm', quiet=None, noprogress=None, size=9, num=9),
+        ])
+        self.assertIsNone(rv)
