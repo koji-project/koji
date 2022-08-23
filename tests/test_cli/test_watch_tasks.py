@@ -6,15 +6,16 @@ import six
 import sys
 import unittest
 
-from mock import call
-from six.moves import range
+from six.moves import StringIO
 
 import koji
 from koji_cli.lib import watch_tasks
+from koji_cli.commands import anon_handle_watch_task
 from .fakeclient import FakeClientSession, RecordingClientSession
+from . import utils
 
 
-class TestWatchTasks(unittest.TestCase):
+class TestWatchTasksCliLib(unittest.TestCase):
 
     def setUp(self):
         self.options = mock.MagicMock()
@@ -59,8 +60,7 @@ class TestWatchTasks(unittest.TestCase):
         rv = watch_tasks(self.session, [1188], quiet=False, poll_interval=0,
                          topurl=self.options.topurl)
         self.assertEqual(rv, 0)
-        expected = (
-'''Watching tasks (this may be safely interrupted)...
+        expected = ('''Watching tasks (this may be safely interrupted)...
 1188 build (f24, /users/mikem/fake.git:adaf62586b4b4a23b24394da5586abd7cd9f679e): closed
   1189 buildSRPMFromSCM (/users/mikem/fake.git:adaf62586b4b4a23b24394da5586abd7cd9f679e): closed
   1190 buildArch (fake-1.1-21.src.rpm, noarch): closed
@@ -100,7 +100,7 @@ class TestWatchTasks(unittest.TestCase):
         cfile = os.path.dirname(__file__) + '/data/calls/watchtasks2.json'
         cdata = koji.load_json(cfile)
         self.session.load_calls(cdata)
-        sleep.side_effect = [None] * 10  + [KeyboardInterrupt]
+        sleep.side_effect = [None] * 10 + [KeyboardInterrupt]
         with self.assertRaises(KeyboardInterrupt):
             # watch_tasks catches and re-raises it to display a message
             watch_tasks(self.session, [1208], quiet=False, poll_interval=5,
@@ -141,6 +141,85 @@ Running Tasks:
 some output
 ''')
         self.assertMultiLineEqual(stdout.getvalue(), expected)
+
+
+class TestWatchLogsCLI(utils.CliTestCase):
+
+    def setUp(self):
+        self.options = mock.MagicMock()
+        self.session = mock.MagicMock()
+        self.activate_session_mock = mock.patch('koji_cli.commands.activate_session').start()
+        self.ensure_connection = mock.patch('koji_cli.commands.ensure_connection').start()
+        self.list_tasks = mock.patch('koji_cli.commands._list_tasks').start()
+        self.error_format = """Usage: %s watch-task [options] <task id> [<task id> ...]
+(Specify the --help global option for a list of other help options)
+
+%s: error: {message}
+""" % (self.progname, self.progname)
+
+    def test_handle_watch_task_help(self):
+        self.assert_help(
+            anon_handle_watch_task,
+            """Usage: %s watch-task [options] <task id> [<task id> ...]
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help         show this help message and exit
+  --quiet            Do not print the task information
+  --mine             Just watch your tasks
+  --user=USER        Only tasks for this user
+  --arch=ARCH        Only tasks for this architecture
+  --method=METHOD    Only tasks of this method
+  --channel=CHANNEL  Only tasks in this channel
+  --host=HOST        Only tasks for this host
+""" % self.progname)
+
+    def test_watch_task_selection_and_task_id(self):
+        for arg in ['--mine', '--user=kojiadmin', '--arch=test-arcg', '--method=build',
+                    '--channel=default', '--host=test-host']:
+            arguments = [arg, '1']
+            self.assert_system_exit(
+                anon_handle_watch_task,
+                self.options, self.session, arguments,
+                stdout='',
+                stderr=self.format_error_message("Selection options cannot be combined with a task list"),
+                exit_code=2,
+                activate_session=None)
+        self.activate_session_mock.assert_not_called()
+        self.ensure_connection.assert_not_called()
+
+    @mock.patch('sys.stdout', new_callable=StringIO)
+    def test_watch_task_mine_without_task(self, stdout):
+        expected_output = "(no tasks)\n"
+        self.list_tasks.return_value = []
+        anon_handle_watch_task(self.options, self.session, ['--mine'])
+        self.assert_console_message(stdout, expected_output)
+        self.activate_session_mock.assert_called_once_with(self.session, self.options)
+        self.ensure_connection.assert_not_called()
+
+    def test_watch_task_task_id_not_int(self):
+        arguments = ['task-id']
+        self.assert_system_exit(
+            anon_handle_watch_task,
+            self.options, self.session, arguments,
+            stdout='',
+            stderr=self.format_error_message("task id must be an integer"),
+            exit_code=2,
+            activate_session=None)
+        self.activate_session_mock.assert_not_called()
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
+
+    def test_watch_task_without_task(self):
+        arguments = []
+        self.assert_system_exit(
+            anon_handle_watch_task,
+            self.options, self.session, arguments,
+            stdout='',
+            stderr=self.format_error_message("at least one task id must be specified"),
+            exit_code=2,
+            activate_session=None)
+        self.activate_session_mock.assert_not_called()
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
 
 
 if __name__ == '__main__':

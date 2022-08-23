@@ -53,6 +53,11 @@ class TestRpminfo(utils.CliTestCase):
                            'version': '1.1',
                            'payloadhash': 'b2b95550390e5f213fc25f33822425f7',
                            'size': 7030}
+        self.error_format = """Usage: %s rpminfo [options] <n-v-r.a> [<n-v-r.a> ...]
+(Specify the --help global option for a list of other help options)
+
+%s: error: {message}
+""" % (self.progname, self.progname)
 
     def tearDown(self):
         locale.resetlocale()
@@ -94,19 +99,20 @@ Used in 1 buildroots:
         self.session.getBuild.assert_called_once_with(self.getrpminfo['build_id'])
         self.session.getRPM.assert_called_once_with(rpm_nvra)
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_handle_rpminfo_non_exist_nvra(self, stderr):
+    def test_handle_rpminfo_non_exist_nvra(self):
         rpm_nvra = 'test-rpm-nvra.arch'
         self.session.getRPM.return_value = None
+        arguments = ['--buildroot', rpm_nvra]
         expected = "No such rpm: %s\n" % rpm_nvra + "\n"
-        with self.assertRaises(SystemExit) as ex:
-            anon_handle_rpminfo(self.options, self.session, ['--buildroot', rpm_nvra])
-        self.assertExitCode(ex, 1)
-        self.assert_console_message(stderr, expected)
+        self.assert_system_exit(
+            anon_handle_rpminfo,
+            self.options, self.session, arguments,
+            stdout='',
+            stderr=expected,
+            exit_code=1,
+            activate_session=None)
 
-    @mock.patch('sys.stderr', new_callable=StringIO)
-    @mock.patch('sys.stdout', new_callable=StringIO)
-    def test_handle_rpminfo_more_nvra_non_exist_nvra(self, stdout, stderr):
+    def test_handle_rpminfo_more_nvra_non_exist_nvra(self):
         rpm_nvra = 'test-rpm-1.1-11.noarch'
         non_exist_rpm_nvra = 'not-test-rpm-11-112.arch'
         self.session.getBuildroot.return_value = self.buildroot_info
@@ -130,15 +136,30 @@ Used in 1 buildroots:
          3 test-tag                     x86_64   kojibuilder                  
 """
 
+        arguments = ['--buildroot', non_exist_rpm_nvra, rpm_nvra]
         expected_error = "No such rpm: %s\n" % non_exist_rpm_nvra + "\n"
-        with self.assertRaises(SystemExit) as ex:
-            anon_handle_rpminfo(self.options, self.session,
-                                ['--buildroot', non_exist_rpm_nvra, rpm_nvra])
-        self.assertExitCode(ex, 1)
-        self.assert_console_message(stdout, expected_output)
-        self.assert_console_message(stderr, expected_error)
+        self.assert_system_exit(
+            anon_handle_rpminfo,
+            self.options, self.session, arguments,
+            stdout=expected_output,
+            stderr=expected_error,
+            exit_code=1,
+            activate_session=None)
         self.session.getBuildroot.assert_called_once_with(self.getrpminfo['buildroot_id'])
         self.session.listBuildroots.assert_called_once_with(queryOpts={'order': 'buildroot.id'},
                                                             rpmID=self.getrpminfo['id'])
         self.session.getBuild.assert_called_once_with(self.getrpminfo['build_id'])
         self.assertEqual(self.session.getRPM.call_count, 2)
+
+    def test_rpminfo_without_option(self):
+        arguments = []
+        self.assert_system_exit(
+            anon_handle_rpminfo,
+            self.options, self.session, arguments,
+            stdout='',
+            stderr=self.format_error_message("Please specify an RPM"),
+            exit_code=2,
+            activate_session=None)
+        self.session.getBuildroot.assert_not_called()
+        self.session.listBuildroots.assert_not_called()
+        self.session.getBuild.assert_not_called()

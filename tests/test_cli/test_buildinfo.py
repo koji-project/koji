@@ -21,6 +21,11 @@ class TestBuildinfo(utils.CliTestCase):
         self.options.debug = False
         self.session = mock.MagicMock()
         self.session.getAPIVersion.return_value = koji.API_VERSION
+        self.error_format = """Usage: %s buildinfo [options] <n-v-r> [<n-v-r> ...]
+(Specify the --help global option for a list of other help options)
+
+%s: error: {message}
+""" % (self.progname, self.progname)
         self.original_timezone = os.environ.get('TZ')
         os.environ['TZ'] = 'UTC'
         time.tzset()
@@ -120,3 +125,17 @@ Tags:
             stdout='',
             activate_session=None,
             exit_code=1)
+
+    def test_buildinfo_without_option(self):
+        arguments = []
+        self.assert_system_exit(
+            anon_handle_buildinfo,
+            self.options, self.session, arguments,
+            stdout='',
+            stderr=self.format_error_message("Please specify a build"),
+            exit_code=2,
+            activate_session=None)
+        self.session.listTags.assert_not_called()
+        self.session.getMavenBuild.assert_not_called()
+        self.session.getWinBuild.assert_not_called()
+        self.session.listRPMs.assert_not_called()
