@@ -122,6 +122,11 @@ New API calls related to this behaviour are now available: ``massTag``, ``snapsh
 is basically batch call of ``tagBuildBypass`` ('tag' permission needed) dropping
 need of ``tagBuildBypass`` multicall overhead.
 
+Note, that this is breaking change. If you use new client with older hub, you'll
+not be able to run clone-tag command at all. In such a case we would recommend
+temporarily using older client (1.29.1 - e.g. installed via pip if it is not
+available as rpm)
+
 **Drop old indices**
 
 | PR: https://pagure.io/pull-request/3359
