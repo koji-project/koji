@@ -112,17 +112,16 @@ General problems
 * If yes, maybe ticket is no longer valid - check ``klist`` + run ``kinit``
 * *Hub URL is wrong* - check configs, find out right URL for your environment,
   update related packages (e.g. ``fedora-packager``)
-* *Wrong service ticket* E.g because your instance is hidden behing
-  the proxy. In such case you'll see in output wrong principal. Right one would
-  look like ``HTTP/koji.fedoraproject.org@FEDORAPROJECT.ORG`` in our example.
-  (You can also check output of ``klist`` which will list it as "Ticket
-  Server").  Wrong one would be e.g.
-  ``HTTP/proxy10.fedoraproject.org@FEDORAPROJECT.ORG``.  Kerberos authentication
-  will fail in such case becase krbV library will not be able to get right
-  ticket. It could be caused by wrong ``/etc/krb5.conf`` settings.  Typical
-  error in this case would be that line ``dns_canonicalize_hostname = true`` is
-  missing. ``krbV`` will try to fetch service ticket for PTR instead of A DNS
-  record effectively asking for wrong service.
+* *Wrong service ticket* - e.g. because your instance is hidden behind a proxy.
+  In such a case, you'll see a wrong principal in the output, such as e.g.
+  ``HTTP/proxy10.fedoraproject.org@FEDORAPROJECT.ORG``. Kerberos
+  authentication will fail because ``krbV`` will try to fetch a service ticket for
+  PTR instead of a DNS record, effectively asking for a wrong service.
+  The correct form is ``HTTP/koji.fedoraproject.org@FEDORAPROJECT.ORG``
+  (also listed as "Ticket Server" in klist output). This problem is usually
+  caused by a wrong value of ``dns_canonicalize_hostname`` in ``/etc/krb5.conf``.
+  Please try setting it to ``true``, ``fallback`` and ``false`` in turn,
+  as different values may be required depending on your situation.
 * *You can't get service ticket at all*. You've not set up the ``/etc/krb5.conf``
   for relevant KDC/REALM. It shouldn't happen if you were able to ``kinit`` with
   the correct credentials (It means that you've already set up something).
