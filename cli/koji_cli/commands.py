@@ -6932,6 +6932,7 @@ def anon_handle_download_task(options, session, args):
     list_tasks = [base_task]
     if not suboptions.parentonly:
         list_tasks.extend(session.getTaskChildren(base_task_id))
+    list_tasks = sorted(list_tasks, key=lambda k: k['id'])
 
     required_tasks = {}
     for task in list_tasks:
@@ -7020,6 +7021,7 @@ def anon_handle_download_task(options, session, args):
     # perform the download
     number = 0
     pathinfo = koji.PathInfo(topdir=suboptions.topurl)
+    srpm_downloaded = []
     for (task, filename, volume, new_filename, task_id) in downloads:
         if suboptions.dirpertask:
             koji.ensuredir(task_id)
@@ -7034,8 +7036,18 @@ def anon_handle_download_task(options, session, args):
         if '..' in filename:
             error('Invalid file name: %s' % filename)
         url = '%s/%s/%s' % (pathinfo.work(volume), pathinfo.taskrelpath(task["id"]), filename)
-        download_file(url, new_filename, quiet=suboptions.quiet, noprogress=suboptions.noprogress,
-                      size=len(downloads), num=number)
+        if not new_filename.endswith('src.rpm'):
+            download_file(url, new_filename, quiet=suboptions.quiet,
+                          noprogress=suboptions.noprogress, size=len(downloads), num=number)
+        else:
+            if (new_filename, volume) not in srpm_downloaded:
+                download_file(url, new_filename, quiet=suboptions.quiet,
+                              noprogress=suboptions.noprogress, size=len(downloads), num=number)
+                srpm_downloaded.append((new_filename, volume))
+            else:
+                if not suboptions.quiet:
+                    print("Downloading [%d/%d] %s" % (number, len(downloads), new_filename))
+                    print("File %s already downloaded, skipping" % new_filename)
 
 
 def anon_handle_wait_repo(options, session, args):
