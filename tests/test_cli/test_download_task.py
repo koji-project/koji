@@ -53,7 +53,7 @@ class TestDownloadTask(utils.CliTestCase):
         self.ensure_connection = mock.patch('koji_cli.commands.ensure_connection').start()
         self.stdout = mock.patch('sys.stdout', new_callable=six.StringIO).start()
         self.stderr = mock.patch('sys.stderr', new_callable=six.StringIO).start()
-        self.parent_task_id = 123333
+        self.parent_task_id = 123
         self.parent_task_info = {'id': self.parent_task_id, 'method': 'buildArch',
                                  'arch': 'taskarch', 'state': 2, 'parent': None}
         self.error_format = """Usage: %s download-task <task_id>
@@ -78,7 +78,7 @@ Default behavior without --all option downloads .rpm files only for build and bu
             'somelog.log': ['DEFAULT', 'vol1']}
 
         calls = self.gen_calls(self.list_task_output_all_volumes.return_value,
-                               'https://topurl/%swork/tasks/3333/123333/%s',
+                               'https://topurl/%swork/tasks/123/123/%s',
                                ['somelog.log'])
 
         # Run it and check immediate output
@@ -159,7 +159,7 @@ Default behavior without --all option downloads .rpm files only for build and bu
         self.session.getTaskInfo.assert_called_once_with(self.parent_task_id)
         self.session.getTaskChildren.assert_called_once_with(self.parent_task_id)
         self.assertEqual(self.list_task_output_all_volumes.mock_calls, [
-            call(self.session, 123333),
+            call(self.session, 123),
             call(self.session, 22222),
             call(self.session, 33333),
             call(self.session, 44444),
@@ -259,7 +259,7 @@ Default behavior without --all option downloads .rpm files only for build and bu
         self.assert_system_exit(
             anon_handle_download_task,
             self.options, self.session, args,
-            stderr="Task 123333 has not finished yet.\n",
+            stderr="Task 123 has not finished yet.\n",
             stdout='',
             activate_session=None,
             exit_code=1)
@@ -422,7 +422,7 @@ Options:
         self.session.getTaskInfo.assert_called_once_with(self.parent_task_id)
         self.session.getTaskChildren.assert_called_once_with(self.parent_task_id)
         self.assertEqual(self.list_task_output_all_volumes.mock_calls, [
-            call(self.session, 123333),
+            call(self.session, 123),
             call(self.session, 22222),
             call(self.session, 33333),
             call(self.session, 44444),
@@ -483,7 +483,7 @@ Options:
         self.session.getTaskInfo.assert_called_once_with(self.parent_task_id)
         self.session.getTaskChildren.assert_called_once_with(self.parent_task_id)
         self.assertEqual(self.list_task_output_all_volumes.mock_calls, [
-            call(self.session, 123333),
+            call(self.session, 123),
             call(self.session, 22222),
             call(self.session, 33333),
             call(self.session, 44444),
@@ -758,7 +758,7 @@ Options:
         }
 
         calls = self.gen_calls(self.list_task_output_all_volumes.return_value,
-                               'https://topurl/%swork/tasks/3333/123333/%s',
+                               'https://topurl/%swork/tasks/123/123/%s',
                                ['somelog.log', 'somefile.json'])
 
         # Run it and check immediate output
@@ -811,7 +811,8 @@ Options:
         rv = anon_handle_download_task(self.options, self.session, args)
 
         actual = self.stdout.getvalue()
-        expected = ''
+        expected = 'Downloading [3/9] somerpm.src.rpm\n' \
+                   'File somerpm.src.rpm already downloaded, skipping\n'
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
         self.ensure_connection.assert_called_once_with(self.session, self.options)
@@ -828,8 +829,6 @@ Options:
                  'somerpm.src.rpm', quiet=None, noprogress=None, size=9, num=1),
             call('https://topurl/work/tasks/2222/22222/somerpm.noarch.rpm',
                  'somerpm.noarch.rpm', quiet=None, noprogress=None, size=9, num=2),
-            call('https://topurl/work/tasks/3333/33333/somerpm.src.rpm',
-                 'somerpm.src.rpm', quiet=None, noprogress=None, size=9, num=3),
             call('https://topurl/work/tasks/3333/33333/somerpm.x86_64.rpm',
                  'somerpm.x86_64.rpm', quiet=None, noprogress=None, size=9, num=4),
             call('https://topurl/vol/vol2/work/tasks/3333/33333/somerpm.x86_64.rpm',
