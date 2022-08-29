@@ -2140,8 +2140,6 @@ class WrapperRPMTask(BaseBuildTask):
             data['task_id'] = self.id
             data['source'] = source['source']
             data['extra'] = {'source': {'original_url': source['url']}}
-            if opts.get('custom_user_metadata'):
-                data['extra']['custom_user_metadata'] = opts['custom_user_metadata']
             self.logger.info("Reading package config for %(name)s" % data)
             pkg_cfg = self.session.getPackageConfig(build_target['dest_tag'], data['name'])
             if not opts.get('skip_tag'):
