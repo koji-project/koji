@@ -659,8 +659,8 @@ def check_sigmd5(filename):
             data = f.read(16)
             tag, data_type, offset, count = struct.unpack('!IIII', data)
             if tag == 1004:  # SIGMD5
-                assert(data_type == 7)  # binary data
-                assert(count == 16)     # 16 bytes of md5
+                assert (data_type == 7)  # binary data
+                assert (count == 16)     # 16 bytes of md5
                 break
         # seek to location of md5
         f.seek(o + 8 + indexcount * 16 + offset)

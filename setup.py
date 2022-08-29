@@ -26,7 +26,7 @@ def get_install_requires():
 def get_version():
     cwd = os.path.dirname(__file__)
     exec(open(os.path.join(cwd, 'koji/_version.py'), 'rt').read())
-    return(locals()['__version__'])
+    return locals()['__version__']
 
 
 def get_long_description():

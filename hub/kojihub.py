@@ -106,19 +106,19 @@ def convert_value(value, cast=None, message=None,
     """
     if value is None:
         if not none_allowed:
-            raise(exc_type(message or f"Invalid type, expected type {cast}"))
+            raise exc_type(message or f"Invalid type, expected type {cast}")
         else:
             return value
     if check_only:
         if not isinstance(value, cast):
-            raise(exc_type(message or f"Invalid type for value '{value}': {type(value)}, "
-                                      f"expected type {cast}"))
+            raise exc_type(message or f"Invalid type for value '{value}': {type(value)}, "
+                                      f"expected type {cast}")
     else:
         try:
             value = cast(value)
         except (ValueError, TypeError):
-            raise(exc_type(message or f"Invalid type for value '{value}': {type(value)}, "
-                                      f"expected type {cast}"))
+            raise exc_type(message or f"Invalid type for value '{value}': {type(value)}, "
+                                      f"expected type {cast}")
     return value
 
 
@@ -6957,7 +6957,7 @@ class CG_Importer(object):
 
     def match_kojifile(self, comp):
         """Look up the file by archive id and sanity check the other data"""
-        assert(comp['type'] == 'kojifile')
+        assert (comp['type'] == 'kojifile')
         archive = get_archive(comp['archive_id'], strict=True)
         build = get_build(archive['build_id'], strict=True)
 
@@ -10044,7 +10044,7 @@ class BuildTagInheritsFromTest(koji.policy.BaseSimpleTest):
 
     def run(self, data):
         test_name, *args = self.str.split()
-        assert(test_name == self.name)
+        assert (test_name == self.name)
         for tinfo in policy_get_build_tags(data, taginfo=True):
             if tinfo is None:
                 # content generator buildroots might not have tag info
