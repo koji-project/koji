@@ -83,7 +83,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.29.1
+Version: 1.30.0
 Release: %{release}%{?dist}
 License: LGPLv2 and GPLv2+
 # the included arch lib from yum's rpmUtils is GPLv2+
@@ -645,6 +645,40 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Thu Aug 18 2022  Tomas Kopecek <tkopecek at redhat.com> - 1.30.0-1
+- PR#3308: server-side clonetag
+- PR#3352: CLI: Remove --paths option from list-buildroot
+- PR#3354: remove force option from groupPackageListRemove hub call
+- PR#3357: Remove deprecated remove-channel/removeChannel
+- PR#3359: Drop old indices
+- PR#3360: proton: save messages when connection fails
+- PR#3363: CLI: list-channels with specific arch
+- PR#3364: Catch koji.AuthError and bail out
+- PR#3380: Increase hub unit tests
+- PR#3382: www: archivelist and rpmlist raise error when imageID is unknown
+- PR#3383: Increase www unit tests
+- PR#3385: koji download-task retry download file
+- PR#3390: www: Set SameSite and Set-Cookie2
+- PR#3391: Use compression_type in listArchiveFiles
+- PR#3401: CLI: download-task prints "No files for download found." to stdout
+- PR#3402: Correct getAverageDuration values for most GC builds
+- PR#3403: Consistence pre/postPackageListChange sequence
+- PR#3404: don't propagate SIGHUP ignore to child processes
+- PR#3405: beautify logged commands issued by koji
+- PR#3406: Add a utility function to watch builds
+- PR#3422: hub: check release/version format in cg_import
+- PR#3423: Fix rpm_hdr_size file closing
+- PR#3425: Fix download-task all files in build/buildArch method tasks
+- PR#3428: Fix arches check in kiwi plugin
+- PR#3430: Fix download-task with wait option
+- PR#3437: Authtype as enum and getSessionInfo prints authtype name
+- PR#3438: CLI: More details when files conflict in download-task
+- PR#3440: Parse_arches allows string and list of arches
+- PR#3444: expect dict for chainmaven builds
+- PR#3445: Don't crash in _checkImageState if there's no image.os_plugin
+- PR#3450: convert data to string in escapeHTML first
+- PR#3457: Fix query with LIKE string in getAverageBuildDirection
+
 * Mon Jun 27 2022  Tomas Kopecek <tkopecek at redhat.com> - 1.29.1-1
 - PR#3343 Download output for all type of task in download-task
 - PR#3388 postgresql hub: date_part instead of EXTRACT
