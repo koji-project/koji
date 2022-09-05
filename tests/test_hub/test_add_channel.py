@@ -24,7 +24,7 @@ class TestAddChannel(unittest.TestCase):
         self.insert_execute = mock.MagicMock()
         self.verify_name_internal = mock.patch('kojihub.verify_name_internal').start()
         self.get_channel = mock.patch('kojihub.get_channel').start()
-        self._singleValue = mock.patch('kojihub._singleValue').start()
+        self.nextval = mock.patch('kojihub.nextval').start()
 
     def tearDown(self):
         mock.patch.stopall()
@@ -41,12 +41,12 @@ class TestAddChannel(unittest.TestCase):
         with self.assertRaises(koji.GenericError):
             self.exports.addChannel(self.channel_name)
         self.get_channel.assert_called_once_with(self.channel_name, strict=False)
-        self._singleValue.assert_not_called()
+        self.nextval.assert_not_called()
         self.assertEqual(len(self.inserts), 0)
 
     def test_add_channel_valid(self):
         self.get_channel.return_value = {}
-        self._singleValue.side_effect = [12]
+        self.nextval.side_effect = [12]
         self.verify_name_internal.return_value = None
 
         r = self.exports.addChannel(self.channel_name, description=self.description)
@@ -60,10 +60,8 @@ class TestAddChannel(unittest.TestCase):
 
         self.context.session.assertPerm.assert_called_once_with('admin')
         self.get_channel.assert_called_once_with(self.channel_name, strict=False)
-        self.assertEqual(self._singleValue.call_count, 1)
-        self._singleValue.assert_has_calls([
-            mock.call("SELECT nextval('channels_id_seq')", strict=True)
-        ])
+        self.assertEqual(self.nextval.call_count, 1)
+        self.nextval.assert_called_once_with('channels_id_seq')
 
     def test_add_channel_wrong_name(self):
         # name is longer as expected
