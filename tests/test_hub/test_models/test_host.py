@@ -5,8 +5,21 @@ import unittest
 import koji
 import kojihub
 
+UP = kojihub.UpdateProcessor
+
 
 class TestHost(unittest.TestCase):
+
+    def getUpdate(self, *args, **kwargs):
+        update = UP(*args, **kwargs)
+        update.execute = mock.MagicMock()
+        self.updates.append(update)
+        return update
+
+    def setUp(self):
+        self.UpdateProcessor = mock.patch('kojihub.UpdateProcessor',
+                                          side_effect=self.getUpdate).start()
+        self.updates = []
 
     @mock.patch('kojihub.context')
     def test_instantiation_not_a_host(self, context):
@@ -125,12 +138,35 @@ class TestHost(unittest.TestCase):
     def test_task_wait(self, context):
         cursor = mock.MagicMock()
         context.cnx.cursor.return_value = cursor
+        context.session.assertLogin = mock.MagicMock()
         cursor.fetchall.return_value = [
             (1, 1),
             (2, 2),
             (3, 3),
             (4, 4),
         ]
+        context.event_id = 42
+        context.session.user_id = 23
+        kojihub.Host.return_value = 1234
         host = kojihub.Host(id=1234)
         host.taskWait(parent=123)
-        self.assertEqual(len(cursor.execute.mock_calls), 3)
+        self.assertEqual(len(self.updates), 2)
+        self.assertEqual(len(cursor.execute.mock_calls), 1)
+
+        rawdata = {'awaited': 'false'}
+
+        update = self.updates[0]
+        values = {'id': 2}
+        self.assertEqual(update.table, 'task')
+        self.assertEqual(update.values, values)
+        self.assertEqual(update.data, {})
+        self.assertEqual(update.rawdata, rawdata)
+        self.assertEqual(update.clauses, ['id=%(id)s'])
+
+        update = self.updates[1]
+        values = {'id': 3}
+        self.assertEqual(update.table, 'task')
+        self.assertEqual(update.values, values)
+        self.assertEqual(update.data, {})
+        self.assertEqual(update.rawdata, rawdata)
+        self.assertEqual(update.clauses, ['id=%(id)s'])

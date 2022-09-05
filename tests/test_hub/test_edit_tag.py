@@ -30,7 +30,6 @@ class TestEditTag(unittest.TestCase):
         self.UpdateProcessor = mock.patch('kojihub.UpdateProcessor',
                                           side_effect=self.getUpdate).start()
         self.updates = []
-        self._dml = mock.patch('kojihub._dml').start()
         self._singleValue = mock.patch('kojihub._singleValue').start()
         self.get_tag = mock.patch('kojihub.get_tag').start()
         self.get_perm_id = mock.patch('kojihub.get_perm_id').start()
@@ -83,13 +82,22 @@ class TestEditTag(unittest.TestCase):
         kojihub._edit_tag('tag', **kwargs)
 
         self.get_perm_id.assert_not_called()
-        self._dml.assert_called_with("""UPDATE tag
-SET name = %(name)s
-WHERE id = %(tagID)i""", {'name': 'newtag', 'tagID': 333})
 
         # check the insert/update
-        self.assertEqual(len(self.updates), 3)
+        self.assertEqual(len(self.updates), 4)
         self.assertEqual(len(self.inserts), 2)
+
+        revoke_data = {'name': 'newtag'}
+
+        values = {'tagID': 333}
+
+        update = self.updates[0]
+        self.assertEqual(update.table, 'tag')
+        self.assertEqual(update.values, values)
+        self.assertEqual(update.data, revoke_data)
+        self.assertEqual(update.rawdata, {})
+        self.assertEqual(update.clauses, ['id = %(tagID)i'])
+
         values = {
             'arches': 'arch1 arch2',
             'locked': True,
@@ -100,12 +108,14 @@ WHERE id = %(tagID)i""", {'name': 'newtag', 'tagID': 333})
             'name': 'tag',
             'extra': {'exA': 1, 'exC': 3, 'exD': 4}
         }
+
         revoke_data = {
             'revoke_event': 42,
             'revoker_id': 23
         }
         revoke_rawdata = {'active': 'NULL'}
-        update = self.updates[0]
+
+        update = self.updates[1]
         self.assertEqual(update.table, 'tag_config')
         self.assertEqual(update.values, values)
         self.assertEqual(update.data, revoke_data)
@@ -133,7 +143,7 @@ WHERE id = %(tagID)i""", {'name': 'newtag', 'tagID': 333})
             'tag_id': 333,
         }
 
-        update = self.updates[1]
+        update = self.updates[2]
         self.assertEqual(update.table, 'tag_extra')
         self.assertEqual(update.values, values)
         self.assertEqual(update.data, revoke_data)
@@ -158,7 +168,7 @@ WHERE id = %(tagID)i""", {'name': 'newtag', 'tagID': 333})
             'tag_id': 333,
         }
 
-        update = self.updates[2]
+        update = self.updates[3]
         self.assertEqual(update.table, 'tag_extra')
         self.assertEqual(update.values, values)
         self.assertEqual(update.data, revoke_data)

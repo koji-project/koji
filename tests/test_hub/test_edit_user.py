@@ -44,7 +44,7 @@ class TestEditUser(unittest.TestCase):
         update = self.updates[0]
         self.assertEqual(update.table, 'users')
         self.assertEqual(update.data, {'name': 'newuser'})
-        self.assertEqual(update.values, {'userID': 333})
+        self.assertEqual(update.values, {'name': 'newuser', 'userID': 333})
         self.assertEqual(update.clauses, ['id = %(userID)i'])
 
         kojihub._edit_user('user', krb_principal_mappings=[{'old': 'krb', 'new': 'newkrb'}])
