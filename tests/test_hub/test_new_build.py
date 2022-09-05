@@ -36,7 +36,7 @@ class TestNewBuild(unittest.TestCase):
 
     def test_valid(self):
         self.get_build.return_value = None
-        self._singleValue.return_value = 65  # free build id
+        self.nextval.return_value = 65  # free build id
         self.new_package.return_value = 54
         self.get_user.return_value = {'id': 123}
         data = {

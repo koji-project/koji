@@ -2481,7 +2481,7 @@ def add_channel(channel_name, description=None):
     if dup_check:
         raise koji.GenericError("channel %(name)s already exists (id=%(id)i)" % dup_check)
     table = 'channels'
-    channel_id = _singleValue("SELECT nextval('%s_id_seq')" % table, strict=True)
+    channel_id = nextval(f'{table}_id_seq')
     insert = InsertProcessor(table)
     insert.set(id=channel_id, name=channel_name, description=description)
     insert.execute()
@@ -2699,7 +2699,7 @@ def repo_init(tag, task_id=None, with_src=False, with_debuginfo=False, event=Non
             if arch in ['src', 'noarch']:
                 continue
             repo_arches[arch] = 1
-    repo_id = _singleValue("SELECT nextval('repo_id_seq')")
+    repo_id = nextval('repo_id_seq')
     if event is None:
         event_id = _singleValue("SELECT get_event()")
     else:
@@ -5810,9 +5810,7 @@ def new_package(name, strict=True):
         if strict:
             raise koji.GenericError("Package already exists [id %d]" % pkg_id)
     else:
-        q = """SELECT nextval('package_id_seq')"""
-        c.execute(q)
-        (pkg_id,) = c.fetchone()
+        pkg_id = nextval('package_id_seq')
         q = """INSERT INTO package (id,name) VALUES (%(pkg_id)s,%(name)s)"""
         context.commit_pending = True
         c.execute(q, locals())
@@ -6098,7 +6096,7 @@ def new_build(data, strict=False):
                                 'extra'])
     if 'cg_id' in data:
         insert_data['cg_id'] = data['cg_id']
-    data['id'] = insert_data['id'] = _singleValue("SELECT nextval('build_id_seq')")
+    data['id'] = insert_data['id'] = nextval('build_id_seq')
     insert = InsertProcessor('build', data=insert_data)
     insert.execute()
     new_binfo = get_build(data['id'], strict=True)
@@ -6384,7 +6382,7 @@ def import_rpm(fn, buildinfo=None, brootid=None, wrapper=False, fileinfo=None):
     new_typed_build(buildinfo, 'rpm')
 
     # add rpminfo entry
-    rpminfo['id'] = _singleValue("""SELECT nextval('rpminfo_id_seq')""")
+    rpminfo['id'] = nextval('rpminfo_id_seq')
     rpminfo['build_id'] = buildinfo['id']
     rpminfo['size'] = os.path.getsize(fn)
     rpminfo['payloadhash'] = koji.hex_string(koji.get_header_field(hdr, 'sigmd5'))
@@ -13527,7 +13525,7 @@ class RootExports(object):
             userID = context.session.createUser(hostname, usertype=koji.USERTYPES['HOST'],
                                                 krb_principal=krb_principal)
         # host entry
-        hostID = _singleValue("SELECT nextval('host_id_seq')", strict=True)
+        hostID = nextval('host_id_seq')
         insert = "INSERT INTO host (id, user_id, name) VALUES (%(hostID)i, %(userID)i, " \
                  "%(hostname)s)"
         _dml(insert, dslice(locals(), ('hostID', 'userID', 'hostname')))
@@ -14226,7 +14224,7 @@ class BuildRoot(object):
     def new(self, host, repo, arch, task_id=None, ctype='chroot'):
         arch = koji.parse_arches(arch, strict=True, allow_none=True)
         state = koji.BR_STATES['INIT']
-        br_id = _singleValue("SELECT nextval('buildroot_id_seq')", strict=True)
+        br_id = nextval('buildroot_id_seq')
         insert = InsertProcessor('buildroot', data={'id': br_id})
         insert.set(container_arch=arch, container_type=ctype)
         insert.set(br_type=koji.BR_TYPES['STANDARD'])
@@ -14259,7 +14257,7 @@ class BuildRoot(object):
                 raise koji.GenericError("Buildroot field %s not specified" % key)
         if data['extra'] is not None:
             data['extra'] = json.dumps(data['extra']),
-        br_id = _singleValue("SELECT nextval('buildroot_id_seq')", strict=True)
+        br_id = nextval('buildroot_id_seq')
         insert = InsertProcessor('buildroot')
         insert.set(id=br_id, **data)
         insert.execute()

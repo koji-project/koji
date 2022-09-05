@@ -41,6 +41,7 @@ class TestAddHost(unittest.TestCase):
         self._dml = mock.patch('kojihub._dml').start()
         self.get_host = mock.patch('kojihub.get_host').start()
         self._singleValue = mock.patch('kojihub._singleValue').start()
+        self.nextval = mock.patch('kojihub.nextval').start()
         self.get_user = mock.patch('kojihub.get_user').start()
 
     def tearDown(self):
@@ -58,7 +59,8 @@ class TestAddHost(unittest.TestCase):
     def test_add_host_valid(self):
         self.verify_host_name.return_value = None
         self.get_host.return_value = {}
-        self._singleValue.side_effect = [333, 12]
+        self._singleValue.return_value = 333
+        self.nextval.return_value = 12
         self.context.session.createUser.return_value = 456
         self.get_user.return_value = None
 
@@ -69,11 +71,8 @@ class TestAddHost(unittest.TestCase):
         kojihub.get_host.assert_called_once_with('hostname')
         self.context.session.createUser.assert_called_once_with(
             'hostname', usertype=koji.USERTYPES['HOST'], krb_principal='-hostname-')
-        self.assertEqual(self._singleValue.call_count, 2)
-        self._singleValue.assert_has_calls([
-            mock.call("SELECT id FROM channels WHERE name = 'default'"),
-            mock.call("SELECT nextval('host_id_seq')", strict=True)
-        ])
+        self._singleValue.assert_called_once_with("SELECT id FROM channels WHERE name = 'default'")
+        self.nextval.assert_called_once_with('host_id_seq')
         self.assertEqual(self._dml.call_count, 1)
         self._dml.assert_called_once_with("INSERT INTO host (id, user_id, name) "
                                           "VALUES (%(hostID)i, %(userID)i, %(hostname)s)",
