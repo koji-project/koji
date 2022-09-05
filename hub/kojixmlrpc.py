@@ -19,7 +19,7 @@
 #       Mike McLean <mikem@redhat.com>
 
 import datetime
-import http.cookies
+import email
 import inspect
 import logging
 import os
@@ -449,6 +449,8 @@ def load_config(environ):
         ['AllowedKrbRealms', 'string', '*'],
         # TODO: this option should be removed in future release
         ['DisableGSSAPIProxyDNFallback', 'boolean', False],
+        # TODO:  this option should be turned True in future release
+        ['DisableURLSessions', 'boolean', False],
 
         ['DNUsernameComponent', 'string', 'CN'],
         ['ProxyDNs', 'string', ''],
@@ -808,24 +810,18 @@ def application(environ, start_response):
             except RequestTimeout as e:
                 return error_reply(start_response, '408 Request Timeout', str(e) + '\n')
             response = response.encode()
-            headers = [
-                ('Content-Length', str(len(response))),
-                ('Content-Type', "text/xml"),
-            ]
-            cookies = http.cookies.SimpleCookie(environ.get('HTTP_SET_COOKIE'))
+            headers = email.message.EmailMessage()
+            headers['Content-Length'] = str(len(response))
+            headers['Content-Type'] = "text/xml"
             if hasattr(context, 'session') and context.session.logged_in:
-                cookies['session-id'] = context.session.id
-                cookies['session-key'] = context.session.key
-                cookies['callnum'] = context.session.callnum
-                cookies['logged_in'] = "1"
-            else:
-                # good for not mistaking for the older hub with small overhead
-                cookies['logged_in'] = "0"
-            for c in cookies.values():
-                c.path = '/'
-                c.secure = True
-                headers.append(('Set-Cookie', c.OutputString()))
-            start_response('200 OK', headers)
+                headers.add_header(
+                    'X-Session-Data',
+                    '1',  # logged in
+                    session_id=str(context.session.id),
+                    session_key=str(context.session.key),
+                    callnum=str(context.session.callnum),
+                )
+            start_response('200 OK', headers.items())
             if h.traceback:
                 # rollback
                 context.cnx.rollback()

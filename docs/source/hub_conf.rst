@@ -153,6 +153,17 @@ The following options control aspects of authentication when using ``mod_auth_gs
       option.
       The default value of False is recommended.
 
+   DisableURLSessions
+      Type: boolean
+
+      Default: ``False``
+
+      If set to ``False``, it enables older clients to log in via session parameters
+      encoded in URL. New behaviour uses header-based parameteres. This default
+      will be changed in future to ``True`` effectively disabling older clients. It is
+      encouraged to set it to ``True`` as soon as possible when no older clients are
+      using the hub. (Added in 1.30)
+
 Enabling gssapi auth also requires settings in the httpd config.
 
 SSL client certificate auth configuration

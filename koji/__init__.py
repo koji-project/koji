@@ -26,6 +26,7 @@ from __future__ import absolute_import, division
 
 import base64
 import datetime
+import email
 import errno
 import hashlib
 import json
@@ -57,7 +58,6 @@ except ImportError:  # pragma: no cover
 from fnmatch import fnmatch
 
 import dateutil.parser
-import http.cookies
 import requests
 import six
 import six.moves.configparser
@@ -2701,12 +2701,19 @@ class ClientSession(object):
         if name == 'rawUpload':
             return self._prepUpload(*args, **kwargs)
         args = encode_args(*args, **kwargs)
+        headers = email.message.EmailMessage()
         if self.logged_in:
-            for c in self.rsession.cookies:
-                if c.name == 'callnum':
-                    c.value = str(self.callnum)
+            sinfo = self.sinfo.copy()
+            sinfo['callnum'] = self.callnum
             self.callnum += 1
-            handler = self.baseurl
+            if sinfo.get('header-auth'):
+                for k, v in sinfo.items():
+                    sinfo[k] = str(v)
+                handler = self.baseurl
+                headers.add_header('X-Session-Data', '1', **sinfo)
+            else:
+                # old server
+                handler = "%s?%s" % (self.baseurl, six.moves.urllib.parse.urlencode(sinfo))
         elif name == 'sslLogin':
             handler = self.baseurl + '/ssllogin'
         else:
@@ -2717,12 +2724,9 @@ class ClientSession(object):
             # encoded as UTF-8. For python3 it means "return a str with an appropriate
             # xml declaration for encoding as UTF-8".
             request = request.encode('utf-8')
-        headers = [
-            # connection class handles Host
-            ('User-Agent', 'koji/1'),
-            ('Content-Type', 'text/xml'),
-            ('Content-Length', str(len(request))),
-        ]
+        headers['User-Agent'] = 'koji/1'
+        headers['Content-Type'] = 'text/xml'
+        headers['Content-Length'] = str(len(request))
         return handler, headers, request
 
     def _sanitize_url(self, url):
@@ -2801,13 +2805,6 @@ class ClientSession(object):
             warnings.simplefilter("ignore")
             r = self.rsession.post(handler, **callopts)
             r.raise_for_status()
-            if self.logged_in and len(r.cookies.items()) == 0:
-                # we have session, sent the cookies, but server is old
-                # and didn't sent them back, use old url-encoded style
-                sinfo = self.sinfo.copy()
-                handler = "%s?%s" % (handler, six.moves.urllib.parse.urlencode(sinfo))
-                r = self.rsession.post(handler, **callopts)
-                r.raise_for_status()
             try:
                 ret = self._read_xmlrpc_response(r)
             finally:
@@ -3039,24 +3036,31 @@ class ClientSession(object):
         """prep a rawUpload call"""
         if not self.logged_in:
             raise ActionNotAllowed("you must be logged in to upload")
-        args = self.sinfo.copy()
-        args['callnum'] = self.callnum
-        args['filename'] = name
-        args['filepath'] = path
-        args['fileverify'] = verify
-        args['offset'] = str(offset)
+        sinfo = self.sinfo.copy()
+        sinfo['callnum'] = self.callnum
+        args = {
+            'filename': name,
+            'filepath': path,
+            'fileverify': verify,
+            'offset': str(offset),
+        }
         if overwrite:
             args['overwrite'] = "1"
         if volume is not None:
             args['volume'] = volume
         size = len(chunk)
         self.callnum += 1
+        headers = email.message.EmailMessage()
+        if sinfo.get('header-auth'):
+            for k, v in sinfo.items():
+                sinfo[k] = str(v)
+            headers.add_header('X-Session-Data', '1', **sinfo)
+        else:
+            args.update(sinfo)
         handler = "%s?%s" % (self.baseurl, six.moves.urllib.parse.urlencode(args))
-        headers = [
-            ('User-Agent', 'koji/1'),
-            ("Content-Type", "application/octet-stream"),
-            ("Content-length", str(size)),
-        ]
+        headers['User-Agent'] = 'koji/1'
+        headers["Content-Type"] = "application/octet-stream"
+        headers["Content-length"] = str(size)
         request = chunk
         if six.PY3 and isinstance(chunk, str):
             request = chunk.encode('utf-8')

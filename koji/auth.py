@@ -79,20 +79,47 @@ class Session(object):
         self._groups = None
         self._host_id = ''
         environ = getattr(context, 'environ', {})
-        # prefer new cookie-based sessions
-        if 'HTTP_COOKIE' in environ:
-            cookies = http.cookies.SimpleCookie(environ['HTTP_COOKIE'])
+        # prefer new header-based sessions
+        if 'HTTP_X_SESSION_DATA' in environ:
+            header = environ['HTTP_X_SESSION_DATA']
+            params = header.split(';')
+            id, key, callnum = None, None, None
+            for p in params[1:]:
+                k, v = [x.strip() for x in p.split('=')]
+                v = v.strip('"')
+                if k == 'session-id':
+                    id = int(v)
+                elif k == 'session-key':
+                    key = v
+                elif k == 'callnum':
+                    callnum = v
+                elif k == 'header-auth':
+                    pass
+                else:
+                    raise koji.AuthError("Unexpected key in X-Session-Data: %s" % k)
+            if id is None:
+                raise koji.AuthError('session-id not specified in session args')
+            elif key is None:
+                raise koji.AuthError('session-key not specified in session args')
+        elif not context.opts['DisableURLSessions'] and args is not None:
+            # old deprecated method with session values in query string
+            # Option will be turned off by default in future release and removed later
+            args = environ.get('QUERY_STRING', '')
+            if not args:
+                self.message = 'nor session header nor session args'
+                return
+            args = urllib.parse.parse_qs(args, strict_parsing=True)
             try:
-                id = int(cookies['session-id'].value)
-                key = str(cookies['session-key'].value)
+                id = int(args['session-id'][0])
+                key = args['session-key'][0]
             except KeyError as field:
                 raise koji.AuthError('%s not specified in session args' % field)
             try:
-                callnum = int(cookies['callnum'].value)
-            except KeyError:
+                callnum = args['callnum'][0]
+            except Exception:
                 callnum = None
         else:
-            self.message = 'no session cookies'
+            self.message = 'no X-Session-Data header'
             return
         hostip = self.get_remote_ip(override=hostip)
         # lookup the session
@@ -498,14 +525,18 @@ class Session(object):
         insert.execute()
         context.cnx.commit()
 
-        # update it here, so it can be propagated to the cookies in kojixmlrpc.py
+        # update it here, so it can be propagated to the headers in kojixmlrpc.py
         context.session.id = session_id
         context.session.key = key
         context.session.logged_in = True
         context.session.callnum = 0
 
         # return session info
-        return {'session-id': session_id, 'session-key': key}
+        return {
+            'session-id': session_id,
+            'session-key': key,
+            'header-auth': True,  # signalize to client to use new session handling in 1.30
+        }
 
     def subsession(self):
         "Create a subsession"
