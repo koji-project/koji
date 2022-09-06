@@ -226,9 +226,6 @@ def _dml(operation, values, log_errors=True):
 
 def _fetchMulti(query, values):
     """Run the query and return all rows"""
-    print('===================================')
-    print(context)
-    print('===================================')
     c = context.cnx.cursor()
     c.execute(query, values)
     results = c.fetchall()
