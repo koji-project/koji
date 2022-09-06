@@ -40,10 +40,12 @@ install:
 
         ifndef KOJI_MINIMAL
 		mkdir -p $(DESTDIR)/$(HUBPLUGINDIR);
-		install -p -m 644 $(HUBFILES) $(DESTDIR)/$(HUBPLUGINDIR);
-		$(PYTHON) -c "import compileall; compileall.compile_dir('$(DESTDIR)/$(HUBPLUGINDIR)', 1, '$(HUBPLUGINDIR)', 1)";
-		mkdir -p $(DESTDIR)/$(HUBCONFDIR);
-		install -p -m 644 $(HUBCONFFILES) $(DESTDIR)/$(HUBCONFDIR);
+		@if [ "$(PYVER_MAJOR)" == "3" ] ; then \
+			install -p -m 644 $(HUBFILES) $(DESTDIR)/$(HUBPLUGINDIR); \
+			$(PYTHON) -c "import compileall; compileall.compile_dir('$(DESTDIR)/$(HUBPLUGINDIR)', 1, '$(HUBPLUGINDIR)', 1)"; \
+			mkdir -p $(DESTDIR)/$(HUBCONFDIR); \
+			install -p -m 644 $(HUBCONFFILES) $(DESTDIR)/$(HUBCONFDIR); \
+		fi
 		mkdir -p $(DESTDIR)/$(BUILDERPLUGINDIR);
 		install -p -m 644 $(BUILDERFILES) $(DESTDIR)/$(BUILDERPLUGINDIR);
 		$(PYTHON) -c "import compileall; compileall.compile_dir('$(DESTDIR)/$(BUILDERPLUGINDIR)', 1, '$(BUILDERPLUGINDIR)', 1)";
