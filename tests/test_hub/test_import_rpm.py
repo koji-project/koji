@@ -6,8 +6,16 @@ import shutil
 import tempfile
 import copy
 
+IP = kojihub.InsertProcessor
+
 
 class TestImportRPM(unittest.TestCase):
+
+    def getInsert(self, *args, **kwargs):
+        insert = IP(*args, **kwargs)
+        insert.execute = mock.MagicMock()
+        self.inserts.append(insert)
+        return insert
 
     def setUp(self):
         self.exports = kojihub.RootExports()
@@ -41,10 +49,12 @@ class TestImportRPM(unittest.TestCase):
         self.get_build = mock.patch('kojihub.get_build').start()
         self.get_rpm_header = mock.patch('koji.get_rpm_header').start()
         self.new_typed_build = mock.patch('kojihub.new_typed_build').start()
-        self._dml = mock.patch('koji.db._dml').start()
-        self._singleValue = mock.patch('kojihub._singleValue').start()
+        self.nextval = mock.patch('kojihub.nextval').start()
         self.os_path_exists = mock.patch('os.path.exists').start()
         self.os_path_basename = mock.patch('os.path.basename').start()
+        self.InsertProcessor = mock.patch('kojihub.InsertProcessor',
+                                          side_effect=self.getInsert).start()
+        self.inserts = []
 
     def tearDown(self):
         shutil.rmtree(self.tempdir)
@@ -64,6 +74,7 @@ class TestImportRPM(unittest.TestCase):
         }
         with self.assertRaises(koji.GenericError):
             kojihub.import_rpm(self.filename)
+        self.assertEqual(len(self.inserts), 0)
 
     def test_import_rpm_completed_build(self):
         self.os_path_basename.return_value = 'name-version-release.arch.rpm'
@@ -75,27 +86,10 @@ class TestImportRPM(unittest.TestCase):
             'release': 'release',
             'id': 12345,
         }
-        self._singleValue.return_value = 9876
+        self.nextval.return_value = 9876
         kojihub.import_rpm(self.filename)
-        fields = [
-            'arch',
-            'build_id',
-            'buildroot_id',
-            'buildtime',
-            'epoch',
-            'external_repo_id',
-            'id',
-            'name',
-            'payloadhash',
-            'release',
-            'size',
-            'version',
-        ]
-        statement = 'INSERT INTO rpminfo (%s) VALUES (%s)' % (
-            ", ".join(fields),
-            ", ".join(['%%(%s)s' % field for field in fields])
-        )
-        values = {
+
+        data = {
             'build_id': 12345,
             'name': 'name',
             'arch': 'arch',
@@ -109,7 +103,11 @@ class TestImportRPM(unittest.TestCase):
             'id': 9876,
             'size': 0,
         }
-        self._dml.assert_called_once_with(statement, values)
+        self.assertEqual(len(self.inserts), 1)
+        insert = self.inserts[0]
+        self.assertEqual(insert.table, 'rpminfo')
+        self.assertEqual(insert.data, data)
+        self.assertEqual(insert.rawdata, {})
 
     def test_import_rpm_completed_source_build(self):
         self.os_path_basename.return_value = 'name-version-release.src.rpm'
@@ -128,27 +126,9 @@ class TestImportRPM(unittest.TestCase):
             'release': 'release',
             'id': 12345,
         }
-        self._singleValue.return_value = 9876
+        self.nextval.return_value = 9876
         kojihub.import_rpm(self.src_filename)
-        fields = [
-            'arch',
-            'build_id',
-            'buildroot_id',
-            'buildtime',
-            'epoch',
-            'external_repo_id',
-            'id',
-            'name',
-            'payloadhash',
-            'release',
-            'size',
-            'version',
-        ]
-        statement = 'INSERT INTO rpminfo (%s) VALUES (%s)' % (
-            ", ".join(fields),
-            ", ".join(['%%(%s)s' % field for field in fields])
-        )
-        values = {
+        data = {
             'build_id': 12345,
             'name': 'name',
             'arch': 'src',
@@ -162,7 +142,11 @@ class TestImportRPM(unittest.TestCase):
             'id': 9876,
             'size': 0,
         }
-        self._dml.assert_called_once_with(statement, values)
+        self.assertEqual(len(self.inserts), 1)
+        insert = self.inserts[0]
+        self.assertEqual(insert.table, 'rpminfo')
+        self.assertEqual(insert.data, data)
+        self.assertEqual(insert.rawdata, {})
 
     def test_non_exist_file(self):
         basename = 'rpm-1-34'
@@ -170,6 +154,7 @@ class TestImportRPM(unittest.TestCase):
         with self.assertRaises(koji.GenericError) as cm:
             kojihub.import_rpm(self.filename, basename)
         self.assertEqual(f"No such file: {self.filename}", str(cm.exception))
+        self.assertEqual(len(self.inserts), 0)
 
     def test_non_exist_build(self):
         self.cursor.fetchone.return_value = None
@@ -186,3 +171,4 @@ class TestImportRPM(unittest.TestCase):
         with self.assertRaises(koji.GenericError) as cm:
             kojihub.import_rpm(self.src_filename)
         self.assertEqual("No such build", str(cm.exception))
+        self.assertEqual(len(self.inserts), 0)

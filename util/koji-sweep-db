@@ -7,7 +7,7 @@ from koji.context import context
 
 import koji
 import koji.db
-from koji.db import QueryProcessor, InsertProcessor, BulkInsertProcessor
+from koji.db import QueryProcessor, BulkInsertProcessor
 
 
 def clean_sessions(cursor, vacuum, test, age):

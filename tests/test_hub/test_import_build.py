@@ -23,7 +23,7 @@ class TestImportBuild(unittest.TestCase):
         self.check_volume_policy = mock.patch('kojihub.check_volume_policy').start()
         self.new_typed_build = mock.patch('kojihub.new_typed_build').start()
         self._dml = mock.patch('koji.db._dml').start()
-        self._singleValue = mock.patch('kojihub._singleValue').start()
+        self.nextval = mock.patch('kojihub.nextval').start()
         self.get_build = mock.patch('kojihub.get_build').start()
         self.add_rpm_sig = mock.patch('kojihub.add_rpm_sig').start()
         self.rip_rpm_sighdr = mock.patch('koji.rip_rpm_sighdr').start()

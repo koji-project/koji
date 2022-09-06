@@ -125,7 +125,7 @@ class TestQueryProcessor(unittest.TestCase):
         result = next(generator)
         self.assertEqual(result, {'something': 'value number 3'})
 
-    @mock.patch('kojihub._multiRow')
+    @mock.patch('koji.db._multiRow')
     def test_execution_as_list_transform(self, multirow):
         multirow.return_value = [{'col1': 'result_1_col_1', 'col2': 'result_1_col_2'},
                                  {'col1': 'result_2_col_1', 'col2': 'result_2_col_2'}]
