@@ -239,20 +239,112 @@ Default behavior without --all option downloads .rpm files only for build and bu
             self.session, self.parent_task_id)
         self.download_file.assert_not_called()
 
-    def test_handle_download_parent_not_finished(self):
+    def test_handle_download_parent_canceled_task(self):
         args = [str(self.parent_task_id)]
         self.session.getTaskInfo.return_value = {
             'id': self.parent_task_id,
             'method': 'buildArch',
             'arch': 'taskarch',
             'state': 3}
-        self.list_task_output_all_volumes.return_value = {
-            'somerpm.src.rpm': ['DEFAULT', 'vol1'],
-            'somerpm.x86_64.rpm': ['DEFAULT', 'vol2'],
-            'somerpm.noarch.rpm': ['vol3'],
-            'somelog.log': ['DEFAULT', 'vol1'],
-            'somezip.zip': ['DEFAULT']
-        }
+        # Run it and check immediate output
+        # args: task_id
+        # expected: failure
+        self.assert_system_exit(
+            anon_handle_download_task,
+            self.options, self.session, args,
+            stderr="Task 123 was canceled.\n",
+            stdout='',
+            activate_session=None,
+            exit_code=1)
+        # Finally, assert that things were called as we expected.
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
+        self.session.getTaskInfo.assert_called_once_with(self.parent_task_id)
+        self.session.getTaskChildren.assert_called_once_with(self.parent_task_id)
+        self.list_task_output_all_volumes.assert_not_called()
+        self.download_file.assert_not_called()
+
+    def test_handle_download_child_canceled_task(self):
+        args = [str(self.parent_task_id)]
+        self.session.getTaskInfo.return_value = self.parent_task_info
+        self.session.getTaskChildren.return_value = [{
+            'id': 22222,
+            'method': 'buildArch',
+            'arch': 'noarch',
+            'state': 3}]
+        # Run it and check immediate output
+        # args: task_id
+        # expected: failure
+        self.assert_system_exit(
+            anon_handle_download_task,
+            self.options, self.session, args,
+            stderr="Child task 22222 was canceled.\n",
+            stdout='',
+            activate_session=None,
+            exit_code=1)
+        # Finally, assert that things were called as we expected.
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
+        self.session.getTaskInfo.assert_called_once_with(self.parent_task_id)
+        self.session.getTaskChildren.assert_called_once_with(self.parent_task_id)
+        self.list_task_output_all_volumes.assert_not_called()
+        self.download_file.assert_not_called()
+
+    def test_handle_download_parent_failed_task(self):
+        args = [str(self.parent_task_id)]
+        self.session.getTaskInfo.return_value = {
+            'id': self.parent_task_id,
+            'method': 'buildArch',
+            'arch': 'taskarch',
+            'state': 5}
+        # Run it and check immediate output
+        # args: task_id
+        # expected: failure
+        self.assert_system_exit(
+            anon_handle_download_task,
+            self.options, self.session, args,
+            stderr="Task 123 failed. You can use save-failed-tree plugin for FAILED tasks.\n",
+            stdout='',
+            activate_session=None,
+            exit_code=1)
+        # Finally, assert that things were called as we expected.
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
+        self.session.getTaskInfo.assert_called_once_with(self.parent_task_id)
+        self.session.getTaskChildren.assert_called_once_with(self.parent_task_id)
+        self.list_task_output_all_volumes.assert_not_called()
+        self.download_file.assert_not_called()
+
+    def test_handle_download_child_failed_task(self):
+        args = [str(self.parent_task_id)]
+        self.session.getTaskInfo.return_value = self.parent_task_info
+        self.session.getTaskChildren.return_value = [{
+            'id': 22222,
+            'method': 'buildArch',
+            'arch': 'noarch',
+            'state': 5}]
+        # Run it and check immediate output
+        # args: task_id
+        # expected: failure
+        self.assert_system_exit(
+            anon_handle_download_task,
+            self.options, self.session, args,
+            stderr="Child task 22222 failed. "
+                   "You can use save-failed-tree plugin for FAILED tasks.\n",
+            stdout='',
+            activate_session=None,
+            exit_code=1)
+        # Finally, assert that things were called as we expected.
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
+        self.session.getTaskInfo.assert_called_once_with(self.parent_task_id)
+        self.session.getTaskChildren.assert_called_once_with(self.parent_task_id)
+        self.list_task_output_all_volumes.assert_not_called()
+        self.download_file.assert_not_called()
+
+    def test_handle_download_parent_not_finished(self):
+        args = [str(self.parent_task_id)]
+        self.session.getTaskInfo.return_value = {
+            'id': self.parent_task_id,
+            'method': 'buildArch',
+            'arch': 'taskarch',
+            'state': 1}
         # Run it and check immediate output
         # args: task_id
         # expected: failure
@@ -277,10 +369,7 @@ Default behavior without --all option downloads .rpm files only for build and bu
             'id': 22222,
             'method': 'buildArch',
             'arch': 'noarch',
-            'state': 3}]
-        self.list_task_output_all_volumes.side_effect = [
-            {'somerpm.src.rpm': ['DEFAULT', 'vol1']},
-            {'somenextrpm.src.rpm': ['DEFAULT', 'vol1']}]
+            'state': 1}]
         # Run it and check immediate output
         # args: task_id
         # expected: failure

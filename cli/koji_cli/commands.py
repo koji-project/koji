@@ -6940,11 +6940,19 @@ def anon_handle_download_task(options, session, args):
             required_tasks[task["id"]] = task
 
     for task_id in required_tasks:
-        if required_tasks[task_id]["state"] != koji.TASK_STATES.get("CLOSED"):
+        task_state = koji.TASK_STATES.get(required_tasks[task_id]["state"])
+        if task_state != "CLOSED":
             if task_id == base_task_id:
-                error("Task %d has not finished yet." % task_id)
+                start_error_msg = "Task"
             else:
-                error("Child task %d has not finished yet." % task_id)
+                start_error_msg = "Child task"
+            if task_state == 'FAILED':
+                error("%s %d failed. You can use save-failed-tree plugin for FAILED tasks."
+                      % (start_error_msg, task_id))
+            elif task_state == 'CANCELED':
+                error("%s %d was canceled." % (start_error_msg, task_id))
+            else:
+                error("%s %d has not finished yet." % (start_error_msg, task_id))
 
     # get files for download
     downloads = []
