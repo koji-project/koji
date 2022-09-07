@@ -455,7 +455,8 @@ class VMExecTask(BaseTaskHandler):
     def mkqcow2(self, clone_name, source_disk, disk_num):
         new_name = clone_name + '-disk-' + str(disk_num) + self.QCOW2_EXT
         new_path = os.path.join(self.options.imagedir, new_name)
-        cmd = ['/usr/bin/qemu-img', 'create', '-f', 'qcow2', '-o', 'backing_file=%s' % source_disk,
+        cmd = ['/usr/bin/qemu-img', 'create', '-f', 'qcow2', '-o',
+               'backing_file=%s' % source_disk, '-F', 'qcow2',
                new_path]
         proc = subprocess.Popen(cmd,
                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, close_fds=True)
