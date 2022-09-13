@@ -2408,6 +2408,9 @@ def grab_session_options(options):
         'upload_blocksize',
         'no_ssl_verify',
         'serverca',
+        'keytab',
+        'principal',
+        'ccache',
     )
     # cert is omitted for now
     if isinstance(options, dict):
@@ -2444,6 +2447,8 @@ class ClientSession(object):
         self.rsession = None
         self.new_session()
         self.opts.setdefault('timeout', DEFAULT_REQUEST_TIMEOUT)
+        self.exclusive = False
+        self.hostip = None
 
     @property
     def multicall(self):
@@ -2475,13 +2480,16 @@ class ClientSession(object):
             self.callnum = None
             # do we need to do anything else here?
             self.authtype = None
+            self.session_key = None
         else:
             self.logged_in = True
             self.callnum = 0
+            self.session_key = sinfo['session-key']
         self.sinfo = sinfo
 
     def login(self, opts=None):
-        sinfo = self.callMethod('login', self.opts['user'], self.opts['password'], opts)
+        sinfo = self.callMethod('login', self.opts['user'], self.opts['password'],
+                                self.opts['session_key'], opts)
         if not sinfo:
             return False
         self.setSession(sinfo)
@@ -2494,7 +2502,7 @@ class ClientSession(object):
         return type(self)(self.baseurl, self.opts, sinfo)
 
     def gssapi_login(self, principal=None, keytab=None, ccache=None,
-                     proxyuser=None, proxyauthtype=None):
+                     proxyuser=None, proxyauthtype=None, session_key=None):
         if not reqgssapi:
             raise PythonImportError(
                 "Please install python-requests-gssapi to use GSSAPI."
@@ -2539,7 +2547,7 @@ class ClientSession(object):
                 # will fail with a handshake failure, which is retried by default.
                 # For this case we're now using retry=False and test errors for
                 # this exact usecase.
-                kwargs = {'proxyuser': proxyuser}
+                kwargs = {'proxyuser': proxyuser, 'session_key': session_key}
                 if proxyauthtype is not None:
                     kwargs['proxyauthtype'] = proxyauthtype
                 for tries in range(self.opts.get('max_retries', 30)):
@@ -2587,7 +2595,8 @@ class ClientSession(object):
         self.authtype = AUTHTYPES['GSSAPI']
         return True
 
-    def ssl_login(self, cert=None, ca=None, serverca=None, proxyuser=None, proxyauthtype=None):
+    def ssl_login(self, cert=None, ca=None, serverca=None, proxyuser=None, proxyauthtype=None,
+                  session_key=None):
         cert = cert or self.opts.get('cert')
         serverca = serverca or self.opts.get('serverca')
         if cert is None:
@@ -2616,7 +2625,7 @@ class ClientSession(object):
         self.opts['serverca'] = serverca
         e_str = None
         try:
-            kwargs = {'proxyuser': proxyuser}
+            kwargs = {'proxyuser': proxyuser, 'session_key': session_key}
             if proxyauthtype is not None:
                 kwargs['proxyauthtype'] = proxyauthtype
             sinfo = self._callMethod('sslLogin', [], kwargs)
@@ -2833,6 +2842,32 @@ class ClientSession(object):
             result = result[0]
         return result
 
+    def _renew_session(self):
+        session_key = self.session_key
+        self.setSession(None)
+        if self.authtype == 'SSL' or \
+                (self.opts.get('cert') and os.path.isfile(self.opts['cert'])):
+            self.ssl_login(cert=self.opts['cert'],
+                           serverca=self.opts['serverca'],
+                           session_key=session_key)
+        elif self.authtype == 'NORMAL' or self.opts.get('user'):
+            self.login(user=self.opts['user'], password=self.opts['password'],
+                       session_key=session_key)
+        elif self.authtype in ['KERBEROS', 'GSSAPI'] or \
+                self.opts.get('krb_principal'):
+            authtype = self.authtype or AUTHTYPES['GSSAPI']
+            principal = self.opts.get('principal')
+            keytab = self.opts.get('keytab')
+            ccache = self.opts.get('ccache')
+            if authtype == 'KERBEROS':
+                self.krb_login(principal=principal, keytab=keytab,
+                               ccache=ccache, session_key=session_key)
+            elif authtype == 'GSSAPI':
+                self.gssapi_login(self, principal=principal, keytab=keytab,
+                                  ccache=ccache, session_key=session_key)
+        if self.exclusive:
+            self.exclusiveSession()
+
     def _callMethod(self, name, args, kwargs=None, retry=True):
         """Make a call to the hub with retries and other niceties"""
 
@@ -2871,7 +2906,16 @@ class ClientSession(object):
                             # server correctly reporting an outage
                             tries = 0
                             continue
-                    raise err
+                    elif isinstance(err, AuthExpired):
+                        if self.logged_in:
+                            self._renew_session()
+                            return self._callMethod(name, args, kwargs, retry)
+                        else:
+                            raise AuthError("Session ID %s is unlogged and expired." %
+                                            self.sinfo['session-id'])
+                    else:
+                        raise err
+
                 except (SystemExit, KeyboardInterrupt):
                     # (depending on the python version, these may or may not be subclasses of
                     # Exception)
@@ -3182,6 +3226,11 @@ class ClientSession(object):
             dlopts['volume'] = volume
         result = self.callMethod('downloadTaskOutput', taskID, fileName, **dlopts)
         return base64.b64decode(result)
+
+    def exclusiveSession(self, force=False):
+        """Make this session exclusive"""
+        self._callMethod('exclusiveSession', {'force': force})
+        self.exclusive = True
 
 
 class MultiCallHack(object):

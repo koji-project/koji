@@ -280,7 +280,7 @@ class Session(object):
         if result['status'] != koji.USER_STATUS['NORMAL']:
             raise koji.AuthError('logins by %s are not allowed' % result['name'])
 
-    def login(self, user, password, opts=None):
+    def login(self, user, password, session_key=None, opts=None):
         """create a login session"""
         if opts is None:
             opts = {}
@@ -301,7 +301,8 @@ class Session(object):
         self.checkLoginAllowed(user_id)
 
         # create session and return
-        sinfo = self.createSession(user_id, hostip, koji.AUTHTYPES['NORMAL'])
+        sinfo = self.createSession(user_id, hostip, koji.AUTHTYPES['NORMAL'],
+                                   session_key=session_key)
         context.cnx.commit()
         return sinfo
 
@@ -326,7 +327,7 @@ class Session(object):
 
         return (local_ip, local_port, remote_ip, remote_port)
 
-    def sslLogin(self, proxyuser=None, proxyauthtype=None):
+    def sslLogin(self, proxyuser=None, proxyauthtype=None, session_key=None):
 
         """Login into brew via SSL. proxyuser name can be specified and if it is
         allowed in the configuration file then connection is allowed to login as
@@ -404,7 +405,7 @@ class Session(object):
 
         hostip = self.get_remote_ip()
 
-        sinfo = self.createSession(user_id, hostip, authtype)
+        sinfo = self.createSession(user_id, hostip, authtype, session_key=session_key)
         return sinfo
 
     def makeExclusive(self, force=False):
@@ -483,12 +484,22 @@ class Session(object):
         update.execute()
         context.cnx.commit()
 
-    def createSession(self, user_id, hostip, authtype, master=None):
+    def createSession(self, user_id, hostip, authtype, master=None, session_key=None):
         """Create a new session for the given user.
 
         Return a map containing the session-id and session-key.
         If master is specified, create a subsession
         """
+        if session_key:
+            query = QueryProcessor(tables=['sessions'], columns=['master'],
+                                   clauses=['key=%(session_key)d'],
+                                   values={'session_key': session_key})
+            row = query.executeOne(strict=False)
+            if not row:
+                raise koji.GenericError("Don't allow to renew subsession, "
+                                        "subsession doesn't exist.")
+            master = row['master']
+
         # generate a random key
         alnum = string.ascii_letters + string.digits
         key = "%s-%s" % (user_id,
