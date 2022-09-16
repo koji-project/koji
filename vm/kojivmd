@@ -36,6 +36,7 @@ import sys
 import threading
 import time
 import xmlrpc
+import xmlrpc.server
 from contextlib import closing
 from optparse import OptionParser
 
