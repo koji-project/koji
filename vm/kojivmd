@@ -1033,11 +1033,14 @@ class VMTaskManager(TaskManager):
             vm_name = task_info['request'][0]
             try:
                 self.libvirt_conn.lookupByName(vm_name)
-            except libvirt.libvirtError:
-                # if this builder does not have the requested VM,
-                # we can't handle the task
-                self.logger.debug('VM %s not available, ignoring task %i', vm_name, task['id'])
-                return False
+            except libvirt.libvirtError as e:
+                if e.get_error_code() == libvirt.VIR_ERR_NO_DOMAIN:
+                    # if this builder does not have the requested VM,
+                    # we can't handle the task
+                    self.logger.debug('VM %s not available, ignoring task %i', vm_name, task['id'])
+                    return False
+                else:
+                    raise
         return super(VMTaskManager, self).takeTask(task)
 
     def cleanupVM(self, vm_name):
