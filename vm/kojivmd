@@ -1069,7 +1069,7 @@ class VMTaskManager(TaskManager):
                 return False
         else:
             # Removed all the disks successfully, so undefine the VM
-            vm.undefine()
+            vm.undefineFlags(libvirt.VIR_DOMAIN_UNDEFINE_NVRAM)
             self.logger.info('Cleaned up VM %s', vm_name)
             return True
 
