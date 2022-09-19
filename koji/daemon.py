@@ -520,7 +520,7 @@ class SCM(object):
         # TODO: sanity check arguments
         sourcedir = '%s/%s' % (scmdir, self.module)
 
-        update_checkout_cmd = None
+        update_checkout_cmds = None
         update_checkout_dir = None
         env = None
 
@@ -578,7 +578,10 @@ class SCM(object):
             sourcedir = '%s/%s' % (scmdir, checkout_path)
             module_checkout_cmd = ['git', 'clone', '-n', gitrepo, sourcedir]
             common_checkout_cmd = ['git', 'clone', commonrepo, 'common']
-            update_checkout_cmd = ['git', 'reset', '--hard', self.revision]
+            update_checkout_cmds = [
+                ['git', 'fetch', 'origin', self.revision, 'KOJI_FETCH_HEAD'],
+                ['git', 'reset', '--hard', 'KOJI_FETCH_HEAD']
+            ]
             update_checkout_dir = sourcedir
 
             # self.module may be empty, in which case the specfile should be in the top-level
@@ -608,7 +611,10 @@ class SCM(object):
             sourcedir = '%s/%s' % (scmdir, checkout_path)
             module_checkout_cmd = ['git', 'clone', '-n', gitrepo, sourcedir]
             common_checkout_cmd = ['git', 'clone', commonrepo, 'common']
-            update_checkout_cmd = ['git', 'reset', '--hard', self.revision]
+            update_checkout_cmds = [
+                ['git', 'fetch', 'origin', self.revision, 'KOJI_FETCH_HEAD'],
+                ['git', 'reset', '--hard', 'KOJI_FETCH_HEAD']
+            ]
             update_checkout_dir = sourcedir
 
             # self.module may be empty, in which case the specfile should be in the top-level
@@ -643,7 +649,7 @@ class SCM(object):
         # perform checkouts
         _run(module_checkout_cmd, chdir=scmdir, fatal=True)
 
-        if update_checkout_cmd:
+        if update_checkout_cmds:
             # Currently only required for GIT checkouts
             # Run the command in the directory the source was checked out into
             if self.scmtype.startswith('GIT') and globals().get('KOJIKAMID'):
@@ -651,7 +657,8 @@ class SCM(object):
                      chdir=update_checkout_dir, fatal=True)
                 _run(['git', 'config', 'core.safecrlf', 'true'],
                      chdir=update_checkout_dir, fatal=True)
-            _run(update_checkout_cmd, chdir=update_checkout_dir, fatal=True)
+            for cmd in update_checkout_cmds:
+                _run(cmd, chdir=update_checkout_dir, fatal=True)
 
         if self.use_common and not globals().get('KOJIKAMID'):
             _run(common_checkout_cmd, chdir=scmdir, fatal=True)
