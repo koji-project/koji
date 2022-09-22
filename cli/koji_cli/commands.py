@@ -6723,13 +6723,18 @@ def anon_handle_download_build(options, session, args):
                 warn("No such sigkey %s for rpm %s" % (suboptions.key, nvra))
                 rpms.remove(rpm)
 
+    size = len(rpms) + len(archives)
+    number = 0
+
     # run the download
     for rpm in rpms:
-        download_rpm(info, rpm, suboptions.topurl, sigkey=suboptions.key,
-                     quiet=suboptions.quiet, noprogress=suboptions.noprogress)
+        number += 1
+        download_rpm(info, rpm, suboptions.topurl, sigkey=suboptions.key, quiet=suboptions.quiet,
+                     noprogress=suboptions.noprogress, num=number, size=size)
     for archive in archives:
-        download_archive(info, archive, suboptions.topurl,
-                         quiet=suboptions.quiet, noprogress=suboptions.noprogress)
+        number += 1
+        download_archive(info, archive, suboptions.topurl, quiet=suboptions.quiet,
+                         noprogress=suboptions.noprogress, num=number, size=size)
 
 
 def anon_handle_download_logs(options, session, args):
