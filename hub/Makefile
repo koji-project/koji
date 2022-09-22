@@ -1,3 +1,4 @@
+PYVER_MAJOR := $(shell $(PYTHON) -c 'import sys; print(".".join(sys.version.split(".")[:1]))')
 PACKAGE = $(shell basename `pwd`)
 PYFILES = $(wildcard *.py)
 PKGDIR = $(shell $(PYTHON) -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")/$(PACKAGE)
@@ -30,5 +31,7 @@ install:
 	for p in $(PYFILES) ; do \
 		install -p -m 644 $$p $(DESTDIR)/$(SERVERDIR)/$$p; \
 	done
-	$(PYTHON) -c "import compileall; compileall.compile_dir('$(DESTDIR)/$(SERVERDIR)', 1, '$(PYDIR)', 1)"
+	@if [ "$(PYVER_MAJOR)" == "3" ] ; then \
+		$(PYTHON) -c "import compileall; compileall.compile_dir('$(DESTDIR)/$(SERVERDIR)', 1, '$(PYDIR)', 1)" ; \
+	fi
 
