@@ -33,6 +33,7 @@ import time
 import itertools
 
 import koji
+from koji.tasks import parse_task_params
 import kojiweb.util
 from koji.server import ServerRedirect
 from kojiweb.util import _genHTML, _getValidTokens, _initValues
@@ -641,9 +642,17 @@ def taskinfo(environ, taskID):
 
     values['title'] = koji.taskLabel(task) + ' | Task Info'
 
+    try:
+        params = parse_task_params(task['method'], task['request'])
+    except TypeError:
+        # unknown tasks/plugins
+        params = {'args': task['request']}
     values['task'] = task
-    params = task['request']
     values['params'] = params
+    if 'opts' in params:
+        values['opts'] = params.pop('opts')
+    else:
+        values['opts'] = {}
 
     if task['channel_id']:
         channel = server.getChannel(task['channel_id'])
@@ -687,49 +696,55 @@ def taskinfo(environ, taskID):
     buildroots = server.listBuildroots(taskID=task['id'])
     values['buildroots'] = buildroots
 
-    if task['method'] in ('buildArch', 'buildMaven', 'buildSRPMFromSCM'):
-        if len(params) > 1:
-            tag_id = params[1]
+    def _get_tag(tag_id):
+        if not tag_id:
+            return None
+        elif isinstance(tag_id, dict):
+            return tag_id
+        else:
             try:
-                values['buildTag'] = server.getTag(tag_id, strict=True)
+                return server.getTag(tag_id, strict=True)
             except koji.GenericError:
-                values['buildTag'] = {'name': "%d (deleted)" % tag_id, 'id': None}
-    elif task['method'] == 'tagBuild':
-        destTag = server.getTag(params[0])
-        build = server.getBuild(params[1])
-        values['destTag'] = destTag
-        values['build'] = build
-    elif task['method'] in ('newRepo', 'distRepo', 'createdistrepo'):
-        tag = server.getTag(params[0])
-        values['tag'] = tag
-    elif task['method'] == 'tagNotification':
-        destTag = None
-        if params[2]:
-            destTag = server.getTag(params[2])
-        srcTag = None
-        if params[3]:
-            srcTag = server.getTag(params[3])
-        build = server.getBuild(params[4])
-        user = server.getUser(params[5])
-        values['destTag'] = destTag
-        values['srcTag'] = srcTag
-        values['build'] = build
-        values['user'] = user
-    elif task['method'] == 'dependantTask':
-        deps = [server.getTaskInfo(depID, request=True) for depID in params[0]]
-        values['deps'] = deps
-    elif task['method'] == 'wrapperRPM':
-        buildTarget = params[1]
-        values['buildTarget'] = buildTarget
-        if params[3]:
-            wrapTask = server.getTaskInfo(params[3]['id'], request=True)
-            values['wrapTask'] = wrapTask
-    elif task['method'] == 'restartVerify':
-        values['rtask'] = server.getTaskInfo(params[0], request=True)
-    elif task['method'] == 'build':
-        if len(params) > 1:
-            if isinstance(params[1], dict):
-                params[1] = params[1].get('name')
+                return {'name': "%d (deleted)" % tag_id, 'id': None}
+
+    if 'root' in params:
+        params['build_tag'] = _get_tag(params.pop('root'))
+    if 'tag_id' in params:
+        params['destination_tag'] = _get_tag(params.pop('tag_id'))
+    if 'tag' in params:
+        params['tag'] = _get_tag(params.pop('tag'))
+    if 'tag_info' in params:
+        params['destination_tag'] = _get_tag(params.pop('tag_info'))
+    if 'from_info' in params:
+        params['source tag'] = _get_tag(params.pop('from_info'))
+    if 'build_info' in params:
+        params['build'] = server.getBuild(params.pop('build_info'))
+    if 'build_id' in params:
+        params['build'] = server.getBuild(params.pop('build_id'))
+    if 'user_info' in params:
+        params['user'] = server.getUser(params.pop('user_info'))
+    if 'task_list' in params:
+        tmp = []
+        for t in params.pop('task_list'):
+            base = parse_task_params(t[0], t[1])
+            base['method'] = t[0]
+            base['opts'] = t[2]
+            tmp.append(base)
+        params['task_list'] = tmp
+    if 'wait_list' in params:
+        params['wait_list'] = [server.getTaskInfo(t) for t in params['wait_list']]
+    if 'target' in params:
+        params['build_target'] = server.getBuildTarget(params.pop('target'))
+    if 'build_target' in params:
+        params['build_target'] = server.getBuildTarget(params.pop('build_target'))
+    if 'build_tag' in params:
+        params['build_tag'] = _get_tag(params.pop('build_tag'))
+    if 'task_id' in params:
+        params['task'] = server.getTaskInfo(params.pop('task_id'), request=True)
+    if 'repo_id' in params:
+        params['repo'] = server.repoInfo(params.pop('repo_id'))
+    if 'buildrootID' in params:
+        params['buildroot'] = server.getBuildroot(params.pop('buildrootID'))
 
     values['taskBuilds'] = []
     if task['state'] in (koji.TASK_STATES['CLOSED'], koji.TASK_STATES['FAILED']):
@@ -767,10 +782,6 @@ def taskinfo(environ, taskID):
     else:
         values['perms'] = []
 
-    try:
-        values['params_parsed'] = _genHTML(environ, 'taskinfo_params.chtml')
-    except Exception:
-        values['params_parsed'] = None
     return _genHTML(environ, 'taskinfo.chtml')
 
 

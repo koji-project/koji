@@ -267,18 +267,27 @@ class TestTaskInfo(unittest.TestCase):
         server = self.__get_server(task)
         self.get_server.return_value = server
         webidx.taskinfo(self.environ, self.task_id)
-        server.getTag.assert_called_with('testTag')
+        server.getTag.assert_called_with('testTag', strict=True)
         server.getBuild.assert_called_with('testBuild')
 
         # case 5. newRepo, distRepo, createdstrepo
-        for m in ('newRepo', 'distRepo', 'createdistrepo'):
+        for m in ('newRepo', 'distRepo'):
             task = copy.deepcopy(self.task)
             task.update({'method': m})
-            task.update({'request': ['RepoTag']})
+            task.update({'request': ['RepoTag', 'repo_id', 'keys', 'task_opts']})
             server = self.__get_server(task)
             self.get_server.return_value = server
             webidx.taskinfo(self.environ, self.task_id)
-            server.getTag.assert_called_with('RepoTag')
+            server.getTag.assert_called_with('RepoTag', strict=True)
+
+        for m in ('createdistrepo',):
+            task = copy.deepcopy(self.task)
+            task.update({'method': m})
+            task.update({'request': ['RepoTag', 'repo_id', 'arch', 'keys', 'opts']})
+            server = self.__get_server(task)
+            self.get_server.return_value = server
+            webidx.taskinfo(self.environ, self.task_id)
+            server.getTag.assert_called_with('RepoTag', strict=True)
 
         # case 6. tagNotification
         task = copy.deepcopy(self.task)
@@ -287,18 +296,17 @@ class TestTaskInfo(unittest.TestCase):
         server = self.__get_server(task)
         self.get_server.return_value = server
         webidx.taskinfo(self.environ, self.task_id)
-        server.getTag.assert_has_calls([call('destTag'), call('srcTag')])
+        server.getTag.assert_has_calls([call('destTag', strict=True), call('srcTag', strict=True)])
         server.getBuild.assert_called_with('theBuild')
         server.getUser.assert_called_with('user')
 
         # case 7. dependentTask
         task = copy.deepcopy(self.task)
         task.update({'method': 'dependantTask'})
-        task.update({'request': [[]]})
+        task.update({'request': [[], []]})
         server = self.__get_server(task)
         self.get_server.return_value = server
         webidx.taskinfo(self.environ, self.task_id)
-        self.assertEqual(self.environ['koji.values']['deps'], [])
 
         # case 8. wrapperRPM
         task = copy.deepcopy(self.task)
@@ -311,13 +319,15 @@ class TestTaskInfo(unittest.TestCase):
             'wrapTask'
         ]
         self.get_server.return_value = server
+        server.getBuildTarget.return_value = 'tgt'
         webidx.taskinfo(self.environ, self.task_id)
-        self.assertEqual(self.environ['koji.values']['wrapTask'], 'wrapTask')
+        self.assertEqual(self.environ['koji.values']['params'], 
+                         {'build': '', 'build_target': 'tgt', 'spec_url': '', 'task': {'id': 999}})
 
         # case 7. restartVerify
         task = copy.deepcopy(self.task)
         task.update({'method': 'restartVerify'})
-        task.update({'request': [[]]})
+        task.update({'request': ['task_id', 'host']})
         server = self.__get_server(task)
         server.getTaskInfo.side_effect = [
             task,
@@ -326,7 +336,8 @@ class TestTaskInfo(unittest.TestCase):
         ]
         self.get_server.return_value = server
         webidx.taskinfo(self.environ, self.task_id)
-        self.assertEqual(self.environ['koji.values']['rtask'], 'restartVerify')
+        self.assertEqual(self.environ['koji.values']['params'],
+                         {'host': 'host', 'task': 'restartVerify'})
 
     def test_taskinfo_sorting_compare(self):
         """Test taskinfo function sorting results"""
