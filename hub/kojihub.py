@@ -9599,6 +9599,7 @@ SELECT %(col_str)s
                 data = [self.transform(row) for row in data]
                 # and then convert back to lists
                 data = [[row[f] for f in fields] for row in data]
+                return data
         else:
             data = _multiRow(query, self.values, (self.aliases or self.columns))
             if self.transform is not None:

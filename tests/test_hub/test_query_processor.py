@@ -15,15 +15,15 @@ class TestQueryProcessor(unittest.TestCase):
             aliases=['other'],
             tables=['awesome'],
             joins=['morestuff'],
-            #values=...
-            #transform=...
+            # values=...
+            # transform=...
             opts={
-                #'countOnly': True,
+                # 'countOnly': True,
                 'order': 'other',
                 'offset': 10,
                 'limit': 3,
                 'group': 'awesome.aha'
-                #'rowlock': True,
+                # 'rowlock': True,
             },
             enable_group=True
         )
@@ -71,14 +71,14 @@ class TestQueryProcessor(unittest.TestCase):
                    " ORDER BY something OFFSET 10 LIMIT 3"
         self.assertEqual(actual, expected)
 
-
     @mock.patch('kojihub.context')
     def test_simple_with_execution(self, context):
         cursor = mock.MagicMock()
         context.cnx.cursor.return_value = cursor
         proc = kojihub.QueryProcessor(**self.simple_arguments)
         proc.execute()
-        cursor.execute.assert_called_once_with('\nSELECT something\n  FROM awesome\n\n\n \n \n\n \n', {})
+        cursor.execute.assert_called_once_with(
+            '\nSELECT something\n  FROM awesome\n\n\n \n \n\n \n', {})
 
     @mock.patch('kojihub.context')
     def test_simple_count_with_execution(self, context):
@@ -89,7 +89,8 @@ class TestQueryProcessor(unittest.TestCase):
         args['opts'] = {'countOnly': True}
         proc = kojihub.QueryProcessor(**args)
         results = proc.execute()
-        cursor.execute.assert_called_once_with('\nSELECT count(*)\n  FROM awesome\n\n\n \n \n\n \n', {})
+        cursor.execute.assert_called_once_with(
+            '\nSELECT count(*)\n  FROM awesome\n\n\n \n \n\n \n', {})
         self.assertEqual(results, 'some count')
 
         cursor.reset_mock()
@@ -101,8 +102,6 @@ class TestQueryProcessor(unittest.TestCase):
             'SELECT count(*)\nFROM (\nSELECT 1\n'
             '  FROM awesome\n\n\n GROUP BY id\n \n\n \n) numrows', {})
         self.assertEqual(results, 'some count')
-
-
 
     @mock.patch('kojihub.context')
     def test_simple_execution_with_iterate(self, context):
@@ -128,3 +127,17 @@ class TestQueryProcessor(unittest.TestCase):
         result = next(generator)
         self.assertEqual(result, {'something': 'value number 3'})
 
+    @mock.patch('kojihub._multiRow')
+    def test_execution_as_list_transform(self, multirow):
+        multirow.return_value = [{'col1': 'result_1_col_1', 'col2': 'result_1_col_2'},
+                                 {'col1': 'result_2_col_1', 'col2': 'result_2_col_2'}]
+        args = dict(
+            columns=['col1', 'col2'],
+            tables=['table'],
+            opts={'asList': True},
+            transform=lambda x: x,
+        )
+        proc = kojihub.QueryProcessor(**args)
+        results = proc.execute()
+        self.assertEqual(
+            results, [['result_1_col_1', 'result_1_col_2'], ['result_2_col_1', 'result_2_col_2']])
