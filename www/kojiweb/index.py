@@ -1674,7 +1674,7 @@ def hosts(environ, state='enabled', start=None, order='name', ready='all', chann
     if arch != 'all':
         arch = _validate_arch(arch)
         if arch:
-            hosts = [x for x in hosts if arch in x['arches']]
+            hosts = [x for x in hosts if arch in x['arches'].split(' ')]
     else:
         arch = 'all'
     values['arch'] = arch
