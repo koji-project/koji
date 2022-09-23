@@ -791,10 +791,10 @@ services configurations.
 
 ::
 
-    AuthPrincipal host/kojihub@EXAMPLE.COM
-    AuthKeytab /etc/koji.keytab
-    ProxyPrincipals koji/kojiweb@EXAMPLE.COM
-    HostPrincipalFormat compile/%s@EXAMPLE.COM
+    AuthPrincipal = host/kojihub@EXAMPLE.COM
+    AuthKeytab = /etc/koji.keytab
+    ProxyPrincipals = koji/kojiweb@EXAMPLE.COM
+    HostPrincipalFormat = compile/%s@EXAMPLE.COM
 
 If using SSL auth, these settings need to be valid and inline with other
 services configurations for kojiweb to allow logins.
