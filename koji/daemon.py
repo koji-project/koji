@@ -575,11 +575,16 @@ class SCM(object):
                 checkout_path = os.path.basename(self.repository[:-4])
                 commonrepo = os.path.dirname(gitrepo[:-4]) + '/common.git'
 
+            # git-reset happily accepted origin/x spec, fetch has it split
+            if self.revision.startswith('origin/'):
+                rev = self.revision[7:]
+            else:
+                rev = self.revision
             sourcedir = '%s/%s' % (scmdir, checkout_path)
             module_checkout_cmd = ['git', 'clone', '-n', gitrepo, sourcedir]
             common_checkout_cmd = ['git', 'clone', commonrepo, 'common']
             update_checkout_cmds = [
-                ['git', 'fetch', 'origin', self.revision, 'KOJI_FETCH_HEAD'],
+                ['git', 'fetch', 'origin', '%s:KOJI_FETCH_HEAD' % rev],
                 ['git', 'reset', '--hard', 'KOJI_FETCH_HEAD']
             ]
             update_checkout_dir = sourcedir
@@ -608,11 +613,16 @@ class SCM(object):
                 checkout_path = os.path.basename(self.repository[:-4])
                 commonrepo = os.path.dirname(gitrepo[:-4]) + '/common.git'
 
+            # git-reset happily accepted origin/x spec, fetch has it split
+            if self.revision.startswith('origin/'):
+                rev = self.revision[7:]
+            else:
+                rev = self.revision
             sourcedir = '%s/%s' % (scmdir, checkout_path)
             module_checkout_cmd = ['git', 'clone', '-n', gitrepo, sourcedir]
             common_checkout_cmd = ['git', 'clone', commonrepo, 'common']
             update_checkout_cmds = [
-                ['git', 'fetch', 'origin', self.revision, 'KOJI_FETCH_HEAD'],
+                ['git', 'fetch', 'origin', '%s:KOJI_FETCH_HEAD' % rev],
                 ['git', 'reset', '--hard', 'KOJI_FETCH_HEAD']
             ]
             update_checkout_dir = sourcedir
