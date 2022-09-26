@@ -480,7 +480,7 @@ class Task(object):
                     raise koji.GenericError("Task LOOP at task %i" % task_id)
                 task_id = parent
                 seen[task_id] = 1
-                query.values = values
+                query.values = {'task_id': task_id}
                 parent = query.singleValue()
             return Task(task_id).cancelFull(strict=True)
         # We handle the recursion ourselves, since self.cancel will stop at
@@ -3067,10 +3067,10 @@ def repo_references(repo_id):
         'state': 'state'}
     fields, aliases = zip(*fields.items())
     query = QueryProcessor(
-            tables=['standard_buildroot'],
-            columns=fields, aliases=aliases,
-            clauses=['repo_id=%(repo_id)s', 'retire_event IS NULL'],
-            values={'repo_id': repo_id})
+        tables=['standard_buildroot'],
+        columns=fields, aliases=aliases,
+        clauses=['repo_id=%(repo_id)s', 'retire_event IS NULL'],
+        values={'repo_id': repo_id})
     # check results for bad states
     ret = []
     for data in query.execute():
@@ -3233,7 +3233,7 @@ def _edit_build_target(buildTargetInfo, name, build_tag, dest_tag):
             raise koji.GenericError('name "%s" is already taken by build target %i' % (name, id))
 
         update = UpdateProcessor('build_target', clauses=['id = %(buildTargetID)i'],
-                                  values=values, data={'name': name})
+                                 values=values, data={'name': name})
         update.execute()
 
     update = UpdateProcessor('build_target_config', values=values,
@@ -8611,7 +8611,7 @@ def reset_build(build):
                               attribute='state', old=st_old, new=koji.BUILD_STATES['CANCELED'],
                               info=binfo)
     query = QueryProcessor(tables=['rpminfo'], columns=['id'], clauses=['build_id=%(id)i'],
-                           values=binfo['id'], opts={'asList': True})
+                           values=binfo, opts={'asList': True})
     for (rpm_id,) in query.execute():
         delete = """DELETE FROM rpmsigs WHERE rpm_id=%(rpm_id)i"""
         _dml(delete, locals())
@@ -14008,7 +14008,6 @@ class Host(object):
 
     def getTask(self):
         """Open next available task and return it"""
-        c = context.cnx.cursor()
         id = self.id
         # get arch and channel info for host
         values = {'id': id}
@@ -14029,17 +14028,17 @@ class Host(object):
                                values={
                                    'st_free': koji.TASK_STATES['FREE'],
                                    'st_assigned': koji.TASK_STATES['ASSIGNED'],
-                                   'id': id
-                               },
-                               queryOpts={'order': 'priority,create_time'})
-        for data in c.fetchall():
-            data = dict(zip(fields, data))
+                                   'id': id, },
+                               queryOpts={'order': 'priority,create_time'}
+                               )
+        for data in query.execute():
             # XXX - we should do some pruning here, but for now...
             # check arch
             if data['arch'] not in arches:
                 continue
             # NOTE: channels ignored for explicit assignments
-            if data['state'] != st_assigned and data['channel_id'] not in channels:
+            if data['state'] != koji.TASK_STATES['ASSIGNED'] and \
+                    data['channel_id'] not in channels:
                 continue
             task = Task(data['id'])
             ret = task.open(self.id)
