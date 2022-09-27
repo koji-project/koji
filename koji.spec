@@ -85,8 +85,9 @@
 Name: koji
 Version: 1.30.0
 Release: %{release}%{?dist}
-License: LGPLv2 and GPLv2+
+License: LGPL-2.1-only and GPL-2.0-or-later
 # the included arch lib from yum's rpmUtils is GPLv2+
+# rpmdiff lib (from rpmlint) is GPLv2+
 Summary: Build system tools
 Group: Applications/System
 URL: https://pagure.io/koji
@@ -172,7 +173,7 @@ desc
 %package -n python2-%{name}-cli-plugins
 Summary: Koji client plugins
 Group: Applications/Internet
-License: LGPLv2
+License: LGPL-2.1-only
 Requires: python2-%{name} = %{version}-%{release}
 Obsoletes: python2-%{name}-sidetag-plugin-cli < %{version}-%{release}
 Provides: python2-%{name}-sidetag-plugin-cli = %{version}-%{release}
@@ -185,7 +186,7 @@ Plugins to the koji command-line interface
 %package -n python%{python3_pkgversion}-%{name}-cli-plugins
 Summary: Koji client plugins
 Group: Applications/Internet
-License: LGPLv2
+License: LGPL-2.1-only
 Requires: python%{python3_pkgversion}-%{name} = %{version}-%{release}
 Obsoletes: python%{python3_pkgversion}-%{name}-sidetag-plugin-cli < %{version}-%{release}
 Provides: python%{python3_pkgversion}-%{name}-sidetag-plugin-cli = %{version}-%{release}
@@ -198,7 +199,7 @@ Plugins to the koji command-line interface
 %package hub
 Summary: Koji XMLRPC interface
 Group: Applications/Internet
-License: LGPLv2
+License: LGPL-2.1-only
 Requires: %{name} = %{version}-%{release}
 Requires: %{name}-hub-code
 %if 0%{?fedora} || 0%{?rhel} > 7
@@ -212,8 +213,7 @@ koji-hub is the XMLRPC interface to the koji database
 %package -n python%{python3_pkgversion}-%{name}-hub
 Summary: Koji XMLRPC interface
 Group: Applications/Internet
-License: LGPLv2 and GPLv2
-# rpmdiff lib (from rpmlint) is GPLv2 (only)
+License: LGPL-2.1-only
 Requires: httpd
 Requires: python%{python3_pkgversion}-mod_wsgi
 %if 0%{?fedora} || 0%{?rhel} >= 7
@@ -230,7 +230,7 @@ koji-hub is the XMLRPC interface to the koji database
 %package hub-plugins
 Summary: Koji hub plugins
 Group: Applications/Internet
-License: LGPLv2
+License: LGPL-2.1-only
 Requires: %{name}-hub-plugins-code = %{version}-%{release}
 %if 0%{?fedora} || 0%{?rhel} > 7
 Suggests: python%{python3_pkgversion}-%{name}-hub-plugins
@@ -242,7 +242,7 @@ Plugins to the koji XMLRPC interface
 %package -n python%{python3_pkgversion}-%{name}-hub-plugins
 Summary: Koji hub plugins
 Group: Applications/Internet
-License: LGPLv2
+License: LGPL-2.1-only
 Requires: python%{python3_pkgversion}-%{name}-hub = %{version}-%{release}
 Requires: python%{python3_pkgversion}-qpid-proton
 Requires: cpio
@@ -257,7 +257,7 @@ Plugins to the koji XMLRPC interface
 %package builder-plugins
 Summary: Koji builder plugins
 Group: Applications/Internet
-License: LGPLv2
+License: LGPL-2.1-only
 Requires: %{name} = %{version}-%{release}
 Requires: %{name}-builder = %{version}-%{release}
 
@@ -267,8 +267,12 @@ Plugins for the koji build daemon
 %package builder
 Summary: Koji RPM builder daemon
 Group: Applications/System
-License: LGPLv2 and GPLv2+
+%if 0%{py2_support}
+License: LGPL-2.1-only and GPL-2.0-or-later
 #mergerepos (from createrepo) is GPLv2+
+%else
+License: LGPL-2.1-only
+%endif
 Requires: mock >= 0.9.14
 Requires(pre): /usr/sbin/useradd
 Requires: squashfs-tools
@@ -297,7 +301,7 @@ tasks that come through the Koji system.
 %package vm
 Summary: Koji virtual machine management daemon
 Group: Applications/System
-License: LGPLv2
+License: LGPL-2.1-only
 Requires: %{name} = %{version}-%{release}
 Requires(post): systemd
 Requires(preun): systemd
@@ -320,7 +324,7 @@ virtual machine. This package is not required for most installations.
 %package utils
 Summary: Koji Utilities
 Group: Applications/Internet
-License: LGPLv2
+License: LGPL-2.1-only
 Requires: %{name} = %{version}-%{release}
 Requires: python%{python3_pkgversion}-psycopg2
 Obsoletes: python%{python3_pkgversion}-koji-sidetag-plugin-tools < %{version}-%{release}
@@ -337,7 +341,7 @@ Utilities for the Koji system
 %package web
 Summary: Koji Web UI
 Group: Applications/Internet
-License: LGPLv2
+License: LGPL-2.1-only
 Requires: %{name} = %{version}-%{release}
 Requires: %{name}-web-code = %{version}-%{release}
 %if 0%{?fedora} || 0%{?rhel} > 7
@@ -350,7 +354,7 @@ koji-web is a web UI to the Koji system.
 %package -n python%{python3_pkgversion}-%{name}-web
 Summary: Koji Web UI
 Group: Applications/Internet
-License: LGPLv2
+License: LGPL-2.1-only
 %{?python_provide:%python_provide python%{python3_pkgversion}-%{name}-web}
 Requires: httpd
 Requires: python%{python3_pkgversion}-mod_wsgi
