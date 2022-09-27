@@ -569,7 +569,7 @@ def download_file(url, relpath, quiet=False, noprogress=False, size=None,
             print("Downloading: %s" % relpath)
 
     if not filesize:
-        response = requests.head(url, timeout=10)
+        response = requests.head(url, timeout=10, allow_redirects=True)
         if response.status_code == 200 and response.headers.get('Content-Length'):
             filesize = int(response.headers['Content-Length'])
 
