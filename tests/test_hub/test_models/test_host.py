@@ -6,6 +6,7 @@ import koji
 import kojihub
 
 UP = kojihub.UpdateProcessor
+QP = kojihub.QueryProcessor
 
 
 class TestHost(unittest.TestCase):
@@ -16,10 +17,20 @@ class TestHost(unittest.TestCase):
         self.updates.append(update)
         return update
 
+    def getQuery(self, *args, **kwargs):
+        query = QP(*args, **kwargs)
+        query.execute = self.query_execute
+        self.queries.append(query)
+        return query
+
     def setUp(self):
         self.UpdateProcessor = mock.patch('kojihub.UpdateProcessor',
                                           side_effect=self.getUpdate).start()
         self.updates = []
+        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
+                                         side_effect=self.getQuery).start()
+        self.queries = []
+        self.query_execute = mock.MagicMock()
 
     @mock.patch('kojihub.context')
     def test_instantiation_not_a_host(self, context):
@@ -118,55 +129,41 @@ class TestHost(unittest.TestCase):
         )
         self.assertEqual(processor.call_args_list[2], update3)
 
-    @mock.patch('kojihub.context')
-    def test_task_wait_check(self, context):
-        cursor = mock.MagicMock()
-        context.cnx.cursor.return_value = cursor
-        cursor.fetchall.return_value = [
-            (1, 1),
-            (2, 2),
-            (3, 3),
-            (4, 4),
-        ]
+    def test_task_wait_check(self):
+        self.query_execute.return_value = [{'id': 1, 'state': 1},
+                                           {'id': 2, 'state': 2},
+                                           {'id': 3, 'state': 3},
+                                           {'id': 4, 'state': 4}, ]
         host = kojihub.Host(id=1234)
         finished, unfinished = host.taskWaitCheck(parent=123)
-        cursor.execute.assert_called_once()
         self.assertEqual(finished, [2, 3])
         self.assertEqual(unfinished, [1, 4])
 
     @mock.patch('kojihub.context')
     def test_task_wait(self, context):
-        cursor = mock.MagicMock()
-        context.cnx.cursor.return_value = cursor
-        context.session.assertLogin = mock.MagicMock()
-        cursor.fetchall.return_value = [
-            (1, 1),
-            (2, 2),
-            (3, 3),
-            (4, 4),
-        ]
-        context.event_id = 42
-        context.session.user_id = 23
+        self.query_execute.return_value = [{'id': 1, 'state': 1},
+                                           {'id': 2, 'state': 2},
+                                           {'id': 3, 'state': 3},
+                                           {'id': 4, 'state': 4}, ]
         kojihub.Host.return_value = 1234
         host = kojihub.Host(id=1234)
         host.taskWait(parent=123)
         self.assertEqual(len(self.updates), 2)
-        self.assertEqual(len(cursor.execute.mock_calls), 1)
 
-        rawdata = {'awaited': 'false'}
+        data = {'awaited': False}
 
         update = self.updates[0]
         values = {'id': 2}
         self.assertEqual(update.table, 'task')
         self.assertEqual(update.values, values)
-        self.assertEqual(update.data, {})
-        self.assertEqual(update.rawdata, rawdata)
+        self.assertEqual(update.data, data)
+        self.assertEqual(update.rawdata, {})
         self.assertEqual(update.clauses, ['id=%(id)s'])
 
         update = self.updates[1]
         values = {'id': 3}
         self.assertEqual(update.table, 'task')
         self.assertEqual(update.values, values)
-        self.assertEqual(update.data, {})
-        self.assertEqual(update.rawdata, rawdata)
+        self.assertEqual(update.data, data)
+        self.assertEqual(update.rawdata, {})
         self.assertEqual(update.clauses, ['id=%(id)s'])

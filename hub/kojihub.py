@@ -83,7 +83,6 @@ from koji.db import (
     UpdateProcessor,
     _applyQueryOpts,
     _dml,
-    _fetchMulti,
     _fetchSingle,
     _multiRow,
     _singleRow,
@@ -456,7 +455,7 @@ class Task(object):
         """Cancel child tasks"""
         query = QueryProcessor(tables=['task'], columns=['id'], clauses=['parent = %(task_id)i'],
                                values={'task_id': self.id}, opts={'asList': True})
-        for (id, ) in query.execute():
+        for (id,) in query.execute():
             Task(id).cancel(recurse=True)
 
     def cancelFull(self, strict=True):
@@ -497,8 +496,7 @@ class Task(object):
             query = QueryProcessor(tables=['task'], columns=['id'],
                                    clauses=['parent = %(task_id)i'],
                                    values={'task_id': task_id}, opts={'asList': True})
-            result = query.execute()
-            for (child_id,) in result:
+            for (child_id,) in query.execute():
                 tasklist.append(child_id)
 
     def getRequest(self):
@@ -2549,9 +2547,9 @@ def get_ready_hosts():
         columns=['host.id', 'name', 'arches', 'task_load', 'capacity'],
         aliases=['id', 'name', 'arches', 'task_load', 'capacity'],
         clauses=[
-            'enabled = TRUE',
-            'ready = TRUE',
-            'expired = FALSE',
+            'enabled IS TRUE',
+            'ready IS TRUE',
+            'expired IS FALSE',
             'master IS NULL',
             'active IS TRUE',
             "update_time > NOW() - '5 minutes'::interval"
@@ -2749,7 +2747,7 @@ def repo_init(tag, task_id=None, with_src=False, with_debuginfo=False, event=Non
         # make sure event is valid
         query = QueryProcessor(tables=['events'], columns=['time'],
                                clauses=['id=%(event)s'], values={'event': event})
-        query.singleValue()
+        query.singleValue(strict=True)
         event_id = event
     insert = InsertProcessor('repo')
     insert.set(id=repo_id, create_event=event_id, tag_id=tag_id, state=state, task_id=task_id)
@@ -8373,7 +8371,7 @@ def build_references(build_id, limit=None, lazy=False):
         AND build.state = %(st_complete)i"""
     if limit is not None:
         q += "\nLIMIT %(limit)i"
-    for (rpm_id, ) in build_rpm_ids:
+    for (rpm_id,) in build_rpm_ids:
         for row in _multiRow(q, locals(), fields):
             idx.setdefault(row['id'], row)
         if limit is not None and len(idx) > limit:
@@ -13905,7 +13903,7 @@ class Host(object):
         is a list of task ids."""
         # check to see if any of the tasks have finished
         query = QueryProcessor(tables=['task'], columns=['id', 'state'],
-                               clauses=['parent=%(parent)s', 'awaited = TRUE'],
+                               clauses=['parent=%(parent)s', 'awaited IS TRUE'],
                                values={'parent': parent},
                                opts={'rowlock': True})
         result = query.execute()
@@ -13929,7 +13927,7 @@ class Host(object):
             context.commit_pending = True
             for id in finished:
                 update = UpdateProcessor('task', clauses=['id=%(id)s'],
-                                         values={'id': id}, rawdata={'awaited': 'false'})
+                                         values={'id': id}, data={'awaited': False})
                 update.execute()
         return [finished, unfinished]
 

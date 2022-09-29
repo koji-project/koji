@@ -7,6 +7,7 @@ import koji
 import kojihub
 
 IP = kojihub.InsertProcessor
+QP = kojihub.QueryProcessor
 
 
 class TestAddRPMSig(unittest.TestCase):
@@ -16,10 +17,20 @@ class TestAddRPMSig(unittest.TestCase):
         self.inserts.append(insert)
         return insert
 
+    def getQuery(self, *args, **kwargs):
+        query = QP(*args, **kwargs)
+        query.execute = self.query_execute
+        self.queries.append(query)
+        return query
+
     def setUp(self):
         self.InsertProcessor = mock.patch('kojihub.InsertProcessor',
                                           side_effect=self.getInsert).start()
         self.inserts = []
+        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
+                                         side_effect=self.getQuery).start()
+        self.queries = []
+        self.query_execute = mock.MagicMock()
         self.context = mock.patch('kojihub.context').start()
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"
@@ -32,7 +43,6 @@ class TestAddRPMSig(unittest.TestCase):
     def tearDown(self):
         mock.patch.stopall()
 
-    @mock.patch('kojihub._fetchMulti')
     @mock.patch('koji.plugin.run_callbacks')
     @mock.patch('kojihub.get_rpm')
     @mock.patch('kojihub.get_build')
@@ -46,10 +56,9 @@ class TestAddRPMSig(unittest.TestCase):
             isdir,
             get_build,
             get_rpm,
-            run_callbacks,
-            _fetchMulti):
+            run_callbacks):
         """Test addRPMSig with header-only signed RPM"""
-        _fetchMulti.side_effect = [[]]
+        self.query_execute.side_effect = [[]]
         isdir.side_effect = [True]
         get_rpm.side_effect = [{
             'id': 1,

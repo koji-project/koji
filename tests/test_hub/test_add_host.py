@@ -27,6 +27,7 @@ class TestAddHost(unittest.TestCase):
         query = QP(*args, **kwargs)
         query.execute = mock.MagicMock()
         query.executeOne = mock.MagicMock()
+        query.singleValue = self.query_singleValue
         self.queries.append(query)
         return query
 
@@ -51,9 +52,9 @@ class TestAddHost(unittest.TestCase):
         self.verify_host_name = mock.patch('kojihub.verify_host_name').start()
         self.verify_name_user = mock.patch('kojihub.verify_name_user').start()
         self.get_host = mock.patch('kojihub.get_host').start()
-        self._singleValue = mock.patch('kojihub._singleValue').start()
         self.nextval = mock.patch('kojihub.nextval').start()
         self.get_user = mock.patch('kojihub.get_user').start()
+        self.query_singleValue = mock.MagicMock()
 
     def tearDown(self):
         mock.patch.stopall()
@@ -70,10 +71,10 @@ class TestAddHost(unittest.TestCase):
     def test_add_host_valid(self):
         self.verify_host_name.return_value = None
         self.get_host.return_value = {}
-        self._singleValue.return_value = 333
         self.nextval.return_value = 12
         self.context.session.createUser.return_value = 456
         self.get_user.return_value = None
+        self.query_singleValue.return_value = 333
 
         r = self.exports.addHost('hostname', ['i386', 'x86_64'])
         self.assertEqual(r, 12)
@@ -150,9 +151,11 @@ class TestAddHost(unittest.TestCase):
             'usertype': koji.USERTYPES['GROUP']
         }
         self.get_host.return_value = {}
+        self.query_singleValue.return_value = 333
 
-        with self.assertRaises(koji.GenericError):
+        with self.assertRaises(koji.GenericError) as ex:
             self.exports.addHost('hostname', ['i386', 'x86_64'], force=True)
+        self.assertEqual("user hostname already exists and it is not a host", str(ex.exception))
 
         self.get_user.assert_called_once_with(userInfo={'name': 'hostname'})
         self.get_host.assert_called_once_with('hostname')
