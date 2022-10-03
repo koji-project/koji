@@ -722,16 +722,9 @@ Options:
         # Run it and check immediate output
         # args: task_id --dirpertask --log
         # expected: failure
-        self.assert_system_exit(
-            anon_handle_download_task,
-            self.options, self.session, args,
-            stderr="Duplicate file somerpm.noarch.rpm for volume DEFAULT (tasks [22222, 55555])\n"
-                   "Download files names conflict, use --dirpertask\n",
-            stdout='',
-            activate_session=None,
-            exit_code=1)
-        actual = self.stdout.getvalue()
-        expected = ''
+        anon_handle_download_task(self.options, self.session, args)
+        actual = self.stderr.getvalue()
+        expected = 'Duplicate files, for download all duplicate files use --dirpertask.\n'
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
         self.ensure_connection.assert_called_once_with(self.session, self.options)
@@ -743,7 +736,20 @@ Options:
             call(self.session, 33333),
             call(self.session, 44444),
             call(self.session, 55555)])
-        self.assertListEqual(self.download_file.mock_calls, [])
+        self.assertListEqual(self.download_file.mock_calls, [
+            call('https://topurl/work/tasks/2222/22222/somerpm.src.rpm',
+                 'somerpm.src.rpm', quiet=None, noprogress=None, size=7, num=1),
+            call('https://topurl/vol/vol1/work/tasks/2222/22222/somerpm.src.rpm',
+                 'vol1/somerpm.src.rpm', quiet=None, noprogress=None, size=7, num=2),
+            call('https://topurl/work/tasks/2222/22222/somerpm.noarch.rpm',
+                 'somerpm.noarch.rpm', quiet=None, noprogress=None, size=7, num=3),
+            call('https://topurl/work/tasks/3333/33333/somerpm.x86_64.rpm',
+                 'somerpm.x86_64.rpm', quiet=None, noprogress=None, size=7, num=4),
+            call('https://topurl/vol/vol2/work/tasks/3333/33333/somerpm.x86_64.rpm',
+                 'vol2/somerpm.x86_64.rpm', quiet=None, noprogress=None, size=7, num=5),
+            call('https://topurl/vol/vol2/work/tasks/4444/44444/somerpm.s390.rpm',
+                 'vol2/somerpm.s390.rpm', quiet=None, noprogress=None, size=7, num=6),
+        ])
 
     def test_handle_download_task_without_all_json_not_downloaded(self):
         args = [str(self.parent_task_id)]
@@ -811,7 +817,7 @@ Options:
         rv = anon_handle_download_task(self.options, self.session, args)
 
         actual = self.stdout.getvalue()
-        expected = 'Downloading [3/9] somerpm.src.rpm\n' \
+        expected = 'Downloading [3/9]: somerpm.src.rpm\n' \
                    'File somerpm.src.rpm already downloaded, skipping\n'
         self.assertMultiLineEqual(actual, expected)
         # Finally, assert that things were called as we expected.
