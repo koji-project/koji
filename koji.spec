@@ -83,7 +83,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.30.0
+Version: 1.30.1
 Release: %{release}%{?dist}
 License: LGPL-2.1-only and GPL-2.0-or-later
 # the included arch lib from yum's rpmUtils is GPLv2+
@@ -649,6 +649,18 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Mon Oct  3 2022  Tomas Kopecek <tkopecek at redhat.com> - 1.30.1-1
+- PR#3464: cli: allow redirects for file size checking
+- PR#3469: Fix dist-repo repo.json url
+- PR#3479: fix flake8 errors
+- PR#3484: Use nextval function instead of query 'SELECT nextval'
+- PR#3486: packaging: Block py3 compilation in py2 env
+- PR#3492: Fix arch filter in list of hosts webUI
+- PR#3496: kiwi: handle include protocols
+- PR#3498: kiwi: Explicitly use koji-generated description
+- PR#3502: Download all files, skip downloaded files
+- PR#3518: doc: fix missing characters
+
 * Thu Aug 18 2022  Tomas Kopecek <tkopecek at redhat.com> - 1.30.0-1
 - PR#3308: server-side clonetag
 - PR#3352: CLI: Remove --paths option from list-buildroot
