@@ -282,6 +282,13 @@ option. Similarly to other image tasks, alternative architecture failures can be
 ignored for successful build by ``--can-fail`` option. ``--arch`` can be used to
 limit build tag architectures.
 
+There are some limitation to used kiwi configuration:
+
+ * ``include`` node can use only ``this://`` protocol. Other types like ``file://``
+   or ``https://`` could reach out of the repo preventing reproducible build.
+ * All repositories from description (and included files) are removed and replaced
+   by buildroot repo and other repositories specified by ``--repo`` option.
+
 Driver Update Disks building
 ============================
 

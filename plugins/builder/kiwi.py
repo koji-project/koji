@@ -4,6 +4,7 @@ import xml.dom.minidom
 from fnmatch import fnmatch
 
 import koji
+import koji.util
 from koji.tasks import ServerExit
 from __main__ import BaseBuildTask, BuildImageTask, BuildRoot, SCM
 
@@ -199,6 +200,12 @@ class KiwiCreateImageTask(BaseBuildTask):
         # doing it recursively)
         for inc_node in image.getElementsByTagName('include'):
             path = inc_node.getAttribute('from')
+            if path.startswith('this://'):
+                path = koji.util.joinpath(desc_path, path[7:])
+            else:
+                # we want to reject other protocols, e.g. file://, https://
+                # reachingoutside of repo
+                raise koji.GenericError(f"Unhandled include protocol in include path: {path}.")
             inc = xml.dom.minidom.parse(path)  # nosec
             # every included xml has image root element again
             for node in inc.getElementsByTagName('image').childNodes:
