@@ -1,4 +1,3 @@
-import glob
 import os
 import xml.dom.minidom
 from fnmatch import fnmatch
@@ -13,15 +12,17 @@ class KiwiBuildTask(BuildImageTask):
     Methods = ['kiwiBuild']
     _taskWeight = 4.0
 
-    def get_nvrp(self, desc_path):
-        kiwi_files = glob.glob('%s/*.kiwi' % desc_path)
-        if len(kiwi_files) != 1:
-            raise koji.GenericError("Repo must contain only one .kiwi file.")
-
-        cfg = kiwi_files[0]
-
-        newxml = xml.dom.minidom.parse(cfg)  # nosec
-        image = newxml.getElementsByTagName('image')[0]
+    def get_nvrp(self, cfg):
+        try:
+            newxml = xml.dom.minidom.parse(cfg)  # nosec
+        except Exception:
+            raise koji.GenericError(
+                f"Kiwi description {os.path.basename(cfg)} can't be parsed as XML.")
+        try:
+            image = newxml.getElementsByTagName('image')[0]
+        except IndexError:
+            raise koji.GenericError(
+                f"Kiwi description {os.path.basename(cfg)} doesn't contain <image> tag.")
 
         name = image.getAttribute('name')
         version = None
@@ -186,13 +187,8 @@ class KiwiCreateImageTask(BaseBuildTask):
     _taskWeight = 2.0
 
     def prepareDescription(self, desc_path, name, version, repos, arch):
-        kiwi_files = glob.glob('%s/*.kiwi' % desc_path)
-        if len(kiwi_files) != 1:
-            raise koji.GenericError("Repo must contain only one .kiwi file.")
-
-        cfg = kiwi_files[0]
-
-        newxml = xml.dom.minidom.parse(cfg)  # nosec
+        # XML errors should have already been caught by parent task
+        newxml = xml.dom.minidom.parse(desc_path)  # nosec
         image = newxml.getElementsByTagName('image')[0]
 
         # apply includes - kiwi can include only top-level nodes, so we can simply
@@ -242,13 +238,13 @@ class KiwiCreateImageTask(BaseBuildTask):
                 types.append(type.getAttribute('image'))
 
         # write new file
-        newcfg = f'{cfg[:-5]}.{arch}.kiwi'
+        newcfg = os.path.splitext(desc_path)[0] + f'.{arch}.kiwi'
         with open(newcfg, 'wt') as f:
             s = newxml.toprettyxml()
             # toprettyxml adds too many whitespaces/newlines
             s = '\n'.join([x for x in s.splitlines() if x.strip()])
             f.write(s)
-        os.unlink(cfg)
+        os.unlink(desc_path)
 
         return newcfg, types
 
@@ -353,10 +349,11 @@ class KiwiCreateImageTask(BaseBuildTask):
         self.logger.debug('BASEURL: %s' % baseurl)
         repos.append(baseurl)
 
+        base_path = os.path.dirname(desc_path)
         if opts.get('make_prep'):
             cmd = ['make', 'prep']
             rv = broot.mock(['--cwd', os.path.join(broot.tmpdir(within=True),
-                                                   os.path.basename(scmsrcdir), desc_path),
+                                                   os.path.basename(scmsrcdir), base_path),
                              '--chroot', '--'] + cmd)
             if rv:
                 raise koji.GenericError("Preparation step failed")
@@ -370,8 +367,9 @@ class KiwiCreateImageTask(BaseBuildTask):
             cmd.extend(['--profile', self.opts['profile']])
         target_dir = '/builddir/result/image'
         cmd.extend([
+            '--kiwi-file', os.path.basename(desc),  # global option for image/system commands
             'system', 'build',
-            '--description', os.path.join(os.path.basename(scmsrcdir), desc_path),
+            '--description', os.path.join(os.path.basename(scmsrcdir), base_path),
             '--target-dir', target_dir,
         ])
         rv = broot.mock(['--cwd', broot.tmpdir(within=True), '--chroot', '--'] + cmd)
