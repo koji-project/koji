@@ -7001,27 +7001,11 @@ def anon_handle_download_task(options, session, args):
         print("No files for download found.")
         return
 
-    downloads_new_names = [(new_filename, vol) for (_, _, vol, new_filename, _) in downloads]
-    if not suboptions.dirpertask:
-        not_uniques = list({x for x in downloads_new_names if downloads_new_names.count(x) > 1})
-        if not_uniques:
-            files_dict = {}
-            for nu in not_uniques:
-                if not nu[0].endswith('src.rpm'):
-                    for (_, _, vol, new_filename, task_id) in downloads:
-                        if new_filename == nu[0] and vol == nu[1]:
-                            files_dict.setdefault(new_filename, {'vol': vol, 'tasks': []})
-                            files_dict[new_filename]['tasks'].append(task_id)
-            for key, value in files_dict.items():
-                warn('Duplicate file %s for volume %s (tasks [%s])' % (key, value['vol'],
-                                                                       ", ".join(value['tasks'])))
-            if files_dict != {}:
-                error("Download files names conflict, use --dirpertask")
-
     # perform the download
     number = 0
     pathinfo = koji.PathInfo(topdir=suboptions.topurl)
-    srpm_downloaded = []
+    files_downloaded = []
+    dirpertask_msg = False
     for (task, filename, volume, new_filename, task_id) in downloads:
         if suboptions.dirpertask:
             koji.ensuredir(task_id)
@@ -7036,18 +7020,17 @@ def anon_handle_download_task(options, session, args):
         if '..' in filename:
             error('Invalid file name: %s' % filename)
         url = '%s/%s/%s' % (pathinfo.work(volume), pathinfo.taskrelpath(task["id"]), filename)
-        if not new_filename.endswith('src.rpm'):
+        if (new_filename, volume) not in files_downloaded:
             download_file(url, new_filename, quiet=suboptions.quiet,
                           noprogress=suboptions.noprogress, size=len(downloads), num=number)
+            files_downloaded.append((new_filename, volume))
         else:
-            if (new_filename, volume) not in srpm_downloaded:
-                download_file(url, new_filename, quiet=suboptions.quiet,
-                              noprogress=suboptions.noprogress, size=len(downloads), num=number)
-                srpm_downloaded.append((new_filename, volume))
-            else:
-                if not suboptions.quiet:
-                    print("Downloading [%d/%d] %s" % (number, len(downloads), new_filename))
-                    print("File %s already downloaded, skipping" % new_filename)
+            if not suboptions.quiet:
+                print("Downloading [%d/%d]: %s" % (number, len(downloads), new_filename))
+                print("File %s already downloaded, skipping" % new_filename)
+            dirpertask_msg = True
+    if dirpertask_msg:
+        warn("Duplicate files, for download all duplicate files use --dirpertask.")
 
 
 def anon_handle_wait_repo(options, session, args):
