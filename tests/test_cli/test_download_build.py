@@ -28,7 +28,10 @@ class TestDownloadBuild(utils.CliTestCase):
             'epoch': None,
             'nvr': 'bash-4.4.12-5.fc26',
             'build_id': 1,
+            'id': 123,
+            'name': 'bash',
         }
+        self.b_label = '%(name)s-%(version)s-%(release)s' % self.build_templ
 
         self.getrpminfo = {'arch': 'noarch',
                            'build_id': 1,
@@ -225,6 +228,42 @@ class TestDownloadBuild(utils.CliTestCase):
             self.session,
             [build_id, '--type', type],
             stderr='No %s archives available for %s\n' % (type, nvr),
+            activate_session=None,
+            exit_code=1
+        )
+
+    @mock.patch('koji.buildLabel')
+    def test_download_build_without_all_rpms_with_arches(self, build_label):
+        build_id = '1'
+        arches = ['testarch', 'testarch2']
+        build_label.return_value = self.b_label
+        self.session.getRPM.return_value = self.getrpminfo
+        self.session.getBuild.return_value = self.build_templ
+        self.session.listRPMs.return_value = []
+        self.assert_system_exit(
+            anon_handle_download_build,
+            self.options,
+            self.session,
+            [build_id, '--arch', arches[0], '--arch', arches[1], '--key', self.sigkey],
+            stderr='No %s or %s packages available for %s\n'
+                   % (arches[0], arches[1], self.b_label),
+            activate_session=None,
+            exit_code=1
+        )
+
+    @mock.patch('koji.buildLabel')
+    def test_download_build_without_all_rpms(self, build_label):
+        build_id = '1'
+        build_label.return_value = self.b_label
+        self.session.getRPM.return_value = self.getrpminfo
+        self.session.getBuild.return_value = self.build_templ
+        self.session.listRPMs.return_value = []
+        self.assert_system_exit(
+            anon_handle_download_build,
+            self.options,
+            self.session,
+            [build_id, '--key', self.sigkey],
+            stderr='No packages available for %s\n' % self.b_label,
             activate_session=None,
             exit_code=1
         )
