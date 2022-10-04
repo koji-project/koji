@@ -122,9 +122,11 @@ sigkey rpmA-0.0.1-1.el6.x86_64
         self.session.listTagged.assert_not_called()
         self.assert_console_message(stdout, expected)
 
+    @mock.patch('os.path.isdir', return_value=True)
+    @mock.patch('os.path.exists', return_value=True)
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji.util.eventFromOpts', return_value=None)
-    def test_list_tagged_rpms_paths(self, event_from_opts_mock, stdout):
+    def test_list_tagged_rpms_paths(self, event_from_opts_mock, stdout, os_path_exists, isdir):
         expected = """/mnt/koji/packages/packagename/version/1.el6/noarch/rpmA-0.0.1-1.el6.noarch.rpm
 /mnt/koji/packages/packagename/version/1.el6/x86_64/rpmA-0.0.1-1.el6.x86_64.rpm
 """
@@ -138,13 +140,15 @@ sigkey rpmA-0.0.1-1.el6.x86_64
             self.tag, package=self.pkg, inherit=None, latest=3, arch=['x86_64'])
         self.session.listTagged.assert_not_called()
 
+    @mock.patch('os.path.exists')
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji.util.eventFromOpts', return_value=None)
-    def test_list_tagged_sigs_paths(self, event_from_opts_mock, stdout):
+    def test_list_tagged_sigs_paths(self, event_from_opts_mock, stdout, os_path_exists):
         expected = ""
         args = [self.tag, self.pkg, '--latest-n=3', '--rpms', '--sigs',
                 '--arch=x86_64', '--paths']
 
+        os_path_exists.side_effect = [True, False, False]
         anon_handle_list_tagged(self.options, self.session, args)
         self.assert_console_message(stdout, expected)
         self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
