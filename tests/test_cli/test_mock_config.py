@@ -242,6 +242,12 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
                 'rpm.macro.random_macro2': 'random_macro_content2',
                 'mock.package_manager': 'yum',
                 'mock.yum.module_hotfixes': 1,
+                'mock.forcearch': True,
+                'mock.yum.best': 10,
+                'mock.bootstrap_image': 'bootstrap_image_content',
+                'mock.use_bootstrap': True,
+                'mock.module_setup_commands': 'module_setup_commands_content',
+                'mock.releasever': 'releasever_content',
             },
             'arches': 'x86_64',
         }
@@ -277,7 +283,15 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
             },
             'package_manager': 'yum',
             'module_hotfixes': 1,
+            'bootstrap_image': 'bootstrap_image_content',
+            'forcearch': 'x86_64',
+            'module_setup_commands': 'module_setup_commands_content',
+            'releasever': 'releasever_content',
+            'use_bootstrap': True,
+            'use_bootstrap_image': True,
+            'yum_best': 10,
         })
+
         del opts['topurl']
         anon_handle_mock_config(self.options, self.session, arguments)
         self.assert_console_message(stdout, "%s\n" % self.gen_config_mock.return_value)

@@ -98,6 +98,22 @@ class TestAddChannel(utils.CliTestCase):
             activate_session=None)
         self.activate_session_mock.assert_not_called()
 
+    def test_handle_add_channel_other_error_msg(self):
+        expected = 'Other error message.'
+
+        self.session.addChannel.side_effect = koji.GenericError(expected)
+        arguments = ['--description', self.description, self.channel_name]
+        self.assert_system_exit(
+            handle_add_channel,
+            self.options, self.session, arguments,
+            stdout='',
+            stderr=expected + '\n',
+            exit_code=1,
+            activate_session=None)
+        self.activate_session_mock.assert_called_once_with(self.session, self.options)
+        self.session.addChannel.assert_called_once_with(self.channel_name,
+                                                        description=self.description)
+
     def test_handle_add_channel_help(self):
         self.assert_help(
             handle_add_channel,

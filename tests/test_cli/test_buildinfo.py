@@ -139,3 +139,68 @@ Tags:
         self.session.getMavenBuild.assert_not_called()
         self.session.getWinBuild.assert_not_called()
         self.session.listRPMs.assert_not_called()
+
+    @mock.patch('sys.stdout', new_callable=StringIO)
+    def test_buildinfo_valid_win_maven_image_with_changelog(self, stdout):
+        build_id = 1
+        build_info = self.buildinfo.copy()
+        build_info['state'] = 0
+        build_info['source'] = 'test-source'
+        build_info['cg_name'] = 'cg-name-test'
+        build_info['extra'] = {'test-extra': 'result-extra'}
+        list_all_archives = [{'id': 987, 'filename': 'test-maven-file', 'group_id': '222',
+                              'artifact_id': '555', 'version': '2'},
+                             {'id': 988, 'filename': 'test-win-file', 'relpath': 'test-rel-path'},
+                             {'id': 989, 'filename': 'test-image-filename'},
+                             {'id': 990, 'filename': 'test-extra-filename', 'btype': 'test-btype'}]
+        self.session.getBuild.return_value = build_info
+        self.session.getTaskInfo.return_value = self.taskinfo
+        self.session.listTags.return_value = [{'id': 123, 'name': 'test-tag'}]
+        self.session.getMavenBuild.return_value = {
+            'build_id': 12345, 'group_id': 222, 'artifact_id': 555, 'version': 2}
+        self.session.getWinBuild.return_value = {'build_id': 12346, 'platform': 'test-platform'}
+        self.session.listArchives.side_effect = [
+            [list_all_archives[0]], [list_all_archives[1]], [list_all_archives[2]],
+            list_all_archives]
+        self.session.listRPMs.return_value = []
+        self.session.getChangelogEntries.return_value = {'author': 'Test user',
+                                                         'date': '2022-10-03 12:00:00',
+                                                         'date_ts': 1664798400,
+                                                         'text': '- change for test'},
+        expected_stdout = """BUILD: test-build-1-1 [1]
+State: BUILDING
+Reserved by: cg-name-test
+Built by: kojiadmin
+Source: test-source
+Volume: DEFAULT
+Task: 8 build (target, src)
+Finished: Thu, 04 Mar 2021 14:45:40 UTC
+Maven groupId: 222
+Maven artifactId: 555
+Maven version: 2
+Windows build platform: test-platform
+Tags: test-tag
+Extra: {'test-extra': 'result-extra'}
+Maven archives:
+/mnt/koji/packages/test-build/1/1/maven/222/555/2/test-maven-file
+Windows archives:
+/mnt/koji/packages/test-build/1/1/win/test-rel-path/test-win-file
+Image archives:
+/mnt/koji/packages/test-build/1/1/images/test-image-filename
+Test-btype Archives:
+/mnt/koji/packages/test-build/1/1/files/test-btype/test-extra-filename
+Changelog:
+* Mon Oct 03 2022 Test user
+- change for test
+
+
+"""
+        anon_handle_buildinfo(self.options, self.session, [str(build_id), '--changelog'])
+        self.assert_console_message(stdout, expected_stdout)
+        self.session.listTags.assert_called_once_with(build_id)
+        self.session.getBuild.assert_called_once_with(build_id)
+        self.session.getTaskInfo.assert_called_once_with(self.buildinfo['task_id'], request=True)
+        self.session.getMavenBuild.assert_called_once_with(self.buildinfo['id'])
+        self.session.getWinBuild.assert_called_once_with(self.buildinfo['id'])
+        self.session.listRPMs.assert_called_once_with(buildID=self.buildinfo['id'])
+        self.assertEqual(self.session.listArchives.call_count, 4)
