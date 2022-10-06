@@ -47,6 +47,14 @@ class TestListHosts(utils.CliTestCase):
             os.environ['TZ'] = self.original_timezone
             time.tzset()
 
+    def __vm(self, result):
+        m = koji.VirtualCall('mcall_method', [], {})
+        if isinstance(result, dict) and result.get('faultCode'):
+            m._result = result
+        else:
+            m._result = (result,)
+        return m
+
     @mock.patch('sys.stdout', new_callable=StringIO)
     def test_list_hosts_valid_without_quiet(self, stdout):
         self.options.quiet = False
@@ -224,3 +232,54 @@ kojibuilder N   Y    0.0/2.0  x86_64           Tue, 16 Mar 2021 06:19:14 UTC
         self.session.listHosts.assert_called_once_with()
         self.session.getLastHostUpdate.assert_called_once_with(self.list_hosts[0]['id'], ts=True)
         self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
+
+    @mock.patch('sys.stdout', new_callable=StringIO)
+    def test_list_hosts_with_show_channels(self, stdout):
+        self.options.quiet = False
+        host_update = 1615875554.862938
+        expected = """Hostname    Enb Rdy Load/Cap  Arches           Last Update                         Channels
+-------------------------------------------------------------------------------------------
+kojibuilder N   Y    0.0/2.0  x86_64           Tue, 16 Mar 2021 06:19:14 UTC       *test,default\n"""
+        list_channels = [
+            {'id': 1, 'name': 'default', 'enabled': True, 'comment': 'test-comment-1',
+             'description': 'test-description-1'},
+            {'id': 2, 'name': 'test', 'enabled': False, 'comment': 'test-comment-2',
+             'description': 'test-description-2'},
+        ]
+
+        self.session.getLastHostUpdate.return_value = host_update
+        self.session.multiCall.return_value = [[host_update]]
+        mcall = self.session.multicall.return_value.__enter__.return_value
+        mcall.listChannels.return_value = self.__vm(list_channels)
+
+        self.session.listHosts.return_value = self.list_hosts
+        rv = anon_handle_list_hosts(self.options, self.session, ['--show-channels'])
+        self.assertEqual(rv, None)
+        self.assert_console_message(stdout, expected)
+        self.session.listHosts.assert_called_once_with()
+        self.session.getLastHostUpdate.assert_called_once_with(self.list_hosts[0]['id'], ts=True)
+        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.session.listChannels.assert_not_called()
+
+    @mock.patch('sys.stdout', new_callable=StringIO)
+    def test_list_hosts_with_show_channels_empty(self, stdout):
+        self.options.quiet = False
+        host_update = 1615875554.862938
+        expected = """Hostname    Enb Rdy Load/Cap  Arches           Last Update                         Channels
+-------------------------------------------------------------------------------------------
+kojibuilder N   Y    0.0/2.0  x86_64           Tue, 16 Mar 2021 06:19:14 UTC       \n"""
+        list_channels = []
+
+        self.session.getLastHostUpdate.return_value = host_update
+        self.session.multiCall.return_value = [[host_update]]
+        mcall = self.session.multicall.return_value.__enter__.return_value
+        mcall.listChannels.return_value = self.__vm(list_channels)
+
+        self.session.listHosts.return_value = self.list_hosts
+        rv = anon_handle_list_hosts(self.options, self.session, ['--show-channels'])
+        self.assertEqual(rv, None)
+        self.assert_console_message(stdout, expected)
+        self.session.listHosts.assert_called_once_with()
+        self.session.getLastHostUpdate.assert_called_once_with(self.list_hosts[0]['id'], ts=True)
+        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.session.listChannels.assert_not_called()
