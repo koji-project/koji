@@ -21,6 +21,8 @@ koji-[0-9]*[0-9]/
 koji.egg-info/
 noarch/
 docs/build/
+build/
+dist/
 #
 # misc
 *.swp
