@@ -51,10 +51,11 @@ from koji.daemon import SCM, TaskManager
 from koji.tasks import (  # noqa: F401
     BaseTaskHandler,
     MultiPlatformTask,
-    RestartTask,
-    RestartVerifyTask,
+    RestartTask,        # handle restarted vm tasks
+    RestartVerifyTask,  # handle restarted vm tasks
     ServerExit,
-    ServerRestart
+    ServerRestart,
+    WaitrepoTask,       # wait for repo regens spawned by kojivmd
 )
 
 

@@ -837,3 +837,87 @@ class MultiPlatformTask(BaseTaskHandler):
         results['task_id'] = rpm_task_id
 
         return results
+
+
+class WaitrepoTask(BaseTaskHandler):
+
+    Methods = ['waitrepo']
+    # mostly just waiting
+    _taskWeight = 0.2
+
+    PAUSE = 60
+    # time in minutes before we fail this task
+    TIMEOUT = 120
+
+    def handler(self, tag, newer_than=None, nvrs=None):
+        """Wait for a repo for the tag, subject to given conditions
+
+        newer_than: create_event timestamp should be newer than this
+        nvr: repo should contain this nvr (which may not exist at first)
+
+        Only one of the options may be specified. If neither is, then
+        the call will wait for the first ready repo.
+
+        Returns the repo info (from getRepo) of the chosen repo
+        """
+
+        start = time.time()
+
+        taginfo = self.session.getTag(tag, strict=True)
+        targets = self.session.getBuildTargets(buildTagID=taginfo['id'])
+        if not targets:
+            raise koji.GenericError("No build target for tag: %s" % taginfo['name'])
+
+        if isinstance(newer_than, six.string_types) and newer_than.lower() == "now":
+            newer_than = start
+        if not isinstance(newer_than, list(six.integer_types) + [type(None), float]):
+            raise koji.GenericError("Invalid value for newer_than: %s" % newer_than)
+
+        if newer_than and nvrs:
+            raise koji.GenericError("only one of (newer_than, nvrs) may be specified")
+
+        if not nvrs:
+            nvrs = []
+        builds = [koji.parse_NVR(nvr) for nvr in nvrs]
+
+        last_repo = None
+
+        while True:
+            try:
+                taginfo = self.session.getTag(tag, strict=True)
+            except koji.GenericError:
+                self.logger.debug("Tag %s got lost while waiting for newrepo", tag)
+                raise koji.GenericError("Unsuccessfully waited %s for %s repo. "
+                                        "Tag was probably deleted meanwhile." %
+                                        (koji.util.duration(start), tag))
+            repo = self.session.getRepo(taginfo['id'])
+            if repo and repo != last_repo:
+                if builds:
+                    if koji.util.checkForBuilds(
+                            self.session, taginfo['id'], builds, repo['create_event']):
+                        self.logger.debug("Successfully waited %s for %s to appear "
+                                          "in the %s repo" %
+                                          (koji.util.duration(start), koji.util.printList(nvrs),
+                                           taginfo['name']))
+                        return repo
+                elif newer_than:
+                    if repo['create_ts'] > newer_than:
+                        self.logger.debug("Successfully waited %s for a new %s repo" %
+                                          (koji.util.duration(start), taginfo['name']))
+                        return repo
+                else:
+                    # no check requested -- return first ready repo
+                    return repo
+
+            if (time.time() - start) > (self.TIMEOUT * 60.0):
+                if builds:
+                    raise koji.GenericError("Unsuccessfully waited %s for %s to appear "
+                                            "in the %s repo" %
+                                            (koji.util.duration(start), koji.util.printList(nvrs),
+                                             taginfo['name']))
+                else:
+                    raise koji.GenericError("Unsuccessfully waited %s for a new %s repo" %
+                                            (koji.util.duration(start), taginfo['name']))
+
+            time.sleep(self.PAUSE)
+            last_repo = repo
