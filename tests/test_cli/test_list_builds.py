@@ -195,9 +195,9 @@ build-test-1-12                                          kojiadmin         CANCE
 
     @mock.patch('sys.stdout', new_callable=StringIO)
     def test_list_builds_opt_owner_sorted_nvr(self, stdout):
-        expected_output = """build-test-1-12                                          kojiadmin         CANCELED
-test-build-11-12                                         kojiadmin         COMPLETE
+        expected_output = """test-build-11-12                                         kojiadmin         COMPLETE
 test-build-8-12                                          kojiadmin         DELETED
+build-test-1-12                                          kojiadmin         CANCELED
 """
         self.session.getUser.return_value = self.user_info
         self.session.listBuilds.return_value = [self.list_build[0], self.list_build[1],
@@ -261,9 +261,9 @@ build-test-1-12                                          kojiadmin         CANCE
     def test_list_builds_opt_prefix_sorted_owner(self, stdout):
         expected_output = """test-build-11-12                                         kojiadmin         COMPLETE
 test-build-8-12                                          kojiadmin         DELETED
-build-test-1-12                                          kojiadmin         CANCELED
 test-build-11-9                                          kojitest          COMPLETE
 test-build-10-12                                         kojitest          CANCELED
+build-test-1-12                                          kojiadmin         CANCELED
 """
         self.session.listBuilds.return_value = self.list_build
         rv = anon_handle_list_builds(self.options, self.session, ['--prefix', 'test-build',
@@ -280,11 +280,11 @@ test-build-10-12                                         kojitest          CANCE
 
     @mock.patch('sys.stdout', new_callable=StringIO)
     def test_list_builds_opt_prefix_sorted_owner_nvr(self, stdout):
-        expected_output = """build-test-1-12                                          kojiadmin         CANCELED
-test-build-11-12                                         kojiadmin         COMPLETE
+        expected_output = """test-build-11-12                                         kojiadmin         COMPLETE
 test-build-8-12                                          kojiadmin         DELETED
-test-build-10-12                                         kojitest          CANCELED
 test-build-11-9                                          kojitest          COMPLETE
+test-build-10-12                                         kojitest          CANCELED
+build-test-1-12                                          kojiadmin         CANCELED
 """
         self.session.listBuilds.return_value = self.list_build
         rv = anon_handle_list_builds(self.options, self.session, ['--prefix', 'test-build',
@@ -302,9 +302,9 @@ test-build-11-9                                          kojitest          COMPL
 
     @mock.patch('sys.stdout', new_callable=StringIO)
     def test_list_builds_opt_owner_reverse(self, stdout):
-        expected_output = """test-build-8-12                                          kojiadmin         DELETED
+        expected_output = """build-test-1-12                                          kojiadmin         CANCELED
+test-build-8-12                                          kojiadmin         DELETED
 test-build-11-12                                         kojiadmin         COMPLETE
-build-test-1-12                                          kojiadmin         CANCELED
 """
         self.session.getUser.return_value = self.user_info
         self.session.listBuilds.return_value = [self.list_build[0], self.list_build[1],
@@ -376,8 +376,8 @@ test-build-8-12                                          kojiadmin         DELET
     @mock.patch('sys.stdout', new_callable=StringIO)
     def test_list_builds_volume_not_int(self, stdout):
         volume = 'test-volume'
-        expected_output = """build-test-1-12                                          kojiadmin         CANCELED
-test-build-11-12                                         kojiadmin         COMPLETE
+        expected_output = """test-build-11-12                                         kojiadmin         COMPLETE
+build-test-1-12                                          kojiadmin         CANCELED
 """
         self.session.listBuilds.return_value = [self.list_build[0], self.list_build[4]]
         self.session.listVolumes.return_value = [{'id': 0, 'name': 'DEFAULT'},
@@ -396,8 +396,8 @@ test-build-11-12                                         kojiadmin         COMPL
     @mock.patch('sys.stdout', new_callable=StringIO)
     def test_list_builds_volume_int(self, stdout):
         volume = 1
-        expected_output = """build-test-1-12                                          kojiadmin         CANCELED
-test-build-11-12                                         kojiadmin         COMPLETE
+        expected_output = """test-build-11-12                                         kojiadmin         COMPLETE
+build-test-1-12                                          kojiadmin         CANCELED
 """
         self.session.listBuilds.return_value = [self.list_build[0], self.list_build[4]]
         rv = anon_handle_list_builds(self.options, self.session, ['--volume', volume])
