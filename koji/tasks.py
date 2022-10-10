@@ -434,7 +434,13 @@ class BaseTaskHandler(object):
                 remain = start + timeout - time.time()
                 if remain > 0:
                     self.logger.debug("Sleeping for %.1fs", remain)
-                    time.sleep(remain)
+                    if hasattr(signal, 'sigtimedwait'):
+                        # Note, that sigtimedwait doesn't trigger signal handler (from 3.3)
+                        signal.sigtimedwait([signal.SIGUSR2], timeout)
+                    else:
+                        # time.sleep is not interruptible anymore from python 3.5
+                        # https://peps.python.org/pep-0475/
+                        time.sleep(remain)
                 # check if we're timed out
                 duration = time.time() - start
                 if duration > timeout:

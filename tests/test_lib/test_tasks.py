@@ -321,8 +321,9 @@ class TasksTestCase(unittest.TestCase):
 
     @patch('time.time')
     @patch('time.sleep')
+    @patch('signal.sigtimedwait')
     @patch('signal.pause')
-    def test_BaseTaskHandler_wait_timeout(self, pause, sleep, time):
+    def test_BaseTaskHandler_wait_timeout(self, pause, sigtimedwait, sleep, time):
         """Tests timeout behavior in the wait function"""
         temp_path = get_tmp_dir_path('TaskTest')
         obj = TaskTest(95, 'some_method', ['random_arg'], None, None, temp_path)
@@ -342,8 +343,9 @@ class TasksTestCase(unittest.TestCase):
 
     @patch('time.time')
     @patch('time.sleep')
+    @patch('signal.sigtimedwait')
     @patch('signal.pause')
-    def test_BaseTaskHandler_wait_avoid_timeout(self, pause, sleep, time):
+    def test_BaseTaskHandler_wait_avoid_timeout(self, pause, sigtimedwait, sleep, time):
         """Tests that timeout does not happen if tasks finish in time"""
         temp_path = get_tmp_dir_path('TaskTest')
         obj = TaskTest(95, 'some_method', ['random_arg'], None, None, temp_path)
