@@ -99,21 +99,28 @@ the target's build tag and download files from that build into the VM.
 
 Each package listed in ``buildrequires`` can have a colon-delimited list of
 options associated with it, which determine which files from the build will be
-downloaded.  By default, all Windows files associated with the dependent build
-will be downloaded (this is the same as specifying ``type=win``).  In this case,
-comma-separated lists of ``platforms=`` and flags can also be specified, in
-which case the files downloaded into the VM will be limited to those
-associated with one or more of the platform and flag values (more about this
-in the ``[files]`` section below.  If ``type=rpm`` is specified, then all rpms
-associated with the dependent build will be installed.  In this case a
-comma-separated list of ``arches=`` may be specified, and only rpms matching
-one of those arches will be downloaded.  If ``type=maven`` is specified, then
-comma-separated lists of ``group_ids=``, ``artifact_ids=``, and/or
-``versions=`` may be specified, and only Maven artifacts matching at least one
-value in each list will be downloaded.  In all cases, a ``patterns=`` option
-may be specified, which is a comma-separated list of globs to match against
-the filenames.  Only files matching at least one of the patterns will be
 downloaded.
+
+ * By default, all Windows files associated with the dependent build will be
+   downloaded (this is the same as specifying ``type=win``).  In this case,
+   comma-separated lists of ``platforms=`` and flags can also be specified, in
+   which case the files downloaded into the VM will be limited to those
+   associated with one or more of the platform and flag values (more about
+   this in the ``[files]`` section below.)
+
+ * If ``type=rpm`` is specified, then all rpms associated with the dependent
+   build will be downloaded.  In this case a comma-separated list of
+   ``arches=`` may be specified, and only rpms matching one of those arches
+   will be downloaded.
+
+ * If ``type=maven`` is specified, then comma-separated lists of
+   ``group_ids=``, ``artifact_ids=``, and/or ``versions=`` may be specified,
+   and only Maven artifacts matching at least one value in each list will be
+   downloaded.
+
+ * In all cases, a ``patterns=`` option may be specified, which is a
+   comma-separated list of globs to match against the filenames.  Only files
+   matching at least one of the patterns will be downloaded.
 
 After downloading the ``buildrequires`` files, Koji places them in a directory
 based on their type sets variables pointing to their locations. The variable
