@@ -6,6 +6,12 @@ import kojihub
 
 
 class TestInsertProcessor(unittest.TestCase):
+    def setUp(self):
+        self.context_db = mock.patch('koji.db.context').start()
+
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_basic_instantiation(self):
         proc = kojihub.InsertProcessor('sometable')
         actual = str(proc)
@@ -18,43 +24,40 @@ class TestInsertProcessor(unittest.TestCase):
         expected = 'INSERT INTO sometable (foo) VALUES (%(foo)s)'
         self.assertEqual(actual, expected)
 
-    @mock.patch('kojihub.context')
-    def test_simple_execution_with_iterate(self, context):
+    def test_simple_execution_with_iterate(self):
         cursor = mock.MagicMock()
-        context.cnx.cursor.return_value = cursor
+        self.context_db.cnx.cursor.return_value = cursor
         proc = kojihub.InsertProcessor('sometable', data={'foo': 'bar'})
         proc.execute()
         cursor.execute.assert_called_once_with(
             'INSERT INTO sometable (foo) VALUES (%(foo)s)',
             {'foo': 'bar'}, log_errors=True)
 
-    @mock.patch('kojihub.context')
-    def test_make_create(self, context):
+    def test_make_create(self,):
         cursor = mock.MagicMock()
-        context.cnx.cursor.return_value = cursor
-        context.session.assertLogin = mock.MagicMock()
+        self.context_db.cnx.cursor.return_value = cursor
+        self.context_db.session.assertLogin = mock.MagicMock()
         proc = kojihub.InsertProcessor('sometable', data={'foo': 'bar'})
         proc.make_create(event_id=1, user_id=2)
         self.assertEqual(proc.data['create_event'], 1)
         self.assertEqual(proc.data['creator_id'], 2)
 
         proc.make_create(user_id=2)
-        self.assertEqual(proc.data['create_event'], context.event_id)
+        self.assertEqual(proc.data['create_event'], self.context_db.event_id)
         self.assertEqual(proc.data['creator_id'], 2)
 
         proc.make_create(event_id=1)
         self.assertEqual(proc.data['create_event'], 1)
-        self.assertEqual(proc.data['creator_id'], context.session.user_id)
+        self.assertEqual(proc.data['creator_id'], self.context_db.session.user_id)
 
         proc.make_create()
-        self.assertEqual(proc.data['create_event'], context.event_id)
-        self.assertEqual(proc.data['creator_id'], context.session.user_id)
+        self.assertEqual(proc.data['create_event'], self.context_db.event_id)
+        self.assertEqual(proc.data['creator_id'], self.context_db.session.user_id)
 
-    @mock.patch('kojihub.context')
-    def test_dup_check(self, context):
+    def test_dup_check(self):
         cursor = mock.MagicMock()
-        context.cnx.cursor.return_value = cursor
-        context.session.assertLogin = mock.MagicMock()
+        self.context_db.cnx.cursor.return_value = cursor
+        self.context_db.session.assertLogin = mock.MagicMock()
         proc = kojihub.InsertProcessor('sometable', data={'foo': 'bar'})
         proc.dup_check()
 
@@ -76,10 +79,9 @@ class TestInsertProcessor(unittest.TestCase):
         result = proc.dup_check()
         self.assertEqual(result, None)
 
-    @mock.patch('kojihub.context')
-    def test_raw_data(self, context):
+    def test_raw_data(self):
         cursor = mock.MagicMock()
-        context.cnx.cursor.return_value = cursor
+        self.context_db.cnx.cursor.return_value = cursor
         proc = kojihub.InsertProcessor('sometable', rawdata={'foo': '\'bar\''})
         result = proc.dup_check()
         self.assertEqual(result, None)
@@ -89,6 +91,12 @@ class TestInsertProcessor(unittest.TestCase):
 
 
 class TestBulkInsertProcessor(unittest.TestCase):
+    def setUp(self):
+        self.context_db = mock.patch('koji.db.context').start()
+
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_basic_instantiation(self):
         proc = kojihub.BulkInsertProcessor('sometable')
         actual = str(proc)
@@ -106,10 +114,9 @@ class TestBulkInsertProcessor(unittest.TestCase):
         actual = str(proc)
         self.assertEqual(actual, expected)
 
-    @mock.patch('kojihub.context')
-    def test_simple_execution(self, context):
+    def test_simple_execution(self):
         cursor = mock.MagicMock()
-        context.cnx.cursor.return_value = cursor
+        self.context_db.cnx.cursor.return_value = cursor
         proc = kojihub.BulkInsertProcessor('sometable', data=[{'foo': 'bar'}])
         proc.execute()
         cursor.execute.assert_called_once_with(
@@ -128,10 +135,9 @@ class TestBulkInsertProcessor(unittest.TestCase):
             log_errors=True
         )
 
-    @mock.patch('kojihub.context')
-    def test_bulk_execution(self, context):
+    def test_bulk_execution(self):
         cursor = mock.MagicMock()
-        context.cnx.cursor.return_value = cursor
+        self.context_db.cnx.cursor.return_value = cursor
 
         proc = kojihub.BulkInsertProcessor('sometable', data=[{'foo': 'bar1'}])
         proc.add_record(foo='bar2')
@@ -166,10 +172,9 @@ class TestBulkInsertProcessor(unittest.TestCase):
             str(proc)
         self.assertEqual(cm.exception.args[0], 'Missing value foo2 in BulkInsert')
 
-    @mock.patch('kojihub.context')
-    def test_batch_execution(self, context):
+    def test_batch_execution(self):
         cursor = mock.MagicMock()
-        context.cnx.cursor.return_value = cursor
+        self.context_db.cnx.cursor.return_value = cursor
 
         proc = kojihub.BulkInsertProcessor('sometable', data=[{'foo': 'bar1'}], batch=2)
         proc.add_record(foo='bar2')
@@ -185,10 +190,9 @@ class TestBulkInsertProcessor(unittest.TestCase):
                          mock.call('INSERT INTO sometable (foo) VALUES (%(foo0)s)',
                                    {'foo0': 'bar3'}, log_errors=True))
 
-    @mock.patch('kojihub.context')
-    def test_no_batch_execution(self, context):
+    def test_no_batch_execution(self):
         cursor = mock.MagicMock()
-        context.cnx.cursor.return_value = cursor
+        self.context_db.cnx.cursor.return_value = cursor
 
         proc = kojihub.BulkInsertProcessor('sometable', data=[{'foo': 'bar1'}], batch=0)
         proc.add_record(foo='bar2')

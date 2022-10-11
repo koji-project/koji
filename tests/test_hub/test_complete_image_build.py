@@ -1,5 +1,4 @@
 import copy
-import json
 import mock
 import os
 import os.path
@@ -53,7 +52,7 @@ class TestCompleteImageBuild(unittest.TestCase):
         self.pathinfo = koji.PathInfo(self.tempdir)
         mock.patch('koji.pathinfo', new=self.pathinfo).start()
         self.hostcalls = kojihub.HostExports()
-        self.context = mock.patch('kojihub.context').start()
+        self.context_db = mock.patch('koji.db.context').start()
         mock.patch('kojihub.Host').start()
         self.Task = mock.patch('kojihub.Task').start()
         self.Task.return_value.assertHost = mock.MagicMock()
@@ -64,22 +63,22 @@ class TestCompleteImageBuild(unittest.TestCase):
         mock.patch('kojihub.lookup_name', new=self.my_lookup_name).start()
         mock.patch.object(kojihub.BuildRoot, 'load', new=self.my_buildroot_load).start()
         mock.patch('kojihub.import_archive_internal',
-                    new=self.my_import_archive_internal).start()
+                   new=self.my_import_archive_internal).start()
         self._dml = mock.patch('kojihub._dml').start()
         mock.patch('kojihub.build_notification').start()
         mock.patch('kojihub.assert_policy').start()
         mock.patch('kojihub.check_volume_policy',
-                return_value={'id':0, 'name': 'DEFAULT'}).start()
+                   return_value={'id': 0, 'name': 'DEFAULT'}).start()
         self.set_up_callbacks()
         self.rpms = {}
         self.inserts = []
         self.updates = []
         mock.patch.object(kojihub.InsertProcessor, 'execute',
-                    new=make_insert_grabber(self)).start()
+                          new=make_insert_grabber(self)).start()
         mock.patch.object(kojihub.BulkInsertProcessor, '_one_insert',
-                    new=make_bulk_insert_grabber(self)).start()
+                          new=make_bulk_insert_grabber(self)).start()
         mock.patch.object(kojihub.UpdateProcessor, 'execute',
-                    new=make_update_grabber(self)).start()
+                          new=make_update_grabber(self)).start()
         mock.patch('kojihub.nextval', new=self.my_nextval).start()
         self.sequences = {}
 
@@ -140,15 +139,14 @@ class TestCompleteImageBuild(unittest.TestCase):
     def my_lookup_name(self, table, info, **kw):
         if table == 'btype':
             return {
-                    'id': 'BTYPEID:%s' % info,
-                    'name': info,
-                    }
+                'id': 'BTYPEID:%s' % info,
+                'name': info,
+            }
         else:
             raise Exception("Cannot fake call")
 
     def my_get_archive_type(self, *a, **kw):
-        return dict.fromkeys(['id', 'name', 'description', 'extensions'],
-                'ARCHIVETYPE')
+        return dict.fromkeys(['id', 'name', 'description', 'extensions'], 'ARCHIVETYPE')
 
     @staticmethod
     def my_buildroot_load(br, id):
@@ -156,14 +154,15 @@ class TestCompleteImageBuild(unittest.TestCase):
         br.id = id
         br.is_standard = True
         br.data = {
-                'br_type': koji.BR_TYPES['STANDARD'],
-                'id': id,
-                }
+            'br_type': koji.BR_TYPES['STANDARD'],
+            'id': id,
+        }
 
     def my_import_archive_internal(self, *a, **kw):
         # this is kind of odd, but we need this to fake the archiveinfo
         share = {}
         old_ip = kojihub.InsertProcessor
+
         def my_ip(table, *a, **kw):
             if table == 'archiveinfo':
                 data = kw['data']
@@ -171,6 +170,7 @@ class TestCompleteImageBuild(unittest.TestCase):
                 share['archiveinfo'] = data
                 # TODO: need to add id
             return old_ip(table, *a, **kw)
+
         def my_ga(archive_id, **kw):
             return share['archiveinfo']
         with mock.patch('kojihub.InsertProcessor', new=my_ip):
@@ -190,17 +190,17 @@ class TestCompleteImageBuild(unittest.TestCase):
     def test_complete_image_build(self):
         self.set_up_files('import_1')
         buildinfo = {
-                'id': 137,
-                'task_id': 'TASK_ID',
-                'name': 'some-image',
-                'version': '1.2.3.4',
-                'release': '3',
-                'epoch': None,
-                'source': None,
-                'state': koji.BUILD_STATES['BUILDING'],
-                'volume_id': 0,
-                'extra': {},
-                }
+            'id': 137,
+            'task_id': 'TASK_ID',
+            'name': 'some-image',
+            'version': '1.2.3.4',
+            'release': '3',
+            'epoch': None,
+            'source': None,
+            'state': koji.BUILD_STATES['BUILDING'],
+            'volume_id': 0,
+            'extra': {},
+        }
         image_info = {'build_id': buildinfo['id']}
         self.get_build.return_value = buildinfo
         self.get_image_build.return_value = image_info
@@ -232,7 +232,7 @@ class TestCompleteImageBuild(unittest.TestCase):
             'postImport',   # build
             'preBuildStateChange',  # building -> completed
             'postBuildStateChange',
-            ]
+        ]
         self.assertEqual(cbtypes, cb_expect)
         cb_idx = {}
         for c in self.callbacks:
@@ -246,10 +246,10 @@ class TestCompleteImageBuild(unittest.TestCase):
             cb_idx.setdefault(key, [])
             cb_idx[key].append(c[2])
         key_expect = [
-                'postBuildStateChange', 'preBuildStateChange',
-                'preImport:archive', 'postImport:archive',
-                'preImport:image', 'postImport:image',
-                ]
+            'postBuildStateChange', 'preBuildStateChange',
+            'preImport:archive', 'postImport:archive',
+            'preImport:image', 'postImport:image',
+        ]
         self.assertEqual(set(cb_idx.keys()), set(key_expect))
         for key in ['preImport:image']:
             callbacks = cb_idx[key]

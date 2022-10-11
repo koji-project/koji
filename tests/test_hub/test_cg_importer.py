@@ -17,6 +17,16 @@ class TestCGImporter(unittest.TestCase):
     def setUp(self):
         if not os.path.exists(self.TMP_PATH):
             os.mkdir(self.TMP_PATH)
+        self.path_work = mock.patch('koji.pathinfo.work').start()
+        self.context_db = mock.patch('koji.db.context').start()
+        self.context = mock.patch('kojihub.context').start()
+        self.get_build = mock.patch('kojihub.get_build').start()
+        self.get_user = mock.patch('kojihub.get_user').start()
+        self.userinfo = {'id': 123}
+        self.rmtree = mock.patch('koji.util.rmtree').start()
+        self.lexists = mock.patch('os.path.lexists').start()
+        self.path_build = mock.patch('koji.pathinfo.build').start()
+        self.new_build = mock.patch('kojihub.new_build').start()
 
     def tearDown(self):
         if os.path.exists(self.TMP_PATH):
@@ -41,33 +51,30 @@ class TestCGImporter(unittest.TestCase):
                          f"expected type <class 'str'>", str(ex.exception))
 
     def test_get_metadata_is_none(self):
+        self.path_work.return_value = os.path.dirname(__file__)
         x = kojihub.CG_Importer()
         with self.assertRaises(GenericError) as ex:
             x.get_metadata(None, '')
         self.assertEqual('No such file: metadata.json', str(ex.exception))
 
-    @mock.patch("koji.pathinfo.work")
-    def test_get_metadata_missing_json_file(self, work):
-        work.return_value = os.path.dirname(__file__)
+    def test_get_metadata_missing_json_file(self):
+        self.path_work.return_value = os.path.dirname(__file__)
         x = kojihub.CG_Importer()
         with self.assertRaises(GenericError):
             x.get_metadata('missing.json', 'cg_importer_json')
 
-    @mock.patch("koji.pathinfo.work")
-    def test_get_metadata_is_json_file(self, work):
-        work.return_value = os.path.dirname(__file__)
+    def test_get_metadata_is_json_file(self):
+        self.path_work.return_value = os.path.dirname(__file__)
         x = kojihub.CG_Importer()
         x.get_metadata('default.json', 'cg_importer_json')
         assert x.raw_metadata
         assert isinstance(x.raw_metadata, str)
 
-    @mock.patch('kojihub.context')
-    @mock.patch("koji.pathinfo.work")
-    def test_assert_cg_access(self, work, context):
-        work.return_value = os.path.dirname(__file__)
+    def test_assert_cg_access(self):
+        self.path_work.return_value = os.path.dirname(__file__)
         cursor = mock.MagicMock()
-        context.session.user_id = 42
-        context.cnx.cursor.return_value = cursor
+        self.context.session.user_id = 42
+        self.context_db.cnx.cursor.return_value = cursor
         cursor.fetchall.return_value = [(1, 'foo'), (2, 'bar')]
         x = kojihub.CG_Importer()
         x.get_metadata('default.json', 'cg_importer_json')
@@ -75,17 +82,13 @@ class TestCGImporter(unittest.TestCase):
         assert x.cg
         assert isinstance(x.cg, int)
 
-    @mock.patch("kojihub.get_build")
-    @mock.patch("kojihub.get_user")
-    @mock.patch('kojihub.context')
-    @mock.patch("koji.pathinfo.work")
-    def test_prep_build(self, work, context, get_user, get_build):
-        work.return_value = os.path.dirname(__file__)
+    def test_prep_build(self):
+        self.path_work.return_value = os.path.dirname(__file__)
         cursor = mock.MagicMock()
-        context.cnx.cursor.return_value = cursor
+        self.context_db.cnx.cursor.return_value = cursor
         cursor.fetchall.return_value = [(1, 'foo'), (2, 'bar')]
-        get_user.return_value = {'id': 123}
-        get_build.return_value = {}
+        self.get_user.return_value = self.userinfo
+        self.get_build.return_value = {}
         x = kojihub.CG_Importer()
         x.get_metadata('default.json', 'cg_importer_json')
         x.assert_cg_access()
@@ -93,84 +96,72 @@ class TestCGImporter(unittest.TestCase):
         assert x.buildinfo
         assert isinstance(x.buildinfo, dict)
 
-    @mock.patch('koji.pathinfo.build')
-    @mock.patch('os.path.lexists')
-    @mock.patch('koji.util.rmtree')
-    def test_check_build_dir(self, rmtree, lexists, build):
+    def test_check_build_dir(self):
         path = '/random_path/random_dir'
-        build.return_value = path
+        self.path_build.return_value = path
 
         x = kojihub.CG_Importer()
 
         # directory exists
-        lexists.return_value = True
+        self.lexists.return_value = True
         with self.assertRaises(koji.GenericError):
             x.check_build_dir(delete=False)
-        rmtree.assert_not_called()
+        self.rmtree.assert_not_called()
 
         # directory exists + delete
-        lexists.return_value = True
+        self.lexists.return_value = True
         x.check_build_dir(delete=True)
-        rmtree.assert_called_once_with(path)
+        self.rmtree.assert_called_once_with(path)
 
         # directory doesn't exist
-        rmtree.reset_mock()
-        lexists.return_value = False
+        self.rmtree.reset_mock()
+        self.lexists.return_value = False
         x.check_build_dir()
-        rmtree.assert_not_called()
+        self.rmtree.assert_not_called()
 
-    @mock.patch('kojihub.get_build')
-    @mock.patch("koji.pathinfo.work")
-    def test_prep_build_exists(self, work, get_build):
-        work.return_value = os.path.dirname(__file__)
-        get_build.return_value = True
+    def test_prep_build_exists(self):
+        self.path_work.return_value = os.path.dirname(__file__)
+        self.get_build.return_value = True
         x = kojihub.CG_Importer()
         x.get_metadata('default.json', 'cg_importer_json')
         with self.assertRaises(GenericError):
             x.prep_build()
 
-    @mock.patch("kojihub.get_user")
-    @mock.patch('kojihub.get_build')
-    @mock.patch('kojihub.new_build')
-    @mock.patch('kojihub.context')
-    @mock.patch("koji.pathinfo.work")
-    def test_get_build(self, work, context, new_build_id, get_build, get_user):
-        work.return_value = os.path.dirname(__file__)
+    def test_get_build(self):
+        self.path_work.return_value = os.path.dirname(__file__)
         cursor = mock.MagicMock()
         cursor.fetchall.return_value = [(1, 'foo'), (2, 'bar')]
-        context.cnx.cursor.return_value = cursor
-        new_build_id.return_value = 42
-        get_build.return_value = False
-        get_user.return_value = {'id': 123}
+        self.context_db.cnx.cursor.return_value = cursor
+        self.new_build.return_value = 42
+        self.get_build.return_value = False
+        self.get_user.return_value = self.userinfo
         x = kojihub.CG_Importer()
         x.get_metadata('default.json', 'cg_importer_json')
         x.assert_cg_access()
         x.prep_build()
         x.prepped_outputs = []
-        get_build.return_value = {'id': 43, 'package_id': 1,
-                                  'package_name': 'testpkg',
-                                  'name': 'testpkg', 'version': '1.0.1e',
-                                  'release': '42.el7', 'epoch': None,
-                                  'nvr': 'testpkg-1.0.1-1.fc24',
-                                  'state': 'complete', 'task_id': 1,
-                                  'owner_id': 1, 'owner_name': 'jvasallo',
-                                  'volume_id': 'id-1212', 'volume_name': 'testvolume',
-                                  'creation_event_id': '', 'creation_time': '',
-                                  'creation_ts': 424242424242,
-                                  'start_time': None, 'start_ts': None,
-                                  'completion_time': None, 'completion_ts': None,
-                                  'source': 'https://example.com', 'extra': {}
-                                  }
-        new_build_id.return_value = 43
+        self.get_build.return_value = {'id': 43, 'package_id': 1,
+                                       'package_name': 'testpkg',
+                                       'name': 'testpkg', 'version': '1.0.1e',
+                                       'release': '42.el7', 'epoch': None,
+                                       'nvr': 'testpkg-1.0.1-1.fc24',
+                                       'state': 'complete', 'task_id': 1,
+                                       'owner_id': 1, 'owner_name': 'jvasallo',
+                                       'volume_id': 'id-1212', 'volume_name': 'testvolume',
+                                       'creation_event_id': '', 'creation_time': '',
+                                       'creation_ts': 424242424242,
+                                       'start_time': None, 'start_ts': None,
+                                       'completion_time': None, 'completion_ts': None,
+                                       'source': 'https://example.com', 'extra': {}
+                                       }
+        self.new_build.return_value = 43
         x.get_build()
         assert x.buildinfo
         assert isinstance(x.buildinfo, dict)
 
-    @mock.patch("koji.pathinfo.build")
-    @mock.patch("koji.pathinfo.work")
-    def test_import_metadata(self, work, build):
-        work.return_value = os.path.dirname(__file__)
-        build.return_value = self.TMP_PATH
+    def test_import_metadata(self):
+        self.path_work.return_value = os.path.dirname(__file__)
+        self.path_build.return_value = self.TMP_PATH
         x = kojihub.CG_Importer()
         x.get_metadata('default.json', 'cg_importer_json')
         x.import_metadata()
@@ -280,23 +271,28 @@ class TestCGReservation(unittest.TestCase):
         self.inserts = []
         self.updates = []
 
-        self.context = mock.patch('kojihub.context').start()
-        self.context.session.user_id = 123456
+        self.context_db = mock.patch('koji.db.context').start()
+        self.context_db.session.user_id = 123456
         self.mock_cursor = mock.MagicMock()
-        self.context.cnx.cursor.return_value = self.mock_cursor
+        self.context_db.cnx.cursor.return_value = self.mock_cursor
+        self.get_build = mock.patch('kojihub.get_build').start()
+        self.get_user = mock.patch('kojihub.get_user').start()
+        self.userinfo = {'id': 123456, 'name': 'username'}
+        self.new_build = mock.patch('kojihub.new_build').start()
+        self.lookup_name = mock.patch('kojihub.lookup_name').start()
+        self.assert_cg = mock.patch('kojihub.assert_cg').start()
+        self.get_reservation_token = mock.patch('kojihub.get_reservation_token').start()
+        self.run_callbacks = mock.patch('koji.plugin.run_callbacks').start()
 
     def tearDown(self):
         mock.patch.stopall()
 
-    @mock.patch("kojihub.new_build")
-    @mock.patch("kojihub.get_user")
-    @mock.patch("kojihub.lookup_name")
-    @mock.patch("kojihub.assert_cg")
-    def test_init_build_ok(self, assert_cg, lookup_name, get_user, new_build):
-        assert_cg.return_value = True
-        lookup_name.return_value = {'id': 21, 'name': 'cg_name'}
-        get_user.return_value = {'id': 123456, 'name': 'username'}
-        new_build.return_value = 654
+    def test_init_build_ok(self):
+        self.assert_cg.return_value = True
+        self.lookup_name.return_value = {'id': 21, 'name': 'cg_name'}
+        self.get_reservation_token.return_value = None
+        self.get_user.return_value = self.userinfo
+        self.new_build.return_value = 654
         cg = 'content_generator_name'
         self.mock_cursor.fetchone.side_effect = [
             [333],  # get pkg_id
@@ -315,8 +311,8 @@ class TestCGReservation(unittest.TestCase):
 
         kojihub.cg_init_build(cg, data)
 
-        lookup_name.assert_called_once_with('content_generator', cg, strict=True)
-        assert_cg.assert_called_once_with(cg)
+        self.lookup_name.assert_called_once_with('content_generator', cg, strict=True)
+        self.assert_cg.assert_called_once_with(cg)
         self.assertEqual(1, len(self.inserts))
         insert = self.inserts[0]
         self.assertEqual(insert.table, 'build_reservations')
@@ -324,18 +320,12 @@ class TestCGReservation(unittest.TestCase):
         self.assertTrue('token' in insert.data)
         self.assertEqual(insert.rawdata, {'created': 'NOW()'})
 
-    @mock.patch("koji.plugin.run_callbacks")
-    @mock.patch("kojihub.get_reservation_token")
-    @mock.patch("kojihub.lookup_name")
-    @mock.patch("kojihub.get_build")
-    @mock.patch("kojihub.assert_cg")
-    def test_uninit_build_ok(self, assert_cg, get_build, lookup_name, get_reservation_token,
-                             run_callbacks):
-        assert_cg.return_value = True
+    def test_uninit_build_ok(self):
+        self.assert_cg.return_value = True
         build_id = 1122
         cg_id = 888
         cg = 'content_generator_name'
-        get_build.side_effect = [
+        self.get_build.side_effect = [
             {
                 'id': build_id,
                 'state': koji.BUILD_STATES['BUILDING'],
@@ -349,18 +339,18 @@ class TestCGReservation(unittest.TestCase):
         ]
 
         token = 'random_token'
-        get_reservation_token.return_value = {'build_id': build_id, 'token': token}
-        lookup_name.return_value = {'name': cg, 'id': cg_id}
+        self.get_reservation_token.return_value = {'build_id': build_id, 'token': token}
+        self.lookup_name.return_value = {'name': cg, 'id': cg_id}
 
         kojihub.cg_refund_build(cg, build_id, token)
 
-        assert_cg.assert_called_once_with(cg)
-        get_build.assert_has_calls([
+        self.assert_cg.assert_called_once_with(cg)
+        self.get_build.assert_has_calls([
             mock.call(build_id, strict=True),
             mock.call(build_id, strict=True),
         ])
-        get_reservation_token.assert_called_once_with(build_id)
-        lookup_name.assert_called_once_with('content_generator', cg, strict=True)
+        self.get_reservation_token.assert_called_once_with(build_id)
+        self.lookup_name.assert_called_once_with('content_generator', cg, strict=True)
 
         self.assertEqual(len(self.updates), 1)
         update = self.updates[0]
@@ -369,7 +359,7 @@ class TestCGReservation(unittest.TestCase):
         self.assertEqual(update.data['state'], koji.BUILD_STATES['FAILED'])
         self.assertEqual(update.rawdata, {'completion_time': 'NOW()'})
 
-        run_callbacks.assert_has_calls([
+        self.run_callbacks.assert_has_calls([
             mock.call('preBuildStateChange', attribute='state',
                       old=koji.BUILD_STATES['BUILDING'],
                       new=koji.BUILD_STATES['FAILED'],

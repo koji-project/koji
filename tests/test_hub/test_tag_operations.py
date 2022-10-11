@@ -50,32 +50,37 @@ class TestTagBuild(unittest.TestCase):
         self.check_tag_access = mock.patch('kojihub.check_tag_access').start()
         self.writeInheritanceData = mock.patch('kojihub.writeInheritanceData').start()
         self.context = mock.patch('kojihub.context').start()
+        self.context_db = mock.patch('koji.db.context').start()
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"
         self.context.session.assertPerm = mock.MagicMock()
-        self.context.session.assertLogin = mock.MagicMock()
-
-    def tearDown(self):
-        mock.patch.stopall()
-
-    def test_simple_tag(self):
-        self.check_tag_access.return_value = (True, False, "")
-        self.get_build.return_value = {
+        self.context_db.session.assertLogin = mock.MagicMock()
+        self.buildinfo = {
             'id': 1,
             'name': 'name',
             'version': 'version',
             'release': 'release',
             'state': koji.BUILD_STATES['COMPLETE'],
         }
-        self.get_tag.return_value = {
+        self.taginfo = {
             'id': 777,
             'name': 'tag',
         }
-        self.get_user.return_value = {
+        self.userinfo = {
             'id': 999,
             'name': 'user',
         }
-        self.context.event_id = 42
+        self.event_id = 42
+
+    def tearDown(self):
+        mock.patch.stopall()
+
+    def test_simple_tag(self):
+        self.check_tag_access.return_value = (True, False, "")
+        self.get_build.return_value = self.buildinfo
+        self.get_tag.return_value = self.taginfo
+        self.get_user.return_value = self.userinfo
+        self.context_db.event_id = self.event_id
         # set return for the already tagged check
         self.query_executeOne.return_value = None
 
@@ -91,10 +96,10 @@ class TestTagBuild(unittest.TestCase):
         insert = self.inserts[0]
         self.assertEqual(insert.table, 'tag_listing')
         values = {
-            'build_id': 1,
-            'create_event': 42,
-            'creator_id': 999,
-            'tag_id': 777
+            'build_id': self.buildinfo['id'],
+            'create_event': self.event_id,
+            'creator_id': self.userinfo['id'],
+            'tag_id': self.taginfo['id']
         }
         self.assertEqual(insert.data, values)
         self.assertEqual(insert.rawdata, {})
@@ -102,30 +107,18 @@ class TestTagBuild(unittest.TestCase):
 
     def test_simple_tag_with_user(self):
         self.check_tag_access.return_value = (True, False, "")
-        self.get_build.return_value = {
-            'id': 1,
-            'name': 'name',
-            'version': 'version',
-            'release': 'release',
-            'state': koji.BUILD_STATES['COMPLETE'],
-        }
-        self.get_tag.return_value = {
-            'id': 777,
-            'name': 'tag',
-        }
-        self.get_user.return_value = {
-            'id': 999,
-            'name': 'user',
-        }
-        self.context.event_id = 42
+        self.get_build.return_value = self.buildinfo
+        self.get_tag.return_value = self.taginfo
+        self.get_user.return_value = self.userinfo
+        self.context_db.event_id = self.event_id
         # set return for the already tagged check
         self.query_executeOne.return_value = None
 
         # call it
-        kojihub._tag_build('sometag', 'name-version-release', user_id=999)
+        kojihub._tag_build('sometag', 'name-version-release', user_id=self.userinfo['id'])
 
         self.get_tag.called_once_with('sometag', strict=True)
-        self.get_user.called_one_with(999, strict=True)
+        self.get_user.called_one_with(self.userinfo['id'], strict=True)
         self.get_build.called_once_with('name-version-release', strict=True)
         self.context.session.assertPerm.assert_not_called()
 
@@ -134,10 +127,10 @@ class TestTagBuild(unittest.TestCase):
         insert = self.inserts[0]
         self.assertEqual(insert.table, 'tag_listing')
         values = {
-            'build_id': 1,
-            'create_event': 42,
-            'creator_id': 999,
-            'tag_id': 777
+            'build_id': self.buildinfo['id'],
+            'create_event': self.event_id,
+            'creator_id': self.userinfo['id'],
+            'tag_id': self.taginfo['id']
         }
         self.assertEqual(insert.data, values)
         self.assertEqual(insert.rawdata, {})
@@ -145,22 +138,10 @@ class TestTagBuild(unittest.TestCase):
 
     def test_simple_untag(self):
         self.check_tag_access.return_value = (True, False, "")
-        self.get_build.return_value = {
-            'id': 1,
-            'name': 'name',
-            'version': 'version',
-            'release': 'release',
-            'state': koji.BUILD_STATES['COMPLETE'],
-        }
-        self.get_tag.return_value = {
-            'id': 777,
-            'name': 'tag',
-        }
-        self.get_user.return_value = {
-            'id': 999,
-            'name': 'user',
-        }
-        self.context.event_id = 42
+        self.get_build.return_value = self.buildinfo
+        self.get_tag.return_value = self.taginfo
+        self.get_user.return_value = self.userinfo
+        self.context_db.event_id = self.event_id
         # set return for the already tagged check
         self.query_executeOne.return_value = None
 
@@ -177,8 +158,8 @@ class TestTagBuild(unittest.TestCase):
         update = self.updates[0]
         self.assertEqual(update.table, 'tag_listing')
         values = {
-            'build_id': 1,
-            'tag_id': 777
+            'build_id': self.buildinfo['id'],
+            'tag_id': self.taginfo['id']
         }
         data = {
             'revoke_event': 42,
@@ -191,30 +172,18 @@ class TestTagBuild(unittest.TestCase):
 
     def test_simple_untag_with_user(self):
         self.check_tag_access.return_value = (True, False, "")
-        self.get_build.return_value = {
-            'id': 1,
-            'name': 'name',
-            'version': 'version',
-            'release': 'release',
-            'state': koji.BUILD_STATES['COMPLETE'],
-        }
-        self.get_tag.return_value = {
-            'id': 777,
-            'name': 'tag',
-        }
-        self.get_user.return_value = {
-            'id': 999,
-            'name': 'user',
-        }
-        self.context.event_id = 42
+        self.get_build.return_value = self.buildinfo
+        self.get_tag.return_value = self.taginfo
+        self.get_user.return_value = self.userinfo
+        self.context_db.event_id = self.event_id
         # set return for the already tagged check
         self.query_executeOne.return_value = None
 
         # call it
-        kojihub._untag_build('sometag', 'name-version-release', user_id=999)
+        kojihub._untag_build('sometag', 'name-version-release', user_id=self.userinfo['id'])
 
         self.get_tag.called_once_with('sometag', strict=True)
-        self.get_user.called_one_with(999, strict=True)
+        self.get_user.called_one_with(self.userinfo['id'], strict=True)
         self.get_build.called_once_with('name-version-release', strict=True)
         self.context.session.assertPerm.assert_not_called()
         self.assertEqual(len(self.inserts), 0)
@@ -224,8 +193,8 @@ class TestTagBuild(unittest.TestCase):
         update = self.updates[0]
         self.assertEqual(update.table, 'tag_listing')
         values = {
-            'build_id': 1,
-            'tag_id': 777
+            'build_id': self.buildinfo['id'],
+            'tag_id': self.taginfo['id']
         }
         data = {
             'revoke_event': 42,

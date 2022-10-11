@@ -10,20 +10,22 @@ import kojihub
 class TestImportImageInternal(unittest.TestCase):
     def setUp(self):
         self.tempdir = tempfile.mkdtemp()
+        self.context_db = mock.patch('koji.db.context').start()
+        self.Task = mock.patch('kojihub.Task').start()
+        self.get_build = mock.patch('kojihub.get_build').start()
+        self.get_archive_type = mock.patch('kojihub.get_archive_type').start()
+        self.path_work = mock.patch('koji.pathinfo.work').start()
+        self.import_archive = mock.patch('kojihub.import_archive').start()
+        self.build = mock.patch('koji.pathinfo.build').start()
+        self.get_rpm = mock.patch('kojihub.get_rpm').start()
 
     def tearDown(self):
         shutil.rmtree(self.tempdir)
 
-    @mock.patch('koji.pathinfo.work')
-    @mock.patch('kojihub.import_archive')
-    @mock.patch('kojihub.get_archive_type')
-    @mock.patch('kojihub.get_build')
-    @mock.patch('kojihub.Task')
-    @mock.patch('kojihub.context')
-    def test_basic(self, context, Task, get_build, get_archive_type, import_archive, work):
+    def test_basic(self):
         task = mock.MagicMock()
         task.assertHost = mock.MagicMock()
-        Task.return_value = task
+        self.Task.return_value = task
         imgdata = {
             'arch': 'x86_64',
             'task_id': 1,
@@ -34,32 +36,24 @@ class TestImportImageInternal(unittest.TestCase):
             ],
         }
         cursor = mock.MagicMock()
-        context.cnx.cursor.return_value = cursor
-        context.session.host_id = 42
-        get_build.return_value = {
+        self.context_db.cnx.cursor.return_value = cursor
+        self.context_db.session.host_id = 42
+        self.get_build.return_value = {
             'id': 2,
             'name': 'name',
             'version': 'version',
             'release': 'release',
         }
-        get_archive_type.return_value = 4
-        work.return_value = self.tempdir
+        self.get_archive_type.return_value = 4
+        self.path_work.return_value = self.tempdir
         os.makedirs(self.tempdir + "/tasks/1/1")
-        kojihub.importImageInternal(task_id=1, build_info=get_build.return_value, imgdata=imgdata)
+        kojihub.importImageInternal(
+            task_id=1, build_info=self.get_build.return_value, imgdata=imgdata)
 
-    @mock.patch('kojihub.get_rpm')
-    @mock.patch('koji.pathinfo.build')
-    @mock.patch('koji.pathinfo.work')
-    @mock.patch('kojihub.import_archive')
-    @mock.patch('kojihub.get_archive_type')
-    @mock.patch('kojihub.get_build')
-    @mock.patch('kojihub.Task')
-    @mock.patch('kojihub.context')
-    def test_with_rpm(self, context, Task, get_build, get_archive_type, import_archive, build,
-                      work, get_rpm):
+    def test_with_rpm(self):
         task = mock.MagicMock()
         task.assertHost = mock.MagicMock()
-        Task.return_value = task
+        self.Task.return_value = task
         rpm = {
             # 'location': 'foo',
             'id': 6,
@@ -87,14 +81,14 @@ class TestImportImageInternal(unittest.TestCase):
             'id': 2
         }
         cursor = mock.MagicMock()
-        context.cnx.cursor.return_value = cursor
-        context.session.host_id = 42
-        get_build.return_value = build_info
-        get_rpm.return_value = rpm
-        get_archive_type.return_value = 4
-        work.return_value = self.tempdir
-        build.return_value = self.tempdir
-        import_archive.return_value = {
+        self.context_db.cnx.cursor.return_value = cursor
+        self.context_db.session.host_id = 42
+        self.get_build.return_value = build_info
+        self.get_rpm.return_value = rpm
+        self.get_archive_type.return_value = 4
+        self.path_work.return_value = self.tempdir
+        self.build.return_value = self.tempdir
+        self.import_archive.return_value = {
             'id': 9,
             'filename': self.tempdir + '/foo.archive',
         }

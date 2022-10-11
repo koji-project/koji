@@ -1,8 +1,15 @@
+PYVER_MAJOR := $(shell $(PYTHON) -c 'import sys; print(".".join(sys.version.split(".")[:1]))')
 PACKAGE = $(shell basename `pwd`)
-PYFILES = $(wildcard *.py)
+PYFILES_ALL = $(wildcard *.py)
 PYSCRIPTS =
 SUBDIRS =
 PKGDIR = $(shell $(PYTHON) -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")/$(PACKAGE)
+
+ifeq ($(PYVER_MAJOR),2)
+	PYFILES=$(filter-out db.py,$(PYFILES_ALL))
+else
+	PYFILES=$(PYFILES_ALL)
+endif
 
 _default:
 	@echo "nothing to make.  try make install"

@@ -1,62 +1,69 @@
-#!/usr/bin/python2
+#!/usr/bin/python3
 
 import os
 import xmlrpc.client
 from optparse import OptionParser
+from koji.context import context
 
+import koji
 import koji.db
+from koji.db import QueryProcessor, BulkInsertProcessor
 
 
 def clean_sessions(cursor, vacuum, test, age):
-    q = " FROM sessions WHERE update_time < NOW() - '%s days'::interval" % int(age)
+    clauses = [f"update_time < NOW() - '{age} days'::interval"]
     if options.verbose:
-        cursor.execute("SELECT COUNT(*) " + q)
-        rows = cursor.fetchall()[0][0]
-        print("Deleting %d sessions" % rows)
+        query = QueryProcessor(tables=['sessions'], clauses=clauses, opts={'countOnly': True})
+        rows = query.execute()
+        print(f"Deleting {rows} sessions")
 
     if not test:
-        cursor.execute("DELETE " + q)
+        cursor.execute(
+            f"DELETE FROM sessions WHERE update_time < NOW() - '{age} days'::interval")
         if vacuum:
             cursor.execute("VACUUM ANALYZE sessions")
 
 
 def clean_reservations(cursor, vacuum, test, age):
-    q = " FROM build_reservations WHERE created < NOW() - '%s days'::interval" % int(age)
     if options.verbose:
-        cursor.execute("SELECT COUNT(*) " + q)
-        rows = cursor.fetchall()[0][0]
-        print("Deleting %d build reservations" % rows)
+        query = QueryProcessor(
+            tables=['build_reservations'],
+            clauses=[f"created < NOW() - '{age} days'::interval"],
+            opts={'countOnly': True})
+        rows = query.execute()
+        print(f"Deleting {rows} build reservations")
 
     if not test:
-        cursor.execute("DELETE " + q)
+        cursor.execute(
+            f"DELETE FROM build_reservations WHERE created < NOW() - '{age} days'::interval")
         if vacuum:
             cursor.execute("VACUUM ANALYZE build_reservations")
 
 
 def clean_notification_tasks(cursor, vacuum, test, age):
-    q = " FROM task WHERE method = 'tagNotification' AND" + \
-        " completion_time < NOW() - '%s days'::interval" % int(age)
+    clauses = ["method = 'tagNotification'",
+               f"completion_time < NOW() - '{age} days'::interval"]
     if options.verbose:
-        cursor.execute("SELECT COUNT(*) " + q)
-        rows = cursor.fetchall()[0][0]
-        print("Deleting %d tagNotification tasks" % rows)
+        query = QueryProcessor(tables=['task'], clauses=clauses, opts={'countOnly': True})
+        rows = query.execute()
+        print(f"Deleting {rows} tagNotification tasks")
 
     if not test:
         # cascade
-        cursor.execute("DELETE " + q)
+        cursor.execute("DELETE FROM task WHERE method = 'tagNotification' AND "
+                       f"completion_time < NOW() - '{age} days'::interval")
         if vacuum:
             cursor.execute("VACUUM ANALYZE task")
 
 
 def clean_scratch_tasks(cursor, vacuum, test, age):
-    q = """ FROM task
-              WHERE method = 'build' AND
-              completion_time < NOW()  - '%s days'::interval AND
-              request LIKE '%%%%<name>scratch</name>%%%%'""" % int(age)
+    clauses = ["method = 'build'",
+               f"completion_time < NOW() - '{age} days'::interval",
+               "request LIKE '%%<name>scratch</name>%%'"]
     if options.verbose:
-        cursor.execute("SELECT COUNT(*) " + q)
-        rows = cursor.fetchall()[0][0]
-        print("Deleting %d scratch build tasks" % rows)
+        query = QueryProcessor(tables=['task'], clauses=clauses, opts={'countOnly': True})
+        rows = query.execute()
+        print(f"Deleting {rows} scratch build tasks")
 
     if test:
         return
@@ -65,30 +72,38 @@ def clean_scratch_tasks(cursor, vacuum, test, age):
     ids = []
     # will be dropped automatically in the end of script/connection
     cursor.execute("CREATE TEMPORARY TABLE temp_scratch_tasks (task_id INTEGER NOT NULL)")
-    cursor.execute("SELECT id, request " + q)
-    for row in cursor.fetchall():
+    query = QueryProcessor(tables=['task'], columns=['id', 'request'], clauses=clauses)
+    for row in query.execute():
         task_id, request = row
         try:
-            params, method = xmlrpc.client.loads(request)
+            params, _ = xmlrpc.client.loads(request)
             opts = params[2]
             if opts['scratch']:
-                cursor.execute("INSERT INTO temp_scratch_tasks VALUES (%s)", (task_id,))
                 ids.append(task_id)
         except Exception:
             continue
+        insert = BulkInsertProcessor('temp_scratch_tasks')
+        for task_id in ids:
+            insert.add_record(task_id=task_id)
+        insert.execute()
 
     parents = ids
     while True:
         if not parents:
             break
         children = []
-        cursor.execute("SELECT id FROM task WHERE parent IN %s", (parents,))
-        for row in cursor.fetchall():
+        query = QueryProcessor(tables=['task'],
+                               columns=['id'],
+                               clauses=["parent IN %(parents)s"],
+                               values={'parents': parents})
+        for row in query.execute():
             children.append(row[0])
         parents = children
         if children:
-            values = ', '.join(["(%d)" % task_id for task_id in children])
-            cursor.execute("INSERT INTO temp_scratch_tasks VALUES %s" % values)
+            insert = BulkInsertProcessor(table='temp_scratch_tasks')
+            for task_id in children:
+                insert.add_record(task_id=task_id)
+            insert.execute()
 
     if not ids:
         return
@@ -106,17 +121,17 @@ def clean_scratch_tasks(cursor, vacuum, test, age):
 
 
 def clean_buildroots(cursor, vacuum, test):
-    q = " FROM buildroot " \
-        "WHERE cg_id IS NULL AND id NOT IN (SELECT buildroot_id FROM standard_buildroot)"
-
     if options.verbose:
-        cursor.execute("SELECT COUNT(*) " + q)
-        rows = cursor.fetchall()[0][0]
-        print("Deleting %d buildroots" % rows)
+        clauses = ["cg_id IS NULL", "id NOT IN (SELECT buildroot_id FROM standard_buildroot)"]
+        query = QueryProcessor(tables=['buildroot'], clauses=clauses, opts={'countOnly': True})
+        rows = query.execute()
+        print(f"Deleting {rows} buildroots")
 
     if not test:
-        cursor.execute("DELETE FROM buildroot_listing WHERE buildroot_id IN (SELECT id %s)" % q)
-        cursor.execute("DELETE " + q)
+        q = "FROM buildroot WHERE cg_id IS NULL AND id NOT IN " \
+            "(SELECT buildroot_id FROM standard_buildroot)"
+        cursor.execute(f"DELETE FROM buildroot_listing WHERE buildroot_id IN (SELECT id {q})")
+        cursor.execute(f"DELETE {q}")
         if vacuum:
             cursor.execute("VACUUM ANALYZE buildroot_listing")
             cursor.execute("VACUUM ANALYZE buildroot")
@@ -205,9 +220,9 @@ if __name__ == "__main__":
                               host=opts.get("DBHost", None),
                               port=opts.get("DBPort", None))
 
-    conn = koji.db.connect()
-    conn.set_session(autocommit=True)
-    cursor = conn.cursor()
+    context.cnx = koji.db.connect()
+    context.cnx.set_session(autocommit=True)
+    cursor = context.cnx.cursor()
 
     clean_sessions(cursor, options.vacuum, options.test, options.sessions_age)
     clean_reservations(cursor, options.vacuum, options.test, options.reservations_age)

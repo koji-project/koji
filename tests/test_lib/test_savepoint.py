@@ -8,7 +8,8 @@ import kojihub
 class TestSavepoint(unittest.TestCase):
 
     def setUp(self):
-        self.dml = mock.patch('kojihub._dml').start()
+        self.dml = mock.patch('koji.db._dml').start()
+        self.context_db = mock.patch('koji.db.context').start()
 
     def tearDown(self):
         mock.patch.stopall()

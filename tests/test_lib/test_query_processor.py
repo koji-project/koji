@@ -29,6 +29,7 @@ class TestQueryProcessor(unittest.TestCase):
         )
         self.original_chunksize = kojihub.QueryProcessor.iterchunksize
         kojihub.QueryProcessor.iterchunksize = 2
+        self.context_db = mock.patch('koji.db.context').start()
 
     def tearDown(self):
         kojihub.QueryProcessor.iterchunksize = self.original_chunksize
@@ -71,19 +72,17 @@ class TestQueryProcessor(unittest.TestCase):
                    " ORDER BY something OFFSET 10 LIMIT 3"
         self.assertEqual(actual, expected)
 
-    @mock.patch('kojihub.context')
-    def test_simple_with_execution(self, context):
+    def test_simple_with_execution(self):
         cursor = mock.MagicMock()
-        context.cnx.cursor.return_value = cursor
+        self.context_db.cnx.cursor.return_value = cursor
         proc = kojihub.QueryProcessor(**self.simple_arguments)
         proc.execute()
         cursor.execute.assert_called_once_with(
             '\nSELECT something\n  FROM awesome\n\n\n \n \n\n \n', {})
 
-    @mock.patch('kojihub.context')
-    def test_simple_count_with_execution(self, context):
+    def test_simple_count_with_execution(self):
         cursor = mock.MagicMock()
-        context.cnx.cursor.return_value = cursor
+        self.context_db.cnx.cursor.return_value = cursor
         cursor.fetchall.return_value = [('some count',)]
         args = self.simple_arguments.copy()
         args['opts'] = {'countOnly': True}
@@ -103,10 +102,9 @@ class TestQueryProcessor(unittest.TestCase):
             '  FROM awesome\n\n\n GROUP BY id\n \n\n \n) numrows', {})
         self.assertEqual(results, 'some count')
 
-    @mock.patch('kojihub.context')
-    def test_simple_execution_with_iterate(self, context):
+    def test_simple_execution_with_iterate(self):
         cursor = mock.MagicMock()
-        context.cnx.cursor.return_value = cursor
+        self.context_db.cnx.cursor.return_value = cursor
         cursor.fetchall.return_value = [
             ('value number 1',),
             ('value number 2',),
@@ -127,7 +125,7 @@ class TestQueryProcessor(unittest.TestCase):
         result = next(generator)
         self.assertEqual(result, {'something': 'value number 3'})
 
-    @mock.patch('kojihub._multiRow')
+    @mock.patch('koji.db._multiRow')
     def test_execution_as_list_transform(self, multirow):
         multirow.return_value = [{'col1': 'result_1_col_1', 'col2': 'result_1_col_2'},
                                  {'col1': 'result_2_col_1', 'col2': 'result_2_col_2'}]

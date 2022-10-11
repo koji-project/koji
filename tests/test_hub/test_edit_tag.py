@@ -36,9 +36,10 @@ class TestEditTag(unittest.TestCase):
         self.get_perm_id = mock.patch('kojihub.get_perm_id').start()
         self.verify_name_internal = mock.patch('kojihub.verify_name_internal').start()
         self.context = mock.patch('kojihub.context').start()
+        self.context_db = mock.patch('koji.db.context').start()
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"
-        self.context.session.assertLogin = mock.MagicMock()
+        self.context_db.session.assertLogin = mock.MagicMock()
 
     def tearDown(self):
         mock.patch.stopall()
@@ -66,8 +67,8 @@ class TestEditTag(unittest.TestCase):
                                                'exD': 4}}
         self._singleValue.return_value = None
         self.verify_name_internal.return_value = None
-        self.context.event_id = 42
-        self.context.session.user_id = 23
+        self.context_db.event_id = 42
+        self.context_db.session.user_id = 23
         # no1 invoke
         kwargs = {
             'perm': None,
