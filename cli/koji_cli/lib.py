@@ -617,7 +617,8 @@ def download_file(url, relpath, quiet=False, noprogress=False, size=None,
         print('')
 
 
-def download_rpm(build, rpm, topurl, sigkey=None, quiet=False, noprogress=False):
+def download_rpm(build, rpm, topurl, sigkey=None, quiet=False, noprogress=False, num=None,
+                 size=None):
     "Wrapper around download_file, do additional checks for rpm files"
     pi = koji.PathInfo(topdir=topurl)
     if sigkey:
@@ -629,7 +630,8 @@ def download_rpm(build, rpm, topurl, sigkey=None, quiet=False, noprogress=False)
     url = os.path.join(pi.build(build), fname)
     path = os.path.basename(fname)
 
-    download_file(url, path, quiet=quiet, noprogress=noprogress, filesize=filesize)
+    download_file(url, path, quiet=quiet, noprogress=noprogress, filesize=filesize, num=num,
+                  size=size)
 
     # size - we have stored size only for unsigned copies
     if not sigkey:
@@ -654,7 +656,7 @@ def download_rpm(build, rpm, topurl, sigkey=None, quiet=False, noprogress=False)
         error("Downloaded rpm %s doesn't match db, deleting" % path)
 
 
-def download_archive(build, archive, topurl, quiet=False, noprogress=False):
+def download_archive(build, archive, topurl, quiet=False, noprogress=False, num=None, size=None):
     "Wrapper around download_file, do additional checks for archive files"
 
     pi = koji.PathInfo(topdir=topurl)
@@ -673,7 +675,8 @@ def download_archive(build, archive, topurl, quiet=False, noprogress=False):
         url = os.path.join(directory, archive['filename'])
         path = archive['filename']
 
-    download_file(url, path, quiet=quiet, noprogress=noprogress, filesize=archive['size'])
+    download_file(url, path, quiet=quiet, noprogress=noprogress, filesize=archive['size'], num=num,
+                  size=size)
 
     # check size
     if os.path.getsize(path) != archive['size']:
