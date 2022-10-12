@@ -870,7 +870,7 @@ class WaitrepoTask(BaseTaskHandler):
 
         if isinstance(newer_than, six.string_types) and newer_than.lower() == "now":
             newer_than = start
-        if not isinstance(newer_than, list(six.integer_types) + [type(None), float]):
+        if not isinstance(newer_than, six.integer_types + (type(None), float)):
             raise koji.GenericError("Invalid value for newer_than: %s" % newer_than)
 
         if newer_than and nvrs:
