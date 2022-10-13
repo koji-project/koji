@@ -424,19 +424,22 @@ Default behavior without --all option downloads .rpm files only for build and bu
 (Specify the --help global option for a list of other help options)
 
 Options:
-  -h, --help    show this help message and exit
-  --arch=ARCH   Only download packages for this arch (may be used multiple
-                times), only for build and buildArch task methods
-  --logs        Also download build logs
-  --topurl=URL  URL under which Koji files are accessible
-  --noprogress  Do not display progress meter
-  --wait        Wait for running tasks to finish, even if running in the
-                background
-  --nowait      Do not wait for running tasks to finish
-  -q, --quiet   Suppress output
-  --all         Download all files, all methods instead of build and buildArch
-  --dirpertask  Download files to dir per task
-  --parentonly  Download parent's files only
+  -h, --help       show this help message and exit
+  --arch=ARCH      Only download packages for this arch (may be used multiple
+                   times), only for build and buildArch task methods
+  --logs           Also download build logs
+  --topurl=URL     URL under which Koji files are accessible
+  --noprogress     Do not display progress meter
+  --wait           Wait for running tasks to finish, even if running in the
+                   background
+  --nowait         Do not wait for running tasks to finish
+  -q, --quiet      Suppress output
+  --all            Download all files, all methods instead of build and
+                   buildArch
+  --dirpertask     Download files to dir per task
+  --parentonly     Download parent's files only
+  --filter=FILTER  Regex pattern to filter files
+  --skip=SKIP      Regex pattern to skip files
 """ % progname
         self.assertMultiLineEqual(actual, expected)
         actual = self.stderr.getvalue()
@@ -938,3 +941,103 @@ Options:
                  'vol3/somerpm.noarch.rpm', quiet=None, noprogress=None, size=9, num=9),
         ])
         self.assertIsNone(rv)
+
+    def test_handle_download_task_with_filter(self):
+        args = [str(self.parent_task_id), '--filter=somerpm.src|somerpm.noarch']
+        self.session.getTaskInfo.return_value = self.parent_task_info
+        self.session.getTaskChildren.return_value = [
+            {'id': 22222,
+             'method': 'buildArch',
+             'arch': 'noarch',
+             'state': 2}]
+        self.list_task_output_all_volumes.side_effect = [{}, {
+            'somerpm.src.rpm': ['DEFAULT', 'vol1'],
+            'somerpm.x86_64.rpm': ['DEFAULT', 'vol2'],
+            'somerpm.noarch.rpm': ['vol3'],
+            'somelog.log': ['DEFAULT', 'vol1']}]
+
+        # Run it and check immediate output
+        # args: task_id --log
+        # expected: success
+        rv = anon_handle_download_task(self.options, self.session, args)
+
+        actual = self.stdout.getvalue()
+        expected = ''
+        self.assertMultiLineEqual(actual, expected)
+        # Finally, assert that things were called as we expected.
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
+        self.session.getTaskInfo.assert_called_once_with(self.parent_task_id)
+        self.session.getTaskChildren.assert_called_once_with(self.parent_task_id)
+        self.list_task_output_all_volumes.assert_has_calls([
+            mock.call(self.session, self.parent_task_id), mock.call(self.session, 22222)])
+        self.assertListEqual(self.download_file.mock_calls, [
+            call('https://topurl/work/tasks/2222/22222/somerpm.src.rpm',
+                 'somerpm.src.rpm', quiet=None, noprogress=None, size=3, num=1),
+            call('https://topurl/vol/vol1/work/tasks/2222/22222/somerpm.src.rpm',
+                 'vol1/somerpm.src.rpm', quiet=None, noprogress=None, size=3, num=2),
+            call('https://topurl/vol/vol3/work/tasks/2222/22222/somerpm.noarch.rpm',
+                 'vol3/somerpm.noarch.rpm', quiet=None, noprogress=None, size=3, num=3),
+        ])
+        self.assertIsNone(rv)
+
+    def test_handle_download_task_with_skip(self):
+        args = [str(self.parent_task_id), '--log', '--skip=somerpm.noarch|somelog.log']
+        self.session.getTaskInfo.return_value = self.parent_task_info
+        self.session.getTaskChildren.return_value = [
+            {'id': 22222,
+             'method': 'buildArch',
+             'arch': 'noarch',
+             'state': 2}]
+        self.list_task_output_all_volumes.side_effect = [{}, {
+            'somerpm.src.rpm': ['DEFAULT', 'vol1'],
+            'somerpm.x86_64.rpm': ['DEFAULT', 'vol2'],
+            'somerpm.noarch.rpm': ['vol3'],
+            'somelog.log': ['DEFAULT', 'vol1'],
+            'nextlog.log': ['DEFAULT']}]
+
+        # Run it and check immediate output
+        # args: task_id --log
+        # expected: success
+        rv = anon_handle_download_task(self.options, self.session, args)
+
+        actual = self.stdout.getvalue()
+        expected = ''
+        self.assertMultiLineEqual(actual, expected)
+        # Finally, assert that things were called as we expected.
+        self.ensure_connection.assert_called_once_with(self.session, self.options)
+        self.session.getTaskInfo.assert_called_once_with(self.parent_task_id)
+        self.session.getTaskChildren.assert_called_once_with(self.parent_task_id)
+        self.list_task_output_all_volumes.assert_has_calls([
+            mock.call(self.session, self.parent_task_id), mock.call(self.session, 22222)])
+        self.assertListEqual(self.download_file.mock_calls, [
+            call('https://topurl/work/tasks/2222/22222/somerpm.src.rpm',
+                 'somerpm.src.rpm', quiet=None, noprogress=None, size=5, num=1),
+            call('https://topurl/vol/vol1/work/tasks/2222/22222/somerpm.src.rpm',
+                 'vol1/somerpm.src.rpm', quiet=None, noprogress=None, size=5, num=2),
+            call('https://topurl/work/tasks/2222/22222/somerpm.x86_64.rpm',
+                 'somerpm.x86_64.rpm', quiet=None, noprogress=None, size=5, num=3),
+            call('https://topurl/vol/vol2/work/tasks/2222/22222/somerpm.x86_64.rpm',
+                 'vol2/somerpm.x86_64.rpm', quiet=None, noprogress=None, size=5, num=4),
+            call('https://topurl/work/tasks/2222/22222/nextlog.log',
+                 'nextlog.noarch.log', quiet=None, noprogress=None, size=5, num=5),
+        ])
+        self.assertIsNone(rv)
+
+    def test_handle_download_task_filter_and_skip(self):
+        args = ['--filter=testfilter', '--skip=testskip', str(self.parent_task_id)]
+        self.session.getTaskInfo.return_value = None
+
+        # Run it and check immediate output
+        # args: task_id
+        # expected: error
+        self.assert_system_exit(
+            anon_handle_download_task,
+            self.options, self.session, args,
+            stderr=self.format_error_message('Only filter or skip may be specified. Not both.'),
+            stdout='',
+            activate_session=None,
+            exit_code=2)
+        # Finally, assert that things were called as we expected.
+        self.ensure_connection.assert_not_called()
+        self.session.getTaskInfo.assert_not_called()
+        self.session.getTaskChildren.assert_not_called()
