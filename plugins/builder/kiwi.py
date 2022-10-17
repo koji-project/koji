@@ -197,16 +197,17 @@ class KiwiCreateImageTask(BaseBuildTask):
         for inc_node in image.getElementsByTagName('include'):
             path = inc_node.getAttribute('from')
             if path.startswith('this://'):
-                path = koji.util.joinpath(desc_path, path[7:])
+                path = koji.util.joinpath(os.path.dirname(desc_path), path[7:])
             else:
                 # we want to reject other protocols, e.g. file://, https://
                 # reachingoutside of repo
                 raise koji.GenericError(f"Unhandled include protocol in include path: {path}.")
             inc = xml.dom.minidom.parse(path)  # nosec
             # every included xml has image root element again
-            for node in inc.getElementsByTagName('image').childNodes:
+            for node in list(inc.getElementsByTagName('image')[0].childNodes):
                 if node.nodeName != 'repository':
                     image.appendChild(node)
+            image.removeChild(inc_node)
 
         # remove remaining old repos
         for old_repo in image.getElementsByTagName('repository'):
