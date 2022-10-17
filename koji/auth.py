@@ -21,6 +21,7 @@
 
 from __future__ import absolute_import
 
+import logging
 import random
 import re
 import socket
@@ -52,6 +53,8 @@ RetryWhitelist = [
     'repoDelete',
     'repoProblem',
 ]
+
+logger = logging.getLogger('koji.auth')
 
 
 class Session(object):
@@ -117,6 +120,14 @@ class Session(object):
         c.execute(q, locals())
         row = c.fetchone()
         if not row:
+            q = "SELECT key, hostip FROM sessions WHERE id = %(id)i"
+            c.execute(q, locals())
+            row = c.fetchone()
+            if row:
+                if key != row[0]:
+                    logger.warning("Session ID %s is not related to session key %s.", id, key)
+                elif hostip != row[1]:
+                    logger.warning("Session ID %s is not related to host IP %s.", id, hostip)
             raise koji.AuthError('Invalid session or bad credentials')
         session_data = dict(zip(aliases, row))
         # check for expiration
