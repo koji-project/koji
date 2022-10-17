@@ -3747,6 +3747,7 @@ class LiveMediaTask(ImageTask):
 
 class OzImageTask(BaseTaskHandler):
     Methods = []
+    supported_formats = {}
 
     def fetchKickstart(self, build_tag):
         """
@@ -4020,6 +4021,11 @@ class OzImageTask(BaseTaskHandler):
                 e.setAttribute('file', '%s.%s' % (self.imgname, format))
         edriver = newxml.getElementsByTagName('driver')[0]
         edriver.setAttribute('type', format)
+        if not self.supported_formats.get(format, {}).get('qemu'):
+            edriver.setAttribute('type-warning',
+                                 "%s is not qemu-supported format, "
+                                 "you need to convert image before use "
+                                 "and update driver+source accordingly." % format)
         xml_path = os.path.join(self.workdir, filename)
         with koji._open_text_file(xml_path, 'wt') as xmlfd:
             xmlfd.write(newxml.toprettyxml())
@@ -4049,6 +4055,33 @@ class BaseImageTask(OzImageTask):
     Methods = ['createImage']
     _taskWeight = 2.0
 
+    def __init__(self, *args, **kwargs):
+        super(BaseImageTask, self).__init__(*args, **kwargs)
+        self.supported_formats = {
+            '''
+            format: {
+                'qemu': bool -supported format by qemu
+                'fcall': function to handle creation of this format
+            }
+            '''
+            'docker': {'qemu': False, 'fcall': self._buildDocker},
+            'liveimg-squashfs': {'qemu': False, 'fcall': self._buildSquashfs},
+            'qcow': {'qemu': True, 'fcall': self._buildConvert},
+            'qcow2': {'qemu': True, 'fcall': self._buildConvert},
+            'raw': {'qemu': True, 'fcall': self._buildBase},
+            'raw-xz': {'qemu': False, 'fcall': self._buildXZ},
+            'rhevm-ova': {'qemu': False, 'fcall': self._buildOVA},
+            'tar-gz': {'qemu': False, 'fcall': self._buildTarGZ},
+            'vagrant-hyperv': {'qemu': False, 'fcall': self._buildOVA},
+            'vagrant-libvirt': {'qemu': False, 'fcall': self._buildOVA},
+            'vagrant-virtualbox': {'qemu': False, 'fcall': self._buildOVA},
+            'vagrant-vmware-fusion': {'qemu': False, 'fcall': self._buildOVA},
+            'vdi': {'qemu': True, 'fcall': self._buildConvert},
+            'vmdk': {'qemu': True, 'fcall': self._buildConvert},
+            'vpc': {'qemu': True, 'fcall': self._buildConvert},
+            'vsphere-ova': {'qemu': False, 'fcall': self._buildOVA},
+        }
+
     def _format_deps(self, formats):
         """
         Return a dictionary where the keys are the image formats we need to
@@ -4058,11 +4091,8 @@ class BaseImageTask(OzImageTask):
         Some image formats require others to be processed first, which is why
         we have to do this. raw files in particular may not be kept.
         """
-        supported = ('raw', 'raw-xz', 'liveimg-squashfs', 'vmdk', 'qcow', 'qcow2', 'vdi',
-                     'rhevm-ova', 'vsphere-ova', 'docker', 'vagrant-virtualbox', 'vagrant-libvirt',
-                     'vagrant-vmware-fusion', 'vagrant-hyperv', 'vpc', "tar-gz")
         for f in formats:
-            if f not in supported:
+            if f not in self.supported_formats.keys():
                 raise koji.ApplianceError('Invalid format: %s' % f)
         f_dict = dict((f, True) for f in formats)
 
@@ -4084,23 +4114,6 @@ class BaseImageTask(OzImageTask):
         Call out to ImageFactory to build the image(s) we want. Returns a dict
         of details for each image type we had to ask ImageFactory to build
         """
-        fcalls = {'raw': self._buildBase,
-                  'raw-xz': self._buildXZ,
-                  'tar-gz': self._buildTarGZ,
-                  'liveimg-squashfs': self._buildSquashfs,
-                  'vmdk': self._buildConvert,
-                  'vdi': self._buildConvert,
-                  'qcow': self._buildConvert,
-                  'qcow2': self._buildConvert,
-                  'vpc': self._buildConvert,
-                  'rhevm-ova': self._buildOVA,
-                  'vsphere-ova': self._buildOVA,
-                  'vagrant-virtualbox': self._buildOVA,
-                  'vagrant-libvirt': self._buildOVA,
-                  'vagrant-vmware-fusion': self._buildOVA,
-                  'vagrant-hyperv': self._buildOVA,
-                  'docker': self._buildDocker
-                  }
         # add a handler to the logger so that we capture ImageFactory's logging
         self.fhandler = logging.FileHandler(self.ozlog)
         self.bd = BuildDispatcher()
@@ -4120,7 +4133,7 @@ class BaseImageTask(OzImageTask):
             if format == 'raw':
                 continue
             self.logger.info('dispatching %s image builder' % format)
-            images[format] = fcalls[format](format)
+            images[format] = self.supported_formats[format]['fcall'](format)
         imginfo = self._processXML(images)
         self.tlog.removeHandler(self.fhandler)
         self.uploadFile(self.ozlog)
