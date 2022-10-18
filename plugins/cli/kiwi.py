@@ -27,6 +27,7 @@ def handle_kiwi_build(goptions, session, args):
                       help="Do not display progress of the upload")
     parser.add_option("--kiwi-profile", action="store", default=None,
                       help="Select profile from description file")
+    parser.add_option("--type", help="Override default build type from description")
     parser.add_option("--make-prep", action="store_true", default=False,
                       help="Run 'make prep' in checkout before starting the build")
     parser.add_option("--can-fail", action="store", dest="optional_arches",
@@ -46,28 +47,33 @@ def handle_kiwi_build(goptions, session, args):
     target, scm, path = args
 
     activate_session(session, goptions)
-
     kwargs = {
-        'scratch': options.scratch,
-        'optional_arches': [canonArch(arch)
-                            for arch in options.optional_arches.split(',')
-                            if arch],
-        'profile': options.kiwi_profile,
-        'release': options.release,
-        'make_prep': options.make_prep,
+        'arches': [],
+        'target': target,
+        'desc_url': scm,
+        'desc_path': path,
     }
-
-    arches = []
+    if options.scratch:
+        kwargs['scratch'] = True
+    if options.optional_arches:
+        kwargs['optional_arches'] = [
+            canonArch(arch)
+            for arch in options.optional_arches.split(',')
+            if arch]
+    if options.kiwi_profile:
+        kwargs['profile'] = options.kiwi_profile,
+    if options.release:
+        kwargs['release'] = options.release
+    if options.make_prep:
+        kwargs['make_prep'] = True
+    if options.type:
+        kwargs['type'] = options.type
     if options.arches:
-        arches = [canonArch(arch) for arch in options.arches]
+        kwargs['arches'] = [canonArch(arch) for arch in options.arches]
+    if options.repo:
+        kwargs['repos'] = options.repo
 
-    task_id = session.kiwiBuild(
-        target=target,
-        arches=arches,
-        desc_url=scm,
-        desc_path=path,
-        repos=options.repo,
-        **kwargs)
+    task_id = session.kiwiBuild(**kwargs)
 
     if not goptions.quiet:
         print("Created task: %d" % task_id)
