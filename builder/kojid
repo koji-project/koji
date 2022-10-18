@@ -6189,7 +6189,7 @@ enabled=1
         if opts.get('write_signed_rpms'):
             results = []
             rpm_with_key = []
-            with session.multicall(batch=1000) as m:
+            with self.session.multicall(batch=1000) as m:
                 for rpm_id in selected:
                     if selected[rpm_id].get('best_key'):
                         results.append(m.host.writeSignedRPM(rpm_id, selected[rpm_id]['best_key']))
