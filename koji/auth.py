@@ -28,11 +28,14 @@ import socket
 import string
 
 import six
-from six.moves import range, urllib, zip
+from six.moves import range, urllib
 
 import koji
 from .context import context
 from .util import to_list
+
+from koji.db import InsertProcessor, QueryProcessor, UpdateProcessor, nextval
+
 
 # 1 - load session if provided
 #       - check uri for session id
@@ -95,41 +98,30 @@ class Session(object):
         except Exception:
             callnum = None
         # lookup the session
-        c = context.cnx.cursor()
-        fields = {
-            'authtype': 'authtype',
-            'callnum': 'callnum',
-            'exclusive': 'exclusive',
-            'expired': 'expired',
-            'master': 'master',
-            'start_time': 'start_time',
-            'update_time': 'update_time',
-            "date_part('epoch', start_time)": 'start_ts',
-            "date_part('epoch', update_time)": 'update_ts',
-            'user_id': 'user_id',
-        }
         # sort for stability (unittests)
-        fields, aliases = zip(*sorted(fields.items(), key=lambda x: x[1]))
-        q = """
-        SELECT %s FROM sessions
-        WHERE id = %%(id)i
-        AND key = %%(key)s
-        AND hostip = %%(hostip)s
-        FOR UPDATE
-        """ % ",".join(fields)
-        c.execute(q, locals())
-        row = c.fetchone()
-        if not row:
-            q = "SELECT key, hostip FROM sessions WHERE id = %(id)i"
-            c.execute(q, locals())
-            row = c.fetchone()
+
+        fields = (('authtype', 'authtype'), ('callnum', 'callnum'), ('exclusive', 'exclusive'),
+                  ('expired', 'expired'), ('master', 'master'), ('start_time', 'start_time'),
+                  ('update_time', 'update_time'), ("date_part('epoch', start_time)", 'start_ts'),
+                  ("date_part('epoch', update_time)", 'update_ts'), ('user_id', 'user_id'))
+        columns, aliases = zip(*fields)
+
+        query = QueryProcessor(tables=['sessions'], columns=columns, aliases=aliases,
+                               clauses=['id = %(id)i', 'key = %(key)s', 'hostip = %(hostip)s'],
+                               values={'id': id, 'key': key, 'hostip': hostip},
+                               opts={'rowlock': True})
+        session_data = query.executeOne(strict=False)
+        if not session_data:
+            query = QueryProcessor(tables='sessions', columns=['key', 'hostip'],
+                                   clauses=['id = %(id)i'], values={'id': id})
+            row = query.executeOne(strict=False)
             if row:
-                if key != row[0]:
+                if key != row['id']:
                     logger.warning("Session ID %s is not related to session key %s.", id, key)
-                elif hostip != row[1]:
+                elif hostip != row['hostip']:
                     logger.warning("Session ID %s is not related to host IP %s.", id, hostip)
             raise koji.AuthError('Invalid session or bad credentials')
-        session_data = dict(zip(aliases, row))
+
         # check for expiration
         if session_data['expired']:
             raise koji.AuthExpired('session "%i" has expired' % id)
@@ -164,10 +156,10 @@ class Session(object):
         # we used to get a row lock here as an attempt to maintain sanity of exclusive
         # sessions, but it was an imperfect approach and the lock could cause some
         # performance issues.
-        fields = ('name', 'status', 'usertype')
-        q = """SELECT %s FROM users WHERE id=%%(user_id)s""" % ','.join(fields)
-        c.execute(q, session_data)
-        user_data = dict(zip(fields, c.fetchone()))
+        query = QueryProcessor(tables=['users'], columns=['name', 'status', 'usertype'],
+                               clauses=['id=%(user_id)s'],
+                               values={'user_id': session_data['user_id']})
+        user_data = query.executeOne()
 
         if user_data['status'] != koji.USER_STATUS['NORMAL']:
             raise koji.AuthError('logins by %s are not allowed' % user_data['name'])
@@ -177,13 +169,13 @@ class Session(object):
             self.exclusive = True
         else:
             # see if an exclusive session exists
-            q = """SELECT id FROM sessions WHERE user_id=%(user_id)s
-            AND "exclusive" = TRUE AND expired = FALSE"""
-            # should not return multiple rows (unique constraint)
-            c.execute(q, session_data)
-            row = c.fetchone()
-            if row:
-                (excl_id,) = row
+            query = QueryProcessor(tables=['sessions'], columns=['id'],
+                                   clauses=['user_id=%(user_id)s', 'exclusive = TRUE',
+                                            'expired = FALSE'],
+                                   values=session_data)
+            excl_id = query.singleValue(strict=False)
+
+            if excl_id:
                 if excl_id == session_data['master']:
                     # (note excl_id cannot be None)
                     # our master session has the lock
@@ -196,16 +188,16 @@ class Session(object):
                     # an exclusive session with the force option).
 
         # update timestamp
-        q = """UPDATE sessions SET update_time=NOW() WHERE id = %(id)i"""
-        c.execute(q, locals())
-        # save update time
+        update = UpdateProcessor('sessions', rawdata={'update_time': 'NOW()'},
+                                 clauses=['id = %(id)i'], values={'id': id})
+        update.execute()
         context.cnx.commit()
-
         # update callnum (this is deliberately after the commit)
         # see earlier note near RetryError
         if callnum is not None:
-            q = """UPDATE sessions SET callnum=%(callnum)i WHERE id = %(id)i"""
-            c.execute(q, locals())
+            update = UpdateProcessor('sessions', rawdata={'callnum': callnum},
+                                     clauses=['id = %(id)i'], values={'id': id})
+            update.execute()
 
         # record the login data
         self.id = id
@@ -266,16 +258,14 @@ class Session(object):
 
     def checkLoginAllowed(self, user_id):
         """Verify that the user is allowed to login"""
-        cursor = context.cnx.cursor()
-        query = """SELECT name, usertype, status FROM users WHERE id = %(user_id)i"""
-        cursor.execute(query, locals())
-        result = cursor.fetchone()
+        query = QueryProcessor(tables=['users'], columns=['name', 'usertype', 'status'],
+                               clauses=['id = %(user_id)i'], values={'user_id': user_id})
+        result = query.executeOne(strict=False)
         if not result:
             raise koji.AuthError('invalid user_id: %s' % user_id)
-        name, usertype, status = result
 
-        if status != koji.USER_STATUS['NORMAL']:
-            raise koji.AuthError('logins by %s are not allowed' % name)
+        if result['status'] != koji.USER_STATUS['NORMAL']:
+            raise koji.AuthError('logins by %s are not allowed' % result['name'])
 
     def login(self, user, password, opts=None):
         """create a login session"""
@@ -288,20 +278,17 @@ class Session(object):
         hostip = self.get_remote_ip(override=opts.get('hostip'))
 
         # check passwd
-        c = context.cnx.cursor()
-        q = """SELECT id FROM users
-        WHERE name = %(user)s AND password = %(password)s"""
-        c.execute(q, locals())
-        r = c.fetchone()
-        if not r:
+        query = QueryProcessor(tables=['users'], columns=['id'],
+                               clauses=['name = %(user)s', 'password = %(password)s'],
+                               values={'user': user, 'password': password})
+        user_id = query.singleValue(strict=False)
+        if not user_id:
             raise koji.AuthError('invalid username or password')
-        user_id = r[0]
 
         self.checkLoginAllowed(user_id)
 
         # create session and return
         sinfo = self.createSession(user_id, hostip, koji.AUTHTYPES['NORMAL'])
-        session_id = sinfo['session-id']
         context.cnx.commit()
         return sinfo
 
@@ -417,7 +404,6 @@ class Session(object):
 
     def makeExclusive(self, force=False):
         """Make this session exclusive"""
-        c = context.cnx.cursor()
         if self.master is not None:
             raise koji.GenericError("subsessions cannot become exclusive")
         if self.exclusive:
@@ -426,33 +412,35 @@ class Session(object):
         user_id = self.user_id
         session_id = self.id
         # acquire a row lock on the user entry
-        q = """SELECT id FROM users WHERE id=%(user_id)s FOR UPDATE"""
-        c.execute(q, locals())
+        query = QueryProcessor(tables=['users'], columns=['id'], clauses=['id=%(user_id)s'],
+                               values={'user_id': user_id}, opts={'rowlock': True})
+        query.execute()
         # check that no other sessions for this user are exclusive
-        q = """SELECT id FROM sessions WHERE user_id=%(user_id)s
-        AND expired = FALSE AND "exclusive" = TRUE
-        FOR UPDATE"""
-        c.execute(q, locals())
-        row = c.fetchone()
-        if row:
+        query = QueryProcessor(tables=['sessions'], columns=['id'],
+                               clauses=['user_id=%(user_id)s', 'expired = FALSE',
+                                        'exclusive = TRUE'],
+                               values={'user_id': user_id}, opts={'rowlock': True})
+        excl_id = query.singleValue(strict=False)
+        if excl_id:
             if force:
                 # expire the previous exclusive session and try again
-                (excl_id,) = row
-                q = """UPDATE sessions SET expired=TRUE,"exclusive"=NULL WHERE id=%(excl_id)s"""
-                c.execute(q, locals())
+                update = UpdateProcessor('sessions', data={'expired': True, 'exclusive': None},
+                                         clauses=['id=%(excl_id)s'], values={'excl_id': excl_id},)
+                update.execute()
             else:
                 raise koji.AuthLockError("Cannot get exclusive session")
         # mark this session exclusive
-        q = """UPDATE sessions SET "exclusive"=TRUE WHERE id=%(session_id)s"""
-        c.execute(q, locals())
+        update = UpdateProcessor('sessions', data={'exclusive': True},
+                                 clauses=['id=%(session_id)s'], values={'session_id': session_id})
+        update.execute()
         context.cnx.commit()
 
     def makeShared(self):
         """Drop out of exclusive mode"""
-        c = context.cnx.cursor()
         session_id = self.id
-        q = """UPDATE sessions SET "exclusive"=NULL WHERE id=%(session_id)s"""
-        c.execute(q, locals())
+        update = UpdateProcessor('sessions', data={'exclusive': None},
+                                 clauses=['id=%(session_id)s'], values={'session_id': session_id})
+        update.execute()
         context.cnx.commit()
 
     def logout(self):
@@ -460,12 +448,10 @@ class Session(object):
         if not self.logged_in:
             # XXX raise an error?
             raise koji.AuthError("Not logged in")
-        update = """UPDATE sessions
-        SET expired=TRUE,exclusive=NULL
-        WHERE id = %(id)i OR master = %(id)i"""
-        # note we expire subsessions as well
-        c = context.cnx.cursor()
-        c.execute(update, {'id': self.id})
+        update = UpdateProcessor('sessions', data={'expired': True, 'exclusive': None},
+                                 clauses=['id = %(id)i OR master = %(id)i'],
+                                 values={'id': self.id})
+        update.execute()
         context.cnx.commit()
         self.logged_in = False
 
@@ -474,12 +460,10 @@ class Session(object):
         if not self.logged_in:
             # XXX raise an error?
             raise koji.AuthError("Not logged in")
-        update = """UPDATE sessions
-        SET expired=TRUE,exclusive=NULL
-        WHERE id = %(session_id)i AND master = %(master)i"""
-        master = self.id
-        c = context.cnx.cursor()
-        c.execute(update, locals())
+        update = UpdateProcessor('sessions', data={'expired': True, 'exclusive': None},
+                                 clauses=['id = %(session_id)i', 'master = %(master)i'],
+                                 values={'session_id': session_id, 'master': self.id})
+        update.execute()
         context.cnx.commit()
 
     def createSession(self, user_id, hostip, authtype, master=None):
@@ -488,8 +472,6 @@ class Session(object):
         Return a map containing the session-id and session-key.
         If master is specified, create a subsession
         """
-        c = context.cnx.cursor()
-
         # generate a random key
         alnum = string.ascii_letters + string.digits
         key = "%s-%s" % (user_id,
@@ -497,16 +479,13 @@ class Session(object):
         # use sha? sha.new(phrase).hexdigest()
 
         # get a session id
-        q = """SELECT nextval('sessions_id_seq')"""
-        c.execute(q, {})
-        (session_id,) = c.fetchone()
+        session_id = nextval('sessions_id_seq')
 
         # add session id to database
-        q = """
-        INSERT INTO sessions (id, user_id, key, hostip, authtype, master)
-        VALUES (%(session_id)i, %(user_id)i, %(key)s, %(hostip)s, %(authtype)i, %(master)s)
-        """
-        c.execute(q, locals())
+        insert = InsertProcessor('sessions',
+                                 data={'id': session_id, 'user_id': user_id, 'key': key,
+                                       'hostip': hostip, 'authtype': authtype, 'master': master})
+        insert.execute()
         context.cnx.commit()
 
         # return session info
@@ -564,15 +543,9 @@ class Session(object):
         '''Using session data, find host id (if there is one)'''
         if self.user_id is None:
             return None
-        c = context.cnx.cursor()
-        q = """SELECT id FROM host WHERE user_id = %(uid)d"""
-        c.execute(q, {'uid': self.user_id})
-        r = c.fetchone()
-        c.close()
-        if r:
-            return r[0]
-        else:
-            return None
+        query = QueryProcessor(tables=['host'], columns=['id'], clauses=['user_id = %(uid)d'],
+                               values={'uid': self.user_id})
+        return query.singleValue(strict=False)
 
     def getHostId(self):
         # for compatibility
@@ -581,32 +554,20 @@ class Session(object):
     def getUserId(self, username):
         """Return the user ID associated with a particular username. If no user
         with the given username if found, return None."""
-        c = context.cnx.cursor()
-        q = """SELECT id FROM users WHERE name = %(username)s"""
-        c.execute(q, locals())
-        r = c.fetchone()
-        c.close()
-        if r:
-            return r[0]
-        else:
-            return None
+        query = QueryProcessor(tables=['users'], columns=['id'], clauses=['name = %(username)s'],
+                               values={'username': username})
+        return query.singleValue(strict=False)
 
     def getUserIdFromKerberos(self, krb_principal):
         """Return the user ID associated with a particular Kerberos principal.
         If no user with the given princpal if found, return None."""
         self.checkKrbPrincipal(krb_principal)
-        c = context.cnx.cursor()
-        q = """SELECT id FROM users
-               JOIN user_krb_principals
-               ON users.id = user_krb_principals.user_id
-               WHERE krb_principal = %(krb_principal)s"""
-        c.execute(q, locals())
-        r = c.fetchone()
-        c.close()
-        if r:
-            return r[0]
-        else:
-            return None
+        query = QueryProcessor(tables=['users'], columns=['id'],
+                               joins=['user_krb_principals ON '
+                                      'users.id = user_krb_principals.user_id'],
+                               clauses=['krb_principal = %(krb_principal)s'],
+                               values={'krb_principal': krb_principal})
+        return query.singleValue(strict=False)
 
     def createUser(self, name, usertype=None, status=None, krb_principal=None,
                    krb_princ_check=True):
@@ -631,18 +592,16 @@ class Session(object):
         if krb_princ_check:
             self.checkKrbPrincipal(krb_principal)
 
-        cursor = context.cnx.cursor()
-        select = """SELECT nextval('users_id_seq')"""
-        cursor.execute(select, locals())
-        user_id = cursor.fetchone()[0]
+        user_id = nextval('users_id_seq')
 
-        insert = """INSERT INTO users (id, name, usertype, status)
-                    VALUES (%(user_id)i, %(name)s, %(usertype)i, %(status)i)"""
-        cursor.execute(insert, locals())
+        insert = InsertProcessor('users',
+                                 data={'id': user_id, 'name': name, 'usertype': usertype,
+                                       'status': status})
+        insert.execute()
         if krb_principal:
-            insert = """INSERT INTO user_krb_principals (user_id, krb_principal)
-                        VALUES (%(user_id)i, %(krb_principal)s)"""
-            cursor.execute(insert, locals())
+            insert = InsertProcessor('user_krb_principals',
+                                     data={'user_id': user_id, 'krb_principal': krb_principal})
+            insert.execute()
         context.cnx.commit()
 
         return user_id
@@ -650,47 +609,40 @@ class Session(object):
     def setKrbPrincipal(self, name, krb_principal, krb_princ_check=True):
         if krb_princ_check:
             self.checkKrbPrincipal(krb_principal)
-        select = """SELECT id FROM users WHERE %s"""
         if isinstance(name, six.integer_types):
-            user_condition = 'id = %(name)i'
+            clauses = ['id = %(name)i']
         else:
-            user_condition = 'name = %(name)s'
-        select = select % user_condition
-        cursor = context.cnx.cursor()
-        cursor.execute(select, locals())
-        r = cursor.fetchone()
-        if not r:
+            clauses = ['name = %(name)s']
+        query = QueryProcessor(tables=['users'], columns=['id'], clauses=clauses,
+                               values={'name': name})
+        user_id = query.singleValue(strict=False)
+        if not user_id:
             context.cnx.rollback()
             raise koji.AuthError('No such user: %s' % name)
-        else:
-            user_id = r[0]
-        insert = """INSERT INTO user_krb_principals (user_id, krb_principal)
-                    VALUES (%(user_id)i, %(krb_principal)s)"""
-        cursor.execute(insert, locals())
+        insert = InsertProcessor('user_krb_principals',
+                                 data={'user_id': user_id, 'krb_principal': krb_principal})
+        insert.execute()
         context.cnx.commit()
         return user_id
 
     def removeKrbPrincipal(self, name, krb_principal):
-        select = """SELECT id FROM users
-                    JOIN user_krb_principals
-                    ON users.id = user_krb_principals.user_id
-                    WHERE %s
-                    AND krb_principal = %%(krb_principal)s"""
+        clauses = ['krb_principal = %(krb_principal)s']
         if isinstance(name, six.integer_types):
-            user_condition = 'id = %(name)i'
+            clauses.extend(['id = %(name)i'])
         else:
-            user_condition = 'name = %(name)s'
-        select = select % user_condition
-        cursor = context.cnx.cursor()
-        cursor.execute(select, locals())
-        r = cursor.fetchone()
-        if not r:
+            clauses.extend(['name = %(name)s'])
+        query = QueryProcessor(tables=['users'], columns=['id'],
+                               joins=['user_krb_principals '
+                                      'ON users.id = user_krb_principals.user_id'],
+                               clauses=clauses,
+                               values={'krb_principal': krb_principal, 'name': name})
+        user_id = query.singleValue(strict=False)
+        if not user_id:
             context.cnx.rollback()
             raise koji.AuthError(
                 'cannot remove Kerberos Principal:'
                 ' %(krb_principal)s with user %(name)s' % locals())
-        else:
-            user_id = r[0]
+        cursor = context.cnx.cursor()
         delete = """DELETE FROM user_krb_principals
                     WHERE user_id = %(user_id)i
                     AND krb_principal = %(krb_principal)s"""
@@ -708,23 +660,21 @@ class Session(object):
         user_name = krb_principal[:atidx]
 
         # check if user already exists
-        c = context.cnx.cursor()
-        q = """SELECT id, krb_principal FROM users
-               LEFT JOIN user_krb_principals
-               ON users.id = user_krb_principals.user_id
-               WHERE name = %(user_name)s"""
-        c.execute(q, locals())
-        r = c.fetchall()
+        query = QueryProcessor(tables=['users'], columns=['id', 'krb_principal'],
+                               joins=['LEFT JOIN user_krb_principals ON '
+                                      'users.id = user_krb_principals.user_id'],
+                               clauses=['name = %(user_name)s'],
+                               values={'user_name': user_name})
+        r = query.execute()
         if not r:
             return self.createUser(user_name, krb_principal=krb_principal,
                                    krb_princ_check=False)
         else:
-            existing_user_krb_princs = [row[1] for row in r]
+            existing_user_krb_princs = [row['krb_principal'] for row in r]
             if krb_principal in existing_user_krb_princs:
                 # do not set Kerberos principal if it already exists
-                return r[0][0]
-            return self.setKrbPrincipal(user_name, krb_principal,
-                                        krb_princ_check=False)
+                return r[0]['id']
+            return self.setKrbPrincipal(user_name, krb_principal, krb_princ_check=False)
 
     def checkKrbPrincipal(self, krb_principal):
         """Check if the Kerberos principal is allowed"""
@@ -749,35 +699,28 @@ def get_user_groups(user_id):
 
     returns a dictionary where the keys are the group ids and the values
     are the group names"""
-    c = context.cnx.cursor()
     t_group = koji.USERTYPES['GROUP']
-    q = """SELECT group_id,name
-    FROM user_groups JOIN users ON group_id = users.id
-    WHERE active = TRUE AND users.usertype=%(t_group)i
-        AND user_id=%(user_id)i"""
-    c.execute(q, locals())
-    return dict(c.fetchall())
+    query = QueryProcessor(tables=['user_groups'], columns=['group_id', 'name'],
+                           clauses=['active = TRUE', 'users.usertype=%(t_group)i',
+                                    'user_id=%(user_id)i'],
+                           joins=['users ON group_id = users.id'],
+                           values={'t_group': t_group, 'user_id': user_id})
+    return query.execute()
 
 
 def get_user_perms(user_id):
-    c = context.cnx.cursor()
-    q = """SELECT name
-    FROM user_perms JOIN permissions ON perm_id = permissions.id
-    WHERE active = TRUE AND user_id=%(user_id)s"""
-    c.execute(q, locals())
-    # return a list of permissions by name
-    return [row[0] for row in c.fetchall()]
+    query = QueryProcessor(tables=['user_perms'], columns=['name'],
+                           clauses=['active = TRUE', 'user_id=%(user_id)s'],
+                           joins=['permissions ON perm_id = permissions.id'],
+                           values={'user_id': user_id})
+    result = query.execute()
+    return [r['name'] for r in result]
 
 
 def get_user_data(user_id):
-    c = context.cnx.cursor()
-    fields = ('name', 'status', 'usertype')
-    q = """SELECT %s FROM users WHERE id=%%(user_id)s""" % ','.join(fields)
-    c.execute(q, locals())
-    row = c.fetchone()
-    if not row:
-        return None
-    return dict(zip(fields, row))
+    query = QueryProcessor(tables=['users'], columns=['name', 'status', 'usertype'],
+                           clauses=['id=%(user_id)s'], values={'user_id': user_id})
+    return query.executeOne(strict=False)
 
 
 def login(*args, **opts):
