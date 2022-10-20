@@ -2424,7 +2424,7 @@ class ChainMavenTask(MultiPlatformTask):
         build = builds[0]
         if not build['task_id']:
             return None
-        build_task = session.getTaskInfo(build['task_id'], request=True)
+        build_task = self.session.getTaskInfo(build['task_id'], request=True)
         request = build_task['request']
         if request[0] != params['scmurl']:
             return None
@@ -6618,12 +6618,11 @@ if __name__ == "__main__":
 
     # start a session and login
     session_opts = koji.grab_session_options(options)
-    session = koji.ClientSession(options.server, session_opts)
+    glob_session = koji.ClientSession(options.server, session_opts)
     if options.cert and os.path.isfile(options.cert):
         try:
             # authenticate using SSL client certificates
-            session.ssl_login(options.cert, None,
-                              options.serverca)
+            glob_session.ssl_login(options.cert, None, options.serverca)
         except koji.AuthError as e:
             quit("Error: Unable to log in: %s" % e)
         except requests.exceptions.ConnectionError:
@@ -6631,7 +6630,7 @@ if __name__ == "__main__":
     elif options.user:
         try:
             # authenticate using user/password
-            session.login()
+            glob_session.login()
         except koji.AuthError:
             quit("Error: Unable to log in. Bad credentials?")
         except requests.exceptions.ConnectionError:
@@ -6645,9 +6644,9 @@ if __name__ == "__main__":
             if os.path.exists(options.ccache) and os.stat(options.ccache).st_size == 0:
                 os.remove(options.ccache)
 
-            session.gssapi_login(principal=krb_principal,
-                                 keytab=options.keytab,
-                                 ccache=options.ccache)
+            glob_session.gssapi_login(principal=krb_principal,
+                                      keytab=options.keytab,
+                                      ccache=options.ccache)
         except Krb5Error as e:
             quit("Kerberos authentication failed: %s" % e.args)
         except socket.error as e:
@@ -6656,14 +6655,14 @@ if __name__ == "__main__":
         quit("No username/password/certificate supplied and Kerberos missing or not configured")
     # make session exclusive
     try:
-        session.exclusiveSession(force=options.force_lock)
+        glob_session.exclusiveSession(force=options.force_lock)
     except koji.AuthLockError:
         quit("Error: Unable to get lock. Trying using --force-lock")
-    if not session.logged_in:
+    if not glob_session.logged_in:
         quit("Error: Unknown login error")
     # make sure it works
     try:
-        ret = session.echo("OK")
+        ret = glob_session.echo("OK")
     except requests.exceptions.ConnectionError:
         quit("Error: Unable to connect to server %s" % (options.server))
     if ret != ["OK"]:
@@ -6673,9 +6672,9 @@ if __name__ == "__main__":
     if options.daemon:
         # detach
         koji.daemonize()
-        main(options, session)
+        main(options, glob_session)
         # not reached
         assert False  # pragma: no cover
     elif not options.skip_main:
         koji.add_stderr_logger("koji")
-        main(options, session)
+        main(options, glob_session)
