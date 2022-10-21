@@ -246,10 +246,6 @@ The hosts in this channel require special setup.
 
  * They run the ``kojivmd`` daemon instead of the regular ``kojid`` daemon
  * VM images for builds must be stored in the local image directory
- * You may need a ``kojid`` host in the ``vm`` channel as well. ``kojivmd``
-   cannot perform any ``waitrepo`` tasks, so you'll need something to complete
-   those tasks. kojivmd creates those tasks if a user initiates a ``winbuild``
-   task with a build tag that does not yet have a repository.
 
 Managing VM Images
 ------------------
