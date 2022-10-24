@@ -133,6 +133,29 @@ Options:
         self.session.getChannel.assert_called_once_with(self.channel_old)
         self.session.getKojiVersion.assert_not_called()
 
+    def test_handle_edit_channel_other_error_message(self):
+        expected_api = "Other error message"
+        expected = """Other error message
+No changes made, please correct the command line
+"""
+
+        self.session.editChannel.side_effect = koji.GenericError(expected_api)
+        self.assert_system_exit(
+            handle_edit_channel,
+            self.options,
+            self.session,
+            [self.channel_old, '--name', self.channel_new, '--description', self.description],
+            stderr=expected,
+            stdout='',
+            activate_session=None,
+            exit_code=1
+        )
+        self.session.editChannel.assert_called_once_with(self.channel_old, name=self.channel_new,
+                                                         description=self.description)
+        self.activate_session_mock.assert_called_once_with(self.session, self.options)
+        self.session.getChannel.assert_called_once_with(self.channel_old)
+        self.session.getKojiVersion.assert_not_called()
+
 
 if __name__ == '__main__':
     unittest.main()

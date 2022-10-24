@@ -348,6 +348,7 @@ def handle_edit_channel(goptions, session, args):
     cinfo = session.getChannel(args[0])
     if not cinfo:
         error("No such channel: %s" % args[0])
+    result = None
     try:
         result = session.editChannel(args[0], **vals)
     except koji.GenericError as ex:
@@ -357,7 +358,7 @@ def handle_edit_channel(goptions, session, args):
             error("editChannel is available on hub from Koji 1.26 version, your version is %s" %
                   version)
         else:
-            print(msg)
+            warn(msg)
     if not result:
         error("No changes made, please correct the command line")
 
