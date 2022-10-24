@@ -449,7 +449,7 @@ def load_config(environ):
         ['AllowedKrbRealms', 'string', '*'],
         # TODO: this option should be removed in future release
         ['DisableGSSAPIProxyDNFallback', 'boolean', False],
-        # TODO:  this option should be turned True in future release
+        # TODO:  this option should be turned True in 1.34
         ['DisableURLSessions', 'boolean', False],
 
         ['DNUsernameComponent', 'string', 'CN'],
@@ -810,18 +810,17 @@ def application(environ, start_response):
             except RequestTimeout as e:
                 return error_reply(start_response, '408 Request Timeout', str(e) + '\n')
             response = response.encode()
-            headers = email.message.EmailMessage()
-            headers['Content-Length'] = str(len(response))
-            headers['Content-Type'] = "text/xml"
+            headers = [
+                ('Content-Length', str(len(response))),
+                ('Content-Type', "text/xml"),
+            ]
             if hasattr(context, 'session') and context.session.logged_in:
-                headers.add_header(
-                    'X-Session-Data',
-                    '1',  # logged in
-                    session_id=str(context.session.id),
-                    session_key=str(context.session.key),
-                    callnum=str(context.session.callnum),
-                )
-            start_response('200 OK', headers.items())
+                headers += [
+                    ('Koji-Session-Id', str(context.session.id)),
+                    ('Koji-Session-Key', str(context.session.key)),
+                    ('Koji-Session-Callnum', str(context.session.callnum)),
+                ]
+            start_response('200 OK', headers)
             if h.traceback:
                 # rollback
                 context.cnx.rollback()

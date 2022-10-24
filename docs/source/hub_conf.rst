@@ -162,7 +162,7 @@ The following options control aspects of authentication when using ``mod_auth_gs
       encoded in URL. New behaviour uses header-based parameteres. This default
       will be changed in future to ``True`` effectively disabling older clients. It is
       encouraged to set it to ``True`` as soon as possible when no older clients are
-      using the hub. (Added in 1.30)
+      using the hub. (Added in 1.30, will be removed in 1.34)
 
 Enabling gssapi auth also requires settings in the httpd config.
 

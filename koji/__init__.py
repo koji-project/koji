@@ -26,7 +26,6 @@ from __future__ import absolute_import, division
 
 import base64
 import datetime
-import email
 import errno
 import hashlib
 import json
@@ -2701,16 +2700,18 @@ class ClientSession(object):
         if name == 'rawUpload':
             return self._prepUpload(*args, **kwargs)
         args = encode_args(*args, **kwargs)
-        headers = email.message.EmailMessage()
+        headers = []
         if self.logged_in:
             sinfo = self.sinfo.copy()
             sinfo['callnum'] = self.callnum
             self.callnum += 1
             if sinfo.get('header-auth'):
-                for k, v in sinfo.items():
-                    sinfo[k] = str(v)
                 handler = self.baseurl
-                headers.add_header('X-Session-Data', '1', **sinfo)
+                headers += [
+                    ('Koji-Session-Id', str(self.sinfo['session-id'])),
+                    ('Koji-Session-Key', str(self.sinfo['session-key'])),
+                    ('Koji-Session-Callnum', str(sinfo['callnum'])),
+                ]
             else:
                 # old server
                 handler = "%s?%s" % (self.baseurl, six.moves.urllib.parse.urlencode(sinfo))
@@ -2724,9 +2725,12 @@ class ClientSession(object):
             # encoded as UTF-8. For python3 it means "return a str with an appropriate
             # xml declaration for encoding as UTF-8".
             request = request.encode('utf-8')
-        headers['User-Agent'] = 'koji/1'
-        headers['Content-Type'] = 'text/xml'
-        headers['Content-Length'] = str(len(request))
+        headers += [
+            # connection class handles Host
+            ('User-Agent', 'koji/1'),
+            ('Content-Type', 'text/xml'),
+            ('Content-Length', str(len(request))),
+        ]
         return handler, headers, request
 
     def _sanitize_url(self, url):
@@ -3050,17 +3054,21 @@ class ClientSession(object):
             args['volume'] = volume
         size = len(chunk)
         self.callnum += 1
-        headers = email.message.EmailMessage()
+        headers = []
         if sinfo.get('header-auth'):
-            for k, v in sinfo.items():
-                sinfo[k] = str(v)
-            headers.add_header('X-Session-Data', '1', **sinfo)
+            headers += [
+                ('Koji-Session-Id', str(self.sinfo['session-id'])),
+                ('Koji-Session-Key', str(self.sinfo['session-key'])),
+                ('Koji-Session-Callnum', str(sinfo['callnum'])),
+            ]
         else:
             args.update(sinfo)
         handler = "%s?%s" % (self.baseurl, six.moves.urllib.parse.urlencode(args))
-        headers['User-Agent'] = 'koji/1'
-        headers["Content-Type"] = "application/octet-stream"
-        headers["Content-length"] = str(size)
+        headers += [
+            ('User-Agent', 'koji/1'),
+            ("Content-Type", "application/octet-stream"),
+            ("Content-length", str(size)),
+        ]
         request = chunk
         if six.PY3 and isinstance(chunk, str):
             request = chunk.encode('utf-8')

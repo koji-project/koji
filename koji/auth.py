@@ -80,27 +80,13 @@ class Session(object):
         self._host_id = ''
         environ = getattr(context, 'environ', {})
         # prefer new header-based sessions
-        if 'HTTP_X_SESSION_DATA' in environ:
-            header = environ['HTTP_X_SESSION_DATA']
-            params = header.split(';')
-            id, key, callnum = None, None, None
-            for p in params[1:]:
-                k, v = [x.strip() for x in p.split('=')]
-                v = v.strip('"')
-                if k == 'session-id':
-                    id = int(v)
-                elif k == 'session-key':
-                    key = v
-                elif k == 'callnum':
-                    callnum = v
-                elif k == 'header-auth':
-                    pass
-                else:
-                    raise koji.AuthError("Unexpected key in X-Session-Data: %s" % k)
-            if id is None:
-                raise koji.AuthError('session-id not specified in session args')
-            elif key is None:
-                raise koji.AuthError('session-key not specified in session args')
+        if 'HTTP_KOJI_SESSION_ID' in environ:
+            id = int(environ['HTTP_KOJI_SESSION_ID'])
+            key = environ['HTTP_KOJI_SESSION_KEY']
+            try:
+                callnum = int(environ['HTTP_KOJI_CALLNUM'])
+            except KeyError:
+                callnum = None
         elif not context.opts['DisableURLSessions'] and args is not None:
             # old deprecated method with session values in query string
             # Option will be turned off by default in future release and removed later
@@ -119,7 +105,7 @@ class Session(object):
             except Exception:
                 callnum = None
         else:
-            self.message = 'no X-Session-Data header'
+            self.message = 'no Koji-Session-* headers'
             return
         hostip = self.get_remote_ip(override=hostip)
         # lookup the session
