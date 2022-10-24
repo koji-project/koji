@@ -91,7 +91,7 @@ class TestRecycleBuild(unittest.TestCase):
 
     def test_recycle_states_good(self):
         for state in 'FAILED', 'CANCELED':
-            yield self.check_recycle_states_good, koji.BUILD_STATES[state]
+            self.check_recycle_states_good, koji.BUILD_STATES[state]
 
     def check_recycle_states_good(self, state):
         new = self.new.copy()
@@ -121,7 +121,7 @@ class TestRecycleBuild(unittest.TestCase):
 
     def test_recycle_states_bad(self):
         for state in 'BUILDING', 'COMPLETE', 'DELETED':
-            yield self.check_recycle_states_bad, koji.BUILD_STATES[state]
+            self.check_recycle_states_bad, koji.BUILD_STATES[state]
 
     def check_recycle_states_bad(self, state):
         new = self.new.copy()
@@ -140,7 +140,7 @@ class TestRecycleBuild(unittest.TestCase):
             [[], True, []],
         ]
         for values in vlists:
-            yield self.check_recycle_query_bad, values
+            self.check_recycle_query_bad, values
 
     def check_recycle_query_bad(self, values):
         new = self.new.copy()

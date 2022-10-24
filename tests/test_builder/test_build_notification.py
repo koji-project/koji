@@ -106,4 +106,4 @@ class TestBuildNotification(unittest.TestCase):
         if six.PY2:
             msg_expect = msg_expect.decode()
         self.assertMultiLineEqual(message.decode(), msg_expect.decode())
-        locale.resetlocale()
+        locale.setlocale(locale.LC_ALL, "")

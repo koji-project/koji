@@ -43,7 +43,7 @@ class TestHostinfo(utils.CliTestCase):
         self.ensure_connection_mock = mock.patch('koji_cli.commands.ensure_connection').start()
 
     def tearDown(self):
-        locale.resetlocale()
+        locale.setlocale(locale.LC_ALL, "")
         if self.original_timezone is None:
             del os.environ['TZ']
         else:

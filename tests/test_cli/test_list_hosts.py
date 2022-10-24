@@ -40,7 +40,7 @@ class TestListHosts(utils.CliTestCase):
                             'user_id': 2}]
 
     def tearDown(self):
-        locale.resetlocale()
+        locale.setlocale(locale.LC_ALL, "")
         if self.original_timezone is None:
             del os.environ['TZ']
         else:

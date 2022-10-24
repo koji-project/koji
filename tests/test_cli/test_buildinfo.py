@@ -45,7 +45,7 @@ class TestBuildinfo(utils.CliTestCase):
                           'volume_name': 'DEFAULT'}
 
     def tearDown(self):
-        locale.resetlocale()
+        locale.setlocale(locale.LC_ALL, "")
         if self.original_timezone is None:
             del os.environ['TZ']
         else:

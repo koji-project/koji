@@ -110,4 +110,4 @@ class TestFormatTime(unittest.TestCase):
         r = formatTimeLong(d4)
         self.assertEqual(r, desired)
 
-        locale.resetlocale()
+        locale.setlocale(locale.LC_ALL, "")

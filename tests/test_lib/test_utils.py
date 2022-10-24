@@ -781,7 +781,7 @@ class MavenUtilTestCase(unittest.TestCase):
         result = koji.util.formatChangelog(data)
         self.assertMultiLineEqual(expect, result)
 
-        locale.resetlocale()
+        locale.setlocale(locale.LC_ALL, "")
 
     def test_parseTime(self):
         """Test parseTime function"""
