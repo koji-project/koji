@@ -3109,8 +3109,7 @@ def anon_handle_list_hosts(goptions, session, args):
         opts['ready'] = options.ready
     if options.enabled is not None:
         opts['enabled'] = options.enabled
-    tmp_list = sorted([(x['name'], x) for x in session.listHosts(**opts)])
-    hosts = [x[1] for x in tmp_list]
+    hosts = sorted(session.listHosts(**opts), key=lambda x: x['name'])
 
     if not hosts:
         warn("No hosts found.")
@@ -3150,11 +3149,11 @@ def anon_handle_list_hosts(goptions, session, args):
     if options.show_channels:
         with session.multicall() as m:
             result = [m.listChannels(host['id']) for host in hosts]
-        first_line_channel = result[0].result[0]
         for host, channels in zip(hosts, result):
             list_channels = []
             for c in channels.result:
-                if 'enabled' in first_line_channel:
+                # enabled column was added in Koji 1.26
+                if c.get('enabled') is not None:
                     if c['enabled']:
                         list_channels.append(c['name'])
                     else:
@@ -3163,10 +3162,7 @@ def anon_handle_list_hosts(goptions, session, args):
                     list_channels.append(c['name'])
             host['channels'] = ','.join(sorted(list_channels))
 
-    if hosts:
-        longest_host = max([len(h['name']) for h in hosts])
-    else:
-        longest_host = 8
+    longest_host = max([len(h['name']) for h in hosts])
 
     if not options.quiet:
         hdr = "{hostname:<{longest_host}} Enb Rdy Load/Cap  Arches           " \
