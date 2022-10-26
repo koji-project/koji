@@ -117,12 +117,8 @@ class Rpmdiff:
 
         # compare the files
 
-        try:
-            old_files_dict = self.__fileIteratorToDict(rpm.files(old))
-            new_files_dict = self.__fileIteratorToDict(rpm.files(new))
-        except AttributeError:
-            old_files_dict = self.__fileIteratorToDict(old.fiFromHeader())
-            new_files_dict = self.__fileIteratorToDict(new.fiFromHeader())
+        old_files_dict = self.__getFilesDict(old)
+        new_files_dict = self.__getFilesDict(new)
 
         files = sorted(set(itertools.chain(six.iterkeys(old_files_dict),
                                            six.iterkeys(new_files_dict))))
@@ -229,15 +225,19 @@ class Rpmdiff:
                            (self.ADDED, tagname, newentry[0],
                             self.sense2str(newentry[1]), newentry[2]))
 
+    def __getFilesDict(self, hdr):
+        if not hasattr(rpm, 'files'):
+            # fall back to file iterator
+            return self.__fileIteratorToDict(hdr.fiFromHeader())
+        result = {}
+        for file in rpm.files(hdr):
+            result[file.name] = file
+        return result
+
     def __fileIteratorToDict(self, fi):
         result = {}
         for filedata in fi:
-            if isinstance(filedata, (list, tuple)):
-                # old interface (fiFromHeader)
-                result[filedata[0]] = list(filedata[1:])
-            else:
-                # new (rpm.files)
-                result[filedata.name] = filedata
+            result[filedata[0]] = list(filedata[1:])
         return result
 
     def kojihash(self, new=False):
