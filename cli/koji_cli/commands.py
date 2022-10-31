@@ -8,6 +8,7 @@ import logging
 import os
 import pprint
 import random
+import re
 import stat
 import sys
 import textwrap
@@ -6903,6 +6904,10 @@ def anon_handle_download_task(options, session, args):
                       help="Download all files, all methods instead of build and buildArch")
     parser.add_option("--dirpertask", action="store_true", help="Download files to dir per task")
     parser.add_option("--parentonly", action="store_true", help="Download parent's files only")
+    parser.add_option("--filter", dest="filter", action="append", default=[],
+                      help="Regex pattern to filter files")
+    parser.add_option("--skip", dest="skip", action="append", default=[],
+                      help="Regex pattern to skip files")
 
     (suboptions, args) = parser.parse_args(args)
     if len(args) == 0:
@@ -6913,6 +6918,9 @@ def anon_handle_download_task(options, session, args):
     base_task_id = int(args.pop())
     if len(suboptions.arches) > 0:
         suboptions.arches = ",".join(suboptions.arches).split(",")
+
+    if suboptions.filter != [] and suboptions.skip != []:
+        parser.error("Only filter or skip may be specified. Not both.")
 
     ensure_connection(session, options)
 
@@ -6965,6 +6973,23 @@ def anon_handle_download_task(options, session, args):
         task_id = str(task['id'])
         files = list_task_output_all_volumes(session, task["id"])
         for filename in files:
+            if suboptions.filter != []:
+                res = True
+                for filt_item in suboptions.filter:
+                    res = re.search(filt_item, filename)
+                    if not res:
+                        break
+                if not res:
+                    continue
+            if suboptions.skip != []:
+                res = False
+                for filt_item in suboptions.skip:
+                    res = re.search(filt_item, filename)
+                    if res:
+                        break
+                if res:
+                    continue
+
             if filename.endswith('src.rpm'):
                 filetype = 'src.rpm'
             else:
