@@ -307,7 +307,7 @@ class KiwiCreateImageTask(BaseBuildTask):
                           repo_id=repo_info['id'],
                           install_group='kiwi-build',
                           setup_dns=True,
-                          bind_opts={'dirs': {'/dev': '/dev', }})
+                          bind_opts={'dirs': {}})
         broot.workdir = self.workdir
 
         # create the mock chroot
