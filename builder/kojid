@@ -2069,6 +2069,8 @@ class WrapperRPMTask(BaseBuildTask):
                            srcdir=specdir,
                            buildroot=buildroot)
 
+        # get the source before chown, git > 2.35.2 would refuse to that later
+        source = scm.get_source()
         spec_template = None
         for path, dir, files in os.walk(specdir):
             files.sort()
@@ -2136,6 +2138,8 @@ class WrapperRPMTask(BaseBuildTask):
             h = koji.get_rpm_header(srpm)
             data = koji.get_header_fields(h, ['name', 'version', 'release', 'epoch'])
             data['task_id'] = self.id
+            data['source'] = source['source']
+            data['extra'] = {'source': {'original_url': source['url']}}
             self.logger.info("Reading package config for %(name)s" % data)
             pkg_cfg = self.session.getPackageConfig(build_target['dest_tag'], data['name'])
             if not opts.get('skip_tag'):
@@ -2205,7 +2209,8 @@ class WrapperRPMTask(BaseBuildTask):
         results = {'buildroot_id': buildroot.id,
                    'srpm': srpm,
                    'rpms': rpms,
-                   'logs': logs}
+                   'logs': logs,
+                   'source': source}
 
         if not task:
             # Called as a standalone top-level task, so handle the rpms now.
