@@ -43,20 +43,20 @@ especially in relation to throttling in creating ``newRepo`` tasks.
     default.
 
 ``ignore_tags = ''``
-    Comma-separated globs for tag names. These tags are simply ignored
+    Space-separated globs for tag names. These tags are simply ignored
     by kojira (but they can still be manually regenerated via ``koji
     regen-repo`` command.
 
 ``debuginfo_tags = ''``
-    Comma-separated globs for tag names. Regenerated repos will have
+    Space-separated globs for tag names. Regenerated repos will have
     separate directory/repodata with corresponding debuginfo RPMs.
 
 ``source_tags = ''``
-    Comma-separated globs for tag names. Regenerated repos will
+    Space-separated globs for tag names. Regenerated repos will
     contain also corresponding SRPMs.
 
 ``separate_source_tags = ''``
-    Comma-separated globs for tag names. Regenerated repos will have
+    Space-separated globs for tag names. Regenerated repos will have
     separate directory/repodata with corresponding SRPMs.
 
 ``ignore_stray_repos = False``
