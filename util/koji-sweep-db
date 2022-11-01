@@ -10,16 +10,18 @@ import koji.db
 from koji.db import QueryProcessor, BulkInsertProcessor
 
 
-def clean_sessions(cursor, vacuum, test, age):
-    clauses = [f"update_time < NOW() - '{age} days'::interval"]
+def clean_sessions(cursor, vacuum, test, age, absolute):
+    clauses = f"(update_time < NOW() - '{age:d} days'::interval)"
+    if absolute is not None:
+        clauses += f"OR (start_time < NOW() - '{absolute:d} days'::interval)"
+
     if options.verbose:
-        query = QueryProcessor(tables=['sessions'], clauses=clauses, opts={'countOnly': True})
+        query = QueryProcessor(tables=['sessions'], clauses=[clauses], opts={'countOnly': True})
         rows = query.execute()
         print(f"Deleting {rows} sessions")
 
     if not test:
-        cursor.execute(
-            f"DELETE FROM sessions WHERE update_time < NOW() - '{age} days'::interval")
+        cursor.execute(f"DELETE FROM sessions WHERE {clauses}")
         if vacuum:
             cursor.execute("VACUUM ANALYZE sessions")
 
@@ -153,7 +155,10 @@ if __name__ == "__main__":
                       help="Don't run vacuum on affected tables")
     parser.add_option('--sessions-age', type=int,
                       action="store", default=1, metavar="DAYS",
-                      help="Delete sessions older than this (default: 1 day)")
+                      help="Delete inactive sessions older than this (default: 1 day)")
+    parser.add_option('--sessions-absolute-age', type=int,
+                      action="store", default=None, metavar="DAYS",
+                      help="Delete all sessions older than this (default: None)")
     parser.add_option('--reservations-age', type=int,
                       action="store", default=1, metavar="DAYS",
                       help="Delete CG reservations older than this (default: 1 day)")
@@ -225,7 +230,8 @@ if __name__ == "__main__":
     context.cnx.set_session(autocommit=True)
     cursor = context.cnx.cursor()
 
-    clean_sessions(cursor, options.vacuum, options.test, options.sessions_age)
+    clean_sessions(cursor, options.vacuum, options.test, options.sessions_age,
+                   options.sessions_absolute_age)
     clean_reservations(cursor, options.vacuum, options.test, options.reservations_age)
     if options.tag_notifications:
         clean_notification_tasks(cursor, options.vacuum, options.test,
