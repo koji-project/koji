@@ -609,7 +609,7 @@ rm -rf $RPM_BUILD_ROOT
 %attr(-,kojibuilder,kojibuilder) /etc/mock/koji
 
 %pre builder
-/usr/sbin/useradd -r -s /bin/bash -G mock -d /builddir -M kojibuilder 2>/dev/null ||:
+/usr/sbin/useradd -r -s /usr/sbin/nologin -G mock -d /builddir -M kojibuilder 2>/dev/null ||:
 
 %post builder
 %systemd_post kojid.service
