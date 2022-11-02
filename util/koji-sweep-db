@@ -74,7 +74,8 @@ def clean_scratch_tasks(cursor, vacuum, test, age):
     cursor.execute("CREATE TEMPORARY TABLE temp_scratch_tasks (task_id INTEGER NOT NULL)")
     query = QueryProcessor(tables=['task'], columns=['id', 'request'], clauses=clauses)
     for row in query.execute():
-        task_id, request = row
+        task_id = row['id']
+        request = row['request']
         try:
             params, _ = xmlrpc.client.loads(request)
             opts = params[2]
@@ -97,7 +98,7 @@ def clean_scratch_tasks(cursor, vacuum, test, age):
                                clauses=["parent IN %(parents)s"],
                                values={'parents': parents})
         for row in query.execute():
-            children.append(row[0])
+            children.append(row['id'])
         parents = children
         if children:
             insert = BulkInsertProcessor(table='temp_scratch_tasks')
