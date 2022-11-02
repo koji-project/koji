@@ -19,7 +19,6 @@
 #       Mike McLean <mikem@redhat.com>
 
 import datetime
-import email
 import inspect
 import logging
 import os
@@ -814,12 +813,6 @@ def application(environ, start_response):
                 ('Content-Length', str(len(response))),
                 ('Content-Type', "text/xml"),
             ]
-            if hasattr(context, 'session') and context.session.logged_in:
-                headers += [
-                    ('Koji-Session-Id', str(context.session.id)),
-                    ('Koji-Session-Key', str(context.session.key)),
-                    ('Koji-Session-Callnum', str(context.session.callnum)),
-                ]
             start_response('200 OK', headers)
             if h.traceback:
                 # rollback

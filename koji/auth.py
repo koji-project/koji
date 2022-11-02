@@ -79,6 +79,7 @@ class Session(object):
         self._groups = None
         self._host_id = ''
         environ = getattr(context, 'environ', {})
+        args = environ.get('QUERY_STRING', '')
         # prefer new header-based sessions
         if 'HTTP_KOJI_SESSION_ID' in environ:
             id = int(environ['HTTP_KOJI_SESSION_ID'])
@@ -90,9 +91,8 @@ class Session(object):
         elif not context.opts['DisableURLSessions'] and args is not None:
             # old deprecated method with session values in query string
             # Option will be turned off by default in future release and removed later
-            args = environ.get('QUERY_STRING', '')
             if not args:
-                self.message = 'nor session header nor session args'
+                self.message = 'no session header or session args'
                 return
             args = urllib.parse.parse_qs(args, strict_parsing=True)
             try:
@@ -510,12 +510,6 @@ class Session(object):
                                        'hostip': hostip, 'authtype': authtype, 'master': master})
         insert.execute()
         context.cnx.commit()
-
-        # update it here, so it can be propagated to the headers in kojixmlrpc.py
-        context.session.id = session_id
-        context.session.key = key
-        context.session.logged_in = True
-        context.session.callnum = 0
 
         # return session info
         return {
