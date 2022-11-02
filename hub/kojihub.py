@@ -3241,8 +3241,13 @@ def _delete_build_target(buildTargetInfo):
 
 def get_build_targets(info=None, event=None, buildTagID=None, destTagID=None, queryOpts=None):
     """Return data on all the build targets
+        :param int, str, dist info:         build target name, ID or dict
+        :param int event:                   provide event to query at a different time
+        :param int, str, dict buildTagID:   build tag name, ID or dict
+        :param int, str, dict destTagID:    destination tag name, ID or dict
+        :param dict queryOpts:              additional options for this query.
+    """
 
-    provide event to query at a different time"""
     fields = (
         ('build_target.id', 'id'),
         ('build_tag', 'build_tag'),
@@ -3262,9 +3267,13 @@ def get_build_targets(info=None, event=None, buildTagID=None, destTagID=None, qu
         clauses.append(clause)
         values.update(c_values)
     if buildTagID is not None:
+        if isinstance(buildTagID, (str, dict)):
+            buildTagID = get_tag_id(buildTagID)
         clauses.append('build_tag = %(buildTagID)i')
         values['buildTagID'] = buildTagID
     if destTagID is not None:
+        if isinstance(destTagID, str) or isinstance(destTagID, dict):
+            destTagID = get_tag_id(destTagID)
         clauses.append('dest_tag = %(destTagID)i')
         values['destTagID'] = destTagID
 
