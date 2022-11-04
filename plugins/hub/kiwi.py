@@ -51,7 +51,7 @@ def kiwiBuild(target, arches, desc_url, desc_path, optional_arches=None, profile
     if release:
         opts['release'] = release
     if optional_arches:
-        opts['optional_arches'] = optional_arches,
+        opts['optional_arches'] = optional_arches
     if repos:
         opts['repos'] = repos
     if make_prep:

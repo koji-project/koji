@@ -61,7 +61,7 @@ def handle_kiwi_build(goptions, session, args):
             for arch in options.optional_arches.split(',')
             if arch]
     if options.kiwi_profile:
-        kwargs['profile'] = options.kiwi_profile,
+        kwargs['profile'] = options.kiwi_profile
     if options.release:
         kwargs['release'] = options.release
     if options.make_prep:
