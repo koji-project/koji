@@ -6,6 +6,7 @@ import koji
 import kojihub
 
 UP = kojihub.UpdateProcessor
+QP = kojihub.QueryProcessor
 
 
 class TestEditUser(unittest.TestCase):
@@ -16,9 +17,16 @@ class TestEditUser(unittest.TestCase):
         self.updates.append(update)
         return update
 
+    def getQuery(self, *args, **kwargs):
+        query = QP(*args, **kwargs)
+        query.execute = mock.MagicMock()
+        query.executeOne = mock.MagicMock()
+        query.singleValue = self.query_singleValue
+        self.queries.append(query)
+        return query
+
     def setUp(self):
         self.updates = []
-        self._singleValue = mock.patch('kojihub._singleValue').start()
         self.get_user = mock.patch('kojihub.get_user').start()
         self.verify_name_user = mock.patch('kojihub.verify_name_user').start()
         self.context = mock.patch('kojihub.context').start()
@@ -27,6 +35,10 @@ class TestEditUser(unittest.TestCase):
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"
         self.context.session.assertLogin = mock.MagicMock()
+        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
+                                         side_effect=self.getQuery).start()
+        self.queries = []
+        self.query_singleValue = mock.MagicMock()
 
     def tearDown(self):
         mock.patch.stopall()
@@ -35,7 +47,7 @@ class TestEditUser(unittest.TestCase):
         self.get_user.return_value = {'id': 333,
                                       'name': 'user',
                                       'krb_principals': ['krb']}
-        self._singleValue.return_value = None
+        self.query_singleValue.return_value = None
         self.verify_name_user.return_value = None
 
         kojihub._edit_user('user', name='newuser')
@@ -44,7 +56,7 @@ class TestEditUser(unittest.TestCase):
         update = self.updates[0]
         self.assertEqual(update.table, 'users')
         self.assertEqual(update.data, {'name': 'newuser'})
-        self.assertEqual(update.values, {'userID': 333})
+        self.assertEqual(update.values, {'name': 'newuser', 'userID': 333})
         self.assertEqual(update.clauses, ['id = %(userID)i'])
 
         kojihub._edit_user('user', krb_principal_mappings=[{'old': 'krb', 'new': 'newkrb'}])
@@ -88,11 +100,10 @@ class TestEditUser(unittest.TestCase):
         self.context.session.removeKrbPrincipal.assert_not_called()
         self.context.session.setKrbPrincipal.assert_not_called()
 
-        self._singleValue.reset_mock()
-        self._singleValue.return_value = 2
+        self.query_singleValue.reset_mock()
+        self.query_singleValue.return_value = 2
         with self.assertRaises(koji.GenericError) as cm:
             kojihub._edit_user('user', name='newuser')
-        self._singleValue.assert_called_once()
         self.assertEqual(cm.exception.args[0],
                          'Name newuser already taken by user 2')
 

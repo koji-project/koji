@@ -8,6 +8,7 @@ import kojihub
 
 UP = kojihub.UpdateProcessor
 IP = kojihub.InsertProcessor
+QP = kojihub.QueryProcessor
 
 
 class TestEditTag(unittest.TestCase):
@@ -23,6 +24,14 @@ class TestEditTag(unittest.TestCase):
         self.updates.append(update)
         return update
 
+    def getQuery(self, *args, **kwargs):
+        query = QP(*args, **kwargs)
+        query.execute = mock.MagicMock()
+        query.executeOne = mock.MagicMock()
+        query.singleValue = self.query_singleValue
+        self.queries.append(query)
+        return query
+
     def setUp(self):
         self.InsertProcessor = mock.patch('kojihub.InsertProcessor',
                                           side_effect=self.getInsert).start()
@@ -30,8 +39,6 @@ class TestEditTag(unittest.TestCase):
         self.UpdateProcessor = mock.patch('kojihub.UpdateProcessor',
                                           side_effect=self.getUpdate).start()
         self.updates = []
-        self._dml = mock.patch('kojihub._dml').start()
-        self._singleValue = mock.patch('kojihub._singleValue').start()
         self.get_tag = mock.patch('kojihub.get_tag').start()
         self.get_perm_id = mock.patch('kojihub.get_perm_id').start()
         self.verify_name_internal = mock.patch('kojihub.verify_name_internal').start()
@@ -40,6 +47,10 @@ class TestEditTag(unittest.TestCase):
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"
         self.context_db.session.assertLogin = mock.MagicMock()
+        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
+                                         side_effect=self.getQuery).start()
+        self.queries = []
+        self.query_singleValue = mock.MagicMock()
 
     def tearDown(self):
         mock.patch.stopall()
@@ -65,7 +76,7 @@ class TestEditTag(unittest.TestCase):
                                      'extra': {'exA': 1,
                                                'exC': 3,
                                                'exD': 4}}
-        self._singleValue.return_value = None
+        self.query_singleValue.return_value = None
         self.verify_name_internal.return_value = None
         self.context_db.event_id = 42
         self.context_db.session.user_id = 23
@@ -83,13 +94,22 @@ class TestEditTag(unittest.TestCase):
         kojihub._edit_tag('tag', **kwargs)
 
         self.get_perm_id.assert_not_called()
-        self._dml.assert_called_with("""UPDATE tag
-SET name = %(name)s
-WHERE id = %(tagID)i""", {'name': 'newtag', 'tagID': 333})
 
         # check the insert/update
-        self.assertEqual(len(self.updates), 3)
+        self.assertEqual(len(self.updates), 4)
         self.assertEqual(len(self.inserts), 2)
+
+        revoke_data = {'name': 'newtag'}
+
+        values = {'tagID': 333}
+
+        update = self.updates[0]
+        self.assertEqual(update.table, 'tag')
+        self.assertEqual(update.values, values)
+        self.assertEqual(update.data, revoke_data)
+        self.assertEqual(update.rawdata, {})
+        self.assertEqual(update.clauses, ['id = %(tagID)i'])
+
         values = {
             'arches': 'arch1 arch2',
             'locked': True,
@@ -100,12 +120,14 @@ WHERE id = %(tagID)i""", {'name': 'newtag', 'tagID': 333})
             'name': 'tag',
             'extra': {'exA': 1, 'exC': 3, 'exD': 4}
         }
+
         revoke_data = {
             'revoke_event': 42,
             'revoker_id': 23
         }
         revoke_rawdata = {'active': 'NULL'}
-        update = self.updates[0]
+
+        update = self.updates[1]
         self.assertEqual(update.table, 'tag_config')
         self.assertEqual(update.values, values)
         self.assertEqual(update.data, revoke_data)
@@ -133,7 +155,7 @@ WHERE id = %(tagID)i""", {'name': 'newtag', 'tagID': 333})
             'tag_id': 333,
         }
 
-        update = self.updates[1]
+        update = self.updates[2]
         self.assertEqual(update.table, 'tag_extra')
         self.assertEqual(update.values, values)
         self.assertEqual(update.data, revoke_data)
@@ -158,7 +180,7 @@ WHERE id = %(tagID)i""", {'name': 'newtag', 'tagID': 333})
             'tag_id': 333,
         }
 
-        update = self.updates[2]
+        update = self.updates[3]
         self.assertEqual(update.table, 'tag_extra')
         self.assertEqual(update.values, values)
         self.assertEqual(update.data, revoke_data)
@@ -188,8 +210,7 @@ WHERE id = %(tagID)i""", {'name': 'newtag', 'tagID': 333})
         # no4 invoke
         self.get_perm_id.reset_mock()
         self.get_perm_id.return_value = 99
-        self._singleValue.reset_mock()
-        self._singleValue.return_value = 2
+        self.query_singleValue.return_value = 2
 
         kwargs = {
             'perm': 'admin',
@@ -198,7 +219,6 @@ WHERE id = %(tagID)i""", {'name': 'newtag', 'tagID': 333})
         with self.assertRaises(koji.GenericError) as cm:
             kojihub._edit_tag('tag', **kwargs)
         self.get_perm_id.assert_called_once()
-        self._singleValue.assert_called_once()
         self.assertEqual(cm.exception.args[0], 'Name newtag already taken by tag 2')
 
     def test_invalid_archs(self):

@@ -83,7 +83,6 @@ from koji.db import (
     UpdateProcessor,
     _applyQueryOpts,
     _dml,
-    _fetchMulti,
     _fetchSingle,
     _multiRow,
     _singleRow,
@@ -184,12 +183,13 @@ class Task(object):
         task_id = self.id
         # getting a row lock on this task to ensure task assignment sanity
         # no other concurrent transaction should be altering this row
-        q = """SELECT state,host_id FROM task WHERE id=%(task_id)s FOR UPDATE"""
-        r = _fetchSingle(q, locals())
+        query = QueryProcessor(tables=['task'], columns=['state', 'host_id'],
+                               clauses=['id=%(task_id)s'], values={'task_id': task_id},
+                               opts={'rowlock': True})
+        r = query.executeOne()
         if not r:
             raise koji.GenericError("No such task: %i" % task_id)
-        state, otherhost = r
-        return (state == koji.TASK_STATES['OPEN'] and otherhost == host_id)
+        return (r['state'] == koji.TASK_STATES['OPEN'] and r['host_id'] == host_id)
 
     def assertHost(self, host_id):
         if not self.verifyHost(host_id):
@@ -197,8 +197,9 @@ class Task(object):
 
     def getOwner(self):
         """Return the owner (user_id) for this task"""
-        q = """SELECT owner FROM task WHERE id=%(id)i"""
-        return _singleValue(q, vars(self))
+        query = QueryProcessor(tables=['task'], columns=['owner'],
+                               clauses=['id=%(id)i'], values=vars(self))
+        return query.singleValue()
 
     def verifyOwner(self, user_id=None):
         """Verify that user owns task"""
@@ -208,11 +209,12 @@ class Task(object):
             return False
         task_id = self.id
         # getting a row lock on this task to ensure task state sanity
-        q = """SELECT owner FROM task WHERE id=%(task_id)s FOR UPDATE"""
-        r = _fetchSingle(q, locals())
-        if not r:
+        query = QueryProcessor(tables=['task'], columns=['owner'],
+                               clauses=['id=%(task_id)s'], values={'task_id': task_id},
+                               opts={'rowlock': True})
+        owner = query.singleValue(strict=False)
+        if not owner:
             raise koji.GenericError("No such task: %i" % task_id)
-        (owner,) = r
         return (owner == user_id)
 
     def assertOwner(self, user_id=None):
@@ -227,14 +229,17 @@ class Task(object):
         self.runCallbacks('preTaskStateChange', info, 'state', koji.TASK_STATES[newstate])
         self.runCallbacks('preTaskStateChange', info, 'host_id', host_id)
         # we use row-level locks to keep things sane
-        # note the SELECT...FOR UPDATE
+        # note the QueryProcessor...opts={'rowlock': True}
         task_id = self.id
         if not force:
-            q = """SELECT state,host_id FROM task WHERE id=%(task_id)i FOR UPDATE"""
-            r = _fetchSingle(q, locals())
+            query = QueryProcessor(columns=['state', 'host_id'], tables=['task'],
+                                   clauses=['id=%(task_id)s'], values={'task_id': task_id},
+                                   opts={'rowlock': True})
+            r = query.executeOne()
             if not r:
                 raise koji.GenericError("No such task: %i" % task_id)
-            state, otherhost = r
+            state = r['state']
+            otherhost = r['host_id']
             if state == koji.TASK_STATES['FREE']:
                 if otherhost is not None:
                     log_error(f"Error: task {task_id} is both free "
@@ -313,58 +318,59 @@ class Task(object):
         info = self.getInfo(request=True)
         self.runCallbacks('preTaskStateChange', info, 'state', koji.TASK_STATES['FREE'])
         self.runCallbacks('preTaskStateChange', info, 'host_id', None)
-        task_id = self.id
         # access checks should be performed by calling function
-        query = """SELECT state FROM task WHERE id = %(id)i FOR UPDATE"""
-        row = _fetchSingle(query, vars(self))
-        if not row:
+        query = QueryProcessor(tables=['task'], columns=['state'], clauses=['id = %(id)i'],
+                               values=vars(self), opts={'rowlock': True})
+        oldstate = query.singleValue(strict=False)
+        if not oldstate:
             raise koji.GenericError("No such task: %i" % self.id)
-        oldstate = row[0]
         if koji.TASK_STATES[oldstate] in ['CLOSED', 'CANCELED', 'FAILED']:
             raise koji.GenericError("Cannot free task %i, state is %s" %
                                     (self.id, koji.TASK_STATES[oldstate]))
         newstate = koji.TASK_STATES['FREE']
         newhost = None
-        q = """UPDATE task SET state=%(newstate)s,host_id=%(newhost)s
-        WHERE id=%(task_id)s"""
-        _dml(q, locals())
+        update = UpdateProcessor('task', clauses=['id=%(task_id)s'], values={'task_id': self.id},
+                                 data={'state': newstate, 'host_id': newhost})
+        update.execute()
         self.runCallbacks('postTaskStateChange', info, 'state', koji.TASK_STATES['FREE'])
         self.runCallbacks('postTaskStateChange', info, 'host_id', None)
         return True
 
     def setWeight(self, weight):
         """Set weight for task"""
-        task_id = self.id
         weight = convert_value(weight, cast=float)
         info = self.getInfo(request=True)
         self.runCallbacks('preTaskStateChange', info, 'weight', weight)
         # access checks should be performed by calling function
-        q = """UPDATE task SET weight=%(weight)s WHERE id = %(task_id)s"""
-        _dml(q, locals())
+        update = UpdateProcessor('task', clauses=['id=%(task_id)s'], values={'task_id': self.id},
+                                 data={'weight': weight})
+        update.execute()
         self.runCallbacks('postTaskStateChange', info, 'weight', weight)
 
     def setPriority(self, priority, recurse=False):
         """Set priority for task"""
-        task_id = self.id
         priority = convert_value(priority, cast=int)
         info = self.getInfo(request=True)
         self.runCallbacks('preTaskStateChange', info, 'priority', priority)
         # access checks should be performed by calling function
-        q = """UPDATE task SET priority=%(priority)s WHERE id = %(task_id)s"""
-        _dml(q, locals())
+        update = UpdateProcessor('task', clauses=['id=%(task_id)s'], values={'task_id': self.id},
+                                 data={'priority': priority})
+        update.execute()
         self.runCallbacks('postTaskStateChange', info, 'priority', priority)
 
         if recurse:
             # Change priority of child tasks
-            q = """SELECT id FROM task WHERE parent = %(task_id)s"""
-            for (child_id,) in _fetchMulti(q, locals()):
+            query = QueryProcessor(tables=['task'], columns=['id'],
+                                   clauses=['parent = %(task_id)s'],
+                                   values={'task_id': self.id},
+                                   opts={'asList': True})
+            for (child_id,) in query.execute():
                 Task(child_id).setPriority(priority, recurse=True)
 
     def _close(self, result, state):
         """Mark task closed and set response
 
         Returns True if successful, False if not"""
-        task_id = self.id
         # access checks should be performed by calling function
         # this is an approximation, and will be different than what is in the database
         # the actual value should be retrieved from the 'new' value of the post callback
@@ -373,11 +379,12 @@ class Task(object):
         info['result'] = result
         self.runCallbacks('preTaskStateChange', info, 'state', state)
         self.runCallbacks('preTaskStateChange', info, 'completion_ts', now)
-        update = """UPDATE task SET result = %(result)s, state = %(state)s, completion_time = NOW()
-        WHERE id = %(task_id)d
-        """
         # get the result from the info dict, so callbacks have a chance to modify it
-        _dml(update, {'result': info['result'], 'state': state, 'task_id': task_id})
+        update = UpdateProcessor('task', clauses=['id = %(task_id)d'],
+                                 values={'task_id': self.id},
+                                 data={'result': info['result'], 'state': state},
+                                 rawdata={'completion_time': 'NOW()'})
+        update.execute()
         self.runCallbacks('postTaskStateChange', info, 'state', state)
         self.runCallbacks('postTaskStateChange', info, 'completion_ts', now)
 
@@ -390,8 +397,9 @@ class Task(object):
         self._close(result, koji.TASK_STATES['FAILED'])
 
     def getState(self):
-        query = """SELECT state FROM task WHERE id = %(id)i"""
-        return _singleValue(query, vars(self))
+        query = QueryProcessor(tables=['task'], columns=['state'], clauses=['id = %(id)i'],
+                               values=vars(self))
+        return query.singleValue()
 
     def isFinished(self):
         return (koji.TASK_STATES[self.getState()] in ['CLOSED', 'CANCELED', 'FAILED'])
@@ -414,9 +422,9 @@ class Task(object):
         info = self.getInfo(request=True)
         self.runCallbacks('preTaskStateChange', info, 'state', koji.TASK_STATES['CANCELED'])
         self.runCallbacks('preTaskStateChange', info, 'completion_ts', now)
-        task_id = self.id
-        q = """SELECT state FROM task WHERE id = %(task_id)s FOR UPDATE"""
-        state = _singleValue(q, locals())
+        query = QueryProcessor(tables=['task'], columns=['state'], clauses=['id = %(task_id)s'],
+                               values={'task_id': self.id}, opts={'rowlock': True})
+        state = query.singleValue()
         st_canceled = koji.TASK_STATES['CANCELED']
         st_closed = koji.TASK_STATES['CLOSED']
         st_failed = koji.TASK_STATES['FAILED']
@@ -424,18 +432,19 @@ class Task(object):
             return True
         elif state in [st_closed, st_failed]:
             return False
-        update = """UPDATE task SET state = %(st_canceled)i, completion_time = NOW()
-        WHERE id = %(task_id)i"""
-        _dml(update, locals())
+        update = UpdateProcessor('task', clauses=['id = %(task_id)i'], values={'task_id': self.id},
+                                 data={'state': st_canceled}, rawdata={'completion_time': 'NOW()'})
+        update.execute()
         self.runCallbacks('postTaskStateChange', info, 'state', koji.TASK_STATES['CANCELED'])
         self.runCallbacks('postTaskStateChange', info, 'completion_ts', now)
         # cancel associated builds (only if state is 'BUILDING')
         # since we check build state, we avoid loops with cancel_build on our end
         b_building = koji.BUILD_STATES['BUILDING']
-        q = """SELECT id FROM build WHERE task_id = %(task_id)i
-        AND state = %(b_building)i
-        FOR UPDATE"""
-        for (build_id,) in _fetchMulti(q, locals()):
+        query = QueryProcessor(tables=['build'], columns=['id'],
+                               clauses=['task_id = %(task_id)i', 'state = %(b_building)i'],
+                               values={'task_id': self.id, 'b_building': b_building},
+                               opts={'rowlock': True, 'asList': True})
+        for (build_id,) in query.execute():
             cancel_build(build_id, cancel_task=False)
         if recurse:
             # also cancel child tasks
@@ -444,9 +453,9 @@ class Task(object):
 
     def cancelChildren(self):
         """Cancel child tasks"""
-        task_id = self.id
-        q = """SELECT id FROM task WHERE parent = %(task_id)i"""
-        for (id,) in _fetchMulti(q, locals()):
+        query = QueryProcessor(tables=['task'], columns=['id'], clauses=['parent = %(task_id)i'],
+                               values={'task_id': self.id}, opts={'asList': True})
+        for (id,) in query.execute():
             Task(id).cancel(recurse=True)
 
     def cancelFull(self, strict=True):
@@ -456,8 +465,10 @@ class Task(object):
         Otherwise we will follow up the chain to find the top-level task
         """
         task_id = self.id
-        q = """SELECT parent FROM task WHERE id = %(task_id)i FOR UPDATE"""
-        parent = _singleValue(q, locals())
+        query = QueryProcessor(tables=['task'], columns=['parent'],
+                               clauses=['id = %(task_id)i'],
+                               values={'task_id': task_id}, opts={'rowlock': True})
+        parent = query.singleValue(strict=False)
         if parent is not None:
             if strict:
                 raise koji.GenericError("Task %d is not top-level (parent=%d)" % (task_id, parent))
@@ -468,21 +479,24 @@ class Task(object):
                     raise koji.GenericError("Task LOOP at task %i" % task_id)
                 task_id = parent
                 seen[task_id] = 1
-                parent = _singleValue(q, locals())
+                query.values = {'task_id': task_id}
+                parent = query.singleValue()
             return Task(task_id).cancelFull(strict=True)
         # We handle the recursion ourselves, since self.cancel will stop at
         # canceled or closed tasks.
         tasklist = [task_id]
         seen = {}
         # query for use in loop
-        q_children = """SELECT id FROM task WHERE parent = %(task_id)i"""
         for task_id in tasklist:
             if task_id in seen:
                 # shouldn't happen
                 raise koji.GenericError("Task LOOP at task %i" % task_id)
             seen[task_id] = 1
             Task(task_id).cancel(recurse=False)
-            for (child_id,) in _fetchMulti(q_children, locals()):
+            query = QueryProcessor(tables=['task'], columns=['id'],
+                                   clauses=['parent = %(task_id)i'],
+                                   values={'task_id': task_id}, opts={'asList': True})
+            for (child_id,) in query.execute():
                 tasklist.append(child_id)
 
     def getRequest(self):
@@ -497,11 +511,13 @@ class Task(object):
         return params
 
     def getResult(self, raise_fault=True):
-        query = """SELECT state,result FROM task WHERE id = %(id)i"""
-        r = _fetchSingle(query, vars(self))
+        query = QueryProcessor(tables=['task'], columns=['state', 'result'],
+                               clauses=['id = %(id)i'], values={'id': self.id})
+        r = query.executeOne()
         if not r:
             raise koji.GenericError("No such task")
-        state, xml_result = r
+        state = r['state']
+        xml_result = r['result']
         if koji.TASK_STATES[state] == 'CANCELED':
             raise koji.GenericError("Task %i is canceled" % self.id)
         elif koji.TASK_STATES[state] not in ['CLOSED', 'FAILED']:
@@ -605,12 +621,14 @@ def make_task(method, arglist, **opts):
             opts['assign'] = get_host(opts['assign'], strict=True)['id']
     if 'parent' in opts:
         # for subtasks, we use some of the parent's options as defaults
-        fields = ('state', 'owner', 'channel_id', 'priority', 'arch')
-        q = """SELECT %s FROM task WHERE id = %%(parent)i""" % ','.join(fields)
-        r = _fetchSingle(q, opts)
-        if not r:
+        query = QueryProcessor(
+            tables=['task'],
+            columns=['state', 'owner', 'channel_id', 'priority', 'arch'],
+            clauses=['id = %(parent)i'],
+            values={'parent': opts['parent']})
+        pdata = query.executeOne()
+        if not pdata:
             raise koji.GenericError("Invalid parent task: %(parent)s" % opts)
-        pdata = dict(zip(fields, r))
         if pdata['state'] != koji.TASK_STATES['OPEN']:
             raise koji.GenericError("Parent task (id %(parent)s) is not open" % opts)
         # default to a higher priority than parent
@@ -2524,35 +2542,43 @@ def get_ready_hosts():
     Note: We ignore hosts that are late checking in (even if a host
         is busy with tasks, it should be checking in quite often).
     """
-    c = context.cnx.cursor()
-    fields = ('host.id', 'name', 'arches', 'task_load', 'capacity')
-    aliases = ('id', 'name', 'arches', 'task_load', 'capacity')
-    q = """
-    SELECT %s FROM host
-        JOIN sessions USING (user_id)
-        JOIN host_config ON host.id = host_config.host_id
-    WHERE enabled = TRUE AND ready = TRUE
-        AND expired = FALSE
-        AND master IS NULL
-        AND update_time > NOW() - '5 minutes'::interval
-        AND active IS TRUE
-    """ % ','.join(fields)
-    # XXX - magic number in query
-    c.execute(q)
-    hosts = [dict(zip(aliases, row)) for row in c.fetchall()]
+    query = QueryProcessor(
+        tables=['host'],
+        columns=['host.id', 'name', 'arches', 'task_load', 'capacity'],
+        aliases=['id', 'name', 'arches', 'task_load', 'capacity'],
+        clauses=[
+            'enabled IS TRUE',
+            'ready IS TRUE',
+            'expired IS FALSE',
+            'master IS NULL',
+            'active IS TRUE',
+            "update_time > NOW() - '5 minutes'::interval"
+        ],
+        joins=[
+            'sessions USING (user_id)',
+            'host_config ON host.id = host_config.host_id'
+        ]
+    )
+    hosts = query.execute()
     for host in hosts:
-        q = """SELECT channel_id FROM host_channels
-            JOIN channels ON host_channels.channel_id = channels.id
-            WHERE host_id=%(id)s AND active IS TRUE AND enabled IS TRUE"""
-        c.execute(q, host)
-        host['channels'] = [row[0] for row in c.fetchall()]
+        query = QueryProcessor(
+            tables=['host_channels'],
+            columns=['channel_id'],
+            clauses=['host_id=%(id)s', 'active IS TRUE', 'enabled IS TRUE'],
+            joins=['channels ON host_channels.channel_id = channels.id'],
+            values=host
+        )
+        rows = query.execute()
+        host['channels'] = [row['channel_id'] for row in rows]
     return hosts
 
 
 def get_all_arches():
     """Return a list of all (canonical) arches available from hosts"""
     ret = {}
-    for (arches,) in _fetchMulti('SELECT arches FROM host_config WHERE active IS TRUE', {}):
+    query = QueryProcessor(tables=['host_config'], columns=['arches'], clauses=['active IS TRUE'],
+                           opts={'asList': True})
+    for (arches,) in query.execute():
         if arches is None:
             continue
         for arch in arches.split():
@@ -2699,7 +2725,6 @@ def repo_init(tag, task_id=None, with_src=False, with_debuginfo=False, event=Non
         repo_id, event_id
     """
     task_id = convert_value(task_id, cast=int, none_allowed=True)
-    logger = logging.getLogger("koji.hub.repo_init")
     state = koji.REPO_INIT
     tinfo = get_tag(tag, strict=True, event=event)
     koji.plugin.run_callbacks('preRepoInit', tag=tinfo, with_src=with_src,
@@ -2720,8 +2745,9 @@ def repo_init(tag, task_id=None, with_src=False, with_debuginfo=False, event=Non
         event_id = _singleValue("SELECT get_event()")
     else:
         # make sure event is valid
-        q = "SELECT time FROM events WHERE id=%(event)s"
-        event_time = _singleValue(q, locals(), strict=True)
+        query = QueryProcessor(tables=['events'], columns=['time'],
+                               clauses=['id=%(event)s'], values={'event': event})
+        query.singleValue(strict=True)
         event_id = event
     insert = InsertProcessor('repo')
     insert.set(id=repo_id, create_event=event_id, tag_id=tag_id, state=state, task_id=task_id)
@@ -2943,13 +2969,17 @@ def repo_set_state(repo_id, state, check=True):
     repo_id = convert_value(repo_id, cast=int)
     if check:
         # The repo states are sequential, going backwards makes no sense
-        q = """SELECT state FROM repo WHERE id = %(repo_id)i FOR UPDATE"""
-        oldstate = _singleValue(q, locals())
+        query = QueryProcessor(
+            tables=['repo'], columns=['state'], clauses=['id = %(repo_id)i'],
+            values={'repo_id': repo_id}, opts={'rowlock': True})
+        oldstate = query.singleValue()
         if oldstate > state:
             raise koji.GenericError("Invalid repo state transition %s->%s"
                                     % (oldstate, state))
-    q = """UPDATE repo SET state=%(state)s WHERE id = %(repo_id)s"""
-    _dml(q, locals())
+    update = UpdateProcessor('repo', clauses=['id=%(repo_id)s'],
+                             values={'repo_id': repo_id},
+                             data={'state': state})
+    update.execute()
 
 
 def repo_info(repo_id, strict=False):
@@ -3000,8 +3030,9 @@ def repo_delete(repo_id):
     If the number of references is nonzero, no change is made"""
     repo_id = convert_value(repo_id, cast=int)
     # get a row lock on the repo
-    q = """SELECT state FROM repo WHERE id = %(repo_id)i FOR UPDATE"""
-    _singleValue(q, locals())
+    query = QueryProcessor(tables=['repo'], columns=['state'], clauses=['id = %(repo_id)i'],
+                           values={'repo_id': repo_id}, opts={'rowlock': True})
+    query.execute()
     references = repo_references(repo_id)
     if not references:
         repo_set_state(repo_id, koji.REPO_DELETED)
@@ -3033,10 +3064,11 @@ def repo_references(repo_id):
         'create_event': 'create_event',
         'state': 'state'}
     fields, aliases = zip(*fields.items())
-    values = {'repo_id': repo_id}
-    clauses = ['repo_id=%(repo_id)s', 'retire_event IS NULL']
-    query = QueryProcessor(columns=fields, aliases=aliases, tables=['standard_buildroot'],
-                           clauses=clauses, values=values)
+    query = QueryProcessor(
+        tables=['standard_buildroot'],
+        columns=fields, aliases=aliases,
+        clauses=['repo_id=%(repo_id)s', 'retire_event IS NULL'],
+        values={'repo_id': repo_id})
     # check results for bad states
     ret = []
     for data in query.execute():
@@ -3084,10 +3116,9 @@ def tag_changed_since_event(event, taglist):
     """
     data = locals().copy()
     # first check the tag_updates table
-    clauses = ['update_event > %(event)i', 'tag_id IN %(taglist)s']
     query = QueryProcessor(tables=['tag_updates'], columns=['id'],
-                           clauses=clauses, values=data,
-                           opts={'limit': 1})
+                           clauses=['update_event > %(event)i', 'tag_id IN %(taglist)s'],
+                           values=data, opts={'limit': 1})
     if query.execute():
         return True
     # also check these versioned tables
@@ -3102,11 +3133,10 @@ def tag_changed_since_event(event, taglist):
         'group_req_listing',
         'group_config',
     )
-    clauses = ['create_event > %(event)i OR revoke_event > %(event)i',
-               'tag_id IN %(taglist)s']
     for table in tables:
-        query = QueryProcessor(tables=[table], columns=['tag_id'], clauses=clauses,
-                               values=data, opts={'limit': 1})
+        query = QueryProcessor(tables=[table], columns=['tag_id'], values=data,
+                               clauses=['create_event > %(event)i OR revoke_event > %(event)i',
+                                        'tag_id IN %(taglist)s'], opts={'limit': 1})
         if query.execute():
             return True
     return False
@@ -3191,20 +3221,20 @@ def _edit_build_target(buildTargetInfo, name, build_tag, dest_tag):
         raise koji.GenericError("destination tag '%s' does not exist" % dest_tag)
     destTagID = dest_tag_object['id']
 
+    values = {'buildTargetID': buildTargetID}
     if target['name'] != name:
         # Allow renaming, for parity with tags
-        id = _singleValue("""SELECT id from build_target where name = %(name)s""",
-                          locals(), strict=False)
+        query = QueryProcessor(tables=['build_target'], columns=['id'],
+                               clauses=['name = %(name)s'], values={'name': name})
+        id = query.singleValue(strict=False)
         if id is not None:
             raise koji.GenericError('name "%s" is already taken by build target %i' % (name, id))
 
-        rename = """UPDATE build_target
-        SET name = %(name)s
-        WHERE id = %(buildTargetID)i"""
+        update = UpdateProcessor('build_target', clauses=['id = %(buildTargetID)i'],
+                                 values=values, data={'name': name})
+        update.execute()
 
-        _dml(rename, locals())
-
-    update = UpdateProcessor('build_target_config', values=locals(),
+    update = UpdateProcessor('build_target_config', values=values,
                              clauses=["build_target_id = %(buildTargetID)i"])
     update.make_revoke()
 
@@ -3344,9 +3374,8 @@ def lookup_name(table, info, strict=False, create=False):
     Any other fields should have default values, otherwise the
     create option will fail.
     """
-    fields = ('id', 'name')
     clause, values = name_or_id_clause(table, info)
-    query = QueryProcessor(columns=fields, tables=[table],
+    query = QueryProcessor(columns=['id', 'name'], tables=[table],
                            clauses=[clause], values=values)
     ret = query.executeOne()
     if ret is not None:
@@ -3577,13 +3606,12 @@ def get_tag(tagInfo, strict=False, event=None, blocked=False):
 
 def get_tag_extra(tagInfo, event=None, blocked=False):
     """ Get tag extra info (no inheritance) """
-    tables = ['tag_extra']
     fields = ['key', 'value', 'CASE WHEN value IS NULL THEN TRUE ELSE FALSE END']
     aliases = ['key', 'value', 'blocked']
     clauses = [eventCondition(event, table='tag_extra'), "tag_id = %(id)i"]
     if not blocked:
         clauses.append("value IS NOT NULL")
-    query = QueryProcessor(columns=fields, tables=tables, clauses=clauses, values=tagInfo,
+    query = QueryProcessor(tables=['tag_extra'], columns=fields, clauses=clauses, values=tagInfo,
                            aliases=aliases)
     result = {}
     for h in query.execute():
@@ -3652,19 +3680,15 @@ def _edit_tag(tagInfo, **kwargs):
         # a cosmetic one). The more versioning-friendly way would be to create
         # a new tag with duplicate data and revoke the old tag. This is more
         # of a pain of course :-/  -mikem
-        values = {
-            'name': name,
-            'tagID': tag['id']
-        }
-        q = """SELECT id FROM tag WHERE name=%(name)s"""
-        id = _singleValue(q, values, strict=False)
+        query = QueryProcessor(tables=['tag'], columns=['id'],
+                               clauses=['name = %(name)s'], values={'name': name})
+        id = query.singleValue(strict=False)
         if id is not None:
             # new name is taken
             raise koji.GenericError("Name %s already taken by tag %s" % (name, id))
-        update = """UPDATE tag
-SET name = %(name)s
-WHERE id = %(tagID)i"""
-        _dml(update, values)
+        update = UpdateProcessor('tag', values={'tagID': tag['id']}, clauses=['id = %(tagID)i'],
+                                 data={'name': name})
+        update.execute()
 
     # sanitize architecture names (space-separated string)
     arches = kwargs.get('arches')
@@ -3890,14 +3914,16 @@ def edit_external_repo(info, name=None, url=None):
 
     if name and name != repo['name']:
         verify_name_internal(name)
-        existing_id = _singleValue("""SELECT id FROM external_repo WHERE name = %(name)s""",
-                                   locals(), strict=False)
+        query = QueryProcessor(tables=['external_repo'], columns=['id'],
+                               clauses=['name = %(name)s'], values={'name': name})
+        existing_id = query.singleValue(strict=False)
         if existing_id is not None:
             raise koji.GenericError('name "%s" is already taken by external repo %i' %
                                     (name, existing_id))
 
-        rename = """UPDATE external_repo SET name = %(name)s WHERE id = %(repo_id)i"""
-        _dml(rename, locals())
+        update = UpdateProcessor('external_repo', clauses=['id = %(repo_id)i'],
+                                 values={'repo_id': repo_id}, data={'name': name})
+        update.execute()
 
     if url and url != repo['url']:
         if not url.endswith('/'):
@@ -4233,15 +4259,14 @@ def _edit_user(userInfo, name=None, krb_principal_mappings=None):
             'name': name,
             'userID': user['id']
         }
-        q = """SELECT id FROM users WHERE name=%(name)s"""
-        id = _singleValue(q, values, strict=False)
+        query = QueryProcessor(tables=['users'], columns=['id'],
+                               clauses=['name = %(name)s'], values=values)
+        id = query.singleValue(strict=False)
         if id is not None:
             # new name is taken
             raise koji.GenericError("Name %s already taken by user %s" % (name, id))
-        update = UpdateProcessor('users',
-                                 values={'userID': user['id']},
-                                 clauses=['id = %(userID)i'])
-        update.set(name=name)
+        update = UpdateProcessor('users', values=values, clauses=['id = %(userID)i'],
+                                 data={'name': name})
         update.execute()
     if krb_principal_mappings:
         added = set()
@@ -4345,22 +4370,20 @@ def find_build_id(X, strict=False):
     if not ('name' in data and 'version' in data and 'release' in data):
         raise koji.GenericError('did not provide name, version, and release')
 
-    c = context.cnx.cursor()
-    q = """SELECT build.id FROM build JOIN package ON build.pkg_id=package.id
-    WHERE package.name=%(name)s AND build.version=%(version)s
-    AND build.release=%(release)s
-    """
-    # contraints should ensure this is unique
-    # log_error(koji.db._quoteparams(q,data))
-    c.execute(q, data)
-    r = c.fetchone()
+    query = QueryProcessor(tables=['build'], columns=['build.id'],
+                           clauses=['package.name=%(name)s',
+                                    'build.version=%(version)s',
+                                    'build.release=%(release)s'],
+                           joins=['package ON build.pkg_id=package.id'],
+                           values=data)
+    r = query.singleValue(strict=False)
     # log_error("%r" % r )
     if not r:
         if strict:
             raise koji.GenericError('No such build: %r' % X)
         else:
             return None
-    return r[0]
+    return r
 
 
 def get_build(buildInfo, strict=False):
@@ -4791,15 +4814,15 @@ def get_maven_build(buildInfo, strict=False):
     artifact_id: Maven artifact_Id (string)
     version: Maven version (string)
     """
-    fields = ('build_id', 'group_id', 'artifact_id', 'version')
 
     build_id = find_build_id(buildInfo, strict=strict)
     if not build_id:
         return None
-    query = """SELECT %s
-    FROM maven_builds
-    WHERE build_id = %%(build_id)i""" % ', '.join(fields)
-    return _singleRow(query, locals(), fields, strict)
+    query = QueryProcessor(tables=['maven_builds'],
+                           columns=['build_id', 'group_id', 'artifact_id', 'version'],
+                           clauses=['build_id = %(build_id)i'],
+                           values={'build_id': build_id})
+    return query.executeOne(strict=strict)
 
 
 def get_win_build(buildInfo, strict=False):
@@ -4812,14 +4835,12 @@ def get_win_build(buildInfo, strict=False):
     build_id: id of the build (integer)
     platform: the platform the build was performed on (string)
     """
-    fields = ('build_id', 'platform')
 
     build_id = find_build_id(buildInfo, strict=strict)
     if not build_id:
         return None
-    query = QueryProcessor(tables=('win_builds',), columns=fields,
-                           clauses=('build_id = %(build_id)i',),
-                           values={'build_id': build_id})
+    query = QueryProcessor(tables=['win_builds'], columns=['build_id', 'platform'],
+                           clauses=['build_id = %(build_id)i'], values={'build_id': build_id})
     result = query.executeOne()
     if strict and not result:
         raise koji.GenericError('no such Windows build: %s' % buildInfo)
@@ -5189,10 +5210,11 @@ def get_maven_archive(archive_id, strict=False):
     artifact_id: Maven artifact_Id (string)
     version: Maven version (string)
     """
-    fields = ('archive_id', 'group_id', 'artifact_id', 'version')
-    select = """SELECT %s FROM maven_archives
-    WHERE archive_id = %%(archive_id)i""" % ', '.join(fields)
-    return _singleRow(select, locals(), fields, strict=strict)
+    query = QueryProcessor(tables=['maven_archives'],
+                           columns=['archive_id', 'group_id', 'artifact_id', 'version'],
+                           clauses=['archive_id = %(archive_id)i'],
+                           values={'archive_id': archive_id})
+    return query.executeOne(strict=strict)
 
 
 def get_win_archive(archive_id, strict=False):
@@ -5205,10 +5227,11 @@ def get_win_archive(archive_id, strict=False):
     platforms: space-separated list of platforms the file is suitable for use on (string)
     flags: space-separated list of flags used when building the file (fre, chk) (string)
     """
-    fields = ('archive_id', 'relpath', 'platforms', 'flags')
-    select = """SELECT %s FROM win_archives
-    WHERE archive_id = %%(archive_id)i""" % ', '.join(fields)
-    return _singleRow(select, locals(), fields, strict=strict)
+    query = QueryProcessor(tables=['win_archives'],
+                           columns=['archive_id', 'relpath', 'platforms', 'flags'],
+                           clauses=['archive_id = %(archive_id)i'],
+                           values={'archive_id': archive_id})
+    return query.executeOne(strict=strict)
 
 
 def get_image_archive(archive_id, strict=False):
@@ -5220,17 +5243,19 @@ def get_image_archive(archive_id, strict=False):
     arch: the architecture of the image
     rootid: True if this image has the root '/' partition
     """
-    fields = ('archive_id', 'arch')
-    select = """SELECT %s FROM image_archives
-    WHERE archive_id = %%(archive_id)i""" % ', '.join(fields)
-    results = _singleRow(select, locals(), fields, strict=strict)
+    query = QueryProcessor(tables=['image_archives'],
+                           columns=['archive_id', 'arch'],
+                           clauses=['archive_id = %(archive_id)i'],
+                           values={'archive_id': archive_id})
+    results = query.executeOne(strict=strict)
     if not results:
         return None
     results['rootid'] = False
-    fields = ['rpm_id']
-    select = """SELECT %s FROM archive_rpm_components
-    WHERE archive_id = %%(archive_id)i""" % ', '.join(fields)
-    rpms = _singleRow(select, locals(), fields)
+    query = QueryProcessor(tables=['archive_rpm_components'],
+                           columns=['rpm_id'],
+                           clauses=['archive_id = %(archive_id)i'],
+                           values={'archive_id': archive_id})
+    rpms = query.executeOne()
     if rpms:
         results['rootid'] = True
     return results
@@ -5551,9 +5576,9 @@ def get_channel(channelInfo, strict=False):
     :returns: dict of the channel ID and name, or None.
               For example, {'id': 20, 'name': 'container'}
     """
-    fields = ('id', 'name', 'description', 'enabled', 'comment')
     clause, values = name_or_id_clause('channels', channelInfo)
-    query = QueryProcessor(columns=fields, tables=['channels'],
+    query = QueryProcessor(tables=['channels'],
+                           columns=['id', 'name', 'description', 'enabled', 'comment'],
                            clauses=[clause], values=values)
     return query.executeOne(strict=strict)
 
@@ -5741,21 +5766,19 @@ def list_channels(hostID=None, event=None, enabled=None):
 
 def new_package(name, strict=True):
     verify_name_internal(name)
-    c = context.cnx.cursor()
     # TODO - table lock?
     # check for existing
-    q = """SELECT id FROM package WHERE name=%(name)s"""
-    c.execute(q, locals())
-    row = c.fetchone()
-    if row:
-        (pkg_id,) = row
+    query = QueryProcessor(tables=['package'], columns=['id'],
+                           clauses=['name=%(name)s'], values={'name': name})
+    pkg_id = query.singleValue(strict=False)
+    if pkg_id:
         if strict:
             raise koji.GenericError("Package already exists [id %d]" % pkg_id)
     else:
         pkg_id = nextval('package_id_seq')
-        q = """INSERT INTO package (id,name) VALUES (%(pkg_id)s,%(name)s)"""
+        insert = InsertProcessor('package', data={'id': pkg_id, 'name': name})
+        insert.execute()
         context.commit_pending = True
-        c.execute(q, locals())
     return pkg_id
 
 
@@ -7302,23 +7325,26 @@ def merge_scratch(task_id):
 
 def get_archive_types():
     """Return a list of all supported archive types."""
-    select = """SELECT id, name, description, extensions, compression_type FROM archivetypes
-    ORDER BY id"""
-    return _multiRow(select, {}, ('id', 'name', 'description', 'extensions', 'compression_type'))
+    query = QueryProcessor(tables=['archivetypes'],
+                           columns=['id', 'name', 'description', 'extensions', 'compression_type'],
+                           opts={'order': 'id'})
+    return query.execute()
 
 
 def _get_archive_type_by_name(name, strict=True):
-    select = """SELECT id, name, description, extensions, compression_type FROM archivetypes
-    WHERE name = %(name)s"""
-    return _singleRow(select, locals(),
-                      ('id', 'name', 'description', 'extensions', 'compression_type'), strict)
+    query = QueryProcessor(tables=['archivetypes'],
+                           columns=['id', 'name', 'description', 'extensions', 'compression_type'],
+                           clauses=['name = %(name)s'],
+                           values={'name': name})
+    return query.executeOne(strict=strict)
 
 
 def _get_archive_type_by_id(type_id, strict=False):
-    select = """SELECT id, name, description, extensions, compression_type FROM archivetypes
-    WHERE id = %(type_id)i"""
-    return _singleRow(select, locals(),
-                      ('id', 'name', 'description', 'extensions', 'compression_type'), strict)
+    query = QueryProcessor(tables=['archivetypes'],
+                           columns=['id', 'name', 'description', 'extensions', 'compression_type'],
+                           clauses=['id = %(type_id)i'],
+                           values={'type_id': type_id})
+    return query.executeOne(strict=strict)
 
 
 def get_archive_type(filename=None, type_name=None, type_id=None, strict=False):
@@ -7480,7 +7506,7 @@ def new_typed_build(build_info, btype):
     btype_id = lookup_name('btype', btype, strict=True)['id']
     query = QueryProcessor(tables=('build_types',), columns=('build_id',),
                            clauses=('build_id = %(build_id)i',
-                                    'btype_id = %(btype_id)i',),
+                                    'btype_id = %(btype_id)i'),
                            values={'build_id': build_info['id'],
                                    'btype_id': btype_id})
     result = query.executeOne()
@@ -7920,7 +7946,6 @@ def query_rpm_sigs(rpm_id=None, sigkey=None, queryOpts=None):
 
     :returns: list of dicts (rpm_id, sigkey, sighash)
     """
-    fields = ('rpm_id', 'sigkey', 'sighash')
     clauses = []
     if rpm_id is not None and not isinstance(rpm_id, int):
         rpminfo = get_rpm(rpm_id)
@@ -7933,8 +7958,11 @@ def query_rpm_sigs(rpm_id=None, sigkey=None, queryOpts=None):
     if sigkey is not None:
         sigkey = sigkey.lower()
         clauses.append("sigkey=%(sigkey)s")
-    query = QueryProcessor(columns=fields, tables=('rpmsigs',), clauses=clauses,
-                           values=locals(), opts=queryOpts)
+    query = QueryProcessor(tables=['rpmsigs'],
+                           columns=['rpm_id', 'sigkey', 'sighash'],
+                           clauses=clauses,
+                           values={'rpm_id': rpm_id, 'sigkey': sigkey},
+                           opts=queryOpts)
     return query.execute()
 
 
@@ -7955,11 +7983,12 @@ def write_signed_rpm(an_rpm, sigkey, force=False):
         raise koji.GenericError("Not a regular file: %s" % rpm_path)
     # make sure we have it in the db
     rpm_id = rinfo['id']
-    q = """SELECT sighash FROM rpmsigs WHERE rpm_id=%(rpm_id)i AND sigkey=%(sigkey)s"""
-    row = _fetchSingle(q, locals())
-    if not row:
+    query = QueryProcessor(tables=['rpmsigs'], columns=['sighash'],
+                           clauses=['rpm_id=%(rpm_id)i', 'sigkey=%(sigkey)s'],
+                           values={'rpm_id': rpm_id, 'sigkey': sigkey})
+    sighash = query.singleValue(strict=False)
+    if not sighash:
         raise koji.GenericError("No cached signature for package %s, key %s" % (nvra, sigkey))
-    (sighash,) = row
     signedpath = "%s/%s" % (builddir, koji.pathinfo.signed(rinfo, sigkey))
     if os.path.exists(signedpath):
         if not force:
@@ -8269,13 +8298,10 @@ def query_history(tables=None, **kwargs):
 
 def untagged_builds(name=None, queryOpts=None):
     """Returns the list of untagged builds"""
-    fields = ('build.id', 'package.name', 'build.version', 'build.release')
-    aliases = ('id', 'name', 'version', 'release')
     st_complete = koji.BUILD_STATES['COMPLETE']
     # following can be achieved with simple query but with
     # linear complexity while this one will be parallelized to
     # full number of workers giving at least 2x speedup
-    tables = ('build', 'package')
     clauses = [
         """NOT EXISTS
              (SELECT 1 FROM tag_listing
@@ -8287,7 +8313,9 @@ def untagged_builds(name=None, queryOpts=None):
     if name is not None:
         clauses.append('package.name = %(name)s')
 
-    query = QueryProcessor(columns=fields, aliases=aliases, tables=tables,
+    query = QueryProcessor(tables=['build', 'package'],
+                           columns=['build.id', 'package.name', 'build.version', 'build.release'],
+                           aliases=['id', 'name', 'version', 'release'],
                            clauses=clauses, values=locals(),
                            opts=queryOpts)
     return query.iterate()
@@ -8316,10 +8344,16 @@ def build_references(build_id, limit=None, lazy=False):
         return ret
 
     # we'll need the component rpm and archive ids for the rest
-    q = """SELECT id FROM rpminfo WHERE build_id=%(build_id)i"""
-    build_rpm_ids = _fetchMulti(q, locals())
-    q = """SELECT id FROM archiveinfo WHERE build_id=%(build_id)i"""
-    build_archive_ids = _fetchMulti(q, locals())
+    query = QueryProcessor(tables=['rpminfo'], columns=['id'],
+                           clauses=['build_id=%(build_id)i'],
+                           values={'build_id': build_id}, opts={'asList': True})
+    build_rpm_ids = query.execute()
+    query = QueryProcessor(tables=['archiveinfo'], columns=['id'],
+                           clauses=['build_id=%(build_id)i'],
+                           values={'build_id': build_id}, opts={'asList': True})
+    build_archive_ids = query.execute()
+    if not build_archive_ids:
+        build_archive_ids = []
 
     # find rpms whose buildroots we were in
     st_complete = koji.BUILD_STATES['COMPLETE']
@@ -8532,16 +8566,18 @@ def _delete_build(binfo):
     koji.plugin.run_callbacks('preBuildStateChange',
                               attribute='state', old=st_old, new=st_deleted, info=binfo)
     build_id = binfo['id']
-    q = """SELECT id FROM rpminfo WHERE build_id=%(build_id)i"""
-    rpm_ids = _fetchMulti(q, locals())
-    for (rpm_id,) in rpm_ids:
+    query = QueryProcessor(tables=['rpminfo'], columns=['id'], clauses=['build_id=%(build_id)i'],
+                           values={'build_id': build_id}, opts={'asList': True})
+    for (rpm_id,) in query.execute():
         delete = """DELETE FROM rpmsigs WHERE rpm_id=%(rpm_id)i"""
         _dml(delete, locals())
-    update = UpdateProcessor('tag_listing', clauses=["build_id=%(build_id)i"], values=locals())
+    values = {'build_id': build_id}
+    update = UpdateProcessor('tag_listing', clauses=["build_id=%(build_id)i"], values=values)
     update.make_revoke()
     update.execute()
-    update = """UPDATE build SET state=%(st_deleted)i WHERE id=%(build_id)i"""
-    _dml(update, locals())
+    update = UpdateProcessor('build', values=values, clauses=['id=%(build_id)i'],
+                             data={'state': st_deleted})
+    update.execute()
     # now clear the build dir
     builddir = koji.pathinfo.build(binfo)
     if os.path.exists(builddir):
@@ -8572,9 +8608,9 @@ def reset_build(build):
     koji.plugin.run_callbacks('preBuildStateChange',
                               attribute='state', old=st_old, new=koji.BUILD_STATES['CANCELED'],
                               info=binfo)
-    q = """SELECT id FROM rpminfo WHERE build_id=%(id)i"""
-    ids = _fetchMulti(q, binfo)
-    for (rpm_id,) in ids:
+    query = QueryProcessor(tables=['rpminfo'], columns=['id'], clauses=['build_id=%(id)i'],
+                           values=binfo, opts={'asList': True})
+    for (rpm_id,) in query.execute():
         delete = """DELETE FROM rpmsigs WHERE rpm_id=%(rpm_id)i"""
         _dml(delete, locals())
         delete = """DELETE FROM buildroot_listing WHERE rpm_id=%(rpm_id)i"""
@@ -8583,9 +8619,9 @@ def reset_build(build):
         _dml(delete, locals())
     delete = """DELETE FROM rpminfo WHERE build_id=%(id)i"""
     _dml(delete, binfo)
-    q = """SELECT id FROM archiveinfo WHERE build_id=%(id)i"""
-    ids = _fetchMulti(q, binfo)
-    for (archive_id,) in ids:
+    query = QueryProcessor(tables=['archiveinfo'], columns=['id'], clauses=['build_id=%(id)i'],
+                           values=binfo, opts={'asList': True})
+    for (archive_id,) in query.execute():
         delete = """DELETE FROM maven_archives WHERE archive_id=%(archive_id)i"""
         _dml(delete, locals())
         delete = """DELETE FROM win_archives WHERE archive_id=%(archive_id)i"""
@@ -8613,8 +8649,9 @@ def reset_build(build):
     delete = """DELETE FROM tag_listing WHERE build_id = %(id)i"""
     _dml(delete, binfo)
     binfo['state'] = koji.BUILD_STATES['CANCELED']
-    update = """UPDATE build SET state=%(state)s, task_id=NULL, volume_id=0 WHERE id=%(id)s"""
-    _dml(update, binfo)
+    update = UpdateProcessor('build', clauses=['id=%(id)s'], values=binfo,
+                             data={'state': binfo['state'], 'task_id': None, 'volume_id': 0})
+    update.execute()
     # now clear the build dir
     builddir = koji.pathinfo.build(binfo)
     if os.path.exists(builddir):
@@ -8645,10 +8682,11 @@ def cancel_build(build_id, cancel_task=True):
     st_old = build['state']
     koji.plugin.run_callbacks('preBuildStateChange',
                               attribute='state', old=st_old, new=st_canceled, info=build)
-    update = """UPDATE build
-    SET state = %(st_canceled)i, completion_time = NOW()
-    WHERE id = %(build_id)i AND state = %(st_building)i"""
-    _dml(update, locals())
+    update = UpdateProcessor('build',
+                             clauses=['id = %(build_id)i', 'state = %(st_building)i'],
+                             values={'build_id': build_id, 'st_building': st_building},
+                             data={'state': st_canceled}, rawdata={'completion_time': 'NOW()'})
+    update.execute()
     build = get_build(build_id)
     if build['state'] != st_canceled:
         return False
@@ -8841,7 +8879,7 @@ def get_build_notifications(user_id):
                            columns=('id', 'user_id', 'package_id', 'tag_id',
                                     'success_only', 'email'),
                            clauses=['user_id = %(user_id)i'],
-                           values=locals())
+                           values={'user_id': user_id})
     return query.execute()
 
 
@@ -8849,7 +8887,7 @@ def get_build_notification_blocks(user_id):
     query = QueryProcessor(tables=['build_notifications_block'],
                            columns=['id', 'user_id', 'package_id', 'tag_id'],
                            clauses=['user_id = %(user_id)i'],
-                           values=locals())
+                           values={'user_id': user_id})
     return query.execute()
 
 
@@ -8912,20 +8950,14 @@ def get_group_members(group):
     ginfo = get_user(group)
     if not ginfo or ginfo['usertype'] != koji.USERTYPES['GROUP']:
         raise koji.GenericError("No such group: %s" % group)
-    group_id = ginfo['id']
-    columns = ('id', 'name', 'usertype', 'array_agg(krb_principal)')
-    aliases = ('id', 'name', 'usertype', 'krb_principals')
-    joins = ['JOIN users ON user_groups.user_id = users.id',
-             'LEFT JOIN user_krb_principals'
-             ' ON users.id = user_krb_principals.user_id']
-    clauses = [eventCondition(None), 'group_id = %(group_id)i']
-
     query = QueryProcessor(tables=['user_groups'],
-                           columns=columns,
-                           aliases=aliases,
-                           joins=joins,
-                           clauses=clauses,
-                           values=locals(),
+                           columns=['id', 'name', 'usertype', 'array_agg(krb_principal)'],
+                           aliases=['id', 'name', 'usertype', 'krb_principals'],
+                           joins=['JOIN users ON user_groups.user_id = users.id',
+                                  'LEFT JOIN user_krb_principals'
+                                  ' ON users.id = user_krb_principals.user_id'],
+                           clauses=[eventCondition(None), 'group_id = %(group_id)i'],
+                           values={'group_id': ginfo['id']},
                            opts={'group': 'users.id'},
                            enable_group=True,
                            transform=xform_user_krb)
@@ -8939,9 +8971,10 @@ def set_user_status(user, status):
     if user['status'] == status:
         # nothing to do
         return
-    update = """UPDATE users SET status = %(status)i WHERE id = %(user_id)i"""
     user_id = user['id']
-    rows = _dml(update, locals())
+    update = UpdateProcessor('users', clauses=['id = %(user_id)i'],
+                             values={'user_id': user_id}, data={'status': status})
+    rows = update.execute()
     # sanity check
     if rows == 0:
         raise koji.GenericError('No such user ID: %i' % user_id)
@@ -12436,11 +12469,9 @@ class RootExports(object):
 
         If no users of the specified
         type exist, return an empty list."""
-        fields = ('id', 'name', 'status', 'usertype',
-                  'array_agg(krb_principal)')
+        fields = ('id', 'name', 'status', 'usertype', 'array_agg(krb_principal)')
         aliases = ('id', 'name', 'status', 'usertype', 'krb_principals')
-        joins = ('LEFT JOIN user_krb_principals'
-                 ' ON users.id = user_krb_principals.user_id',)
+        joins = ['LEFT JOIN user_krb_principals ON users.id = user_krb_principals.user_id']
         clauses = ['usertype = %(userType)i']
         if prefix:
             clauses.append("name ilike %(prefix)s || '%%'")
@@ -12853,8 +12884,8 @@ class RootExports(object):
         arches = koji.parse_arches(arches, strict=True)
         if get_host(hostname):
             raise koji.GenericError('host already exists: %s' % hostname)
-        q = """SELECT id FROM channels WHERE name = 'default'"""
-        default_channel = _singleValue(q)
+        query = QueryProcessor(tables=['channels'], columns=['id'], clauses=["name = 'default'"])
+        default_channel = query.singleValue(strict=True)
         # builder user can already exist, if host tried to log in before adding into db
         userinfo = {'name': hostname}
         if krb_principal:
@@ -12883,9 +12914,8 @@ class RootExports(object):
                                                 krb_principal=krb_principal)
         # host entry
         hostID = nextval('host_id_seq')
-        insert = "INSERT INTO host (id, user_id, name) VALUES (%(hostID)i, %(userID)i, " \
-                 "%(hostname)s)"
-        _dml(insert, dslice(locals(), ('hostID', 'userID', 'hostname')))
+        insert = InsertProcessor('host', data={'id': hostID, 'user_id': userID, 'name': hostname})
+        insert.execute()
 
         insert = InsertProcessor('host_config')
         insert.set(host_id=hostID, arches=arches)
@@ -13054,10 +13084,10 @@ class RootExports(object):
         - name
         - description
         """
-        query = """SELECT id, name, description FROM permissions
-        ORDER BY id"""
-
-        return _multiRow(query, {}, ['id', 'name', 'description'])
+        query = QueryProcessor(tables=['permissions'],
+                               columns=['id', 'name', 'description'],
+                               opts={'order': 'id'})
+        return query.execute()
 
     def getLoggedInUser(self):
         """Return information about the currently logged-in user.  Returns data
@@ -13091,14 +13121,15 @@ class RootExports(object):
         buildinfo = get_build(build, strict=True)
         userinfo = get_user(user, strict=True)
         userid = userinfo['id']
-        buildid = buildinfo['id']
         owner_id_old = buildinfo['owner_id']
         koji.plugin.run_callbacks('preBuildStateChange',
                                   attribute='owner_id', old=owner_id_old, new=userid,
                                   info=buildinfo)
-        q = """UPDATE build SET owner=%(userid)i WHERE id=%(buildid)i"""
-        _dml(q, locals())
-        buildinfo = get_build(build, strict=True)
+        update = UpdateProcessor('build',
+                                 clauses=['id=%(buildid)i'],
+                                 values={'buildid': buildinfo['id']},
+                                 data={'owner': userid})
+        update.execute()
         koji.plugin.run_callbacks('postBuildStateChange',
                                   attribute='owner_id', old=owner_id_old, new=userid,
                                   info=buildinfo)
@@ -13260,7 +13291,7 @@ class RootExports(object):
                                columns=('id', 'user_id', 'package_id', 'tag_id',
                                         'success_only', 'email'),
                                clauses=['id = %(id)i'],
-                               values=locals())
+                               values={'id': id})
         result = query.executeOne()
         if strict and not result:
             raise koji.GenericError("No notification with ID %i found" % id)
@@ -13282,7 +13313,7 @@ class RootExports(object):
         query = QueryProcessor(tables=['build_notifications_block'],
                                columns=('id', 'user_id', 'package_id', 'tag_id'),
                                clauses=['id = %(id)i'],
-                               values=locals())
+                               values={'id': id})
         result = query.executeOne()
         if strict and not result:
             raise koji.GenericError("No notification block with ID %i found" % id)
@@ -13661,7 +13692,6 @@ class BuildRoot(object):
         row = query.executeOne()
         if not row:
             raise koji.GenericError("Unable to get state for buildroot %s" % self.id)
-        lstate, retire_event = row
         if koji.BR_STATES[row['state']] == 'EXPIRED':
             # we will quietly ignore a request to expire an expired buildroot
             # otherwise this is an error
@@ -13698,7 +13728,7 @@ class BuildRoot(object):
                                joins=["rpminfo ON rpm_id = rpminfo.id",
                                       "external_repo ON external_repo_id = external_repo.id"],
                                clauses=["buildroot_listing.buildroot_id = %(brootid)i"],
-                               values=locals())
+                               values={'brootid': brootid})
         return query.execute()
 
     def _setList(self, rpmlist, update=False):
@@ -13747,9 +13777,6 @@ class BuildRoot(object):
 
     def getArchiveList(self, queryOpts=None):
         """Get the list of archives in the buildroot"""
-        tables = ('archiveinfo',)
-        joins = ('buildroot_archives ON archiveinfo.id = buildroot_archives.archive_id',)
-        clauses = ('buildroot_archives.buildroot_id = %(id)i',)
         fields = [('id', 'id'),
                   ('type_id', 'type_id'),
                   ('build_id', 'build_id'),
@@ -13761,8 +13788,10 @@ class BuildRoot(object):
                   ('project_dep', 'project_dep'),
                   ]
         columns, aliases = zip(*fields)
-        query = QueryProcessor(tables=tables, columns=columns,
-                               joins=joins, clauses=clauses,
+        query = QueryProcessor(tables=['archiveinfo'], columns=columns,
+                               joins=['buildroot_archives ON archiveinfo.id = '
+                                      'buildroot_archives.archive_id'],
+                               clauses=['buildroot_archives.buildroot_id = %(id)i'],
                                values=self.data,
                                opts=queryOpts)
         return query.execute()
@@ -13873,22 +13902,21 @@ class Host(object):
         The return value is [finished, unfinished] where each entry
         is a list of task ids."""
         # check to see if any of the tasks have finished
-        c = context.cnx.cursor()
-        q = """
-        SELECT id,state FROM task
-        WHERE parent=%(parent)s AND awaited = TRUE
-        FOR UPDATE"""
-        c.execute(q, locals())
+        query = QueryProcessor(tables=['task'], columns=['id', 'state'],
+                               clauses=['parent=%(parent)s', 'awaited IS TRUE'],
+                               values={'parent': parent},
+                               opts={'rowlock': True})
+        result = query.execute()
         canceled = koji.TASK_STATES['CANCELED']
         closed = koji.TASK_STATES['CLOSED']
         failed = koji.TASK_STATES['FAILED']
         finished = []
         unfinished = []
-        for id, state in c.fetchall():
-            if state in (canceled, closed, failed):
-                finished.append(id)
+        for r in result:
+            if r['state'] in (canceled, closed, failed):
+                finished.append(r['id'])
             else:
-                unfinished.append(id)
+                unfinished.append(r['id'])
         return finished, unfinished
 
     def taskWait(self, parent):
@@ -13898,9 +13926,9 @@ class Host(object):
         if finished:
             context.commit_pending = True
             for id in finished:
-                c = context.cnx.cursor()
-                q = """UPDATE task SET awaited='false' WHERE id=%(id)s"""
-                c.execute(q, locals())
+                update = UpdateProcessor('task', clauses=['id=%(id)s'],
+                                         values={'id': id}, data={'awaited': False})
+                update.execute()
         return [finished, unfinished]
 
     def taskWaitResults(self, parent, tasks, canfail=None):
@@ -13936,21 +13964,17 @@ class Host(object):
 
     def getHostTasks(self):
         """get status of open tasks assigned to host"""
-        c = context.cnx.cursor()
         host_id = self.id
         # query tasks
-        fields = ['id', 'waiting', 'weight']
         st_open = koji.TASK_STATES['OPEN']
-        q = """
-        SELECT %s FROM task
-        WHERE host_id = %%(host_id)s AND state = %%(st_open)s
-        """ % (",".join(fields))
-        c.execute(q, locals())
-        tasks = [dict(zip(fields, x)) for x in c.fetchall()]
+        query = QueryProcessor(tables=['task'], columns=['id', 'waiting', 'weight'],
+                               clauses=['host_id = %(host_id)s', 'state = %(st_open)s'],
+                               values={'host_id': host_id, 'st_open': st_open})
+        tasks = query.execute()
         for task in tasks:
             id = task['id']
             if task['waiting']:
-                finished, unfinished = self.taskWaitCheck(id)
+                finished, _ = self.taskWaitCheck(id)
                 if finished:
                     task['alert'] = True
         return tasks
@@ -13959,10 +13983,9 @@ class Host(object):
         host_data = get_host(self.id)
         task_load = float(task_load)
         if task_load != host_data['task_load'] or ready != host_data['ready']:
-            c = context.cnx.cursor()
-            id = self.id
-            q = "UPDATE host SET task_load=%(task_load)f,ready=%(ready)s WHERE id=%(id)i"
-            c.execute(q, locals())
+            update = UpdateProcessor('host', clauses=['id=%(id)i'], values={'id': self.id},
+                                     data={'task_load': task_load, 'ready': ready})
+            update.execute()
             context.commit_pending = True
 
     def getLoadData(self):
@@ -13983,39 +14006,37 @@ class Host(object):
 
     def getTask(self):
         """Open next available task and return it"""
-        c = context.cnx.cursor()
         id = self.id
         # get arch and channel info for host
-        q = """
-        SELECT arches FROM host_config WHERE host_id = %(id)s AND active IS TRUE
-        """
-        c.execute(q, locals())
-        arches = c.fetchone()[0].split()
-        q = """
-        SELECT channel_id FROM host_channels WHERE host_id = %(id)s AND active is TRUE
-        """
-        c.execute(q, locals())
-        channels = [x[0] for x in c.fetchall()]
+        values = {'id': id}
+        query = QueryProcessor(tables=['host_config'], columns=['arches'],
+                               clauses=['host_id = %(id)s', 'active IS TRUE'], values=values)
+        arches = query.singleValue().split()
+        query = QueryProcessor(tables=['host_channels'], columns=['channel_id'],
+                               clauses=['host_id = %(id)s', 'active IS TRUE'], values=values,
+                               opts={'asList': True})
+        channels = [x[0] for x in query.execute()]
 
         # query tasks
-        fields = ['id', 'state', 'method', 'request', 'channel_id', 'arch', 'parent']
-        st_free = koji.TASK_STATES['FREE']
-        st_assigned = koji.TASK_STATES['ASSIGNED']
-        q = """
-        SELECT %s FROM task
-        WHERE (state = %%(st_free)s)
-            OR (state = %%(st_assigned)s AND host_id = %%(id)s)
-        ORDER BY priority,create_time
-        """ % (",".join(fields))
-        c.execute(q, locals())
-        for data in c.fetchall():
-            data = dict(zip(fields, data))
+        query = QueryProcessor(tables=['task'],
+                               columns=['id', 'state', 'method', 'request',
+                                        'channel_id', 'arch', 'parent'],
+                               clauses=['(state = %(st_free)s) OR '
+                                        '(state = %(st_assigned)s AND host_id = %(id)s)'],
+                               values={
+                                   'st_free': koji.TASK_STATES['FREE'],
+                                   'st_assigned': koji.TASK_STATES['ASSIGNED'],
+                                   'id': id, },
+                               queryOpts={'order': 'priority,create_time'}
+                               )
+        for data in query.execute():
             # XXX - we should do some pruning here, but for now...
             # check arch
             if data['arch'] not in arches:
                 continue
             # NOTE: channels ignored for explicit assignments
-            if data['state'] != st_assigned and data['channel_id'] not in channels:
+            if data['state'] != koji.TASK_STATES['ASSIGNED'] and \
+                    data['channel_id'] not in channels:
                 continue
             task = Task(data['id'])
             ret = task.open(self.id)
@@ -14029,8 +14050,10 @@ class Host(object):
 
     def isEnabled(self):
         """Return whether this host is enabled or not."""
-        query = """SELECT enabled FROM host_config WHERE host_id = %(id)i AND active IS TRUE"""
-        return _singleValue(query, {'id': self.id}, strict=True)
+        query = QueryProcessor(tables=['host_config'], columns=['enabled'],
+                               clauses=['host_id = %(id)i', 'active IS TRUE'],
+                               values={'id': self.id})
+        return query.singleValue(strict=True)
 
 
 class HostExports(object):
@@ -14125,12 +14148,13 @@ class HostExports(object):
         opts['parent'] = parent
         if 'label' in opts:
             # first check for existing task with this parent/label
-            q = """SELECT id FROM task
-            WHERE parent=%(parent)s AND label=%(label)s"""
-            row = _fetchSingle(q, opts)
-            if row:
+            query = QueryProcessor(tables=['task'], columns=['id'],
+                                   clauses=['parent = %(parent)s', 'label = %(label)s'],
+                                   values=opts)
+            task_id = query.singleValue(strict=False)
+            if task_id:
                 # return task id
-                return row[0]
+                return task_id
         if 'kwargs' in opts:
             arglist = koji.encode_args(*arglist, **opts['kwargs'])
             del opts['kwargs']
@@ -14645,12 +14669,10 @@ class HostExports(object):
         koji.plugin.run_callbacks('preBuildStateChange',
                                   attribute='state', old=st_old, new=st_failed, info=buildinfo)
 
-        query = """SELECT state, completion_time
-        FROM build
-        WHERE id = %(build_id)i
-        FOR UPDATE"""
-        result = _singleRow(query, locals(), ('state', 'completion_time'))
-
+        query = QueryProcessor(tables=['build'], columns=['state', 'completion_time'],
+                               clauses=['id = %(build_id)i'], values={'build_id': build_id},
+                               opts={'rowlock': True})
+        result = query.executeOne()
         if result['state'] != koji.BUILD_STATES['BUILDING']:
             raise koji.GenericError('cannot update build %i, state: %s' %
                                     (build_id, koji.BUILD_STATES[result['state']]))
@@ -14658,11 +14680,11 @@ class HostExports(object):
             raise koji.GenericError('cannot update build %i, completed at %s' %
                                     (build_id, result['completion_time']))
 
-        update = """UPDATE build
-        SET state = %(st_failed)i,
-        completion_time = NOW()
-        WHERE id = %(build_id)i"""
-        _dml(update, locals())
+        update = UpdateProcessor('build', values={'build_id': build_id},
+                                 clauses=['id = %(build_id)i'],
+                                 data={'state': st_failed},
+                                 rawdata={'completion_time': 'NOW()'})
+        update.execute()
         buildinfo = get_build(build_id, strict=True)
         koji.plugin.run_callbacks('postBuildStateChange',
                                   attribute='state', old=st_old, new=st_failed, info=buildinfo)

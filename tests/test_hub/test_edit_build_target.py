@@ -5,14 +5,23 @@ import mock
 import koji
 import kojihub
 
+QP = kojihub.QueryProcessor
+
 
 class TestEditBuildTarget(unittest.TestCase):
+
+    def getQuery(self, *args, **kwargs):
+        query = QP(*args, **kwargs)
+        query.execute = mock.MagicMock()
+        query.executeOne = mock.MagicMock()
+        query.singleValue = self.query_singleValue
+        self.queries.append(query)
+        return query
 
     def setUp(self):
         self.lookup_build_target = mock.patch('kojihub.lookup_build_target').start()
         self.verify_name_internal = mock.patch('kojihub.verify_name_internal').start()
         self.get_tag = mock.patch('kojihub.get_tag').start()
-        self._singleValue = mock.patch('kojihub._singleValue').start()
         self.exports = kojihub.RootExports()
         self.target_name = 'build-target'
         self.name = 'build-target-rename'
@@ -23,6 +32,10 @@ class TestEditBuildTarget(unittest.TestCase):
         self.dest_tag_info = {'id': 112, 'name': self.dest_tag}
         self.session = kojihub.context.session = mock.MagicMock()
         self.session.assertPerm = mock.MagicMock()
+        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
+                                         side_effect=self.getQuery).start()
+        self.queries = []
+        self.query_singleValue = mock.MagicMock()
 
     def tearDown(self):
         mock.patch.stopall()
@@ -81,7 +94,7 @@ class TestEditBuildTarget(unittest.TestCase):
         self.verify_name_internal.return_value = None
         self.lookup_build_target.return_value = self.target_info
         self.get_tag.side_effect = [self.build_tag_info, self.dest_tag_info]
-        self._singleValue.return_value = 2
+        self.query_singleValue.return_value = 2
         with self.assertRaises(koji.GenericError) as cm:
             self.exports.editBuildTarget(self.target_name, self.name, self.build_tag,
                                          self.dest_tag)
@@ -91,4 +104,3 @@ class TestEditBuildTarget(unittest.TestCase):
         self.verify_name_internal.called_once_with(name=self.name)
         self.lookup_build_target.called_once_with(self.target_name)
         self.get_tag.has_calls([mock.call(self.build_tag), mock.call(self.dest_tag)])
-        self._singleValue.called_once_with(self.name)

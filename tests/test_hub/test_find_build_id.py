@@ -5,12 +5,24 @@ import mock
 import koji
 import kojihub
 
+QP = kojihub.QueryProcessor
+
 
 class TestFindBuildId(unittest.TestCase):
 
+    def getQuery(self, *args, **kwargs):
+        query = QP(*args, **kwargs)
+        query.execute = mock.MagicMock()
+        query.executeOne = mock.MagicMock()
+        query.singleValue = self.query_singleValue
+        self.queries.append(query)
+        return query
+
     def setUp(self):
-        self.context = mock.patch('kojihub.context').start()
-        self.cursor = mock.MagicMock()
+        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
+                                         side_effect=self.getQuery).start()
+        self.queries = []
+        self.query_singleValue = mock.MagicMock()
 
     def test_non_exist_build_dict(self):
         build = {
@@ -18,16 +30,13 @@ class TestFindBuildId(unittest.TestCase):
             'version': 'test_version',
             'release': 'test_release',
         }
-        self.cursor.fetchone.return_value = None
-        self.context.cnx.cursor.return_value = self.cursor
+        self.query_singleValue.return_value = None
         with self.assertRaises(koji.GenericError) as cm:
             kojihub.find_build_id(build, strict=True)
         self.assertEqual("No such build: %s" % build, str(cm.exception))
 
     def test_invalid_argument(self):
         build = ['test-build']
-        self.cursor.fetchone.return_value = None
-        self.context.cnx.cursor.return_value = self.cursor
         with self.assertRaises(koji.GenericError) as cm:
             kojihub.find_build_id(build)
         self.assertEqual("Invalid type for argument: %s" % type(build), str(cm.exception))
@@ -40,8 +49,6 @@ class TestFindBuildId(unittest.TestCase):
             'owner': 'test_owner',
             'extra': {'extra_key': 'extra_value'},
         }
-        self.cursor.fetchone.return_value = None
-        self.context.cnx.cursor.return_value = self.cursor
         with self.assertRaises(koji.GenericError) as cm:
             kojihub.find_build_id(build, strict=True)
         self.assertEqual("did not provide name, version, and release", str(cm.exception))
