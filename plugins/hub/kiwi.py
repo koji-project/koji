@@ -16,7 +16,8 @@ koji.tasks.LEGACY_SIGNATURES['createKiwiImage'] = [
 
 @export
 def kiwiBuild(target, arches, desc_url, desc_path, optional_arches=None, profile=None,
-              scratch=False, priority=None, make_prep=False, repos=None, release=None):
+              scratch=False, priority=None, make_prep=False, repos=None, release=None,
+              type=None):
     context.session.assertPerm('image')
     for i in [desc_url, desc_path, profile, release]:
         if i is not None:
@@ -42,14 +43,21 @@ def kiwiBuild(target, arches, desc_url, desc_path, optional_arches=None, profile
                     'only admins may create high-priority tasks')
         taskOpts['priority'] = koji.PRIO_DEFAULT + priority
 
-    opts = {
-        'optional_arches': optional_arches,
-        'profile': profile,
-        'scratch': bool(scratch),
-        'release': release,
-        'repos': repos or [],
-        'make_prep': bool(make_prep),
-    }
+    opts = {}
+    if scratch:
+        opts['scratch'] = True
+    if profile:
+        opts['profile'] = profile
+    if release:
+        opts['release'] = release
+    if optional_arches:
+        opts['optional_arches'] = optional_arches
+    if repos:
+        opts['repos'] = repos
+    if make_prep:
+        opts['make_prep'] = True
+    if type:
+        opts['type'] = type
     return kojihub.make_task('kiwiBuild',
                              [target, arches, desc_url, desc_path, opts],
                              **taskOpts)

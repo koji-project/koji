@@ -325,11 +325,11 @@ class KiwiCreateImageTask(BaseBuildTask):
                                'user_id': self.taskinfo['owner'],
                                'channel': self.session.getChannel(self.taskinfo['channel_id'],
                                                                   strict=True)['name'],
-                               'scratch': self.opts.get('scratch')
+                               'scratch': self.opts.get('scratch', False)
                            })
         logfile = os.path.join(self.workdir, 'checkout-%s.log' % arch)
         self.run_callbacks('preSCMCheckout', scminfo=scm.get_info(),
-                           build_tag=build_tag, scratch=self.opts.get('scratch'))
+                           build_tag=build_tag, scratch=self.opts.get('scratch', False))
         scmdir = broot.tmpdir()
         koji.ensuredir(scmdir)
         scmsrcdir = scm.checkout(scmdir, self.session,
@@ -337,7 +337,7 @@ class KiwiCreateImageTask(BaseBuildTask):
         self.run_callbacks("postSCMCheckout",
                            scminfo=scm.get_info(),
                            build_tag=build_tag,
-                           scratch=self.opts.get('scratch'),
+                           scratch=self.opts.get('scratch', False),
                            srcdir=scmsrcdir)
 
         # user repos
@@ -365,6 +365,8 @@ class KiwiCreateImageTask(BaseBuildTask):
         cmd = ['kiwi-ng']
         if self.opts.get('profile'):
             cmd.extend(['--profile', self.opts['profile']])
+        if self.opts.get('type'):
+            cmd.extend(['--type', self.opts['type']])
         target_dir = '/builddir/result/image'
         cmd.extend([
             '--kiwi-file', os.path.basename(desc),  # global option for image/system commands
