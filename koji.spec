@@ -83,7 +83,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.30.1
+Version: 1.31.0
 Release: %{release}%{?dist}
 License: LGPL-2.1-only and GPL-2.0-or-later
 # the included arch lib from yum's rpmUtils is GPLv2+
@@ -649,6 +649,54 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Mon Nov  7 2022  Tomas Kopecek <tkopecek at redhat.com> - 1.31.0-1
+- PR#3407: build policy
+- PR#3417: save source for wrapperRPM
+- PR#3426: header-based sessions
+- PR#3446: Add active sessions web page
+- PR#3453: Index for rpm search
+- PR#3455: www: more generic taskinfo parameter handling
+- PR#3474: Move database classes and functions from kojihub.py to koji/db.py
+- PR#3476: Remove login shell from kojibuilder user
+- PR#3481: Fix URLs to pull requests
+- PR#3488: CLI download-task more specific info for not CLOSED tasks.
+- PR#3489: Rewrite DB query to Procesors
+- PR#3490: Emphasize non-working image XML
+- PR#3503: kojivmd: import xmlrpc.server
+- PR#3504: kojivmd: narrow error handling for missing VMs
+- PR#3505: kojivmd: pass "-F qcow2" to qemu-img create
+- PR#3506: doc: explain waitrepo tasks in vm channel
+- PR#3507: kojivmd: cleanup VMs with UNDEFINE_NVRAM
+- PR#3509: Enable fetching any ref from git repo
+- PR#3513: Return data when query execute asList with transform
+- PR#3516: Add number and size for download-build
+- PR#3521: spec: change license identifiers
+- PR#3528: Increase CLI unit tests
+- PR#3531: Error on list-tagged --sigs --paths without mount
+- PR#3533: CLI list-hosts fix when list of channels is empty
+- PR#3535: CLI edit-channel set default value for None and error msg to stderr.
+- PR#3538: vm: handle waitrepo tasks in kojivmd
+- PR#3540: kojid: use session correctly
+- PR#3541: kojid: fix restartHosts on py 3.5+
+- PR#3542: cli: fix nvr sorting in list-builds
+- PR#3544: doc: use bullets for winbuild "buildrequires" syntax
+- PR#3546: Increase list-tag-inheritance unit tests
+- PR#3548: Increase unit tests
+- PR#3550: Allow buildTagID and destTagID as string and dict in getBuildTargets
+- PR#3552: Add regex --filter and --skip option for download-task
+- PR#3555: fix include path
+- PR#3557: Log when session ID, session key and hostip is not related
+- PR#3558: kiwi: propagate --type option
+- PR#3560: Rename global session in kojid
+- PR#3563: Rewrite Query DB to Processors in auth.py
+- PR#3565: kojira: fix docs
+- PR#3566: Fix koji-sweep-db
+- PR#3569: Add absolute to clean sessions in koji-sweep-db
+- PR#3573: koji-gc: fix check for type cc_addr, bcc_addr
+- PR#3576: kojivmd: improve topurl example and error handling
+- PR#3585: kiwi: Make /dev mounting by magic
+- PR#3592: Use inspect.getfullargspec instead of getargspec on hub and web
+
 * Mon Oct  3 2022  Tomas Kopecek <tkopecek at redhat.com> - 1.30.1-1
 - PR#3464: cli: allow redirects for file size checking
 - PR#3469: Fix dist-repo repo.json url
