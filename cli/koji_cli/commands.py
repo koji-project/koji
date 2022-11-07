@@ -2713,21 +2713,34 @@ def anon_handle_list_tagged(goptions, session, args):
     if not taginfo:
         parser.error("No such tag: %s" % tag)
 
+    if options.sigs and options.paths:
+        packages_dir = os.path.join(koji.BASEDIR, 'packages')
+        if not os.path.exists(packages_dir):
+            error("'list-tagged --sigs --paths' requires accessible %s" % packages_dir)
+
     if options.rpms:
         rpms, builds = session.listTaggedRPMS(tag, **opts)
         data = rpms
         if options.paths:
-            build_idx = dict([(b['id'], b) for b in builds])
+            build_idx = {}
+            for build in builds:
+                build_idx[build['id']] = build
+                builddir = pathinfo.build(build)
+                if os.path.isdir(builddir):
+                    build['_dir'] = builddir
+                else:
+                    warn('Build directory not found: %s' % builddir)
             for rinfo in data:
                 build = build_idx[rinfo['build_id']]
-                builddir = pathinfo.build(build)
-                if options.sigs:
-                    sigkey = rinfo['sigkey']
-                    signedpath = os.path.join(builddir, pathinfo.signed(rinfo, sigkey))
-                    if os.path.exists(signedpath):
-                        rinfo['path'] = signedpath
-                else:
-                    rinfo['path'] = os.path.join(builddir, pathinfo.rpm(rinfo))
+                builddir = build.get('_dir')
+                if builddir:
+                    if options.sigs:
+                        sigkey = rinfo['sigkey']
+                        signedpath = os.path.join(builddir, pathinfo.signed(rinfo, sigkey))
+                        if os.path.exists(signedpath):
+                            rinfo['path'] = signedpath
+                    else:
+                        rinfo['path'] = os.path.join(builddir, pathinfo.rpm(rinfo))
             fmt = "%(path)s"
             data = [x for x in data if 'path' in x]
         else:
