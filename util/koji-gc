@@ -437,12 +437,12 @@ Build: %%(name)s-%%(version)s-%%(release)s
     msg['To'] = "%s@%s" % (owner_name, options.email_domain)  # XXX!
     emails = [msg['To']]
     if options.cc_addr:
-        if not isinstance(options.cc_addr, str):
+        if not isinstance(options.cc_addr, list):
             raise koji.ParameterError('Invalid type of cc_addr: %s' % type(options.cc_addr))
         msg['Cc'] = ','.join(options.cc_addr)
         emails += options.cc_addr
     if options.bcc_addr:
-        if not isinstance(options.bcc_addr, str):
+        if not isinstance(options.bcc_addr, list):
             raise koji.ParameterError('Invalid type of bcc_addr: %s' % type(options.bcc_addr))
         emails += options.bcc_addr
     msg['X-Koji-Builder'] = owner_name
