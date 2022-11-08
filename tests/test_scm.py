@@ -466,10 +466,13 @@ class TestSCMCheckouts(unittest.TestCase):
         cmd = ['git', 'clone', '-n', 'git://nocommon/koji.git', self.tempdir + '/koji']
         call1 = mock.call(self.session, cmd[0], cmd, self.logfile, self.uploadpath,
                           cwd=self.tempdir, logerror=1, append=False, env=None)
-        cmd = ['git', 'reset', '--hard', 'asdasd']
+        cmd = ['git', 'fetch', 'origin', 'asdasd:KOJI_FETCH_HEAD']
         call2 = mock.call(self.session, cmd[0], cmd, self.logfile, self.uploadpath,
                           cwd=self.tempdir + '/koji', logerror=1, append=True, env=None)
-        self.log_output.assert_has_calls([call1, call2])
+        cmd = ['git', 'reset', '--hard', 'KOJI_FETCH_HEAD']
+        call3 = mock.call(self.session, cmd[0], cmd, self.logfile, self.uploadpath,
+                          cwd=self.tempdir + '/koji', logerror=1, append=True, env=None)
+        self.log_output.assert_has_calls([call1, call2, call3])
 
     def test_checkout_gitssh_nocommon(self):
 
@@ -484,10 +487,13 @@ class TestSCMCheckouts(unittest.TestCase):
         cmd = ['git', 'clone', '-n', 'git+ssh://user@nocommon/koji.git', self.tempdir + '/koji']
         call1 = mock.call(self.session, cmd[0], cmd, self.logfile, self.uploadpath,
                           cwd=self.tempdir, logerror=1, append=False, env=None)
-        cmd = ['git', 'reset', '--hard', 'asdasd']
+        cmd = ['git', 'fetch', 'origin', 'asdasd:KOJI_FETCH_HEAD']
         call2 = mock.call(self.session, cmd[0], cmd, self.logfile, self.uploadpath,
                           cwd=self.tempdir + '/koji', logerror=1, append=True, env=None)
-        self.log_output.assert_has_calls([call1, call2])
+        cmd = ['git', 'reset', '--hard', 'KOJI_FETCH_HEAD']
+        call3 = mock.call(self.session, cmd[0], cmd, self.logfile, self.uploadpath,
+                          cwd=self.tempdir + '/koji', logerror=1, append=True, env=None)
+        self.log_output.assert_has_calls([call1, call2, call3])
 
     def test_checkout_git_common(self):
 
@@ -502,13 +508,16 @@ class TestSCMCheckouts(unittest.TestCase):
         cmd = ['git', 'clone', '-n', 'git://default/koji.git', self.tempdir + '/koji']
         call1 = mock.call(self.session, cmd[0], cmd, self.logfile, self.uploadpath,
                           cwd=self.tempdir, logerror=1, append=False, env=None)
-        cmd = ['git', 'reset', '--hard', 'asdasd']
+        cmd = ['git', 'fetch', 'origin', 'asdasd:KOJI_FETCH_HEAD']
         call2 = mock.call(self.session, cmd[0], cmd, self.logfile, self.uploadpath,
                           cwd=self.tempdir + '/koji', logerror=1, append=True, env=None)
-        cmd = ['git', 'clone', 'git://default/common.git', 'common']
+        cmd = ['git', 'reset', '--hard', 'KOJI_FETCH_HEAD']
         call3 = mock.call(self.session, cmd[0], cmd, self.logfile, self.uploadpath,
+                          cwd=self.tempdir + '/koji', logerror=1, append=True, env=None)
+        cmd = ['git', 'clone', 'git://default/common.git', 'common']
+        call4 = mock.call(self.session, cmd[0], cmd, self.logfile, self.uploadpath,
                           cwd=self.tempdir, logerror=1, append=True, env=None)
-        self.log_output.assert_has_calls([call1, call2, call3])
+        self.log_output.assert_has_calls([call1, call2, call3, call4])
 
     def test_checkout_error_in_command(self):
 
