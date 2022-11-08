@@ -715,6 +715,7 @@ class VMExecTask(BaseTaskHandler):
             koji.ensuredir(os.path.dirname(localpath))
             # closing needs to be used for requests < 2.18.0
             with closing(requests.get(remote_url, stream=True)) as response:
+                response.raise_for_status()
                 with open(localpath, 'wb') as f:
                     for chunk in response.iter_content(chunk_size=65536):
                         f.write(chunk)
