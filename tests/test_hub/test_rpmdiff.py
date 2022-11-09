@@ -81,6 +81,21 @@ class TestRPMDiff(unittest.TestCase):
             d = koji.rpmdiff.Rpmdiff(rpm1, rpm2, ignore='S5TN')
             self.assertEqual(d.textdiff(), '')
 
+    def test_rpmdiff_kojihash(self):
+        data_path = os.path.abspath("tests/test_hub/data/rpms")
+
+        # the only differences between rpm1 and rpm2 are 1) create time 2) file name
+        rpm1 = os.path.join(data_path, 'different_size_a.noarch.rpm')
+        rpm2 = os.path.join(data_path, 'different_size_b.noarch.rpm')
+
+        hash1 = 'ed0bae957653692a7d2ff9d90dbc3eaf08486994af315e11a9e80929092f6d0e'
+        hash2 = '8cdd40b738ac156af09f31445831f324cedacd028bf1dc3e12cc48b2137ed190'
+        for _ in range(2):
+            # double check that kojihash is deterministic
+            d = koji.rpmdiff.Rpmdiff(rpm1, rpm2)
+            self.assertEqual(d.kojihash(), hash1)
+            self.assertEqual(d.kojihash(new=True), hash2)
+
     def test_rpmdiff_ignore_test(self):
         data_path = os.path.abspath("tests/test_hub/data/rpms")
 
@@ -101,8 +116,8 @@ class TestRPMDiff(unittest.TestCase):
                 attr[idx] = value
                 rpm_dict_new = {'a_file': attr}
 
-                args[0]._Rpmdiff__fileIteratorToDict = mock.MagicMock()
-                args[0]._Rpmdiff__fileIteratorToDict.side_effect = [rpm_dict_old, rpm_dict_new]
+                args[0]._Rpmdiff__getFilesDict = mock.MagicMock()
+                args[0]._Rpmdiff__getFilesDict.side_effect = [rpm_dict_old, rpm_dict_new]
                 orig_init(*args, **kwargs)
 
             # compare with every option
