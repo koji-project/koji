@@ -335,7 +335,7 @@ class WindowsBuild(object):
                 raise BuildError('Unknown checksum type %s for %s' % (  # noqa: F821
                                  checksum_type,
                                  os.path.basename(fileinfo['localpath'])))
-        with koji._open_text_file(destpath, 'wt') as destfile:
+        with open(destpath, 'wb') as destfile:
             offset = 0
             while True:
                 encoded = self.server.getFile(buildinfo, fileinfo, encode_int(offset), 1048576,
