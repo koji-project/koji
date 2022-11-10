@@ -320,7 +320,22 @@ class WindowsBuild(object):
         self.server.expireBuildroot(self.buildroot_id)
 
     def fetchFile(self, basedir, buildinfo, fileinfo, brtype):
-        """Download the file from buildreq, at filepath, into the basedir"""
+        """Download a buildrequires file into the basedir.
+
+        Example:
+          /tmp/build/buildreqs/wnbd/win/vstudio/x64/Release/libwnbd.dll
+            "/tmp/build/buildreqs/wnbd/win" is basedir...
+              ("wnbd" is the package name, "win" is the brtype.)
+            "vstudio/x64/Release/libwnbd.dll" is the fileinfo['localpath'].
+
+        :param str basedir: absolute path directory for this package's files.
+                            Example: "/tmp/build/buildreqs/wnbd/win"
+        :param dict buildinfo: dict from getLatestBuild RPC.
+        :param dict fileinfo: Comes from getFileList() RPC's list elements.
+                              Dict should have "localpath" (str) and
+                              "checksum_type" (int) items.
+        :param str brtype: The type of a buildrequires. For example: "win".
+        """
         destpath = os.path.join(basedir, fileinfo['localpath'])
         ensuredir(os.path.dirname(destpath))  # noqa: F821
         if 'checksum_type' in fileinfo:
