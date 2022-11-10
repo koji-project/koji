@@ -2408,9 +2408,6 @@ def grab_session_options(options):
         'upload_blocksize',
         'no_ssl_verify',
         'serverca',
-        'keytab',
-        'principal',
-        'ccache',
     )
     # cert is omitted for now
     if isinstance(options, dict):
@@ -2427,7 +2424,13 @@ def grab_session_options(options):
 
 class ClientSession(object):
 
-    def __init__(self, baseurl, opts=None, sinfo=None):
+    def __init__(self, baseurl, opts=None, sinfo=None, auth_method=None):
+        """
+        :param baseurl str: hub url
+        :param dict opts: dictionary with content varying according to authentication method
+        :param dict sinfo: session info returned by login method
+        :param dict auth_method: method for reauthentication, shouldn't be ever set manually
+        """
         assert baseurl, "baseurl argument must not be empty"
         if opts is None:
             opts = {}
@@ -2448,7 +2451,7 @@ class ClientSession(object):
         self.new_session()
         self.opts.setdefault('timeout', DEFAULT_REQUEST_TIMEOUT)
         self.exclusive = False
-        self.hostip = None
+        self.auth_method = auth_method
 
     @property
     def multicall(self):
@@ -2487,9 +2490,18 @@ class ClientSession(object):
             self.session_key = sinfo['session-key']
         self.sinfo = sinfo
 
-    def login(self, opts=None):
+    def login(self, opts=None, session_key=None):
+        """
+        Username/password based login method
+
+        :param dict opts: dict used by hub "login" call, currently can
+                          contain only "host_ip" key.
+        :returns bool True: success or raises exception
+        """
+        # store calling parameters
+        self.auth_method = {'method': 'login', 'kwargs': {'opts': opts}}
         sinfo = self.callMethod('login', self.opts['user'], self.opts['password'],
-                                self.opts['session_key'], opts)
+                                opts=opts, session_key=session_key)
         if not sinfo:
             return False
         self.setSession(sinfo)
@@ -2499,14 +2511,33 @@ class ClientSession(object):
     def subsession(self):
         "Create a subsession"
         sinfo = self.callMethod('subsession')
-        return type(self)(self.baseurl, self.opts, sinfo)
+        return type(self)(self.baseurl, opts=self.opts, sinfo=sinfo, auth_method=self.auth_method)
 
     def gssapi_login(self, principal=None, keytab=None, ccache=None,
                      proxyuser=None, proxyauthtype=None, session_key=None):
+        """
+        GSSAPI/Kerberos login method
+
+        :param str principal: Kerberos principal
+        :param str keytab: path to keytab file
+        :param str ccache: path to ccache file/dir
+        :param str proxyuser: name of proxied user (e.g. forwarding by web ui)
+        :param int proxyauthtype: AUTHTYPE used by proxied user (can be different from ours)
+        :param str session_key: used for session renewal
+        :returns bool True: success or raises exception
+        """
         if not reqgssapi:
             raise PythonImportError(
                 "Please install python-requests-gssapi to use GSSAPI."
             )
+        # store calling parameters
+        self.auth_method = {
+            'method': 'gssapi_login',
+            'kwargs': {
+                'principal': principal, 'keytab': keytab, 'ccache': ccache, 'proxyuser': proxyuser,
+                'proxyauthtype': proxyauthtype, 'session_key': session_key
+            }
+        }
         # force https
         old_baseurl = self.baseurl
         uri = six.moves.urllib.parse.urlsplit(self.baseurl)
@@ -2597,6 +2628,26 @@ class ClientSession(object):
 
     def ssl_login(self, cert=None, ca=None, serverca=None, proxyuser=None, proxyauthtype=None,
                   session_key=None):
+        """
+        SSL cert based login
+
+        :param str cert: path to SSL certificate
+        :param str ca: deprecated, not used anymore
+        :param str serverca: path for CA public cert, otherwise system-wide CAs are used
+        :param str proxyuser: name of proxied user (e.g. forwarding by web ui)
+        :param int proxyauthtype: AUTHTYPE used by proxied user (can be different from ours)
+        :param str session_key: used for session renewal
+        :returns bool: success
+        """
+        # store calling parameters
+        self.logger.error("ssl_login---------------")
+        self.auth_method = {
+            'method': 'ssl_login',
+            'kwargs': {
+                'cert': cert, 'ca': ca, 'serverca': serverca, 'proxyuser': proxyuser,
+                'proxyauthtype': proxyauthtype, 'session_key': session_key,
+            }
+        }
         cert = cert or self.opts.get('cert')
         serverca = serverca or self.opts.get('serverca')
         if cert is None:
@@ -2843,28 +2894,15 @@ class ClientSession(object):
         return result
 
     def _renew_session(self):
-        session_key = self.session_key
+        if not hasattr(self, 'auth_method'):
+            raise GenericError("Missing info for reauthentication")
+        # will be deleted by setSession
+        auth_method = self.auth_method['method']
+        args = self.auth_method.get('args', [])
+        kwargs = self.auth_method.get('kwargs', {})
+        kwargs['session_key'] = self.session_key
         self.setSession(None)
-        if self.authtype == 'SSL' or \
-                (self.opts.get('cert') and os.path.isfile(self.opts['cert'])):
-            self.ssl_login(cert=self.opts['cert'],
-                           serverca=self.opts['serverca'],
-                           session_key=session_key)
-        elif self.authtype == 'NORMAL' or self.opts.get('user'):
-            self.login(user=self.opts['user'], password=self.opts['password'],
-                       session_key=session_key)
-        elif self.authtype in ['KERBEROS', 'GSSAPI'] or \
-                self.opts.get('krb_principal'):
-            authtype = self.authtype or AUTHTYPES['GSSAPI']
-            principal = self.opts.get('principal')
-            keytab = self.opts.get('keytab')
-            ccache = self.opts.get('ccache')
-            if authtype == 'KERBEROS':
-                self.krb_login(principal=principal, keytab=keytab,
-                               ccache=ccache, session_key=session_key)
-            elif authtype == 'GSSAPI':
-                self.gssapi_login(self, principal=principal, keytab=keytab,
-                                  ccache=ccache, session_key=session_key)
+        auth_method(*args, **kwargs)
         if self.exclusive:
             self.exclusiveSession()
 

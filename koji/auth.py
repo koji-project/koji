@@ -280,7 +280,7 @@ class Session(object):
         if result['status'] != koji.USER_STATUS['NORMAL']:
             raise koji.AuthError('logins by %s are not allowed' % result['name'])
 
-    def login(self, user, password, session_key=None, opts=None):
+    def login(self, user, password, opts=None, session_key=None):
         """create a login session"""
         if opts is None:
             opts = {}
@@ -491,14 +491,14 @@ class Session(object):
         If master is specified, create a subsession
         """
         if session_key:
+            if master:
+                raise koji.GenericError("Can't call createSession with both master + session_key.")
             query = QueryProcessor(tables=['sessions'], columns=['master'],
                                    clauses=['key=%(session_key)d'],
                                    values={'session_key': session_key})
-            row = query.executeOne(strict=False)
-            if not row:
-                raise koji.GenericError("Don't allow to renew subsession, "
-                                        "subsession doesn't exist.")
-            master = row['master']
+            master = query.singleValue(strict=False)
+            if not master:
+                raise koji.GenericError("Don't allow to renew non-existent subsession")
 
         # generate a random key
         alnum = string.ascii_letters + string.digits
