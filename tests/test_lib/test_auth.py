@@ -43,16 +43,27 @@ class TestAuthSession(unittest.TestCase):
         # start with "assert"
         self.context.session.assertLogin = mock.MagicMock()
 
-    def test_instance(self):
+    @mock.patch('koji.auth.context')
+    def test_instance(self, context):
         """Simple auth.Session instance"""
-        s = koji.auth.Session()
+        context.opts = {
+            'CheckClientIP': True,
+            'DisableURLSessions': False,
+        }
+        with self.assertRaises(koji.GenericError) as cm:
+            koji.auth.Session()
         # no args in request/environment
-        self.assertEqual(s.message, 'no session args')
+        self.assertEqual(cm.exception.args[0], "'session-id' not specified in session args")
 
     @mock.patch('koji.auth.context')
-    def get_session(self, context):
+    def get_session_old(self, context):
         """auth.Session instance"""
         # base session from test_basic_instance
+        # url-based auth - will be dropped in 1.34
+        context.opts = {
+            'CheckClientIP': True,
+            'DisableURLSessions': False,
+        }
         context.environ = {
             'QUERY_STRING': 'session-id=123&session-key=xyz&callnum=345',
             'REMOTE_ADDR': 'remote-addr',
@@ -71,6 +82,38 @@ class TestAuthSession(unittest.TestCase):
         self.query_singleValue.return_value = 123
         s = koji.auth.Session()
         return s, context
+
+    @mock.patch('koji.auth.context')
+    def get_session(self, context):
+        # base session from test_basic_instance
+        # header-based auth
+        context.opts = {
+            'CheckClientIP': True,
+            'DisableURLSessions': True,
+        }
+        context.environ = {
+            'HTTP_KOJI_SESSION_ID': '123',
+            'HTTP_KOJI_SESSION_KEY': 'xyz',
+            'HTTP_KOJI_CALLNUM': '345',
+            'REMOTE_ADDR': 'remote-addr',
+        }
+
+        self.query_executeOne.side_effect = [
+            {'authtype': 2, 'callnum': 1, "date_part('epoch', start_time)": 1666599426.227002,
+             "date_part('epoch', update_time)": 1666599426.254308, 'exclusive': None,
+             'expired': False, 'master': None,
+             'start_time': datetime.datetime(2022, 10, 24, 8, 17, 6, 227002,
+                                             tzinfo=datetime.timezone.utc),
+             'update_time': datetime.datetime(2022, 10, 24, 8, 17, 6, 254308,
+                                              tzinfo=datetime.timezone.utc),
+             'user_id': 1},
+            {'name': 'kojiadmin', 'status': 0, 'usertype': 0}]
+        self.query_singleValue.return_value = 123
+        s = koji.auth.Session()
+        return s, context
+
+    def test_session_old(self):
+        self.get_session_old()
 
     def test_basic_instance(self):
         """auth.Session instance"""
