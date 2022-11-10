@@ -29,7 +29,6 @@ import string
 
 import six
 from six.moves import range, urllib
-
 import koji
 from .context import context
 from .util import to_list
@@ -79,24 +78,36 @@ class Session(object):
         self._perms = None
         self._groups = None
         self._host_id = ''
-        # get session data from request
-        if args is None:
-            environ = getattr(context, 'environ', {})
-            args = environ.get('QUERY_STRING', '')
+        environ = getattr(context, 'environ', {})
+        args = environ.get('QUERY_STRING', '')
+        # prefer new header-based sessions
+        if 'HTTP_KOJI_SESSION_ID' in environ:
+            id = int(environ['HTTP_KOJI_SESSION_ID'])
+            key = environ['HTTP_KOJI_SESSION_KEY']
+            try:
+                callnum = int(environ['HTTP_KOJI_CALLNUM'])
+            except KeyError:
+                callnum = None
+        elif not context.opts['DisableURLSessions'] and args is not None:
+            # old deprecated method with session values in query string
+            # Option will be turned off by default in future release and removed later
             if not args:
-                self.message = 'no session args'
+                self.message = 'no session header or session args'
                 return
             args = urllib.parse.parse_qs(args, strict_parsing=True)
+            try:
+                id = int(args['session-id'][0])
+                key = args['session-key'][0]
+            except KeyError as field:
+                raise koji.AuthError('%s not specified in session args' % field)
+            try:
+                callnum = args['callnum'][0]
+            except Exception:
+                callnum = None
+        else:
+            self.message = 'no Koji-Session-* headers'
+            return
         hostip = self.get_remote_ip(override=hostip)
-        try:
-            id = int(args['session-id'][0])
-            key = args['session-key'][0]
-        except KeyError as field:
-            raise koji.AuthError('%s not specified in session args' % field)
-        try:
-            callnum = args['callnum'][0]
-        except Exception:
-            callnum = None
         # lookup the session
         # sort for stability (unittests)
 
@@ -501,7 +512,11 @@ class Session(object):
         context.cnx.commit()
 
         # return session info
-        return {'session-id': session_id, 'session-key': key}
+        return {
+            'session-id': session_id,
+            'session-key': key,
+            'header-auth': True,  # signalize to client to use new session handling in 1.30
+        }
 
     def subsession(self):
         "Create a subsession"

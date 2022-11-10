@@ -448,6 +448,8 @@ def load_config(environ):
         ['AllowedKrbRealms', 'string', '*'],
         # TODO: this option should be removed in future release
         ['DisableGSSAPIProxyDNFallback', 'boolean', False],
+        # TODO:  this option should be turned True in 1.34
+        ['DisableURLSessions', 'boolean', False],
 
         ['DNUsernameComponent', 'string', 'CN'],
         ['ProxyDNs', 'string', ''],

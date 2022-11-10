@@ -2700,11 +2700,21 @@ class ClientSession(object):
         if name == 'rawUpload':
             return self._prepUpload(*args, **kwargs)
         args = encode_args(*args, **kwargs)
+        headers = []
         if self.logged_in:
             sinfo = self.sinfo.copy()
             sinfo['callnum'] = self.callnum
             self.callnum += 1
-            handler = "%s?%s" % (self.baseurl, six.moves.urllib.parse.urlencode(sinfo))
+            if sinfo.get('header-auth'):
+                handler = self.baseurl
+                headers += [
+                    ('Koji-Session-Id', str(self.sinfo['session-id'])),
+                    ('Koji-Session-Key', str(self.sinfo['session-key'])),
+                    ('Koji-Session-Callnum', str(sinfo['callnum'])),
+                ]
+            else:
+                # old server
+                handler = "%s?%s" % (self.baseurl, six.moves.urllib.parse.urlencode(sinfo))
         elif name == 'sslLogin':
             handler = self.baseurl + '/ssllogin'
         else:
@@ -2715,7 +2725,7 @@ class ClientSession(object):
             # encoded as UTF-8. For python3 it means "return a str with an appropriate
             # xml declaration for encoding as UTF-8".
             request = request.encode('utf-8')
-        headers = [
+        headers += [
             # connection class handles Host
             ('User-Agent', 'koji/1'),
             ('Content-Type', 'text/xml'),
@@ -3030,20 +3040,31 @@ class ClientSession(object):
         """prep a rawUpload call"""
         if not self.logged_in:
             raise ActionNotAllowed("you must be logged in to upload")
-        args = self.sinfo.copy()
-        args['callnum'] = self.callnum
-        args['filename'] = name
-        args['filepath'] = path
-        args['fileverify'] = verify
-        args['offset'] = str(offset)
+        sinfo = self.sinfo.copy()
+        sinfo['callnum'] = self.callnum
+        args = {
+            'filename': name,
+            'filepath': path,
+            'fileverify': verify,
+            'offset': str(offset),
+        }
         if overwrite:
             args['overwrite'] = "1"
         if volume is not None:
             args['volume'] = volume
         size = len(chunk)
         self.callnum += 1
+        headers = []
+        if sinfo.get('header-auth'):
+            headers += [
+                ('Koji-Session-Id', str(self.sinfo['session-id'])),
+                ('Koji-Session-Key', str(self.sinfo['session-key'])),
+                ('Koji-Session-Callnum', str(sinfo['callnum'])),
+            ]
+        else:
+            args.update(sinfo)
         handler = "%s?%s" % (self.baseurl, six.moves.urllib.parse.urlencode(args))
-        headers = [
+        headers += [
             ('User-Agent', 'koji/1'),
             ("Content-Type", "application/octet-stream"),
             ("Content-length", str(size)),
