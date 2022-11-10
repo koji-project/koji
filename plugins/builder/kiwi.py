@@ -204,9 +204,12 @@ class KiwiCreateImageTask(BaseBuildTask):
                 raise koji.GenericError(f"Unhandled include protocol in include path: {path}.")
             inc = xml.dom.minidom.parse(path)  # nosec
             # every included xml has image root element again
-            for node in list(inc.getElementsByTagName('image')[0].childNodes):
-                if node.nodeName != 'repository':
-                    image.appendChild(node)
+            try:
+                for node in list(inc.getElementsByTagName('image')[0].childNodes):
+                    if node.nodeName != 'repository':
+                        image.appendChild(node)
+            except IndexError:
+                raise koji.GenericError("Included file needs to contain <image> tag.")
             image.removeChild(inc_node)
 
         # remove remaining old repos
