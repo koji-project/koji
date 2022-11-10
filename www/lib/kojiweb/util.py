@@ -469,13 +469,15 @@ formatTimeRSS = koji.formatTimeLong
 formatTimeLong = koji.formatTimeLong
 
 
-def formatTimestampDifference(start_ts, end_ts):
+def formatTimestampDifference(start_ts, end_ts, in_days=False):
     diff = end_ts - start_ts
     seconds = diff % 60
     diff = diff // 60
     minutes = diff % 60
     diff = diff // 60
     hours = diff
+    if in_days:
+        return round(hours / 24, 1)
     return "%d:%02d:%02d" % (hours, minutes, seconds)
 
 

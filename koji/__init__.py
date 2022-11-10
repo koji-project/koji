@@ -2644,13 +2644,13 @@ class ClientSession(object):
         self.authtype = AUTHTYPES['SSL']
         return True
 
-    def logout(self):
+    def logout(self, session_id=None):
         if not self.logged_in:
             return
         try:
             # bypass _callMethod (no retries)
             # XXX - is that really what we want?
-            handler, headers, request = self._prepCall('logout', ())
+            handler, headers, request = self._prepCall('logout', (), {"session_id": session_id})
             self._sendCall(handler, headers, request)
         except AuthExpired:
             # this can happen when an exclusive session is forced

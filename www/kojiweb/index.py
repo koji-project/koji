@@ -2135,7 +2135,11 @@ def buildtargetdelete(environ, targetID):
 
 def reports(environ):
     _getServer(environ)
-    _initValues(environ, 'Reports', 'reports')
+    values = _initValues(environ, 'Reports', 'reports')
+    if environ['koji.currentUser']:
+        values['loggedInUser'] = True
+    else:
+        values['loggedInUser'] = False
     return _genHTML(environ, 'reports.chtml')
 
 
@@ -2656,3 +2660,35 @@ def repoinfo(environ, repoID):
             values['repo_json'] = os.path.join(
                 pathinfo.repo(repo_info['id'], repo_info['tag_name']), 'repo.json')
     return _genHTML(environ, 'repoinfo.chtml')
+
+
+def activesession(environ, start=None, order=None):
+    values = _initValues(environ, 'Active sessions', 'activesession')
+    server = _getServer(environ)
+
+    values['loggedInUser'] = environ['koji.currentUser']
+
+    values['order'] = order
+    activesess = server.getSessionInfo(details=True, user_id=values['loggedInUser']['id'])
+    if not activesess:
+        activesess = []
+    else:
+        current_timestamp = datetime.datetime.utcnow().timestamp()
+        for a in activesess:
+            a['lengthSession'] = kojiweb.util.formatTimestampDifference(
+                a['start_time'], current_timestamp, in_days=True)
+
+    kojiweb.util.paginateList(values, activesess, start, 'activesess', order=order)
+
+    return _genHTML(environ, 'activesession.chtml')
+
+
+def activesessiondelete(environ, sessionID):
+    server = _getServer(environ)
+    _assertLogin(environ)
+
+    sessionID = int(sessionID)
+
+    server.logout(session_id=sessionID)
+
+    _redirect(environ, 'activesession')
