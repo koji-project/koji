@@ -232,22 +232,23 @@ class Rpmdiff:
         result = {}
         for file in rpm.files(hdr):
             # mimic old fi order because comparison and kojihash relies on it
-            # (FN, FSize, FMode, FMtime, FFlags, FRdev, FInode, FNlink, FState, VFlags, FUser, FGroup, Digest)
+            # (FN, FSize, FMode, FMtime, FFlags, FRdev, FInode, FNlink, FState, VFlags, FUser,
+            # FGroup, Digest)
             filedata = [
-                    # name omitted
-                    file.size,
-                    file.mode,
-                    file.mtime,
-                    file.fflags,
-                    file.rdev,
-                    file.inode,
-                    file.nlink,
-                    file.state,
-                    file.vflags,
-                    file.user,
-                    file.group,
-                    file.digest,
-                    ]
+                # name omitted
+                file.size,
+                file.mode,
+                file.mtime,
+                file.fflags,
+                file.rdev,
+                file.inode,
+                file.nlink,
+                file.state,
+                file.vflags,
+                file.user,
+                file.group,
+                file.digest,
+            ]
             result[file.name] = filedata
         return result
 
