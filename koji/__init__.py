@@ -2897,7 +2897,7 @@ class ClientSession(object):
         if not hasattr(self, 'auth_method'):
             raise GenericError("Missing info for reauthentication")
         # will be deleted by setSession
-        auth_method = self.auth_method['method']
+        auth_method = getattr(self, self.auth_method['method'])
         args = self.auth_method.get('args', [])
         kwargs = self.auth_method.get('kwargs', {})
         kwargs['session_key'] = self.session_key

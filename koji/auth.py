@@ -496,9 +496,10 @@ class Session(object):
             query = QueryProcessor(tables=['sessions'], columns=['master'],
                                    clauses=['key=%(session_key)d'],
                                    values={'session_key': session_key})
-            master = query.singleValue(strict=False)
-            if not master:
+            row = query.executeOne(strict=False)
+            if not row:
                 raise koji.GenericError("Don't allow to renew non-existent subsession")
+            master = row['master']
 
         # generate a random key
         alnum = string.ascii_letters + string.digits
