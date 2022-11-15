@@ -30,9 +30,6 @@ def handle_kiwi_build(goptions, session, args):
     parser.add_option("--type", help="Override default build type from description")
     parser.add_option("--make-prep", action="store_true", default=False,
                       help="Run 'make prep' in checkout before starting the build")
-    parser.add_option("--bind-dev", action="store_true", default=False,
-                      help="e.g. images using device-mapper needs /dev mounted in kiwi env, "
-                           "while others can fail in such env.")
     parser.add_option("--can-fail", action="store", dest="optional_arches",
                       metavar="ARCH1,ARCH2,...", default="",
                       help="List of archs which are not blocking for build "
@@ -55,7 +52,6 @@ def handle_kiwi_build(goptions, session, args):
         'target': target,
         'desc_url': scm,
         'desc_path': path,
-        'bind_dev': options.bind_dev,
     }
     if options.scratch:
         kwargs['scratch'] = True
