@@ -2651,7 +2651,16 @@ class ClientSession(object):
             # bypass _callMethod (no retries)
             # XXX - is that really what we want?
             handler, headers, request = self._prepCall('logout', (), {"session_id": session_id})
-            self._sendCall(handler, headers, request)
+            try:
+                self._sendCall(handler, headers, request)
+            except Fault as fault:
+                ex = convertFault(fault)
+                if isinstance(ex, ParameterError):
+                    # except when hub is older than 1.31
+                    handler, headers, request = self._prepCall('logout', (), {})
+                    self._sendCall(handler, headers, request)
+                else:
+                    raise ex
         except AuthExpired:
             # this can happen when an exclusive session is forced
             pass
