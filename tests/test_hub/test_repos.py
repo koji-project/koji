@@ -27,6 +27,7 @@ class TestRepoFunctions(unittest.TestCase):
         self._dml = mock.patch('kojihub._dml').start()
         self.exports = kojihub.RootExports()
         self.get_tag = mock.patch('kojihub.get_tag').start()
+        self.query_executeOne = mock.MagicMock()
 
     def tearDown(self):
         mock.patch.stopall()
@@ -34,6 +35,7 @@ class TestRepoFunctions(unittest.TestCase):
     def getQuery(self, *args, **kwargs):
         query = QP(*args, **kwargs)
         query.execute = mock.MagicMock()
+        query.executeOne = self.query_executeOne
         self.queries.append(query)
         return query
 
@@ -78,8 +80,7 @@ class TestRepoFunctions(unittest.TestCase):
             if 'dist = %(dist)s' not in update.clauses:
                 raise Exception('Missing dist condition')
 
-    @mock.patch('kojihub._singleRow')
-    def test_repo_info(self, _singleRow):
+    def test_repo_info(self):
         repo_row = {'id': 10,
                     'state': 0,
                     'task_id': 15,
@@ -90,7 +91,7 @@ class TestRepoFunctions(unittest.TestCase):
                     'tag_id': 3,
                     'tag_name': 'test-tag',
                     'dist': False}
-        _singleRow.return_value = repo_row
+        self.query_executeOne.return_value = repo_row
         rv = kojihub.repo_info(3)
         self.assertEqual(rv, repo_row)
 
