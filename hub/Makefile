@@ -1,5 +1,5 @@
 PYVER_MAJOR := $(shell $(PYTHON) -c 'import sys; print(".".join(sys.version.split(".")[:1]))')
-PACKAGE = $(shell basename `pwd`)
+PACKAGE = kojihub
 PYFILES = $(wildcard *.py)
 PKGDIR = $(shell $(PYTHON) -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")/$(PACKAGE)
 
@@ -27,11 +27,13 @@ install:
 	install -p -m 644 hub.conf $(DESTDIR)/etc/koji-hub/hub.conf
 	mkdir -p $(DESTDIR)/etc/koji-hub/hub.conf.d
 
-	mkdir -p $(DESTDIR)/$(SERVERDIR)
+	mkdir -p $(DESTDIR)/$(PKGDIR)
 	for p in $(PYFILES) ; do \
-		install -p -m 644 $$p $(DESTDIR)/$(SERVERDIR)/$$p; \
+		install -p -m 644 $$p $(DESTDIR)/$(PKGDIR)/$$p; \
 	done
-	@if [ "$(PYVER_MAJOR)" == "3" ] ; then \
-		$(PYTHON) -c "import compileall; compileall.compile_dir('$(DESTDIR)/$(SERVERDIR)', 1, '$(PYDIR)', 1)" ; \
-	fi
+
+	$(PYTHON) -c "import compileall; compileall.compile_dir('$(DESTDIR)/$(PKGDIR)', 1, '$(PYDIR)', 1)"
+	
+	mkdir -p $(DESTDIR)/usr/share
+	ln -s $(PKGDIR) $(DESTDIR)/$(SERVERDIR)
 

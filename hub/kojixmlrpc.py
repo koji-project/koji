@@ -36,6 +36,7 @@ import koji.db
 import koji.plugin
 import koji.policy
 import koji.util
+import kojihub
 from koji.context import context
 # import xmlrpclib functions from koji to use tweaked Marshaller
 from koji.server import ServerError, BadRequest, RequestTimeout
@@ -709,14 +710,6 @@ def setup_logging2(opts):
     log_handler.setFormatter(HubFormatter(opts['LogFormat']))
 
 
-def load_scripts(environ):
-    """Update path and import our scripts files"""
-    global kojihub
-    scriptsdir = os.path.dirname(environ['SCRIPT_FILENAME'])
-    sys.path.insert(0, scriptsdir)
-    import kojihub
-
-
 def get_memory_usage():
     pagesize = resource.getpagesize()
     statm = [pagesize * int(y) // 1024
@@ -736,7 +729,6 @@ def server_setup(environ):
                 'Hub option DisableGSSAPIProxyDNFallback is deprecated and '
                 'will be removed in 1.29')
         setup_logging2(opts)
-        load_scripts(environ)
         koji.util.setup_rlimits(opts)
         plugins = load_plugins(opts)
         registry = get_registry(opts, plugins)

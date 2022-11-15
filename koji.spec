@@ -547,8 +547,8 @@ rm -rf $RPM_BUILD_ROOT
 %{_unitdir}/koji-sweep-db.timer
 
 %files -n python%{python3_pkgversion}-%{name}-hub
-%{_datadir}/koji-hub/*.py
-%{_datadir}/koji-hub/__pycache__
+%{python3_sitelib}/kojihub
+%{_datadir}/koji-hub
 
 %files hub-plugins
 %dir /etc/koji-hub/plugins
