@@ -77,6 +77,7 @@ from koji.util import (
 )
 from koji.db import (
     BulkInsertProcessor,
+    DeleteProcessor,
     InsertProcessor,
     QueryProcessor,
     Savepoint,
@@ -5805,8 +5806,8 @@ def remove_volume(volume):
                            values=volinfo, columns=['id'], opts={'limit': 1})
     if query.execute():
         raise koji.GenericError('volume %(name)s has build references' % volinfo)
-    delete = """DELETE FROM volume WHERE id=%(id)i"""
-    _dml(delete, volinfo)
+    delete = DeleteProcessor(table='volume', clauses=['id=%(id)i'], values=volinfo)
+    delete.execute()
 
 
 def list_volumes():
@@ -6113,14 +6114,14 @@ def recycle_build(old, data):
                               old=old['state'], new=data['state'], info=data)
 
     # If there is any old build type info, clear it
-    delete = """DELETE FROM maven_builds WHERE build_id = %(id)i"""
-    _dml(delete, old)
-    delete = """DELETE FROM win_builds WHERE build_id = %(id)i"""
-    _dml(delete, old)
-    delete = """DELETE FROM image_builds WHERE build_id = %(id)i"""
-    _dml(delete, old)
-    delete = """DELETE FROM build_types WHERE build_id = %(id)i"""
-    _dml(delete, old)
+    delete = DeleteProcessor(table='maven_builds', clauses=['build_id = %(id)i'], values=old)
+    delete.execute()
+    delete = DeleteProcessor(table='win_builds', clauses=['build_id = %(id)i'], values=old)
+    delete.execute()
+    delete = DeleteProcessor(table='image_builds', clauses=['build_id = %(id)i'], values=old)
+    delete.execute()
+    delete = DeleteProcessor(table='build_types', clauses=['build_id = %(id)i'], values=old)
+    delete.execute()
 
     data['id'] = old['id']
     update = UpdateProcessor('build', clauses=['id=%(id)s'], values=data)
@@ -6397,8 +6398,9 @@ def get_reservation_token(build_id):
 
 def clear_reservation(build_id):
     '''Remove reservation entry for build'''
-    delete = "DELETE FROM build_reservations WHERE build_id = %(build_id)i"
-    _dml(delete, {'build_id': build_id})
+    delete = DeleteProcessor(table='build_reservations', clauses=['build_id = %(build_id)i'],
+                             values={'build_id': build_id})
+    delete.execute()
 
 
 def cg_init_build(cg, data):
@@ -7811,10 +7813,9 @@ def delete_rpm_sig(rpminfo, sigkey=None, all_sigs=False):
     clauses = ["rpm_id=%(rpm_id)i"]
     if sigkey is not None:
         clauses.append("sigkey=%(sigkey)s")
-    clauses_str = " AND ".join(clauses)
-    delete = """DELETE FROM rpmsigs WHERE %s""" % clauses_str
     rpm_id = rinfo['id']
-    _dml(delete, locals())
+    delete = DeleteProcessor(table='rpmsigs', clauses=clauses, values=locals())
+    delete.execute()
     binfo = get_build(rinfo['build_id'])
     builddir = koji.pathinfo.build(binfo)
     list_sigcaches = []
@@ -8569,8 +8570,9 @@ def _delete_build(binfo):
     query = QueryProcessor(tables=['rpminfo'], columns=['id'], clauses=['build_id=%(build_id)i'],
                            values={'build_id': build_id}, opts={'asList': True})
     for (rpm_id,) in query.execute():
-        delete = """DELETE FROM rpmsigs WHERE rpm_id=%(rpm_id)i"""
-        _dml(delete, locals())
+        delete = DeleteProcessor(table='rpmsigs', clauses=['rpm_id=%(rpm_id)i'],
+                                 values={'rpm_id': rpm_id})
+        delete.execute()
     values = {'build_id': build_id}
     update = UpdateProcessor('tag_listing', clauses=["build_id=%(build_id)i"], values=values)
     update.make_revoke()
@@ -8611,43 +8613,62 @@ def reset_build(build):
     query = QueryProcessor(tables=['rpminfo'], columns=['id'], clauses=['build_id=%(id)i'],
                            values=binfo, opts={'asList': True})
     for (rpm_id,) in query.execute():
-        delete = """DELETE FROM rpmsigs WHERE rpm_id=%(rpm_id)i"""
-        _dml(delete, locals())
-        delete = """DELETE FROM buildroot_listing WHERE rpm_id=%(rpm_id)i"""
-        _dml(delete, locals())
-        delete = """DELETE FROM archive_rpm_components WHERE rpm_id=%(rpm_id)i"""
-        _dml(delete, locals())
-    delete = """DELETE FROM rpminfo WHERE build_id=%(id)i"""
-    _dml(delete, binfo)
+        delete = DeleteProcessor(table='rpmsigs', clauses=['rpm_id=%(rpm_id)i'],
+                                 values={'rpm_id': rpm_id})
+        delete.execute()
+        delete = DeleteProcessor(table='buildroot_listing', clauses=['rpm_id=%(rpm_id)i'],
+                                 values={'rpm_id': rpm_id})
+        delete.execute()
+        delete = DeleteProcessor(table='archive_rpm_components', clauses=['rpm_id=%(rpm_id)i'],
+                                 values={'rpm_id': rpm_id})
+        delete.execute()
+    delete = DeleteProcessor(table='rpminfo', clauses=['build_id=%(id)i'],
+                             values=binfo)
+    delete.execute()
     query = QueryProcessor(tables=['archiveinfo'], columns=['id'], clauses=['build_id=%(id)i'],
                            values=binfo, opts={'asList': True})
     for (archive_id,) in query.execute():
-        delete = """DELETE FROM maven_archives WHERE archive_id=%(archive_id)i"""
-        _dml(delete, locals())
-        delete = """DELETE FROM win_archives WHERE archive_id=%(archive_id)i"""
-        _dml(delete, locals())
-        delete = """DELETE FROM image_archives WHERE archive_id=%(archive_id)i"""
-        _dml(delete, locals())
-        delete = """DELETE FROM buildroot_archives WHERE archive_id=%(archive_id)i"""
-        _dml(delete, locals())
-        delete = """DELETE FROM archive_rpm_components WHERE archive_id=%(archive_id)i"""
-        _dml(delete, locals())
-        delete = """DELETE FROM archive_components WHERE archive_id=%(archive_id)i"""
-        _dml(delete, locals())
-        delete = """DELETE FROM archive_components WHERE component_id=%(archive_id)i"""
-        _dml(delete, locals())
-    delete = """DELETE FROM archiveinfo WHERE build_id=%(id)i"""
-    _dml(delete, binfo)
-    delete = """DELETE FROM maven_builds WHERE build_id = %(id)i"""
-    _dml(delete, binfo)
-    delete = """DELETE FROM win_builds WHERE build_id = %(id)i"""
-    _dml(delete, binfo)
-    delete = """DELETE FROM image_builds WHERE build_id = %(id)i"""
-    _dml(delete, binfo)
-    delete = """DELETE FROM build_types WHERE build_id = %(id)i"""
-    _dml(delete, binfo)
-    delete = """DELETE FROM tag_listing WHERE build_id = %(id)i"""
-    _dml(delete, binfo)
+        delete = DeleteProcessor(table='maven_archives', clauses=['archive_id=%(archive_id)i'],
+                                 values={'archive_id': archive_id})
+        delete.execute()
+        delete = DeleteProcessor(table='win_archives', clauses=['archive_id=%(archive_id)i'],
+                                 values={'archive_id': archive_id})
+        delete.execute()
+        delete = DeleteProcessor(table='image_archives', clauses=['archive_id=%(archive_id)i'],
+                                 values={'archive_id': archive_id})
+        delete.execute()
+        delete = DeleteProcessor(table='buildroot_archives', clauses=['archive_id=%(archive_id)i'],
+                                 values={'archive_id': archive_id})
+        delete.execute()
+        delete = DeleteProcessor(table='archive_rpm_components',
+                                 clauses=['archive_id=%(archive_id)i'],
+                                 values={'archive_id': archive_id})
+        delete.execute()
+        delete = DeleteProcessor(table='archive_components', clauses=['archive_id=%(archive_id)i'],
+                                 values={'archive_id': archive_id})
+        delete.execute()
+        delete = DeleteProcessor(table='archive_components',
+                                 clauses=['component_id=%(archive_id)i'],
+                                 values={'archive_id': archive_id})
+        delete.execute()
+    delete = DeleteProcessor(table='archiveinfo', clauses=['build_id=%(id)i'],
+                             values=binfo)
+    delete.execute()
+    delete = DeleteProcessor(table='maven_builds', clauses=['build_id=%(id)i'],
+                             values=binfo)
+    delete.execute()
+    delete = DeleteProcessor(table='win_builds', clauses=['build_id=%(id)i'],
+                             values=binfo)
+    delete.execute()
+    delete = DeleteProcessor(table='image_builds', clauses=['build_id=%(id)i'],
+                             values=binfo)
+    delete.execute()
+    delete = DeleteProcessor(table='build_types', clauses=['build_id=%(id)i'],
+                             values=binfo)
+    delete.execute()
+    delete = DeleteProcessor(table='tag_listing', clauses=['build_id=%(id)i'],
+                             values=binfo)
+    delete.execute()
     binfo['state'] = koji.BUILD_STATES['CANCELED']
     update = UpdateProcessor('build', clauses=['id=%(id)s'], values=binfo,
                              data={'state': binfo['state'], 'task_id': None, 'volume_id': 0})
@@ -8697,8 +8718,9 @@ def cancel_build(build_id, cancel_task=True):
             Task(task_id).cancelFull(strict=False)
 
     # remove possible CG reservations
-    delete = "DELETE FROM build_reservations WHERE build_id = %(build_id)i"
-    _dml(delete, {'build_id': build_id})
+    delete = DeleteProcessor(table='build_reservations', clauses=['build_id = %(build_id)i'],
+                             values={'build_id': build_id})
+    delete.execute()
 
     build = get_build(build_id, strict=True)
     koji.plugin.run_callbacks('postBuildStateChange',
@@ -13443,8 +13465,9 @@ class RootExports(object):
                 self.hasPerm('admin')):
             raise koji.GenericError('user %i cannot delete notifications for user %i' %
                                     (currentUser['id'], notification['user_id']))
-        delete = """DELETE FROM build_notifications WHERE id = %(id)i"""
-        _dml(delete, locals())
+        delete = DeleteProcessor(table='build_notifications', clauses=['id=%(id)i'],
+                                 values={'id': id})
+        delete.execute()
 
     def createNotificationBlock(self, user_id, package_id=None, tag_id=None):
         """Create notification block. If the user_id does not match the
@@ -13490,8 +13513,9 @@ class RootExports(object):
                 self.hasPerm('admin')):
             raise koji.GenericError('user %i cannot delete notification blocks for user %i' %
                                     (currentUser['id'], block['user_id']))
-        delete = """DELETE FROM build_notifications_block WHERE id = %(id)i"""
-        _dml(delete, locals())
+        delete = DeleteProcessor(table='build_notifications_block', clauses=['id=%(id)i'],
+                                 values={'id': id})
+        delete.execute()
 
     def _prepareSearchTerms(self, terms, matchType):
         r"""Process the search terms before passing them to the database.

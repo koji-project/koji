@@ -7,7 +7,7 @@ from koji.context import context
 
 import koji
 import koji.db
-from koji.db import QueryProcessor, BulkInsertProcessor
+from koji.db import DeleteProcessor, QueryProcessor, BulkInsertProcessor
 
 
 def clean_sessions(cursor, vacuum, test, age, absolute):
@@ -21,23 +21,23 @@ def clean_sessions(cursor, vacuum, test, age, absolute):
         print(f"Deleting {rows} sessions")
 
     if not test:
-        cursor.execute(f"DELETE FROM sessions WHERE {clauses}")
+        delete = DeleteProcessor(table='sessions', clauses=[clauses])
+        delete.execute()
         if vacuum:
             cursor.execute("VACUUM ANALYZE sessions")
 
 
 def clean_reservations(cursor, vacuum, test, age):
+    clauses = [f"created < NOW() - '{age} days'::interval"]
     if options.verbose:
-        query = QueryProcessor(
-            tables=['build_reservations'],
-            clauses=[f"created < NOW() - '{age} days'::interval"],
-            opts={'countOnly': True})
+        query = QueryProcessor(tables=['build_reservations'], clauses=clauses,
+                               opts={'countOnly': True})
         rows = query.execute()
         print(f"Deleting {rows} build reservations")
 
     if not test:
-        cursor.execute(
-            f"DELETE FROM build_reservations WHERE created < NOW() - '{age} days'::interval")
+        delete = DeleteProcessor(table='build_reservations', clauses=clauses)
+        delete.execute()
         if vacuum:
             cursor.execute("VACUUM ANALYZE build_reservations")
 
@@ -51,9 +51,9 @@ def clean_notification_tasks(cursor, vacuum, test, age):
         print(f"Deleting {rows} tagNotification tasks")
 
     if not test:
-        # cascade
-        cursor.execute("DELETE FROM task WHERE method = 'tagNotification' AND "
-                       f"completion_time < NOW() - '{age} days'::interval")
+        # cascades
+        delete = DeleteProcessor(table='task', clauses=clauses)
+        delete.execute()
         if vacuum:
             cursor.execute("VACUUM ANALYZE task")
 
@@ -112,11 +112,14 @@ def clean_scratch_tasks(cursor, vacuum, test, age):
         return
 
     # delete standard buildroots
-    cursor.execute(
-        "DELETE FROM standard_buildroot WHERE task_id IN (SELECT task_id FROM temp_scratch_tasks)")
+    delete = DeleteProcessor(table='standard_buildroot',
+                             clauses=['task_id IN (SELECT task_id FROM temp_scratch_tasks)'])
+    delete.execute()
 
     # delete tasks finally
-    cursor.execute("DELETE FROM task WHERE id IN (SELECT task_id FROM temp_scratch_tasks)")
+    delete = DeleteProcessor(table='task',
+                             clauses=['id IN (SELECT task_id FROM temp_scratch_tasks)'])
+    delete.execute()
 
     if vacuum:
         cursor.execute("VACUUM ANALYZE standard_buildroot")
@@ -133,8 +136,12 @@ def clean_buildroots(cursor, vacuum, test):
     if not test:
         q = "FROM buildroot WHERE cg_id IS NULL AND id NOT IN " \
             "(SELECT buildroot_id FROM standard_buildroot)"
-        cursor.execute(f"DELETE FROM buildroot_listing WHERE buildroot_id IN (SELECT id {q})")
-        cursor.execute(f"DELETE {q}")
+        delete = DeleteProcessor(table='buildroot_listing',
+                                 clauses=[f'buildroot_id IN (SELECT id {q})'])
+        delete.execute()
+        clauses = ['cg_id IS NULL AND id NOT IN (SELECT buildroot_id FROM standard_buildroot)']
+        delete = DeleteProcessor(table='buildroot', clauses=clauses)
+        delete.execute()
         if vacuum:
             cursor.execute("VACUUM ANALYZE buildroot_listing")
             cursor.execute("VACUUM ANALYZE buildroot")
