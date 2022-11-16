@@ -65,6 +65,8 @@ class KiwiBuildTask(BuildImageTask):
             opts['scratch'] = False
         if not opts.get('optional_arches'):
             opts['optional_arches'] = []
+        if not buildconfig['extra'].get('mock.new_chroot', True):
+            opts['mount_dev'] = True
         self.opts = opts
 
         # get configuration
@@ -304,6 +306,9 @@ class KiwiCreateImageTask(BaseBuildTask):
                 desc_url, desc_path, opts=None):
         self.opts = opts
         build_tag = target_info['build_tag']
+        bind_opts = {'dirs': {}}
+        if self.opts.get('mount_dev'):
+            bind_opts['dirs']['/dev'] = '/dev'
         broot = BuildRoot(self.session, self.options,
                           tag=build_tag,
                           arch=arch,
@@ -311,7 +316,7 @@ class KiwiCreateImageTask(BaseBuildTask):
                           repo_id=repo_info['id'],
                           install_group='kiwi-build',
                           setup_dns=True,
-                          bind_opts={'dirs': {'/dev': '/dev', }})
+                          bind_opts=bind_opts)
         broot.workdir = self.workdir
 
         # create the mock chroot
