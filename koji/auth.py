@@ -123,11 +123,11 @@ class Session(object):
                                opts={'rowlock': True})
         session_data = query.executeOne(strict=False)
         if not session_data:
-            query = QueryProcessor(tables='sessions', columns=['key', 'hostip'],
+            query = QueryProcessor(tables=['sessions'], columns=['key', 'hostip'],
                                    clauses=['id = %(id)i'], values={'id': id})
             row = query.executeOne(strict=False)
             if row:
-                if key != row['id']:
+                if key != row['key']:
                     logger.warning("Session ID %s is not related to session key %s.", id, key)
                 elif hostip != row['hostip']:
                     logger.warning("Session ID %s is not related to host IP %s.", id, hostip)
