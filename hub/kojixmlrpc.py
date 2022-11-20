@@ -117,10 +117,10 @@ class HandlerRegistry(object):
         ret = self.argspec_cache.get(func)
         if ret:
             return ret
-        ret = tuple(inspect.getargspec(func))
+        ret = tuple(inspect.getfullargspec(func))
         if inspect.ismethod(func) and func.__self__:
             # bound method, remove first arg
-            args, varargs, varkw, defaults = ret
+            args, varargs, varkw, defaults, kwonlyargs, kwonlydefaults, ann = ret
             if args:
                 aname = args[0]  # generally "self"
                 del args[0]
