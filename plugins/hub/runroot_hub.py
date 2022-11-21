@@ -4,14 +4,11 @@
 
 
 import random
-import sys
 
 import koji
 from koji.context import context
 from koji.plugin import export
-# XXX - have to import kojihub for make_task
-sys.path.insert(0, '/usr/share/koji-hub/')
-import kojihub  # noqa: E402
+import kojihub
 
 __all__ = ('runroot',)
 
