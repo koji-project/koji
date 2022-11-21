@@ -216,7 +216,7 @@ class Dispatcher(object):
                 if not inspect.isfunction(val):
                     continue
                 # err on the side of paranoia
-                args = inspect.getargspec(val)
+                args = inspect.getfullargspec(val)
                 if not args[0] or args[0][0] != 'environ':
                     continue
             except Exception:
@@ -257,7 +257,8 @@ class Dispatcher(object):
             if isinstance(val, list) and len(val) == 1:
                 data[arg] = val[0]
         environ['koji.form'] = fs
-        args, varargs, varkw, defaults = inspect.getargspec(func)
+        args, varargs, varkw, defaults, kwonlyargs, kwonlydefaults, ann = \
+            inspect.getfullargspec(func)
         if not varkw:
             # remove any unexpected args
             data = dslice(data, args, strict=False)
