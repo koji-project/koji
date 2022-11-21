@@ -119,6 +119,7 @@ CREATE TABLE sessions (
 	start_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 	update_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 	exclusive BOOLEAN CHECK (exclusive),
+	closed BOOLEAN NOT NULL DEFAULT FALSE,
 	CONSTRAINT no_exclusive_subsessions CHECK (
 		master IS NULL OR "exclusive" IS NULL),
 	CONSTRAINT exclusive_expired_sane CHECK (

@@ -465,7 +465,8 @@ class Session(object):
             ses_id = session_id
         else:
             ses_id = self.id
-        update = UpdateProcessor('sessions', data={'expired': True, 'exclusive': None},
+        update = UpdateProcessor('sessions',
+                                 data={'expired': True, 'exclusive': None, 'closed': True},
                                  clauses=['id = %(id)i OR master = %(id)i'],
                                  values={'id': ses_id})
         update.execute()
@@ -494,11 +495,11 @@ class Session(object):
             if master:
                 raise koji.GenericError("Can't call createSession with both master + session_key.")
             query = QueryProcessor(tables=['sessions'], columns=['master'],
-                                   clauses=['key=%(session_key)d'],
+                                   clauses=['key=%(session_key)d', 'closed=FALSE'],
                                    values={'session_key': session_key})
             row = query.executeOne(strict=False)
             if not row:
-                raise koji.GenericError("Don't allow to renew non-existent subsession")
+                raise koji.GenericError("Don't allow to renew non-existent or logged out session")
             master = row['master']
 
         # generate a random key
