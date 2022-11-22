@@ -436,8 +436,10 @@ class BuildRoot(object):
         with koji._open_text_file(self.rootdir() + destfile, 'wt') as fo:
             fo.write(settings)
 
-    def mock(self, args):
+    def mock(self, args, additional_logs=None):
         """Run mock"""
+        if additional_logs is None:
+            additional_logs = {}
         mockpath = getattr(self.options, "mockpath", "/usr/bin/mock")
         cmd = [mockpath, "-r", self.mockcfg]
         # if self.options.debug_mock:
@@ -457,6 +459,8 @@ class BuildRoot(object):
             resultdir = self.resultdir()
             uploadpath = self.getUploadPath()
             logs = {}
+            for logname, path in additional_logs.items():
+                logs[logname] = (None, None, 0, path)
 
             ts_offsets = {}
             finished = False

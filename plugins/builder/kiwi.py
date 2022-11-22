@@ -371,19 +371,22 @@ class KiwiCreateImageTask(BaseBuildTask):
         desc, types = self.prepareDescription(path, name, version, repos, arch)
         self.uploadFile(desc)
 
+        target_dir = '/builddir/result/image'
+        root_log_path = os.path.join(broot.rootdir(), target_dir[1:], "build/image-root.log")
+        root_log_remote_name = f"image-root.{arch}.log"
         cmd = ['kiwi-ng']
         if self.opts.get('profile'):
             cmd.extend(['--profile', self.opts['profile']])
         if self.opts.get('type'):
             cmd.extend(['--type', self.opts['type']])
-        target_dir = '/builddir/result/image'
         cmd.extend([
             '--kiwi-file', os.path.basename(desc),  # global option for image/system commands
             'system', 'build',
             '--description', os.path.join(os.path.basename(scmsrcdir), base_path),
             '--target-dir', target_dir,
         ])
-        rv = broot.mock(['--cwd', broot.tmpdir(within=True), '--chroot', '--'] + cmd)
+        rv = broot.mock(['--cwd', broot.tmpdir(within=True), '--chroot', '--'] + cmd,
+                        additional_logs={root_log_remote_name: root_log_path})
         if rv:
             raise koji.GenericError("Kiwi failed")
 
@@ -409,12 +412,6 @@ class KiwiCreateImageTask(BaseBuildTask):
             'rpmlist': [],
             'files': [],
         }
-
-        # TODO: upload detailed log?
-        # build/image-root.log
-        root_log_path = os.path.join(broot.tmpdir(), target_dir[1:], "build/image-root.log")
-        if os.path.exists(root_log_path):
-            self.uploadFile(root_log_path, remoteName=f"image-root.{arch}.log")
 
         bundle_path = os.path.join(broot.rootdir(), bundle_dir[1:])
         for fname in os.listdir(bundle_path):
