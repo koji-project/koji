@@ -3060,12 +3060,13 @@ def repo_expire_older(tag_id, event_id, dist=None):
 
 def repo_references(repo_id):
     """Return a list of buildroots that reference the repo"""
-    fields = {
-        'buildroot_id': 'id',
-        'host_id': 'host_id',
-        'create_event': 'create_event',
-        'state': 'state'}
-    fields, aliases = zip(*fields.items())
+    fields = [
+        ('buildroot_id', 'id'),
+        ('host_id', 'host_id'),
+        ('create_event', 'create_event'),
+        ('state', 'state'),
+    ]
+    fields, aliases = zip(*fields)
     query = QueryProcessor(
         tables=['standard_buildroot'],
         columns=fields, aliases=aliases,
@@ -3560,15 +3561,16 @@ def get_tag(tagInfo, strict=False, event=None, blocked=False):
     tables = ['tag_config']
     joins = ['tag ON tag.id = tag_config.tag_id',
              'LEFT OUTER JOIN permissions ON tag_config.perm_id = permissions.id']
-    fields = {'tag.id': 'id',
-              'tag.name': 'name',
-              'tag_config.perm_id': 'perm_id',
-              'permissions.name': 'perm',
-              'tag_config.arches': 'arches',
-              'tag_config.locked': 'locked',
-              'tag_config.maven_support': 'maven_support',
-              'tag_config.maven_include_all': 'maven_include_all',
-              }
+    fields = [
+        ('tag.id', 'id'),
+        ('tag.name', 'name'),
+        ('tag_config.perm_id', 'perm_id'),
+        ('permissions.name', 'perm'),
+        ('tag_config.arches', 'arches'),
+        ('tag_config.locked', 'locked'),
+        ('tag_config.maven_support', 'maven_support'),
+        ('tag_config.maven_include_all', 'maven_include_all')
+    ]
 
     clause, values = name_or_id_clause('tag', tagInfo)
     clauses = [clause]
@@ -3586,13 +3588,13 @@ def get_tag(tagInfo, strict=False, event=None, blocked=False):
             # query point instantly before the revoke_event
             # (to get latest tag_config before deletion)
             event -= 1
-            fields['tag_config.revoke_event'] = 'revoke_event'
+            fields.append(('tag_config.revoke_event', 'revoke_event'))
         else:
             # if tag is not deleted, query event=None
             pass
     clauses.append(eventCondition(event, table='tag_config'))
 
-    fields, aliases = zip(*fields.items())
+    fields, aliases = zip(*fields)
     query = QueryProcessor(columns=fields, aliases=aliases, tables=tables,
                            joins=joins, clauses=clauses, values=values)
     result = query.executeOne()
@@ -4092,17 +4094,17 @@ def get_tag_external_repos(tag_info=None, repo_info=None, event=None):
     joins = ['tag ON tag_external_repos.tag_id = tag.id',
              'external_repo ON tag_external_repos.external_repo_id = external_repo.id',
              'external_repo_config ON external_repo.id = external_repo_config.external_repo_id']
-    fields = {
-        'external_repo.id': 'external_repo_id',
-        'external_repo.name': 'external_repo_name',
-        'priority': 'priority',
-        'tag.id': 'tag_id',
-        'tag.name': 'tag_name',
-        'url': 'url',
-        'merge_mode': 'merge_mode',
-        'arches': 'arches',
-    }
-    columns, aliases = zip(*fields.items())
+    fields = [
+        ('external_repo.id', 'external_repo_id'),
+        ('external_repo.name', 'external_repo_name'),
+        ('priority', 'priority'),
+        ('tag.id', 'tag_id'),
+        ('tag.name', 'tag_name'),
+        ('url', 'url'),
+        ('merge_mode', 'merge_mode'),
+        ('arches', 'arches'),
+    ]
+    columns, aliases = zip(*fields)
 
     clauses = [eventCondition(event, table='tag_external_repos'),
                eventCondition(event, table='external_repo_config')]
@@ -4862,8 +4864,8 @@ def get_image_build(buildInfo, strict=False):
     build_id = find_build_id(buildInfo, strict=strict)
     if not build_id:
         return None
-    query = QueryProcessor(tables=('image_builds',), columns=('build_id',),
-                           clauses=('build_id = %(build_id)i',),
+    query = QueryProcessor(tables=['image_builds'], columns=['build_id'],
+                           clauses=['build_id = %(build_id)i'],
                            values={'build_id': build_id})
     result = query.executeOne()
     if strict and not result:
@@ -5492,23 +5494,24 @@ def get_host(hostInfo, strict=False, event=None):
     tables = ['host_config']
     joins = ['host ON host.id = host_config.host_id']
 
-    fields = {'host.id': 'id',
-              'host.user_id': 'user_id',
-              'host.name': 'name',
-              'host.ready': 'ready',
-              'host.task_load': 'task_load',
-              'host_config.arches': 'arches',
-              'host_config.capacity': 'capacity',
-              'host_config.description': 'description',
-              'host_config.comment': 'comment',
-              'host_config.enabled': 'enabled',
-              }
+    fields = [
+        ('host.id', 'id'),
+        ('host.user_id', 'user_id'),
+        ('host.name', 'name'),
+        ('host.ready', 'ready'),
+        ('host.task_load', 'task_load'),
+        ('host_config.arches', 'arches'),
+        ('host_config.capacity', 'capacity'),
+        ('host_config.description', 'description'),
+        ('host_config.comment', 'comment'),
+        ('host_config.enabled', 'enabled'),
+    ]
     clauses = [eventCondition(event, table='host_config')]
 
     clause, values = name_or_id_clause('host', hostInfo)
     clauses.append(clause)
 
-    fields, aliases = zip(*fields.items())
+    fields, aliases = zip(*fields)
     query = QueryProcessor(columns=fields, aliases=aliases, tables=tables,
                            joins=joins, clauses=clauses, values=values)
     result = query.executeOne()
@@ -5731,9 +5734,14 @@ def list_channels(hostID=None, event=None, enabled=None):
               [{'comment': 'test channel', 'description': 'container channel',
               'enabled': True, 'id': 20, 'name': 'container', 'container channel' }]
     """
-    fields = {'channels.id': 'id', 'channels.name': 'name', 'channels.description': 'description',
-              'channels.enabled': 'enabled', 'channels.comment': 'comment'}
-    columns, aliases = zip(*fields.items())
+    fields = [
+        ('channels.id', 'id'),
+        ('channels.name', 'name'),
+        ('channels.description', 'description'),
+        ('channels.enabled', 'enabled'),
+        ('channels.comment', 'comment'),
+    ]
+    columns, aliases = zip(*fields)
     if enabled is not None:
         if enabled:
             enable_clause = 'enabled IS TRUE'
@@ -7491,8 +7499,8 @@ def new_image_build(build_info):
     # We don't have to worry about updating an image build because the id is
     # the only thing we care about, and that should never change if a build
     # fails first and succeeds later on a resubmission.
-    query = QueryProcessor(tables=('image_builds',), columns=('build_id',),
-                           clauses=('build_id = %(build_id)i',),
+    query = QueryProcessor(tables=['image_builds'], columns=['build_id'],
+                           clauses=['build_id = %(build_id)i'],
                            values={'build_id': build_info['id']})
     result = query.executeOne()
     if not result:
@@ -7507,11 +7515,9 @@ def new_typed_build(build_info, btype):
     """Mark build as a given btype"""
 
     btype_id = lookup_name('btype', btype, strict=True)['id']
-    query = QueryProcessor(tables=('build_types',), columns=('build_id',),
-                           clauses=('build_id = %(build_id)i',
-                                    'btype_id = %(btype_id)i'),
-                           values={'build_id': build_info['id'],
-                                   'btype_id': btype_id})
+    query = QueryProcessor(tables=['build_types'], columns=['build_id'],
+                           clauses=['build_id = %(build_id)i', 'btype_id = %(btype_id)i'],
+                           values={'build_id': build_info['id'], 'btype_id': btype_id})
     result = query.executeOne()
     if not result:
         insert = InsertProcessor('build_types')
@@ -8338,11 +8344,11 @@ def build_references(build_id, limit=None, lazy=False):
     ret = {}
 
     # find tags
-    fields = {
-        'tag_id': 'tag_id',
-        'tag.name': 'name',
-    }
-    columns, aliases = zip(*fields.items())
+    fields = [
+        ('tag_id', 'tag_id'),
+        ('tag.name', 'name')
+    ]
+    columns, aliases = zip(*fields)
     query = QueryProcessor(tables=['tag_listing'], columns=columns, aliases=aliases,
                            joins=['tag on tag_id = tag.id'],
                            clauses=['build_id = %(build_id)i', 'active = TRUE'],
@@ -8355,11 +8361,11 @@ def build_references(build_id, limit=None, lazy=False):
     query = QueryProcessor(tables=['rpminfo'], columns=['id'],
                            clauses=['build_id=%(build_id)i'],
                            values={'build_id': build_id}, opts={'asList': True})
-    build_rpm_ids = query.execute()
+    build_rpm_ids = [(i,) for i in query.execute()]
     query = QueryProcessor(tables=['archiveinfo'], columns=['id'],
                            clauses=['build_id=%(build_id)i'],
                            values={'build_id': build_id}, opts={'asList': True})
-    build_archive_ids = query.execute()
+    build_archive_ids = [(i,) for i in query.execute()]
     if not build_archive_ids:
         build_archive_ids = []
 
@@ -8379,7 +8385,7 @@ def build_references(build_id, limit=None, lazy=False):
         AND build.state = %(st_complete)i"""
     if limit is not None:
         q += "\nLIMIT %(limit)i"
-    for (rpm_id,) in build_rpm_ids:
+    for rpm_id in build_rpm_ids:
         for row in _multiRow(q, locals(), fields):
             idx.setdefault(row['id'], row)
         if limit is not None and len(idx) > limit:
@@ -8402,7 +8408,7 @@ def build_references(build_id, limit=None, lazy=False):
         qopts['limit'] = limit
     query = QueryProcessor(columns=fields, tables=['archive_rpm_components'],
                            clauses=clauses, joins=joins, values=values, opts=qopts)
-    for (rpm_id,) in build_rpm_ids:
+    for rpm_id in build_rpm_ids:
         query.values['rpm_id'] = rpm_id
         archive_ids = [i[0] for i in query.execute()]
         ret['component_of'].extend(archive_ids)
@@ -8411,19 +8417,19 @@ def build_references(build_id, limit=None, lazy=False):
         return ret
 
     # find archives whose buildroots we were in
-    fields = {
-        'archiveinfo.id': 'id',
-        'archiveinfo.type_id': 'type_id',
-        'archivetypes.name': 'type_name',
-        'archiveinfo.build_id': 'build_id',
-        'archiveinfo.filename': 'filename',
-    }
-    columns, aliases = zip(*fields.items())
+    fields = [
+        ('archiveinfo.id', 'id'),
+        ('archiveinfo.type_id', 'type_id'),
+        ('archivetypes.name', 'type_name'),
+        ('archiveinfo.build_id', 'build_id'),
+        ('archiveinfo.filename', 'filename')
+    ]
+    columns, aliases = zip(*fields)
     idx = {}
     opts = {}
     if limit is not None:
         opts = {'limit': limit}
-    for (archive_id,) in build_archive_ids:
+    for archive_id in build_archive_ids:
         query = QueryProcessor(tables=['buildroot_archives'], columns=columns, aliases=aliases,
                                joins=['archiveinfo ON archiveinfo.buildroot_id = '
                                       'buildroot_archives.buildroot_id',
@@ -8454,7 +8460,7 @@ def build_references(build_id, limit=None, lazy=False):
         qopts['limit'] = limit
     query = QueryProcessor(columns=fields, tables=['archive_components'],
                            clauses=clauses, joins=joins, values=values, opts=qopts)
-    for (archive_id,) in build_archive_ids:
+    for archive_id in build_archive_ids:
         query.values['archive_id'] = archive_id
         archive_ids = [i[0] for i in query.execute()]
         ret['component_of'].extend(archive_ids)
@@ -8952,9 +8958,9 @@ def add_group_member(group, user, strict=True):
     # check to see if user is already a member
     data = {'user_id': uinfo['id'], 'group_id': ginfo['id']}
     table = 'user_groups'
-    clauses = ('user_id = %(user_id)i', 'group_id = %(group_id)s')
     query = QueryProcessor(columns=['user_id'], tables=[table],
-                           clauses=('active = TRUE',) + clauses,
+                           clauses=['active = TRUE', 'user_id = %(user_id)i',
+                                    'group_id = %(group_id)s'],
                            values=data, opts={'rowlock': True})
     row = query.executeOne()
     if row:
@@ -9027,9 +9033,12 @@ def list_cgs():
               are permitted to import for this content generator.
     """
 
-    fields = {'content_generator.id': 'id', 'content_generator.name': 'name',
-              'users.name': 'user_name'}
-    columns, aliases = zip(*fields.items())
+    fields = [
+        ('content_generator.id', 'id'),
+        ('content_generator.name', 'name'),
+        ('users.name', 'user_name'),
+    ]
+    columns, aliases = zip(*fields)
     tables = ['cg_users']
     joins = ['content_generator ON content_generator.id = cg_users.cg_id',
              'users ON users.id = cg_users.user_id']
@@ -10306,16 +10315,17 @@ class RootExports(object):
         if not context.session.logged_in:
             return None
         clauses = ['expired is FALSE']
-        fields = {'user_id': 'user_id',
-                  'expired': 'expired',
-                  'master': 'master',
-                  'authtype': 'authtype',
-                  'callnum': 'callnum',
-                  "date_part('epoch', start_time)": 'start_time',
-                  'update_time': 'update_time',
-                  'exclusive': 'exclusive',
-                  }
-        columns, aliases = zip(*fields.items())
+        fields = [
+            ('user_id', 'user_id'),
+            ('expired', 'expired'),
+            ('master', 'master'),
+            ('authtype', 'authtype'),
+            ('callnum', 'callnum'),
+            ("date_part('epoch', start_time)", 'start_time'),
+            ('update_time', 'update_time'),
+            ('exclusive', 'exclusive'),
+        ]
+        columns, aliases = zip(*fields)
         if details:
             columns += ('hostip', 'id')
             aliases += ('hostip', 'id')
@@ -10367,11 +10377,11 @@ class RootExports(object):
 
         If no event with the given id exists, an error will be raised.
         """
-        fields = {
-            'id': 'id',
-            "date_part('epoch', time)": 'ts',
-        }
-        columns, aliases = zip(*fields.items())
+        fields = [
+            ('id', 'id'),
+            ("date_part('epoch', time)", 'ts')
+        ]
+        columns, aliases = zip(*fields)
         query = QueryProcessor(tables=['events'], columns=columns, aliases=aliases,
                                clauses=['id = %(id)i'], values={'id': id})
         return query.executeOne(strict=True)
@@ -10393,11 +10403,11 @@ class RootExports(object):
         When trying to find information about a specific event, the getEvent() method
         should be used.
         """
-        fields = {
-            'id': 'id',
-            "date_part('epoch', time)": 'ts',
-        }
-        columns, aliases = zip(*fields.items())
+        fields = [
+            ('id', 'id'),
+            ("date_part('epoch', time)", 'ts')
+        ]
+        columns, aliases = zip(*fields)
         values = {}
         clauses = []
         if before is not None:
@@ -11931,7 +11941,7 @@ class RootExports(object):
         # we need to filter out builds without tasks (imports) as they'll reduce
         # time average. CG imported builds often contain *_koji_task_id instead.
         clauses = ['build.pkg_id = %(packageID)i', 'build.state = %(st_complete)i',
-                   "build.task_id IS NOT NULL OR build.extra LIKE '%' || 'koji_task_id' || '%'"]
+                   "build.task_id IS NOT NULL OR build.extra LIKE '%%' || 'koji_task_id' || '%%'"]
         if age is not None:
             clauses.append(f"build.completion_time >  NOW() - '{int(age)} months'::interval")
         query = QueryProcessor(tables=['build'],
@@ -12571,7 +12581,7 @@ class RootExports(object):
         else:
             raise koji.GenericError('queryOpts.group is not available for this API')
         query = QueryProcessor(columns=fields, aliases=aliases,
-                               tables=('users',), joins=joins, clauses=clauses,
+                               tables=['users'], joins=joins, clauses=clauses,
                                values=locals(), opts=queryOpts,
                                enable_group=True, transform=xform_user_krb)
         return query.execute()
@@ -13097,19 +13107,20 @@ class RootExports(object):
             userID = get_user(userID, strict=True)['id']
             clauses.append('user_id = %(userID)i')
 
-        fields = {'host.id': 'id',
-                  'host.user_id': 'user_id',
-                  'host.name': 'name',
-                  'host.ready': 'ready',
-                  'host.task_load': 'task_load',
-                  'host_config.arches': 'arches',
-                  'host_config.capacity': 'capacity',
-                  'host_config.description': 'description',
-                  'host_config.comment': 'comment',
-                  'host_config.enabled': 'enabled',
-                  }
+        fields = [
+            ('host.id', 'id'),
+            ('host.user_id', 'user_id'),
+            ('host.name', 'name'),
+            ('host.ready', 'ready'),
+            ('host.task_load', 'task_load'),
+            ('host_config.arches', 'arches'),
+            ('host_config.capacity', 'capacity'),
+            ('host_config.description', 'description'),
+            ('host_config.comment', 'comment'),
+            ('host_config.enabled', 'enabled'),
+        ]
         tables = ['host_config']
-        fields, aliases = zip(*fields.items())
+        fields, aliases = zip(*fields)
         query = QueryProcessor(columns=fields, aliases=aliases,
                                tables=tables, joins=joins, clauses=clauses, values=locals())
         return query.execute()
