@@ -763,10 +763,6 @@ def login(*args, **opts):
     return context.session.login(*args, **opts)
 
 
-def krbLogin(*args, **opts):
-    return context.session.krbLogin(*args, **opts)
-
-
 def sslLogin(*args, **opts):
     """Login via SSL certificate
 
