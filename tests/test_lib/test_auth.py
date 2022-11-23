@@ -434,7 +434,7 @@ class TestAuthSession(unittest.TestCase):
         self.assertEqual(update.table, 'sessions')
         self.assertEqual(update.values, {'id': 123, 'id': 123})
         self.assertEqual(update.clauses, ['id = %(id)i OR master = %(id)i'])
-        self.assertEqual(update.data, {'expired': True, 'exclusive': None})
+        self.assertEqual(update.data, {'closed': True, 'expired': True, 'exclusive': None})
         self.assertEqual(update.rawdata, {})
 
     def test_logoutChild_not_logged(self):
@@ -667,15 +667,6 @@ class TestAuthSession(unittest.TestCase):
         self.assertEqual(query.joins, ['permissions ON perm_id = permissions.id'])
         self.assertEqual(query.clauses, ['active = TRUE', 'user_id=%(user_id)s'])
         self.assertEqual(query.columns, ['name'])
-
-    def test_logout_not_logged(self):
-        s, cntext = self.get_session()
-
-        # not logged
-        s.logged_in = False
-        with self.assertRaises(koji.AuthError) as ex:
-            s.logout()
-        self.assertEqual("Not logged in", str(ex.exception))
 
     @mock.patch('koji.auth.context')
     def test_logout_logged_not_owner(self, context):
