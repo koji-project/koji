@@ -7,7 +7,7 @@ from koji.db import QueryProcessor, nextval
 from koji.context import context
 from koji.plugin import callback, export
 import koji.policy
-from kojihub.kojihub import (
+from kojihub import (
     _create_build_target,
     _create_tag,
     _delete_build_target,
