@@ -2483,14 +2483,12 @@ class ClientSession(object):
             self.callnum = None
             # do we need to do anything else here?
             self.authtype = None
-            self.session_key = None
         else:
             self.logged_in = True
             self.callnum = 0
-            self.session_key = sinfo['session-key']
         self.sinfo = sinfo
 
-    def login(self, opts=None, session_key=None):
+    def login(self, opts=None, renew=False):
         """
         Username/password based login method
 
@@ -2500,8 +2498,8 @@ class ClientSession(object):
         """
         # store calling parameters
         self.auth_method = {'method': 'login', 'kwargs': {'opts': opts}}
-        sinfo = self.callMethod('login', self.opts['user'], self.opts['password'],
-                                opts=opts, session_key=session_key)
+        sinfo = self.callMethod('login', self.opts['user'], self.opts['password'], opts=opts,
+                                renew=renew)
         if not sinfo:
             return False
         self.setSession(sinfo)
@@ -2514,7 +2512,7 @@ class ClientSession(object):
         return type(self)(self.baseurl, opts=self.opts, sinfo=sinfo, auth_method=self.auth_method)
 
     def gssapi_login(self, principal=None, keytab=None, ccache=None,
-                     proxyuser=None, proxyauthtype=None, session_key=None):
+                     proxyuser=None, proxyauthtype=None, renew=False):
         """
         GSSAPI/Kerberos login method
 
@@ -2523,7 +2521,6 @@ class ClientSession(object):
         :param str ccache: path to ccache file/dir
         :param str proxyuser: name of proxied user (e.g. forwarding by web ui)
         :param int proxyauthtype: AUTHTYPE used by proxied user (can be different from ours)
-        :param str session_key: used for session renewal
         :returns bool True: success or raises exception
         """
         if not reqgssapi:
@@ -2535,7 +2532,7 @@ class ClientSession(object):
             'method': 'gssapi_login',
             'kwargs': {
                 'principal': principal, 'keytab': keytab, 'ccache': ccache, 'proxyuser': proxyuser,
-                'proxyauthtype': proxyauthtype, 'session_key': session_key
+                'proxyauthtype': proxyauthtype
             }
         }
         # force https
@@ -2578,7 +2575,7 @@ class ClientSession(object):
                 # will fail with a handshake failure, which is retried by default.
                 # For this case we're now using retry=False and test errors for
                 # this exact usecase.
-                kwargs = {'proxyuser': proxyuser, 'session_key': session_key}
+                kwargs = {'proxyuser': proxyuser, 'renew': renew}
                 if proxyauthtype is not None:
                     kwargs['proxyauthtype'] = proxyauthtype
                 for tries in range(self.opts.get('max_retries', 30)):
@@ -2627,7 +2624,7 @@ class ClientSession(object):
         return True
 
     def ssl_login(self, cert=None, ca=None, serverca=None, proxyuser=None, proxyauthtype=None,
-                  session_key=None):
+                  renew=False):
         """
         SSL cert based login
 
@@ -2636,16 +2633,14 @@ class ClientSession(object):
         :param str serverca: path for CA public cert, otherwise system-wide CAs are used
         :param str proxyuser: name of proxied user (e.g. forwarding by web ui)
         :param int proxyauthtype: AUTHTYPE used by proxied user (can be different from ours)
-        :param str session_key: used for session renewal
         :returns bool: success
         """
         # store calling parameters
-        self.logger.error("ssl_login---------------")
         self.auth_method = {
             'method': 'ssl_login',
             'kwargs': {
-                'cert': cert, 'ca': ca, 'serverca': serverca, 'proxyuser': proxyuser,
-                'proxyauthtype': proxyauthtype, 'session_key': session_key,
+                'cert': cert, 'ca': ca, 'serverca': serverca,
+                'proxyuser': proxyuser, 'proxyauthtype': proxyauthtype,
             }
         }
         cert = cert or self.opts.get('cert')
@@ -2676,7 +2671,7 @@ class ClientSession(object):
         self.opts['serverca'] = serverca
         e_str = None
         try:
-            kwargs = {'proxyuser': proxyuser, 'session_key': session_key}
+            kwargs = {'proxyuser': proxyuser, 'renew': renew}
             if proxyauthtype is not None:
                 kwargs['proxyauthtype'] = proxyauthtype
             sinfo = self._callMethod('sslLogin', [], kwargs)
@@ -2768,24 +2763,28 @@ class ClientSession(object):
             return self._prepUpload(*args, **kwargs)
         args = encode_args(*args, **kwargs)
         headers = []
-        if self.logged_in:
+
+        sinfo = None
+        if getattr(self, 'sinfo') is not None:
+            # session renewal (not logged in, but have session data)
+            # makes sense only for new method/server
             sinfo = self.sinfo.copy()
             sinfo['callnum'] = self.callnum
             self.callnum += 1
-            if sinfo.get('header-auth'):
-                handler = self.baseurl
-                headers += [
-                    ('Koji-Session-Id', str(self.sinfo['session-id'])),
-                    ('Koji-Session-Key', str(self.sinfo['session-key'])),
-                    ('Koji-Session-Callnum', str(sinfo['callnum'])),
-                ]
-            else:
-                # old server
-                handler = "%s?%s" % (self.baseurl, six.moves.urllib.parse.urlencode(sinfo))
-        elif name == 'sslLogin':
+            headers += [
+                ('Koji-Session-Id', str(sinfo['session-id'])),
+                ('Koji-Session-Key', str(sinfo['session-key'])),
+                ('Koji-Session-Callnum', str(sinfo['callnum'])),
+            ]
+
+        if self.logged_in and not self.sinfo.get('header-auth'):
+            # old server
+            handler = "%s?%s" % (self.baseurl, six.moves.urllib.parse.urlencode(sinfo))
+        elif name in 'sslLogin':
             handler = self.baseurl + '/ssllogin'
         else:
             handler = self.baseurl
+
         request = dumps(args, name, allow_none=1)
         if six.PY3:
             # For python2, dumps() without encoding specified means return a str
@@ -2898,12 +2897,11 @@ class ClientSession(object):
         """Renew expirated session or subsession."""
         if not hasattr(self, 'auth_method'):
             raise GenericError("Missing info for reauthentication")
-        # will be deleted by setSession
         auth_method = getattr(self, self.auth_method['method'])
         args = self.auth_method.get('args', [])
         kwargs = self.auth_method.get('kwargs', {})
-        kwargs['session_key'] = self.session_key
-        self.setSession(None)
+        kwargs['renew'] = True
+        self.logged_in = False
         auth_method(*args, **kwargs)
         if self.exclusive:
             self.exclusiveSession()

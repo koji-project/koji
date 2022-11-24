@@ -56,6 +56,8 @@ RetryWhitelist = [
     'repoProblem',
 ]
 
+AUTH_METHODS = ['login', 'sslLogin']
+
 logger = logging.getLogger('koji.auth')
 
 
@@ -82,8 +84,8 @@ class Session(object):
         args = environ.get('QUERY_STRING', '')
         # prefer new header-based sessions
         if 'HTTP_KOJI_SESSION_ID' in environ:
-            id = int(environ['HTTP_KOJI_SESSION_ID'])
-            key = environ['HTTP_KOJI_SESSION_KEY']
+            self.id = int(environ['HTTP_KOJI_SESSION_ID'])
+            self.key = environ['HTTP_KOJI_SESSION_KEY']
             try:
                 callnum = int(environ['HTTP_KOJI_CALLNUM'])
             except KeyError:
@@ -96,8 +98,8 @@ class Session(object):
                 return
             args = urllib.parse.parse_qs(args, strict_parsing=True)
             try:
-                id = int(args['session-id'][0])
-                key = args['session-key'][0]
+                self.id = int(args['session-id'][0])
+                self.key = args['session-key'][0]
             except KeyError as field:
                 raise koji.AuthError('%s not specified in session args' % field)
             try:
@@ -119,23 +121,26 @@ class Session(object):
 
         query = QueryProcessor(tables=['sessions'], columns=columns, aliases=aliases,
                                clauses=['id = %(id)i', 'key = %(key)s', 'hostip = %(hostip)s'],
-                               values={'id': id, 'key': key, 'hostip': hostip},
+                               values={'id': self.id, 'key': self.key, 'hostip': hostip},
                                opts={'rowlock': True})
         session_data = query.executeOne(strict=False)
         if not session_data:
             query = QueryProcessor(tables=['sessions'], columns=['key', 'hostip'],
-                                   clauses=['id = %(id)i'], values={'id': id})
+                                   clauses=['id = %(id)i'], values={'id': self.id})
             row = query.executeOne(strict=False)
             if row:
-                if key != row['key']:
-                    logger.warning("Session ID %s is not related to session key %s.", id, key)
+                if self.key != row['key']:
+                    logger.warning("Session ID %s is not related to session key %s.",
+                                   self.id, self.key)
                 elif hostip != row['hostip']:
-                    logger.warning("Session ID %s is not related to host IP %s.", id, hostip)
+                    logger.warning("Session ID %s is not related to host IP %s.", self.id, hostip)
             raise koji.AuthError('Invalid session or bad credentials')
 
         # check for expiration
         if session_data['expired']:
-            raise koji.AuthExpired('session "%i" has expired' % id)
+            if getattr(context, 'method') not in AUTH_METHODS:
+                raise koji.AuthExpired(f'session "{self.id}" has expired')
+
         # check for callnum sanity
         if callnum is not None:
             try:
@@ -145,8 +150,7 @@ class Session(object):
             lastcall = session_data['callnum']
             if lastcall is not None:
                 if lastcall > callnum:
-                    raise koji.SequenceError("%d > %d (session %d)"
-                                             % (lastcall, callnum, id))
+                    raise koji.SequenceError(f"{lastcall} > {callnum} (session {self.id})")
                 elif lastcall == callnum:
                     # Some explanation:
                     # This function is one of the few that performs its own commit.
@@ -159,8 +163,11 @@ class Session(object):
                     method = getattr(context, 'method', 'UNKNOWN')
                     if method not in RetryWhitelist:
                         raise koji.RetryError(
-                            "unable to retry call %d (method %s) for session %d"
-                            % (callnum, method, id))
+                            f"unable to retry call {callnum} "
+                            f"(method {method}) for session {self.id}")
+
+        if session_data['expired']:
+            return
 
         # read user data
         # historical note:
@@ -200,21 +207,19 @@ class Session(object):
 
         # update timestamp
         update = UpdateProcessor('sessions', rawdata={'update_time': 'NOW()'},
-                                 clauses=['id = %(id)i'], values={'id': id})
+                                 clauses=['id = %(id)i'], values={'id': self.id})
         update.execute()
         context.cnx.commit()
         # update callnum (this is deliberately after the commit)
         # see earlier note near RetryError
         if callnum is not None:
             update = UpdateProcessor('sessions', data={'callnum': callnum},
-                                     clauses=['id = %(id)i'], values={'id': id})
+                                     clauses=['id = %(id)i'], values={'id': self.id})
             update.execute()
             # we only want to commit the callnum change if there are other commits
             context.commit_pending = False
 
         # record the login data
-        self.id = id
-        self.key = key
         self.hostip = hostip
         self.callnum = callnum
         self.user_id = session_data['user_id']
@@ -327,7 +332,7 @@ class Session(object):
 
         return (local_ip, local_port, remote_ip, remote_port)
 
-    def sslLogin(self, proxyuser=None, proxyauthtype=None, session_key=None):
+    def sslLogin(self, proxyuser=None, proxyauthtype=None, renew=False):
 
         """Login into brew via SSL. proxyuser name can be specified and if it is
         allowed in the configuration file then connection is allowed to login as
@@ -405,7 +410,7 @@ class Session(object):
 
         hostip = self.get_remote_ip()
 
-        sinfo = self.createSession(user_id, hostip, authtype, session_key=session_key)
+        sinfo = self.createSession(user_id, hostip, authtype, renew=renew)
         return sinfo
 
     def makeExclusive(self, force=False):
@@ -485,37 +490,48 @@ class Session(object):
         update.execute()
         context.cnx.commit()
 
-    def createSession(self, user_id, hostip, authtype, master=None, session_key=None):
+    def createSession(self, user_id, hostip, authtype, master=None, renew=False):
         """Create a new session for the given user.
 
         Return a map containing the session-id and session-key.
         If master is specified, create a subsession
         """
-        if session_key:
-            if master:
-                raise koji.GenericError("Can't call createSession with both master + session_key.")
-            query = QueryProcessor(tables=['sessions'], columns=['master'],
-                                   clauses=['key=%(session_key)d', 'closed=FALSE'],
-                                   values={'session_key': session_key})
-            row = query.executeOne(strict=False)
-            if not row:
-                raise koji.GenericError("Don't allow to renew non-existent or logged out session")
-            master = row['master']
-
         # generate a random key
         alnum = string.ascii_letters + string.digits
         key = "%s-%s" % (user_id,
                          ''.join([random.choice(alnum) for x in range(1, 20)]))
         # use sha? sha.new(phrase).hexdigest()
 
-        # get a session id
-        session_id = nextval('sessions_id_seq')
+        if renew and self.id is not None:
+            # just update key
+            session_id = self.id
+            self.key = key
+            if self.master:
+                # check if master session died meanwhile
+                query = QueryProcessor(tables=['sessions'],
+                                       clauses=['id = %(master_id)d',
+                                                'expired IS FALSE',
+                                                'closed IS FALSE'],
+                                       values={'master_id': self.master},
+                                       opts={'countOnly': True})
+                if query.executeOne() == 0:
+                    return None
 
-        # add session id to database
-        insert = InsertProcessor('sessions',
-                                 data={'id': session_id, 'user_id': user_id, 'key': key,
-                                       'hostip': hostip, 'authtype': authtype, 'master': master})
-        insert.execute()
+            update = UpdateProcessor('sessions',
+                                     clauses=['id=%(id)i'],
+                                     rawdata={'update_time': 'NOW()'},
+                                     data={'key': self.key, 'expired': False},
+                                     values={'id': self.id})
+            update.execute()
+        else:
+            # get a session id
+            session_id = nextval('sessions_id_seq')
+            # add session id to database
+            insert = InsertProcessor('sessions',
+                                     data={'id': session_id, 'user_id': user_id, 'key': key,
+                                           'hostip': hostip, 'authtype': authtype,
+                                           'master': master})
+            insert.execute()
         context.cnx.commit()
 
         # return session info
@@ -532,8 +548,7 @@ class Session(object):
         master = self.master
         if master is None:
             master = self.id
-        return self.createSession(self.user_id, self.hostip, self.authtype,
-                                  master=master)
+        return self.createSession(self.user_id, self.hostip, self.authtype, master=master)
 
     def getPerms(self):
         if not self.logged_in:
