@@ -35,3 +35,4 @@ install:
 
 	mkdir -p $(DESTDIR)/$(SERVERDIR)
 	install -p -m 644 kojiapp.py $(DESTDIR)/$(SERVERDIR)/kojiapp.py
+	$(PYTHON) -c "import compileall; compileall.compile_dir('$(DESTDIR)/$(SERVERDIR)', 1, '$(PYDIR)', 1)"

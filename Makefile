@@ -1,10 +1,17 @@
 NAME=koji
 SPECFILE = $(firstword $(wildcard *.spec))
-SUBDIRS = kojihub builder koji cli util www plugins vm
 
 ifndef PYTHON
 export PYTHON=python2
 endif
+
+PYVER_MAJOR := $(shell $(PYTHON) -c 'import sys; print(".".join(sys.version.split(".")[:1]))')
+ifeq ($(PYVER_MAJOR),2)
+	SUBDIRS = builder koji cli plugins vm
+else
+	SUBDIRS = kojihub builder koji cli util www plugins vm
+endif
+
 
 ifdef DIST
 DIST_DEFINES := --define "dist $(DIST)"
