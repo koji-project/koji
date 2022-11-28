@@ -120,7 +120,8 @@ class Session(object):
         columns, aliases = zip(*fields)
 
         query = QueryProcessor(tables=['sessions'], columns=columns, aliases=aliases,
-                               clauses=['id = %(id)i', 'key = %(key)s', 'hostip = %(hostip)s'],
+                               clauses=['id = %(id)i', 'key = %(key)s', 'hostip = %(hostip)s',
+                                        'closed IS FALSE'],
                                values={'id': self.id, 'key': self.key, 'hostip': hostip},
                                opts={'rowlock': True})
         session_data = query.executeOne(strict=False)
@@ -146,7 +147,7 @@ class Session(object):
             try:
                 callnum = int(callnum)
             except (ValueError, TypeError):
-                raise koji.AuthError("Invalid callnum: %r" % callnum)
+                raise koji.AuthError(f"Invalid callnum: {callnum!r}")
             lastcall = session_data['callnum']
             if lastcall is not None:
                 if lastcall > callnum:
@@ -285,7 +286,7 @@ class Session(object):
         if result['status'] != koji.USER_STATUS['NORMAL']:
             raise koji.AuthError('logins by %s are not allowed' % result['name'])
 
-    def login(self, user, password, opts=None, session_key=None):
+    def login(self, user, password, opts=None, renew=False, exclusive=False):
         """create a login session"""
         if opts is None:
             opts = {}
@@ -307,7 +308,9 @@ class Session(object):
 
         # create session and return
         sinfo = self.createSession(user_id, hostip, koji.AUTHTYPES['NORMAL'],
-                                   session_key=session_key)
+                                   renew=renew)
+        if sinfo and exclusive and not self.exclusive:
+            self.makeExclusive()
         context.cnx.commit()
         return sinfo
 
@@ -332,7 +335,7 @@ class Session(object):
 
         return (local_ip, local_port, remote_ip, remote_port)
 
-    def sslLogin(self, proxyuser=None, proxyauthtype=None, renew=False):
+    def sslLogin(self, proxyuser=None, proxyauthtype=None, renew=False, exclusive=None):
 
         """Login into brew via SSL. proxyuser name can be specified and if it is
         allowed in the configuration file then connection is allowed to login as
@@ -411,6 +414,8 @@ class Session(object):
         hostip = self.get_remote_ip()
 
         sinfo = self.createSession(user_id, hostip, authtype, renew=renew)
+        if sinfo and exclusive and not self.exclusive:
+            self.makeExclusive()
         return sinfo
 
     def makeExclusive(self, force=False):
