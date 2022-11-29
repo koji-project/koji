@@ -497,7 +497,9 @@ def load_config(environ):
 
         ['MaxNameLengthInternal', 'integer', 256],
         ['RegexNameInternal', 'string', r'^[A-Za-z0-9/_.+-]+$'],
-        ['RegexUserName', 'string', r'^[A-Za-z0-9/_.@-]+$']
+        ['RegexUserName', 'string', r'^[A-Za-z0-9/_.@-]+$'],
+
+        ['RPMDefaultChecksums', 'string', 'md5 sha256']
     ]
     opts = {}
     for name, dtype, default in cfgmap:
@@ -532,6 +534,7 @@ def load_config(environ):
         opts['RegexNameInternal.compiled'] = re.compile(opts['RegexNameInternal'])
     if opts['RegexUserName'] != '':
         opts['RegexUserName.compiled'] = re.compile(opts['RegexUserName'])
+
     return opts
 
 

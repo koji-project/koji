@@ -542,3 +542,15 @@ Host names are listed in both groups because hosts always have an associated use
       Set regex for verify a user name and kerberos. User name and kerberos have
       in default set up allowed '@' and '/' chars on top of basic name regex
       for internal names. When regex string is empty, verifying is disabled.
+
+Default checksums types
+^^^^^^^^^^^^^^^^^^^^^^^
+We have default checksums types for create rpm checksums.
+
+.. glossary::
+   RPMDefaultChecksums
+      Type: string
+
+      Default: ``md5 sha256``
+
+      Set RPM default checksums type. Default value is set upt to ``md5 sha256``.
