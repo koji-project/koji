@@ -4494,7 +4494,12 @@ def _do_parseTaskParams(session, method, task_id, topdir):
         lines.append("SCM URL: %s" % params[0])
     elif method == 'buildArch':
         lines.append("SRPM: %s/work/%s" % (topdir, params[0]))
-        lines.append("Build Tag: %s" % session.getTag(params[1])['name'])
+        taginfo = session.getTag(params[1])
+        if taginfo:
+            tagname = taginfo['name']
+        else:
+            tagname = str(params[1]) + " (deleted)"
+        lines.append("Build Tag: %s" % tagname)
         lines.append("Build Arch: %s" % params[2])
         lines.append("SRPM Kept: %r" % params[3])
         if len(params) > 4:
