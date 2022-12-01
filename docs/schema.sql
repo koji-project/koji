@@ -124,6 +124,8 @@ CREATE TABLE sessions (
 		master IS NULL OR "exclusive" IS NULL),
 	CONSTRAINT exclusive_expired_sane CHECK (
 		expired IS FALSE OR "exclusive" IS NULL),
+        CONSTRAINT no_closed_exclusive CHECK (
+                closed IS FALSE OR "exclusive" IS NULL),
 	UNIQUE (user_id,exclusive)
 ) WITHOUT OIDS;
 CREATE INDEX sessions_master ON sessions(master);

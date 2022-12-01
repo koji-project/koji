@@ -2745,8 +2745,6 @@ class ClientSession(object):
         self.new_session()
 
         # forget our login session, if any
-        if not self.logged_in:
-            return
         self.setSession(None)
 
     # we've had some trouble with this method causing strange problems
@@ -2789,7 +2787,7 @@ class ClientSession(object):
         if self.logged_in and not self.sinfo.get('header-auth'):
             # old server
             handler = "%s?%s" % (self.baseurl, six.moves.urllib.parse.urlencode(sinfo))
-        elif name in 'sslLogin':
+        elif name == 'sslLogin':
             handler = self.baseurl + '/ssllogin'
         else:
             handler = self.baseurl
@@ -2961,9 +2959,7 @@ class ClientSession(object):
                             # server correctly reporting an outage
                             tries = 0
                             continue
-                    else:
-                        raise err
-
+                    raise err
                 except (SystemExit, KeyboardInterrupt):
                     # (depending on the python version, these may or may not be subclasses of
                     # Exception)

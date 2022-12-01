@@ -439,8 +439,9 @@ class Session(object):
         excl_id = query.singleValue(strict=False)
         if excl_id:
             if force:
-                # expire the previous exclusive session and try again
-                update = UpdateProcessor('sessions', data={'expired': True, 'exclusive': None},
+                # close the previous exclusive sessions and try again
+                update = UpdateProcessor('sessions',
+                                         data={'expired': True, 'exclusive': None, 'closed': True},
                                          clauses=['id=%(excl_id)s'], values={'excl_id': excl_id},)
                 update.execute()
             else:
