@@ -372,8 +372,10 @@ class KiwiCreateImageTask(BaseBuildTask):
         self.uploadFile(desc)
 
         target_dir = '/builddir/result/image'
-        root_log_path = os.path.join(broot.rootdir(), target_dir[1:], "build/image-root.log")
-        root_log_remote_name = f"image-root.{arch}.log"
+        os.symlink(  # symlink log to resultdir, so it is incrementally uploaded
+            os.path.join(broot.rootdir(), "/tmp/image-root.{arch}.log"),
+            os.path.join(broot.resultdir(), f'image-root.{arch}.log')
+        )
         cmd = ['kiwi-ng']
         if self.opts.get('profile'):
             cmd.extend(['--profile', self.opts['profile']])
@@ -381,18 +383,24 @@ class KiwiCreateImageTask(BaseBuildTask):
             cmd.extend(['--type', self.opts['type']])
         cmd.extend([
             '--kiwi-file', os.path.basename(desc),  # global option for image/system commands
+            '--logfile', f"/tmp/image-root.{arch}.log",
             'system', 'build',
             '--description', os.path.join(os.path.basename(scmsrcdir), base_path),
             '--target-dir', target_dir,
         ])
-        rv = broot.mock(['--cwd', broot.tmpdir(within=True), '--chroot', '--'] + cmd,
-                        additional_logs={root_log_remote_name: root_log_path})
+        rv = broot.mock(['--cwd', broot.tmpdir(within=True), '--chroot', '--'] + cmd)
         if rv:
             raise koji.GenericError("Kiwi failed")
 
         # rename artifacts accordingly to release
+        os.symlink(  # symlink log to resultdir, so it is incrementally uploaded
+            os.path.join(broot.rootdir(), "/tmp/kiwi-result-bundle.{arch}.log"),
+            os.path.join(broot.resultdir(), f'kiwi-result-bundle.{arch}.log')
+        )
         bundle_dir = '/builddir/result/bundle'
-        cmd = ['kiwi-ng', 'result', 'bundle',
+        cmd = ['kiwi-ng',
+               '--logfile', f"/tmp/kiwi-result-bundle.{arch}.log",
+               'result', 'bundle',
                '--target-dir', target_dir,
                '--bundle-dir', bundle_dir,
                '--id', release]
