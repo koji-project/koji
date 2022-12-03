@@ -483,7 +483,7 @@ def handle_trash():
     N = len(untagged)
     to_trash = []
 
-    print("1st pass: blacklist")
+    print("1st pass: package filter")
     continuing = []
     for binfo in untagged:
         i += 1
@@ -675,62 +675,70 @@ def handle_delete(just_salvage=False):
     for binfo in binfos:
         binfo['nvr'] = '%(name)s-%(version)s-%(release)s' % binfo
         binfo['id'] = binfo['build_id']
-    trash = sorted([(b['nvr'], b) for b in binfos])
-    print("...got %i builds" % len(trash))
+    to_check = {b['nvr']: b for b in binfos}
+    print(f"...got {len(to_check)} builds to check")
 
-    print("1st pass: blacklist")
-    continuing = []
-    for nvr, binfo in trash:
+    print("1st pass: package filter")
+    for nvr in sorted(to_check):
+        binfo = to_check[nvr]
         if not check_package(binfo['name']):
             if options.debug:
-                print("Skipping package: %s" % nvr)
-            continue
-        continuing.append((nvr, binfo))
+                print(f"Skipping package: {nvr}")
+            del to_check[nvr]
+    print(f"{len(to_check)} builds remaining")
 
     print("2nd pass: tags")
-    continuing, trash = [], continuing
-    mcall = koji.MultiCallSession(session, batch=100)
-    for nvr, binfo in trash:
-        mcall.listTags(build=binfo['id'], perms=False)
-    for (nvr, binfo), [tags] in zip(trash, mcall.call_all()):
+    with session.multicall(batch=100) as m:
+        tags = {nvr: m.listTags(build=binfo['id'], perms=False) for nvr in to_check}
+    for nvr in sorted(to_check):
         # see if build has been tagged elsewhere
-        tags = [t['name'] for t in tags if t['name'] != trashcan_tag]
-        if tags:
-            print("Build %s tagged elsewhere: %s" % (nvr, tags))
+        binfo = to_check[nvr]
+        btags = [t['name'] for t in tags[nvr].result if t['name'] != trashcan_tag]
+        if btags:
+            print(f"Build {nvr} tagged elsewhere: {btags}")
             salvage_build(binfo)
-            continue
-        continuing.append((nvr, binfo))
+            del to_check[nvr]
+    print(f"{len(to_check)} builds remaining")
 
     print("3rd pass: signatures")
-    continuing, trash = [], continuing
-    for nvr, binfo in trash:
+    for nvr in sorted(to_check):
         # check build signatures
+        binfo = to_check[nvr]
         keys = get_build_sigs(binfo['id'], cache=False)
         if keys and options.debug:
-            print("Build: %s, Keys: %s" % (nvr, keys))
+            print(f"Build: {nvr}, Keys: {keys}")
         if protected_sig(keys):
-            print("Salvaging signed build %s. Keys: %s" % (nvr, keys))
+            print(f"Salvaging signed build {nvr}. Keys: {keys}")
             salvage_build(binfo)
-            continue
-        if just_salvage:
-            # skip the rest when salvaging
-            continue
-        continuing.append((nvr, binfo))
+            del to_check[nvr]
+    print(f"{len(to_check)} builds remaining")
+
+    if just_salvage:
+        print("Salvage mode. Skipping deletes.")
+        return
 
     print("4th pass: deletion")
-    for binfo in continuing:
+    if options.test:
+        for nvr in sorted(to_check):
+            binfo = to_check[nvr]
+            print(f"Would have deleted build from trashcan: {nvr}")
+    else:
         # go ahead and delete
-        if options.test:
-            print("Would have deleted build from trashcan: %s" % binfo['nvr'])
-        else:
-            print("Deleting build: %s" % binfo['nvr'])
-            mcall.untagBuildBypass(trashcan_tag, binfo['id'])
-            mcall.deleteBuild(binfo['id'])
-
-    for binfo, result in zip(continuing, mcall.call_all()):
-        if isinstance(result, dict):
-            print("Warning: deletion failed: %s" % result['faultString'])
-            # TODO - log details for delete failures
+        with session.multicall(batch=100) as m:
+            untags = {nvr: m.untagBuildBypass(trashcan_tag, to_check[nvr]['id']) for nvr in to_check}
+            deletes = {nvr: m.deleteBuild(to_check[nvr]['id']) for nvr in to_check}
+        for nvr in sorted(to_check):
+            # check multicall results
+            try:
+                r = untags[nvr].result
+            except GenericError as e:
+                print(f"Failed to untag {nvr} from trashcan: {e}")
+            try:
+                r = deletes[nvr].result
+            except GenericError as e:
+                print(f"Warning: deletion failed for {nvr}: ({e})")
+                continue
+            print(f"Deleted build: {nvr}")
 
 
 class TagPruneTest(koji.policy.MatchTest):
