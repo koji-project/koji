@@ -128,6 +128,7 @@ class HandlerRegistry(object):
                 if defaults and aname in defaults:
                     # shouldn't happen, but...
                     del defaults[aname]
+        self.argspec_cache[func] = ret
         return ret
 
     def list_api(self):
@@ -135,27 +136,22 @@ class HandlerRegistry(object):
         for name, func in self.funcs.items():
             # the keys in self.funcs determine the name of the method as seen over xmlrpc
             # func.__name__ might differ (e.g. for dotted method names)
-            args = self._getFuncArgs(func)
+            sig = inspect.signature(func)
+            args = []
+            argdesc = []
+            for pname, param in sig.parameters.items():
+                if param.default != inspect._empty:
+                    args.append([pname, param.default])
+                else:
+                    args.append(pname)
+            argdesc = '(%s)' % ', '.join([str(x) for x in sig.parameters.values()])
             argspec = self.getargspec(func)
             funcs.append({'name': name,
                           'doc': func.__doc__,
                           'argspec': argspec,
-                          'argdesc': inspect.formatargspec(*argspec),
+                          'argdesc': argdesc,
                           'args': args})
         return funcs
-
-    def _getFuncArgs(self, func):
-        args = []
-        for x in range(0, func.__code__.co_argcount):
-            if x == 0 and func.__code__.co_varnames[x] == "self":
-                continue
-            if func.__defaults__ and func.__code__.co_argcount - x <= len(func.__defaults__):
-                args.append(
-                    (func.__code__.co_varnames[x],
-                     func.__defaults__[x - func.__code__.co_argcount + len(func.__defaults__)]))
-            else:
-                args.append(func.__code__.co_varnames[x])
-        return args
 
     def system_listMethods(self):
         return list(self.funcs.keys())
@@ -168,10 +164,11 @@ class HandlerRegistry(object):
         func = self.funcs.get(method)
         if func is None:
             return ""
-        args = inspect.formatargspec(*self.getargspec(func))
-        ret = '%s%s' % (method, args)
+        sig = inspect.signature(func)
+        args = ', '.join([str(x) for x in sig.parameters.values()])
+        ret = f'{method}({args})'
         if func.__doc__:
-            ret += "\ndescription: %s" % func.__doc__
+            ret += f'\ndescription: {func.__doc__}'
         return ret
 
     def get(self, name):
