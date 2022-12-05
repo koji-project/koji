@@ -373,7 +373,7 @@ class KiwiCreateImageTask(BaseBuildTask):
 
         target_dir = '/builddir/result/image'
         os.symlink(  # symlink log to resultdir, so it is incrementally uploaded
-            os.path.join(broot.rootdir(), "/tmp/image-root.{arch}.log"),
+            os.path.join(broot.rootdir(), f'tmp/image-root.{arch}.log'),
             os.path.join(broot.resultdir(), f'image-root.{arch}.log')
         )
         cmd = ['kiwi-ng']
@@ -383,7 +383,7 @@ class KiwiCreateImageTask(BaseBuildTask):
             cmd.extend(['--type', self.opts['type']])
         cmd.extend([
             '--kiwi-file', os.path.basename(desc),  # global option for image/system commands
-            '--logfile', f"/tmp/image-root.{arch}.log",
+            '--logfile', f'/tmp/image-root.{arch}.log',
             'system', 'build',
             '--description', os.path.join(os.path.basename(scmsrcdir), base_path),
             '--target-dir', target_dir,
@@ -394,12 +394,12 @@ class KiwiCreateImageTask(BaseBuildTask):
 
         # rename artifacts accordingly to release
         os.symlink(  # symlink log to resultdir, so it is incrementally uploaded
-            os.path.join(broot.rootdir(), "/tmp/kiwi-result-bundle.{arch}.log"),
+            os.path.join(broot.rootdir(), f'/tmp/kiwi-result-bundle.{arch}.log'),
             os.path.join(broot.resultdir(), f'kiwi-result-bundle.{arch}.log')
         )
         bundle_dir = '/builddir/result/bundle'
         cmd = ['kiwi-ng',
-               '--logfile', f"/tmp/kiwi-result-bundle.{arch}.log",
+               '--logfile', f'/tmp/kiwi-result-bundle.{arch}.log',
                'result', 'bundle',
                '--target-dir', target_dir,
                '--bundle-dir', bundle_dir,
