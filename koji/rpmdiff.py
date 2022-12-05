@@ -117,8 +117,9 @@ class Rpmdiff:
 
         # compare the files
 
-        old_files_dict = self.__fileIteratorToDict(old.fiFromHeader())
-        new_files_dict = self.__fileIteratorToDict(new.fiFromHeader())
+        old_files_dict = self.__getFilesDict(old)
+        new_files_dict = self.__getFilesDict(new)
+
         files = sorted(set(itertools.chain(six.iterkeys(old_files_dict),
                                            six.iterkeys(new_files_dict))))
         self.old_data['files'] = old_files_dict
@@ -224,9 +225,37 @@ class Rpmdiff:
                            (self.ADDED, tagname, newentry[0],
                             self.sense2str(newentry[1]), newentry[2]))
 
+    def __getFilesDict(self, hdr):
+        if not hasattr(rpm, 'files'):
+            # fall back to file iterator
+            return self.__fileIteratorToDict(hdr.fiFromHeader())
+        result = {}
+        for file in rpm.files(hdr):
+            # mimic old fi order because comparison and kojihash relies on it
+            # (FN, FSize, FMode, FMtime, FFlags, FRdev, FInode, FNlink, FState, VFlags, FUser,
+            # FGroup, Digest)
+            filedata = [
+                # name omitted
+                file.size,
+                file.mode,
+                file.mtime,
+                file.fflags,
+                file.rdev,
+                file.inode,
+                file.nlink,
+                file.state,
+                file.vflags,
+                file.user,
+                file.group,
+                file.digest,
+            ]
+            result[file.name] = filedata
+        return result
+
     def __fileIteratorToDict(self, fi):
         result = {}
         for filedata in fi:
+            # index by name
             result[filedata[0]] = list(filedata[1:])
         return result
 
