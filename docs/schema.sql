@@ -871,7 +871,7 @@ INSERT INTO archivetypes (name, description, extensions) VALUES ('qcow2-compress
 -- add compressed iso-compressed, vhd-compressed, vhdx-compressed, and vmdk-compressed: From schema-upgrade-1.18-1.19
 INSERT INTO archivetypes (name, description, extensions) VALUES ('iso-compressed', 'Compressed iso image', 'iso.gz iso.xz');
 INSERT INTO archivetypes (name, description, extensions) VALUES ('vhd-compressed', 'Compressed VHD image', 'vhd.gz vhd.xz');
-INSERT INTO archivetypes (name, description, extensions) VALUES ('vhdx-compressed', 'Compressed VHDx image', 'vhd.gz vhd.xz');
+INSERT INTO archivetypes (name, description, extensions) VALUES ('vhdx-compressed', 'Compressed VHDx image', 'vhdx.gz vhdx.xz');
 INSERT INTO archivetypes (name, description, extensions) VALUES ('vmdk-compressed', 'Compressed VMDK image', 'vmdk.gz vmdk.xz');
 -- add kernel-image and imitramfs: From schema-upgrade-1.18-1.19
 INSERT INTO archivetypes (name, description, extensions) VALUES ('kernel-image', 'Kernel BZ2 Image', 'vmlinuz vmlinuz.gz vmlinuz.xz');
