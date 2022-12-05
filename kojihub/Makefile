@@ -1,6 +1,6 @@
 PYVER_MAJOR := $(shell $(PYTHON) -c 'import sys; print(".".join(sys.version.split(".")[:1]))')
 PACKAGE = kojihub
-PYFILES = $(filter-out kojiapp.py, $(wildcard *.py))
+PYFILES = $(wildcard *.py)
 PKGDIR = $(shell $(PYTHON) -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")/$(PACKAGE)
 
 SERVERDIR = /usr/share/koji-hub
@@ -19,13 +19,7 @@ install:
 		exit 1; \
 	fi
 
-	mkdir -p $(DESTDIR)/etc/httpd/conf.d
-	install -p -m 644 httpd.conf $(DESTDIR)/etc/httpd/conf.d/kojihub.conf
-
-	mkdir -p $(DESTDIR)/etc/koji-hub
-	install -p -m 644 hub.conf $(DESTDIR)/etc/koji-hub/hub.conf
-	mkdir -p $(DESTDIR)/etc/koji-hub/hub.conf.d
-
+        # python module
 	mkdir -p $(DESTDIR)/$(PKGDIR)
 	for p in $(PYFILES) ; do \
 		install -p -m 644 $$p $(DESTDIR)/$(PKGDIR)/$$p; \
@@ -33,6 +27,15 @@ install:
 
 	$(PYTHON) -c "import compileall; compileall.compile_dir('$(DESTDIR)/$(PKGDIR)', 1, '$(PYDIR)', 1)"
 
+        # application files
+	mkdir -p $(DESTDIR)/etc/httpd/conf.d
+	install -p -m 644 app/httpd.conf $(DESTDIR)/etc/httpd/conf.d/kojihub.conf
+
+	mkdir -p $(DESTDIR)/etc/koji-hub
+	install -p -m 644 app/hub.conf $(DESTDIR)/etc/koji-hub/hub.conf
+	mkdir -p $(DESTDIR)/etc/koji-hub/hub.conf.d
+
+
 	mkdir -p $(DESTDIR)/$(SERVERDIR)
-	install -p -m 644 kojiapp.py $(DESTDIR)/$(SERVERDIR)/kojiapp.py
+	install -p -m 644 app/kojiapp.py $(DESTDIR)/$(SERVERDIR)/kojiapp.py
 	$(PYTHON) -c "import compileall; compileall.compile_dir('$(DESTDIR)/$(SERVERDIR)', 1, '$(PYDIR)', 1)"
