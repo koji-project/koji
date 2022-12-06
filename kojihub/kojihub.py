@@ -95,6 +95,7 @@ from .db import (  # noqa: F401
 
 
 logger = logging.getLogger('koji.hub')
+sched_logger = scheduler.DBLogger()
 
 
 NUMERIC_TYPES = (int, float)
@@ -315,10 +316,12 @@ class Task(object):
         else:
             return None
 
-    def free(self):
+    def free(self, newstate=koji.TASK_STATES['FREE']):
         """Free a task"""
+        if newstate not in [koji.TASK_STATES['FREE'], koji.TASK_STATES['REFUSED']]:
+            raise koji.GenericError("Can't be called with other than FREE/REFUSED states")
         info = self.getInfo(request=True)
-        self.runCallbacks('preTaskStateChange', info, 'state', koji.TASK_STATES['FREE'])
+        self.runCallbacks('preTaskStateChange', info, 'state', newstate)
         self.runCallbacks('preTaskStateChange', info, 'host_id', None)
         # access checks should be performed by calling function
         query = QueryProcessor(tables=['task'], columns=['state'], clauses=['id = %(id)i'],
@@ -327,14 +330,13 @@ class Task(object):
         if not oldstate:
             raise koji.GenericError("No such task: %i" % self.id)
         if koji.TASK_STATES[oldstate] in ['CLOSED', 'CANCELED', 'FAILED']:
-            raise koji.GenericError("Cannot free task %i, state is %s" %
+            raise koji.GenericError("Cannot free/refuse task %i, state is %s" %
                                     (self.id, koji.TASK_STATES[oldstate]))
-        newstate = koji.TASK_STATES['FREE']
         newhost = None
         update = UpdateProcessor('task', clauses=['id=%(task_id)s'], values={'task_id': self.id},
                                  data={'state': newstate, 'host_id': newhost})
         update.execute()
-        self.runCallbacks('postTaskStateChange', info, 'state', koji.TASK_STATES['FREE'])
+        self.runCallbacks('postTaskStateChange', info, 'state', newstate)
         self.runCallbacks('postTaskStateChange', info, 'host_id', None)
         return True
 
@@ -14408,6 +14410,66 @@ class HostExports(object):
         task = Task(task_id)
         task.assertHost(host.id)
         return task.setWeight(weight)
+
+    def setHostData(self, hostdata):
+        """Builder will update all its resources
+
+        Initial implementation contains:
+          - available task methods
+          - maxjobs
+          - host readiness
+        """
+        host = Host()
+        host.verify()
+        clauses = ['host_id = %(host_id)i']
+        values = {'host_id': host.id}
+        table = 'scheduler_host_data'
+        query = QueryProcessor(tables=[table], clauses=clauses, values=values,
+                               opts={'countOnly': True})
+        if query.singleValue() > 0:
+            update = UpdateProcessor(table=table, data={'data': hostdata},
+                                     clauses=clauses, values=values)
+            update.execute()
+        else:
+            insert = InsertProcessor(table=table, data={'data': hostdata},
+                                     clauses=clauses, values=values)
+            insert.execute()
+        sched_logger.debug(f"Updating host data with: {hostdata}",
+                           host_id=host.id, location='setHostData')
+
+    def getTasks(self):
+        host = Host()
+        host.verify()
+
+        query = QueryProcessor(
+            tables=['scheduler_task_runs'],
+            clauses=[
+                'host_id = %(host_id)s',
+                'state in %(states)s'
+            ],
+            values={
+                'host_id': host.id,
+                'states': [
+                    koji.TASK_STATES['SCHEDULED'],
+                    koji.TASK_STATES['ASSIGNED'],
+                ],
+            }
+        )
+        tasks = query.execute()
+        for task in tasks:
+            sched_logger.debug("Sending task", host_id=host.id, task_id=task['id'],
+                               location="getTasks")
+        return tasks
+
+    def refuseTask(self, task_id):
+        host = Host()
+        host.verify()
+
+        task = Task(task_id)
+        task.free(newstate=koji.TASK_STATES['REFUSED'])
+        sched_logger.warning("Refusing task", host_id=host.id, task_id=task_id,
+                             location="refuseTask")
+        return True
 
     def getHostTasks(self):
         host = Host()
