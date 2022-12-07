@@ -2536,44 +2536,6 @@ def set_channel_enabled(channelname, enabled=True, comment=None):
     update.execute()
 
 
-def get_ready_hosts():
-    """Return information about hosts that are ready to build.
-
-    Hosts set the ready flag themselves
-    Note: We ignore hosts that are late checking in (even if a host
-        is busy with tasks, it should be checking in quite often).
-    """
-    query = QueryProcessor(
-        tables=['host'],
-        columns=['host.id', 'name', 'arches', 'task_load', 'capacity'],
-        aliases=['id', 'name', 'arches', 'task_load', 'capacity'],
-        clauses=[
-            'enabled IS TRUE',
-            'ready IS TRUE',
-            'expired IS FALSE',
-            'master IS NULL',
-            'active IS TRUE',
-            "sessions.update_time > NOW() - '5 minutes'::interval"
-        ],
-        joins=[
-            'sessions USING (user_id)',
-            'host_config ON host.id = host_config.host_id'
-        ]
-    )
-    hosts = query.execute()
-    for host in hosts:
-        query = QueryProcessor(
-            tables=['host_channels'],
-            columns=['channel_id'],
-            clauses=['host_id=%(id)s', 'active IS TRUE', 'enabled IS TRUE'],
-            joins=['channels ON host_channels.channel_id = channels.id'],
-            values=host
-        )
-        rows = query.execute()
-        host['channels'] = [row['channel_id'] for row in rows]
-    return hosts
-
-
 def get_all_arches():
     """Return a list of all (canonical) arches available from hosts"""
     ret = {}
@@ -2587,27 +2549,6 @@ def get_all_arches():
             # arches, but not all admins will undertand that.
             ret[koji.canonArch(arch)] = 1
     return list(ret.keys())
-
-
-def get_active_tasks(host=None):
-    """Return data on tasks that are yet to be run"""
-    fields = ['id', 'state', 'channel_id', 'host_id', 'arch', 'method', 'priority', 'create_time']
-    values = dslice(koji.TASK_STATES, ('FREE', 'ASSIGNED'))
-    if host:
-        values['arches'] = host['arches'].split() + ['noarch']
-        values['channels'] = host['channels']
-        values['host_id'] = host['id']
-        clause = '(state = %(ASSIGNED)i AND host_id = %(host_id)i)'
-        if values['channels']:
-            clause += ''' OR (state = %(FREE)i AND arch IN %(arches)s \
-AND channel_id IN %(channels)s)'''
-        clauses = [clause]
-    else:
-        clauses = ['state IN (%(FREE)i,%(ASSIGNED)i)']
-    queryOpts = {'limit': 100, 'order': 'priority,create_time'}
-    query = QueryProcessor(columns=fields, tables=['task'], clauses=clauses,
-                           values=values, opts=queryOpts)
-    return query.execute()
 
 
 def get_task_descendents(task, childMap=None, request=False):
@@ -14328,16 +14269,9 @@ class Host(object):
 
         This data is relatively small and the necessary load analysis is
         relatively complex, so we let the host machines crunch it."""
-        hosts = get_ready_hosts()
-        for host in hosts:
-            if host['id'] == self.id:
-                break
-        else:
-            # this host not in ready list
-            return [[], []]
-        # host is the host making the call
-        tasks = get_active_tasks(host)
-        return [hosts, tasks]
+        host = get_host(self.id)
+        tasks = scheduler.getTaskRuns(hostID=self.id)
+        return [[host], tasks]
 
     def isEnabled(self):
         """Return whether this host is enabled or not."""
