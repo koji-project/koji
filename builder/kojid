@@ -696,7 +696,13 @@ class BuildRoot(object):
                   'sigmd5',
                   'size',
                   'buildtime')
-        rpm.addMacro("_dbpath", "%s/var/lib/rpm" % self.rootdir())
+        # Determine db path
+        dbpath = "%s/var/lib/rpm" % self.rootdir()
+        if os.path.exists(os.path.join(dbpath, '.migratedb')):
+            dbpath = "%s/usr/lib/sysimage/rpm" % self.rootdir()
+        if not os.path.exists(dbpath):
+            raise koji.GenericError("Can't get list of installed rpms")
+        rpm.addMacro("_dbpath", dbpath)
         ret = []
         try:
             ts = rpm.TransactionSet()
