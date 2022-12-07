@@ -669,7 +669,7 @@ def handle_delete(just_salvage=False):
     history = session.queryHistory(tables=['tag_listing'],
                                    tag=trashcan_tag,
                                    active=True,
-                                   before=time.time()-grace_period)
+                                   before=time.time() - grace_period)
     # simulate needed binfo fields
     binfos = history['tag_listing']
     for binfo in binfos:
@@ -725,17 +725,18 @@ def handle_delete(just_salvage=False):
     else:
         # go ahead and delete
         with session.multicall(batch=100) as m:
-            untags = {nvr: m.untagBuildBypass(trashcan_tag, to_check[nvr]['id']) for nvr in to_check}
+            untags = {nvr: m.untagBuildBypass(trashcan_tag, to_check[nvr]['id'])
+                      for nvr in to_check}
             deletes = {nvr: m.deleteBuild(to_check[nvr]['id']) for nvr in to_check}
         for nvr in sorted(to_check):
             # check multicall results
             try:
-                r = untags[nvr].result
-            except GenericError as e:
+                untags[nvr].result
+            except koji.GenericError as e:
                 print(f"Failed to untag {nvr} from trashcan: {e}")
             try:
-                r = deletes[nvr].result
-            except GenericError as e:
+                deletes[nvr].result
+            except koji.GenericError as e:
                 print(f"Warning: deletion failed for {nvr}: ({e})")
                 continue
             print(f"Deleted build: {nvr}")
