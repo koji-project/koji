@@ -475,6 +475,43 @@ class UpdateProcessor(object):
         return _dml(str(self), self.get_values())
 
 
+class DeleteProcessor(object):
+    """Build an delete statement
+
+    table - the table to delete
+    clauses - a list of where clauses which will be ANDed together
+    values - dict of values used in clauses
+    """
+
+    def __init__(self, table, clauses=None, values=None):
+        self.table = table
+        self.clauses = []
+        if clauses:
+            self.clauses.extend(clauses)
+        self.values = {}
+        if values:
+            self.values.update(values)
+
+    def __str__(self):
+        parts = ['DELETE FROM %s ' % self.table]
+        if self.clauses:
+            parts.append('\nWHERE ')
+            parts.append(' AND '.join(["( %s )" % c for c in sorted(self.clauses)]))
+        return ''.join(parts)
+
+    def __repr__(self):
+        return "<DeleteProcessor: %r>" % vars(self)
+
+    def get_values(self):
+        """Returns unified values dict, including data"""
+        ret = {}
+        ret.update(self.values)
+        return ret
+
+    def execute(self):
+        return _dml(str(self), self.get_values())
+
+
 class QueryProcessor(object):
     """
     Build a query from its components.
