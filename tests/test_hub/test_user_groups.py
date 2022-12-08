@@ -259,8 +259,7 @@ class TestGrouplist(unittest.TestCase):
         self.assertEqual(u.values['user_id'], uid)
         self.assertEqual(u.values['group_id'], gid)
 
-    @mock.patch('kojihub._multiRow')
-    def test_get_group_members(self, _multiRow):
+    def test_get_group_members(self):
         group, gid = 'test_group', 1
 
         # no permission
@@ -300,4 +299,3 @@ class TestGrouplist(unittest.TestCase):
         self.assertEqual(len(self.queries), 1)
         self.assertEqual(len(self.inserts), 0)
         self.assertEqual(len(self.updates), 0)
-        _multiRow.assert_not_called()

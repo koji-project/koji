@@ -6,10 +6,10 @@ import koji
 import kojihub
 
 IP = kojihub.InsertProcessor
+QP = kojihub.QueryProcessor
 
 
 class TestAddArchiveType(unittest.TestCase):
-
     def setUp(self):
 
         self.context = mock.patch('kojihub.context').start()
@@ -23,7 +23,10 @@ class TestAddArchiveType(unittest.TestCase):
         self.insert_execute = mock.MagicMock()
         self.verify_name_internal = mock.patch('kojihub.verify_name_internal').start()
         self.get_archive_type = mock.patch('kojihub.get_archive_type').start()
-        self._multiRow = mock.patch('kojihub._multiRow').start()
+        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
+                                         side_effect=self.getQuery).start()
+        self.queries = []
+        self.query_execute = mock.MagicMock()
 
     def tearDown(self):
         mock.patch.stopall()
@@ -34,7 +37,14 @@ class TestAddArchiveType(unittest.TestCase):
         self.inserts.append(insert)
         return insert
 
+    def getQuery(self, *args, **kwargs):
+        query = QP(*args, **kwargs)
+        query.execute = self.query_execute
+        self.queries.append(query)
+        return query
+
     def test_add_archive_type_valid_empty_compression_type(self):
+        self.query_execute.side_effect = [[]]
         self.verify_name_internal.return_value = None
         self.get_archive_type.return_value = None
         kojihub.add_archive_type('deb', 'Debian package', 'deb')
@@ -50,6 +60,7 @@ class TestAddArchiveType(unittest.TestCase):
         self.context.session.assertPerm.assert_called_with('admin')
 
     def test_add_archive_type_valid_with_compression_type(self):
+        self.query_execute.side_effect = [[]]
         self.verify_name_internal.return_value = None
         self.get_archive_type.return_value = None
         kojihub.add_archive_type('jar', 'Jar package', 'jar', 'zip')

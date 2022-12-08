@@ -315,6 +315,12 @@ def nextval(sequence):
     return _singleValue("SELECT nextval(%(sequence)s)", data, strict=True)
 
 
+def currval(sequence):
+    """Get the current value for the given sequence"""
+    data = {'sequence': sequence}
+    return _singleValue("SELECT currval(%(sequence)s)", data, strict=True)
+
+
 class Savepoint(object):
 
     def __init__(self, name):

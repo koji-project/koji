@@ -23,7 +23,6 @@ class TestNewBuild(unittest.TestCase):
         self.get_build = mock.patch('kojihub.get_build').start()
         self.recycle_build = mock.patch('kojihub.recycle_build').start()
         self.context = mock.patch('kojihub.context').start()
-        self._singleValue = mock.patch('kojihub._singleValue').start()
 
     def tearDown(self):
         mock.patch.stopall()
