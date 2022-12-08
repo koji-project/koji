@@ -10,12 +10,12 @@ IP = kojihub.InsertProcessor
 
 class TestAddBType(unittest.TestCase):
 
-    @mock.patch('kojihub.verify_name_internal')
-    @mock.patch('kojihub.list_btypes')
-    @mock.patch('kojihub.InsertProcessor')
+    @mock.patch('kojihub.kojihub.verify_name_internal')
+    @mock.patch('kojihub.kojihub.list_btypes')
+    @mock.patch('kojihub.kojihub.InsertProcessor')
     def test_add_btype(self, InsertProcessor, list_btypes, verify_name_internal):
         # Not sure why mock can't patch kojihub.context, so we do this
-        session = kojihub.context.session = mock.MagicMock()
+        session = kojihub.kojihub.context.session = mock.MagicMock()
         mocks = [InsertProcessor, list_btypes, session]
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"

@@ -18,7 +18,7 @@ class TestAddArchiveType(unittest.TestCase):
         self.exports = kojihub.RootExports()
         self.channel_name = 'test-channel'
         self.description = 'test-description'
-        self.InsertProcessor = mock.patch('koji.db.InsertProcessor',
+        self.InsertProcessor = mock.patch('kojihub.kojihub.InsertProcessor',
                                           side_effect=self.getInsert).start()
         self.inserts = []
         self.insert_execute = mock.MagicMock()
