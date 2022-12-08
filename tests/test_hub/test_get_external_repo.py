@@ -9,7 +9,7 @@ import kojihub
 class TestGetExternalRepo(unittest.TestCase):
 
     def setUp(self):
-        self.get_external_repos = mock.patch('kojihub.get_external_repos').start()
+        self.get_external_repos = mock.patch('kojihub.kojihub.get_external_repos').start()
         self.exports = kojihub.RootExports()
 
     def test_non_exist_repo_with_strict(self):

@@ -22,14 +22,15 @@ class TestSetHostEnabled(unittest.TestCase):
         return update
 
     def setUp(self):
-        self.InsertProcessor = mock.patch('kojihub.InsertProcessor',
+        self.InsertProcessor = mock.patch('kojihub.kojihub.InsertProcessor',
                                           side_effect=self.getInsert).start()
         self.inserts = []
-        self.UpdateProcessor = mock.patch('kojihub.UpdateProcessor',
+        self.UpdateProcessor = mock.patch('kojihub.kojihub.UpdateProcessor',
                                           side_effect=self.getUpdate).start()
         self.updates = []
-        self.context = mock.patch('kojihub.context').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         self.context_db = mock.patch('koji.db.context').start()
+        self.get_host = mock.patch('kojihub.kojihub.get_host').start()
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"
         self.context_db.session.assertLogin = mock.MagicMock()
@@ -41,16 +42,14 @@ class TestSetHostEnabled(unittest.TestCase):
 
     def test_enableHost_missing(self):
         # non-existing hostname
-        kojihub.get_host = mock.MagicMock()
-        kojihub.get_host.return_value = {}
+        self.get_host.return_value = {}
         with self.assertRaises(koji.GenericError):
             self.exports.enableHost('hostname')
         self.assertEqual(self.updates, [])
         self.assertEqual(self.inserts, [])
-        kojihub.get_host.assert_called_once_with('hostname')
+        self.get_host.assert_called_once_with('hostname')
 
     def test_enableHost_valid(self):
-        kojihub.get_host = mock.MagicMock()
         hostinfo = {
             'id': 123,
             'user_id': 234,
@@ -61,16 +60,16 @@ class TestSetHostEnabled(unittest.TestCase):
             'comment': 'comment',
             'enabled': False,
         }
-        kojihub.get_host.return_value = hostinfo
+        self.get_host.return_value = hostinfo
         self.context_db.event_id = 42
         self.context_db.session.user_id = 23
 
         self.exports.enableHost('hostname')
 
-        kojihub.get_host.assert_called_once_with('hostname')
+        self.get_host.assert_called_once_with('hostname')
         # revoke
         self.assertEqual(len(self.updates), 1)
-        values = kojihub.get_host.return_value
+        values = self.get_host.return_value
         clauses = ['host_id = %(id)i', 'active = TRUE']
         revoke_data = {
             'revoke_event': 42,
@@ -102,7 +101,6 @@ class TestSetHostEnabled(unittest.TestCase):
         self.assertEqual(len(self.inserts), 1)
 
     def test_disableHost_valid(self):
-        kojihub.get_host = mock.MagicMock()
         hostinfo = {
             'id': 123,
             'user_id': 234,
@@ -113,16 +111,16 @@ class TestSetHostEnabled(unittest.TestCase):
             'comment': 'comment',
             'enabled': True,
         }
-        kojihub.get_host.return_value = hostinfo
+        self.get_host.return_value = hostinfo
         self.context_db.event_id = 42
         self.context_db.session.user_id = 23
 
         self.exports.disableHost('hostname')
 
-        kojihub.get_host.assert_called_once_with('hostname')
+        self.get_host.assert_called_once_with('hostname')
         # revoke
         self.assertEqual(len(self.updates), 1)
-        values = kojihub.get_host.return_value
+        values = self.get_host.return_value
         clauses = ['host_id = %(id)i', 'active = TRUE']
         revoke_data = {
             'revoke_event': 42,

@@ -9,7 +9,9 @@ import kojihub
 class TestGetGroupMembers(unittest.TestCase):
 
     def setUp(self):
-        self.get_user = mock.patch('kojihub.get_user').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
+        self.context.session.assertPerm = mock.MagicMock()
+        self.get_user = mock.patch('kojihub.kojihub.get_user').start()
         self.exports = kojihub.RootExports()
 
     def test_non_exist_group(self):

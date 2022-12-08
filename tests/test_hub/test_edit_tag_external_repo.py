@@ -8,11 +8,11 @@ import kojihub
 class TestEditTagExternalRepo(unittest.TestCase):
 
     def setUp(self):
-        self.context = mock.patch('kojihub.context').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         self.context.session.assertPerm = mock.MagicMock()
-        self.get_tag = mock.patch('kojihub.get_tag').start()
-        self.get_external_repo = mock.patch('kojihub.get_external_repo').start()
-        self.get_tag_external_repos = mock.patch('kojihub.get_tag_external_repos').start()
+        self.get_tag = mock.patch('kojihub.kojihub.get_tag').start()
+        self.get_external_repo = mock.patch('kojihub.kojihub.get_external_repo').start()
+        self.get_tag_external_repos = mock.patch('kojihub.kojihub.get_tag_external_repos').start()
         self.get_tag.return_value = {'id': 1, 'name': 'tag'}
         self.get_external_repo.return_value = {'id': 11, 'name': 'ext_repo'}
         self.get_tag_external_repos.return_value = [{'external_repo_id': 11,
@@ -22,8 +22,8 @@ class TestEditTagExternalRepo(unittest.TestCase):
                                                      'arches': 'x86_64 i686'}]
 
         self.remove_external_repo_from_tag = mock.patch(
-            'kojihub.remove_external_repo_from_tag').start()
-        self.add_external_repo_to_tag = mock.patch('kojihub.add_external_repo_to_tag').start()
+            'kojihub.kojihub.remove_external_repo_from_tag').start()
+        self.add_external_repo_to_tag = mock.patch('kojihub.kojihub.add_external_repo_to_tag').start()
 
     def tearDown(self):
         mock.patch.stopall()

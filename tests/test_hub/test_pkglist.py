@@ -22,25 +22,25 @@ def get_user_factory(data):
 
 class TestPkglist(unittest.TestCase):
     def setUp(self):
-        self.context = mock.patch('kojihub.context').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"
         self.context.session.assertLogin = mock.MagicMock()
         self.context.session.user_id = 112233
         self.context.session.user_data = {'name': 'username'}
         self.run_callbacks = mock.patch('koji.plugin.run_callbacks').start()
-        self.read_package_list = mock.patch('kojihub.readPackageList').start()
-        self.lookup_package = mock.patch('kojihub.lookup_package').start()
-        self._pkglist_add = mock.patch('kojihub._pkglist_add').start()
-        self.get_tag = mock.patch('kojihub.get_tag').start()
-        self._pkglist_remove = mock.patch('kojihub._pkglist_remove').start()
-        self.assert_policy = mock.patch('kojihub.assert_policy').start()
-        self.get_user = mock.patch('kojihub.get_user').start()
+        self.read_package_list = mock.patch('kojihub.kojihub.readPackageList').start()
+        self.lookup_package = mock.patch('kojihub.kojihub.lookup_package').start()
+        self._pkglist_add = mock.patch('kojihub.kojihub._pkglist_add').start()
+        self.get_tag = mock.patch('kojihub.kojihub.get_tag').start()
+        self._pkglist_remove = mock.patch('kojihub.kojihub._pkglist_remove').start()
+        self.assert_policy = mock.patch('kojihub.kojihub.assert_policy').start()
+        self.get_user = mock.patch('kojihub.kojihub.get_user').start()
 
     def tearDown(self):
         mock.patch.stopall()
 
-    @mock.patch('kojihub.pkglist_add')
+    @mock.patch('kojihub.kojihub.pkglist_add')
     def test_pkglist_block(self, pkglist_add):
         force = mock.MagicMock()
         self.get_tag.return_value = {'name': 'tag', 'id': 123}
@@ -53,7 +53,7 @@ class TestPkglist(unittest.TestCase):
         self.lookup_package.assert_called_once_with('pkg', strict=True)
         pkglist_add.assert_called_once_with('tag', 'pkg', block=True, force=force)
 
-    @mock.patch('kojihub.pkglist_add')
+    @mock.patch('kojihub.kojihub.pkglist_add')
     def test_pkglist_block_package_error(self, pkglist_add):
         pkg_name = 'pkg'
         tag_name = 'tag'
@@ -173,20 +173,20 @@ class TestPkglist(unittest.TestCase):
         self._pkglist_add.assert_not_called()
         self._pkglist_remove.assert_not_called()
 
-    @mock.patch('kojihub.pkglist_add')
+    @mock.patch('kojihub.kojihub.pkglist_add')
     def test_pkglist_setowner(self, pkglist_add):
         force = mock.MagicMock()
         kojihub.pkglist_setowner('tag', 'pkg', 'owner', force=force)
         pkglist_add.assert_called_once_with('tag', 'pkg', owner='owner', force=force, update=True)
 
-    @mock.patch('kojihub.pkglist_add')
+    @mock.patch('kojihub.kojihub.pkglist_add')
     def test_pkglist_setarches(self, pkglist_add):
         force = mock.MagicMock()
         kojihub.pkglist_setarches('tag', 'pkg', 'arches', force=force)
         pkglist_add.assert_called_once_with('tag', 'pkg', extra_arches='arches', force=force,
                                             update=True)
 
-    @mock.patch('kojihub._direct_pkglist_add')
+    @mock.patch('kojihub.kojihub._direct_pkglist_add')
     def test_pkglist_add(self, _direct_pkglist_add):
         # just transition of params + policy=True
         kojihub.pkglist_add('tag', 'pkg', owner='owner', block='block',

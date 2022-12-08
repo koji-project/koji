@@ -53,21 +53,21 @@ class TestCompleteImageBuild(unittest.TestCase):
         mock.patch('koji.pathinfo', new=self.pathinfo).start()
         self.hostcalls = kojihub.HostExports()
         self.context_db = mock.patch('koji.db.context').start()
-        mock.patch('kojihub.Host').start()
-        self.Task = mock.patch('kojihub.Task').start()
+        mock.patch('kojihub.kojihub.Host').start()
+        self.Task = mock.patch('kojihub.kojihub.Task').start()
         self.Task.return_value.assertHost = mock.MagicMock()
-        self.get_build = mock.patch('kojihub.get_build').start()
-        mock.patch('kojihub.get_rpm', new=self.my_get_rpm).start()
-        self.get_image_build = mock.patch('kojihub.get_image_build').start()
-        mock.patch('kojihub.get_archive_type', new=self.my_get_archive_type).start()
-        mock.patch('kojihub.lookup_name', new=self.my_lookup_name).start()
+        self.get_build = mock.patch('kojihub.kojihub.get_build').start()
+        mock.patch('kojihub.kojihub.get_rpm', new=self.my_get_rpm).start()
+        self.get_image_build = mock.patch('kojihub.kojihub.get_image_build').start()
+        mock.patch('kojihub.kojihub.get_archive_type', new=self.my_get_archive_type).start()
+        mock.patch('kojihub.kojihub.lookup_name', new=self.my_lookup_name).start()
         mock.patch.object(kojihub.BuildRoot, 'load', new=self.my_buildroot_load).start()
-        mock.patch('kojihub.import_archive_internal',
+        mock.patch('kojihub.kojihub.import_archive_internal',
                    new=self.my_import_archive_internal).start()
-        self._dml = mock.patch('kojihub._dml').start()
-        mock.patch('kojihub.build_notification').start()
-        mock.patch('kojihub.assert_policy').start()
-        mock.patch('kojihub.check_volume_policy',
+        self._dml = mock.patch('kojihub.kojihub._dml').start()
+        mock.patch('kojihub.kojihub.build_notification').start()
+        mock.patch('kojihub.kojihub.assert_policy').start()
+        mock.patch('kojihub.kojihub.check_volume_policy',
                    return_value={'id': 0, 'name': 'DEFAULT'}).start()
         self.set_up_callbacks()
         self.rpms = {}
@@ -79,7 +79,7 @@ class TestCompleteImageBuild(unittest.TestCase):
                           new=make_bulk_insert_grabber(self)).start()
         mock.patch.object(kojihub.UpdateProcessor, 'execute',
                           new=make_update_grabber(self)).start()
-        mock.patch('kojihub.nextval', new=self.my_nextval).start()
+        mock.patch('kojihub.kojihub.nextval', new=self.my_nextval).start()
         self.sequences = {}
 
     def tearDown(self):
@@ -173,8 +173,8 @@ class TestCompleteImageBuild(unittest.TestCase):
 
         def my_ga(archive_id, **kw):
             return share['archiveinfo']
-        with mock.patch('kojihub.InsertProcessor', new=my_ip):
-            with mock.patch('kojihub.get_archive', new=my_ga):
+        with mock.patch('kojihub.kojihub.InsertProcessor', new=my_ip):
+            with mock.patch('kojihub.kojihub.get_archive', new=my_ga):
                 return orig_import_archive_internal(*a, **kw)
 
     def set_up_callbacks(self):

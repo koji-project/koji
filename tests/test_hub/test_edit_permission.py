@@ -12,10 +12,10 @@ UP = kojihub.UpdateProcessor
 class TestEditPermission(unittest.TestCase):
 
     def setUp(self):
-        self.lookup_perm = mock.patch('kojihub.lookup_perm').start()
-        self.update_processor = mock.patch('kojihub.UpdateProcessor').start()
+        self.lookup_perm = mock.patch('kojihub.kojihub.lookup_perm').start()
+        self.update_processor = mock.patch('kojihub.kojihub.UpdateProcessor').start()
         self.exports = kojihub.RootExports()
-        self.context = mock.patch('kojihub.context').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"
         self.context.session.assertPerm = mock.MagicMock()

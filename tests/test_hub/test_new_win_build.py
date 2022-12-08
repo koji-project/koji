@@ -10,7 +10,7 @@ IP = kojihub.InsertProcessor
 
 class TestNewWinBuild(unittest.TestCase):
     def setUp(self):
-        self.InsertProcessor = mock.patch('kojihub.InsertProcessor',
+        self.InsertProcessor = mock.patch('kojihub.kojihub.InsertProcessor',
                                           side_effect=self.getInsert).start()
         self.inserts = []
         self.insert_execute = mock.MagicMock()

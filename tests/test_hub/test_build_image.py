@@ -7,11 +7,11 @@ import mock
 class TestBuildImage(unittest.TestCase):
 
     def setUp(self):
-        self.context = mock.patch('kojihub.context').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         self.exports = kojihub.RootExports()
         self.context.session.assertPerm = mock.MagicMock()
         self.context.session.hasPerm = mock.MagicMock()
-        self.make_task = mock.patch('kojihub.make_task').start()
+        self.make_task = mock.patch('kojihub.kojihub.make_task').start()
         self.mock_parse_arches = mock.patch('koji.parse_arches').start()
         self.name = 'image-name'
         self.version = 'test-version'

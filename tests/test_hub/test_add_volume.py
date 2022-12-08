@@ -9,8 +9,8 @@ import kojihub
 class TestAddVolume(unittest.TestCase):
 
     def setUp(self):
-        self.verify_name_internal = mock.patch('kojihub.verify_name_internal').start()
-        self.context = mock.patch('kojihub.context').start()
+        self.verify_name_internal = mock.patch('kojihub.kojihub.verify_name_internal').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"
         self.context.session.assertPerm = mock.MagicMock()

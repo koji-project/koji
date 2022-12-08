@@ -16,17 +16,17 @@ class TestListArchiveFiles(unittest.TestCase):
         self.mm = mock.MagicMock()
         # Note: the following mocks copy() the return value dict because some
         # of the tests modify it
-        self.mm.get_build = mock.patch('kojihub.get_build',
+        self.mm.get_build = mock.patch('kojihub.kojihub.get_build',
                                        return_value=GET_BUILD_RV.copy()).start()
-        self.mm.get_archive_type = mock.patch('kojihub.get_archive_type',
+        self.mm.get_archive_type = mock.patch('kojihub.kojihub.get_archive_type',
                                               return_value=GET_ARCHIVE_TYPE_RV.copy()).start()
-        self.mm.get_archive = mock.patch('kojihub.get_archive',
+        self.mm.get_archive = mock.patch('kojihub.kojihub.get_archive',
                                          return_value=GET_ARCHIVE_RV.copy()).start()
-        self.mm.get_maven_archive = mock.patch('kojihub.get_maven_archive').start()
-        self.mm.get_win_archive = mock.patch('kojihub.get_win_archive').start()
-        self.mm.get_image_archive = mock.patch('kojihub.get_image_archive').start()
-        self.mm.get_zipfile_list = mock.patch('kojihub._get_zipfile_list').start()
-        self.mm.get_tarball_list = mock.patch('kojihub._get_tarball_list').start()
+        self.mm.get_maven_archive = mock.patch('kojihub.kojihub.get_maven_archive').start()
+        self.mm.get_win_archive = mock.patch('kojihub.kojihub.get_win_archive').start()
+        self.mm.get_image_archive = mock.patch('kojihub.kojihub.get_image_archive').start()
+        self.mm.get_zipfile_list = mock.patch('kojihub.kojihub._get_zipfile_list').start()
+        self.mm.get_tarball_list = mock.patch('kojihub.kojihub._get_tarball_list').start()
         self.maven_archive = {'archive_id': 1, 'group_id': 'gid', 'artifact_id': 'aid',
                               'version': '1.0.0'}
         self.win_archive = {'archive_id': 1, 'relpath': 'rpath', 'platform': 'all',

@@ -19,9 +19,9 @@ class TestEditBuildTarget(unittest.TestCase):
         return query
 
     def setUp(self):
-        self.lookup_build_target = mock.patch('kojihub.lookup_build_target').start()
-        self.verify_name_internal = mock.patch('kojihub.verify_name_internal').start()
-        self.get_tag = mock.patch('kojihub.get_tag').start()
+        self.lookup_build_target = mock.patch('kojihub.kojihub.lookup_build_target').start()
+        self.verify_name_internal = mock.patch('kojihub.kojihub.verify_name_internal').start()
+        self.get_tag = mock.patch('kojihub.kojihub.get_tag').start()
         self.exports = kojihub.RootExports()
         self.target_name = 'build-target'
         self.name = 'build-target-rename'
@@ -32,7 +32,7 @@ class TestEditBuildTarget(unittest.TestCase):
         self.dest_tag_info = {'id': 112, 'name': self.dest_tag}
         self.session = kojihub.context.session = mock.MagicMock()
         self.session.assertPerm = mock.MagicMock()
-        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
+        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
                                          side_effect=self.getQuery).start()
         self.queries = []
         self.query_singleValue = mock.MagicMock()

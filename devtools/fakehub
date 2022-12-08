@@ -12,7 +12,7 @@ import sys
 from urllib.parse import quote
 
 sys.path.insert(0, os.getcwd())
-sys.path.insert(1, os.path.join(os.getcwd(), 'hub'))
+sys.path.insert(1, os.path.join(os.getcwd(), 'kojihub'))
 import koji
 import kojixmlrpc
 import koji.xmlrpcplus

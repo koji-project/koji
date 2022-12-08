@@ -13,18 +13,18 @@ class TestAddChannel(unittest.TestCase):
 
     def setUp(self):
 
-        self.context = mock.patch('kojihub.context').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         self.context.session.assertPerm = mock.MagicMock()
         self.exports = kojihub.RootExports()
         self.channel_name = 'test-channel'
         self.description = 'test-description'
-        self.InsertProcessor = mock.patch('kojihub.InsertProcessor',
+        self.InsertProcessor = mock.patch('kojihub.kojihub.InsertProcessor',
                                           side_effect=self.getInsert).start()
         self.inserts = []
         self.insert_execute = mock.MagicMock()
-        self.verify_name_internal = mock.patch('kojihub.verify_name_internal').start()
-        self.get_channel = mock.patch('kojihub.get_channel').start()
-        self.nextval = mock.patch('kojihub.nextval').start()
+        self.verify_name_internal = mock.patch('kojihub.kojihub.verify_name_internal').start()
+        self.get_channel = mock.patch('kojihub.kojihub.get_channel').start()
+        self.nextval = mock.patch('kojihub.kojihub.nextval').start()
 
     def tearDown(self):
         mock.patch.stopall()

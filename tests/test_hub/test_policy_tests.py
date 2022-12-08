@@ -12,7 +12,7 @@ class TestBasicTests(unittest.TestCase):
         self.assertFalse(obj.run({'operation': 'FOOBAR'}))
         self.assertTrue(obj.run({'operation': 'foobar'}))
 
-    @mock.patch('kojihub.policy_get_pkg')
+    @mock.patch('kojihub.kojihub.policy_get_pkg')
     def test_package_test(self, policy_get_pkg):
         obj = kojihub.PackageTest('package foo*')
         policy_get_pkg.return_value = {'name': 'mypackage'}
@@ -20,7 +20,7 @@ class TestBasicTests(unittest.TestCase):
         policy_get_pkg.return_value = {'name': 'foobar'}
         self.assertTrue(obj.run({}))
 
-    @mock.patch('kojihub.policy_get_version')
+    @mock.patch('kojihub.kojihub.policy_get_version')
     def test_version_test(self, policy_get_version):
         obj = kojihub.VersionTest('version 1.2.*')
         policy_get_version.return_value = '0.0.1'
@@ -28,7 +28,7 @@ class TestBasicTests(unittest.TestCase):
         policy_get_version.return_value = '1.2.1'
         self.assertTrue(obj.run({}))
 
-    @mock.patch('kojihub.policy_get_release')
+    @mock.patch('kojihub.kojihub.policy_get_release')
     def test_release_test(self, policy_get_release):
         obj = kojihub.ReleaseTest('release 1.2.*')
         policy_get_release.return_value = '0.0.1'
@@ -36,7 +36,7 @@ class TestBasicTests(unittest.TestCase):
         policy_get_release.return_value = '1.2.1'
         self.assertTrue(obj.run({}))
 
-    @mock.patch('kojihub.policy_get_pkg')
+    @mock.patch('kojihub.kojihub.policy_get_pkg')
     def test_new_package_test(self, policy_get_pkg):
         obj = kojihub.NewPackageTest('is_new_package')
         policy_get_pkg.return_value = {'name': 'mypackage', 'id': 42}
@@ -45,7 +45,7 @@ class TestBasicTests(unittest.TestCase):
         self.assertTrue(obj.run({}))
 
     def test_skip_tag_test(self):
-        obj = kojihub.SkipTagTest('skip_tag')
+        obj = kojihub.kojihub.SkipTagTest('skip_tag')
         data = {'skip_tag': True}
         self.assertTrue(obj.run(data))
         data = {'skip_tag': False}
@@ -59,8 +59,8 @@ class TestBasicTests(unittest.TestCase):
 class TestPolicyGetUser(unittest.TestCase):
 
     def setUp(self):
-        self.get_user = mock.patch('kojihub.get_user').start()
-        self.context = mock.patch('kojihub.context').start()
+        self.get_user = mock.patch('kojihub.kojihub.get_user').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
 
     def tearDown(self):
         mock.patch.stopall()
@@ -97,11 +97,11 @@ class TestPolicyGetUser(unittest.TestCase):
 class TestPolicyGetCGs(unittest.TestCase):
 
     def setUp(self):
-        self.get_build = mock.patch('kojihub.get_build').start()
-        self.list_rpms = mock.patch('kojihub.list_rpms').start()
-        self.list_archives = mock.patch('kojihub.list_archives').start()
-        self.get_buildroot = mock.patch('kojihub.get_buildroot').start()
-        self.lookup_name = mock.patch('kojihub.lookup_name').start()
+        self.get_build = mock.patch('kojihub.kojihub.get_build').start()
+        self.list_rpms = mock.patch('kojihub.kojihub.list_rpms').start()
+        self.list_archives = mock.patch('kojihub.kojihub.list_archives').start()
+        self.get_buildroot = mock.patch('kojihub.kojihub.get_buildroot').start()
+        self.lookup_name = mock.patch('kojihub.kojihub.lookup_name').start()
 
     def tearDown(self):
         mock.patch.stopall()
@@ -116,12 +116,12 @@ class TestPolicyGetCGs(unittest.TestCase):
     def _cgname(self, br_id):
         if br_id is None:
             return None
-        return 'cg for br %s'% br_id
+        return 'cg for br %s' % br_id
 
     def test_policy_get_cg_from_brs(self):
         self.get_build.return_value = {'id': 42}
-        br1 = [1,1,1,2,3,4,5,5]
-        br2 = [2,2,7,7,8,8,9,9,None]
+        br1 = [1, 1, 1, 2, 3, 4, 5, 5]
+        br2 = [2, 2, 7, 7, 8, 8, 9, 9, None]
         self.list_rpms.return_value = [{'buildroot_id': n} for n in br1]
         self.list_archives.return_value = [{'buildroot_id': n} for n in br2]
         self.get_buildroot.side_effect = self._fakebr
@@ -135,10 +135,10 @@ class TestPolicyGetCGs(unittest.TestCase):
 
     def test_policy_get_cg_from_cgs(self):
         data = {
-                'cg_list': [1,1,1,2,2,2,3,3,3],
-                'build': 'whatever',
-                'buildroots': [],
-                }
+            'cg_list': [1, 1, 1, 2, 2, 2, 3, 3, 3],
+            'build': 'whatever',
+            'buildroots': [],
+        }
 
         def my_lookup_name(table, info, strict=False, create=False):
             self.assertEqual(strict, True)
@@ -162,11 +162,11 @@ class TestPolicyGetCGs(unittest.TestCase):
 class TestBuildTagTest(unittest.TestCase):
 
     def setUp(self):
-        self.get_build = mock.patch('kojihub.get_build').start()
-        self.get_tag = mock.patch('kojihub.get_tag').start()
-        self.list_rpms = mock.patch('kojihub.list_rpms').start()
-        self.list_archives = mock.patch('kojihub.list_archives').start()
-        self.get_buildroot = mock.patch('kojihub.get_buildroot').start()
+        self.get_build = mock.patch('kojihub.kojihub.get_build').start()
+        self.get_tag = mock.patch('kojihub.kojihub.get_tag').start()
+        self.list_rpms = mock.patch('kojihub.kojihub.list_rpms').start()
+        self.list_archives = mock.patch('kojihub.kojihub.list_archives').start()
+        self.get_buildroot = mock.patch('kojihub.kojihub.get_buildroot').start()
 
     def tearDown(self):
         mock.patch.stopall()
@@ -255,7 +255,7 @@ class TestBuildTagTest(unittest.TestCase):
 class TestHasTagTest(unittest.TestCase):
 
     def setUp(self):
-        self.list_tags = mock.patch('kojihub.list_tags').start()
+        self.list_tags = mock.patch('kojihub.kojihub.list_tags').start()
 
     def tearDown(self):
         mock.patch.stopall()
@@ -276,8 +276,8 @@ class TestHasTagTest(unittest.TestCase):
 class TestBuildTagInheritsFromTest(unittest.TestCase):
 
     def setUp(self):
-        self.policy_get_build_tags = mock.patch('kojihub.policy_get_build_tags').start()
-        self.readFullInheritance = mock.patch('kojihub.readFullInheritance').start()
+        self.policy_get_build_tags = mock.patch('kojihub.kojihub.policy_get_build_tags').start()
+        self.readFullInheritance = mock.patch('kojihub.kojihub.readFullInheritance').start()
 
     def tearDown(self):
         mock.patch.stopall()
@@ -333,8 +333,8 @@ class TestBuildTagInheritsFromTest(unittest.TestCase):
 
 class TestBuildTypeTest(unittest.TestCase):
     def setUp(self):
-        self.get_build_type = mock.patch('kojihub.get_build_type').start()
-        self.get_build = mock.patch('kojihub.get_build').start()
+        self.get_build_type = mock.patch('kojihub.kojihub.get_build_type').start()
+        self.get_build = mock.patch('kojihub.kojihub.get_build').start()
 
     def tearDown(self):
         mock.patch.stopall()
@@ -358,7 +358,7 @@ class TestBuildTypeTest(unittest.TestCase):
         self.get_build_type.assert_called_once_with(binfo)
 
     def test_prepopulated(self):
-        #self.get_build.return_value = {'id': 1, 'name': 'nvr-1-2'}
+        # self.get_build.return_value = {'id': 1, 'name': 'nvr-1-2'}
         self.get_build_type.return_value = {'rpm': None}
         obj = kojihub.BuildTypeTest('buildtype rpm')
         data = {'build': 123, 'btypes': set(['rpm'])}
@@ -368,9 +368,9 @@ class TestBuildTypeTest(unittest.TestCase):
 
 class TestImportedTest(unittest.TestCase):
     def setUp(self):
-        self.list_rpms = mock.patch('kojihub.list_rpms').start()
-        self.list_archives = mock.patch('kojihub.list_archives').start()
-        self.get_build = mock.patch('kojihub.get_build').start()
+        self.list_rpms = mock.patch('kojihub.kojihub.list_rpms').start()
+        self.list_archives = mock.patch('kojihub.kojihub.list_archives').start()
+        self.get_build = mock.patch('kojihub.kojihub.get_build').start()
 
     def tearDown(self):
         mock.patch.stopall()

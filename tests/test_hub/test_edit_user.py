@@ -27,15 +27,15 @@ class TestEditUser(unittest.TestCase):
 
     def setUp(self):
         self.updates = []
-        self.get_user = mock.patch('kojihub.get_user').start()
-        self.verify_name_user = mock.patch('kojihub.verify_name_user').start()
-        self.context = mock.patch('kojihub.context').start()
-        self.UpdateProcessor = mock.patch('kojihub.UpdateProcessor',
+        self.get_user = mock.patch('kojihub.kojihub.get_user').start()
+        self.verify_name_user = mock.patch('kojihub.kojihub.verify_name_user').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
+        self.UpdateProcessor = mock.patch('kojihub.kojihub.UpdateProcessor',
                                           side_effect=self.getUpdate).start()
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"
         self.context.session.assertLogin = mock.MagicMock()
-        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
+        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
                                          side_effect=self.getQuery).start()
         self.queries = []
         self.query_singleValue = mock.MagicMock()

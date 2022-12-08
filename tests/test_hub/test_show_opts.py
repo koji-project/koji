@@ -11,7 +11,7 @@ IP = kojihub.InsertProcessor
 class TestShowOpts(unittest.TestCase):
     def setUp(self):
         self.maxDiff = None
-        self.context = mock.patch('kojihub.context').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         self.context.session.assertPerm = mock.MagicMock()
         self.exports = kojihub.RootExports()
         self.context.opts = {'MaxNameLengthInternal': 15,

@@ -17,13 +17,13 @@ class TestDeleteRPMSig(unittest.TestCase):
         return delete
 
     def setUp(self):
-        self.DeleteProcessor = mock.patch('kojihub.DeleteProcessor',
+        self.DeleteProcessor = mock.patch('kojihub.kojihub.DeleteProcessor',
                                           side_effect=self.getDelete).start()
         self.deletes = []
-        self.get_rpm = mock.patch('kojihub.get_rpm').start()
-        self.query_rpm_sigs = mock.patch('kojihub.query_rpm_sigs').start()
-        self.get_build = mock.patch('kojihub.get_build').start()
-        self.get_user = mock.patch('kojihub.get_user').start()
+        self.get_rpm = mock.patch('kojihub.kojihub.get_rpm').start()
+        self.query_rpm_sigs = mock.patch('kojihub.kojihub.query_rpm_sigs').start()
+        self.get_build = mock.patch('kojihub.kojihub.get_build').start()
+        self.get_user = mock.patch('kojihub.kojihub.get_user').start()
         self.buildinfo = {'build_id': 1,
                           'epoch': None,
                           'extra': None,

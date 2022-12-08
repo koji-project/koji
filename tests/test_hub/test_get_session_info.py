@@ -15,14 +15,14 @@ class TestGetSessionInfo(unittest.TestCase):
         return query
 
     def setUp(self):
-        self.context = mock.patch('kojihub.context').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         self.exports = kojihub.RootExports()
 
-        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
+        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
                                          side_effect=self.getQuery).start()
         self.queries = []
         self.context.session.hasPerm = mock.MagicMock()
-        self.get_user = mock.patch('kojihub.get_user').start()
+        self.get_user = mock.patch('kojihub.kojihub.get_user').start()
         self.userinfo = {'id': 123, 'name': 'testuser'}
         self.exports.getLoggedInUser = mock.MagicMock()
 

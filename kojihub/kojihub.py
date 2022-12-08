@@ -7405,6 +7405,7 @@ def add_archive_type(name, description, extensions, compression_type=None):
     :param str description: eg. "YAML Ain't Markup Language"
     :param str extensions: space-separated list of descriptions, eg. "yaml yml"
     """
+    print(context)
     context.session.assertPerm('admin')
     verify_name_internal(name)
     convert_value(description, cast=str, check_only=True)

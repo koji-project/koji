@@ -1,15 +1,13 @@
 # Copyright © 2019 Red Hat, Inc.
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
-import sys
 
 import koji
 from koji.db import QueryProcessor, nextval
 from koji.context import context
 from koji.plugin import callback, export
 import koji.policy
-sys.path.insert(0, "/usr/share/koji-hub/")
-from kojihub import (  # noqa: E402
+from kojihub import (
     _create_build_target,
     _create_tag,
     _delete_build_target,

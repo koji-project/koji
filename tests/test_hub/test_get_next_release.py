@@ -8,9 +8,9 @@ class TestGetNextRelease(unittest.TestCase):
 
     def setUp(self):
         self.maxDiff = None
-        self.QueryProcessor = mock.patch('kojihub.QueryProcessor').start()
-        self.get_build = mock.patch('kojihub.get_build').start()
-        self._dml = mock.patch('kojihub._dml').start()
+        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor').start()
+        self.get_build = mock.patch('kojihub.kojihub.get_build').start()
+        self._dml = mock.patch('kojihub.kojihub._dml').start()
         self.query = self.QueryProcessor.return_value
         self.binfo = {'name': 'name', 'version': 'version'}
 

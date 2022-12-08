@@ -15,17 +15,17 @@ class TestSetBuildOwner(unittest.TestCase):
         return update
 
     def setUp(self):
-        self.UpdateProcessor = mock.patch('kojihub.UpdateProcessor',
+        self.UpdateProcessor = mock.patch('kojihub.kojihub.UpdateProcessor',
                                           side_effect=self.getUpdate).start()
         self.updates = []
-        self.context = mock.patch('kojihub.context').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"
         self.context.session.assertLogin = mock.MagicMock()
         self.context.session.assertPerm = mock.MagicMock()
         self.exports = kojihub.RootExports()
-        self.get_build = mock.patch('kojihub.get_build').start()
-        self.get_user = mock.patch('kojihub.get_user').start()
+        self.get_build = mock.patch('kojihub.kojihub.get_build').start()
+        self.get_user = mock.patch('kojihub.kojihub.get_user').start()
         self.run_callbacks = mock.patch('koji.plugin.run_callbacks').start()
 
     def tearDown(self):

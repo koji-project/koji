@@ -12,8 +12,8 @@ class TestListUserKrbPrincipals(unittest.TestCase):
 
     def setUp(self):
         self.exports = kojihub.RootExports()
-        self.context = mock.patch('kojihub.context').start()
-        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
+        self.context = mock.patch('kojihub.kojihub.context').start()
+        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
                                          side_effect=self.getQuery).start()
         self.queries = []
 

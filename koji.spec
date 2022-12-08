@@ -335,9 +335,7 @@ Requires(postun): systemd
 
 %description utils
 Utilities for the Koji system
-%endif
 
-%if 0%{py3_support} > 1
 %package web
 Summary: Koji Web UI
 Group: Applications/Internet
@@ -405,7 +403,7 @@ make DESTDIR=$RPM_BUILD_ROOT KOJI_MINIMAL=1 PYTHON=%{__python2} install
 popd
 %endif
 %if 0%{py2_support} > 1
-for D in hub builder plugins util www vm ; do
+for D in builder plugins vm ; do
     pushd $D
     make DESTDIR=$RPM_BUILD_ROOT PYTHON=%{__python2} install
     popd
@@ -430,7 +428,7 @@ make DESTDIR=$RPM_BUILD_ROOT KOJI_MINIMAL=1 PYTHON=%{__python3} install
 popd
 %endif
 %if 0%{py3_support} > 1
-for D in hub builder plugins util www vm ; do
+for D in kojihub builder plugins util www vm ; do
     pushd $D
     make DESTDIR=$RPM_BUILD_ROOT PYTHON=%{__python3} install
     popd
@@ -549,6 +547,7 @@ rm -rf $RPM_BUILD_ROOT
 %files -n python%{python3_pkgversion}-%{name}-hub
 %{_datadir}/koji-hub/*.py
 %{_datadir}/koji-hub/__pycache__
+%{python3_sitelib}/kojihub
 
 %files hub-plugins
 %dir /etc/koji-hub/plugins

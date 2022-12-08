@@ -23,21 +23,21 @@ class TestEditChannel(unittest.TestCase):
         return update
 
     def setUp(self):
-        self.InsertProcessor = mock.patch('kojihub.InsertProcessor',
+        self.InsertProcessor = mock.patch('kojihub.kojihub.InsertProcessor',
                                           side_effect=self.getInsert).start()
         self.inserts = []
-        self.UpdateProcessor = mock.patch('kojihub.UpdateProcessor',
+        self.UpdateProcessor = mock.patch('kojihub.kojihub.UpdateProcessor',
                                           side_effect=self.getUpdate).start()
         self.updates = []
-        self.context = mock.patch('kojihub.context').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         self.context.session.assertPerm = mock.MagicMock()
         self.exports = kojihub.RootExports()
         self.channel_name = 'test-channel'
         self.channel_name_new = 'test-channel-2'
         self.channel_info = {'id': 123, 'name': self.channel_name, 'description': 'description',
                              'comment': 'comment'}
-        self.get_channel = mock.patch('kojihub.get_channel').start()
-        self.verify_name_internal = mock.patch('kojihub.verify_name_internal').start()
+        self.get_channel = mock.patch('kojihub.kojihub.get_channel').start()
+        self.verify_name_internal = mock.patch('kojihub.kojihub.verify_name_internal').start()
 
     def tearDown(self):
         mock.patch.stopall()
@@ -74,7 +74,7 @@ class TestEditChannel(unittest.TestCase):
 
     def test_edit_channel_valid(self):
         self.verify_name_internal.return_value = None
-        kojihub.get_channel.side_effect = [self.channel_info, {}]
+        self.get_channel.side_effect = [self.channel_info, {}]
 
         r = self.exports.editChannel(self.channel_name, name=self.channel_name_new,
                                      description='description_new')
@@ -108,7 +108,7 @@ class TestEditChannel(unittest.TestCase):
 
     def test_edit_channel_no_change(self):
         self.verify_name_internal.return_value = None
-        kojihub.get_channel.return_value = self.channel_info
+        self.get_channel.return_value = self.channel_info
 
         r = self.exports.editChannel(self.channel_name, description='description')
         self.assertFalse(r)

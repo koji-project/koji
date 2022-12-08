@@ -1,7 +1,7 @@
 import copy
 import unittest
 
-import kojihub
+from kojihub.kojihub import _applyQueryOpts
 
 
 class TestApplyQueryOpts(unittest.TestCase):
@@ -15,7 +15,7 @@ class TestApplyQueryOpts(unittest.TestCase):
     def test_basic(self):
         opts = None
         expected = copy.copy(self.original)
-        actual = kojihub._applyQueryOpts(self.original, opts)
+        actual = _applyQueryOpts(self.original, opts)
         self.assertEqual(expected, actual)
 
     def test_order_by_foo(self):
@@ -25,7 +25,7 @@ class TestApplyQueryOpts(unittest.TestCase):
             {'foo': 1, 'bar': 1},
             {'foo': 2, 'bar': -1},
         ]
-        actual = kojihub._applyQueryOpts(self.original, opts)
+        actual = _applyQueryOpts(self.original, opts)
         self.assertEqual(expected, actual)
 
     def test_order_by_bar(self):
@@ -35,7 +35,7 @@ class TestApplyQueryOpts(unittest.TestCase):
             {'foo': 0, 'bar': 0},
             {'foo': 1, 'bar': 1},
         ]
-        actual = kojihub._applyQueryOpts(self.original, opts)
+        actual = _applyQueryOpts(self.original, opts)
         self.assertEqual(expected, actual)
 
     def test_order_in_reverse(self):
@@ -45,7 +45,7 @@ class TestApplyQueryOpts(unittest.TestCase):
             {'foo': 1, 'bar': 1},
             {'foo': 0, 'bar': 0},
         ]
-        actual = kojihub._applyQueryOpts(self.original, opts)
+        actual = _applyQueryOpts(self.original, opts)
         self.assertEqual(expected, actual)
 
     def test_offset(self):
@@ -54,7 +54,7 @@ class TestApplyQueryOpts(unittest.TestCase):
             {'foo': 2, 'bar': -1},
             {'foo': 0, 'bar': 0},
         ]
-        actual = kojihub._applyQueryOpts(self.original, opts)
+        actual = _applyQueryOpts(self.original, opts)
         self.assertEqual(expected, actual)
 
     def test_limit(self):
@@ -63,7 +63,7 @@ class TestApplyQueryOpts(unittest.TestCase):
             {'foo': 1, 'bar': 1},
             {'foo': 2, 'bar': -1},
         ]
-        actual = kojihub._applyQueryOpts(self.original, opts)
+        actual = _applyQueryOpts(self.original, opts)
         self.assertEqual(expected, actual)
 
     def test_limit_and_offset(self):
@@ -71,16 +71,16 @@ class TestApplyQueryOpts(unittest.TestCase):
         expected = [
             {'foo': 2, 'bar': -1},
         ]
-        actual = kojihub._applyQueryOpts(self.original, opts)
+        actual = _applyQueryOpts(self.original, opts)
         self.assertEqual(expected, actual)
 
     def test_count_only(self):
         opts = {'countOnly': True}
         expected = 3
-        actual = kojihub._applyQueryOpts(self.original, opts)
+        actual = _applyQueryOpts(self.original, opts)
         self.assertEqual(expected, actual)
 
         opts = {'countOnly': True, 'offset': 2}
         expected = 1
-        actual = kojihub._applyQueryOpts(self.original, opts)
+        actual = _applyQueryOpts(self.original, opts)
         self.assertEqual(expected, actual)

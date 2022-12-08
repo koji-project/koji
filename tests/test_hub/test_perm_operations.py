@@ -9,8 +9,8 @@ import kojihub
 
 class TestPerm(unittest.TestCase):
 
-    @mock.patch('kojihub.context')
-    @mock.patch('kojihub.lookup_perm', return_value=None)
+    @mock.patch('kojihub.kojihub.context')
+    @mock.patch('kojihub.kojihub.lookup_perm', return_value=None)
     def test_has_perm(self, lookup_perm, context):
         rv = kojihub.RootExports().hasPerm('perm')
         self.assertEqual(rv, context.session.hasPerm.return_value)

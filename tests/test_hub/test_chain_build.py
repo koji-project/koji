@@ -7,12 +7,12 @@ import mock
 class TestChainBuild(unittest.TestCase):
 
     def setUp(self):
-        self.context = mock.patch('kojihub.context').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         self.exports = kojihub.RootExports()
         self.context.session.assertLogin = mock.MagicMock()
         self.context.session.hasPerm = mock.MagicMock()
-        self.get_channel = mock.patch('kojihub.get_channel').start()
-        self.make_task = mock.patch('kojihub.make_task').start()
+        self.get_channel = mock.patch('kojihub.kojihub.get_channel').start()
+        self.make_task = mock.patch('kojihub.kojihub.make_task').start()
         self.srcs = ['pkg1']
         self.target = 'test-target'
 

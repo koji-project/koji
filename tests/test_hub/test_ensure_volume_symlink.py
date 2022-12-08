@@ -14,8 +14,8 @@ class TestEnsureVolumeSymlink(unittest.TestCase):
         self.tempdir = tempfile.mkdtemp()
         self.pathinfo = koji.PathInfo(self.tempdir)
         mock.patch('koji.pathinfo', new=self.pathinfo).start()
-        mock.patch('kojihub.lookup_name', new=self.my_lookup_name).start()
-        self.check_volume_policy = mock.patch('kojihub.check_volume_policy',
+        mock.patch('kojihub.kojihub.lookup_name', new=self.my_lookup_name).start()
+        self.check_volume_policy = mock.patch('kojihub.kojihub.check_volume_policy',
                 return_value={'id':0, 'name': 'DEFAULT'}).start()
         self.buildinfo = {
                 'id': 137,
@@ -48,7 +48,7 @@ class TestEnsureVolumeSymlink(unittest.TestCase):
             raise Exception('call created unexpected files')
 
         del self.buildinfo['volume_name']
-        with mock.patch('kojihub.logger') as logger:
+        with mock.patch('kojihub.kojihub.logger') as logger:
             kojihub.ensure_volume_symlink(self.buildinfo)
             logger.warning.assert_called_once()
 

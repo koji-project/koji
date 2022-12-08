@@ -7,8 +7,8 @@ import kojihub
 class TestGetBuildNotifications(unittest.TestCase):
     def setUp(self):
         self.exports = kojihub.RootExports()
-        self.get_user = mock.patch('kojihub.get_user').start()
-        self.get_build_notifications = mock.patch('kojihub.get_build_notifications').start()
+        self.get_user = mock.patch('kojihub.kojihub.get_user').start()
+        self.get_build_notifications = mock.patch('kojihub.kojihub.get_build_notifications').start()
 
     def test_loggedin_user(self):
         self.get_user.return_value = {'id': 1}

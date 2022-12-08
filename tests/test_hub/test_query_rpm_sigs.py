@@ -16,10 +16,10 @@ class TestQueryRPMSigs(unittest.TestCase):
         return query
 
     def setUp(self):
-        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
+        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
                                          side_effect=self.getQuery).start()
         self.queries = []
-        self.get_rpm = mock.patch('kojihub.get_rpm').start()
+        self.get_rpm = mock.patch('kojihub.kojihub.get_rpm').start()
         self.rinfo = {'arch': 'x86_64',
                       'build_id': 1,
                       'buildroot_id': None,

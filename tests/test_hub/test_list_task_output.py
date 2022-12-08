@@ -43,7 +43,7 @@ class TestListTaskOutput(unittest.TestCase):
             }
         })
 
-    @mock.patch('kojihub.list_volumes')
+    @mock.patch('kojihub.kojihub.list_volumes')
     @mock.patch('os.stat')
     @mock.patch('os.path.isdir')
     @mock.patch('os.walk')
@@ -60,7 +60,7 @@ class TestListTaskOutput(unittest.TestCase):
         result = kojihub.list_task_output(1, all_volumes=True)
         self.assertEqual(result, {'file': ['DEFAULT']})
 
-    @mock.patch('kojihub.list_volumes')
+    @mock.patch('kojihub.kojihub.list_volumes')
     @mock.patch('os.stat')
     @mock.patch('os.path.isdir')
     @mock.patch('os.walk')

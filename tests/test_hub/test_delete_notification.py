@@ -15,12 +15,12 @@ class TestDeleteNotifications(unittest.TestCase):
         return delete
 
     def setUp(self):
-        self.context = mock.patch('kojihub.context').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         self.context.opts = {
             'EmailDomain': 'test.domain.com',
             'NotifyOnSuccess': True,
         }
-        self.DeleteProcessor = mock.patch('kojihub.DeleteProcessor',
+        self.DeleteProcessor = mock.patch('kojihub.kojihub.DeleteProcessor',
                                           side_effect=self.getDelete).start()
         self.deletes = []
 

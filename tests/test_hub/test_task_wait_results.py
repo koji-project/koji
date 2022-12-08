@@ -12,17 +12,17 @@ QP = kojihub.QueryProcessor
 class TestTaskWaitResults(unittest.TestCase):
 
     def setUp(self):
-        self.context = mock.patch('kojihub.context').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         self.host_id = 99
         self.context.session.getHostId.return_value = self.host_id
         self.host_exports = kojihub.Host(self.host_id)
         self.host_exports.taskUnwait = mock.MagicMock()
-        self.Task = mock.patch('kojihub.Task', side_effect=self.getTask).start()
+        self.Task = mock.patch('kojihub.kojihub.Task', side_effect=self.getTask).start()
         self.tasks = {}
         self.queries = []
         self.execute = mock.MagicMock()
-        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
-            side_effect=self.get_query).start()
+        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
+                                         side_effect=self.get_query).start()
 
     def tearDown(self):
         mock.patch.stopall()
@@ -43,7 +43,7 @@ class TestTaskWaitResults(unittest.TestCase):
 
     def test_basic(self):
         parent = 1
-        task_ids = [5,6,7]
+        task_ids = [5, 6, 7]
         for t in task_ids:
             task = self.getTask(t)
             task.getResult.return_value = "OK"
@@ -57,7 +57,7 @@ class TestTaskWaitResults(unittest.TestCase):
     def test_error(self):
         """Ensure that errors is propagated when they should be"""
         parent = 1
-        task_ids = [5,6,7]
+        task_ids = [5, 6, 7]
         for t in task_ids:
             task = self.getTask(t)
             task.getResult.return_value = "OK"
@@ -75,7 +75,7 @@ class TestTaskWaitResults(unittest.TestCase):
     def test_canfail_canceled(self):
         """Canceled canfail tasks should not raise exceptions"""
         parent = 1
-        task_ids = [5,6,7]
+        task_ids = [5, 6, 7]
         canfail = [7]
         for t in task_ids:
             task = self.getTask(t)
@@ -83,8 +83,7 @@ class TestTaskWaitResults(unittest.TestCase):
             task.isCanceled.return_value = False
         self.tasks[7].getResult.side_effect = koji.GenericError('canceled')
         self.tasks[7].isCanceled.return_value = True
-        results = self.host_exports.taskWaitResults(parent, task_ids,
-                        canfail=canfail)
+        results = self.host_exports.taskWaitResults(parent, task_ids, canfail=canfail)
         expect_f = {'faultCode': koji.GenericError.faultCode,
                     'faultString': 'canceled'}
         expect = [[5, "OK"], [6, "OK"], [7, expect_f]]
@@ -95,7 +94,7 @@ class TestTaskWaitResults(unittest.TestCase):
     def test_all_tasks(self):
         """Canceled canfail tasks should not raise exceptions"""
         parent = 1
-        task_ids = [5,6,7]
+        task_ids = [5, 6, 7]
         self.execute.return_value = [[t] for t in task_ids]
         for t in task_ids:
             task = self.getTask(t)

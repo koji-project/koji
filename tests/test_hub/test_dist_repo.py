@@ -23,15 +23,15 @@ class TestDistRepoInit(unittest.TestCase):
         self.pathinfo = koji.PathInfo(self.tempdir)
         mock.patch('koji.pathinfo', new=self.pathinfo).start()
 
-        self.InsertProcessor = mock.patch('kojihub.InsertProcessor',
+        self.InsertProcessor = mock.patch('kojihub.kojihub.InsertProcessor',
                                           side_effect=self.getInsert).start()
         self.inserts = []
 
-        self.get_tag = mock.patch('kojihub.get_tag').start()
-        self.get_event = mock.patch('kojihub.get_event').start()
-        self.nextval = mock.patch('kojihub.nextval').start()
+        self.get_tag = mock.patch('kojihub.kojihub.get_tag').start()
+        self.get_event = mock.patch('kojihub.kojihub.get_event').start()
+        self.nextval = mock.patch('kojihub.kojihub.nextval').start()
         self.copyfile = mock.patch('shutil.copyfile').start()
-        self.lookup_name = mock.patch('kojihub.lookup_name').start()
+        self.lookup_name = mock.patch('kojihub.kojihub.lookup_name').start()
 
         self.get_tag.return_value = {'id': 42, 'name': 'tag'}
         self.get_event.return_value = 12345
@@ -105,9 +105,9 @@ class TestDistRepoInit(unittest.TestCase):
 
 class TestDistRepo(unittest.TestCase):
 
-    @mock.patch('kojihub.assert_policy')
-    @mock.patch('kojihub.dist_repo_init')
-    @mock.patch('kojihub.make_task')
+    @mock.patch('kojihub.kojihub.assert_policy')
+    @mock.patch('kojihub.kojihub.dist_repo_init')
+    @mock.patch('kojihub.kojihub.make_task')
     def test_DistRepo(self, make_task, dist_repo_init, assert_policy):
         session = kojihub.context.session = mock.MagicMock()
         session.user_id = 123
@@ -210,10 +210,10 @@ class TestDistRepoMove(unittest.TestCase):
         koji.dump_json("%s/repo_manifest" % uploaddir, self.files)
 
         # mocks
-        self.repo_info = mock.patch('kojihub.repo_info').start()
+        self.repo_info = mock.patch('kojihub.kojihub.repo_info').start()
         self.repo_info.return_value = self.rinfo.copy()
-        self.get_rpm = mock.patch('kojihub.get_rpm').start()
-        self.get_build = mock.patch('kojihub.get_build').start()
+        self.get_rpm = mock.patch('kojihub.kojihub.get_rpm').start()
+        self.get_build = mock.patch('kojihub.kojihub.get_build').start()
         self.get_rpm.side_effect = self.our_get_rpm
         self.get_build.side_effect = self.our_get_build
 

@@ -11,12 +11,12 @@ IP = kojihub.InsertProcessor
 class TestCreateWinBuild(unittest.TestCase):
 
     def setUp(self):
-        self.get_build = mock.patch('kojihub.get_build').start()
+        self.get_build = mock.patch('kojihub.kojihub.get_build').start()
         self.exports = kojihub.RootExports()
         self.session = mock.MagicMock()
-        self.context = mock.patch('kojihub.context').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         self.context.session.assertPerm = mock.MagicMock()
-        self.InsertProcessor = mock.patch('kojihub.InsertProcessor',
+        self.InsertProcessor = mock.patch('kojihub.kojihub.InsertProcessor',
                                           side_effect=self.getInsert).start()
         self.inserts = []
         self.insert_execute = mock.MagicMock()

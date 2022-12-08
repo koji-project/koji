@@ -3,7 +3,7 @@ import unittest
 import koji
 import koji.policy
 import kojihub
-import kojixmlrpc
+from kojihub import kojixmlrpc
 
 
 class OurException(Exception):
@@ -23,8 +23,8 @@ class FakePlugin(object):
 class TestCheckVolumePolicy(unittest.TestCase):
 
     def setUp(self):
-        self.context = mock.patch('kojihub.context').start()
-        self.lookup_name = mock.patch('kojihub.lookup_name').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
+        self.lookup_name = mock.patch('kojihub.kojihub.lookup_name').start()
 
     def tearDown(self):
         mock.patch.stopall()

@@ -18,16 +18,16 @@ class TestCreateTag(unittest.TestCase):
         return insert
 
     def setUp(self):
-        self.InsertProcessor = mock.patch('kojihub.InsertProcessor',
+        self.InsertProcessor = mock.patch('kojihub.kojihub.InsertProcessor',
                                           side_effect=self.getInsert).start()
         self.inserts = []
-        self._dml = mock.patch('kojihub._dml').start()
-        self.get_tag = mock.patch('kojihub.get_tag').start()
-        self.get_tag_id = mock.patch('kojihub.get_tag_id').start()
-        self.get_perm_id = mock.patch('kojihub.get_perm_id').start()
-        self.verify_name_internal = mock.patch('kojihub.verify_name_internal').start()
-        self.writeInheritanceData = mock.patch('kojihub._writeInheritanceData').start()
-        self.context = mock.patch('kojihub.context').start()
+        self._dml = mock.patch('kojihub.kojihub._dml').start()
+        self.get_tag = mock.patch('kojihub.kojihub.get_tag').start()
+        self.get_tag_id = mock.patch('kojihub.kojihub.get_tag_id').start()
+        self.get_perm_id = mock.patch('kojihub.kojihub.get_perm_id').start()
+        self.verify_name_internal = mock.patch('kojihub.kojihub.verify_name_internal').start()
+        self.writeInheritanceData = mock.patch('kojihub.kojihub._writeInheritanceData').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         self.context_db = mock.patch('koji.db.context').start()
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"

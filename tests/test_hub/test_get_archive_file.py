@@ -16,7 +16,7 @@ EMPTY_FILES = []
 
 class TestGetArchiveFile(unittest.TestCase):
 
-    @mock.patch('kojihub.list_archive_files')
+    @mock.patch('kojihub.kojihub.list_archive_files')
     def test_simple(self, list_archive_files):
         list_archive_files.return_value = FILES
 
@@ -29,7 +29,7 @@ class TestGetArchiveFile(unittest.TestCase):
         list_archive_files.assert_called_with(1, strict=True)
         self.assertEqual(rv, FILES[0])
 
-    @mock.patch('kojihub.list_archive_files')
+    @mock.patch('kojihub.kojihub.list_archive_files')
     def test_empty_files(self, list_archive_files):
         list_archive_files.return_value = EMPTY_FILES
 
@@ -45,7 +45,7 @@ class TestGetArchiveFile(unittest.TestCase):
         list_archive_files.assert_called_with(1, strict=True)
         self.assertEqual(cm.exception.args[0], 'error message')
 
-    @mock.patch('kojihub.list_archive_files')
+    @mock.patch('kojihub.kojihub.list_archive_files')
     def test_non_existing_file(self, list_archive_files):
         list_archive_files.return_value = FILES
 

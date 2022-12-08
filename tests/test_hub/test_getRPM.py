@@ -14,9 +14,9 @@ class TestGetRPM(unittest.TestCase):
 
     def setUp(self):
         self.exports = kojihub.RootExports()
-        self.context = mock.patch('kojihub.context').start()
-        self.get_external_repo_id = mock.patch('kojihub.get_external_repo_id').start()
-        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
+        self.context = mock.patch('kojihub.kojihub.context').start()
+        self.get_external_repo_id = mock.patch('kojihub.kojihub.get_external_repo_id').start()
+        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
                                          side_effect=self.getQuery).start()
         self.queries = []
 
@@ -99,10 +99,10 @@ class TestGetRPMHeaders(unittest.TestCase):
     def setUp(self):
         self.exports = kojihub.RootExports()
         self.exports.getLoggedInUser = mock.MagicMock()
-        self.context = mock.patch('kojihub.context').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         self.cursor = mock.MagicMock()
-        self.get_rpm = mock.patch('kojihub.get_rpm').start()
-        self.get_build = mock.patch('kojihub.get_build').start()
+        self.get_rpm = mock.patch('kojihub.kojihub.get_rpm').start()
+        self.get_build = mock.patch('kojihub.kojihub.get_build').start()
         self.get_header_fields = mock.patch('koji.get_header_fields').start()
         self.tempdir = tempfile.mkdtemp()
         self.pathinfo = koji.PathInfo(self.tempdir)

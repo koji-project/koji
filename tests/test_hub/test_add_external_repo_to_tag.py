@@ -9,9 +9,9 @@ class TestAddExternalRepoToTag(unittest.TestCase):
 
     def setUp(self):
         self.tag_name = 'test-tag'
-        self.get_tag = mock.patch('kojihub.get_tag').start()
-        self.get_external_repo = mock.patch('kojihub.get_external_repo').start()
-        self.get_tag_external_repos = mock.patch('kojihub.get_tag_external_repos').start()
+        self.get_tag = mock.patch('kojihub.kojihub.get_tag').start()
+        self.get_external_repo = mock.patch('kojihub.kojihub.get_external_repo').start()
+        self.get_tag_external_repos = mock.patch('kojihub.kojihub.get_tag_external_repos').start()
         self.parse_arches = mock.patch('koji.parse_arches').start()
         self.tag_info = {'id': 1, 'name': self.tag_name}
         self.external_repo_info = {'id': 123, 'name': 'test-repo'}

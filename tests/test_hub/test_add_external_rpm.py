@@ -15,11 +15,11 @@ class FakeException(Exception):
 class TestAddExternalRPM(unittest.TestCase):
 
     def setUp(self):
-        self.get_rpm = mock.patch('kojihub.get_rpm').start()
-        self.get_external_repo_id = mock.patch('kojihub.get_external_repo_id').start()
-        self.nextval = mock.patch('kojihub.nextval').start()
-        self.Savepoint = mock.patch('kojihub.Savepoint').start()
-        self.InsertProcessor = mock.patch('kojihub.InsertProcessor',
+        self.get_rpm = mock.patch('kojihub.kojihub.get_rpm').start()
+        self.get_external_repo_id = mock.patch('kojihub.kojihub.get_external_repo_id').start()
+        self.nextval = mock.patch('kojihub.kojihub.nextval').start()
+        self.Savepoint = mock.patch('kojihub.kojihub.Savepoint').start()
+        self.InsertProcessor = mock.patch('kojihub.kojihub.InsertProcessor',
                                           side_effect=self.getInsert).start()
         self.inserts = []
         self.insert_execute = mock.MagicMock()

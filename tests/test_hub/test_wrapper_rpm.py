@@ -7,14 +7,14 @@ import mock
 class TestWrapperRPM(unittest.TestCase):
 
     def setUp(self):
-        self.context = mock.patch('kojihub.context').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         self.exports = kojihub.RootExports()
         self.context.session.assertLogin = mock.MagicMock()
         self.context.session.hasPerm = mock.MagicMock()
-        self.get_channel = mock.patch('kojihub.get_channel').start()
+        self.get_channel = mock.patch('kojihub.kojihub.get_channel').start()
         self.exports.getBuild = mock.MagicMock()
-        self.make_task = mock.patch('kojihub.make_task').start()
-        self.list_rpms = mock.patch('kojihub.list_rpms').start()
+        self.make_task = mock.patch('kojihub.kojihub.make_task').start()
+        self.list_rpms = mock.patch('kojihub.kojihub.list_rpms').start()
         self.exports.getTag = mock.MagicMock()
         self.exports.getBuildTarget = mock.MagicMock()
         self.exports.getRepo = mock.MagicMock()

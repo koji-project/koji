@@ -9,7 +9,7 @@ class TestGetBuild(DBQueryTestCase):
 
     def setUp(self):
         super(TestGetBuild, self).setUp()
-        self.find_build_id = mock.patch('kojihub.find_build_id').start()
+        self.find_build_id = mock.patch('kojihub.kojihub.find_build_id').start()
 
     def test_non_exist_build_string(self):
         build = 'build-1-23'

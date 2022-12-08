@@ -33,21 +33,21 @@ class TestEditTag(unittest.TestCase):
         return query
 
     def setUp(self):
-        self.InsertProcessor = mock.patch('kojihub.InsertProcessor',
+        self.InsertProcessor = mock.patch('kojihub.kojihub.InsertProcessor',
                                           side_effect=self.getInsert).start()
         self.inserts = []
-        self.UpdateProcessor = mock.patch('kojihub.UpdateProcessor',
+        self.UpdateProcessor = mock.patch('kojihub.kojihub.UpdateProcessor',
                                           side_effect=self.getUpdate).start()
         self.updates = []
-        self.get_tag = mock.patch('kojihub.get_tag').start()
-        self.get_perm_id = mock.patch('kojihub.get_perm_id').start()
-        self.verify_name_internal = mock.patch('kojihub.verify_name_internal').start()
-        self.context = mock.patch('kojihub.context').start()
+        self.get_tag = mock.patch('kojihub.kojihub.get_tag').start()
+        self.get_perm_id = mock.patch('kojihub.kojihub.get_perm_id').start()
+        self.verify_name_internal = mock.patch('kojihub.kojihub.verify_name_internal').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         self.context_db = mock.patch('koji.db.context').start()
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"
         self.context_db.session.assertLogin = mock.MagicMock()
-        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
+        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
                                          side_effect=self.getQuery).start()
         self.queries = []
         self.query_singleValue = mock.MagicMock()

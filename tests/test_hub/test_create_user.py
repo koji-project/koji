@@ -9,11 +9,11 @@ import kojihub
 class TestCreateUser(unittest.TestCase):
 
     def setUp(self):
-        self.verify_name_user = mock.patch('kojihub.verify_name_user').start()
-        self.get_user = mock.patch('kojihub.get_user').start()
-        self.get_user_by_krb_principal = mock.patch('kojihub.get_user_by_krb_principal').start()
+        self.verify_name_user = mock.patch('kojihub.kojihub.verify_name_user').start()
+        self.get_user = mock.patch('kojihub.kojihub.get_user').start()
+        self.get_user_by_krb_principal = mock.patch('kojihub.kojihub.get_user_by_krb_principal').start()
         self.exports = kojihub.RootExports()
-        self.context = mock.patch('kojihub.context').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"
         self.context.session.assertPerm = mock.MagicMock()

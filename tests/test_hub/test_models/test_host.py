@@ -24,35 +24,35 @@ class TestHost(unittest.TestCase):
         return query
 
     def setUp(self):
-        self.UpdateProcessor = mock.patch('kojihub.UpdateProcessor',
+        self.UpdateProcessor = mock.patch('kojihub.kojihub.UpdateProcessor',
                                           side_effect=self.getUpdate).start()
         self.updates = []
-        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
+        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
                                          side_effect=self.getQuery).start()
         self.queries = []
         self.query_execute = mock.MagicMock()
 
-    @mock.patch('kojihub.context')
+    @mock.patch('kojihub.kojihub.context')
     def test_instantiation_not_a_host(self, context):
         context.session.getHostId.return_value = None
         context.session.logged_in = True
         with self.assertRaises(koji.AuthError):
             kojihub.Host(id=None)
 
-    @mock.patch('kojihub.context')
+    @mock.patch('kojihub.kojihub.context')
     def test_instantiation_not_logged_in(self, context):
         context.session.getHostId.return_value = None
         context.session.logged_in = False
         with self.assertRaises(koji.AuthError):
             kojihub.Host()
 
-    @mock.patch('kojihub.context')
+    @mock.patch('kojihub.kojihub.context')
     def test_instantiation_logged_in_as_host(self, context):
         context.session.getHostId.return_value = 1234
         context.session.logged_in = True
         kojihub.Host(id=None)  # No exception
 
-    @mock.patch('kojihub.context')
+    @mock.patch('kojihub.kojihub.context')
     def test_verify_not_samehost(self, context):
         context.session.getHostId.return_value = 1234
         context.session.logged_in = True
@@ -60,14 +60,14 @@ class TestHost(unittest.TestCase):
         with self.assertRaises(koji.AuthError):
             host.verify()
 
-    @mock.patch('kojihub.context')
+    @mock.patch('kojihub.kojihub.context')
     def test_verify_not_exclusive(self, context):
         host = kojihub.Host(id=1234)
         with self.assertRaises(koji.AuthError):
             host.verify()
 
-    @mock.patch('kojihub.UpdateProcessor')
-    @mock.patch('kojihub.context')
+    @mock.patch('kojihub.kojihub.UpdateProcessor')
+    @mock.patch('kojihub.kojihub.context')
     def test_task_unwait(self, context, processor):
         host = kojihub.Host(id=1234)
         host.taskUnwait(parent=123)
@@ -85,8 +85,8 @@ class TestHost(unittest.TestCase):
         )
         self.assertEqual(processor.call_args_list[1], update2)
 
-    @mock.patch('kojihub.UpdateProcessor')
-    @mock.patch('kojihub.context')
+    @mock.patch('kojihub.kojihub.UpdateProcessor')
+    @mock.patch('kojihub.kojihub.context')
     def test_task_set_wait_all_tasks(self, context, processor):
         host = kojihub.Host(id=1234)
         host.taskSetWait(parent=123, tasks=None)
@@ -104,8 +104,8 @@ class TestHost(unittest.TestCase):
         )
         self.assertEqual(processor.call_args_list[1], update2)
 
-    @mock.patch('kojihub.UpdateProcessor')
-    @mock.patch('kojihub.context')
+    @mock.patch('kojihub.kojihub.UpdateProcessor')
+    @mock.patch('kojihub.kojihub.context')
     def test_task_set_wait_some_tasks(self, context, processor):
         host = kojihub.Host(id=1234)
         host.taskSetWait(parent=123, tasks=[234, 345])
@@ -139,7 +139,7 @@ class TestHost(unittest.TestCase):
         self.assertEqual(finished, [2, 3])
         self.assertEqual(unfinished, [1, 4])
 
-    @mock.patch('kojihub.context')
+    @mock.patch('kojihub.kojihub.context')
     def test_task_wait(self, context):
         self.query_execute.return_value = [{'id': 1, 'state': 1},
                                            {'id': 2, 'state': 2},

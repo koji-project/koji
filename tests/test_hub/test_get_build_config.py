@@ -6,8 +6,8 @@ import kojihub
 
 class TestGetBuildConfig(unittest.TestCase):
 
-    @mock.patch('kojihub.readFullInheritance')
-    @mock.patch('kojihub.get_tag')
+    @mock.patch('kojihub.kojihub.readFullInheritance')
+    @mock.patch('kojihub.kojihub.get_tag')
     def test_simple_tag(self, get_tag, readFullInheritance):
         tag = 'tag_name'
         get_tag.return_value = {'id': 123, 'name': tag, 'extra': {}}
@@ -25,8 +25,8 @@ class TestGetBuildConfig(unittest.TestCase):
             'config_inheritance': {'extra': {}, 'arches': None},
         })
 
-    @mock.patch('kojihub.readFullInheritance')
-    @mock.patch('kojihub.get_tag')
+    @mock.patch('kojihub.kojihub.readFullInheritance')
+    @mock.patch('kojihub.kojihub.get_tag')
     def test_basic_inherited(self, get_tag, readFullInheritance):
         tag = 'tag_name'
         get_tag.side_effect = [
@@ -80,8 +80,8 @@ class TestGetBuildConfig(unittest.TestCase):
             'name': 'tag_name'
         })
 
-    @mock.patch('kojihub.readFullInheritance')
-    @mock.patch('kojihub.get_tag')
+    @mock.patch('kojihub.kojihub.readFullInheritance')
+    @mock.patch('kojihub.kojihub.get_tag')
     def test_inherited_noconfig(self, get_tag, readFullInheritance):
         tag = 'tag_name'
         get_tag.side_effect = [

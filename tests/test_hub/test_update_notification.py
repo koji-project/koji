@@ -29,24 +29,24 @@ class TestUpdateNotifications(unittest.TestCase):
         return update
 
     def setUp(self):
-        self.context = mock.patch('kojihub.context').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         self.context.opts = {
             'EmailDomain': 'test.domain.com',
             'NotifyOnSuccess': True,
         }
 
-        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
+        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
                                          side_effect=self.getQuery).start()
         self.queries = []
-        self.InsertProcessor = mock.patch('kojihub.InsertProcessor',
+        self.InsertProcessor = mock.patch('kojihub.kojihub.InsertProcessor',
                                           side_effect=self.getInsert).start()
         self.inserts = []
-        self.UpdateProcessor = mock.patch('kojihub.UpdateProcessor',
+        self.UpdateProcessor = mock.patch('kojihub.kojihub.UpdateProcessor',
                                           side_effect=self.getUpdate).start()
         self.updates = []
-        self.get_build_notifications = mock.patch('kojihub.get_build_notifications').start()
-        self.get_tag_id = mock.patch('kojihub.get_tag_id').start()
-        self.get_package_id = mock.patch('kojihub.get_package_id').start()
+        self.get_build_notifications = mock.patch('kojihub.kojihub.get_build_notifications').start()
+        self.get_tag_id = mock.patch('kojihub.kojihub.get_tag_id').start()
+        self.get_package_id = mock.patch('kojihub.kojihub.get_package_id').start()
 
         self.exports = kojihub.RootExports()
         self.exports.getLoggedInUser = mock.MagicMock()

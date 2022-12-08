@@ -10,14 +10,15 @@ import kojihub
 class TestImportImageInternal(unittest.TestCase):
     def setUp(self):
         self.tempdir = tempfile.mkdtemp()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         self.context_db = mock.patch('koji.db.context').start()
-        self.Task = mock.patch('kojihub.Task').start()
-        self.get_build = mock.patch('kojihub.get_build').start()
-        self.get_archive_type = mock.patch('kojihub.get_archive_type').start()
+        self.Task = mock.patch('kojihub.kojihub.Task').start()
+        self.get_build = mock.patch('kojihub.kojihub.get_build').start()
+        self.get_archive_type = mock.patch('kojihub.kojihub.get_archive_type').start()
         self.path_work = mock.patch('koji.pathinfo.work').start()
-        self.import_archive = mock.patch('kojihub.import_archive').start()
+        self.import_archive = mock.patch('kojihub.kojihub.import_archive').start()
         self.build = mock.patch('koji.pathinfo.build').start()
-        self.get_rpm = mock.patch('kojihub.get_rpm').start()
+        self.get_rpm = mock.patch('kojihub.kojihub.get_rpm').start()
 
     def tearDown(self):
         shutil.rmtree(self.tempdir)

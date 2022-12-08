@@ -15,11 +15,11 @@ class TestDeleteTag(unittest.TestCase):
         return update
 
     def setUp(self):
-        self.UpdateProcessor = mock.patch('kojihub.UpdateProcessor',
+        self.UpdateProcessor = mock.patch('kojihub.kojihub.UpdateProcessor',
                                           side_effect=self.getUpdate).start()
         self.updates = []
-        self.get_tag = mock.patch('kojihub.get_tag').start()
-        self.context = mock.patch('kojihub.context').start()
+        self.get_tag = mock.patch('kojihub.kojihub.get_tag').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         self.context_db = mock.patch('koji.db.context').start()
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"

@@ -20,13 +20,13 @@ class TestListBuilds(unittest.TestCase):
         self.maxDiff = None
         self.exports = kojihub.RootExports()
         self.query_executeOne = mock.MagicMock()
-        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
+        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
                                          side_effect=self.getQuery).start()
         self.queries = []
 
-        self.context = mock.patch('kojihub.context').start()
-        self.get_package_id = mock.patch('kojihub.get_package_id').start()
-        self.get_user = mock.patch('kojihub.get_user').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
+        self.get_package_id = mock.patch('kojihub.kojihub.get_package_id').start()
+        self.get_user = mock.patch('kojihub.kojihub.get_user').start()
         self.cursor = mock.MagicMock()
         self.build_list = [{'build_id': 9,
                             'epoch': 0,

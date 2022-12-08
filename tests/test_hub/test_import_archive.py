@@ -7,7 +7,7 @@ import kojihub
 class TestImportArchive(unittest.TestCase):
 
     def setUp(self):
-        self.context = mock.patch('kojihub.context').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         self.exports = kojihub.RootExports()
         self.context.session.assertPerm = mock.MagicMock()
         self.filepath = 'path/to/file'

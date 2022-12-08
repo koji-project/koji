@@ -11,12 +11,12 @@ class TestGetBuildTargets(unittest.TestCase):
 
     def setUp(self):
         self.maxDiff = None
-        self.name_or_id_clause = mock.patch('kojihub.name_or_id_clause').start()
-        self.get_tag_id = mock.patch('kojihub.get_tag_id').start()
+        self.name_or_id_clause = mock.patch('kojihub.kojihub.name_or_id_clause').start()
+        self.get_tag_id = mock.patch('kojihub.kojihub.get_tag_id').start()
         self.exports = kojihub.RootExports()
-        self.context = mock.patch('kojihub.context').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         self.cursor = mock.MagicMock()
-        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
+        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
                                          side_effect=self.getQuery).start()
         self.queries = []
         self.build_target = 'build-target'
