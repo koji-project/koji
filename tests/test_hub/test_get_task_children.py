@@ -6,11 +6,12 @@ import kojihub
 
 QP = kojihub.QueryProcessor
 
+
 class TestGetTaskChildren(unittest.TestCase):
     def setUp(self):
         self.exports = kojihub.RootExports()
-        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
-                side_effect=self.getQuery).start()
+        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
+                                         side_effect=self.getQuery).start()
         self.queries = []
 
     def getQuery(self, *args, **kwargs):

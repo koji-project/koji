@@ -9,7 +9,7 @@ import kojihub
 class TestDeleteBuildTarget(unittest.TestCase):
 
     def setUp(self):
-        self.lookup_name = mock.patch('kojihub.lookup_name').start()
+        self.lookup_name = mock.patch('kojihub.kojihub.lookup_name').start()
         self.exports = kojihub.RootExports()
 
     def test_non_exist_target(self):

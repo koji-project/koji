@@ -9,20 +9,20 @@ IP = kojihub.InsertProcessor
 
 class TestNewBuild(unittest.TestCase):
     def setUp(self):
-        self.get_rpm = mock.patch('kojihub.get_rpm').start()
-        self.get_external_repo_id = mock.patch('kojihub.get_external_repo_id').start()
-        self.nextval = mock.patch('kojihub.nextval').start()
-        self.Savepoint = mock.patch('kojihub.Savepoint').start()
-        self.InsertProcessor = mock.patch('kojihub.InsertProcessor',
+        self.get_rpm = mock.patch('kojihub.kojihub.get_rpm').start()
+        self.get_external_repo_id = mock.patch('kojihub.kojihub.get_external_repo_id').start()
+        self.nextval = mock.patch('kojihub.kojihub.nextval').start()
+        self.Savepoint = mock.patch('kojihub.kojihub.Savepoint').start()
+        self.InsertProcessor = mock.patch('kojihub.kojihub.InsertProcessor',
                                           side_effect=self.getInsert).start()
         self.inserts = []
         self.insert_execute = mock.MagicMock()
-        self.lookup_package = mock.patch('kojihub.lookup_package').start()
-        self.new_package = mock.patch('kojihub.new_package').start()
-        self.get_user = mock.patch('kojihub.get_user').start()
-        self.get_build = mock.patch('kojihub.get_build').start()
-        self.recycle_build = mock.patch('kojihub.recycle_build').start()
-        self.context = mock.patch('kojihub.context').start()
+        self.lookup_package = mock.patch('kojihub.kojihub.lookup_package').start()
+        self.new_package = mock.patch('kojihub.kojihub.new_package').start()
+        self.get_user = mock.patch('kojihub.kojihub.get_user').start()
+        self.get_build = mock.patch('kojihub.kojihub.get_build').start()
+        self.recycle_build = mock.patch('kojihub.kojihub.recycle_build').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
 
     def tearDown(self):
         mock.patch.stopall()

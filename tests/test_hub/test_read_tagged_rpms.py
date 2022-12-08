@@ -19,14 +19,14 @@ class TestReadTaggedRPMS(unittest.TestCase):
         return query
 
     def setUp(self):
-        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
+        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
                                          side_effect=self.getQuery).start()
         self.queries = []
-        self.context = mock.patch('kojihub.context').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"
         self.exports = kojihub.RootExports()
-        self.readTaggedBuilds = mock.patch('kojihub.readTaggedBuilds').start()
+        self.readTaggedBuilds = mock.patch('kojihub.kojihub.readTaggedBuilds').start()
         self.tag_name = 'test-tag'
         self.columns = ['rpminfo.name', 'rpminfo.version', 'rpminfo.release', 'rpminfo.arch',
                         'rpminfo.id', 'rpminfo.epoch', 'rpminfo.payloadhash', 'rpminfo.size',
@@ -55,7 +55,6 @@ class TestReadTaggedRPMS(unittest.TestCase):
         with self.assertRaises(koji.GenericError) as cm:
             kojihub.readTaggedRPMS(self.tag_name, arch=1245)
         self.assertEqual(error_message, str(cm.exception))
-
 
     def test_get_tagged_rpms_package_arch_list_without_extra(self):
         self.readTaggedBuilds.return_value = self.build_list

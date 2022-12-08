@@ -18,8 +18,8 @@ class TestEnableChannel(unittest.TestCase):
 
     def setUp(self):
         self.exports = kojihub.RootExports()
-        self.get_channel = mock.patch('kojihub.get_channel').start()
-        self.UpdateProcessor = mock.patch('kojihub.UpdateProcessor',
+        self.get_channel = mock.patch('kojihub.kojihub.get_channel').start()
+        self.UpdateProcessor = mock.patch('kojihub.kojihub.UpdateProcessor',
                                           side_effect=self.getUpdate).start()
         self.updates = []
         self.channelname = 'test-channel'

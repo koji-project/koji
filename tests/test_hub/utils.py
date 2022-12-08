@@ -12,7 +12,7 @@ class DBQueryTestCase(unittest.TestCase):
         mock.patch.stopall()
         self.qp_execute_return_value = []
         self.qp_execute_side_effect = None
-        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
+        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
                 side_effect=self.get_query).start()
         self.queries = []
 

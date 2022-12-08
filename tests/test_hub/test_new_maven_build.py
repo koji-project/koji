@@ -10,11 +10,11 @@ IP = kojihub.InsertProcessor
 
 class TestNewMavenBuild(unittest.TestCase):
     def setUp(self):
-        self.InsertProcessor = mock.patch('kojihub.InsertProcessor',
+        self.InsertProcessor = mock.patch('kojihub.kojihub.InsertProcessor',
                                           side_effect=self.getInsert).start()
         self.inserts = []
         self.insert_execute = mock.MagicMock()
-        self.get_maven_build = mock.patch('kojihub.get_maven_build').start()
+        self.get_maven_build = mock.patch('kojihub.kojihub.get_maven_build').start()
         self.get_maven_build.return_value = None
         self.build_info = {
             'id': 100,

@@ -5,13 +5,13 @@ import kojihub
 
 
 class TestDeleteEventId(unittest.TestCase):
-    @mock.patch('kojihub.context')
+    @mock.patch('kojihub.kojihub.context')
     def test_delete_event_id(self, context):
         kojihub.context.event_id = 123
         kojihub._delete_event_id()
         self.assertFalse(hasattr(context, 'event_id'))
 
-    @mock.patch('kojihub.context')
+    @mock.patch('kojihub.kojihub.context')
     def test_delete_event_id_none(self, context):
         kojihub._delete_event_id()
         self.assertFalse(hasattr(context, 'event_id'))
@@ -19,12 +19,12 @@ class TestDeleteEventId(unittest.TestCase):
 
 class TestMassTag(unittest.TestCase):
     def setUp(self):
-        self.get_tag = mock.patch('kojihub.get_tag').start()
-        self.get_build = mock.patch('kojihub.get_build').start()
-        self.get_user = mock.patch('kojihub.get_user').start()
-        self._direct_tag_build = mock.patch('kojihub._direct_tag_build').start()
-        self._delete_event_id = mock.patch('kojihub._delete_event_id').start()
-        self.context = mock.patch('kojihub.context').start()
+        self.get_tag = mock.patch('kojihub.kojihub.get_tag').start()
+        self.get_build = mock.patch('kojihub.kojihub.get_build').start()
+        self.get_user = mock.patch('kojihub.kojihub.get_user').start()
+        self._direct_tag_build = mock.patch('kojihub.kojihub._direct_tag_build').start()
+        self._delete_event_id = mock.patch('kojihub.kojihub._delete_event_id').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         self.context.session.assertPerm = mock.MagicMock()
         self.hub = kojihub.RootExports()
 

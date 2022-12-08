@@ -31,22 +31,22 @@ class TestGrouplist(unittest.TestCase):
         return update
 
     def setUp(self):
-        self.context = mock.patch('kojihub.context').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         self.context_db = mock.patch('koji.db.context').start()
-        self.get_user = mock.patch('kojihub.get_user').start()
-        self.verify_name_internal = mock.patch('kojihub.verify_name_internal').start()
+        self.get_user = mock.patch('kojihub.kojihub.get_user').start()
+        self.verify_name_internal = mock.patch('kojihub.kojihub.verify_name_internal').start()
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"
         self.context.session.assertPerm = mock.MagicMock()
         self.context_db.session.assertLogin = mock.MagicMock()
 
-        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
+        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
                                          side_effect=self.getQuery).start()
         self.queries = []
-        self.InsertProcessor = mock.patch('kojihub.InsertProcessor',
+        self.InsertProcessor = mock.patch('kojihub.kojihub.InsertProcessor',
                                           side_effect=self.getInsert).start()
         self.inserts = []
-        self.UpdateProcessor = mock.patch('kojihub.UpdateProcessor',
+        self.UpdateProcessor = mock.patch('kojihub.kojihub.UpdateProcessor',
                                           side_effect=self.getUpdate).start()
         self.updates = []
 
@@ -176,7 +176,7 @@ class TestGrouplist(unittest.TestCase):
         self.assertEqual(i.data['group_id'], gid)
         self.assertEqual(i.data['user_id'], uid)
 
-    @mock.patch('kojihub.get_group_members')
+    @mock.patch('kojihub.kojihub.get_group_members')
     def test_drop_group_member(self, get_group_members):
         group, gid = 'test_group', 1
         user, uid = 'username', 2

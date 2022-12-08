@@ -19,14 +19,14 @@ class TestCGImporter(unittest.TestCase):
             os.mkdir(self.TMP_PATH)
         self.path_work = mock.patch('koji.pathinfo.work').start()
         self.context_db = mock.patch('koji.db.context').start()
-        self.context = mock.patch('kojihub.context').start()
-        self.get_build = mock.patch('kojihub.get_build').start()
-        self.get_user = mock.patch('kojihub.get_user').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
+        self.get_build = mock.patch('kojihub.kojihub.get_build').start()
+        self.get_user = mock.patch('kojihub.kojihub.get_user').start()
         self.userinfo = {'id': 123}
         self.rmtree = mock.patch('koji.util.rmtree').start()
         self.lexists = mock.patch('os.path.lexists').start()
         self.path_build = mock.patch('koji.pathinfo.build').start()
-        self.new_build = mock.patch('kojihub.new_build').start()
+        self.new_build = mock.patch('kojihub.kojihub.new_build').start()
 
     def tearDown(self):
         if os.path.exists(self.TMP_PATH):
@@ -166,7 +166,7 @@ class TestCGImporter(unittest.TestCase):
         x.get_metadata('default.json', 'cg_importer_json')
         x.import_metadata()
 
-    @mock.patch("kojihub.CG_Importer.get_metadata")
+    @mock.patch("kojihub.kojihub.CG_Importer.get_metadata")
     def test_do_import_no_such_metadata(self, get_metadata):
         x = kojihub.CG_Importer()
         metadata = {'metadata_version': 99,
@@ -213,8 +213,8 @@ class TestMatchKojiFile(unittest.TestCase):
             'nvr': self.build1['nvr'],
             'filename': self.archive1['filename'],
         }
-        self.get_archive = mock.patch('kojihub.get_archive').start()
-        self.get_build = mock.patch('kojihub.get_build').start()
+        self.get_archive = mock.patch('kojihub.kojihub.get_archive').start()
+        self.get_build = mock.patch('kojihub.kojihub.get_build').start()
 
     def tearDown(self):
         mock.patch.stopall()
@@ -264,9 +264,9 @@ class TestCGReservation(unittest.TestCase):
         return update
 
     def setUp(self):
-        self.InsertProcessor = mock.patch('kojihub.InsertProcessor',
+        self.InsertProcessor = mock.patch('kojihub.kojihub.InsertProcessor',
                                           side_effect=self.getInsert).start()
-        self.UpdateProcessor = mock.patch('kojihub.UpdateProcessor',
+        self.UpdateProcessor = mock.patch('kojihub.kojihub.UpdateProcessor',
                                           side_effect=self.getUpdate).start()
         self.inserts = []
         self.updates = []
@@ -275,13 +275,14 @@ class TestCGReservation(unittest.TestCase):
         self.context_db.session.user_id = 123456
         self.mock_cursor = mock.MagicMock()
         self.context_db.cnx.cursor.return_value = self.mock_cursor
-        self.get_build = mock.patch('kojihub.get_build').start()
-        self.get_user = mock.patch('kojihub.get_user').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
+        self.get_build = mock.patch('kojihub.kojihub.get_build').start()
+        self.get_user = mock.patch('kojihub.kojihub.get_user').start()
         self.userinfo = {'id': 123456, 'name': 'username'}
-        self.new_build = mock.patch('kojihub.new_build').start()
-        self.lookup_name = mock.patch('kojihub.lookup_name').start()
-        self.assert_cg = mock.patch('kojihub.assert_cg').start()
-        self.get_reservation_token = mock.patch('kojihub.get_reservation_token').start()
+        self.new_build = mock.patch('kojihub.kojihub.new_build').start()
+        self.lookup_name = mock.patch('kojihub.kojihub.lookup_name').start()
+        self.assert_cg = mock.patch('kojihub.kojihub.assert_cg').start()
+        self.get_reservation_token = mock.patch('kojihub.kojihub.get_reservation_token').start()
         self.run_callbacks = mock.patch('koji.plugin.run_callbacks').start()
 
     def tearDown(self):

@@ -10,7 +10,7 @@ import kojihub
 class TestVerifyNameInternal(unittest.TestCase):
 
     def setUp(self):
-        self.context = mock.patch('kojihub.context').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         self.context.session.assertPerm = mock.MagicMock()
         self.context.opts = {'MaxNameLengthInternal': 15,
                              'RegexNameInternal.compiled': re.compile('^[A-Za-z0-9/_.+-]+$')}
@@ -38,7 +38,7 @@ class TestVerifyNameInternal(unittest.TestCase):
 
 class TestVerifyUser(unittest.TestCase):
     def setUp(self):
-        self.context = mock.patch('kojihub.context').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         self.context.session.assertPerm = mock.MagicMock()
         self.context.opts = {'MaxNameLengthInternal': 15,
                              'RegexUserName.compiled': re.compile('^[A-Za-z0-9/_.@-]+$')}

@@ -10,7 +10,7 @@ class TestWriteMavenRepoMetadata(unittest.TestCase):
     # Show long diffs in error output...
     maxDiff = None
 
-    @mock.patch('kojihub._generate_maven_metadata')
+    @mock.patch('kojihub.kojihub._generate_maven_metadata')
     def test_write_maven_repo_metadata(self, gendata_mock):
         destdir = '/tmp'
         artifacts = set()
@@ -26,7 +26,7 @@ class TestWriteMavenRepoMetadata(unittest.TestCase):
         artifacts.add(('0', '1', '1.3.11'))
 
         now = datetime.datetime.now()
-        with mock.patch('kojihub.open', create=True) as openf_mock:
+        with mock.patch('kojihub.kojihub.open', create=True) as openf_mock:
             with mock.patch('datetime.datetime') as datetime_mock:
                 datetime_mock.now.return_value = now
                 _write_maven_repo_metadata(destdir, artifacts)

@@ -17,7 +17,7 @@ class TestGetLastHostUpdate(unittest.TestCase):
 
     def setUp(self):
         self.exports = kojihub.RootExports()
-        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
+        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
                                          side_effect=self.getQuery).start()
         self.queries = []
         self.query_singleValue = mock.MagicMock()

@@ -12,11 +12,11 @@ class TestListTags(unittest.TestCase):
 
     def setUp(self):
         self.maxDiff = None
-        self.get_build = mock.patch('kojihub.get_build').start()
+        self.get_build = mock.patch('kojihub.kojihub.get_build').start()
         self.exports = kojihub.RootExports()
-        self.context = mock.patch('kojihub.context').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         self.cursor = mock.MagicMock()
-        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
+        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
                                          side_effect=self.getQuery).start()
         self.queries = []
 
@@ -43,7 +43,7 @@ class TestListTags(unittest.TestCase):
             self.exports.listTags(build=build_name)
         self.assertEqual(f"No such build: {build_name}", str(cm.exception))
 
-    @mock.patch('kojihub.lookup_package')
+    @mock.patch('kojihub.kojihub.lookup_package')
     def test_non_exist_package(self, lookup_package):
         self.cursor.fetchone.return_value = None
         self.context.cnx.cursor.return_value = self.cursor
@@ -68,7 +68,7 @@ class TestListTags(unittest.TestCase):
         self.assertEqual("only one of build and package may be specified", str(cm.exception))
         self.get_build.assert_not_called()
 
-    @mock.patch('kojihub.lookup_package')
+    @mock.patch('kojihub.kojihub.lookup_package')
     def test_exist_package_and_perms(self, lookup_package):
         package_info = {'id': 123, 'name': 'package-name'}
         self.cursor.fetchone.return_value = None

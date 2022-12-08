@@ -32,16 +32,16 @@ class TestAddHost(unittest.TestCase):
         return query
 
     def setUp(self):
-        self.InsertProcessor = mock.patch('kojihub.InsertProcessor',
+        self.InsertProcessor = mock.patch('kojihub.kojihub.InsertProcessor',
                                           side_effect=self.getInsert).start()
         self.inserts = []
-        self.UpdateProcessor = mock.patch('kojihub.UpdateProcessor',
+        self.UpdateProcessor = mock.patch('kojihub.kojihub.UpdateProcessor',
                                           side_effect=self.getUpdate).start()
         self.updates = []
-        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
+        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
                                          side_effect=self.getQuery).start()
         self.queries = []
-        self.context = mock.patch('kojihub.context').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         self.context_db = mock.patch('koji.db.context').start()
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"
@@ -49,11 +49,11 @@ class TestAddHost(unittest.TestCase):
         self.context.session.assertPerm = mock.MagicMock()
         self.context.opts = {'HostPrincipalFormat': '-%s-'}
         self.exports = kojihub.RootExports()
-        self.verify_host_name = mock.patch('kojihub.verify_host_name').start()
-        self.verify_name_user = mock.patch('kojihub.verify_name_user').start()
-        self.get_host = mock.patch('kojihub.get_host').start()
-        self.nextval = mock.patch('kojihub.nextval').start()
-        self.get_user = mock.patch('kojihub.get_user').start()
+        self.verify_host_name = mock.patch('kojihub.kojihub.verify_host_name').start()
+        self.verify_name_user = mock.patch('kojihub.kojihub.verify_name_user').start()
+        self.get_host = mock.patch('kojihub.kojihub.get_host').start()
+        self.nextval = mock.patch('kojihub.kojihub.nextval').start()
+        self.get_user = mock.patch('kojihub.kojihub.get_user').start()
         self.query_singleValue = mock.MagicMock()
 
     def tearDown(self):
@@ -80,7 +80,7 @@ class TestAddHost(unittest.TestCase):
         self.assertEqual(r, 12)
 
         self.context.session.assertPerm.assert_called_once_with('host')
-        kojihub.get_host.assert_called_once_with('hostname')
+        self.get_host.assert_called_once_with('hostname')
         self.context.session.createUser.assert_called_once_with(
             'hostname', usertype=koji.USERTYPES['HOST'], krb_principal='-hostname-')
         self.nextval.assert_called_once_with('host_id_seq')
@@ -191,7 +191,7 @@ class TestAddHost(unittest.TestCase):
             self.exports.addHost('hostname', ['i386', 'x86_64'], krb_principal=krb_principal)
 
         self.context.session.assertPerm.assert_called_once_with('host')
-        kojihub.get_host.assert_called_once_with('hostname')
+        self.get_host.assert_called_once_with('hostname')
         self.context.session.createUser.assert_not_called()
         self.verify_host_name.assert_called_once_with('hostname')
         self.nextval.assert_not_called()

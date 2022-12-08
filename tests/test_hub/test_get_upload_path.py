@@ -34,8 +34,8 @@ class TestGetUploadPath(unittest.TestCase):
         with self.assertRaises(GenericError):
             kojihub.get_upload_path(reldir='tasks/1/should_be_number', name='error', create=True)
 
-    @mock.patch('kojihub.context')
-    @mock.patch('kojihub.Host')
+    @mock.patch('kojihub.kojihub.context')
+    @mock.patch('kojihub.kojihub.Host')
     def test_get_upload_path_invalid_upload_dir_owner(self, host, context):
         cursor = mock.MagicMock()
         context.cnx.cursor.return_value = cursor
@@ -49,7 +49,7 @@ class TestGetUploadPath(unittest.TestCase):
         with self.assertRaises(GenericError):
             kojihub.get_upload_path(reldir=reldir, name='error', create=True)
 
-    @mock.patch('kojihub.Host')
+    @mock.patch('kojihub.kojihub.Host')
     def test_get_upload_path_invalid_upload_no_dir_owner(self, host):
         dir = kojihub.get_upload_path(reldir='tasks/1/1', name='error', create=False)
         assert dir == '%s/work/tasks/1/1/error' % self.topdir

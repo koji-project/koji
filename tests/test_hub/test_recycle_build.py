@@ -10,10 +10,10 @@ UP = kojihub.UpdateProcessor
 
 class TestRecycleBuild(unittest.TestCase):
     def setUp(self):
-        self.QueryProcessor = mock.patch('kojihub.QueryProcessor').start()
-        self.UpdateProcessor = mock.patch('kojihub.UpdateProcessor',
+        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor').start()
+        self.UpdateProcessor = mock.patch('kojihub.kojihub.UpdateProcessor',
                                           side_effect=self.getUpdate).start()
-        self._dml = mock.patch('kojihub._dml').start()
+        self._dml = mock.patch('kojihub.kojihub._dml').start()
         self.run_callbacks = mock.patch('koji.plugin.run_callbacks').start()
         self.rmtree = mock.patch('koji.util.rmtree').start()
         self.exists = mock.patch('os.path.exists').start()

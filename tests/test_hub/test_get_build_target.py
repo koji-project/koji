@@ -9,7 +9,7 @@ import kojihub
 class TestGetBuildTarget(unittest.TestCase):
 
     def setUp(self):
-        self.get_build_targets = mock.patch('kojihub.get_build_targets').start()
+        self.get_build_targets = mock.patch('kojihub.kojihub.get_build_targets').start()
         self.exports = kojihub.RootExports()
         self.build_target = 'build-target'
 

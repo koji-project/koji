@@ -10,7 +10,7 @@ class TestAddGroupMember(unittest.TestCase):
 
     def setUp(self):
         self.exports = kojihub.RootExports()
-        self.get_user = mock.patch('kojihub.get_user').start()
+        self.get_user = mock.patch('kojihub.kojihub.get_user').start()
 
     def test_non_exist_user(self):
         data = [{'id': 3,

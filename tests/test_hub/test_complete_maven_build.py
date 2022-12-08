@@ -21,24 +21,24 @@ class TestCompleteMavenBuild(unittest.TestCase):
         self.pathinfo = koji.PathInfo(self.tempdir)
         mock.patch('koji.pathinfo', new=self.pathinfo).start()
         self.hostcalls = kojihub.HostExports()
-        self.context = mock.patch('kojihub.context').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         self.context_db = mock.patch('koji.db.context').start()
         self.context.opts = {'EnableMaven': True}
-        mock.patch('kojihub.Host').start()
-        self.Task = mock.patch('kojihub.Task').start()
+        mock.patch('kojihub.kojihub.Host').start()
+        self.Task = mock.patch('kojihub.kojihub.Task').start()
         self.Task.return_value.assertHost = mock.MagicMock()
-        self.get_build = mock.patch('kojihub.get_build').start()
-        self.get_maven_build = mock.patch('kojihub.get_maven_build').start()
-        self.get_archive_type = mock.patch('kojihub.get_archive_type').start()
-        mock.patch('kojihub.lookup_name', new=self.my_lookup_name).start()
+        self.get_build = mock.patch('kojihub.kojihub.get_build').start()
+        self.get_maven_build = mock.patch('kojihub.kojihub.get_maven_build').start()
+        self.get_archive_type = mock.patch('kojihub.kojihub.get_archive_type').start()
+        mock.patch('kojihub.kojihub.lookup_name', new=self.my_lookup_name).start()
         mock.patch.object(kojihub.BuildRoot, 'load', new=self.my_buildroot_load).start()
-        mock.patch('kojihub.import_archive_internal',
+        mock.patch('kojihub.kojihub.import_archive_internal',
                    new=self.my_import_archive_internal).start()
         mock.patch('koji.db._dml').start()
         mock.patch('koji.db._fetchSingle').start()
-        mock.patch('kojihub.build_notification').start()
-        mock.patch('kojihub.assert_policy').start()
-        mock.patch('kojihub.check_volume_policy',
+        mock.patch('kojihub.kojihub.build_notification').start()
+        mock.patch('kojihub.kojihub.assert_policy').start()
+        mock.patch('kojihub.kojihub.check_volume_policy',
                    return_value={'id': 0, 'name': 'DEFAULT'}).start()
         self.set_up_callbacks()
 
@@ -96,8 +96,8 @@ class TestCompleteMavenBuild(unittest.TestCase):
 
         def my_ga(archive_id, **kw):
             return share['archiveinfo']
-        with mock.patch('kojihub.InsertProcessor', new=my_ip):
-            with mock.patch('kojihub.get_archive', new=my_ga):
+        with mock.patch('kojihub.kojihub.InsertProcessor', new=my_ip):
+            with mock.patch('kojihub.kojihub.get_archive', new=my_ga):
                 orig_import_archive_internal(*a, **kw)
 
     def set_up_callbacks(self):

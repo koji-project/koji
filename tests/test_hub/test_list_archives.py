@@ -10,9 +10,9 @@ QP = kojihub.QueryProcessor
 class TestListArchives(unittest.TestCase):
     def setUp(self):
         self.maxDiff = None
-        self.get_build = mock.patch('kojihub.get_build').start()
-        self.get_host = mock.patch('kojihub.get_host').start()
-        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
+        self.get_build = mock.patch('kojihub.kojihub.get_build').start()
+        self.get_host = mock.patch('kojihub.kojihub.get_host').start()
+        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
                                          side_effect=self.get_query).start()
         self.queries = []
         self.exports = kojihub.RootExports()
@@ -36,7 +36,7 @@ class TestListArchives(unittest.TestCase):
         self.assertEqual(query.joins, ['archivetypes on archiveinfo.type_id = archivetypes.id',
                                        'btype ON archiveinfo.btype_id = btype.id'])
 
-    @mock.patch('kojihub.QueryProcessor')
+    @mock.patch('kojihub.kojihub.QueryProcessor')
     def test_list_archives_strict(self, QueryProcessor):
         query = QueryProcessor.return_value
         query.execute.return_value = None
@@ -208,7 +208,7 @@ class TestListArchives(unittest.TestCase):
                           'image_archives ON archiveinfo.id = image_archives.archive_id'])
         self.assertEqual(query.values, {'arch': 'i386'})
 
-    @mock.patch('kojihub.lookup_name', return_value={'id': 111, 'name': 'other'})
+    @mock.patch('kojihub.kojihub.lookup_name', return_value={'id': 111, 'name': 'other'})
     def test_list_archives_type_others(self, lookup_name):
         kojihub.list_archives(type='other')
         self.assertEqual(len(self.queries), 1)
@@ -220,13 +220,13 @@ class TestListArchives(unittest.TestCase):
                           'btype ON archiveinfo.btype_id = btype.id'])
         self.assertEqual(query.values, {'btype_id': 111})
 
-    @mock.patch('kojihub.lookup_name', return_value=None)
+    @mock.patch('kojihub.kojihub.lookup_name', return_value=None)
     def test_list_archives_type_not_found(self, lookup_name):
         with self.assertRaises(koji.GenericError) as cm:
             kojihub.list_archives(type='other')
         self.assertEqual(cm.exception.args[0], 'unsupported archive type: other')
 
-    @mock.patch('kojihub.lookup_name', return_value={'id': 111, 'name': 'other'})
+    @mock.patch('kojihub.kojihub.lookup_name', return_value={'id': 111, 'name': 'other'})
     def test_list_archives_type_other_with_typeinfo(self, lookup_name):
         with self.assertRaises(koji.GenericError) as cm:
             kojihub.list_archives(type='other', typeInfo={'somekey': 'somevalue'})

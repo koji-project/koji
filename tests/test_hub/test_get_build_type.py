@@ -10,14 +10,14 @@ class TestGetBuildType(unittest.TestCase):
 
     def setUp(self):
         self.maxDiff = None
-        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
+        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
                                          side_effect=self.getQuery).start()
         self.queries = []
         self.query_execute = mock.MagicMock()
-        self.get_build = mock.patch('kojihub.get_build').start()
-        self.get_maven_build = mock.patch('kojihub.get_maven_build').start()
-        self.get_win_build = mock.patch('kojihub.get_win_build').start()
-        self.get_image_build = mock.patch('kojihub.get_image_build').start()
+        self.get_build = mock.patch('kojihub.kojihub.get_build').start()
+        self.get_maven_build = mock.patch('kojihub.kojihub.get_maven_build').start()
+        self.get_win_build = mock.patch('kojihub.kojihub.get_win_build').start()
+        self.get_image_build = mock.patch('kojihub.kojihub.get_image_build').start()
 
     def tearDown(self):
         mock.patch.stopall()

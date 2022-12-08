@@ -19,14 +19,14 @@ class TestReadTaggedArchives(unittest.TestCase):
         return query
 
     def setUp(self):
-        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
+        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
                                          side_effect=self.getQuery).start()
         self.queries = []
-        self.context = mock.patch('kojihub.context').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"
         self.exports = kojihub.RootExports()
-        self.readTaggedBuilds = mock.patch('kojihub.readTaggedBuilds').start()
+        self.readTaggedBuilds = mock.patch('kojihub.kojihub.readTaggedBuilds').start()
         self.tag_name = 'test-tag'
         self.columns = ['archiveinfo.id', 'archiveinfo.type_id', 'archiveinfo.btype_id',
                         'btype.name', 'archiveinfo.build_id', 'archiveinfo.buildroot_id',

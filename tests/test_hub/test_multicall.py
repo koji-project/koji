@@ -1,8 +1,8 @@
 import mock
 import unittest
 
-import kojixmlrpc
-from kojixmlrpc import Fault, HandlerRegistry, ModXMLRPCRequestHandler
+from kojihub import kojixmlrpc
+from kojihub.kojixmlrpc import Fault, HandlerRegistry, ModXMLRPCRequestHandler
 
 
 class DummyExports(object):

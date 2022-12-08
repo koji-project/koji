@@ -11,12 +11,12 @@ class TestGetTagExternalRepos(unittest.TestCase):
 
     def setUp(self):
         self.maxDiff = None
-        self.get_tag = mock.patch('kojihub.get_tag').start()
-        self.get_external_repo = mock.patch('kojihub.get_external_repo').start()
+        self.get_tag = mock.patch('kojihub.kojihub.get_tag').start()
+        self.get_external_repo = mock.patch('kojihub.kojihub.get_external_repo').start()
         self.exports = kojihub.RootExports()
-        self.context = mock.patch('kojihub.context').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         self.cursor = mock.MagicMock()
-        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
+        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
                                          side_effect=self.getQuery).start()
         self.queries = []
         self.build_tag = 'tag'

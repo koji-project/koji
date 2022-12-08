@@ -10,9 +10,9 @@ import kojihub
 class TestEditExternalRepo(unittest.TestCase):
 
     def setUp(self):
-        self.get_external_repo = mock.patch('kojihub.get_external_repo').start()
-        self.verify_name_internal = mock.patch('kojihub.verify_name_internal').start()
-        self.context = mock.patch('kojihub.context').start()
+        self.get_external_repo = mock.patch('kojihub.kojihub.get_external_repo').start()
+        self.verify_name_internal = mock.patch('kojihub.kojihub.verify_name_internal').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"
         self.context.session.assertPerm = mock.MagicMock()

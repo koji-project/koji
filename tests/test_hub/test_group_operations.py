@@ -40,24 +40,24 @@ class TestGrouplist(unittest.TestCase):
         self.inserts = []
 
     def setUp(self):
-        self.context = mock.patch('kojihub.context').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         self.context_db = mock.patch('koji.db.context').start()
-        self.get_tag = mock.patch('kojihub.get_tag').start()
-        self.lookup_tag = mock.patch('kojihub.lookup_tag').start()
-        self.lookup_group = mock.patch('kojihub.lookup_group').start()
-        self.get_tag_groups = mock.patch('kojihub.get_tag_groups').start()
+        self.get_tag = mock.patch('kojihub.kojihub.get_tag').start()
+        self.lookup_tag = mock.patch('kojihub.kojihub.lookup_tag').start()
+        self.lookup_group = mock.patch('kojihub.kojihub.lookup_group').start()
+        self.get_tag_groups = mock.patch('kojihub.kojihub.get_tag_groups').start()
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"
         self.context.session.assertPerm = mock.MagicMock()
         self.context_db.session.assertLogin = mock.MagicMock()
 
-        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
+        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
                                          side_effect=self.getQuery).start()
         self.queries = []
-        self.InsertProcessor = mock.patch('kojihub.InsertProcessor',
+        self.InsertProcessor = mock.patch('kojihub.kojihub.InsertProcessor',
                                           side_effect=self.getInsert).start()
         self.inserts = []
-        self.UpdateProcessor = mock.patch('kojihub.UpdateProcessor',
+        self.UpdateProcessor = mock.patch('kojihub.kojihub.UpdateProcessor',
                                           side_effect=self.getUpdate).start()
         self.updates = []
         self.tag = 'tag'
@@ -195,7 +195,7 @@ class TestGrouplist(unittest.TestCase):
 
         # no group for tag found
         self.reset_db_processors()
-        with mock.patch('kojihub.QueryProcessor', side_effect=self.getEmptyQuery):
+        with mock.patch('kojihub.kojihub.QueryProcessor', side_effect=self.getEmptyQuery):
             with self.assertRaises(koji.GenericError) as cm:
                 kojihub.grplist_remove(self.tag, self.group)
 
@@ -207,7 +207,7 @@ class TestGrouplist(unittest.TestCase):
 
         # force = True
         self.reset_db_processors()
-        with mock.patch('kojihub.QueryProcessor',
+        with mock.patch('kojihub.kojihub.QueryProcessor',
                         side_effect=self.getEmptyQuery):
             kojihub.grplist_remove(self.tag, self.group, force=True)
 

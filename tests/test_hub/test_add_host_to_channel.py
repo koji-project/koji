@@ -16,10 +16,10 @@ class TestAddHostToChannel(unittest.TestCase):
         return insert
 
     def setUp(self):
-        self.InsertProcessor = mock.patch('kojihub.InsertProcessor',
+        self.InsertProcessor = mock.patch('kojihub.kojihub.InsertProcessor',
                                           side_effect=self.getInsert).start()
         self.inserts = []
-        self.context = mock.patch('kojihub.context').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         self.context_db = mock.patch('koji.db.context').start()
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"
@@ -29,11 +29,11 @@ class TestAddHostToChannel(unittest.TestCase):
         self.context_db.session.user_id = 23
         self.context.opts = {'HostPrincipalFormat': '-%s-'}
         self.exports = kojihub.RootExports()
-        self.get_channel = mock.patch('kojihub.get_channel').start()
-        self.list_channels = mock.patch('kojihub.list_channels').start()
-        self.get_channel_id = mock.patch('kojihub.get_channel_id').start()
-        self.get_host = mock.patch('kojihub.get_host').start()
-        self.verify_name_internal = mock.patch('kojihub.verify_name_internal').start()
+        self.get_channel = mock.patch('kojihub.kojihub.get_channel').start()
+        self.list_channels = mock.patch('kojihub.kojihub.list_channels').start()
+        self.get_channel_id = mock.patch('kojihub.kojihub.get_channel_id').start()
+        self.get_host = mock.patch('kojihub.kojihub.get_host').start()
+        self.verify_name_internal = mock.patch('kojihub.kojihub.verify_name_internal').start()
         self.cname = 'channel_name'
         self.name = 'hostname'
         self.host_info = {'id': 123, 'name': self.name}

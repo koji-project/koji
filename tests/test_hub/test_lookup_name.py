@@ -13,15 +13,15 @@ IP = kojihub.InsertProcessor
 class TestLookupName(unittest.TestCase):
 
     def setUp(self):
-        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
+        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
                                          side_effect=self.getQuery).start()
         self.queries = []
         self.query_executeOne = mock.MagicMock()
-        self.InsertProcessor = mock.patch('kojihub.InsertProcessor',
+        self.InsertProcessor = mock.patch('kojihub.kojihub.InsertProcessor',
                                           side_effect=self.getInsert).start()
         self.inserts = []
-        self.nextval = mock.patch('kojihub.nextval').start()
-        self.context = mock.patch('kojihub.context').start()
+        self.nextval = mock.patch('kojihub.kojihub.nextval').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
 
     def getQuery(self, *args, **kwargs):
         query = QP(*args, **kwargs)

@@ -6,9 +6,9 @@ import kojihub
 
 class TestNewTypedBuild(unittest.TestCase):
 
-    @mock.patch('kojihub.lookup_name')
-    @mock.patch('kojihub.QueryProcessor')
-    @mock.patch('kojihub.InsertProcessor')
+    @mock.patch('kojihub.kojihub.lookup_name')
+    @mock.patch('kojihub.kojihub.QueryProcessor')
+    @mock.patch('kojihub.kojihub.InsertProcessor')
     def test_new_typed_build(self, InsertProcessor, QueryProcessor, lookup_name):
 
         binfo = {'id': 1, 'foo': '137'}

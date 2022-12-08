@@ -24,14 +24,14 @@ class TestAddRPMSig(unittest.TestCase):
         return query
 
     def setUp(self):
-        self.InsertProcessor = mock.patch('kojihub.InsertProcessor',
+        self.InsertProcessor = mock.patch('kojihub.kojihub.InsertProcessor',
                                           side_effect=self.getInsert).start()
         self.inserts = []
-        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
+        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
                                          side_effect=self.getQuery).start()
         self.queries = []
         self.query_execute = mock.MagicMock()
-        self.context = mock.patch('kojihub.context').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"
         self.context.session.assertLogin = mock.MagicMock()
@@ -44,11 +44,11 @@ class TestAddRPMSig(unittest.TestCase):
         mock.patch.stopall()
 
     @mock.patch('koji.plugin.run_callbacks')
-    @mock.patch('kojihub.get_rpm')
-    @mock.patch('kojihub.get_build')
+    @mock.patch('kojihub.kojihub.get_rpm')
+    @mock.patch('kojihub.kojihub.get_build')
     @mock.patch('os.path.isdir')
     @mock.patch('koji.ensuredir')
-    @mock.patch('kojihub.open')
+    @mock.patch('kojihub.kojihub.open')
     def test_add_rpm_sig_header_signed(
             self,
             open,

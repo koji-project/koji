@@ -10,14 +10,14 @@ QP = kojihub.QueryProcessor
 
 class TestListTaggedArchives(unittest.TestCase):
     def setUp(self):
-        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
+        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
                                          side_effect=self.getQuery).start()
         self.queries = []
-        self.get_tag = mock.patch('kojihub.get_tag').start()
+        self.get_tag = mock.patch('kojihub.kojihub.get_tag').start()
         self.exports = kojihub.RootExports()
-        self.context = mock.patch('kojihub.context').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         self.cursor = mock.MagicMock()
-        self.readTaggedArchives = mock.patch('kojihub.readTaggedArchives').start()
+        self.readTaggedArchives = mock.patch('kojihub.kojihub.readTaggedArchives').start()
         self.tag_name = 'test-tag'
         self.taginfo = {'id': 1, 'name': 'tag'}
         self.tagged_archives = [

@@ -9,9 +9,9 @@ from psycopg2._psycopg import IntegrityError
 class TestGetNextBuild(unittest.TestCase):
 
     def setUp(self):
-        self.get_next_release = mock.patch('kojihub.get_next_release').start()
-        self.new_build = mock.patch('kojihub.new_build').start()
-        self._dml = mock.patch('kojihub._dml').start()
+        self.get_next_release = mock.patch('kojihub.kojihub.get_next_release').start()
+        self.new_build = mock.patch('kojihub.kojihub.new_build').start()
+        self._dml = mock.patch('kojihub.kojihub._dml').start()
         self.binfo = {'name': 'name', 'version': 'version'}
 
     def tearDown(self):

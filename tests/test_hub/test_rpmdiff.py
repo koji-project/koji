@@ -4,7 +4,7 @@ import os
 import unittest
 
 import koji
-import kojihub
+from kojihub import kojihub
 
 
 class TestRPMDiff(unittest.TestCase):
@@ -161,20 +161,20 @@ class TestRPMDiff(unittest.TestCase):
 
 
 class TestCheckNoarchRpms(unittest.TestCase):
-    @mock.patch('kojihub.rpmdiff')
+    @mock.patch('kojihub.kojihub.rpmdiff')
     def test_check_noarch_rpms_empty_invocation(self, rpmdiff):
         originals = ['foo', 'bar']
         result = kojihub.check_noarch_rpms('basepath', copy.copy(originals))
         self.assertEqual(result, originals)
 
-    @mock.patch('kojihub.rpmdiff')
+    @mock.patch('kojihub.kojihub.rpmdiff')
     def test_check_noarch_rpms_simple_invocation(self, rpmdiff):
         originals = ['12/1234/foo.noarch.rpm', '23/2345/foo.noarch.rpm']
         result = kojihub.check_noarch_rpms('basepath', copy.copy(originals))
         self.assertEqual(result, originals[0:1])
         self.assertEqual(len(rpmdiff.mock_calls), 1)
 
-    @mock.patch('kojihub.rpmdiff')
+    @mock.patch('kojihub.kojihub.rpmdiff')
     def test_check_noarch_rpms_with_duplicates(self, rpmdiff):
         originals = [
             'bar.noarch.rpm',
@@ -185,7 +185,7 @@ class TestCheckNoarchRpms(unittest.TestCase):
         self.assertEqual(result, ['bar.noarch.rpm'])
         rpmdiff.assert_called_once_with('basepath', originals, hashes={})
 
-    @mock.patch('kojihub.rpmdiff')
+    @mock.patch('kojihub.kojihub.rpmdiff')
     def test_check_noarch_rpms_with_mixed(self, rpmdiff):
         originals = [
             'foo.x86_64.rpm',

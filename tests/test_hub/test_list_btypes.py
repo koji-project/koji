@@ -9,7 +9,7 @@ QP = kojihub.QueryProcessor
 class TestListBTypes(unittest.TestCase):
 
     def setUp(self):
-        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
+        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
                                          side_effect=self.get_query).start()
         self.queries = []
         self.exports = kojihub.RootExports()

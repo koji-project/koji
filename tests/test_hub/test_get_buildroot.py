@@ -7,7 +7,7 @@ import kojihub
 
 class TestGetBuildroot(unittest.TestCase):
     def setUp(self):
-        self.query_buildroots = mock.patch('kojihub.query_buildroots').start()
+        self.query_buildroots = mock.patch('kojihub.kojihub.query_buildroots').start()
         self.buildroot_id = 1
 
     def test_empty_buildroots_without_strict(self):

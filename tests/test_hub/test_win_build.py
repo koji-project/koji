@@ -7,14 +7,14 @@ import mock
 class TestWinBuild(unittest.TestCase):
 
     def setUp(self):
-        self.context = mock.patch('kojihub.context').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         self.exports = kojihub.RootExports()
         self.context.session.assertLogin = mock.MagicMock()
         self.context.session.hasPerm = mock.MagicMock()
-        self.get_channel = mock.patch('kojihub.get_channel').start()
-        self.assert_policy = mock.patch('kojihub.assert_policy').start()
-        self.get_build_target = mock.patch('kojihub.get_build_target').start()
-        self.make_task = mock.patch('kojihub.make_task').start()
+        self.get_channel = mock.patch('kojihub.kojihub.get_channel').start()
+        self.assert_policy = mock.patch('kojihub.kojihub.assert_policy').start()
+        self.get_build_target = mock.patch('kojihub.kojihub.get_build_target').start()
+        self.make_task = mock.patch('kojihub.kojihub.make_task').start()
         self.vm = 'test-vm'
         self.url = 'https://test-url.com'
         self.target = 'test-target'

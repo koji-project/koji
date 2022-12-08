@@ -7,7 +7,7 @@ import kojihub
 class TestGetBuildNotificationBlock(unittest.TestCase):
 
     def setUp(self):
-        self.QueryProcessor = mock.patch('kojihub.QueryProcessor').start()
+        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor').start()
         self.query = self.QueryProcessor.return_value
         self.exports = kojihub.RootExports()
 

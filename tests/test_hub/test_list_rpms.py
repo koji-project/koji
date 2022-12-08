@@ -9,12 +9,12 @@ QP = kojihub.QueryProcessor
 
 class TestListRpms(unittest.TestCase):
     def setUp(self):
-        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
+        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
                                          side_effect=self.get_query).start()
         self.queries = []
-        self.get_build = mock.patch('kojihub.get_build').start()
-        self.get_host = mock.patch('kojihub.get_host').start()
-        self._dml = mock.patch('kojihub._dml').start()
+        self.get_build = mock.patch('kojihub.kojihub.get_build').start()
+        self.get_host = mock.patch('kojihub.kojihub.get_host').start()
+        self._dml = mock.patch('kojihub.kojihub._dml').start()
         self.list_rpms = {'arch': 'x86_64',
                           'build_id': 1,
                           'buildroot_id': 2,

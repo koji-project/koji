@@ -28,7 +28,7 @@ class TestImportRPM(unittest.TestCase):
         # Touch a file
         with open(self.src_filename, 'w'):
             pass
-        self.context = mock.patch('kojihub.context').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         self.context.session.assertPerm = mock.MagicMock()
         self.context_db = mock.patch('koji.db.context').start()
         self.cursor = mock.MagicMock()
@@ -46,13 +46,13 @@ class TestImportRPM(unittest.TestCase):
             1106: 'sourcepackage',
             261: 'payload hash',
         }
-        self.get_build = mock.patch('kojihub.get_build').start()
+        self.get_build = mock.patch('kojihub.kojihub.get_build').start()
         self.get_rpm_header = mock.patch('koji.get_rpm_header').start()
-        self.new_typed_build = mock.patch('kojihub.new_typed_build').start()
-        self.nextval = mock.patch('kojihub.nextval').start()
+        self.new_typed_build = mock.patch('kojihub.kojihub.new_typed_build').start()
+        self.nextval = mock.patch('kojihub.kojihub.nextval').start()
         self.os_path_exists = mock.patch('os.path.exists').start()
         self.os_path_basename = mock.patch('os.path.basename').start()
-        self.InsertProcessor = mock.patch('kojihub.InsertProcessor',
+        self.InsertProcessor = mock.patch('kojihub.kojihub.InsertProcessor',
                                           side_effect=self.getInsert).start()
         self.inserts = []
 
@@ -167,7 +167,7 @@ class TestImportRPM(unittest.TestCase):
         self.get_rpm_header.return_value = retval
         self.os_path_exists.return_value = True
         self.os_path_basename.return_value = 'name-version-release.arch.rpm'
-        kojihub.get_build.return_value = None
+        self.get_build.return_value = None
         with self.assertRaises(koji.GenericError) as cm:
             kojihub.import_rpm(self.src_filename)
         self.assertEqual("No such build", str(cm.exception))

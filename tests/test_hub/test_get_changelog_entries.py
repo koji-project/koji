@@ -12,8 +12,8 @@ class TestGetChangelogEntries(unittest.TestCase):
 
     def setUp(self):
         self.exports = kojihub.RootExports()
-        self.get_build = mock.patch('kojihub.get_build').start()
-        self.context = mock.patch('kojihub.context').start()
+        self.get_build = mock.patch('kojihub.kojihub.get_build').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         self.cursor = mock.MagicMock()
         self.os_path_exists = mock.patch('os.path.exists').start()
 

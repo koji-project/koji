@@ -9,7 +9,7 @@ class TestGetVolume(unittest.TestCase):
 
     def setUp(self):
         self.exports = kojihub.RootExports()
-        self.lookup_name = mock.patch('kojihub.lookup_name').start()
+        self.lookup_name = mock.patch('kojihub.kojihub.lookup_name').start()
 
     def test_non_exist_volume_with_strict(self):
         volume = ['test-volume']

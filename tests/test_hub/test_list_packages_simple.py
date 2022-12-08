@@ -9,7 +9,7 @@ class TestListPackagesSimple(unittest.TestCase):
 
     def setUp(self):
         self.maxDiff = None
-        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
+        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
                                          side_effect=self.get_query).start()
         self.queries = []
         self.exports = kojihub.RootExports()

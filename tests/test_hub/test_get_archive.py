@@ -9,10 +9,10 @@ class TestGetArchive(unittest.TestCase):
 
     def setUp(self):
         self.maxDiff = None
-        self.list_archives = mock.patch('kojihub.list_archives').start()
-        self.get_maven_archive = mock.patch('kojihub.get_maven_archive').start()
-        self.get_win_archive = mock.patch('kojihub.get_win_archive').start()
-        self.get_image_archive = mock.patch('kojihub.get_image_archive').start()
+        self.list_archives = mock.patch('kojihub.kojihub.list_archives').start()
+        self.get_maven_archive = mock.patch('kojihub.kojihub.get_maven_archive').start()
+        self.get_win_archive = mock.patch('kojihub.kojihub.get_win_archive').start()
+        self.get_image_archive = mock.patch('kojihub.kojihub.get_image_archive').start()
 
     def tearDown(self):
         mock.patch.stopall()

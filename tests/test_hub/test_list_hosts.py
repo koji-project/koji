@@ -10,8 +10,8 @@ QP = kojihub.QueryProcessor
 class TestListHosts(unittest.TestCase):
 
     def setUp(self):
-        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
-                side_effect=self.get_query).start()
+        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
+                                         side_effect=self.get_query).start()
         self.queries = []
         self.exports = kojihub.RootExports()
 
@@ -31,9 +31,9 @@ class TestListHosts(unittest.TestCase):
         query = self.queries[0]
         self.assertEqual(query.tables, ['host_config'])
         self.assertEqual(query.joins, ['host ON host.id = host_config.host_id'])
-        self.assertEqual(query.clauses, ['host_config.active IS TRUE',])
+        self.assertEqual(query.clauses, ['host_config.active IS TRUE'])
 
-    @mock.patch('kojihub.get_user')
+    @mock.patch('kojihub.kojihub.get_user')
     def test_list_hosts_user_id(self, get_user):
         get_user.return_value = {'id': 99}
         self.exports.listHosts(userID=99)
@@ -44,7 +44,7 @@ class TestListHosts(unittest.TestCase):
         self.assertEqual(query.joins, ['host ON host.id = host_config.host_id'])
         self.assertEqual(query.clauses, ['host_config.active IS TRUE', 'user_id = %(userID)i'])
 
-    @mock.patch('kojihub.get_channel_id')
+    @mock.patch('kojihub.kojihub.get_channel_id')
     def test_list_hosts_channel_id(self, get_channel_id):
         get_channel_id.return_value = 2
         self.exports.listHosts(channelID=2)
@@ -58,7 +58,7 @@ class TestListHosts(unittest.TestCase):
             'host_channels.active IS TRUE',
             'host_channels.channel_id = %(channelID)i',
             'host_config.active IS TRUE',
-            ])
+        ])
 
     def test_list_hosts_single_arch(self):
         self.exports.listHosts(arches='x86_64')
@@ -68,7 +68,7 @@ class TestListHosts(unittest.TestCase):
         self.assertEqual(query.tables, ['host_config'])
         self.assertEqual(query.joins, ['host ON host.id = host_config.host_id'])
         self.assertEqual(query.clauses, ['arches ~ %(archPattern)s',
-                                        'host_config.active IS TRUE'])
+                                         'host_config.active IS TRUE'])
 
     def test_list_hosts_multi_arch(self):
         self.exports.listHosts(arches=['x86_64', 's390'])
@@ -92,7 +92,7 @@ class TestListHosts(unittest.TestCase):
         query = self.queries[0]
         self.assertEqual(query.tables, ['host_config'])
         self.assertEqual(query.joins, ['host ON host.id = host_config.host_id'])
-        self.assertEqual(query.clauses, ['host_config.active IS TRUE','ready IS TRUE'])
+        self.assertEqual(query.clauses, ['host_config.active IS TRUE', 'ready IS TRUE'])
 
     def test_list_hosts_nonready(self):
         self.exports.listHosts(ready=0)
@@ -101,7 +101,7 @@ class TestListHosts(unittest.TestCase):
         query = self.queries[0]
         self.assertEqual(query.tables, ['host_config'])
         self.assertEqual(query.joins, ['host ON host.id = host_config.host_id'])
-        self.assertEqual(query.clauses, ['host_config.active IS TRUE','ready IS FALSE'])
+        self.assertEqual(query.clauses, ['host_config.active IS TRUE', 'ready IS FALSE'])
 
     def test_list_hosts_enabled(self):
         self.exports.listHosts(enabled=1)

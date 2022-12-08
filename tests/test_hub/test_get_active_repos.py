@@ -11,7 +11,7 @@ QP = kojihub.QueryProcessor
 class TestGetActiveRepos(unittest.TestCase):
 
     def setUp(self):
-        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
+        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
                                          side_effect=self.getQuery).start()
         self.queries = []
 
