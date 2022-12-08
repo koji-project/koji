@@ -24,7 +24,7 @@ class TestAddArchiveType(unittest.TestCase):
         self.insert_execute = mock.MagicMock()
         self.verify_name_internal = mock.patch('kojihub.kojihub.verify_name_internal').start()
         self.get_archive_type = mock.patch('kojihub.kojihub.get_archive_type').start()
-        self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
+        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
                                          side_effect=self.getQuery).start()
         self.queries = []
         self.query_execute = mock.MagicMock()

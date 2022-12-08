@@ -10,10 +10,10 @@ import kojihub
 class TestCreateBuildTarget(unittest.TestCase):
 
     def setUp(self):
-        self.get_build_targets = mock.patch('kojihub.get_build_targets').start()
-        self.get_tag = mock.patch('kojihub.get_tag').start()
-        self.verify_name_internal = mock.patch('kojihub.verify_name_internal').start()
-        self.context = mock.patch('kojihub.context').start()
+        self.get_build_targets = mock.patch('kojihub.kojihub.get_build_targets').start()
+        self.get_tag = mock.patch('kojihub.kojihub.get_tag').start()
+        self.verify_name_internal = mock.patch('kojihub.kojihub.verify_name_internal').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"
         self.context.session.assertPerm = mock.MagicMock()
