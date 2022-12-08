@@ -3,7 +3,9 @@ import unittest
 import mock
 
 import koji
+import koji.db
 import kojihub
+import kojihub.kojihub
 
 IP = kojihub.InsertProcessor
 QP = kojihub.QueryProcessor
@@ -11,18 +13,17 @@ QP = kojihub.QueryProcessor
 
 class TestAddArchiveType(unittest.TestCase):
     def setUp(self):
-
-        self.context = mock.patch('kojihub.context').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
         self.context.session.assertPerm = mock.MagicMock()
         self.exports = kojihub.RootExports()
         self.channel_name = 'test-channel'
         self.description = 'test-description'
-        self.InsertProcessor = mock.patch('kojihub.InsertProcessor',
+        self.InsertProcessor = mock.patch('koji.db.InsertProcessor',
                                           side_effect=self.getInsert).start()
         self.inserts = []
         self.insert_execute = mock.MagicMock()
-        self.verify_name_internal = mock.patch('kojihub.verify_name_internal').start()
-        self.get_archive_type = mock.patch('kojihub.get_archive_type').start()
+        self.verify_name_internal = mock.patch('kojihub.kojihub.verify_name_internal').start()
+        self.get_archive_type = mock.patch('kojihub.kojihub.get_archive_type').start()
         self.QueryProcessor = mock.patch('kojihub.QueryProcessor',
                                          side_effect=self.getQuery).start()
         self.queries = []
@@ -63,7 +64,7 @@ class TestAddArchiveType(unittest.TestCase):
         self.query_execute.side_effect = [[]]
         self.verify_name_internal.return_value = None
         self.get_archive_type.return_value = None
-        kojihub.add_archive_type('jar', 'Jar package', 'jar', 'zip')
+        kojihub.add_archive_type('jar', 'Jar package', 'jar', compression_type='zip')
 
         self.assertEqual(len(self.inserts), 1)
         insert = self.inserts[0]
