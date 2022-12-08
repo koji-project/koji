@@ -33,7 +33,7 @@ import koji
 from .context import context
 from .util import to_list
 
-from koji.db import InsertProcessor, QueryProcessor, UpdateProcessor, nextval
+from koji.db import DeleteProcessor, InsertProcessor, QueryProcessor, UpdateProcessor, nextval
 
 
 # 1 - load session if provided
@@ -670,10 +670,11 @@ class Session(object):
                 'cannot remove Kerberos Principal:'
                 ' %(krb_principal)s with user %(name)s' % locals())
         cursor = context.cnx.cursor()
-        delete = """DELETE FROM user_krb_principals
-                    WHERE user_id = %(user_id)i
-                    AND krb_principal = %(krb_principal)s"""
-        cursor.execute(delete, locals())
+        delete = DeleteProcessor(table='user_krb_principals',
+                                 clauses=['user_id = %(user_id)i',
+                                          'krb_principal = %(krb_principal)s'],
+                                 values={'user_id': user_id, 'krb_principal': krb_principal})
+        delete.execute()
         context.cnx.commit()
         return user_id
 

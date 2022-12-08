@@ -18,7 +18,7 @@ import koji
 from koji.context import context
 from koji.plugin import callback, convert_datetime, ignore_error
 from kojihub import get_build_type
-from koji.db import QueryProcessor, InsertProcessor
+from koji.db import QueryProcessor, InsertProcessor, DeleteProcessor
 
 CONFIG_FILE = '/etc/koji-hub/plugins/protonmsg.conf'
 CONFIG = None
@@ -371,8 +371,9 @@ def handle_db_msgs(urls, CONFIG):
         if not max_age:
             # age in config file is deprecated
             max_age = CONFIG.getint('queue', 'age', fallback=24)
-        c.execute("DELETE FROM proton_queue WHERE created_ts < NOW() -'%s hours'::interval"
-                  % max_age)
+        delete = DeleteProcessor(table='proton_queue',
+                                 clauses=[f"created_ts < NOW() -'{max_age:d} hours'::interval"])
+        delete.execute()
         query = QueryProcessor(tables=('proton_queue',),
                                columns=('id', 'address', 'props', 'body::TEXT'),
                                aliases=('id', 'address', 'props', 'body'),
@@ -388,8 +389,10 @@ def handle_db_msgs(urls, CONFIG):
             unsent = {m['id'] for m in _send_msgs(urls, list(msgs), CONFIG)}
         sent = [m for m in msgs if m['id'] not in unsent]
         if sent:
-            c.execute('DELETE FROM proton_queue WHERE id IN %(ids)s',
-                      {'ids': [msg['id'] for msg in sent]})
+            ids = [msg['id'] for msg in sent]
+            delete = DeleteProcessor(table='proton_queue', clauses=['id IN %(ids)s'],
+                                     values={'ids': ids})
+            delete.execute()
     finally:
         # make sure we free the lock
         try:
