@@ -190,7 +190,7 @@ class Session(object):
             # see if an exclusive session exists
             query = QueryProcessor(tables=['sessions'], columns=['id'],
                                    clauses=['user_id=%(user_id)s', 'exclusive = TRUE',
-                                            'expired = FALSE'],
+                                            'closed = FALSE'],
                                    values=session_data)
             excl_id = query.singleValue(strict=False)
 
@@ -307,8 +307,7 @@ class Session(object):
         self.checkLoginAllowed(user_id)
 
         # create session and return
-        sinfo = self.createSession(user_id, hostip, koji.AUTHTYPES['NORMAL'],
-                                   renew=renew)
+        sinfo = self.createSession(user_id, hostip, koji.AUTHTYPES['NORMAL'], renew=renew)
         if sinfo and exclusive and not self.exclusive:
             self.makeExclusive()
         context.cnx.commit()
@@ -431,9 +430,9 @@ class Session(object):
         query = QueryProcessor(tables=['users'], columns=['id'], clauses=['id=%(user_id)s'],
                                values={'user_id': user_id}, opts={'rowlock': True})
         query.execute()
-        # check that no other sessions for this user are exclusive
+        # check that no other sessions for this user are exclusive (including expired)
         query = QueryProcessor(tables=['sessions'], columns=['id'],
-                               clauses=['user_id=%(user_id)s', 'expired = FALSE',
+                               clauses=['user_id=%(user_id)s', 'closed = FALSE',
                                         'exclusive = TRUE'],
                                values={'user_id': user_id}, opts={'rowlock': True})
         excl_id = query.singleValue(strict=False)
@@ -461,7 +460,7 @@ class Session(object):
         context.cnx.commit()
 
     def logout(self, session_id=None):
-        """expire a login session"""
+        """close a login session"""
         if not self.logged_in:
             # XXX raise an error?
             raise koji.AuthError("Not logged in")
@@ -486,11 +485,12 @@ class Session(object):
             self.logged_in = False
 
     def logoutChild(self, session_id):
-        """expire a subsession"""
+        """close a subsession"""
         if not self.logged_in:
             # XXX raise an error?
             raise koji.AuthError("Not logged in")
-        update = UpdateProcessor('sessions', data={'expired': True, 'exclusive': None},
+        update = UpdateProcessor('sessions',
+                                 data={'expired': True, 'exclusive': None, 'closed': True},
                                  clauses=['id = %(session_id)i', 'master = %(master)i'],
                                  values={'session_id': session_id, 'master': self.id})
         update.execute()
@@ -513,11 +513,9 @@ class Session(object):
             session_id = self.id
             self.key = key
             if self.master:
-                # check if master session died meanwhile
+                # check if master session died meanwhile (expired is ok)
                 query = QueryProcessor(tables=['sessions'],
-                                       clauses=['id = %(master_id)d',
-                                                'expired IS FALSE',
-                                                'closed IS FALSE'],
+                                       clauses=['id = %(master_id)d', 'closed IS FALSE'],
                                        values={'master_id': self.master},
                                        opts={'countOnly': True})
                 if query.executeOne() == 0:
