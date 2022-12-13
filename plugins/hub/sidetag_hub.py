@@ -41,6 +41,7 @@ def is_sidetag_owner(taginfo, user, raise_error=False):
     """Check, that given user is owner of the sidetag"""
     result = (taginfo['extra'].get('sidetag') and
               (taginfo['extra'].get('sidetag_user_id') == user['id'] or
+               context.session.hasPerm('sidetag_edit') or
                context.session.hasPerm('admin')))
     if not result and raise_error:
         raise koji.ActionNotAllowed("This is not your sidetag")
@@ -230,7 +231,7 @@ def listSideTags(basetag=None, user=None, queryOpts=None):
 
 
 @export
-def editSideTag(sidetag, debuginfo=None, rpm_macros=None, remove_rpm_macros=None):
+def editSideTag(sidetag, debuginfo=None, rpm_macros=None, remove_rpm_macros=None, extra=None):
     """Restricted ability to modify sidetags, parent tag must have:
     sidetag_debuginfo_allowed: 1
     sidetag_rpm_macros_allowed: 1
@@ -255,6 +256,13 @@ def editSideTag(sidetag, debuginfo=None, rpm_macros=None, remove_rpm_macros=None
     is_sidetag(sidetag, raise_error=True)
     is_sidetag_owner(sidetag, user, raise_error=True)
 
+    if extra is not None and not (context.session.hasPerm('sidetag_admin') or
+                                  context.session.hasPerm('admin')):
+        raise koji.GenericError(
+            "Extra can be modified only with sidetag_admin or admin permissions.")
+    else:
+        extra = {}
+
     parent_id = readInheritanceData(sidetag['id'])[0]['parent_id']
     parent = get_tag(parent_id)
 
@@ -265,7 +273,7 @@ def editSideTag(sidetag, debuginfo=None, rpm_macros=None, remove_rpm_macros=None
             and not parent['extra'].get('sidetag_rpm_macros_allowed'):
         raise koji.GenericError("RPM macros change is not allowed in parent tag.")
 
-    kwargs = {'extra': {}}
+    kwargs = {'extra': extra}
     if debuginfo is not None:
         kwargs['extra']['with_debuginfo'] = bool(debuginfo)
     if rpm_macros is not None:
