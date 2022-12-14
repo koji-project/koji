@@ -4073,13 +4073,13 @@ class BaseImageTask(OzImageTask):
 
     def __init__(self, *args, **kwargs):
         super(BaseImageTask, self).__init__(*args, **kwargs)
+        '''
+        format: {
+            'qemu': bool -supported format by qemu
+            'fcall': function to handle creation of this format
+        }
+        '''
         self.supported_formats = {
-            '''
-            format: {
-                'qemu': bool -supported format by qemu
-                'fcall': function to handle creation of this format
-            }
-            '''
             'docker': {'qemu': False, 'fcall': self._buildDocker},
             'liveimg-squashfs': {'qemu': False, 'fcall': self._buildSquashfs},
             'qcow': {'qemu': True, 'fcall': self._buildConvert},
