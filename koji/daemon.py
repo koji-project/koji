@@ -521,6 +521,7 @@ class SCM(object):
         sourcedir = '%s/%s' % (scmdir, self.module)
 
         update_checkout_cmds = None
+        update_recovery_cmd = None
         update_checkout_dir = None
         env = None
 
@@ -587,6 +588,7 @@ class SCM(object):
                 ['git', 'fetch', 'origin', '%s:KOJI_FETCH_HEAD' % rev],
                 ['git', 'reset', '--hard', 'KOJI_FETCH_HEAD']
             ]
+            update_recovery_cmd = ['git', 'reset', '--hard', self.revision]
             update_checkout_dir = sourcedir
 
             # self.module may be empty, in which case the specfile should be in the top-level
@@ -625,6 +627,7 @@ class SCM(object):
                 ['git', 'fetch', 'origin', '%s:KOJI_FETCH_HEAD' % rev],
                 ['git', 'reset', '--hard', 'KOJI_FETCH_HEAD']
             ]
+            update_recovery_cmd = ['git', 'reset', '--hard', self.revision]
             update_checkout_dir = sourcedir
 
             # self.module may be empty, in which case the specfile should be in the top-level
@@ -667,8 +670,12 @@ class SCM(object):
                      chdir=update_checkout_dir, fatal=True)
                 _run(['git', 'config', 'core.safecrlf', 'true'],
                      chdir=update_checkout_dir, fatal=True)
-            for cmd in update_checkout_cmds:
-                _run(cmd, chdir=update_checkout_dir, fatal=True)
+            try:
+                for cmd in update_checkout_cmds:
+                    _run(cmd, chdir=update_checkout_dir, fatal=True)
+            except Exception:
+                # use old-style checkout, e.g. for shortened refs
+                _run(update_recovery_cmd, chdir=update_checkout_dir, fatal=True)
 
         if self.use_common and not globals().get('KOJIKAMID'):
             _run(common_checkout_cmd, chdir=scmdir, fatal=True)
