@@ -1789,6 +1789,8 @@ name=build
 
 
 def get_sequence_value(cursor, sequence):
+    deprecated('Function get_sequence_value will be removed in Koji 1.34. '
+               'Use nextval function from koji.db.py.')
     cursor.execute("""SELECT nextval(%(sequence)s)""", locals())
     return cursor.fetchone()[0]
 
