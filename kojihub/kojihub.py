@@ -760,16 +760,13 @@ def eventCondition(event, table=None):
 
 
 def readInheritanceData(tag_id, event=None):
-    c = context.cnx.cursor()
-    fields = ('parent_id', 'name', 'priority', 'maxdepth', 'intransitive', 'noconfig',
-              'pkg_filter')
-    q = """SELECT %s FROM tag_inheritance JOIN tag ON parent_id = id
-    WHERE %s AND tag_id = %%(tag_id)i
-    ORDER BY priority
-    """ % (",".join(fields), eventCondition(event))
-    c.execute(q, locals())
-    # convert list of lists into a list of dictionaries
-    data = [dict(zip(fields, x)) for x in c.fetchall()]
+    columns = ['parent_id', 'name', 'priority', 'maxdepth', 'intransitive', 'noconfig',
+               'pkg_filter']
+    query = QueryProcessor(tables=['tag_inheritance'], columns=columns,
+                           joins=['tag ON parent_id = id'],
+                           clauses=[eventCondition(event), 'tag_id = %(tag_id)i'],
+                           values={'tag_id': tag_id}, opts={'order': 'priority'})
+    data = query.execute()
     # include the current tag_id as child_id, so we can retrace the inheritance chain later
     for datum in data:
         datum['child_id'] = tag_id
@@ -777,16 +774,13 @@ def readInheritanceData(tag_id, event=None):
 
 
 def readDescendantsData(tag_id, event=None):
-    c = context.cnx.cursor()
-    fields = ('tag_id', 'parent_id', 'name', 'priority', 'maxdepth', 'intransitive', 'noconfig',
-              'pkg_filter')
-    q = """SELECT %s FROM tag_inheritance JOIN tag ON tag_id = id
-    WHERE %s AND parent_id = %%(tag_id)i
-    ORDER BY priority
-    """ % (",".join(fields), eventCondition(event))
-    c.execute(q, locals())
-    # convert list of lists into a list of dictionaries
-    data = [dict(zip(fields, x)) for x in c.fetchall()]
+    columns = ['tag_id', 'parent_id', 'name', 'priority', 'maxdepth', 'intransitive', 'noconfig',
+               'pkg_filter']
+    query = QueryProcessor(tables=['tag_inheritance'], columns=columns,
+                           joins=['tag ON tag_id = id'],
+                           clauses=[eventCondition(event), 'parent_id = %(tag_id)i'],
+                           values={'tag_id': tag_id}, opts={'order': 'priority'})
+    data = query.execute()
     return data
 
 
@@ -13254,10 +13248,11 @@ class RootExports(object):
         koji.plugin.run_callbacks('preBuildStateChange',
                                   attribute='completion_ts', old=ts_old, new=ts, info=buildinfo)
         buildid = buildinfo['id']
-        q = """UPDATE build
-        SET completion_time=TIMESTAMP 'epoch' AT TIME ZONE 'utc' + '%(ts)f seconds'::interval
-        WHERE id=%%(buildid)i""" % locals()
-        _dml(q, locals())
+        update = UpdateProcessor('build',
+                                 clauses=['id = %(buildid)i'], values={'buildid': buildid})
+        update.rawset(completion_time=f"TIMESTAMP 'epoch' AT TIME ZONE 'utc' + "
+                                      f"'{ts:f} seconds'::interval")
+        update.execute()
         buildinfo = get_build(build, strict=True)
         koji.plugin.run_callbacks('postBuildStateChange',
                                   attribute='completion_ts', old=ts_old, new=ts, info=buildinfo)
