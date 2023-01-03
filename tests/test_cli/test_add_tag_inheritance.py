@@ -59,7 +59,7 @@ class TestAddTagInheritance(utils.CliTestCase):
     def test_add_tag_inheritance_without_option(self):
         arguments = []
         expected = self.format_error_message(
-            "This command takes exctly two argument: a tag name or ID and that tag's new "
+            "This command takes exactly two arguments: a tag name or ID and that tag's new "
             "parent name or ID")
         self.assert_system_exit(
             handle_add_tag_inheritance,

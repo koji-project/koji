@@ -5041,7 +5041,7 @@ def handle_add_tag_inheritance(goptions, session, args):
     (options, args) = parser.parse_args(args)
 
     if len(args) != 2:
-        parser.error("This command takes exctly two argument: a tag name or ID and that tag's "
+        parser.error("This command takes exactly two arguments: a tag name or ID and that tag's "
                      "new parent name or ID")
 
     activate_session(session, goptions)
