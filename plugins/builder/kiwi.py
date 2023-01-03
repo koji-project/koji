@@ -371,14 +371,19 @@ class KiwiCreateImageTask(BaseBuildTask):
         desc, types = self.prepareDescription(path, name, version, repos, arch)
         self.uploadFile(desc)
 
+        target_dir = '/builddir/result/image'
+        os.symlink(  # symlink log to resultdir, so it is incrementally uploaded
+            os.path.join(broot.rootdir(), f'tmp/image-root.{arch}.log'),
+            os.path.join(broot.resultdir(), f'image-root.{arch}.log')
+        )
         cmd = ['kiwi-ng']
         if self.opts.get('profile'):
             cmd.extend(['--profile', self.opts['profile']])
         if self.opts.get('type'):
             cmd.extend(['--type', self.opts['type']])
-        target_dir = '/builddir/result/image'
         cmd.extend([
             '--kiwi-file', os.path.basename(desc),  # global option for image/system commands
+            '--logfile', f'/tmp/image-root.{arch}.log',
             'system', 'build',
             '--description', os.path.join(os.path.basename(scmsrcdir), base_path),
             '--target-dir', target_dir,
@@ -388,8 +393,14 @@ class KiwiCreateImageTask(BaseBuildTask):
             raise koji.GenericError("Kiwi failed")
 
         # rename artifacts accordingly to release
+        os.symlink(  # symlink log to resultdir, so it is incrementally uploaded
+            os.path.join(broot.rootdir(), f'/tmp/kiwi-result-bundle.{arch}.log'),
+            os.path.join(broot.resultdir(), f'kiwi-result-bundle.{arch}.log')
+        )
         bundle_dir = '/builddir/result/bundle'
-        cmd = ['kiwi-ng', 'result', 'bundle',
+        cmd = ['kiwi-ng',
+               '--logfile', f'/tmp/kiwi-result-bundle.{arch}.log',
+               'result', 'bundle',
                '--target-dir', target_dir,
                '--bundle-dir', bundle_dir,
                '--id', release]
@@ -409,12 +420,6 @@ class KiwiCreateImageTask(BaseBuildTask):
             'rpmlist': [],
             'files': [],
         }
-
-        # TODO: upload detailed log?
-        # build/image-root.log
-        root_log_path = os.path.join(broot.tmpdir(), target_dir[1:], "build/image-root.log")
-        if os.path.exists(root_log_path):
-            self.uploadFile(root_log_path, remoteName=f"image-root.{arch}.log")
 
         bundle_path = os.path.join(broot.rootdir(), bundle_dir[1:])
         for fname in os.listdir(bundle_path):
