@@ -123,3 +123,16 @@ class TestCancel(utils.CliTestCase):
         self.session.cancelTask.assert_not_called()
         self.session.cancelTaskFull.assert_not_called()
         self.session.cancelBuild.assert_not_called()
+
+    def test_cancel_help(self):
+        self.assert_help(
+            handle_cancel,
+            """Usage: %s cancel [options] <task_id|build> [<task_id|build> ...]
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help  show this help message and exit
+  --justone   Do not cancel subtasks
+  --full      Full cancellation (admin only)
+  --force     Allow subtasks with --full
+""" % self.progname)

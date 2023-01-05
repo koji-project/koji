@@ -208,3 +208,13 @@ class TestRemoveTagInheritance(utils.CliTestCase):
             1, [{'child_id': 1, 'intransitive': False, 'maxdepth': None, 'name': self.tag,
                  'noconfig': False, 'parent_id': 2, 'pkg_filter': '', 'priority': self.priority,
                  'delete link': True}])
+
+    def test_remove_tag_inheritance_help(self):
+        self.assert_help(
+            handle_remove_tag_inheritance,
+            """Usage: %s remove-tag-inheritance <tag> <parent> <priority>
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help  show this help message and exit
+""" % self.progname)

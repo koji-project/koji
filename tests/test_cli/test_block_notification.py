@@ -129,3 +129,17 @@ class TestBlockNotification(utils.CliTestCase):
             activate_session=None,
             exit_code=2)
         self.activate_session_mock.assert_called_once_with(self.session, self.options)
+
+    def test_block_notification_help(self):
+        self.assert_help(
+            handle_block_notification,
+            """Usage: %s block-notification [options]
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help         show this help message and exit
+  --user=USER        Block notifications for this user (admin-only)
+  --package=PACKAGE  Block notifications for this package
+  --tag=TAG          Block notifications for this tag
+  --all              Block all notification for this user
+""" % self.progname)

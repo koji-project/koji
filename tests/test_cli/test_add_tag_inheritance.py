@@ -158,3 +158,21 @@ class TestAddTagInheritance(utils.CliTestCase):
         self.assert_console_message(stdout, '')
         self.assert_console_message(stderr, '')
         self.activate_session_mock.assert_called_once_with(self.session, self.options)
+
+    def test_add_tag_inheritance_help(self):
+        self.assert_help(
+            handle_add_tag_inheritance,
+            """Usage: %s add-tag-inheritance [options] <tag> <parent-tag>
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help            show this help message and exit
+  --priority=PRIORITY   Specify priority
+  --maxdepth=MAXDEPTH   Specify max depth
+  --intransitive        Set intransitive
+  --noconfig            Set to packages only
+  --pkg-filter=PKG_FILTER
+                        Specify the package filter
+  --force               Force adding a parent to a tag that already has that
+                        parent tag
+""" % self.progname)

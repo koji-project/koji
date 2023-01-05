@@ -178,3 +178,15 @@ Notification blocks
         self.session.getBuildNotifications.assert_called_once_with(321)
         self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
         self.activate_session_mock.asset_not_called()
+
+    def test_list_notifications_help(self):
+        self.assert_help(
+            anon_handle_list_notifications,
+            """Usage: %s list-notifications [options]
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help   show this help message and exit
+  --mine       Just print your notifications
+  --user=USER  Only notifications for this user
+""" % self.progname)

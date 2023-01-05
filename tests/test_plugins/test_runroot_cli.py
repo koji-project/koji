@@ -3,6 +3,8 @@ import io
 import mock
 import six
 import unittest
+import os
+import sys
 
 import koji
 from . import load_plugin
@@ -56,6 +58,7 @@ class TestListCommands(unittest.TestCase):
         runroot.OptionParser = mock.MagicMock(side_effect=self.get_parser)
         self.old_watch_tasks = runroot.watch_tasks
         runroot.watch_tasks = mock.MagicMock(name='watch_tasks')
+        self.progname = os.path.basename(sys.argv[0]) or 'koji'
 
     def tearDown(self):
         runroot.OptionParser = self.old_OptionParser
@@ -169,3 +172,36 @@ class TestListCommands(unittest.TestCase):
         self.assertEqual(actual,
                          b"* The runroot plugin appears to not be installed on the"
                          b" koji hub.  Please contact the administrator.")
+
+    @mock_stdout()
+    def test_runroot_help(self, stdout):
+        with self.assertRaises(SystemExit) as ex:
+            runroot.handle_runroot(self.options, self.session, ['--help'])
+        std_output = get_stdout_value(stdout).decode('utf-8')
+        expected_help = """Usage: %s runroot [options] <tag> <arch> <command>
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help            show this help message and exit
+  -p PACKAGE, --package=PACKAGE
+                        make sure this package is in the chroot
+  -m MOUNT, --mount=MOUNT
+                        mount this directory read-write in the chroot
+  --skip-setarch        bypass normal setarch in the chroot
+  -w WEIGHT, --weight=WEIGHT
+                        set task weight
+  --channel-override=CHANNEL_OVERRIDE
+                        use a non-standard channel
+  --task-id             Print the ID of the runroot task
+  --use-shell           Run command through a shell, otherwise uses exec
+  --new-chroot          Run command with the --new-chroot (systemd-nspawn)
+                        option to mock
+  --old-chroot          Run command with the --old-chroot (systemd-nspawn)
+                        option to mock
+  --repo-id=REPO_ID     ID of the repo to use
+  --nowait              Do not wait on task
+  --watch               Watch task instead of printing runroot.log
+  --quiet               Do not print the task information
+""" % self.progname
+        self.assertMultiLineEqual(std_output, expected_help)
+        self.assertEqual('0', str(ex.exception))

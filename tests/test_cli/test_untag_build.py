@@ -156,3 +156,20 @@ class TestUntagBuild(utils.CliTestCase):
         self.session.getTag.assert_called_once_with(self.tag)
         self.session.multicall.assert_called_once()
         self.session.untagBuild.assert_not_called()
+
+    def test_untag_build_help(self):
+        self.assert_help(
+            handle_untag_build,
+            """Usage: %s untag-build [options] <tag> <pkg> [<pkg> ...]
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help     show this help message and exit
+  --all          untag all versions of the package in this tag, pkg is package
+                 name
+  --non-latest   untag all versions of the package in this tag except the
+                 latest, pkg is package name
+  -n, --test     test mode
+  -v, --verbose  print details
+  --force        force operation
+""" % self.progname)

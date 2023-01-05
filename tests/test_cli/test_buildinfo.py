@@ -204,3 +204,14 @@ Changelog:
         self.session.getWinBuild.assert_called_once_with(self.buildinfo['id'])
         self.session.listRPMs.assert_called_once_with(buildID=self.buildinfo['id'])
         self.assertEqual(self.session.listArchives.call_count, 4)
+
+    def test_buildinfo_help(self):
+        self.assert_help(
+            anon_handle_buildinfo,
+            """Usage: %s buildinfo [options] <n-v-r> [<n-v-r> ...]
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help   show this help message and exit
+  --changelog  Show the changelog for the build
+""" % self.progname)

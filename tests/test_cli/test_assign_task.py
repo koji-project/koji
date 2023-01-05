@@ -79,7 +79,7 @@ class TestAssignTask(utils.CliTestCase):
         self.activate_session_mock.assert_called_with(self.session, self.options)
         self.session.assignTask.assert_called_with(int(task_id), hostname, True)
 
-    def test_handle_assign_task_help(self):
+    def test_handle_assign_task_no_args(self):
         arguments = []
         # Run it and check immediate output
         self.assert_system_exit(
@@ -95,6 +95,17 @@ class TestAssignTask(utils.CliTestCase):
         self.activate_session_mock.assert_not_called()
         self.session.hasHost.assert_not_called()
         self.session.addHost.assert_not_called()
+
+    def test_assign_task_help(self):
+        self.assert_help(
+            handle_assign_task,
+            """Usage: %s assign-task <task_id> <hostname>
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help   show this help message and exit
+  -f, --force  force to assign a non-free task
+""" % self.progname)
 
 
 if __name__ == '__main__':

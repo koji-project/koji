@@ -163,3 +163,14 @@ Used in 1 buildroots:
         self.session.getBuildroot.assert_not_called()
         self.session.listBuildroots.assert_not_called()
         self.session.getBuild.assert_not_called()
+
+    def test_rpminfo_help(self):
+        self.assert_help(
+            anon_handle_rpminfo,
+            """Usage: %s rpminfo [options] <n-v-r.a> [<n-v-r.a> ...]
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help    show this help message and exit
+  --buildroots  show buildroots the rpm was used in
+""" % self.progname)

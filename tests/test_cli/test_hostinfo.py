@@ -166,3 +166,13 @@ None
         self.session.listChannels.assert_called_once_with(hostID=self.hostinfo['id'])
         self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
         self.assertEqual(self.session.listBuildroots.call_count, 3)
+
+    def test_hostinfo_help(self):
+        self.assert_help(
+            anon_handle_hostinfo,
+            """Usage: %s hostinfo [options] <hostname> [<hostname> ...]
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help  show this help message and exit
+""" % self.progname)

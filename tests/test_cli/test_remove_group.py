@@ -93,12 +93,9 @@ class TestRemoveGroup(utils.CliTestCase):
         self.session.groupListRemove.assert_called_once_with(tag, group)
         self.assertEqual(rv, None)
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_remove_group_error_handling(self, activate_session_mock, stdout, stderr):
-        expected = self.format_error_message(
-                        "Please specify a tag name and a group name")
+    def test_handle_remove_group_error_handling(self, activate_session_mock):
+        expected = self.format_error_message("Please specify a tag name and a group name")
         for args in [[], ['tag'], ['tag', 'grp', 'etc']]:
             self.assert_system_exit(
                 handle_remove_group,
@@ -106,6 +103,7 @@ class TestRemoveGroup(utils.CliTestCase):
                 self.session,
                 args,
                 stderr=expected,
+                stdout='',
                 activate_session=None)
 
         # if we don't have 'tag' permission
@@ -113,3 +111,13 @@ class TestRemoveGroup(utils.CliTestCase):
         with self.assertRaises(SystemExit):
             handle_remove_group(self.options, self.session, ['tag', 'grp'])
         activate_session_mock.assert_called_with(self.session, self.options)
+
+    def test_handle_remove_group_help(self):
+        self.assert_help(
+            handle_remove_group,
+            """Usage: %s remove-group <tag> <group>
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help  show this help message and exit
+""" % self.progname)

@@ -278,6 +278,17 @@ class TestImportComps(utils.CliTestCase):
             self.session.assert_has_calls(expected)
         self.assertNotEqual(rv, 1)
 
+    def test_import_comps_help(self):
+        self.assert_help(
+            handle_import_comps,
+            """Usage: %s import-comps [options] <file> <tag>
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help  show this help message and exit
+  --force     force import
+""" % self.progname)
+
 
 def _generate_out_calls(method, comps_file, stdout_file, calls_file):
     tag = 'tag'

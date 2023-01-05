@@ -267,3 +267,19 @@ class TestEditTagInheritance(utils.CliTestCase):
         self.session.getTag.assert_called_once_with(self.parent_tag)
         self.session.getInheritanceData.assert_has_calls([call(1), call(1)])
         self.session.setInheritanceData.assert_not_called()
+
+    def test_edit_tag_inheritance_help(self):
+        self.assert_help(
+            handle_edit_tag_inheritance,
+            """Usage: %s edit-tag-inheritance [options] <tag> <parent> <priority>
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help            show this help message and exit
+  --priority=PRIORITY   Specify a new priority
+  --maxdepth=MAXDEPTH   Specify max depth
+  --intransitive        Set intransitive
+  --noconfig            Set to packages only
+  --pkg-filter=PKG_FILTER
+                        Specify the package filter
+""" % self.progname)

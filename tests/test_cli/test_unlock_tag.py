@@ -103,7 +103,7 @@ class TestUnlockTag(utils.CliTestCase):
         self.assert_console_message(stdout, expected)
         self.session.listTags.assert_called_with()
 
-    def test_lock_tag_help(self):
+    def test_unlock_tag_help(self):
         self.assert_help(
             handle_unlock_tag,
             """Usage: %s unlock-tag [options] <tag> [<tag> ...]

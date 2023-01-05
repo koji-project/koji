@@ -409,16 +409,10 @@ Default behavior without --all option downloads .rpm files only for build and bu
                                                                   self.parent_task_id)
         self.download_file.assert_not_called()
 
-    def test_handle_download_help(self):
-        args = ['--help']
-        # Run it and check immediate output
-        # args: --help
-        # expected: failure
-        with self.assertRaises(SystemExit) as ex:
-            anon_handle_download_task(self.options, self.session, args)
-        self.assertExitCode(ex, 0)
-        actual = self.stdout.getvalue()
-        expected = """Usage: %s download-task <task_id>
+    def test_handle_download_task_help(self):
+        self.assert_help(
+            anon_handle_download_task,
+            """Usage: %s download-task <task_id>
 Default behavior without --all option downloads .rpm files only for build and buildArch tasks.
 
 (Specify the --help global option for a list of other help options)
@@ -440,11 +434,7 @@ Options:
   --parentonly     Download parent's files only
   --filter=FILTER  Regex pattern to filter files
   --skip=SKIP      Regex pattern to skip files
-""" % progname
-        self.assertMultiLineEqual(actual, expected)
-        actual = self.stderr.getvalue()
-        expected = ''
-        self.assertEqual(actual, expected)
+""" % self.progname)
 
     def test_handle_download_no_task_id(self):
         args = []
