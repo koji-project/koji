@@ -11628,8 +11628,8 @@ class RootExports(object):
             :param int event: event ID
             :param bool inherit: If inherit is True, follow the tag hierarchy and return
                             a list of tagged RPMs for all tags in the tree
-            :param  bool|int latest: Set to "True" to get the single latest build. Set
-                            to an int "N" to get the latest "N" builds. If
+            :param  bool|int latest: Set to "True" to get the single latest tagged build. Set
+                            to an int "N" to get the "N" latest tagged builds. If
                             unspecified, the default value is "False", and
                             Koji will list all builds in the tag.
             :param str package: only rpms of the specified package
