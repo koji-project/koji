@@ -101,3 +101,15 @@ class TestCliListTargets(utils.CliTestCase):
             ''
         ]
         self.assertEqual(expected, [re.sub(' +', '|', l) for l in stdout.getvalue().split('\n')])
+
+    def test_list_targets_help(self):
+        self.assert_help(
+            anon_handle_list_targets,
+            """Usage: %s list-targets [options]
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help   show this help message and exit
+  --name=NAME  Specify the build target name
+  --quiet      Do not print the header information
+""" % self.progname)

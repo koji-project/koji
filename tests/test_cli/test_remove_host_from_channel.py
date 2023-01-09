@@ -8,6 +8,7 @@ import unittest
 from koji_cli.commands import handle_remove_host_from_channel
 from . import utils
 
+
 class TestRemoveHostFromChannel(utils.CliTestCase):
 
     # Show long diffs in error output...
@@ -107,7 +108,7 @@ class TestRemoveHostFromChannel(utils.CliTestCase):
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_remove_host_from_channel_help(
+    def test_handle_remove_host_from_channel_no_args(
             self, activate_session_mock, stderr, stdout):
         args = []
         options = mock.MagicMock()
@@ -138,6 +139,16 @@ class TestRemoveHostFromChannel(utils.CliTestCase):
         session.getHost.assert_not_called()
         session.listChannels.assert_not_called()
         session.removeHostFromChannel.assert_not_called()
+
+    def test_handle_remove_host_from_channel_help(self):
+        self.assert_help(
+            handle_remove_host_from_channel,
+            """Usage: %s remove-host-from-channel [options] <hostname> <channel>
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help  show this help message and exit
+""" % self.progname)
 
 
 if __name__ == '__main__':

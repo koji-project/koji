@@ -161,3 +161,17 @@ class TestAddNotification(utils.CliTestCase):
             exit_code=2,
             activate_session=None)
         self.activate_session_mock.assert_called_once_with(self.session, self.options)
+
+    def test_add_notification_help(self):
+        self.assert_help(
+            handle_add_notification,
+            """Usage: %s add-notification [options]
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help         show this help message and exit
+  --user=USER        Add notifications for this user (admin-only)
+  --package=PACKAGE  Add notifications for this package
+  --tag=TAG          Add notifications for this tag
+  --success-only     Enabled notification on successful events only
+""" % self.progname)

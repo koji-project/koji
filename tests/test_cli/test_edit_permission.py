@@ -47,3 +47,13 @@ class TestEditPermission(utils.CliTestCase):
         self.assertMultiLineEqual(actual, expected)
         self.session.editPermission.assert_called_once_with(self.perm, self.description)
         self.activate_session_mock.assert_called_once_with(self.session, self.options)
+
+    def test_edit_permission_help(self):
+        self.assert_help(
+            handle_edit_permission,
+            """Usage: %s edit-permission <permission> <description>
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help  show this help message and exit
+""" % self.progname)

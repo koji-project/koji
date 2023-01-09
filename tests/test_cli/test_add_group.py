@@ -78,7 +78,7 @@ class TestAddGroup(utils.CliTestCase):
         session.getTagGroups.assert_called_once_with(tag, inherit=False)
         session.groupListAdd.assert_not_called()
 
-    def test_handle_add_group_help(self):
+    def test_handle_add_group_no_args(self):
         arguments = []
         options = mock.MagicMock()
 
@@ -154,6 +154,16 @@ class TestAddGroup(utils.CliTestCase):
         session.getTag.assert_called_once_with(tag)
         session.getTagGroups.assert_not_called()
         session.groupListAdd.assert_not_called()
+
+    def test_handle_add_group_help(self):
+        self.assert_help(
+            handle_add_group,
+            """Usage: %s add-group <tag> <group>
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help  show this help message and exit
+""" % self.progname)
 
 
 if __name__ == '__main__':

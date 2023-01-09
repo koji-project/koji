@@ -160,7 +160,7 @@ class TestAddHostToChannel(utils.CliTestCase):
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_add_host_to_channel_help(
+    def test_handle_add_host_to_channel_no_args(
             self, activate_session_mock, stderr, stdout):
         arguments = []
         options = mock.MagicMock()
@@ -185,6 +185,18 @@ class TestAddHostToChannel(utils.CliTestCase):
         session.getChannel.assert_not_called()
         session.listChannels.assert_not_called()
         session.addHostToChannel.assert_not_called()
+
+    def test_handle_add_host_to_channel_help(self):
+        self.assert_help(
+            handle_add_host_to_channel,
+            """Usage: %s add-host-to-channel [options] <hostname> <channel>
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help  show this help message and exit
+  --new       Create channel if needed
+  --force     force added, if possible
+""" % self.progname)
 
 
 if __name__ == '__main__':

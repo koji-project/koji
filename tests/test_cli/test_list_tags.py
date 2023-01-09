@@ -98,3 +98,18 @@ class TestListTags(utils.CliTestCase):
         self.assertEqual(rv, None)
         self.session.listTags.assert_called_once_with(build=None, package=None)
         self.ensure_connection.assert_called_once_with(self.session, self.options)
+
+    def test_list_tags_help(self):
+        self.assert_help(
+            anon_handle_list_tags,
+            """Usage: %s list-tags [options] [pattern]
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help         show this help message and exit
+  --show-id          Show tag ids
+  --verbose          Show more information
+  --unlocked         Only show unlocked tags
+  --build=BUILD      Show tags associated with a build
+  --package=PACKAGE  Show tags associated with a package
+""" % self.progname)

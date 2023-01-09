@@ -180,6 +180,21 @@ No changes made, please correct the command line
         self.session.editHost.assert_not_called()
         self.assertEqual(self.session.multiCall.call_count, 1)
 
+    def test_handle_edit_host_help(self):
+        self.assert_help(
+            handle_edit_host,
+            """Usage: %s edit-host <hostname> [<hostname> ...] [options]
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help           show this help message and exit
+  --arches=ARCHES      Space or comma-separated list of supported
+                       architectures
+  --capacity=CAPACITY  Capacity of this host
+  --description=DESC   Description of this host
+  --comment=COMMENT    A brief comment about this host
+""" % self.progname)
+
 
 if __name__ == '__main__':
     unittest.main()

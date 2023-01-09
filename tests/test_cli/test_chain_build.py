@@ -110,8 +110,9 @@ Task info: weburl/taskinfo?taskID=1
         self.watch_tasks_mock.assert_not_called()
 
     def test_handle_chain_build_help(self):
-        arguments = ['--help']
-        expected_stdout = """Usage: %s chain-build [options] <target> <URL> [<URL> [:] <URL> [:] <URL> ...]
+        self.assert_help(
+            handle_chain_build,
+            """Usage: %s chain-build [options] <target> <URL> [<URL> [:] <URL> [:] <URL> ...]
 (Specify the --help global option for a list of other help options)
 
 Options:
@@ -120,16 +121,7 @@ Options:
   --nowait      Don't wait on build
   --quiet       Do not print the task information
   --background  Run the build at a lower priority
-""" % self.progname
-
-        # Run it and check immediate output
-        self.assert_system_exit(
-            handle_chain_build,
-            self.options, self.session, arguments,
-            stderr='',
-            stdout=expected_stdout,
-            activate_session=None,
-            exit_code=0)
+""" % self.progname)
 
         # Finally, assert that things were called as we expected.
         self.activate_session_mock.assert_not_called()

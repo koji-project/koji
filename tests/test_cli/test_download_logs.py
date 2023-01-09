@@ -17,6 +17,7 @@ class TestDownloadLogs(utils.CliTestCase):
         # Mock out the options parsed in main
         self.options = mock.MagicMock()
         self.options.quiet = None
+        self.maxDiff = None
         self.options.topurl = 'https://topurl'
         # Mock out the xmlrpc server
         self.session = mock.MagicMock()
@@ -173,3 +174,26 @@ Note this command only downloads task logs, not build logs.
         self.session.getTaskInfo.assert_called_once_with(self.task_id)
         self.session.downloadTaskOutput.assert_not_called()
         self.session.getTaskChildren.assert_not_called()
+
+    def test_download_logs_help(self):
+        self.assert_help(
+            anon_handle_download_logs,
+            """Usage: %s download-logs [options] <task_id> [<task_id> ...]
+       %s download-logs [options] --nvr <n-v-r> [<n-v-r> ...]
+
+Note this command only downloads task logs, not build logs.
+
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help            show this help message and exit
+  -r, --recurse         Process children of this task as well
+  --nvr                 Get the logs for the task associated with this build
+                        Name-Version-Release.
+  -m PATTERN, --match=PATTERN
+                        Get only log filenames matching PATTERN (fnmatch). May
+                        be used multiple times.
+  -c, --continue        Continue previous download
+  -d DIRECTORY, --dir=DIRECTORY
+                        Write logs to DIRECTORY
+""" % (self.progname, self.progname))

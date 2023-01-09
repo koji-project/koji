@@ -230,6 +230,20 @@ class TestAddPkg(utils.CliTestCase):
         self.session.multiCall.assert_called_once_with(strict=True)
         self.assertFalse(rv)
 
+    def test_handle_add_pkg_help(self):
+        self.assert_help(
+            handle_add_pkg,
+            """Usage: %s add-pkg [options] --owner <owner> <tag> <package> [<package> ...]
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help            show this help message and exit
+  --force               Override blocks if necessary
+  --owner=OWNER         Specify owner
+  --extra-arches=EXTRA_ARCHES
+                        Specify extra arches
+""" % self.progname)
+
 
 if __name__ == '__main__':
     unittest.main()

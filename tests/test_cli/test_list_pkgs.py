@@ -275,3 +275,23 @@ test-pkg-2              test-tag-2              x86_64           usertest       
         self.session.getTag.assert_not_called()
         self.session.listPackages.assert_not_called()
         self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
+
+    def test_list_pkgs_help(self):
+        self.assert_help(
+            anon_handle_list_pkgs,
+            """Usage: %s list-pkgs [options]
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help         show this help message and exit
+  --owner=OWNER      Specify owner
+  --tag=TAG          Specify tag
+  --package=PACKAGE  Specify package
+  --quiet            Do not print header information
+  --noinherit        Don't follow inheritance
+  --show-blocked     Show blocked packages
+  --show-dups        Show superseded owners
+  --event=EVENT#     query at event
+  --ts=TIMESTAMP     query at last event before timestamp
+  --repo=REPO#       query at event for a repo
+""" % self.progname)

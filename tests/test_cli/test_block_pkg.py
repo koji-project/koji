@@ -183,3 +183,14 @@ class TestBlockPkg(utils.CliTestCase):
         self.session.getTag.assert_not_called()
         self.session.listPackages.assert_not_called()
         self.session.packageListBlock.assert_not_called()
+
+    def test_handle_block_pkg_help(self):
+        self.assert_help(
+            handle_block_pkg,
+            """Usage: %s block-pkg [options] <tag> <package> [<package> ...]
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help  show this help message and exit
+  --force     Override blocks and owner if necessary
+""" % self.progname)

@@ -184,7 +184,7 @@ Options:
   --wait        Wait on build, even if running in the background
   --nowait      Don't wait on build
   --background  Run the build at a lower priority
-""" % (self.progname))
+""" % self.progname)
 
 
 if __name__ == '__main__':

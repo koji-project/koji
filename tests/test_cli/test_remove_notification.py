@@ -69,3 +69,13 @@ class TestAddHost(utils.CliTestCase):
             handle_remove_notification(self.options, self.session, [])
 
         self.session.deleteNotification.assert_not_called()
+
+    def test_remove_notification_help(self):
+        self.assert_help(
+            handle_remove_notification,
+            """Usage: %s remove-notification [options] <notification_id> [<notification_id> ...]
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help  show this help message and exit
+""" % self.progname)

@@ -69,3 +69,13 @@ class TestUnblockNotification(utils.CliTestCase):
         actual = stdout.getvalue()
         print(actual)
         self.assertMultiLineEqual(actual, expected)
+
+    def test_unblock_notification_help(self):
+        self.assert_help(
+            handle_unblock_notification,
+            """Usage: %s unblock-notification [options] <notification_id> [<notification_id> ...]
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help  show this help message and exit
+""" % self.progname)
