@@ -63,7 +63,7 @@ None
   #elif $key in ('tag', 'destination_tag', 'build_tag')
 <a href="taginfo?tagID=$value['id']">$value['name']</a>
   #elif $key in ('build_target', 'target_info')
-<a href="targetinfo?targetID=$value['id']">$value['name']</a>
+<a href="buildtargetinfo?targetID=$value['id']">$value['name']</a>
   #elif $key in ('repo_info', 'oldrepo', 'repo')
     #if $key == 'repo' and isinstance($value, list)
 $sep.join([$str($val) for $val in $value])
