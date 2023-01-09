@@ -82,3 +82,13 @@ Number of builds: 3
 
         anon_handle_userinfo(self.options, self.session, [self.user])
         self.assert_console_message(stdout, expected)
+
+    def test_userinfo_help(self):
+        self.assert_help(
+            anon_handle_userinfo,
+            """Usage: %s userinfo [options] <username> [<username> ...]
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help  show this help message and exit
+""" % self.progname)

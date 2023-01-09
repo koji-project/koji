@@ -283,3 +283,24 @@ kojibuilder N   Y    0.0/2.0  x86_64           Tue, 16 Mar 2021 06:19:14 UTC    
         self.session.getLastHostUpdate.assert_called_once_with(self.list_hosts[0]['id'], ts=True)
         self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
         self.session.listChannels.assert_not_called()
+
+    def test_list_hosts_help(self):
+        self.assert_help(
+            anon_handle_list_hosts,
+            """Usage: %s list-hosts [options]
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help         show this help message and exit
+  --arch=ARCH        Specify an architecture
+  --channel=CHANNEL  Specify a channel
+  --ready            Limit to ready hosts
+  --not-ready        Limit to not ready hosts
+  --enabled          Limit to enabled hosts
+  --not-enabled      Limit to not enabled hosts
+  --disabled         Alias for --not-enabled
+  --quiet            Do not print header information
+  --show-channels    Show host's channels
+  --comment          Show comments
+  --description      Show descriptions
+""" % self.progname)

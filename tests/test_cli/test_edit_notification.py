@@ -159,3 +159,17 @@ class TestEditNotification(utils.CliTestCase):
         self.session.getBuildNotification.assert_called_once_with(2345)
         self.session.updateNotification.assert_not_called()
         self.activate_session_mock.assert_called_once_with(self.session, self.options)
+
+    def test_edit_notification_help(self):
+        self.assert_help(
+            handle_edit_notification,
+            """Usage: %s edit-notification [options] <notification_id>
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help         show this help message and exit
+  --package=PACKAGE  Notifications for this package, '*' for all
+  --tag=TAG          Notifications for this tag, '*' for all
+  --success-only     Notify only on successful events
+  --no-success-only  Notify on all events
+""" % self.progname)

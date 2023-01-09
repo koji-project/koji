@@ -131,3 +131,16 @@ Inheritance:
         self.session.getRepo.assert_has_calls([mock.call(123)], [mock.call(1111)])
         self.session.getTagExternalRepos.assert_called_once_with(tag_info=1111)
         self.session.getInheritanceData.assert_called_once_with(1111)
+
+    def test_taginfo_help(self):
+        self.assert_help(
+            anon_handle_taginfo,
+            """Usage: %s taginfo [options] <tag> [<tag> ...]
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help      show this help message and exit
+  --event=EVENT#  query at event
+  --ts=TIMESTAMP  query at last event before timestamp
+  --repo=REPO#    query at event for a repo
+""" % self.progname)

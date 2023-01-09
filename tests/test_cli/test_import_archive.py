@@ -61,7 +61,6 @@ class TestImportArchive(utils.CliTestCase):
         self.session.uploadWrapper.assert_not_called()
         self.session.importArchive.assert_not_called()
 
-
     def test_import_archive_without_type(self):
         self.assert_system_exit(
             handle_import_archive,
@@ -217,3 +216,23 @@ class TestImportArchive(utils.CliTestCase):
         self.session.createImageBuild.assert_not_called()
         self.session.uploadWrapper.assert_not_called()
         self.session.importArchive.assert_not_called()
+
+    def test_import_archive_help(self):
+        self.assert_help(
+            handle_import_archive,
+            """Usage: %s import-archive <build-id|n-v-r> <archive_path> [<archive_path2 ...]
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help            show this help message and exit
+  --noprogress          Do not display progress of the upload
+  --create-build        Auto-create builds as needed
+  --link                Attempt to hardlink instead of uploading
+  --type=TYPE           The type of archive being imported. Currently
+                        supported types: maven, win, image
+  --type-info=TYPE_INFO
+                        Type-specific information to associate with the
+                        archives. For Maven archives this should be a local
+                        path to a .pom file. For Windows archives this should
+                        be relpath:platforms[:flags])) Images need an arch
+""" % self.progname)

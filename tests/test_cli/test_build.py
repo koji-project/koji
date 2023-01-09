@@ -141,8 +141,9 @@ Task info: weburl/taskinfo?taskID=1
         self.watch_tasks_mock.assert_not_called()
 
     def test_handle_build_help(self):
-        arguments = ['--help']
-        expected_stdout = """Usage: %s build [options] <target> <srpm path or scm url>
+        self.assert_help(
+            handle_build,
+            """Usage: %s build [options] <target> <srpm path or scm url>
 
 The first option is the build target, not to be confused with the destination
 tag (where the build eventually lands) or build tag (where the buildroot
@@ -175,16 +176,7 @@ Options:
                         Provide a JSON string of custom metadata to be
                         deserialized and stored under the build's
                         extra.custom_user_metadata field
-""" % (self.progname, self.progname)
-
-        # Run it and check immediate output
-        self.assert_system_exit(
-            handle_build,
-            self.options, self.session, arguments,
-            stderr='',
-            stdout=expected_stdout,
-            activate_session=None,
-            exit_code=0)
+""" % (self.progname, self.progname))
 
         # Finally, assert that things were called as we expected.
         self.activate_session_mock.assert_not_called()

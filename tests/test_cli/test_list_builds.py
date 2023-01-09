@@ -528,3 +528,37 @@ test-build-10-12                                         kojitest          CANCE
         self.session.listVolumes.assert_not_called()
         self.session.getBuild.assert_not_called()
         self.session.listBuilds.assert_called_once_with(cgID='test-cg')
+
+    def test_list_builds_help(self):
+        self.assert_help(
+            anon_handle_list_builds,
+            """Usage: %s list-builds [options]
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help            show this help message and exit
+  --package=PACKAGE     List builds for this package
+  --buildid=BUILDID     List specific build from ID or nvr
+  --before=BEFORE       List builds built before this time, time is specified
+                        as timestamp or date/time in any format which can be
+                        parsed by dateutil.parser. e.g. "2020-12-31 12:35" or
+                        "December 31st 12:35"
+  --after=AFTER         List builds built after this time (same format as for
+                        --before
+  --state=STATE         List builds in this state
+  --task=TASK           List builds for this task
+  --type=TYPE           List builds of this type.
+  --prefix=PREFIX       Only builds starting with this prefix
+  --pattern=PATTERN     Only list builds matching this GLOB pattern
+  --cg=CG               Only list builds imported by matching content
+                        generator name
+  --source=SOURCE       Only builds where the source field matches (glob
+                        pattern)
+  --owner=OWNER         List builds built by this owner
+  --volume=VOLUME       List builds by volume ID
+  -k FIELD, --sort-key=FIELD
+                        Sort the list by the named field. Allowed sort keys:
+                        build_id, owner_name, state
+  -r, --reverse         Print the list in reverse order
+  --quiet               Do not print the header information
+""" % self.progname)

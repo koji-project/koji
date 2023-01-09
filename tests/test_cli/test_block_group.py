@@ -118,3 +118,13 @@ class TestBlockGroup(utils.CliTestCase):
             exit_code=2,
             activate_session=None)
         self.activate_session_mock.assert_called_with(self.session, self.options)
+
+    def test_handle_block_group_help(self):
+        self.assert_help(
+            handle_block_group,
+            """Usage: %s block-group <tag> <group>
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help  show this help message and exit
+""" % self.progname)

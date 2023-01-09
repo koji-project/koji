@@ -190,3 +190,17 @@ class TestEditTarget(utils.CliTestCase):
             self.build_target_info['orig_name'], self.build_target_info['name'],
             self.build_target_info['build_tag_name'], self.build_target_info['dest_tag_name'])
         self.activate_session_mock.assert_called_with(self.session, self.options)
+
+    def test_edit_target_help(self):
+        self.assert_help(
+            handle_edit_target,
+            """Usage: %s edit-target [options] <name>
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help            show this help message and exit
+  --rename=RENAME       Specify new name for target
+  --build-tag=BUILD_TAG
+                        Specify a different build tag
+  --dest-tag=DEST_TAG   Specify a different destination tag
+""" % self.progname)

@@ -165,28 +165,14 @@ Task info: weburl/taskinfo?taskID=1
         self.session.logout.assert_not_called()
         watch_tasks_mock.assert_not_called()
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.activate_session')
     @mock.patch('koji_cli.commands._running_in_bg', return_value=False)
     @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
     def test_handle_maven_build_help(
-            self,
-            watch_tasks_mock,
-            running_in_bg_mock,
-            activate_session_mock,
-            stderr,
-            stdout):
-        args = ['--help']
-        progname = os.path.basename(sys.argv[0]) or 'koji'
-
-        # Run it and check immediate output
-        with self.assertRaises(SystemExit) as ex:
-            handle_maven_build(self.options, self.session, args)
-        self.assertExitCode(ex, 0)
-        actual_stdout = stdout.getvalue()
-        actual_stderr = stderr.getvalue()
-        expected_stdout = """Usage: %s maven-build [options] <target> <URL>
+            self, watch_tasks_mock, running_in_bg_mock, activate_session_mock):
+        self.assert_help(
+            handle_maven_build,
+            """Usage: %s maven-build [options] <target> <URL>
        %s maven-build --ini=CONFIG... [options] <target>
 (Specify the --help global option for a list of other help options)
 
@@ -219,10 +205,7 @@ Options:
   --nowait              Don't wait on build
   --quiet               Do not print the task information
   --background          Run the build at a lower priority
-""" % (progname, progname)
-        expected_stderr = ''
-        self.assertMultiLineEqual(actual_stdout, expected_stdout)
-        self.assertMultiLineEqual(actual_stderr, expected_stderr)
+""" % (self.progname, self.progname))
 
         # Finally, assert that things were called as we expected.
         activate_session_mock.assert_not_called()
@@ -683,12 +666,8 @@ Task info: weburl/taskinfo?taskID=1
     @mock.patch('koji_cli.commands.activate_session')
     @mock.patch('koji_cli.commands._running_in_bg', return_value=True)
     @mock.patch('koji_cli.commands.watch_tasks', return_value=0)
-    def test_handle_maven_build_quiet(
-            self,
-            watch_tasks_mock,
-            running_in_bg_mock,
-            activate_session_mock,
-            stdout):
+    def test_handle_maven_build_without_quiet(
+            self, watch_tasks_mock, running_in_bg_mock, activate_session_mock, stdout):
         target = 'target'
         dest_tag = 'dest_tag'
         dest_tag_id = 2

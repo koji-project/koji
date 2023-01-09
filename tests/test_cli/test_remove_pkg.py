@@ -223,6 +223,17 @@ class TestRemovePkg(utils.CliTestCase):
         self.session.listPackages.assert_not_called()
         self.session.packageListRemove.assert_not_called()
 
+    def test_handle_remove_pkg_help(self):
+        self.assert_help(
+            handle_remove_pkg,
+            """Usage: %s remove-pkg [options] <tag> <package> [<package> ...]
+(Specify the --help global option for a list of other help options)
+
+Options:
+  -h, --help  show this help message and exit
+  --force     Override blocks if necessary
+""" % self.progname)
+
 
 if __name__ == '__main__':
     unittest.main()

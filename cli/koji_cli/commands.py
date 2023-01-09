@@ -7492,7 +7492,8 @@ def handle_add_notification(goptions, session, args):
     parser.add_option("--user", help="Add notifications for this user (admin-only)")
     parser.add_option("--package", help="Add notifications for this package")
     parser.add_option("--tag", help="Add notifications for this tag")
-    parser.add_option("--success-only", action="store_true", default=False, help="")
+    parser.add_option("--success-only", action="store_true", default=False,
+                      help="Enabled notification on successful events only")
     (options, args) = parser.parse_args(args)
 
     if len(args) != 0:
