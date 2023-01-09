@@ -83,7 +83,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.31.0
+Version: 1.31.1
 Release: %{release}%{?dist}
 License: LGPL-2.1-only and GPL-2.0-or-later
 # the included arch lib from yum's rpmUtils is GPLv2+
@@ -648,6 +648,20 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Mon Jan  9 2023  Tomas Kopecek <tkopecek at redhat.com> - 1.31.1-1
+- PR#3644: www: fix target link in taskinfo page
+- PR#3650: Add test cases for help
+- PR#3639: doc: better wording in listTagged
+- PR#3598: kiwi: upload log for failed tasks
+- PR#3641: Fix typo in CLI add-tag-inheritance error msg
+- PR#3630: Use old-style checkout for shortened refs
+- PR#3620: fix typo preventing building docker images
+- PR#3607: Change canceled icon color from red to orange
+- PR#3611: Replace deprecated inspect methods
+- PR#3601: Create DeleteProcessor class and use it
+- PR#3604: Support deleted build tag in taskinfo.
+- PR#3615: fix different PG capabilities in schema
+
 * Mon Nov  7 2022  Tomas Kopecek <tkopecek at redhat.com> - 1.31.0-1
 - PR#3407: build policy
 - PR#3417: save source for wrapperRPM
