@@ -1,7 +1,7 @@
 PYVER_MAJOR := $(shell $(PYTHON) -c 'import sys; print(".".join(sys.version.split(".")[:1]))')
 PACKAGE = kojihub
 PYFILES = $(wildcard *.py)
-PKGDIR = $(shell $(PYTHON) -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")/$(PACKAGE)
+PKGDIR = $(shell $(PYTHON) ../devtools/get_site_packages.py )/$(PACKAGE)
 
 SERVERDIR = /usr/share/koji-hub
 
