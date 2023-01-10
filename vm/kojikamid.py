@@ -155,15 +155,9 @@ class WindowsBuild(object):
             raise BuildError('error validating build environment: %s' %  # noqa: F821
                              ', '.join(errors))
 
-    def updateClam(self):
-        """update ClamAV virus definitions"""
-        ret, output = run(['/bin/freshclam', '--quiet'])
-        if ret:
-            raise BuildError('could not update ClamAV database: %s' % output)  # noqa: F821
-
     def checkEnv(self):
         """make the environment is fit for building in"""
-        for tool in ['/bin/freshclam', '/bin/clamscan', '/bin/patch']:
+        for tool in ['/bin/patch']:
             if not os.path.isfile(tool):
                 raise BuildError('%s is missing from the build environment' % tool)  # noqa: F821
 
@@ -199,7 +193,6 @@ class WindowsBuild(object):
                 ensuredir(os.path.join(self.workdir, 'patches')))  # noqa: F821
             self.zipDir(self.patches_dir, os.path.join(self.workdir, 'patches.zip'))
             self.applyPatches(self.source_dir, self.patches_dir)
-        self.virusCheck(self.workdir)
 
     def applyPatches(self, sourcedir, patchdir):
         """Apply patches in patchdir to files in sourcedir)"""
@@ -398,7 +391,6 @@ class WindowsBuild(object):
                 else:
                     files.append(fileinfo)
         self.server.updateBuildrootFiles(self.buildroot_id, files, rpms)
-        self.virusCheck(self.buildreq_dir)
 
     def build(self):
         if self.shell in ('cmd', 'cmd.exe'):
@@ -520,16 +512,9 @@ class WindowsBuild(object):
                         break
                 else:
                     errors.append('file %s does not exist' % entry)
-        self.virusCheck(self.workdir)
         if errors:
             raise BuildError('error validating build output: %s' %  # noqa: F821
                   ', '.join(errors))
-
-    def virusCheck(self, path):
-        """ensure a path is virus free with ClamAV. path should be absolute"""
-        if not path.startswith('/'):
-            raise BuildError('Invalid path to scan for viruses: ' + path)  # noqa: F821
-        run(['/bin/clamscan', '--quiet', '--recursive', path], fatal=True)
 
     def gatherResults(self):
         """Gather information about the output from the build, return it"""
@@ -543,7 +528,6 @@ class WindowsBuild(object):
     def run(self):
         """Run the entire build process"""
         self.checkEnv()
-        self.updateClam()
         self.checkout()
         self.loadConfig()
         self.initBuildroot()
