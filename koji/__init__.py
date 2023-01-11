@@ -2773,8 +2773,8 @@ class ClientSession(object):
 
         sinfo = None
         if getattr(self, 'sinfo') is not None:
-            # session renewal (not logged in, but have session data)
-            # makes sense only for new method/server
+            # send sinfo in headers if we have it
+            # still needed if not logged in for renewal case
             sinfo = self.sinfo.copy()
             sinfo['callnum'] = self.callnum
             self.callnum += 1
@@ -2911,13 +2911,14 @@ class ClientSession(object):
         self.logged_in = False
         auth_method(*args, **kwargs)
 
+    @staticmethod
     def renew_expired_session(func):
         """Decorator to renew expirated session or subsession."""
-        def _renew_expired_session(*args, **kwargs):
+        def _renew_expired_session(self, *args, **kwargs):
             try:
                 return func(*args, **kwargs)
             except AuthExpired:
-                args[0]._renew_session()
+                self._renew_session()
                 return func(*args, **kwargs)
         return _renew_expired_session
 
