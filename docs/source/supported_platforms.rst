@@ -11,3 +11,9 @@ involves all active Fedoras and RHEL/CentOS 7+.
 +===========+=====+=====+=========+=======+=====+=====+
 | Python    | 3.6 | 3.6 | 2.7     | 3.6   | 2.7 | 2.7 |
 +-----------+-----+-----+---------+-------+-----+-----+
+
+For database we're supporting RHEL/CentOS 8+. So, it means that
+postgresl 10 is still supported, anyway we encourage using at
+least PG 12 (``dnf module enable postgresql:12``).  At least some
+indices are set up in more efficient way with newer PG
+capabilities.
