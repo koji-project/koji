@@ -71,12 +71,25 @@ class TestGetRpmChecksums(unittest.TestCase):
                          ['checksum_type IN %(checksum_type)s', 'rpm_id=%(rpm_id)i'])
         self.assertEqual(expected_result, result)
 
-    def test_missing_checksum_not_sigkey(self):
+    def test_missing_checksum_not_sigkey_without_strict(self):
+        rpm_id = 123
+        checksum_types = ['md5']
+        self.query_execute.side_effect = [[], []]
+        result = self.exports.getRPMChecksums(rpm_id, checksum_types=checksum_types)
+        self.assertEqual({}, result)
+
+        self.assertEqual(len(self.queries), 1)
+        query = self.queries[0]
+        self.assertEqual(query.tables, ['rpmsigs'])
+        self.assertEqual(query.joins, None)
+        self.assertEqual(query.clauses, ['rpm_id=%(rpm_id)i'])
+
+    def test_missing_checksum_not_sigkey_with_strict(self):
         rpm_id = 123
         checksum_types = ['md5']
         self.query_execute.side_effect = [[], []]
         with self.assertRaises(koji.GenericError) as ex:
-            self.exports.getRPMChecksums(rpm_id, checksum_types=checksum_types)
+            self.exports.getRPMChecksums(rpm_id, checksum_types=checksum_types, strict=True)
         self.assertEqual(f'No cached signature for rpm ID {rpm_id}.', str(ex.exception))
 
         self.assertEqual(len(self.queries), 1)

@@ -87,7 +87,7 @@ class TestResetBuild(unittest.TestCase):
         self.assertEqual(update.rawdata, {})
         self.assertEqual(update.clauses, ['id=%(id)s'])
 
-        self.assertEqual(len(self.deletes), 17)
+        self.assertEqual(len(self.deletes), 18)
         delete = self.deletes[0]
         self.assertEqual(delete.table, 'rpmsigs')
         self.assertEqual(delete.clauses, ['rpm_id=%(rpm_id)i'])
@@ -109,66 +109,71 @@ class TestResetBuild(unittest.TestCase):
         self.assertEqual(delete.values, {'id': self.binfo['build_id']})
 
         delete = self.deletes[4]
+        self.assertEqual(delete.table, 'rpm_checksum')
+        self.assertEqual(delete.clauses, ['rpm_id=%(rpm_id)i'])
+        self.assertEqual(delete.values, {'rpm_id': 123})
+
+        delete = self.deletes[5]
         self.assertEqual(delete.table, 'maven_archives')
         self.assertEqual(delete.clauses, ['archive_id=%(archive_id)i'])
         self.assertEqual(delete.values, {'archive_id': 9999})
 
-        delete = self.deletes[5]
+        delete = self.deletes[6]
         self.assertEqual(delete.table, 'win_archives')
         self.assertEqual(delete.clauses, ['archive_id=%(archive_id)i'])
         self.assertEqual(delete.values, {'archive_id': 9999})
 
-        delete = self.deletes[6]
+        delete = self.deletes[7]
         self.assertEqual(delete.table, 'image_archives')
         self.assertEqual(delete.clauses, ['archive_id=%(archive_id)i'])
         self.assertEqual(delete.values, {'archive_id': 9999})
 
-        delete = self.deletes[7]
+        delete = self.deletes[8]
         self.assertEqual(delete.table, 'buildroot_archives')
         self.assertEqual(delete.clauses, ['archive_id=%(archive_id)i'])
         self.assertEqual(delete.values, {'archive_id': 9999})
 
-        delete = self.deletes[8]
-        self.assertEqual(delete.table, 'archive_rpm_components')
-        self.assertEqual(delete.clauses, ['archive_id=%(archive_id)i'])
-        self.assertEqual(delete.values, {'archive_id': 9999})
-
         delete = self.deletes[9]
-        self.assertEqual(delete.table, 'archive_components')
+        self.assertEqual(delete.table, 'archive_rpm_components')
         self.assertEqual(delete.clauses, ['archive_id=%(archive_id)i'])
         self.assertEqual(delete.values, {'archive_id': 9999})
 
         delete = self.deletes[10]
         self.assertEqual(delete.table, 'archive_components')
-        self.assertEqual(delete.clauses, ['component_id=%(archive_id)i'])
+        self.assertEqual(delete.clauses, ['archive_id=%(archive_id)i'])
         self.assertEqual(delete.values, {'archive_id': 9999})
 
         delete = self.deletes[11]
+        self.assertEqual(delete.table, 'archive_components')
+        self.assertEqual(delete.clauses, ['component_id=%(archive_id)i'])
+        self.assertEqual(delete.values, {'archive_id': 9999})
+
+        delete = self.deletes[12]
         self.assertEqual(delete.table, 'archiveinfo')
         self.assertEqual(delete.clauses, ['build_id=%(id)i'])
         self.assertEqual(delete.values, {'id': self.binfo['build_id']})
 
-        delete = self.deletes[12]
+        delete = self.deletes[13]
         self.assertEqual(delete.table, 'maven_builds')
         self.assertEqual(delete.clauses, ['build_id=%(id)i'])
         self.assertEqual(delete.values, {'id': self.binfo['build_id']})
 
-        delete = self.deletes[13]
+        delete = self.deletes[14]
         self.assertEqual(delete.table, 'win_builds')
         self.assertEqual(delete.clauses, ['build_id=%(id)i'])
         self.assertEqual(delete.values, {'id': self.binfo['build_id']})
 
-        delete = self.deletes[14]
+        delete = self.deletes[15]
         self.assertEqual(delete.table, 'image_builds')
         self.assertEqual(delete.clauses, ['build_id=%(id)i'])
         self.assertEqual(delete.values, {'id': self.binfo['build_id']})
 
-        delete = self.deletes[15]
+        delete = self.deletes[16]
         self.assertEqual(delete.table, 'build_types')
         self.assertEqual(delete.clauses, ['build_id=%(id)i'])
         self.assertEqual(delete.values, {'id': self.binfo['build_id']})
 
-        delete = self.deletes[16]
+        delete = self.deletes[17]
         self.assertEqual(delete.table, 'tag_listing')
         self.assertEqual(delete.clauses, ['build_id=%(id)i'])
         self.assertEqual(delete.values, {'id': self.binfo['build_id']})
