@@ -1,5 +1,5 @@
 PYVER_MAJOR := $(shell $(PYTHON) -c 'import sys; print(".".join(sys.version.split(".")[:1]))')
-PKGDIR = $(shell $(PYTHON) -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")/$(PACKAGE)
+PKGDIR = $(shell $(PYTHON) ../devtools/get_site_packages.py )/$(PACKAGE)
 
 CLIPLUGINDIR = $(PKGDIR)/koji_cli_plugins
 HUBPLUGINDIR = /usr/lib/koji-hub-plugins

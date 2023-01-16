@@ -1,6 +1,6 @@
 PACKAGE = $(shell basename `pwd`)
 PYFILES = $(wildcard *.py)
-PKGDIR = $(shell $(PYTHON) -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")/$(PACKAGE)
+PKGDIR = $(shell $(PYTHON) ../../devtools/get_site_packages.py )/$(PACKAGE)
 
 SERVERDIR = /kojiweb
 FILES = $(wildcard *.py *.chtml)

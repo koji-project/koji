@@ -3,7 +3,7 @@ PACKAGE = $(shell basename `pwd`)
 PYFILES_ALL = $(wildcard *.py)
 PYSCRIPTS =
 SUBDIRS =
-PKGDIR = $(shell $(PYTHON) -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")/$(PACKAGE)
+PKGDIR = $(shell $(PYTHON) ../devtools/get_site_packages.py )/$(PACKAGE)
 
 ifeq ($(PYVER_MAJOR),2)
 	PYFILES=$(filter-out db.py,$(PYFILES_ALL))
