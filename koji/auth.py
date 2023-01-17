@@ -209,6 +209,8 @@ class Session(object):
             update = UpdateProcessor('sessions', rawdata={'callnum': callnum},
                                      clauses=['id = %(id)i'], values={'id': id})
             update.execute()
+            # we only want to commit the callnum change if there are other commits
+            context.commit_pending = False
 
         # record the login data
         self.id = id
