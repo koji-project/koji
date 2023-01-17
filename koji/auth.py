@@ -206,7 +206,7 @@ class Session(object):
         # update callnum (this is deliberately after the commit)
         # see earlier note near RetryError
         if callnum is not None:
-            update = UpdateProcessor('sessions', rawdata={'callnum': callnum},
+            update = UpdateProcessor('sessions', data={'callnum': callnum},
                                      clauses=['id = %(id)i'], values={'id': id})
             update.execute()
             # we only want to commit the callnum change if there are other commits
