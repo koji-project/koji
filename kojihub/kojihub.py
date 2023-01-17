@@ -6690,6 +6690,11 @@ class CG_Importer(object):
         buildinfo['completion_time'] = \
             datetime.datetime.fromtimestamp(float(metadata['build']['end_time'])).isoformat(' ')
         owner = metadata['build'].get('owner', None)
+        # get task id from OSBS or from standard place
+        if metadata['build'].get('task_id'):
+            buildinfo['task_id'] = int(metadata['build']['task_id'])
+        elif metadata['build'].get('extra', {}).get('container_koji_task_id'):
+            buildinfo['task_id'] = int(metadata['build']['extra']['container_koji_task_id'])
         if owner:
             if not isinstance(owner, str):
                 raise koji.GenericError("Invalid owner format (expected username): %s" % owner)
