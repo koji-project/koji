@@ -7911,7 +7911,7 @@ def check_rpm_sig(an_rpm, sigkey, sighdr):
     fd, temp = tempfile.mkstemp()
     os.close(fd)
     try:
-        koji.splice_rpm_sighdr(sighdr, rpm_path, temp)
+        koji.splice_rpm_sighdr(sighdr, rpm_path, dst=temp)
         ts = rpm.TransactionSet()
         ts.setVSFlags(0)  # full verify
         with open(temp, 'rb') as fo:
@@ -7970,19 +7970,28 @@ def query_rpm_sigs(rpm_id=None, sigkey=None, queryOpts=None):
     return query.execute()
 
 
-def calculate_chsum(signed_path, checksum_types):
-    chsum_list = {chsum: getattr(hashlib, chsum)() for chsum in checksum_types}
+class MultiSum(object):
+
+    def __init__(self, checksum_types):
+        self.checksums = {name: getattr(hashlib, name)() for name in checksum_types}
+
+    def update(self, buf):
+        for name, checksum in self.checksums.items():
+            checksum.update(buf)
+
+
+def calculate_chsum(path, checksum_types):
+    msum = MultiSum(checksum_types)
     try:
-        with open(signed_path, 'rb') as f:
+        with open(path, 'rb') as f:
             while 1:
                 chunk = f.read(1024 ** 2)
                 if not chunk:
                     break
-                for func, chsum in chsum_list.items():
-                    chsum.update(chunk)
-    except IOError:
-        raise koji.GenericError(f"RPM path {signed_path} cannot be open.")
-    return chsum_list
+                msum.update(chunk)
+    except IOError as e:
+        raise koji.GenericError(f"File {path} cannot be read -- {e}")
+    return msum.checksums
 
 
 def write_signed_rpm(an_rpm, sigkey, force=False, checksum_types=None):
@@ -8030,8 +8039,9 @@ def write_signed_rpm(an_rpm, sigkey, force=False, checksum_types=None):
     with open(sigpath, 'rb') as fo:
         sighdr = fo.read()
     koji.ensuredir(os.path.dirname(signedpath))
-    koji.splice_rpm_sighdr(sighdr, rpm_path, signedpath, rpm_id=rpm_id, sigkey=sigkey,
-                           checksum_types=checksum_types, callback=create_rpm_checksum)
+    msum = MultiSum(checksum_types)
+    koji.splice_rpm_sighdr(sighdr, rpm_path, dst=signedpath, callback=msum.update)
+    create_rpm_checksum(rpm_id=rpm_id, sigkey=sigkey, chsum_list=msum.checksums)
 
 
 def query_history(tables=None, **kwargs):

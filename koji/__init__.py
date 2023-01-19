@@ -943,8 +943,7 @@ def get_sighdr_key(sighdr):
         return get_sigpacket_key_id(sig)
 
 
-def splice_rpm_sighdr(sighdr, src, dst=None, bufsize=8192, rpm_id=None, sigkey=None,
-                      checksum_types=None, callback=None):
+def splice_rpm_sighdr(sighdr, src, dst=None, bufsize=8192, callback=None):
     """Write a copy of an rpm with signature header spliced in"""
     (start, size) = find_rpm_sighdr(src)
     if dst is not None:
@@ -954,18 +953,19 @@ def splice_rpm_sighdr(sighdr, src, dst=None, bufsize=8192, rpm_id=None, sigkey=N
     else:
         (fd, dst_temp) = tempfile.mkstemp()
     os.close(fd)
-    chsum_list = {chsum: getattr(hashlib, chsum)() for chsum in checksum_types}
     with open(src, 'rb') as src_fo, open(dst_temp, 'wb') as dst_fo:
-        dst_fo.write(src_fo.read(start))
-        dst_fo.write(sighdr)
+        def do_write(buf):
+            dst_fo.write(buf)
+            if callback:
+                callback(buf)
+        do_write(src_fo.read(start))
+        do_write(sighdr)
         src_fo.seek(size, 1)
         while True:
             buf = src_fo.read(bufsize)
             if not buf:
                 break
-            dst_fo.write(buf)
-            for func, chsum in chsum_list.items():
-                chsum.update(buf)
+            do_write(buf)
     if dst is not None:
         src_stats = os.stat(src)
         dst_temp_stats = os.stat(dst_temp)
@@ -974,9 +974,6 @@ def splice_rpm_sighdr(sighdr, src, dst=None, bufsize=8192, rpm_id=None, sigkey=N
         os.rename(dst_temp, dst)
     else:
         dst = dst_temp
-    if callback:
-        callback(src=src, dst=dst, sighdr=sighdr, rpm_id=rpm_id, sigkey=sigkey,
-                 chsum_list=chsum_list)
     return dst
 
 
