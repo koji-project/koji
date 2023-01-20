@@ -132,8 +132,8 @@ class TestAuthSession(unittest.TestCase):
         self.assertEqual(update.table, 'sessions')
         self.assertEqual(update.values['id'], 123)
         self.assertEqual(update.clauses, ['id = %(id)i'])
-        self.assertEqual(update.data, {})
-        self.assertEqual(update.rawdata, {'callnum': 345})
+        self.assertEqual(update.data, {'callnum': 345})
+        self.assertEqual(update.rawdata, {})
 
         self.assertEqual(len(self.queries), 3)
 
@@ -182,8 +182,8 @@ class TestAuthSession(unittest.TestCase):
         self.assertEqual(update.table, 'sessions')
         self.assertEqual(update.values['id'], 123)
         self.assertEqual(update.clauses, ['id = %(id)i'])
-        self.assertEqual(update.data, {})
-        self.assertEqual(update.rawdata, {'callnum': 345})
+        self.assertEqual(update.data, {'callnum': 345})
+        self.assertEqual(update.rawdata, {})
 
         self.assertEqual(len(self.queries), 3)
 
