@@ -943,9 +943,30 @@ def get_sighdr_key(sighdr):
         return get_sigpacket_key_id(sig)
 
 
+def spliced_sig_reader(path, sighdr, bufsize=8192):
+    """A generator that yields the contents of an rpm with signature spliced in"""
+    (start, size) = find_rpm_sighdr(path)
+    with open(path, 'rb') as fo:
+        # the part before the signature
+        yield fo.read(start)
+
+        # the spliced signature
+        yield sighdr
+
+        # skip original signature
+        fo.seek(size, 1)
+
+        # the part after the signature
+        while True:
+            buf = fo.read(bufsize)
+            if not buf:
+                break
+            yield buf
+
+
 def splice_rpm_sighdr(sighdr, src, dst=None, bufsize=8192, callback=None):
     """Write a copy of an rpm with signature header spliced in"""
-    (start, size) = find_rpm_sighdr(src)
+    reader = spliced_sig_reader(src, sighdr, bufsize=bufsize)
     if dst is not None:
         dirname = os.path.dirname(dst)
         os.makedirs(dirname, exist_ok=True)
@@ -953,19 +974,11 @@ def splice_rpm_sighdr(sighdr, src, dst=None, bufsize=8192, callback=None):
     else:
         (fd, dst_temp) = tempfile.mkstemp()
     os.close(fd)
-    with open(src, 'rb') as src_fo, open(dst_temp, 'wb') as dst_fo:
-        def do_write(buf):
+    with open(dst_temp, 'wb') as dst_fo:
+        for buf in reader:
             dst_fo.write(buf)
             if callback:
                 callback(buf)
-        do_write(src_fo.read(start))
-        do_write(sighdr)
-        src_fo.seek(size, 1)
-        while True:
-            buf = src_fo.read(bufsize)
-            if not buf:
-                break
-            do_write(buf)
     if dst is not None:
         src_stats = os.stat(src)
         dst_temp_stats = os.stat(dst_temp)
