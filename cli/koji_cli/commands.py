@@ -965,7 +965,7 @@ def handle_call(goptions, session, args):
         Note, that you can use global option --noauth for anonymous calls here"""
     usage = textwrap.dedent(usage)
     parser = OptionParser(usage=get_usage_str(usage))
-    parser.add_option("--python", action="store_true", help="Use python syntax for values")
+    parser.add_option("--python", action="store_true", help="Use python syntax for RPC parameter values")
     parser.add_option("--kwargs",
                       help="Specify keyword arguments as a dictionary (implies --python)")
     parser.add_option("--json-output", action="store_true", help="Use JSON syntax for output")
