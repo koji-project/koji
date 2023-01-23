@@ -120,7 +120,7 @@ Note, that you can use global option --noauth for anonymous calls here
 
 Options:
   -h, --help       show this help message and exit
-  --python         Use python syntax for values
+  --python         Use python syntax for RPC parameter values
   --kwargs=KWARGS  Specify keyword arguments as a dictionary (implies
                    --python)
   --json-output    Use JSON syntax for output
