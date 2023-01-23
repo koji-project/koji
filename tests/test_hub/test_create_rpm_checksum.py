@@ -33,13 +33,11 @@ class TestCreateRPMChecksum(unittest.TestCase):
         return query
 
     def test_checksum_exists(self):
-        src = 'test-src'
-        dst = 'test-dst'
         rpm_id = 123
-        chsum_list = {'md5': 'chsum-1', 'sha256': 'chsum-2'}
+        chsum_dict = {'md5': 'chsum-1', 'sha256': 'chsum-2'}
         sigkey = 'test-sigkey'
         self.query_execute.return_value = [{'checksum_type': 'md5'}, {'checksum_type': 'sha256'}]
-        result = kojihub.create_rpm_checksum(src, dst, rpm_id, sigkey, chsum_list)
+        result = kojihub.create_rpm_checksum(rpm_id, sigkey, chsum_dict)
         self.assertIsNone(result)
 
         self.assertEqual(len(self.queries), 1)
