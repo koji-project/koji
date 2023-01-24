@@ -2916,10 +2916,10 @@ class ClientSession(object):
         """Decorator to renew expirated session or subsession."""
         def _renew_expired_session(self, *args, **kwargs):
             try:
-                return func(*args, **kwargs)
+                return func(self, *args, **kwargs)
             except AuthExpired:
                 self._renew_session()
-                return func(*args, **kwargs)
+                return func(self, *args, **kwargs)
         return _renew_expired_session
 
     @renew_expired_session
