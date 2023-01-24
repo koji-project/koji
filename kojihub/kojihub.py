@@ -27,6 +27,7 @@ from __future__ import absolute_import
 import base64
 import builtins
 import calendar
+import copy
 import datetime
 import fcntl
 import fnmatch
@@ -7981,16 +7982,26 @@ class MultiSum(object):
 
 
 def calculate_chsum(path, checksum_types):
+    """Calculate checksum for specific checksum_types
+
+    :param path: a string path to file
+                 a BufferedReader object
+    :param list checksum_types: list of checksum types
+    """
     msum = MultiSum(checksum_types)
-    try:
-        with open(path, 'rb') as f:
-            while 1:
-                chunk = f.read(1024 ** 2)
-                if not chunk:
-                    break
-                msum.update(chunk)
-    except IOError as e:
-        raise koji.GenericError(f"File {path} cannot be read -- {e}")
+    if isinstance(path, str):
+        try:
+            f = open(path, 'rb')
+        except IOError as e:
+            raise koji.GenericError(f"File {path} cannot be read -- {e}")
+    else:
+        f = path
+    while 1:
+        chunk = f.read(1024 ** 2)
+        if not chunk:
+            break
+        msum.update(chunk)
+    f.close()
     return msum.checksums
 
 
@@ -12323,6 +12334,7 @@ class RootExports(object):
         :param bool cacheonly: when False, checksum is created for missing checksum type
                                when True, checksum is returned as None when checsum is missing
                                for specific checksum type
+        :param bool strict: if rpm checksum or signed copies not found for an rpm, raise error
         :returns: A dict of specific checksum types and checksums
         """
         if not isinstance(rpm_id, int):
@@ -12340,6 +12352,23 @@ class RootExports(object):
         query = QueryProcessor(tables=['rpmsigs'], columns=['sigkey'],
                                clauses=['rpm_id=%(rpm_id)i'], values={'rpm_id': rpm_id})
         sigkeys = [r['sigkey'] for r in query.execute()]
+        if not sigkeys:
+            return {}
+        builddir = koji.pathinfo.build(rpm_info)
+        for s in sigkeys:
+            signedpath = "%s/%s" % (builddir, koji.pathinfo.signed(rpm_info, s))
+            sig_path = os.path.join(builddir, koji.pathinfo.sighdr(rpm_info, s))
+            if not os.path.exists(signedpath) or not os.path.exists(sig_path):
+                if strict:
+                    nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" % rpm_info
+                    raise koji.GenericError(f"Rpm {nvra} doesn't have cached signed copies.")
+                else:
+                    chsum_dict = {}
+                    for sigkey in sigkeys:
+                        chsum_dict.setdefault(
+                            sigkey, dict(zip(checksum_types, [None] * len(checksum_types))))
+                    return chsum_dict
+
         list_checksums_sigkeys = {s: set(checksum_types) for s in sigkeys}
 
         checksum_type_int = [koji.CHECKSUM_TYPES[chsum] for chsum in checksum_types]
@@ -12350,33 +12379,23 @@ class RootExports(object):
                                         values={'rpm_id': rpm_id,
                                                 'checksum_type': checksum_type_int})
         query_result = query_checksum.execute()
-        if not query_result or not sigkeys:
-            if strict:
-                nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" % rpm_info
-                raise koji.GenericError(
-                    f"Rpm {nvra} doesn't have cached checksums or signed copies.")
-            else:
-                return {}
-            query_result = query_checksum.execute()
-        if len(query_result) == (len(checksum_type_int) * len(sigkeys)) or cacheonly:
+        if (len(query_result) == (len(checksum_type_int) * len(sigkeys))) or cacheonly:
             return create_rpm_checksums_output(query_result, list_checksums_sigkeys)
         else:
-            missing_chsum_sigkeys = list_checksums_sigkeys.copy()
+            missing_chsum_sigkeys = copy.deepcopy(list_checksums_sigkeys)
             for r in query_result:
                 if r['checksum_type'] in checksum_type_int and r['sigkey'] in sigkeys:
                     missing_chsum_sigkeys[r['sigkey']].remove(
                         koji.CHECKSUM_TYPES[r['checksum_type']])
 
+        rpm_path = os.path.join(builddir, koji.pathinfo.rpm(rpm_info))
         for sigkey, chsums in missing_chsum_sigkeys.items():
-            builddir = koji.pathinfo.build(rpm_info)
-            rpm_path = os.path.join(builddir, koji.pathinfo.rpm(rpm_info))
             sig_path = os.path.join(builddir, koji.pathinfo.sighdr(rpm_info, sigkey))
             with open(sig_path, 'rb') as fo:
                 sighdr = fo.read()
-            msum = MultiSum(checksum_types)
-            for buf in koji.spliced_sig_reader(rpm_path, sighdr):
-                msum.update(buf)
-            create_rpm_checksum(rpm_id, sigkey, msum.checksums)
+            with koji.spliced_sig_reader(rpm_path, sighdr) as f:
+                chsums_dict = calculate_chsum(f, chsums)
+            create_rpm_checksum(rpm_id, sigkey, chsums_dict)
         query_result = query_checksum.execute()
         return create_rpm_checksums_output(query_result, list_checksums_sigkeys)
 
@@ -15566,9 +15585,9 @@ def create_rpm_checksum(rpm_id, sigkey, chsum_dict):
 
     :param int rpm_id: RPM id
     :param string sigkey: Sigkey for specific RPM
-    :param list checksum_type: List of checksum types.
+    :param dict chsum_dict: Dict of checksum type and hash.
     """
-    chsum_dict = chsum_dict.copy()
+    chsum_dict = copy.deepcopy(chsum_dict)
 
     checksum_type_int = [koji.CHECKSUM_TYPES[func] for func, _ in chsum_dict.items()]
     query = QueryProcessor(tables=['rpm_checksum'], columns=['checksum_type'],

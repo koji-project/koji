@@ -104,14 +104,14 @@ class TestResetBuild(unittest.TestCase):
         self.assertEqual(delete.values, {'rpm_id': 123})
 
         delete = self.deletes[3]
-        self.assertEqual(delete.table, 'rpminfo')
-        self.assertEqual(delete.clauses, ['build_id=%(id)i'])
-        self.assertEqual(delete.values, {'id': self.binfo['build_id']})
-
-        delete = self.deletes[4]
         self.assertEqual(delete.table, 'rpm_checksum')
         self.assertEqual(delete.clauses, ['rpm_id=%(rpm_id)i'])
         self.assertEqual(delete.values, {'rpm_id': 123})
+
+        delete = self.deletes[4]
+        self.assertEqual(delete.table, 'rpminfo')
+        self.assertEqual(delete.clauses, ['build_id=%(id)i'])
+        self.assertEqual(delete.values, {'id': self.binfo['build_id']})
 
         delete = self.deletes[5]
         self.assertEqual(delete.table, 'maven_archives')

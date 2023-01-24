@@ -1,18 +1,9 @@
 import unittest
 import mock
-import six
 
 import kojihub
 
 QP = kojihub.QueryProcessor
-
-
-def mock_open():
-    """Return the right patch decorator for open"""
-    if six.PY2:
-        return mock.patch('__builtin__.open')
-    else:
-        return mock.patch('builtins.open')
 
 
 class TestCreateRPMChecksum(unittest.TestCase):
