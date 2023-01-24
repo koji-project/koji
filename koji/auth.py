@@ -436,10 +436,6 @@ class Session(object):
                                         'exclusive = TRUE'],
                                values={'user_id': user_id}, opts={'rowlock': True})
         excl_id = query.singleValue(strict=False)
-        # get lock for our session
-        query = QueryProcessor(tables=['sessions'], clauses=['id=%(sesions_id)s'],
-                               values={'session_id': session_id}, opts={'rowlock': True})
-        query.execute()
         if excl_id:
             if force:
                 # close the previous exclusive sessions and try again
