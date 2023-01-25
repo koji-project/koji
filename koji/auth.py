@@ -140,18 +140,18 @@ class Session(object):
         # check for expiration
         if session_data['expired']:
             if getattr(context, 'method') not in AUTH_METHODS:
-                raise koji.AuthExpired(f'session "{self.id}" has expired')
+                raise koji.AuthExpired('session "%s" has expired' % self.id)
 
         # check for callnum sanity
         if callnum is not None:
             try:
                 callnum = int(callnum)
             except (ValueError, TypeError):
-                raise koji.AuthError(f"Invalid callnum: {callnum!r}")
+                raise koji.AuthError("Invalid callnum: %r" % callnum)
             lastcall = session_data['callnum']
             if lastcall is not None:
                 if lastcall > callnum:
-                    raise koji.SequenceError(f"{lastcall} > {callnum} (session {self.id})")
+                    raise koji.SequenceError("%s > %s (session %s)" % (lastcall, callnum, self.id))
                 elif lastcall == callnum:
                     # Some explanation:
                     # This function is one of the few that performs its own commit.
@@ -164,8 +164,8 @@ class Session(object):
                     method = getattr(context, 'method', 'UNKNOWN')
                     if method not in RetryWhitelist:
                         raise koji.RetryError(
-                            f"unable to retry call {callnum} "
-                            f"(method {method}) for session {self.id}")
+                            "unable to retry call %s (method %s) for session %s" %
+                            (callnum, method, self.id))
 
         if session_data['expired']:
             return
