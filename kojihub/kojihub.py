@@ -8627,7 +8627,7 @@ def reset_build(build):
                               attribute='state', old=st_old, new=koji.BUILD_STATES['CANCELED'],
                               info=binfo)
     query = QueryProcessor(tables=['rpminfo'], columns=['id'], clauses=['build_id=%(id)i'],
-                           values=binfo, opts={'asList': True})
+                           values={'id': binfo['build_id']}, opts={'asList': True})
     for (rpm_id,) in query.execute():
         delete = DeleteProcessor(table='rpmsigs', clauses=['rpm_id=%(rpm_id)i'],
                                  values={'rpm_id': rpm_id})
@@ -8639,10 +8639,10 @@ def reset_build(build):
                                  values={'rpm_id': rpm_id})
         delete.execute()
     delete = DeleteProcessor(table='rpminfo', clauses=['build_id=%(id)i'],
-                             values=binfo)
+                             values={'id': binfo['build_id']})
     delete.execute()
     query = QueryProcessor(tables=['archiveinfo'], columns=['id'], clauses=['build_id=%(id)i'],
-                           values=binfo, opts={'asList': True})
+                           values={'id': binfo['build_id']}, opts={'asList': True})
     for (archive_id,) in query.execute():
         delete = DeleteProcessor(table='maven_archives', clauses=['archive_id=%(archive_id)i'],
                                  values={'archive_id': archive_id})
@@ -8668,25 +8668,25 @@ def reset_build(build):
                                  values={'archive_id': archive_id})
         delete.execute()
     delete = DeleteProcessor(table='archiveinfo', clauses=['build_id=%(id)i'],
-                             values=binfo)
+                             values={'id': binfo['build_id']})
     delete.execute()
     delete = DeleteProcessor(table='maven_builds', clauses=['build_id=%(id)i'],
-                             values=binfo)
+                             values={'id': binfo['build_id']})
     delete.execute()
     delete = DeleteProcessor(table='win_builds', clauses=['build_id=%(id)i'],
-                             values=binfo)
+                             values={'id': binfo['build_id']})
     delete.execute()
     delete = DeleteProcessor(table='image_builds', clauses=['build_id=%(id)i'],
-                             values=binfo)
+                             values={'id': binfo['build_id']})
     delete.execute()
     delete = DeleteProcessor(table='build_types', clauses=['build_id=%(id)i'],
-                             values=binfo)
+                             values={'id': binfo['build_id']})
     delete.execute()
     delete = DeleteProcessor(table='tag_listing', clauses=['build_id=%(id)i'],
-                             values=binfo)
+                             values={'id': binfo['build_id']})
     delete.execute()
     binfo['state'] = koji.BUILD_STATES['CANCELED']
-    update = UpdateProcessor('build', clauses=['id=%(id)s'], values=binfo,
+    update = UpdateProcessor('build', clauses=['id=%(id)s'], values={'id': binfo['id']},
                              data={'state': binfo['state'], 'task_id': None, 'volume_id': 0})
     update.execute()
     # now clear the build dir
