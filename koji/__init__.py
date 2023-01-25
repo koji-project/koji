@@ -2911,7 +2911,6 @@ class ClientSession(object):
         self.logged_in = False
         auth_method(*args, **kwargs)
 
-    @staticmethod
     def renew_expired_session(func):
         """Decorator to renew expirated session or subsession."""
         def _renew_expired_session(self, *args, **kwargs):
