@@ -12326,15 +12326,14 @@ class RootExports(object):
 
     queryRPMSigs = staticmethod(query_rpm_sigs)
 
-    def getRPMChecksums(self, rpm_id, checksum_types=None, cacheonly=False, strict=False):
+    def getRPMChecksums(self, rpm_id, checksum_types=None, cacheonly=False):
         """Returns RPM checksums for specific rpm.
 
         :param int rpm_id: RPM id
         :param list checksum_type: List of checksum types. Default sha256 checksum type
         :param bool cacheonly: when False, checksum is created for missing checksum type
-                               when True, checksum is returned as None when checsum is missing
+                               when True, checksum is returned as None when checksum is missing
                                for specific checksum type
-        :param bool strict: if rpm checksum or signed copies not found for an rpm, raise error
         :returns: A dict of specific checksum types and checksums
         """
         if not isinstance(rpm_id, int):
@@ -12354,20 +12353,6 @@ class RootExports(object):
         sigkeys = [r['sigkey'] for r in query.execute()]
         if not sigkeys:
             return {}
-        builddir = koji.pathinfo.build(rpm_info)
-        for s in sigkeys:
-            signedpath = "%s/%s" % (builddir, koji.pathinfo.signed(rpm_info, s))
-            sig_path = os.path.join(builddir, koji.pathinfo.sighdr(rpm_info, s))
-            if not os.path.exists(signedpath) or not os.path.exists(sig_path):
-                if strict:
-                    nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" % rpm_info
-                    raise koji.GenericError(f"Rpm {nvra} doesn't have cached signed copies.")
-                else:
-                    chsum_dict = {}
-                    for sigkey in sigkeys:
-                        chsum_dict.setdefault(
-                            sigkey, dict(zip(checksum_types, [None] * len(checksum_types))))
-                    return chsum_dict
 
         list_checksums_sigkeys = {s: set(checksum_types) for s in sigkeys}
 
@@ -12388,13 +12373,21 @@ class RootExports(object):
                     missing_chsum_sigkeys[r['sigkey']].remove(
                         koji.CHECKSUM_TYPES[r['checksum_type']])
 
-        rpm_path = os.path.join(builddir, koji.pathinfo.rpm(rpm_info))
+        if missing_chsum_sigkeys:
+            binfo = get_build(rpm_info['build_id'])
+            builddir = koji.pathinfo.build(binfo)
+            rpm_path = koji.joinpath(builddir, koji.pathinfo.rpm(rpm_info))
         for sigkey, chsums in missing_chsum_sigkeys.items():
-            sig_path = os.path.join(builddir, koji.pathinfo.sighdr(rpm_info, sigkey))
-            with open(sig_path, 'rb') as fo:
-                sighdr = fo.read()
-            with koji.spliced_sig_reader(rpm_path, sighdr) as f:
-                chsums_dict = calculate_chsum(f, chsums)
+            signedpath = koji.joinpath(builddir, koji.pathinfo.signed(rpm_info, sigkey))
+            if os.path.exists(signedpath):
+                with open(signedpath, 'rb') as fo:
+                    chsums_dict = calculate_chsum(fo, chsums)
+            else:
+                sig_path = koji.joinpath(builddir, koji.pathinfo.sighdr(rpm_info, sigkey))
+                with open(sig_path, 'rb') as fo:
+                    sighdr = fo.read()
+                with koji.spliced_sig_reader(rpm_path, sighdr) as fo:
+                    chsums_dict = calculate_chsum(fo, chsums)
             create_rpm_checksum(rpm_id, sigkey, chsums_dict)
         query_result = query_checksum.execute()
         return create_rpm_checksums_output(query_result, list_checksums_sigkeys)
