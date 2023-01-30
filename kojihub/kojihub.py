@@ -8011,13 +8011,9 @@ def calculate_chsum(path, checksum_types):
     return msum.to_hexdigest()
 
 
-def write_signed_rpm(an_rpm, sigkey, force=False, checksum_types=None):
+def write_signed_rpm(an_rpm, sigkey, force=False):
     """Write a signed copy of the rpm"""
-    if checksum_types is None:
-        checksum_types = context.opts.get('RPMDefaultChecksums').split()
-    else:
-        if not isinstance(checksum_types, (list, tuple)):
-            raise koji.ParameterError(f'Invalid type of checksum_types: {type(checksum_types)}')
+    checksum_types = context.opts.get('RPMDefaultChecksums').split()
     for ch_type in checksum_types:
         if ch_type not in koji.CHECKSUM_TYPES:
             raise koji.GenericError(f"Checksum_type {ch_type} isn't supported")
@@ -15586,10 +15582,11 @@ def create_rpm_checksum(rpm_id, sigkey, chsum_dict):
     :param string sigkey: Sigkey for specific RPM
     :param dict chsum_dict: Dict of checksum type and hash.
     """
-    chsum_dict = copy.deepcopy(chsum_dict)
+    chsum_dict = chsum_dict.copy()
 
     checksum_type_int = [koji.CHECKSUM_TYPES[func] for func, _ in chsum_dict.items()]
-    query = QueryProcessor(tables=['rpm_checksum'], columns=['checksum_type'],
+    query = QueryProcessor(tables=['rpm_checksum'],
+                           columns=['checksum_type', 'checksum', 'sigkey', 'rpm_id'],
                            clauses=["checksum_type IN %(checksum_types)s", 'sigkey=%(sigkey)s'],
                            values={'checksum_types': checksum_type_int, 'sigkey': sigkey})
     rows = query.execute()
@@ -15598,7 +15595,13 @@ def create_rpm_checksum(rpm_id, sigkey, chsum_dict):
     else:
         for r in rows:
             if r['checksum_type'] in checksum_type_int:
-                del chsum_dict[koji.CHECKSUM_TYPES[r['checksum_type']]]
+                if r['checksum'] == chsum_dict[koji.CHECKSUM_TYPES[r['checksum_type']]]:
+                    del chsum_dict[koji.CHECKSUM_TYPES[r['checksum_type']]]
+                else:
+                    raise koji.GenericError(
+                        f"Calculate checksum is different than checksum in DB for "
+                        f"rpm ID {r['rpm_id']}, sigkey {r['sigkey']} and "
+                        f"checksum type {koji.CHECKSUM_TYPES[r['checksum_type']]}.")
     if chsum_dict:
         insert = BulkInsertProcessor(table='rpm_checksum')
         for func, chsum in chsum_dict.items():
