@@ -944,49 +944,51 @@ def get_sighdr_key(sighdr):
         return get_sigpacket_key_id(sig)
 
 
+class SplicedSigStreamReader(io.RawIOBase):
+    def __init__(self, path, sighdr, bufsize):
+        self.path = path
+        self.sighdr = sighdr
+        self.buf = None
+        self.gen = self.generator()
+        self.bufsize = bufsize
+
+    def generator(self):
+        (start, size) = find_rpm_sighdr(self.path)
+        with open(self.path, 'rb') as fo:
+            # the part before the signature
+            yield fo.read(start)
+
+            # the spliced signature
+            yield self.sighdr
+
+            # skip original signature
+            fo.seek(size, 1)
+
+            # the part after the signature
+            while True:
+                buf = fo.read(self.bufsize)
+                if not buf:
+                    break
+                yield buf
+
+    def readable(self):
+        return True
+
+    def readinto(self, b):
+        try:
+            expected_buf_size = len(b)
+            data = self.buf or next(self.gen)
+            output = data[:expected_buf_size]
+            self.buf = data[expected_buf_size:]
+            b[:len(output)] = output
+            return len(output)
+        except StopIteration:
+            return 0    # indicate EOF
+
+
 def spliced_sig_reader(path, sighdr, bufsize=8192):
-    """A generator that yields the contents of an rpm with signature spliced in"""
-    class Stream(io.RawIOBase):
-        def __init__(self, path, sighdr):
-            self.path = path
-            self.sighdr = sighdr
-            self.buf = None
-            self.gen = self.generator()
-
-        def generator(self):
-            (start, size) = find_rpm_sighdr(self.path)
-            with open(path, 'rb') as fo:
-                # the part before the signature
-                yield fo.read(start)
-
-                # the spliced signature
-                yield sighdr
-
-                # skip original signature
-                fo.seek(size, 1)
-
-                # the part after the signature
-                while True:
-                    buf = fo.read(bufsize)
-                    if not buf:
-                        break
-                    yield buf
-
-        def readable(self):
-            return True
-
-        def readinto(self, b):
-            try:
-                expected_buf_size = len(b)
-                data = self.buf or next(self.gen)
-                output = data[:expected_buf_size]
-                self.buf = data[expected_buf_size:]
-                b[:len(output)] = output
-                return len(output)
-            except StopIteration:
-                return 0    # indicate EOF
-
-    return io.BufferedReader(Stream(path, sighdr), buffer_size=bufsize)
+    """Returns a file-like object whose contents have the new signature spliced in"""
+    return io.BufferedReader(SplicedSigStreamReader(path, sighdr, bufsize), buffer_size=bufsize)
 
 
 def splice_rpm_sighdr(sighdr, src, dst=None, bufsize=8192, callback=None):

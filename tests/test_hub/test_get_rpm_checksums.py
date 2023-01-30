@@ -17,13 +17,15 @@ class TestGetRpmChecksums(unittest.TestCase):
         self.create_rpm_checksum = mock.patch('kojihub.kojihub.create_rpm_checksum').start()
         self.calculate_chsum = mock.patch('kojihub.kojihub.calculate_chsum').start()
         self.get_rpm = mock.patch('kojihub.kojihub.get_rpm').start()
+        self.get_build = mock.patch('kojihub.kojihub.get_build').start()
         self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
                                          side_effect=self.getQuery).start()
         self.queries = []
         self.query_execute = mock.MagicMock()
         self.rpm_info = {'id': 123, 'name': 'test-name', 'version': '1.1', 'release': '123',
-                         'arch': 'arch'}
+                         'arch': 'arch', 'build_id': 3}
         self.nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" % self.rpm_info
+        self.build_info = {'build_id': 3, 'name': 'test-name', 'version': '1.1', 'release': '123'}
 
     def tearDown(self):
         mock.patch.stopall()
@@ -125,6 +127,7 @@ class TestGetRpmChecksums(unittest.TestCase):
         rpm_id = 123
         checksum_types = ['md5']
         self.get_rpm.return_value = self.rpm_info
+        self.get_build.return_value = self.build_info
         expected_result = {'sigkey-1': {'md5': 'checksum-md5'}}
         calculate_chsum_res = {'sigkey-1': {'md5': 'checksum-md5'}}
         self.query_execute.side_effect = [
@@ -155,33 +158,12 @@ class TestGetRpmChecksums(unittest.TestCase):
             [{'checksum': 'checksum-md5', 'checksum_type': 0}], {'sigkey-1': {'md5'}}
         )
 
-    def test_missing_valid_checksum_generated_with_strict(self):
-        self.os_path.return_value = False
-        rpm_id = 123
-        checksum_types = ['md5']
-        self.get_rpm.return_value = self.rpm_info
-        self.query_execute.return_value = [{'sigkey': 'sigkey-1'}]
-        with self.assertRaises(koji.GenericError) as ex:
-            self.exports.getRPMChecksums(rpm_id, checksum_types=checksum_types, strict=True)
-        self.assertEqual(f"Rpm {self.nvra} doesn't have cached signed copies.",
-                         str(ex.exception))
-
-        self.assertEqual(len(self.queries), 1)
-        query = self.queries[0]
-        self.assertEqual(query.tables, ['rpmsigs'])
-        self.assertEqual(query.joins, None)
-        self.assertEqual(query.clauses, ['rpm_id=%(rpm_id)i'])
-
-        self.get_rpm.assert_called_once_with(rpm_id, strict=True)
-        self.calculate_chsum.assert_not_called()
-        self.create_rpm_checksum.assert_not_called()
-        self.create_rpm_checksum_output.assert_not_called()
-
     @mock.patch('kojihub.kojihub.open')
     def test_missing_valid_more_checksum_generated_and_exists(self, open):
         self.os_path.return_value = True
         rpm_id = 123
         self.get_rpm.return_value = self.rpm_info
+        self.get_build.return_value = self.build_info
         checksum_types = ['md5', 'sha256']
         expected_result = {'sigkey-1': {'md5': 'checksum-md5', 'sha256': 'checksum-sha256'}}
         calculate_chsum_res = {'sigkey-1': {'sha256': 'checksum-sha256'}}
@@ -222,6 +204,7 @@ class TestGetRpmChecksums(unittest.TestCase):
         self.os_path.return_value = True
         rpm_id = 123
         self.get_rpm.return_value = self.rpm_info
+        self.get_build.return_value = self.build_info
         checksum_types = ['md5', 'sha256']
         expected_result = {'sigkey1': {'md5': 'checksum-md5', 'sha256': 'checksum-sha256'},
                            'sigkey2': {'md5': 'checksum-md5', 'sha256': 'checksum-sha256'}}

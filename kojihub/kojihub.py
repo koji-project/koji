@@ -7980,6 +7980,12 @@ class MultiSum(object):
         for name, checksum in self.checksums.items():
             checksum.update(buf)
 
+    def to_hexdigest(self):
+        checksums_hex = {}
+        for name, checksum in self.checksums.items():
+            checksums_hex[name] = checksum.hexdigest()
+        return checksums_hex
+
 
 def calculate_chsum(path, checksum_types):
     """Calculate checksum for specific checksum_types
@@ -8002,7 +8008,7 @@ def calculate_chsum(path, checksum_types):
             break
         msum.update(chunk)
     f.close()
-    return msum.checksums
+    return msum.to_hexdigest()
 
 
 def write_signed_rpm(an_rpm, sigkey, force=False, checksum_types=None):
@@ -8052,7 +8058,7 @@ def write_signed_rpm(an_rpm, sigkey, force=False, checksum_types=None):
     koji.ensuredir(os.path.dirname(signedpath))
     msum = MultiSum(checksum_types)
     koji.splice_rpm_sighdr(sighdr, rpm_path, dst=signedpath, callback=msum.update)
-    create_rpm_checksum(rpm_id, sigkey, msum.checksums)
+    create_rpm_checksum(rpm_id, sigkey, msum.to_hexdigest())
 
 
 def query_history(tables=None, **kwargs):
@@ -12376,14 +12382,14 @@ class RootExports(object):
         if missing_chsum_sigkeys:
             binfo = get_build(rpm_info['build_id'])
             builddir = koji.pathinfo.build(binfo)
-            rpm_path = koji.joinpath(builddir, koji.pathinfo.rpm(rpm_info))
+            rpm_path = joinpath(builddir, koji.pathinfo.rpm(rpm_info))
         for sigkey, chsums in missing_chsum_sigkeys.items():
-            signedpath = koji.joinpath(builddir, koji.pathinfo.signed(rpm_info, sigkey))
+            signedpath = joinpath(builddir, koji.pathinfo.signed(rpm_info, sigkey))
             if os.path.exists(signedpath):
                 with open(signedpath, 'rb') as fo:
                     chsums_dict = calculate_chsum(fo, chsums)
             else:
-                sig_path = koji.joinpath(builddir, koji.pathinfo.sighdr(rpm_info, sigkey))
+                sig_path = joinpath(builddir, koji.pathinfo.sighdr(rpm_info, sigkey))
                 with open(sig_path, 'rb') as fo:
                     sighdr = fo.read()
                 with koji.spliced_sig_reader(rpm_path, sighdr) as fo:
@@ -15596,6 +15602,6 @@ def create_rpm_checksum(rpm_id, sigkey, chsum_dict):
     if chsum_dict:
         insert = BulkInsertProcessor(table='rpm_checksum')
         for func, chsum in chsum_dict.items():
-            insert.add_record(rpm_id=rpm_id, sigkey=sigkey, checksum=chsum.hexdigest(),
+            insert.add_record(rpm_id=rpm_id, sigkey=sigkey, checksum=chsum,
                               checksum_type=koji.CHECKSUM_TYPES[func])
         insert.execute()
