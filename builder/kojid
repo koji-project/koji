@@ -2050,6 +2050,13 @@ class WrapperRPMTask(BaseBuildTask):
                                'scratch': opts.get('scratch')
                            })
 
+        if opts.get('create_build') and opts.get('custom_user_metadata'):
+            try:
+                json.dumps(opts['custom_user_metadata'])
+            except TypeError:
+                error_msg = 'custom_user_metadata is not JSON serializable'
+                raise koji.BuildError(error_msg)
+
         repo_id = opts.get('repo_id')
         if not repo_id:
             raise koji.BuildError("A repo id must be provided")
@@ -2151,6 +2158,8 @@ class WrapperRPMTask(BaseBuildTask):
             data['task_id'] = self.id
             data['source'] = source['source']
             data['extra'] = {'source': {'original_url': source['url']}}
+            if opts.get('custom_user_metadata'):
+                data['extra']['custom_user_metadata'] = opts['custom_user_metadata']
             self.logger.info("Reading package config for %(name)s" % data)
             pkg_cfg = self.session.getPackageConfig(build_target['dest_tag'], data['name'])
             if not opts.get('skip_tag'):
@@ -2222,6 +2231,8 @@ class WrapperRPMTask(BaseBuildTask):
                    'rpms': rpms,
                    'logs': logs,
                    'source': source}
+        if opts.get('create_build') and opts.get('custom_user_metadata'):
+            results['custom_user_metadata'] = opts['custom_user_metadata']
 
         if not task:
             # Called as a standalone top-level task, so handle the rpms now.
