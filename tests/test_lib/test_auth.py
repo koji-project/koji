@@ -140,7 +140,8 @@ class TestAuthSession(unittest.TestCase):
         query = self.queries[0]
         self.assertEqual(query.tables, ['sessions'])
         self.assertEqual(query.joins, None)
-        self.assertEqual(query.clauses, ['hostip = %(hostip)s', 'id = %(id)i', 'key = %(key)s'])
+        self.assertEqual(query.clauses, ['closed IS FALSE', 'hostip = %(hostip)s', 'id = %(id)i',
+                                         'key = %(key)s'])
         self.assertEqual(query.columns, ['authtype', 'callnum', 'exclusive', 'expired', 'master',
                                          'start_time', "date_part('epoch', start_time)",
                                          'update_time', "date_part('epoch', update_time)",
@@ -160,7 +161,7 @@ class TestAuthSession(unittest.TestCase):
         query = self.queries[2]
         self.assertEqual(query.tables, ['sessions'])
         self.assertEqual(query.joins, None)
-        self.assertEqual(query.clauses, ['exclusive = TRUE', 'expired = FALSE',
+        self.assertEqual(query.clauses, ['closed = FALSE', 'exclusive = TRUE',
                                          'user_id=%(user_id)s'])
         self.assertEqual(query.columns, ['id'])
 
@@ -190,7 +191,8 @@ class TestAuthSession(unittest.TestCase):
         query = self.queries[0]
         self.assertEqual(query.tables, ['sessions'])
         self.assertEqual(query.joins, None)
-        self.assertEqual(query.clauses, ['hostip = %(hostip)s', 'id = %(id)i', 'key = %(key)s'])
+        self.assertEqual(query.clauses, ['closed IS FALSE', 'hostip = %(hostip)s', 'id = %(id)i',
+                                         'key = %(key)s'])
         self.assertEqual(query.columns, ['authtype', 'callnum', 'exclusive', 'expired', 'master',
                                          'start_time', "date_part('epoch', start_time)",
                                          'update_time', "date_part('epoch', update_time)",
@@ -210,7 +212,7 @@ class TestAuthSession(unittest.TestCase):
         query = self.queries[2]
         self.assertEqual(query.tables, ['sessions'])
         self.assertEqual(query.joins, None)
-        self.assertEqual(query.clauses, ['exclusive = TRUE', 'expired = FALSE',
+        self.assertEqual(query.clauses, ['closed = FALSE', 'exclusive = TRUE',
                                          'user_id=%(user_id)s'])
         self.assertEqual(query.columns, ['id'])
 
@@ -434,7 +436,7 @@ class TestAuthSession(unittest.TestCase):
         self.assertEqual(update.table, 'sessions')
         self.assertEqual(update.values, {'id': 123, 'id': 123})
         self.assertEqual(update.clauses, ['id = %(id)i OR master = %(id)i'])
-        self.assertEqual(update.data, {'expired': True, 'exclusive': None})
+        self.assertEqual(update.data, {'closed': True, 'expired': True, 'exclusive': None})
         self.assertEqual(update.rawdata, {})
 
     def test_logoutChild_not_logged(self):
@@ -460,7 +462,7 @@ class TestAuthSession(unittest.TestCase):
         self.assertEqual(update.table, 'sessions')
         self.assertEqual(update.values, {'session_id': 111, 'master': 123})
         self.assertEqual(update.clauses, ['id = %(session_id)i', 'master = %(master)i'])
-        self.assertEqual(update.data, {'expired': True, 'exclusive': None})
+        self.assertEqual(update.data, {'expired': True, 'exclusive': None, 'closed': True})
         self.assertEqual(update.rawdata, {})
 
     def test_makeExclusive_not_master(self):
@@ -513,7 +515,7 @@ class TestAuthSession(unittest.TestCase):
         query = self.queries[4]
         self.assertEqual(query.tables, ['sessions'])
         self.assertEqual(query.joins, None)
-        self.assertEqual(query.clauses, ['exclusive = TRUE', 'expired = FALSE',
+        self.assertEqual(query.clauses, ['closed = FALSE', 'exclusive = TRUE',
                                          'user_id=%(user_id)s'])
         self.assertEqual(query.columns, ['id'])
         self.assertEqual(query.values, {'user_id': 1})
@@ -525,7 +527,7 @@ class TestAuthSession(unittest.TestCase):
         self.assertEqual(update.table, 'sessions')
         self.assertEqual(update.values, {'excl_id': 123})
         self.assertEqual(update.clauses, ['id=%(excl_id)s'])
-        self.assertEqual(update.data, {'expired': True, 'exclusive': None})
+        self.assertEqual(update.data, {'expired': True, 'exclusive': None, 'closed': True})
         self.assertEqual(update.rawdata, {})
 
         update = self.updates[3]
@@ -667,15 +669,6 @@ class TestAuthSession(unittest.TestCase):
         self.assertEqual(query.joins, ['permissions ON perm_id = permissions.id'])
         self.assertEqual(query.clauses, ['active = TRUE', 'user_id=%(user_id)s'])
         self.assertEqual(query.columns, ['name'])
-
-    def test_logout_not_logged(self):
-        s, cntext = self.get_session()
-
-        # not logged
-        s.logged_in = False
-        with self.assertRaises(koji.AuthError) as ex:
-            s.logout()
-        self.assertEqual("Not logged in", str(ex.exception))
 
     @mock.patch('koji.auth.context')
     def test_logout_logged_not_owner(self, context):

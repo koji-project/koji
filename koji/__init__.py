@@ -2424,7 +2424,13 @@ def grab_session_options(options):
 
 class ClientSession(object):
 
-    def __init__(self, baseurl, opts=None, sinfo=None):
+    def __init__(self, baseurl, opts=None, sinfo=None, auth_method=None):
+        """
+        :param baseurl str: hub url
+        :param dict opts: dictionary with content varying according to authentication method
+        :param dict sinfo: session info returned by login method
+        :param dict auth_method: method for reauthentication, shouldn't be ever set manually
+        """
         assert baseurl, "baseurl argument must not be empty"
         if opts is None:
             opts = {}
@@ -2444,6 +2450,8 @@ class ClientSession(object):
         self.rsession = None
         self.new_session()
         self.opts.setdefault('timeout', DEFAULT_REQUEST_TIMEOUT)
+        self.exclusive = False
+        self.auth_method = auth_method
 
     @property
     def multicall(self):
@@ -2480,8 +2488,21 @@ class ClientSession(object):
             self.callnum = 0
         self.sinfo = sinfo
 
-    def login(self, opts=None):
-        sinfo = self.callMethod('login', self.opts['user'], self.opts['password'], opts)
+    def login(self, opts=None, renew=False):
+        """
+        Username/password based login method
+
+        :param dict opts: dict used by hub "login" call, currently can
+                          contain only "host_ip" key.
+        :returns bool True: success or raises exception
+        """
+        # store calling parameters
+        self.auth_method = {'method': 'login', 'kwargs': {'opts': opts}}
+        kwargs = {'opts': opts}
+        if renew:
+            kwargs['renew'] = True
+            kwargs['exclusive'] = self.exclusive
+        sinfo = self.callMethod('login', self.opts['user'], self.opts['password'], **kwargs)
         if not sinfo:
             return False
         self.setSession(sinfo)
@@ -2491,14 +2512,32 @@ class ClientSession(object):
     def subsession(self):
         "Create a subsession"
         sinfo = self.callMethod('subsession')
-        return type(self)(self.baseurl, self.opts, sinfo)
+        return type(self)(self.baseurl, opts=self.opts, sinfo=sinfo, auth_method=self.auth_method)
 
     def gssapi_login(self, principal=None, keytab=None, ccache=None,
-                     proxyuser=None, proxyauthtype=None):
+                     proxyuser=None, proxyauthtype=None, renew=False):
+        """
+        GSSAPI/Kerberos login method
+
+        :param str principal: Kerberos principal
+        :param str keytab: path to keytab file
+        :param str ccache: path to ccache file/dir
+        :param str proxyuser: name of proxied user (e.g. forwarding by web ui)
+        :param int proxyauthtype: AUTHTYPE used by proxied user (can be different from ours)
+        :returns bool True: success or raises exception
+        """
         if not reqgssapi:
             raise PythonImportError(
                 "Please install python-requests-gssapi to use GSSAPI."
             )
+        # store calling parameters
+        self.auth_method = {
+            'method': 'gssapi_login',
+            'kwargs': {
+                'principal': principal, 'keytab': keytab, 'ccache': ccache, 'proxyuser': proxyuser,
+                'proxyauthtype': proxyauthtype
+            }
+        }
         # force https
         old_baseurl = self.baseurl
         uri = six.moves.urllib.parse.urlsplit(self.baseurl)
@@ -2540,6 +2579,9 @@ class ClientSession(object):
                 # For this case we're now using retry=False and test errors for
                 # this exact usecase.
                 kwargs = {'proxyuser': proxyuser}
+                if renew:
+                    kwargs['renew'] = True
+                    kwargs['exclusive'] = self.exclusive
                 if proxyauthtype is not None:
                     kwargs['proxyauthtype'] = proxyauthtype
                 for tries in range(self.opts.get('max_retries', 30)):
@@ -2587,7 +2629,26 @@ class ClientSession(object):
         self.authtype = AUTHTYPES['GSSAPI']
         return True
 
-    def ssl_login(self, cert=None, ca=None, serverca=None, proxyuser=None, proxyauthtype=None):
+    def ssl_login(self, cert=None, ca=None, serverca=None, proxyuser=None, proxyauthtype=None,
+                  renew=False):
+        """
+        SSL cert based login
+
+        :param str cert: path to SSL certificate
+        :param str ca: deprecated, not used anymore
+        :param str serverca: path for CA public cert, otherwise system-wide CAs are used
+        :param str proxyuser: name of proxied user (e.g. forwarding by web ui)
+        :param int proxyauthtype: AUTHTYPE used by proxied user (can be different from ours)
+        :returns bool: success
+        """
+        # store calling parameters
+        self.auth_method = {
+            'method': 'ssl_login',
+            'kwargs': {
+                'cert': cert, 'ca': ca, 'serverca': serverca,
+                'proxyuser': proxyuser, 'proxyauthtype': proxyauthtype,
+            }
+        }
         cert = cert or self.opts.get('cert')
         serverca = serverca or self.opts.get('serverca')
         if cert is None:
@@ -2617,6 +2678,9 @@ class ClientSession(object):
         e_str = None
         try:
             kwargs = {'proxyuser': proxyuser}
+            if renew:
+                kwargs['renew'] = True
+                kwargs['exclusive'] = self.exclusive
             if proxyauthtype is not None:
                 kwargs['proxyauthtype'] = proxyauthtype
             sinfo = self._callMethod('sslLogin', [], kwargs)
@@ -2628,6 +2692,7 @@ class ClientSession(object):
             sinfo = None
         finally:
             self.opts = old_opts
+
         if not sinfo:
             err = 'unable to obtain a session'
             if e_str:
@@ -2680,8 +2745,6 @@ class ClientSession(object):
         self.new_session()
 
         # forget our login session, if any
-        if not self.logged_in:
-            return
         self.setSession(None)
 
     # we've had some trouble with this method causing strange problems
@@ -2707,24 +2770,28 @@ class ClientSession(object):
             return self._prepUpload(*args, **kwargs)
         args = encode_args(*args, **kwargs)
         headers = []
-        if self.logged_in:
+
+        sinfo = None
+        if getattr(self, 'sinfo') is not None:
+            # send sinfo in headers if we have it
+            # still needed if not logged in for renewal case
             sinfo = self.sinfo.copy()
             sinfo['callnum'] = self.callnum
             self.callnum += 1
-            if sinfo.get('header-auth'):
-                handler = self.baseurl
-                headers += [
-                    ('Koji-Session-Id', str(self.sinfo['session-id'])),
-                    ('Koji-Session-Key', str(self.sinfo['session-key'])),
-                    ('Koji-Session-Callnum', str(sinfo['callnum'])),
-                ]
-            else:
-                # old server
-                handler = "%s?%s" % (self.baseurl, six.moves.urllib.parse.urlencode(sinfo))
+            headers += [
+                ('Koji-Session-Id', str(sinfo['session-id'])),
+                ('Koji-Session-Key', str(sinfo['session-key'])),
+                ('Koji-Session-Callnum', str(sinfo['callnum'])),
+            ]
+
+        if self.logged_in and not self.sinfo.get('header-auth'):
+            # old server
+            handler = "%s?%s" % (self.baseurl, six.moves.urllib.parse.urlencode(sinfo))
         elif name == 'sslLogin':
             handler = self.baseurl + '/ssllogin'
         else:
             handler = self.baseurl
+
         request = dumps(args, name, allow_none=1)
         if six.PY3:
             # For python2, dumps() without encoding specified means return a str
@@ -2833,9 +2900,30 @@ class ClientSession(object):
             result = result[0]
         return result
 
+    def _renew_session(self):
+        """Renew expirated session or subsession."""
+        if not hasattr(self, 'auth_method'):
+            raise GenericError("Missing info for reauthentication")
+        auth_method = getattr(self, self.auth_method['method'])
+        args = self.auth_method.get('args', [])
+        kwargs = self.auth_method.get('kwargs', {})
+        kwargs['renew'] = True
+        self.logged_in = False
+        auth_method(*args, **kwargs)
+
+    def renew_expired_session(func):
+        """Decorator to renew expirated session or subsession."""
+        def _renew_expired_session(self, *args, **kwargs):
+            try:
+                return func(self, *args, **kwargs)
+            except AuthExpired:
+                self._renew_session()
+                return func(self, *args, **kwargs)
+        return _renew_expired_session
+
+    @renew_expired_session
     def _callMethod(self, name, args, kwargs=None, retry=True):
         """Make a call to the hub with retries and other niceties"""
-
         if self.multicall:
             if kwargs is None:
                 kwargs = {}
@@ -3182,6 +3270,11 @@ class ClientSession(object):
             dlopts['volume'] = volume
         result = self.callMethod('downloadTaskOutput', taskID, fileName, **dlopts)
         return base64.b64decode(result)
+
+    def exclusiveSession(self, force=False):
+        """Make this session exclusive"""
+        self._callMethod('exclusiveSession', {'force': force})
+        self.exclusive = True
 
 
 class MultiCallHack(object):
