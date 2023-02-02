@@ -6968,7 +6968,7 @@ def anon_handle_download_task(options, session, args):
         if task["id"] not in required_tasks:
             required_tasks[task["id"]] = task
 
-    for task_id in required_tasks:
+    for task_id in sorted(required_tasks):
         task_state = koji.TASK_STATES.get(required_tasks[task_id]["state"])
         if task_state != "CLOSED":
             if task_id == base_task_id:
