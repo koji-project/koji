@@ -1960,7 +1960,7 @@ def read_config(profile_name, user_config=None):
         'offline_retry_interval': 20,
         'timeout': DEFAULT_REQUEST_TIMEOUT,
         'auth_timeout': DEFAULT_AUTH_TIMEOUT,
-        'use_fast_upload': False,
+        'use_fast_upload': True,
         'upload_blocksize': 1048576,
         'poll_interval': 6,
         'principal': None,

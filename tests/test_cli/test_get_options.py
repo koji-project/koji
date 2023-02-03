@@ -21,7 +21,7 @@ class TestGetOptions(unittest.TestCase):
                             'topurl': None, 'pkgurl': None, 'topdir': '/mnt/koji',
                             'max_retries': 30, 'retry_interval': 20, 'anon_retry': False,
                             'offline_retry': False, 'offline_retry_interval': 20,
-                            'timeout': 50000, 'auth_timeout': 60, 'use_fast_upload': False,
+                            'timeout': 50000, 'auth_timeout': 60, 'use_fast_upload': True,
                             'upload_blocksize': 1048576, 'poll_interval': 6, 'principal': None,
                             'keytab': None, 'cert': None, 'serverca': None, 'no_ssl_verify': False,
                             'authtype': None, 'debug': False, 'debug_xmlrpc': False, 'pyver': None,
