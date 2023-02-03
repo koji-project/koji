@@ -117,6 +117,7 @@ info commands:
         list-untagged             List untagged builds
         list-volumes              List storage volumes
         mock-config               Create a mock config
+        repoinfo                  Print basic information about a repo
         rpminfo                   Print basic information about an RPM
         show-groups               Show groups data for a tag
         taginfo                   Print basic information about a tag

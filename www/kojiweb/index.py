@@ -2659,6 +2659,8 @@ def repoinfo(environ, repoID):
         else:
             values['repo_json'] = os.path.join(
                 pathinfo.repo(repo_info['id'], repo_info['tag_name']), 'repo.json')
+    num_buildroots = len(server.listBuildroots(repoID=repoID)) or 0
+    values['numBuildroots'] = num_buildroots
     return _genHTML(environ, 'repoinfo.chtml')
 
 
@@ -2692,3 +2694,21 @@ def activesessiondelete(environ, sessionID):
     server.logout(session_id=sessionID)
 
     _redirect(environ, 'activesession')
+
+
+def buildroots(environ, repoID=None, order='id', start=None, state=None):
+    values = _initValues(environ, 'Buildroots', 'buildroots')
+    server = _getServer(environ)
+    values['repoID'] = repoID
+    values['order'] = order
+    if state == 'all':
+        state = None
+    elif state is not None:
+        state = int(state)
+    values['state'] = state
+
+    kojiweb.util.paginateMethod(server, values, 'listBuildroots',
+                                kw={'repoID': repoID, 'state': state}, start=start,
+                                dataName='buildroots', prefix='buildroot', order=order)
+
+    return _genHTML(environ, 'buildroots.chtml')

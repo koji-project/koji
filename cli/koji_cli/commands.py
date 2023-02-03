@@ -7741,3 +7741,56 @@ def anon_handle_userinfo(goptions, session, args):
         print("Number of tasks: %d" % tasks.result)
         print("Number of builds: %d" % builds.result)
         print('')
+
+
+def anon_handle_repoinfo(goptions, session, args):
+    "[info] Print basic information about a repo"
+    usage = "usage: %prog repoinfo [options] <repo-id> [<repo-id> ...]"
+    parser = OptionParser(usage=get_usage_str(usage))
+    parser.add_option("--buildroots", action="store_true",
+                      help="Prints list of buildroot IDs")
+    (options, args) = parser.parse_args(args)
+    if len(args) < 1:
+        parser.error("Please specify a repo ID")
+    ensure_connection(session, goptions)
+
+    kojipath = koji.PathInfo(topdir=goptions.topurl)
+
+    with session.multicall() as m:
+        result = [m.repoInfo(repo_id, strict=False) for repo_id in args]
+
+    for repo_id, repoinfo in zip(args, result):
+        rinfo = repoinfo.result
+        if not rinfo:
+            warn("No such repo: %s\n" % repo_id)
+            continue
+        print('ID: %s' % rinfo['id'])
+        print('Tag ID: %s' % rinfo['tag_id'])
+        print('Tag name: %s' % rinfo['tag_name'])
+        print('State: %s' % koji.REPO_STATES[rinfo['state']])
+        print("Created: %s" % koji.formatTimeLong(rinfo['create_ts']))
+        print('Created event: %s' % rinfo['create_event'])
+        url = kojipath.repo(rinfo['id'], rinfo['tag_name'])
+        print('URL: %s' % url)
+        if rinfo['dist']:
+            repo_json = os.path.join(
+                kojipath.distrepo(rinfo['id'], rinfo['tag_name']), 'repo.json')
+        else:
+            repo_json = os.path.join(
+                kojipath.repo(rinfo['id'], rinfo['tag_name']), 'repo.json')
+        print('Repo json: %s' % repo_json)
+        print("Dist repo?: %s" % (rinfo['dist'] and 'yes' or 'no'))
+        print('Task ID: %s' % rinfo['task_id'])
+        try:
+            repo_buildroots = session.listBuildroots(repoID=rinfo['id'])
+            count_buildroots = len(repo_buildroots)
+            print('Number of buildroots: %i' % count_buildroots)
+            if options.buildroots and count_buildroots > 0:
+                repo_buildroots_id = [repo_buildroot['id'] for repo_buildroot in repo_buildroots]
+                print('Buildroots ID:')
+                for r_bldr_id in repo_buildroots_id:
+                    print(' ' * 15 + '%s' % r_bldr_id)
+        except koji.ParameterError:
+            # repoID option added in 1.33
+            if options.buildroots:
+                warn("--buildroots option is available with hub 1.33 or newer")
