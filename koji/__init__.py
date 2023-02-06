@@ -57,6 +57,7 @@ except ImportError:  # pragma: no cover
 from fnmatch import fnmatch
 
 import dateutil.parser
+import io
 import requests
 import six
 import six.moves.configparser
@@ -943,9 +944,56 @@ def get_sighdr_key(sighdr):
         return get_sigpacket_key_id(sig)
 
 
-def splice_rpm_sighdr(sighdr, src, dst=None, bufsize=8192):
+class SplicedSigStreamReader(io.RawIOBase):
+    def __init__(self, path, sighdr, bufsize):
+        self.path = path
+        self.sighdr = sighdr
+        self.buf = None
+        self.gen = self.generator()
+        self.bufsize = bufsize
+
+    def generator(self):
+        (start, size) = find_rpm_sighdr(self.path)
+        with open(self.path, 'rb') as fo:
+            # the part before the signature
+            yield fo.read(start)
+
+            # the spliced signature
+            yield self.sighdr
+
+            # skip original signature
+            fo.seek(size, 1)
+
+            # the part after the signature
+            while True:
+                buf = fo.read(self.bufsize)
+                if not buf:
+                    break
+                yield buf
+
+    def readable(self):
+        return True
+
+    def readinto(self, b):
+        try:
+            expected_buf_size = len(b)
+            data = self.buf or next(self.gen)
+            output = data[:expected_buf_size]
+            self.buf = data[expected_buf_size:]
+            b[:len(output)] = output
+            return len(output)
+        except StopIteration:
+            return 0    # indicate EOF
+
+
+def spliced_sig_reader(path, sighdr, bufsize=8192):
+    """Returns a file-like object whose contents have the new signature spliced in"""
+    return io.BufferedReader(SplicedSigStreamReader(path, sighdr, bufsize), buffer_size=bufsize)
+
+
+def splice_rpm_sighdr(sighdr, src, dst=None, bufsize=8192, callback=None):
     """Write a copy of an rpm with signature header spliced in"""
-    (start, size) = find_rpm_sighdr(src)
+    reader = spliced_sig_reader(src, sighdr, bufsize=bufsize)
     if dst is not None:
         dirname = os.path.dirname(dst)
         os.makedirs(dirname, exist_ok=True)
@@ -953,15 +1001,11 @@ def splice_rpm_sighdr(sighdr, src, dst=None, bufsize=8192):
     else:
         (fd, dst_temp) = tempfile.mkstemp()
     os.close(fd)
-    with open(src, 'rb') as src_fo, open(dst_temp, 'wb') as dst_fo:
-        dst_fo.write(src_fo.read(start))
-        dst_fo.write(sighdr)
-        src_fo.seek(size, 1)
-        while True:
-            buf = src_fo.read(bufsize)
-            if not buf:
-                break
+    with open(dst_temp, 'wb') as dst_fo:
+        for buf in reader:
             dst_fo.write(buf)
+            if callback:
+                callback(buf)
     if dst is not None:
         src_stats = os.stat(src)
         dst_temp_stats = os.stat(dst_temp)

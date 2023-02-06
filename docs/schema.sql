@@ -966,5 +966,14 @@ CREATE TABLE proton_queue (
         body JSON NOT NULL
 ) WITHOUT OIDS;
 
+-- track checksum of rpms
+CREATE TABLE rpm_checksum (
+        rpm_id INTEGER NOT NULL REFERENCES rpminfo(id),
+        sigkey TEXT NOT NULL,
+        checksum TEXT NOT NULL UNIQUE,
+        checksum_type SMALLINT NOT NULL,
+        PRIMARY KEY (rpm_id, sigkey, checksum_type)
+) WITHOUT OIDS;
+CREATE INDEX rpm_checksum_rpm_id ON rpm_checksum(rpm_id);
 
 COMMIT WORK;

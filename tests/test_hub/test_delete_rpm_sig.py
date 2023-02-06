@@ -119,8 +119,14 @@ class TestDeleteRPMSig(unittest.TestCase):
         self.query_rpm_sigs.return_value = self.queryrpmsigs
         r = kojihub.delete_rpm_sig(rpminfo, sigkey='testkey')
         self.assertEqual(r, None)
+
+        self.assertEqual(len(self.deletes), 2)
         delete = self.deletes[0]
         self.assertEqual(delete.table, 'rpmsigs')
+        self.assertEqual(delete.clauses, ["rpm_id=%(rpm_id)i", "sigkey=%(sigkey)s"])
+
+        delete = self.deletes[1]
+        self.assertEqual(delete.table, 'rpm_checksum')
         self.assertEqual(delete.clauses, ["rpm_id=%(rpm_id)i", "sigkey=%(sigkey)s"])
         self.get_rpm.assert_called_once_with(rpminfo, strict=True)
         self.query_rpm_sigs.assert_called_once_with(rpm_id=self.rinfo['id'], sigkey='testkey')
@@ -138,8 +144,14 @@ class TestDeleteRPMSig(unittest.TestCase):
         with self.assertRaises(koji.GenericError) as ex:
             kojihub.delete_rpm_sig(rpminfo, all_sigs=True)
         self.assertEqual(ex.exception.args[0], expected_msg)
+
+        self.assertEqual(len(self.deletes), 2)
         delete = self.deletes[0]
         self.assertEqual(delete.table, 'rpmsigs')
+        self.assertEqual(delete.clauses, ["rpm_id=%(rpm_id)i"])
+
+        delete = self.deletes[1]
+        self.assertEqual(delete.table, 'rpm_checksum')
         self.assertEqual(delete.clauses, ["rpm_id=%(rpm_id)i"])
         self.get_rpm.assert_called_once_with(rpminfo, strict=True)
         self.query_rpm_sigs.assert_called_once_with(rpm_id=self.rinfo['id'], sigkey=None)
@@ -154,9 +166,14 @@ class TestDeleteRPMSig(unittest.TestCase):
         self.get_user.return_value = self.userinfo
         self.query_rpm_sigs.return_value = self.queryrpmsigs
         kojihub.delete_rpm_sig(rpminfo, all_sigs=True)
-        self.assertEqual(len(self.deletes), 1)
+
+        self.assertEqual(len(self.deletes), 2)
         delete = self.deletes[0]
         self.assertEqual(delete.table, 'rpmsigs')
+        self.assertEqual(delete.clauses, ["rpm_id=%(rpm_id)i"])
+
+        delete = self.deletes[1]
+        self.assertEqual(delete.table, 'rpm_checksum')
         self.assertEqual(delete.clauses, ["rpm_id=%(rpm_id)i"])
         self.get_rpm.assert_called_once_with(rpminfo, strict=True)
         self.query_rpm_sigs.assert_called_once_with(rpm_id=self.rinfo['id'], sigkey=None)
