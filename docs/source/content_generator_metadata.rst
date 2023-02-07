@@ -45,6 +45,7 @@ The build map contains the following entries:
 -  owner: The owner of the build task in username format. This field
    is optional.
 -  build_id: Reserved build ID. This field is optional.
+-  task_id: In case there is a corresponding task in koji (int/None)
 -  extra: A map of extra metadata associated with the build, which
    must include at least one of:
 
