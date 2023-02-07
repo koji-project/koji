@@ -2770,7 +2770,7 @@ class ClientSession(object):
         except AuthExpired:
             # this can happen when an exclusive session is forced
             pass
-        if session_id == self.sinfo['session-id']:
+        if not session_id or session_id == self.sinfo['session-id']:
             self.setSession(None)
 
     def _forget(self):
