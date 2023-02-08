@@ -30,10 +30,10 @@ import string
 import six
 from six.moves import range, urllib
 import koji
-from .context import context
-from .util import to_list
+from koji.context import context
+from koji.util import to_list
 
-from koji.db import DeleteProcessor, InsertProcessor, QueryProcessor, UpdateProcessor, nextval
+from kojihub.db import DeleteProcessor, InsertProcessor, QueryProcessor, UpdateProcessor, nextval
 
 
 # 1 - load session if provided

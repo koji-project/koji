@@ -41,7 +41,7 @@ class TestGrouplist(unittest.TestCase):
 
     def setUp(self):
         self.context = mock.patch('kojihub.kojihub.context').start()
-        self.context_db = mock.patch('koji.db.context').start()
+        self.context_db = mock.patch('kojihub.db.context').start()
         self.get_tag = mock.patch('kojihub.kojihub.get_tag').start()
         self.lookup_tag = mock.patch('kojihub.kojihub.lookup_tag').start()
         self.lookup_group = mock.patch('kojihub.kojihub.lookup_group').start()

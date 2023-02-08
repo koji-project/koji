@@ -43,7 +43,7 @@ class TestEditTag(unittest.TestCase):
         self.get_perm_id = mock.patch('kojihub.kojihub.get_perm_id').start()
         self.verify_name_internal = mock.patch('kojihub.kojihub.verify_name_internal').start()
         self.context = mock.patch('kojihub.kojihub.context').start()
-        self.context_db = mock.patch('koji.db.context').start()
+        self.context_db = mock.patch('kojihub.db.context').start()
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"
         self.context_db.session.assertLogin = mock.MagicMock()

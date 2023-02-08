@@ -11,7 +11,7 @@ class TestImportImageInternal(unittest.TestCase):
     def setUp(self):
         self.tempdir = tempfile.mkdtemp()
         self.context = mock.patch('kojihub.kojihub.context').start()
-        self.context_db = mock.patch('koji.db.context').start()
+        self.context_db = mock.patch('kojihub.db.context').start()
         self.Task = mock.patch('kojihub.kojihub.Task').start()
         self.get_build = mock.patch('kojihub.kojihub.get_build').start()
         self.get_archive_type = mock.patch('kojihub.kojihub.get_archive_type').start()

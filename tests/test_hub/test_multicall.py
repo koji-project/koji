@@ -16,7 +16,7 @@ class DummyExports(object):
 class TestMulticall(unittest.TestCase):
 
     def test_multicall(self):
-        self.context_db = mock.patch('koji.db.context').start()
+        self.context_db = mock.patch('kojihub.db.context').start()
         kojixmlrpc.kojihub = mock.MagicMock()
         kojixmlrpc.context.opts = mock.MagicMock()
         kojixmlrpc.context.session = mock.MagicMock()

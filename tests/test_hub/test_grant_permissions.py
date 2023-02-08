@@ -18,9 +18,10 @@ class TestGrantPermission(unittest.TestCase):
         self.lookup_perm = mock.patch('kojihub.kojihub.lookup_perm').start()
         self.insert_processor = mock.patch('kojihub.kojihub.InsertProcessor').start()
         self.update_processor = mock.patch('kojihub.kojihub.UpdateProcessor').start()
-        self.get_user_perms = mock.patch('koji.auth.get_user_perms').start()
-        self.exports = kojihub.RootExports()
+        self.get_user_perms = mock.patch('kojihub.kojihub.get_user_perms').start()
         self.context = mock.patch('kojihub.kojihub.context').start()
+        self.context_db = mock.patch('kojihub.db.context').start()
+        self.exports = kojihub.RootExports()
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"
         self.context.session.assertPerm = mock.MagicMock()

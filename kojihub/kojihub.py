@@ -55,8 +55,6 @@ import rpm
 from psycopg2._psycopg import IntegrityError
 
 import koji
-import koji.auth
-import koji.db
 import koji.plugin
 import koji.policy
 import koji.rpmdiff
@@ -76,7 +74,8 @@ from koji.util import (
     multi_fnmatch,
     safer_move,
 )
-from koji.db import (  # noqa: F401
+from .auth import get_user_perms, get_user_groups
+from .db import (  # noqa: F401
     BulkInsertProcessor,
     DeleteProcessor,
     InsertProcessor,
@@ -1744,7 +1743,7 @@ def check_tag_access(tag_id, user_id=None):
     if user_id is None:
         raise koji.GenericError("a user_id is required")
     user_id = convert_value(user_id, cast=int)
-    perms = koji.auth.get_user_perms(user_id)
+    perms = get_user_perms(user_id)
     override = False
     if 'admin' in perms:
         override = True
@@ -9628,7 +9627,7 @@ class IsBuildOwnerTest(koji.policy.BaseSimpleTest):
             return True
         if owner['usertype'] == koji.USERTYPES['GROUP']:
             # owner is a group, check to see if user is a member
-            if owner['id'] in koji.auth.get_user_groups(user['id']):
+            if owner['id'] in get_user_groups(user['id']):
                 return True
         # otherwise...
         return False
@@ -9646,7 +9645,7 @@ class UserInGroupTest(koji.policy.BaseSimpleTest):
         user = policy_get_user(data)
         if not user:
             return False
-        groups = koji.auth.get_user_groups(user['id'])
+        groups = get_user_groups(user['id'])
         args = self.str.split()[1:]
         for group_id, group in groups.items():
             for pattern in args:
@@ -9668,7 +9667,7 @@ class HasPermTest(koji.policy.BaseSimpleTest):
         user = policy_get_user(data)
         if not user:
             return False
-        perms = koji.auth.get_user_perms(user['id'])
+        perms = get_user_perms(user['id'])
         args = self.str.split()[1:]
         for perm in perms:
             for pattern in args:
@@ -9811,7 +9810,7 @@ def check_policy(name, data, default='deny', strict=False, force=False):
         logger.error("Invalid action in policy %s, rule: %s", name, lastrule)
     if force:
         user = policy_get_user(data)
-        if user and 'admin' in koji.auth.get_user_perms(user['id']):
+        if user and 'admin' in get_user_perms(user['id']):
             msg = "Policy %s overriden by force: %s" % (name, user["name"])
             if reason:
                 msg += ": %s" % reason
@@ -12585,7 +12584,7 @@ class RootExports(object):
                                      values={'perm_id': perm_id})
             update.set(description=description)
             update.execute()
-        if perm['name'] in koji.auth.get_user_perms(user_id):
+        if perm['name'] in get_user_perms(user_id):
             raise koji.GenericError('user %s already has permission: %s' %
                                     (userinfo, perm['name']))
         insert = InsertProcessor('user_perms')
@@ -12599,7 +12598,7 @@ class RootExports(object):
         user_id = get_user(userinfo, strict=True)['id']
         perm = lookup_perm(permission, strict=True)
         perm_id = perm['id']
-        if perm['name'] not in koji.auth.get_user_perms(user_id):
+        if perm['name'] not in get_user_perms(user_id):
             raise koji.GenericError('user %s does not have permission: %s' %
                                     (userinfo, perm['name']))
         update = UpdateProcessor('user_perms', values=locals(),
@@ -13299,7 +13298,7 @@ class RootExports(object):
         - userID: User ID or username. If no userID provided, current login user's
                   permissions will be listed."""
         user_info = get_user(userID, strict=True)
-        return koji.auth.get_user_perms(user_info['id'])
+        return get_user_perms(user_info['id'])
 
     def getAllPerms(self):
         """Get a list of all permissions in the system.  Returns a list of maps.  Each

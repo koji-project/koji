@@ -15,7 +15,7 @@ class TestCreateMavenBuild(unittest.TestCase):
         self.exports = kojihub.RootExports()
         self.session = mock.MagicMock()
         self.context = mock.patch('kojihub.kojihub.context').start()
-        self.context_db = mock.patch('koji.db.context').start()
+        self.context_db = mock.patch('kojihub.db.context').start()
         self.context.session.assertPerm = mock.MagicMock()
         self.InsertProcessor = mock.patch('kojihub.kojihub.InsertProcessor',
                                           side_effect=self.getInsert).start()

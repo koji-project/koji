@@ -3,7 +3,6 @@ import unittest
 import mock
 
 import koji
-import koji.db
 import kojihub
 import kojihub.kojihub
 

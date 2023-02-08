@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import koji
-from koji.db import QueryProcessor, nextval
 from koji.context import context
 from koji.plugin import callback, export
 import koji.policy
@@ -21,6 +20,7 @@ from kojihub import (
     policy_get_user,
     readInheritanceData,
 )
+from kojihub.db import QueryProcessor, nextval
 
 
 CONFIG_FILE = "/etc/koji-hub/plugins/sidetag.conf"

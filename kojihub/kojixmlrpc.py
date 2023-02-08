@@ -31,8 +31,6 @@ import traceback
 import re
 
 import koji
-import koji.auth
-import koji.db
 import koji.plugin
 import koji.policy
 import koji.util
@@ -41,6 +39,8 @@ from koji.context import context
 # import xmlrpclib functions from koji to use tweaked Marshaller
 from koji.server import ServerError, BadRequest, RequestTimeout
 from koji.xmlrpcplus import ExtendedMarshaller, Fault, dumps, getparser
+from kojihub import auth
+from kojihub import db
 
 
 class Marshaller(ExtendedMarshaller):
@@ -295,7 +295,7 @@ class ModXMLRPCRequestHandler(object):
         if not hasattr(context, "session"):
             # we may be called again by one of our meta-calls (like multiCall)
             # so we should only create a session if one does not already exist
-            context.session = koji.auth.Session()
+            context.session = auth.Session()
             try:
                 context.session.validate()
             except koji.AuthLockError:
@@ -343,7 +343,7 @@ class ModXMLRPCRequestHandler(object):
         results and errors, and return those as a list."""
         results = []
         for call in calls:
-            savepoint = koji.db.Savepoint('multiCall_loop')
+            savepoint = db.Savepoint('multiCall_loop')
             try:
                 result = self._dispatch(call['methodName'], call['params'])
             except Fault as fault:
@@ -729,13 +729,13 @@ def server_setup(environ):
         registry = get_registry(opts, plugins)
         policy = get_policy(opts, plugins)
         if opts.get('DBConnectionString'):
-            koji.db.provideDBopts(dsn=opts['DBConnectionString'])
+            db.provideDBopts(dsn=opts['DBConnectionString'])
         else:
-            koji.db.provideDBopts(database=opts["DBName"],
-                                  user=opts["DBUser"],
-                                  password=opts.get("DBPass", None),
-                                  host=opts.get("DBHost", None),
-                                  port=opts.get("DBPort", None))
+            db.provideDBopts(database=opts["DBName"],
+                             user=opts["DBUser"],
+                             password=opts.get("DBPass", None),
+                             host=opts.get("DBHost", None),
+                             port=opts.get("DBPort", None))
     except Exception:
         tb_str = ''.join(traceback.format_exception(*sys.exc_info()))
         logger.error(tb_str)
@@ -785,7 +785,7 @@ def application(environ, start_response):
             context.environ = environ
             context.policy = policy
             try:
-                context.cnx = koji.db.connect()
+                context.cnx = db.connect()
             except Exception:
                 return offline_reply(start_response, msg="database outage")
             h = ModXMLRPCRequestHandler(registry)
@@ -844,13 +844,13 @@ def get_registry(opts, plugins):
     hostFunctions = kojihub.HostExports()
     registry.register_instance(functions)
     registry.register_module(hostFunctions, "host")
-    registry.register_function(koji.auth.login)
-    registry.register_function(koji.auth.sslLogin)
-    registry.register_function(koji.auth.logout)
-    registry.register_function(koji.auth.subsession)
-    registry.register_function(koji.auth.logoutChild)
-    registry.register_function(koji.auth.exclusiveSession)
-    registry.register_function(koji.auth.sharedSession)
+    registry.register_function(auth.login)
+    registry.register_function(auth.sslLogin)
+    registry.register_function(auth.logout)
+    registry.register_function(auth.subsession)
+    registry.register_function(auth.logoutChild)
+    registry.register_function(auth.exclusiveSession)
+    registry.register_function(auth.sharedSession)
     for name in opts.get('Plugins', '').split():
         plugin = plugins.get(name)
         if not plugin:

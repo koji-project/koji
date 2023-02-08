@@ -18,7 +18,7 @@ class TestCGImporter(unittest.TestCase):
         if not os.path.exists(self.TMP_PATH):
             os.mkdir(self.TMP_PATH)
         self.path_work = mock.patch('koji.pathinfo.work').start()
-        self.context_db = mock.patch('koji.db.context').start()
+        self.context_db = mock.patch('kojihub.db.context').start()
         self.context = mock.patch('kojihub.kojihub.context').start()
         self.get_build = mock.patch('kojihub.kojihub.get_build').start()
         self.get_user = mock.patch('kojihub.kojihub.get_user').start()
@@ -271,7 +271,7 @@ class TestCGReservation(unittest.TestCase):
         self.inserts = []
         self.updates = []
 
-        self.context_db = mock.patch('koji.db.context').start()
+        self.context_db = mock.patch('kojihub.db.context').start()
         self.context_db.session.user_id = 123456
         self.mock_cursor = mock.MagicMock()
         self.context_db.cnx.cursor.return_value = self.mock_cursor

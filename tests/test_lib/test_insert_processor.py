@@ -7,7 +7,7 @@ import kojihub
 
 class TestInsertProcessor(unittest.TestCase):
     def setUp(self):
-        self.context_db = mock.patch('koji.db.context').start()
+        self.context_db = mock.patch('kojihub.db.context').start()
 
     def tearDown(self):
         mock.patch.stopall()
@@ -92,7 +92,7 @@ class TestInsertProcessor(unittest.TestCase):
 
 class TestBulkInsertProcessor(unittest.TestCase):
     def setUp(self):
-        self.context_db = mock.patch('koji.db.context').start()
+        self.context_db = mock.patch('kojihub.db.context').start()
 
     def tearDown(self):
         mock.patch.stopall()
