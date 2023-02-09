@@ -59,6 +59,40 @@ from koji.tasks import (  # noqa: F401
 )
 
 
+class LibvirtCallable(object):
+    # Wrapper class for libvirt call, used in LibvirtConnection
+    def __init__(self, libvirt_conn, method):
+        self.conn = libvirt_conn
+        self.method = method
+
+    def __call__(self, *args, **kwargs):
+        max_retries = 3
+        retry = 0
+        for retry in range(max_retries):
+            try:
+                return getattr(self.conn._conn, self.method)(*args, **kwargs)
+            except libvirt.libvirtError as ex:
+                if ex.get_error_code() == libvirt.VIR_ERR_INTERNAL_ERROR and retry < max_retries:
+                    logging.getLogger("koji.vm").warning(
+                        'Internal libvirt error: %s, retry #%d/%d' % (ex, retry, max_retries))
+                    time.sleep(5)
+                    self.conn._conn = libvirt.open(None)
+                else:
+                    raise
+
+
+class LibvirtConnection(object):
+    # Wrapper class for libvirt connection retrying calls failed on libvirt connection
+    # e.g. libvirtd restart. Without it kojivmd stucks in main loop
+    def __init__(self) -> None:
+        self._conn = libvirt.open(None)
+
+    def __getattr__(self, name):
+        if name == '_conn':
+            return self._conn
+        return LibvirtCallable(self, name)
+
+
 # Register libvirt handler
 def libvirt_callback(ignore, err):
     if err[3] != libvirt.VIR_ERR_ERROR:
@@ -866,7 +900,7 @@ class VMExecTask(BaseTaskHandler):
 
         self.task_info = task_info
 
-        conn = libvirt.open(None)
+        conn = LibvirtConnection()
         clone_name = self.clone(conn, name, opts)
         self.logger.debug('Cloned VM %s to %s', name, clone_name)
         try:
@@ -916,7 +950,7 @@ class VMExecTask(BaseTaskHandler):
 class VMTaskManager(TaskManager):
     def __init__(self, options, session):
         super(VMTaskManager, self).__init__(options, session)
-        self.libvirt_conn = libvirt.open(None)
+        self.libvirt_conn = LibvirtConnection()
         self.macaddrs = {}
         self.macaddr_lock = threading.Lock()
         self.expired_vms = {}
