@@ -760,6 +760,8 @@ def activate_session(session, options):
             if getattr(options, 'keytab', None) and getattr(options, 'principal', None):
                 session.gssapi_login(principal=options.principal, keytab=options.keytab,
                                      proxyuser=runas)
+            elif getattr(options, 'principal', None):
+                session.gssapi_login(principal=options.principal,proxyuser=runas)
             else:
                 session.gssapi_login(proxyuser=runas)
         except socket.error as e:
