@@ -757,13 +757,12 @@ def activate_session(session, options):
         session.login()
     elif options.authtype == "kerberos" or options.authtype is None:
         try:
-            if getattr(options, 'keytab', None) and getattr(options, 'principal', None):
-                session.gssapi_login(principal=options.principal, keytab=options.keytab,
-                                     proxyuser=runas)
-            elif getattr(options, 'principal', None):
-                session.gssapi_login(principal=options.principal,proxyuser=runas)
-            else:
-                session.gssapi_login(proxyuser=runas)
+            kwargs = {'proxyuser': runas}
+            if getattr(options, 'principal', None):
+                kwargs['principal'] = options.principal
+                if getattr(options, 'keytab', None):
+                    kwargs['keytab'] = options.keytab
+            session.gssapi_login(**kwargs)
         except socket.error as e:
             warn("Could not connect to Kerberos authentication service: %s" % e.args[1])
     if not noauth and not session.logged_in:
