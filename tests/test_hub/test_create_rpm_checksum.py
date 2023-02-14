@@ -35,5 +35,5 @@ class TestCreateRPMChecksum(unittest.TestCase):
         query = self.queries[0]
         self.assertEqual(query.tables, ['rpm_checksum'])
         self.assertEqual(query.joins, None)
-        self.assertEqual(query.clauses,
-                         ["checksum_type IN %(checksum_types)s", "sigkey=%(sigkey)s"])
+        self.assertEqual(set(query.clauses), {"checksum_type IN %(checksum_types)s",
+                                              "sigkey=%(sigkey)s", "rpm_id = %(rpm_id)d"})

@@ -15592,8 +15592,10 @@ def create_rpm_checksum(rpm_id, sigkey, chsum_dict):
     checksum_type_int = [koji.CHECKSUM_TYPES[func] for func, _ in chsum_dict.items()]
     query = QueryProcessor(tables=['rpm_checksum'],
                            columns=['checksum_type', 'checksum', 'sigkey', 'rpm_id'],
-                           clauses=["checksum_type IN %(checksum_types)s", 'sigkey=%(sigkey)s'],
-                           values={'checksum_types': checksum_type_int, 'sigkey': sigkey})
+                           clauses=["checksum_type IN %(checksum_types)s", 'sigkey=%(sigkey)s',
+                                    'rpm_id = %(rpm_id)d'],
+                           values={'checksum_types': checksum_type_int, 'sigkey': sigkey,
+                                   'rpm_id': rpm_id})
     rows = query.execute()
     if len(rows) == len(checksum_type_int):
         return None
