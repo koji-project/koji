@@ -714,7 +714,6 @@ class RawHeader(object):
         # sort entries by offset, dtype
         # also rearrange: tag, dtype, offset, count -> offset, dtype, tag, count
         order = sorted([(x[2], x[1], x[0], x[3]) for x in six.itervalues(self.index)])
-        next = store
         # map some rpmtag codes
         tags = {}
         for name, code in six.iteritems(rpm.__dict__):
@@ -722,6 +721,8 @@ class RawHeader(object):
                 tags[code] = name[7:].lower()
         if sig:
             # signature headers have a few different values
+            # the SIGTAG_* values are not exposed in the python api
+            # see rpmtag.h
             tags[1000] = 'size'
             tags[1001] = 'lemd5_1'
             tags[1002] = 'pgp'
@@ -731,29 +732,59 @@ class RawHeader(object):
             tags[1006] = 'pgp5'
             tags[1007] = 'payloadsize'
             tags[1008] = 'reservedspace'
+        # expect first entry at start
+        expected_ofs = store
         for entry in order:
             # tag, dtype, offset, count = entry
             offset, dtype, tag, count = entry
             pos = store + offset
-            if next is not None:
-                if pos > next:
+            if expected_ofs is not None:
+                # expected_ofs will be None after an unrecognized data type
+                # integer types are byte aligned for their size
+                align = None
+                pad = 0
+                if dtype == 3:  # INT16
+                    align = 2
+                elif dtype == 4:  # INT32
+                    align = 4
+                elif dtype == 5:  # INT64
+                    align = 8
+                if align:
+                    pad = (align - (expected_ofs % align)) % align
+                    expected_ofs += pad
+                if pos > expected_ofs:
                     print("** HOLE between entries")
-                    print("Hex: %s" % hex_string(self.header[next:pos]))
-                    print("Data: %r" % self.header[next:pos])
-                elif pos < next:
+                    print("Size: %d" % (pos - expected_ofs))
+                    print("Hex: %s" % hex_string(self.header[expected_ofs:pos]))
+                    print("Data: %r" % self.header[expected_ofs:pos])
+                    print("Padding: %i" % pad)
+                    print("Expected offset: 0x%x" % (expected_ofs - store))
+                elif pad and pos == expected_ofs - pad:
+                    print("** Missing expected padding")
+                    print("Padding: %i" % pad)
+                    print("Expected offset: 0x%x" % (expected_ofs - store))
+                elif pos < expected_ofs:
                     print("** OVERLAPPING entries")
-            print("Tag: %d [%s], Type: %d, Offset: %x, Count: %d"
+                    print("Overlap size: %d" % (expected_ofs - pos))
+                    print("Expected offset: 0x%x" % (expected_ofs - store))
+                elif pad:
+                    # pos == expected_ofs
+                    print("Alignment padding: %i" % pad)
+                    padbytes = self.header[pos-pad:pos]
+                    if padbytes != b'\0' * pad:
+                        print("NON-NULL padding bytes: %s" % hex_string(padbytes))
+            print("Tag: %d [%s], Type: %d, Offset: 0x%x, Count: %d"
                   % (tag, tags.get(tag, '?'), dtype, offset, count))
             if dtype == 0:
                 # null
                 print("[NULL entry]")
-                next = pos
+                expected_ofs = pos
             elif dtype == 1:
                 # char
                 for i in range(count):
                     print("Char: %r" % self.header[pos])
                     pos += 1
-                next = pos
+                expected_ofs = pos
             elif dtype >= 2 and dtype <= 5:
                 # integer
                 n = 1 << (dtype - 2)
@@ -763,7 +794,7 @@ class RawHeader(object):
                     num = multibyte(data)
                     print("Int(%d): %d" % (n, num))
                     pos += n
-                next = pos
+                expected_ofs = pos
             elif dtype == 6:
                 # string (null terminated)
                 end = self.header.find(six.b('\0'), pos)
@@ -773,17 +804,17 @@ class RawHeader(object):
                     print('INVALID STRING')
                     print("String(%d): %r" % (end - pos, self.header[pos:end]))
                     raise
-                next = end + 1
+                expected_ofs = end + 1
             elif dtype == 7:
                 print("Data: %s" % hex_string(self.header[pos:pos + count]))
-                next = pos + count
+                expected_ofs = pos + count
             elif dtype == 8:
                 # string array
                 for i in range(count):
                     end = self.header.find(six.b('\0'), pos)
                     print("String(%d): %r" % (end - pos, self.header[pos:end]))
                     pos = end + 1
-                next = pos
+                expected_ofs = pos
             elif dtype == 9:
                 # unicode string array
                 for i in range(count):
@@ -794,18 +825,22 @@ class RawHeader(object):
                         print('INVALID STRING')
                         print("i18n(%d): %r" % (end - pos, self.header[pos:end]))
                     pos = end + 1
-                next = pos
+                expected_ofs = pos
             else:
-                print("Skipping data type %x" % dtype)
-                next = None
-        if next is not None:
+                print("Skipping data type 0x%x" % dtype)
+                expected_ofs = None
+        if expected_ofs is not None:
             pos = store + self.datalen
-            if next < pos:
+            if expected_ofs < pos:
                 print("** HOLE at end of data block")
-                print("Hex: %s" % hex_string(self.header[next:pos]))
-                print("Data: %r" % self.header[next:pos])
-            elif pos > next:
+                print("Size: %d" % (pos - expected_ofs))
+                print("Hex: %s" % hex_string(self.header[expected_ofs:pos]))
+                print("Data: %r" % self.header[expected_ofs:pos])
+                print("Offset: 0x%x" % self.datalen)
+            elif pos > expected_ofs:
                 print("** OVERFLOW in data block")
+                print("Overflow size: %d" % (expected_ofs - pos))
+                print("Offset: 0x%x" % self.datalen)
 
     def __getitem__(self, key):
         tag, dtype, offset, count = self.index[key]
