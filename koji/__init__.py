@@ -703,7 +703,7 @@ class RawHeader(object):
         self.datalen = dl
         self.index = index
 
-    def dump(self):
+    def dump(self, sig=False):
         print("HEADER DUMP:")
         # calculate start of store
         il = len(self.index)
@@ -720,6 +720,17 @@ class RawHeader(object):
         for name, code in six.iteritems(rpm.__dict__):
             if name.startswith('RPMTAG_') and isinstance(code, int):
                 tags[code] = name[7:].lower()
+        if sig:
+            # signature headers have a few different values
+            tags[1000] = 'size'
+            tags[1001] = 'lemd5_1'
+            tags[1002] = 'pgp'
+            tags[1003] = 'lemd5_2'
+            tags[1004] = 'md5'
+            tags[1005] = 'gpg'
+            tags[1006] = 'pgp5'
+            tags[1007] = 'payloadsize'
+            tags[1008] = 'reservedspace'
         for entry in order:
             # tag, dtype, offset, count = entry
             offset, dtype, tag, count = entry
