@@ -703,7 +703,7 @@ class RawHeader(object):
         self.datalen = dl
         self.index = index
 
-    def dump(self, sig=False):
+    def dump(self, sig=None):
         print("HEADER DUMP:")
         # calculate start of store
         il = len(self.index)
@@ -719,7 +719,12 @@ class RawHeader(object):
         for name, code in six.iteritems(rpm.__dict__):
             if name.startswith('RPMTAG_') and isinstance(code, int):
                 tags[code] = name[7:].lower()
+        if sig is None:
+            # detect whether this is a signature header
+            HEADER_SIGNATURES = 62
+            sig = bool(self.get(HEADER_SIGNATURES))
         if sig:
+            print("Parsing as a signature header")
             # signature headers have a few different values
             # the SIGTAG_* values are not exposed in the python api
             # see rpmtag.h
