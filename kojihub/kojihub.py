@@ -12380,7 +12380,8 @@ class RootExports(object):
                     missing_chsum_sigkeys[r['sigkey']].remove(
                         koji.CHECKSUM_TYPES[r['checksum_type']])
                     # delete key if everything was removed
-                    if len(missing_chsum_sigkeys[r['sigkey']]):
+                    if not missing_chsum_sigkeys[r['sigkey']]:
+                        print(f'deleting {r["sigkey"]}')
                         del missing_chsum_sigkeys[r['sigkey']]
 
         if missing_chsum_sigkeys:
