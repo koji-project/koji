@@ -83,7 +83,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.31.1
+Version: 1.32.0
 Release: %{release}%{?dist}
 License: LGPL-2.1-only and GPL-2.0-or-later
 # the included arch lib from yum's rpmUtils is GPLv2+
@@ -648,6 +648,31 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Fri Feb  3 2023  Tomas Kopecek <tkopecek at redhat.com> - 1.32.0-1
+- PR#3530: use_fast_upload=True as default everywhere
+- PR#3562: rpmdiff: replace deprecated rpm call
+- PR#3584: kojikamid: remove clamav scanner
+- PR#3588: Move hub code to site-packages
+- PR#3589: Replace _multiRow, _singleRow, _singleValue with QP
+- PR#3599: Remove krbLogin API
+- PR#3608: koji-gc: use history to query trashcan contents
+- PR#3614: fix default archivetypes extensions
+- PR#3618: handle migrated rpmdb path
+- PR#3624: unify migration scripts
+- PR#3632: Next rewrite Select/Update queries
+- PR#3636: Deprecated get_sequence_value
+- PR#3647: hub: remove print statement
+- PR#3649: Remove DisableGSSAPIProxyDNFallback option on Hub
+- PR#3654: replace deprecated distutils
+- PR#3657: Fix callnum handling
+- PR#3659: rawdata not needed for callnum update
+- PR#3660: Add custom_user_metadata to build info for wrapperRPM build type
+- PR#3661: Fix auth unit tests
+- PR#3663: cli: improve help for call --python option
+- PR#3664: Recreate timeouted session
+- PR#3668: Reset build processor values with specific value only
+- PR#3672: CLI download-tasks has sorted tasks in check closed/not closed tasks
+
 * Mon Jan  9 2023  Tomas Kopecek <tkopecek at redhat.com> - 1.31.1-1
 - PR#3644: www: fix target link in taskinfo page
 - PR#3650: Add test cases for help
