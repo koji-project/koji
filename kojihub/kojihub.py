@@ -12379,6 +12379,9 @@ class RootExports(object):
                 if r['checksum_type'] in checksum_type_int and r['sigkey'] in sigkeys:
                     missing_chsum_sigkeys[r['sigkey']].remove(
                         koji.CHECKSUM_TYPES[r['checksum_type']])
+                    # delete key if everything was removed
+                    if len(missing_chsum_sigkeys[r['sigkey']]):
+                        del missing_chsum_sigkeys[r['sigkey']]
 
         if missing_chsum_sigkeys:
             binfo = get_build(rpm_info['build_id'])
