@@ -721,8 +721,7 @@ class RawHeader(object):
                 tags[code] = name[7:].lower()
         if sig is None:
             # detect whether this is a signature header
-            HEADER_SIGNATURES = 62
-            sig = bool(self.get(HEADER_SIGNATURES))
+            sig = bool(self.get(RPM_TAG_HEADERSIGNATURES))
         if sig:
             print("Parsing as a signature header")
             # signature headers have a few different values
