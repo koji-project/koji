@@ -670,8 +670,6 @@ class RawHeader(object):
     # see Maximum RPM Appendix A: Format of the RPM File
 
     def __init__(self, data):
-        if rpm is None:
-            raise GenericError("rpm's python bindings are not installed")
         if data[0:3] != RPM_HEADER_MAGIC:
             raise GenericError("Invalid rpm header: bad magic: %r" % (data[0:3],))
         self.header = data
@@ -716,9 +714,12 @@ class RawHeader(object):
         order = sorted([(x[2], x[1], x[0], x[3]) for x in six.itervalues(self.index)])
         # map some rpmtag codes
         tags = {}
-        for name, code in six.iteritems(rpm.__dict__):
-            if name.startswith('RPMTAG_') and isinstance(code, int):
-                tags[code] = name[7:].lower()
+        if rpm:
+            for name, code in six.iteritems(rpm.__dict__):
+                if name.startswith('RPMTAG_') and isinstance(code, int):
+                    tags[code] = name[7:].lower()
+        else:
+            print("rpm's python bindings are not installed. Unable to convert tag codes")
         if sig is None:
             # detect whether this is a signature header
             sig = bool(self.get(RPM_TAG_HEADERSIGNATURES))
