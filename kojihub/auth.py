@@ -33,7 +33,7 @@ import koji
 from koji.context import context
 from koji.util import to_list
 
-from kojihub.db import DeleteProcessor, InsertProcessor, QueryProcessor, UpdateProcessor, nextval
+from .db import DeleteProcessor, InsertProcessor, QueryProcessor, UpdateProcessor, nextval
 
 
 # 1 - load session if provided

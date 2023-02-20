@@ -29,7 +29,7 @@ class TestCheckVolumePolicy(unittest.TestCase):
     def tearDown(self):
         mock.patch.stopall()
 
-    @mock.patch('kojixmlrpc.kojihub', new=kojihub, create=True)
+    @mock.patch('kojihub.kojixmlrpc.kojihub', new=kojihub, create=True)
     def load_policy(self, policy):
         '''policy is the policy dict with text values'''
         plugin = FakePlugin()

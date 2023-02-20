@@ -30,6 +30,7 @@ class TestAuthSession(unittest.TestCase):
     def setUp(self):
         self.context = mock.patch('kojihub.auth.context').start()
         kojihub.db.context = self.context
+        kojihub.auth.context = self.context
         self.UpdateProcessor = mock.patch('kojihub.auth.UpdateProcessor',
                                           side_effect=self.getUpdate).start()
         self.updates = []
@@ -217,11 +218,10 @@ class TestAuthSession(unittest.TestCase):
         with self.assertRaises(AttributeError):
             s.non_existing_attribute
 
-    @mock.patch('auth.context')
-    def test_str(self, context):
+    def test_str(self):
         """auth.Session string representation"""
         s, cntext = self.get_session()
-        context.cnx = cntext.cnx
+        self.context.cnx = cntext.cnx
 
         s.logged_in = False
         s.message = 'msg'
@@ -276,9 +276,8 @@ class TestAuthSession(unittest.TestCase):
         self.context.environ = {'REMOTE_ADDR': '127.0.0.1'}
         self.assertEqual(s.get_remote_ip(), 'ip')
 
-    @mock.patch('auth.context')
-    def test_login(self, context):
-        s, cntext = self.get_session()
+    def test_login(self):
+        s, _ = self.get_session()
 
         # already logged in
         with self.assertRaises(koji.GenericError):
@@ -412,9 +411,8 @@ class TestAuthSession(unittest.TestCase):
             s.logout()
         self.assertEqual(cm.exception.args[0], 'Not logged in')
 
-    @mock.patch('auth.context')
-    def test_logout_logged(self, context):
-        s, cntext = self.get_session()
+    def test_logout_logged(self):
+        s, _ = self.get_session()
         s.logged_in = True
         s.logout()
 
@@ -438,9 +436,8 @@ class TestAuthSession(unittest.TestCase):
             s.logoutChild(111)
         self.assertEqual(cm.exception.args[0], 'Not logged in')
 
-    @mock.patch('auth.context')
-    def test_logoutChild_logged(self, context):
-        s, cntext = self.get_session()
+    def test_logoutChild_logged(self):
+        s, _ = self.get_session()
         s.logged_in = True
         s.logoutChild(111)
 
@@ -485,9 +482,8 @@ class TestAuthSession(unittest.TestCase):
         self.assertEqual(len(self.queries), 5)
         self.assertEqual(len(self.updates), 2)
 
-    @mock.patch('auth.context')
-    def test_makeExclusive(self, context):
-        s, cntext = self.get_session()
+    def test_makeExclusive(self):
+        s, _ = self.get_session()
         s.master = None
         s.exclusive = False
         self.query_singleValue.return_value = 123

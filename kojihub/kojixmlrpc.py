@@ -39,8 +39,8 @@ from koji.context import context
 # import xmlrpclib functions from koji to use tweaked Marshaller
 from koji.server import ServerError, BadRequest, RequestTimeout
 from koji.xmlrpcplus import ExtendedMarshaller, Fault, dumps, getparser
-from kojihub import auth
-from kojihub import db
+from . import auth
+from . import db
 
 
 class Marshaller(ExtendedMarshaller):
