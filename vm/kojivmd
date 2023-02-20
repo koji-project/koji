@@ -76,6 +76,10 @@ class LibvirtCallable(object):
                     logging.getLogger("koji.vm").warning(
                         'Internal libvirt error: %s, retry #%d/%d' % (ex, retry, max_retries))
                     time.sleep(5)
+                    try:
+                        self.conn._conn.close()
+                    except Exception:
+                        pass
                     self.conn._conn = libvirt.open(None)
                 else:
                     raise
