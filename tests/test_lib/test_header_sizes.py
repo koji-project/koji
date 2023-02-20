@@ -58,9 +58,12 @@ class TestHeaderSizes(unittest.TestCase):
             # The following bit uses rpmlib to read the header, which advances the file
             # pointer past it. This is the same approach rpm2cpio uses.
             fd = os.open(fn, os.O_RDONLY)
-            os.lseek(fd, s_lead + s_sig, 0)  # seek to header start
-            hdr, h_start = rpm.readHeaderFromFD(fd)
-            p_offset = os.lseek(fd, 0, os.SEEK_CUR)
+            try:
+                os.lseek(fd, s_lead + s_sig, 0)  # seek to header start
+                hdr, h_start = rpm.readHeaderFromFD(fd)
+                p_offset = os.lseek(fd, 0, os.SEEK_CUR)
+            finally:
+                os.close(fd)
             expect_payload = s_lead + s_sig + s_hdr
             if not hdr:
                 raise Exception("rpm did not return a header")
