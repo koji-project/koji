@@ -230,7 +230,8 @@ def listSideTags(basetag=None, user=None, queryOpts=None):
 
 
 @export
-def editSideTag(sidetag, debuginfo=None, rpm_macros=None, remove_rpm_macros=None):
+def editSideTag(sidetag, debuginfo=None, rpm_macros=None, remove_rpm_macros=None, extra=None,
+                remove_extra=None):
     """Restricted ability to modify sidetags, parent tag must have:
     sidetag_debuginfo_allowed: 1
     sidetag_rpm_macros_allowed: 1
@@ -255,6 +256,16 @@ def editSideTag(sidetag, debuginfo=None, rpm_macros=None, remove_rpm_macros=None
     is_sidetag(sidetag, raise_error=True)
     is_sidetag_owner(sidetag, user, raise_error=True)
 
+    if ((extra is not None or remove_extra is not None) and
+            not (context.session.hasPerm('sidetag_admin') or context.session.hasPerm('admin'))):
+        raise koji.GenericError(
+            "Extra can be modified only with sidetag_admin or admin permissions.")
+
+    if extra is None:
+        extra = {}
+    if remove_extra is None:
+        remove_extra = []
+
     parent_id = readInheritanceData(sidetag['id'])[0]['parent_id']
     parent = get_tag(parent_id)
 
@@ -265,7 +276,7 @@ def editSideTag(sidetag, debuginfo=None, rpm_macros=None, remove_rpm_macros=None
             and not parent['extra'].get('sidetag_rpm_macros_allowed'):
         raise koji.GenericError("RPM macros change is not allowed in parent tag.")
 
-    kwargs = {'extra': {}}
+    kwargs = {'extra': extra, 'remove_extra': remove_extra}
     if debuginfo is not None:
         kwargs['extra']['with_debuginfo'] = bool(debuginfo)
     if rpm_macros is not None:
@@ -274,7 +285,7 @@ def editSideTag(sidetag, debuginfo=None, rpm_macros=None, remove_rpm_macros=None
             kwargs['extra']['rpm.macro.%s' % macro] = value
     if remove_rpm_macros is not None:
         convert_value(remove_rpm_macros, cast=list, check_only=True)
-        kwargs['remove_extra'] = ['rpm.macro.%s' % m for m in remove_rpm_macros]
+        kwargs['remove_extra'] += ['rpm.macro.%s' % m for m in remove_rpm_macros]
 
     _edit_tag(sidetag['id'], **kwargs)
 
