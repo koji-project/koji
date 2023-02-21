@@ -3706,8 +3706,7 @@ def handle_clone_tag(goptions, session, args):
     parser.add_option("-f", "--force", action="store_true",
                       help="override tag locks if necessary")
     parser.add_option("-n", "--test", action="store_true", help=SUPPRESS_HELP)
-    parser.add_option("--batch", type='int', default=100, metavar='SIZE',
-                      help="batch size of multicalls [0 to disable, default: %default]")
+    parser.add_option("--batch", type='int', default=100, metavar='SIZE', help=SUPPRESS_HELP)
     (options, args) = parser.parse_args(args)
 
     if len(args) != 2:
@@ -3740,8 +3739,6 @@ def handle_clone_tag(goptions, session, args):
     except koji.GenericError:
         parser.error("No such src-tag: %s" % args[0])
     dsttag = session.getTag(args[1])
-    if not srctag:
-        parser.error("No such src-tag: %s" % args[0])
     if (srctag['locked'] and not options.force) \
             or (dsttag and dsttag['locked'] and not options.force):
         parser.error("Error: You are attempting to clone from or to a tag which is locked.\n"
