@@ -904,7 +904,7 @@ class VMExecTask(BaseTaskHandler):
 
         self.task_info = task_info
 
-        conn = LibvirtConnection()
+        conn = libvirt.open(None)
         clone_name = self.clone(conn, name, opts)
         self.logger.debug('Cloned VM %s to %s', name, clone_name)
         try:
