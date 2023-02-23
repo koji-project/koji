@@ -607,6 +607,11 @@ def download_file(url, relpath, quiet=False, noprogress=False, size=None,
                     _download_progress(length, pos, filesize)
             if not length and not (quiet or noprogress):
                 _download_progress(pos, pos, filesize)
+            last_modified = response.headers.get('last-modified')
+            if last_modified:
+                mtime = dateutil.parser.parse(last_modified)
+                if mtime:
+                    os.utime(relpath, (time.time() ,time.mktime(mtime.astimezone().timetuple())))
     finally:
         f.close()
         if pos == 0:
