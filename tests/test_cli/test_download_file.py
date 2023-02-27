@@ -56,9 +56,10 @@ class TestDownloadFile(unittest.TestCase):
         else:
             self.assertEqual(cm.exception.args, (21, 'Is a directory'))
 
+    @mock.patch('os.utime')
     @mock.patch('os.unlink')
     @mock_open()
-    def test_handle_download_file(self, m_open, os_unlink):
+    def test_handle_download_file(self, m_open, os_unlink, os_utime):
         self.reset_mock()
         m_open.return_value.tell.return_value = 0
         rsp_head = self.head.return_value
@@ -66,7 +67,10 @@ class TestDownloadFile(unittest.TestCase):
         rsp_head.headers = {'Content-Length': '5'}
         response = mock.MagicMock()
         self.get_mock.return_value = response
-        response.headers.get.return_value = '5'  # content-length
+        response.headers.get.side_effect = [
+            '5',        # content-length
+            'Thu, 02 Mar 2023 11:21:12 GMT',  # last-modified
+        ]
         response.iter_content.return_value = ['abcde']
 
         rv = download_file("http://url", self.filename)
@@ -76,8 +80,7 @@ class TestDownloadFile(unittest.TestCase):
         self.assertMultiLineEqual(actual, expected)
 
         self.get_mock.assert_called_once()
-        m_open.assert_called_once()
-        response.headers.get.assert_not_called()
+        response.headers.get.assert_called_once()
         response.iter_content.assert_called_once()
         self.assertIsNone(rv)
 
@@ -90,9 +93,9 @@ class TestDownloadFile(unittest.TestCase):
         rsp_head.status_code = 200
         rsp_head.headers = {'Content-Length': str(65536 * 2)}
         response = mock.MagicMock()
-        self.get_mock.return_value = response
         response.headers.get.return_value = None  # content-length
         response.iter_content.return_value = ['a' * 65536, 'b' * 65536]
+        self.get_mock.return_value = response
 
         rv = download_file("http://url", self.filename)
 
@@ -103,19 +106,30 @@ class TestDownloadFile(unittest.TestCase):
 
         self.get_mock.assert_called_once()
         m_open.assert_called_once()
-        response.headers.get.assert_not_called()
+        response.headers.get.assert_called_once()
         response.iter_content.assert_called_once()
         self.assertIsNone(rv)
 
     def test_handle_download_file_with_size(self):
+        response = mock.MagicMock()
+        response.headers.get.side_effect = [
+            '5',        # content-length
+            '2022-01-01',  # last-modified
+        ]
+        self.get_mock.return_value = response
         rv = download_file("http://url", self.filename, size=10, num=8)
         actual = self.stdout.getvalue()
         expected = 'Downloading [8/10]: %s\n\n' % self.filename
         self.assertMultiLineEqual(actual, expected)
         self.get_mock.assert_called_once()
+        self.assertEqual(len(response.headers.get.mock_calls), 2)
         self.assertIsNone(rv)
 
     def test_handle_download_file_quiet_noprogress(self):
+        response = mock.MagicMock()
+        response.headers.get.return_value = None
+        self.get_mock.return_value = response
+
         download_file("http://url", self.filename, quiet=True, noprogress=False)
         actual = self.stdout.getvalue()
         expected = ''
