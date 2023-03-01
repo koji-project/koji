@@ -29,7 +29,7 @@ class TestSetHostEnabled(unittest.TestCase):
                                           side_effect=self.getUpdate).start()
         self.updates = []
         self.context = mock.patch('kojihub.kojihub.context').start()
-        self.context_db = mock.patch('koji.db.context').start()
+        self.context_db = mock.patch('kojihub.db.context').start()
         self.get_host = mock.patch('kojihub.kojihub.get_host').start()
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"

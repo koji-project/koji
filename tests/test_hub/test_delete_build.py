@@ -42,7 +42,7 @@ class TestDeleteBuild(unittest.TestCase):
         self.UpdateProcessor = mock.patch('kojihub.kojihub.UpdateProcessor',
                                           side_effect=self.getUpdate).start()
         self.updates = []
-        self.context_db = mock.patch('koji.db.context').start()
+        self.context_db = mock.patch('kojihub.db.context').start()
         self.context_db.session.assertLogin = mock.MagicMock()
         self.context_db.event_id = 42
         self.context_db.session.user_id = 24

@@ -675,7 +675,6 @@ Here are some guidelines on producing preferable pull requests.
 
      - ``cli/*``
      - ``koji/__init__.py``
-     - ``koji/auth.py``
      - ``koji/tasks.py``
      - ``koji/util.py``
      - ``tests/test_lib/*``

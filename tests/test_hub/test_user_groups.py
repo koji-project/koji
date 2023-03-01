@@ -32,7 +32,7 @@ class TestGrouplist(unittest.TestCase):
 
     def setUp(self):
         self.context = mock.patch('kojihub.kojihub.context').start()
-        self.context_db = mock.patch('koji.db.context').start()
+        self.context_db = mock.patch('kojihub.db.context').start()
         self.get_user = mock.patch('kojihub.kojihub.get_user').start()
         self.verify_name_internal = mock.patch('kojihub.kojihub.verify_name_internal').start()
         # It seems MagicMock will not automatically handle attributes that

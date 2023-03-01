@@ -22,7 +22,7 @@ class TestCompleteMavenBuild(unittest.TestCase):
         mock.patch('koji.pathinfo', new=self.pathinfo).start()
         self.hostcalls = kojihub.HostExports()
         self.context = mock.patch('kojihub.kojihub.context').start()
-        self.context_db = mock.patch('koji.db.context').start()
+        self.context_db = mock.patch('kojihub.db.context').start()
         self.context.opts = {'EnableMaven': True}
         mock.patch('kojihub.kojihub.Host').start()
         self.Task = mock.patch('kojihub.kojihub.Task').start()
@@ -34,8 +34,8 @@ class TestCompleteMavenBuild(unittest.TestCase):
         mock.patch.object(kojihub.BuildRoot, 'load', new=self.my_buildroot_load).start()
         mock.patch('kojihub.kojihub.import_archive_internal',
                    new=self.my_import_archive_internal).start()
-        mock.patch('koji.db._dml').start()
-        mock.patch('koji.db._fetchSingle').start()
+        mock.patch('kojihub.db._dml').start()
+        mock.patch('kojihub.db._fetchSingle').start()
         mock.patch('kojihub.kojihub.build_notification').start()
         mock.patch('kojihub.kojihub.assert_policy').start()
         mock.patch('kojihub.kojihub.check_volume_policy',

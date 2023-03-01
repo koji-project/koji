@@ -6,8 +6,8 @@ from optparse import OptionParser
 from koji.context import context
 
 import koji
-import koji.db
-from koji.db import DeleteProcessor, QueryProcessor, BulkInsertProcessor
+import kojihub.db
+from kojihub.db import DeleteProcessor, QueryProcessor, BulkInsertProcessor
 
 
 def clean_sessions(cursor, vacuum, test, age, absolute):
@@ -223,17 +223,17 @@ if __name__ == "__main__":
         opts[name] = default
 
     if opts.get('DBConnectionString'):
-        koji.db.provideDBopts(dsn=opts['DBConnectionString'])
+        kojihub.db.provideDBopts(dsn=opts['DBConnectionString'])
     else:
         if opts['DBHost'] is None:
             opts['DBHost'] = opts['DBhost']
-        koji.db.provideDBopts(database=opts["DBName"],
-                              user=opts["DBUser"],
-                              password=opts.get("DBPass", None),
-                              host=opts.get("DBHost", None),
-                              port=opts.get("DBPort", None))
+        kojihub.db.provideDBopts(database=opts["DBName"],
+                                 user=opts["DBUser"],
+                                 password=opts.get("DBPass", None),
+                                 host=opts.get("DBHost", None),
+                                 port=opts.get("DBPort", None))
 
-    context.cnx = koji.db.connect()
+    context.cnx = kojihub.db.connect()
     context.cnx.set_session(autocommit=True)
     cursor = context.cnx.cursor()
 

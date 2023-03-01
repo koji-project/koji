@@ -20,7 +20,7 @@ class TestDeleteTag(unittest.TestCase):
         self.updates = []
         self.get_tag = mock.patch('kojihub.kojihub.get_tag').start()
         self.context = mock.patch('kojihub.kojihub.context').start()
-        self.context_db = mock.patch('koji.db.context').start()
+        self.context_db = mock.patch('kojihub.db.context').start()
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"
         self.context.session.assertPerm = mock.MagicMock()

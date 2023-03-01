@@ -29,7 +29,7 @@ class TestQueryProcessor(unittest.TestCase):
         )
         self.original_chunksize = kojihub.QueryProcessor.iterchunksize
         kojihub.QueryProcessor.iterchunksize = 2
-        self.context_db = mock.patch('koji.db.context').start()
+        self.context_db = mock.patch('kojihub.db.context').start()
 
     def tearDown(self):
         kojihub.QueryProcessor.iterchunksize = self.original_chunksize
@@ -125,7 +125,7 @@ class TestQueryProcessor(unittest.TestCase):
         result = next(generator)
         self.assertEqual(result, {'something': 'value number 3'})
 
-    @mock.patch('koji.db._multiRow')
+    @mock.patch('kojihub.db._multiRow')
     def test_execution_as_list_transform(self, multirow):
         multirow.return_value = [{'col1': 'result_1_col_1', 'col2': 'result_1_col_2'},
                                  {'col1': 'result_2_col_1', 'col2': 'result_2_col_2'}]

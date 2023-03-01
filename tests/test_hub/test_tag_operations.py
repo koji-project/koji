@@ -50,7 +50,7 @@ class TestTagBuild(unittest.TestCase):
         self.check_tag_access = mock.patch('kojihub.kojihub.check_tag_access').start()
         self.writeInheritanceData = mock.patch('kojihub.kojihub.writeInheritanceData').start()
         self.context = mock.patch('kojihub.kojihub.context').start()
-        self.context_db = mock.patch('koji.db.context').start()
+        self.context_db = mock.patch('kojihub.db.context').start()
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"
         self.context.session.assertPerm = mock.MagicMock()

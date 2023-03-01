@@ -52,7 +52,7 @@ class TestCompleteImageBuild(unittest.TestCase):
         self.pathinfo = koji.PathInfo(self.tempdir)
         mock.patch('koji.pathinfo', new=self.pathinfo).start()
         self.hostcalls = kojihub.HostExports()
-        self.context_db = mock.patch('koji.db.context').start()
+        self.context_db = mock.patch('kojihub.db.context').start()
         mock.patch('kojihub.kojihub.Host').start()
         self.Task = mock.patch('kojihub.kojihub.Task').start()
         self.Task.return_value.assertHost = mock.MagicMock()

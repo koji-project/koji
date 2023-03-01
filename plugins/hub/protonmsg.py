@@ -18,7 +18,7 @@ import koji
 from koji.context import context
 from koji.plugin import callback, convert_datetime, ignore_error
 from kojihub import get_build_type
-from koji.db import QueryProcessor, InsertProcessor, DeleteProcessor
+from kojihub.db import QueryProcessor, InsertProcessor, DeleteProcessor
 
 CONFIG_FILE = '/etc/koji-hub/plugins/protonmsg.conf'
 CONFIG = None

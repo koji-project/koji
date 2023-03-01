@@ -7,7 +7,7 @@ import kojihub
 class TestGetUserPerms(unittest.TestCase):
     def setUp(self):
         self.get_user = mock.patch('kojihub.kojihub.get_user').start()
-        self.get_user_perms = mock.patch('koji.auth.get_user_perms').start()
+        self.get_user_perms = mock.patch('kojihub.kojihub.get_user_perms').start()
 
     def tearDown(self):
         mock.patch.stopall()

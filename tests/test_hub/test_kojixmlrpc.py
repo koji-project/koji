@@ -1,6 +1,6 @@
 import unittest
 
-import kojixmlrpc
+from kojihub import kojixmlrpc
 
 
 class TestHandler(unittest.TestCase):

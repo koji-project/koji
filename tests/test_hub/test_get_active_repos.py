@@ -2,7 +2,6 @@ import mock
 import unittest
 import koji
 import kojihub
-import koji.db
 
 
 QP = kojihub.QueryProcessor
