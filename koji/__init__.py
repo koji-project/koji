@@ -770,7 +770,11 @@ class RawHeader(object):
                 # unicode string array
                 for i in range(count):
                     end = self.header.find(six.b('\0'), pos)
-                    print("i18n(%d): %r" % (end - pos, self.header[pos:end]))
+                    try:
+                        print("i18n(%d): %r" % (end - pos, _decode_item(self.header[pos:end])))
+                    except Exception:
+                        print('INVALID STRING')
+                        print("i18n(%d): %r" % (end - pos, self.header[pos:end]))
                     pos = end + 1
                 next = pos
             else:
@@ -813,6 +817,14 @@ class RawHeader(object):
             for i in range(count):
                 end = self.header.find(six.b('\0'), pos)
                 result.append(self.header[pos:end])
+                pos = end + 1
+            return result
+        elif dtype == 9:
+            # unicode string array
+            result = []
+            for i in range(count):
+                end = self.header.find(six.b('\0'), pos)
+                result.append(_decode_item(self.header[pos:end]))
                 pos = end + 1
             return result
         else:
