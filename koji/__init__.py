@@ -754,7 +754,12 @@ class RawHeader(object):
             elif dtype == 6:
                 # string (null terminated)
                 end = self.header.find(six.b('\0'), pos)
-                print("String(%d): %r" % (end - pos, self.header[pos:end]))
+                try:
+                    print("String(%d): %r" % (end - pos, _decode_item(self.header[pos:end])))
+                except ValueError:
+                    print('INVALID STRING')
+                    print("String(%d): %r" % (end - pos, self.header[pos:end]))
+                    raise
                 next = end + 1
             elif dtype == 7:
                 print("Data: %s" % hex_string(self.header[pos:pos + count]))
