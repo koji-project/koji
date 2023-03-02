@@ -99,7 +99,7 @@ def handle_list_sidetags(options, session, args):
 @export_cli
 def handle_edit_sidetag(options, session, args):
     "Edit sidetag"
-    usage = "%(prog)s edit-sidetag [options]"
+    usage = "%(prog)s edit-sidetag [options] <sidetag>"
     usage += "\n(Specify the --help global option for a list of other help options)"
     parser = ArgumentParser(usage=usage)
     parser.add_argument("sidetag", help="name of sidetag")
