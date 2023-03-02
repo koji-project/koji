@@ -872,7 +872,7 @@ class RawHeader(object):
         elif dtype == 8:
             # string array
             result = []
-            for i in range(count):
+            for _ in range(count):
                 end = self.header.find(six.b('\0'), pos)
                 result.append(self.header[pos:end])
                 pos = end + 1
@@ -880,7 +880,7 @@ class RawHeader(object):
         elif dtype == 9:
             # unicode string array
             result = []
-            for i in range(count):
+            for _ in range(count):
                 end = self.header.find(six.b('\0'), pos)
                 result.append(_decode_item(self.header[pos:end]))
                 pos = end + 1
