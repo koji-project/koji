@@ -850,7 +850,7 @@ class VMExecTask(BaseTaskHandler):
         self.server.register_function(self.verifyChecksum)
         thr = threading.Thread(name='task_%s_thread' % self.id,
                                target=self.server.handle_while_active)
-        thr.setDaemon(True)
+        thr.daemon = True
         thr.start()
 
     def handler(self, name, task_info, opts=None):
@@ -962,7 +962,7 @@ class VMTaskManager(TaskManager):
         self.server.register_function(self.registerVM)
         self.server.register_function(self.getPort)
         thr = threading.Thread(name='manager_thread', target=self.server.handle_while_active)
-        thr.setDaemon(True)
+        thr.daemon = True
         thr.start()
 
     def getCloneDisks(self, vm):

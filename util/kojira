@@ -1077,7 +1077,7 @@ def start_currency_checker(session, repomgr):
     subsession = session.subsession()
     thread = threading.Thread(name='currencyChecker',
                               target=repomgr.currencyChecker, args=(subsession,))
-    thread.setDaemon(True)
+    thread.daemon = True
     thread.start()
     return thread
 
@@ -1086,7 +1086,7 @@ def start_external_currency_checker(session, repomgr):
     subsession = session.subsession()
     thread = threading.Thread(name='currencyExternalChecker',
                               target=repomgr.currencyExternalChecker, args=(subsession,))
-    thread.setDaemon(True)
+    thread.daemon = True
     thread.start()
     return thread
 
@@ -1095,7 +1095,7 @@ def start_regen_loop(session, repomgr):
     subsession = session.subsession()
     thread = threading.Thread(name='regenLoop',
                               target=repomgr.regenLoop, args=(subsession,))
-    thread.setDaemon(True)
+    thread.daemon = True
     thread.start()
     return thread
 
@@ -1104,7 +1104,7 @@ def start_delete_loop(session, repomgr):
     subsession = session.subsession()
     thread = threading.Thread(name='deleteLoop',
                               target=repomgr.deleteLoop, args=(subsession,))
-    thread.setDaemon(True)
+    thread.daemon = True
     thread.start()
     return thread
 
@@ -1113,7 +1113,7 @@ def start_rmtree_loop(session, repomgr):
     subsession = session.subsession()
     thread = threading.Thread(name='rmtreeLoop',
                               target=repomgr.rmtreeLoop, args=(subsession,))
-    thread.setDaemon(True)
+    thread.daemon = True
     thread.start()
     return thread
 
