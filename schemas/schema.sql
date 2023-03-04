@@ -1005,6 +1005,18 @@ CREATE TABLE scheduler_host_data (
 ) WITHOUT OIDS;
 
 
+CREATE TABLE scheduler_log_messages (
+        id SERIAL NOT NULL PRIMARY KEY,
+        task_id INTEGER REFERENCES task (id),
+        host_id INTEGER REFERENCES host (id),
+        msg_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        logger_name VARCHAR(200) NOT NULL,
+        level VARCHAR(10) NOT NULL,
+        location VARCHAR(200),
+        msg TEXT NOT NULL
+) WITHOUT OIDS;
+
+
 -- this table is used for locking, see db_lock()
 CREATE TABLE locks (
         name TEXT NOT NULL PRIMARY KEY
