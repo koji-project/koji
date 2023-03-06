@@ -3,11 +3,20 @@ from __future__ import absolute_import
 import mock
 
 import koji
+import six
 from koji_cli.commands import handle_cancel
 from . import utils
 
 
 class TestCancel(utils.CliTestCase):
+
+    def __vm(self, result):
+        m = koji.VirtualCall('mcall_method', [], {})
+        if isinstance(result, dict) and result.get('faultCode'):
+            m._result = result
+        else:
+            m._result = (result,)
+        return m
 
     def setUp(self):
         self.maxDiff = None
@@ -16,7 +25,8 @@ class TestCancel(utils.CliTestCase):
         self.session = mock.MagicMock()
         self.session.multicall.return_value.__enter__.return_value = self.session
         self.activate_session_mock = mock.patch('koji_cli.commands.activate_session').start()
-
+        self.stderr = mock.patch('sys.stderr', new_callable=six.StringIO).start()
+        self.stdout = mock.patch('sys.stdout', new_callable=six.StringIO).start()
         self.error_format = """Usage: %s cancel [options] <task_id|build> [<task_id|build> ...]
 (Specify the --help global option for a list of other help options)
 
@@ -68,7 +78,7 @@ class TestCancel(utils.CliTestCase):
         self.activate_session_mock.assert_called_once_with(self.session, self.options)
         self.session.cancelTask.assert_not_called()
         self.session.cancelTaskFull.assert_not_called()
-        self.session.cancelBuild.assert_called_once_with(args[0])
+        self.session.cancelBuild.assert_called_once_with(args[0], strict=True)
 
     def test_cancel_builds_unused_options(self):
         # it is good for nothing here
@@ -78,7 +88,7 @@ class TestCancel(utils.CliTestCase):
         self.activate_session_mock.assert_called_once_with(self.session, self.options)
         self.session.cancelTask.assert_not_called()
         self.session.cancelTaskFull.assert_not_called()
-        self.session.cancelBuild.assert_called_once_with(args[0])
+        self.session.cancelBuild.assert_called_once_with(args[0], strict=True)
 
     def test_cancel_tasks_full(self):
         args = ['123', '--full']
@@ -123,6 +133,24 @@ class TestCancel(utils.CliTestCase):
         self.session.cancelTask.assert_not_called()
         self.session.cancelTaskFull.assert_not_called()
         self.session.cancelBuild.assert_not_called()
+
+    def test_non_exist_build_and_task(self):
+        args = ['11111', 'nvr-1-30.1']
+        expected_warn = """No such task: %s
+No such build: '%s'
+""" % (args[0], args[1])
+        mcall = self.session.multicall.return_value.__enter__.return_value
+        mcall.cancelTask.return_value = self.__vm(
+            {'faultCode': 1000, 'faultString': 'No such task: %s' % args[0]})
+        mcall.cancelBuild.return_value = self.__vm(
+            {'faultCode': 1000, 'faultString': "No such build: '%s'" % args[1]})
+        rv = handle_cancel(self.options, self.session, args)
+        self.assertEqual(rv, 1)
+        self.assert_console_message(self.stderr, expected_warn)
+        self.activate_session_mock.assert_called_once_with(self.session, self.options)
+        self.session.cancelTask.assert_called_once_with(int(args[0]))
+        self.session.cancelTaskFull.assert_not_called()
+        self.session.cancelBuild.assert_called_once_with(args[1], strict=True)
 
     def test_cancel_help(self):
         self.assert_help(

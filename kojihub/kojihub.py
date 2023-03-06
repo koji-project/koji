@@ -11620,13 +11620,18 @@ class RootExports(object):
         results = _applyQueryOpts(results, queryOpts)
         return koji.fixEncodingRecurse(results, remove_nonprintable=True)
 
-    def cancelBuild(self, buildID):
+    def cancelBuild(self, buildID, strict=False):
         """Cancel the build with the given buildID
+
+        :param int|str|dict buildID: int ID, a string NVR, or
+                                     a map containing 'name', 'version' and 'release'.
+        :param bool strict: if strict is True and build is not existing, an exception is raised,
+                            if strict is False and build is not existing, returns False
 
         If the build is associated with a task, cancel the task as well.
         Return True if the build was successfully canceled, False if not."""
         context.session.assertLogin()
-        build = get_build(buildID)
+        build = get_build(buildID, strict)
         if build is None:
             return False
         if build['owner_id'] != context.session.user_id:

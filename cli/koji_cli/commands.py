@@ -6163,12 +6163,12 @@ def handle_cancel(goptions, session, args):
             for task_id in tlist:
                 results.append(remote_fn(task_id, **opts))
         for build in blist:
-            results.append(m.cancelBuild(build))
+            results.append(m.cancelBuild(build, strict=True))
 
     err = False
     for r in results:
-        if isinstance(r.result, dict):
-            warn(r.result['faultString'])
+        if isinstance(r._result, dict):
+            warn(r._result['faultString'])
             err = True
     if err:
         return 1
