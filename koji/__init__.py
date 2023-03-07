@@ -754,7 +754,12 @@ class RawHeader(object):
             elif dtype == 6:
                 # string (null terminated)
                 end = self.header.find(six.b('\0'), pos)
-                print("String(%d): %r" % (end - pos, self.header[pos:end]))
+                try:
+                    print("String(%d): %r" % (end - pos, _decode_item(self.header[pos:end])))
+                except ValueError:
+                    print('INVALID STRING')
+                    print("String(%d): %r" % (end - pos, self.header[pos:end]))
+                    raise
                 next = end + 1
             elif dtype == 7:
                 print("Data: %s" % hex_string(self.header[pos:pos + count]))
@@ -770,7 +775,11 @@ class RawHeader(object):
                 # unicode string array
                 for i in range(count):
                     end = self.header.find(six.b('\0'), pos)
-                    print("i18n(%d): %r" % (end - pos, self.header[pos:end]))
+                    try:
+                        print("i18n(%d): %r" % (end - pos, _decode_item(self.header[pos:end])))
+                    except Exception:
+                        print('INVALID STRING')
+                        print("i18n(%d): %r" % (end - pos, self.header[pos:end]))
                     pos = end + 1
                 next = pos
             else:
@@ -807,6 +816,22 @@ class RawHeader(object):
         elif dtype == 7:
             # raw data
             return self.header[pos:pos + count]
+        elif dtype == 8:
+            # string array
+            result = []
+            for i in range(count):
+                end = self.header.find(six.b('\0'), pos)
+                result.append(self.header[pos:end])
+                pos = end + 1
+            return result
+        elif dtype == 9:
+            # unicode string array
+            result = []
+            for i in range(count):
+                end = self.header.find(six.b('\0'), pos)
+                result.append(_decode_item(self.header[pos:end]))
+                pos = end + 1
+            return result
         else:
             # XXX - not all valid data types are handled
             raise GenericError("Unable to read header data type: %x" % dtype)
