@@ -145,6 +145,18 @@ Plugin has also its own configuration file
        Python string template to be used for generation of sidetag name. It needs
        to contain both basetag/tag_id placeholders.
 
+Parent tag can define following extras:
+
+.. glossary::
+   sidetag_debuginfo_allowed = 0
+       If set to 1/True, debuginfo repo could be created (``with_debuginfo`` can
+       be set for tag by sidetag owner via ``--debuginfo`` option)
+
+   sidetag_rpm_macros_allowed = None
+       This option can be set to space-separated fnmatch masks which allows user
+       to override specific rpm macros.
+       (``koji edit-sidetag <tag> --rpm-macro <macro>``).
+
 CLI
 ---
 

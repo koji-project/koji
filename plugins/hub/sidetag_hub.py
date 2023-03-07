@@ -5,6 +5,7 @@
 import koji
 from koji.context import context
 from koji.plugin import callback, export
+from koji.util import multi_fnmatch
 import koji.policy
 from kojihub import (
     _create_build_target,
@@ -229,12 +230,17 @@ def listSideTags(basetag=None, user=None, queryOpts=None):
     return query.execute()
 
 
+def _valid_rpm_macro_name(macro):
+    # https://github.com/rpm-software-management/rpm/blob/master/rpmio/macro.c#L627
+    return len(macro) > 1 and (macro[0].isalpha() or macro[0] == '_')
+
+
 @export
 def editSideTag(sidetag, debuginfo=None, rpm_macros=None, remove_rpm_macros=None, extra=None,
                 remove_extra=None):
     """Restricted ability to modify sidetags, parent tag must have:
     sidetag_debuginfo_allowed: 1
-    sidetag_rpm_macros_allowed: 1
+    sidetag_rpm_macros_allowed: list of allowed macros (or str.split() compatible string)
     in extra, if modifying functions should work. For blocking/unblocking
     further policy must be compatible with these operations.
 
@@ -272,9 +278,23 @@ def editSideTag(sidetag, debuginfo=None, rpm_macros=None, remove_rpm_macros=None
     if debuginfo is not None and not parent['extra'].get('sidetag_debuginfo_allowed'):
         raise koji.GenericError("Debuginfo setting is not allowed in parent tag.")
 
-    if (rpm_macros is not None or remove_rpm_macros is not None) \
-            and not parent['extra'].get('sidetag_rpm_macros_allowed'):
-        raise koji.GenericError("RPM macros change is not allowed in parent tag.")
+    if (rpm_macros or remove_rpm_macros):
+        # sanity checks on parent's rpm_macros_allowed
+        rpm_macros_allowed = parent['extra'].get('sidetag_rpm_macros_allowed', [])
+        if rpm_macros_allowed is None:
+            rpm_macros_allowed = []
+        elif isinstance(rpm_macros_allowed, str):
+            rpm_macros_allowed = rpm_macros_allowed.split()
+        elif not isinstance(rpm_macros_allowed, list):
+            raise koji.GenericError(f"rpm_macros_allowed in {parent['name']} has invalid type: "
+                                    f"{type(rpm_macros_allowed)}")
+        for macro in rpm_macros_allowed:
+            if not isinstance(macro, str):
+                raise koji.GenericError(f"Allowed rpm macro list {rpm_macros_allowed:r} "
+                                        f"is invalid for {parent['name']}.")
+
+        if not rpm_macros_allowed:
+            raise koji.GenericError("RPM macros change is not allowed in parent tag.")
 
     kwargs = {'extra': extra, 'remove_extra': remove_extra}
     if debuginfo is not None:
@@ -282,10 +302,17 @@ def editSideTag(sidetag, debuginfo=None, rpm_macros=None, remove_rpm_macros=None
     if rpm_macros is not None:
         convert_value(rpm_macros, cast=dict, check_only=True)
         for macro, value in rpm_macros.items():
+            if not _valid_rpm_macro_name(macro):
+                raise koji.GenericError(f"Invalid macro name {macro:r}")
+            if not multi_fnmatch(macro, rpm_macros_allowed):
+                raise koji.GenericError(f"RPM macro {macro} editing is not allowed via parent tag")
             kwargs['extra']['rpm.macro.%s' % macro] = value
     if remove_rpm_macros is not None:
         convert_value(remove_rpm_macros, cast=list, check_only=True)
-        kwargs['remove_extra'] += ['rpm.macro.%s' % m for m in remove_rpm_macros]
+        for macro in remove_rpm_macros:
+            if not multi_fnmatch(macro, rpm_macros_allowed):
+                raise koji.GenericError(f"RPM macro {macro} editing is not allowed via parent tag")
+            kwargs['remove_extra'] = ['rpm.macro.%s' % m for m in remove_rpm_macros]
 
     _edit_tag(sidetag['id'], **kwargs)
 
