@@ -165,6 +165,9 @@ def get_options():
     (options, args) = parser.parse_args(values=defaults)
     options.config = config
 
+    if args:
+        parser.error("This command doesn't take any arguments.")
+
     # figure out actions
     actions = ('prune', 'trash', 'delete', 'salvage')
     if options.action:
