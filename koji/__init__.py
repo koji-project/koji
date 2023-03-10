@@ -806,7 +806,7 @@ class RawHeader(object):
                 end = self.header.find(six.b('\0'), pos)
                 value = self.header[pos:end]
                 try:
-                    value = _decode_item(value)
+                    value = self.decode_bytes(value)
                 except Exception:
                     print('INVALID STRING')
                 print("String(%d): %r" % (end - pos, value))
@@ -820,7 +820,7 @@ class RawHeader(object):
                     end = self.header.find(six.b('\0'), pos)
                     value = self.header[pos:end]
                     try:
-                        value = _decode_item(value)
+                        value = self.decode_bytes(value)
                     except Exception:
                         print('INVALID STRING')
                     print("String(%d): %r" % (end - pos, value))
@@ -832,7 +832,7 @@ class RawHeader(object):
                     end = self.header.find(six.b('\0'), pos)
                     value = self.header[pos:end]
                     try:
-                        value = _decode_item(value)
+                        value = self.decode_bytes(value)
                     except Exception:
                         print('INVALID STRING')
                     print("i18n(%d): %r" % (end - pos, value))
@@ -853,6 +853,12 @@ class RawHeader(object):
                 print("** OVERFLOW in data block")
                 print("Overflow size: %d" % (expected_ofs - pos))
                 print("Offset: 0x%x" % self.datalen)
+
+    def decode_bytes(self, value):
+        if six.PY2:
+            return value
+        else:
+            return value.decode(errors='surrogateescape')
 
     def __getitem__(self, key):
         tag, dtype, offset, count = self.index[key]
@@ -883,7 +889,7 @@ class RawHeader(object):
             end = self.header.find(six.b('\0'), pos)
             value = self.header[pos:end]
             if decode:
-                value = _decode_item(value)
+                value = self.decode_bytes(value)
             return value
         elif dtype == 7:
             # raw data
@@ -895,7 +901,7 @@ class RawHeader(object):
                 end = self.header.find(six.b('\0'), pos)
                 value = self.header[pos:end]
                 if decode:
-                    value = _decode_item(value)
+                    value = self.decode_bytes(value)
                 result.append(value)
                 pos = end + 1
             return result
@@ -907,7 +913,7 @@ class RawHeader(object):
                 end = self.header.find(six.b('\0'), pos)
                 value = self.header[pos:end]
                 if decode:
-                    value = _decode_item(value)
+                    value = self.decode_bytes(value)
                 result.append(value)
                 pos = end + 1
             return result
