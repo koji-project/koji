@@ -920,12 +920,25 @@ class RawHeader(object):
         else:
             raise GenericError("Unknown header data type: %x" % dtype)
 
-    def get(self, key, default=None, decode=None):
+    def get(self, key, default=None, decode=None, single=False):
+        # With decode on, we will _mostly_ return the same value that rpmlib will.
+        # There are exceptions where rpmlib will automatically translate or update values, e.g.
+        # * fields that rpm treats as scalars
+        # * special tags like Headerimmutable
+        # * i18n string translations
+        # * the Fileclass extension tag that overlaps a concrete tag
+        # * auto converting PREINPROG/POSTINPROG/etc to string arrays for older rpms
         entry = self.index.get(key)
         if entry is None:
             return default
         else:
-            return self._getitem(*entry[1:], decode=decode)
+            value = self._getitem(*entry[1:], decode=decode)
+            if single and isinstance(value, list):
+                if len(value) == 1:
+                    return value[0]
+                else:
+                    raise ValueError('single value requested for array at key %s' % key)
+            return value
 
 
 def rip_rpm_sighdr(src):
