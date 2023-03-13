@@ -776,7 +776,7 @@ class RawHeader(object):
                 elif pad:
                     # pos == expected_ofs
                     print("Alignment padding: %i" % pad)
-                    padbytes = self.header[pos-pad:pos]
+                    padbytes = self.header[pos - pad:pos]
                     if padbytes != b'\0' * pad:
                         print("NON-NULL padding bytes: %s" % hex_string(padbytes))
             print("Tag: %d [%s], Type: %d, Offset: 0x%x, Count: %d"
