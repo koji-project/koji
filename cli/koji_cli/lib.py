@@ -591,6 +591,7 @@ def download_file(url, relpath, quiet=False, noprogress=False, size=None,
         # rewrite
         f = open(relpath, 'wb')
 
+    mtime = None
     try:
         # closing needs to be used for requests < 2.18.0
         with closing(koji.request_with_retry().get(url, headers=headers, stream=True)) as response:
@@ -615,12 +616,14 @@ def download_file(url, relpath, quiet=False, noprogress=False, size=None,
                     if mtime.tzinfo is None:
                         mtime = mtime.replace(tzinfo=dateutil.tz.gettz())
                     mtime = mtime.astimezone(dateutil.tz.gettz())
-                    os.utime(relpath, (time.time(), time.mktime(mtime.timetuple())))
     finally:
         f.close()
         if pos == 0:
             # nothing was downloaded, e.g file not found
             os.unlink(relpath)
+        elif mtime:
+            # mtime could be changed after close, otherwise py 2.x will update it.
+            os.utime(relpath, (time.time(), time.mktime(mtime.timetuple())))
 
     if not (quiet or noprogress):
         print('')
