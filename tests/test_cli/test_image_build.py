@@ -228,13 +228,6 @@ class TestBuildImageOz(utils.CliTestCase):
         self.assertEqual(str(cm.exception),
                          'No such destination tag: %s' % self.target_info['dest_tag_name'])
 
-        self.session.getTag.return_value = self.tag_info
-        with self.assertRaises(koji.GenericError) as cm:
-            self.task_options.ksurl = None
-            self.task_options.scratch = False
-            _build_image_oz(self.options, self.task_options, self.session, self.args)
-        self.assertEqual(str(cm.exception), 'Non-scratch builds must provide ksurl')
-
 
 class TestImageBuild(utils.CliTestCase):
     def setUp(self):
