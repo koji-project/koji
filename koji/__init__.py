@@ -618,11 +618,12 @@ def find_rpm_sighdr(path):
 
     # The lead is a fixed sized section (96 bytes) that is mostly obsolete
     sig_start = 96
-    sigsize = rpm_hdr_size(path, sig_start)
+    sigsize = rpm_hdr_size(path, sig_start, pad=True)
+    # "As of RPM 2.1 ... the Signature section is padded to a multiple of 8 bytes"
     return (sig_start, sigsize)
 
 
-def rpm_hdr_size(f, ofs=None):
+def rpm_hdr_size(f, ofs=None, pad=False):
     """Returns the length (in bytes) of the rpm header
 
     f = filename or file object
@@ -652,8 +653,9 @@ def rpm_hdr_size(f, ofs=None):
     # this is what the section data says the size should be
     hdrsize = 8 + 16 * il + dl
 
-    # hdrsize rounded up to nearest 8 bytes
-    hdrsize = hdrsize + (8 - (hdrsize % 8)) % 8
+    if pad:
+        # signature headers are padded to a multiple of 8 bytes
+        hdrsize = hdrsize + (8 - (hdrsize % 8)) % 8
 
     # add eight bytes for section header
     hdrsize = hdrsize + 8
