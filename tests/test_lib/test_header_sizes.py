@@ -45,11 +45,11 @@ class TestHeaderSizes(unittest.TestCase):
             size = None
             try:
                 tag = rpm.RPMTAG_LONGSIGSIZE
-                size = rh.get(tag)
+                size = rh.get(tag, single=True)
             except NameError:
                 pass
             if size is None:
-                size = rh.get(SIGTAG_SIZE)
+                size = rh.get(SIGTAG_SIZE, single=True)
 
             # Expected file size
             calc_size = s_lead + s_sig + size
