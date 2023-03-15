@@ -1,7 +1,9 @@
 from __future__ import absolute_import
 
 import mock
+import os
 import six
+import time
 from mock import call
 
 import unittest
@@ -20,7 +22,9 @@ class TestCloneTag(utils.CliTestCase):
         self.options = mock.MagicMock()
         self.session.hasPerm.return_value = True
         self.activate_session = mock.patch('koji_cli.commands.activate_session').start()
-
+        self.original_timezone = os.environ.get('TZ')
+        os.environ['TZ'] = 'UTC'
+        time.tzset()
         self.error_format = """Usage: %s clone-tag [options] <src-tag> <dst-tag>
 clone-tag will create the destination tag if it does not already exist
 (Specify the --help global option for a list of other help options)
@@ -114,6 +118,11 @@ clone-tag will create the destination tag if it does not already exist
 
     def tearDown(self):
         mock.patch.stopall()
+        if self.original_timezone is None:
+            del os.environ['TZ']
+        else:
+            os.environ['TZ'] = self.original_timezone
+        time.tzset()
 
     def test_handle_clone_tag_missing_arg(self):
         args = ['some-tag']
@@ -280,7 +289,7 @@ clone-tag will create the destination tag if it does not already exist
         self.session.getBuildConfig.return_value = self.get_build_config
         self.session.getTag.return_value = self.get_tag_info
         handle_clone_tag(self.options, self.session, args)
-        event = {'id': 1000, 'timestr': 'Mon Jan 12 14:46:40 1970'}
+        event = {'id': 1000, 'timestr': 'Mon Jan 12 13:46:40 1970'}
         self.assert_console_message(stdout, "Cloning at event %(id)i (%(timestr)s)\n" % event)
         self.activate_session.assert_called_once()
         self.session.hasPerm.assert_called_once_with('admin')
