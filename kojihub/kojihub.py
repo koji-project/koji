@@ -74,6 +74,7 @@ from koji.util import (
     multi_fnmatch,
     safer_move,
 )
+from . import scheduler
 from .auth import get_user_perms, get_user_groups
 from .db import (  # noqa: F401
     BulkInsertProcessor,

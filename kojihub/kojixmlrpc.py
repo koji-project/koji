@@ -41,6 +41,7 @@ from koji.server import ServerError, BadRequest, RequestTimeout
 from koji.xmlrpcplus import ExtendedMarshaller, Fault, dumps, getparser
 from . import auth
 from . import db
+from . import scheduler
 
 
 class Marshaller(ExtendedMarshaller):
@@ -711,7 +712,6 @@ def setup_logging2(opts):
     log_handler.setFormatter(HubFormatter(opts['LogFormat']))
 
 
-    import scheduler
 def get_memory_usage():
     pagesize = resource.getpagesize()
     statm = [pagesize * int(y) // 1024
