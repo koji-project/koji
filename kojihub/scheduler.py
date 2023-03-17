@@ -1,7 +1,7 @@
 # scheduler code goes here
 
-from .kojihub import convert_value
 from .db import QueryProcessor
+from .util import convert_value
 
 
 class DBLogger:
