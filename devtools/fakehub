@@ -12,9 +12,8 @@ import sys
 from urllib.parse import quote
 
 sys.path.insert(0, os.getcwd())
-sys.path.insert(1, os.path.join(os.getcwd(), 'kojihub'))
 import koji
-import kojixmlrpc
+from kojihub import kojixmlrpc
 import koji.xmlrpcplus
 
 
