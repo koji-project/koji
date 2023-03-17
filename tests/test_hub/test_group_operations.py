@@ -12,6 +12,7 @@ class TestGrouplist(unittest.TestCase):
     def getQuery(self, *args, **kwargs):
         query = QP(*args, **kwargs)
         query.execute = mock.MagicMock()
+        query.singleValue = self.query_singleValue
         self.queries.append(query)
         return query
 
@@ -54,6 +55,7 @@ class TestGrouplist(unittest.TestCase):
         self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
                                          side_effect=self.getQuery).start()
         self.queries = []
+        self.query_singleValue = mock.MagicMock()
         self.InsertProcessor = mock.patch('kojihub.kojihub.InsertProcessor',
                                           side_effect=self.getInsert).start()
         self.inserts = []
@@ -68,7 +70,7 @@ class TestGrouplist(unittest.TestCase):
     def tearDown(self):
         mock.patch.stopall()
 
-    def test_grplist_add(self):
+    def test_grplist_add_valid(self):
         self.get_tag.return_value = self.taginfo
         self.lookup_group.return_value = self.groupinfo
         self.get_tag_groups.return_value = {}
@@ -103,6 +105,140 @@ class TestGrouplist(unittest.TestCase):
             'tag_id': self.taginfo['id'],
             'group_id': self.groupinfo['id'],
             'blocked': False,
+        }
+        self.assertEqual(insert.table, 'group_config')
+        self.assertEqual(insert.data, values)
+        self.assertEqual(insert.rawdata, {})
+
+    def test_grplist_add_previous_blocked(self):
+        self.get_tag.return_value = self.taginfo
+        self.lookup_group.return_value = self.groupinfo
+        self.get_tag_groups.return_value = {2: {'blocked': True}}
+
+        with self.assertRaises(koji.GenericError) as ex:
+            kojihub.grplist_add(self.tag, self.group)
+        self.assertEqual(f"group {self.group} is blocked in tag {self.tag}", str(ex.exception))
+
+        # what was called
+        self.context.session.assertPerm.assert_called_once_with('tag')
+        self.get_tag.assert_called_once_with(self.tag, strict=True)
+        self.lookup_group.assert_called_once_with(self.group, create=True)
+        self.get_tag_groups.assert_called_with(self.taginfo['id'], inherit=True, incl_pkgs=False,
+                                               incl_reqs=False)
+        # db
+        self.assertEqual(len(self.updates), 0)
+        self.assertEqual(len(self.inserts), 0)
+
+    def test_grplist_add_previous_not_changed(self):
+        self.get_tag.return_value = self.taginfo
+        self.lookup_group.return_value = self.groupinfo
+        self.get_tag_groups.return_value = {2: {'exported': 'exp', 'uservisible': True,
+                                                'description': 'desc', 'langonly': False,
+                                                'biarchonly': False, 'blocked': False,
+                                                'display_name': 'test-group', 'is_default': True}}
+
+        kojihub.grplist_add(self.tag, self.group)
+
+        # what was called
+        self.context.session.assertPerm.assert_called_once_with('tag')
+        self.get_tag.assert_called_once_with(self.tag, strict=True)
+        self.lookup_group.assert_called_once_with(self.group, create=True)
+        self.get_tag_groups.assert_called_with(self.taginfo['id'], inherit=True, incl_pkgs=False,
+                                               incl_reqs=False)
+        # db
+        self.assertEqual(len(self.updates), 0)
+        self.assertEqual(len(self.inserts), 0)
+
+    def test_grplist_add_previous_all_changed(self):
+        self.get_tag.return_value = self.taginfo
+        self.lookup_group.return_value = self.groupinfo
+        self.get_tag_groups.return_value = {2: {'exported': False, 'uservisible': True,
+                                                'description': 'desc', 'langonly': False,
+                                                'biarchonly': False, 'blocked': False,
+                                                'display_name': 'test-group', 'is_default': True}}
+        self.context_db.event_id = 42
+        self.context_db.session.user_id = 24
+
+        kojihub.grplist_add(self.tag, self.group, block=True, description='test-desc',
+                            exported=True, uservisible=False, langonly=True, biarchonly=True,
+                            display_name='test-group-new', is_default=False)
+
+        # what was called
+        self.context.session.assertPerm.assert_called_once_with('tag')
+        self.get_tag.assert_called_once_with(self.tag, strict=True)
+        self.lookup_group.assert_called_once_with(self.group, create=True)
+        self.get_tag_groups.assert_called_with(self.taginfo['id'], inherit=True, incl_pkgs=False,
+                                               incl_reqs=False)
+        # db
+        # revoke
+        self.assertEqual(len(self.updates), 1)
+        update = self.updates[0]
+        self.assertEqual(update.table, 'group_config')
+        self.assertEqual(update.data, {'revoke_event': 42, 'revoker_id': 24})
+        self.assertEqual(update.rawdata, {'active': 'NULL'})
+        # insert new group
+        self.assertEqual(len(self.inserts), 1)
+        insert = self.inserts[0]
+        values = {
+            'display_name': 'test-group-new',
+            'biarchonly': True,
+            'exported': True,
+            'uservisible': False,
+            'create_event': 42,
+            'creator_id': 24,
+            'tag_id': self.taginfo['id'],
+            'group_id': self.groupinfo['id'],
+            'blocked': True,
+            'description': 'test-desc',
+            'langonly': True,
+            'is_default': False,
+        }
+        self.assertEqual(insert.table, 'group_config')
+        self.assertEqual(insert.data, values)
+        self.assertEqual(insert.rawdata, {})
+
+    def test_grplist_add_previous_few_changed(self):
+        self.get_tag.return_value = self.taginfo
+        self.lookup_group.return_value = self.groupinfo
+        self.get_tag_groups.return_value = {2: {'exported': False, 'uservisible': True,
+                                                'description': 'desc', 'langonly': False,
+                                                'biarchonly': False, 'blocked': False,
+                                                'display_name': 'test-group', 'is_default': True}}
+        self.context_db.event_id = 42
+        self.context_db.session.user_id = 24
+
+        kojihub.grplist_add(self.tag, self.group, block=True, description='test-desc',
+                            exported=True)
+
+        # what was called
+        self.context.session.assertPerm.assert_called_once_with('tag')
+        self.get_tag.assert_called_once_with(self.tag, strict=True)
+        self.lookup_group.assert_called_once_with(self.group, create=True)
+        self.get_tag_groups.assert_called_with(self.taginfo['id'], inherit=True, incl_pkgs=False,
+                                               incl_reqs=False)
+        # db
+        # revoke
+        self.assertEqual(len(self.updates), 1)
+        update = self.updates[0]
+        self.assertEqual(update.table, 'group_config')
+        self.assertEqual(update.data, {'revoke_event': 42, 'revoker_id': 24})
+        self.assertEqual(update.rawdata, {'active': 'NULL'})
+        # insert new group
+        self.assertEqual(len(self.inserts), 1)
+        insert = self.inserts[0]
+        values = {
+            'display_name': 'test-group',
+            'biarchonly': False,
+            'exported': True,
+            'uservisible': True,
+            'create_event': 42,
+            'creator_id': 24,
+            'tag_id': self.taginfo['id'],
+            'group_id': self.groupinfo['id'],
+            'blocked': True,
+            'description': 'test-desc',
+            'langonly': False,
+            'is_default': True,
         }
         self.assertEqual(insert.table, 'group_config')
         self.assertEqual(insert.data, values)
@@ -201,27 +337,27 @@ class TestGrouplist(unittest.TestCase):
         self.assertEqual(len(self.queries), 1)
         self.assertEqual(len(self.inserts), 0)
         self.assertEqual(len(self.updates), 0)
-        self.assertEqual(cm.exception.args[0],
-                         'No group: group found for tag: tag')
+        self.assertEqual(cm.exception.args[0], 'No group: group found for tag: tag')
 
         # force = True
         self.reset_db_processors()
-        with mock.patch('kojihub.kojihub.QueryProcessor',
-                        side_effect=self.getEmptyQuery):
+        with mock.patch('kojihub.kojihub.QueryProcessor', side_effect=self.getEmptyQuery):
             kojihub.grplist_remove(self.tag, self.group, force=True)
 
         self.assertEqual(len(self.queries), 0)
         self.assertEqual(len(self.inserts), 0)
         self.assertEqual(len(self.updates), 1)
 
-    def test_grplist_unblock(self):
+    def test_grplist_unblock_without_blocked_groups(self):
         # identical with test_grplist_add except blocked=True
         self.lookup_tag.return_value = self.taginfo
         self.lookup_group.return_value = self.groupinfo
+        self.query_singleValue.return_value = None
 
         # will fail for non-blocked group
-        with self.assertRaises(koji.GenericError):
+        with self.assertRaises(koji.GenericError) as ex:
             kojihub.grplist_unblock(self.tag, self.group)
+        self.assertEqual(f"group {self.group} is NOT blocked in tag {self.tag}", str(ex.exception))
 
         # what was called
         self.context.session.assertPerm.assert_called_once_with('tag')
@@ -236,6 +372,37 @@ class TestGrouplist(unittest.TestCase):
         self.assertEqual(query.clauses,
                          ['active = TRUE', 'group_id=%(grp_id)s', 'tag_id=%(tag_id)s'])
         self.assertEqual(len(self.updates), 0)
+        self.assertEqual(len(self.inserts), 0)
+
+    def test_grplist_unblock_with_blocked_groups(self):
+        # identical with test_grplist_add except blocked=True
+        self.lookup_tag.return_value = self.taginfo
+        self.lookup_group.return_value = self.groupinfo
+        self.query_singleValue.return_value = 333
+        self.context_db.event_id = 42
+        self.context_db.session.user_id = 24
+
+        kojihub.grplist_unblock(self.tag, self.group)
+
+        # what was called
+        self.context.session.assertPerm.assert_called_once_with('tag')
+        self.lookup_tag.assert_called_once_with(self.tag, strict=True)
+        self.lookup_group.assert_called_once_with(self.group, strict=True)
+
+        # db
+        self.assertEqual(len(self.queries), 1)
+        query = self.queries[0]
+        self.assertEqual(query.tables, ['group_config'])
+        self.assertEqual(query.joins, None)
+        self.assertEqual(query.clauses,
+                         ['active = TRUE', 'group_id=%(grp_id)s', 'tag_id=%(tag_id)s'])
+        self.assertEqual(len(self.updates), 1)
+        update = self.updates[0]
+        self.assertEqual(update.table, 'group_config')
+        self.assertEqual(update.clauses,
+                         ['group_id=%(grp_id)s', 'tag_id=%(tag_id)s', 'active = TRUE'])
+        self.assertEqual(update.data, {'revoke_event': 42, 'revoker_id': 24})
+        self.assertEqual(update.rawdata, {'active': 'NULL'})
         self.assertEqual(len(self.inserts), 0)
 
     def test_readTagGroups_empty(self):
