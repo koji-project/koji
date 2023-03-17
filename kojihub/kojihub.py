@@ -14242,6 +14242,7 @@ class Host(object):
         This data is relatively small and the necessary load analysis is
         relatively complex, so we let the host machines crunch it."""
         host = get_host(self.id)
+        host['channels'] = [c['id'] for c in list_channels(hostID=self.id)]
         tasks = scheduler.getTaskRuns(hostID=self.id)
         return [[host], tasks]
 
