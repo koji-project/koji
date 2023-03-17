@@ -32,7 +32,7 @@ def getTaskRuns(taskID=None, hostID=None, state=None):
         ('host.name', 'host_name'),
         ("date_part('epoch', create_time)", 'create_ts'),
         ("date_part('epoch', start_time)", 'start_ts'),
-        ("date_part('epoch', edn_time)", 'end_ts'),
+        ("date_part('epoch', end_time)", 'end_ts'),
     )
     fields, aliases = zip(*fields)
 

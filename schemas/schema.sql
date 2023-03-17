@@ -992,7 +992,7 @@ CREATE TABLE scheduler_task_runs (
         state INTEGER NOT NULL,
         create_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         start_time TIMESTAMPTZ,
-        end_time TIMESTAMPTZ,
+        end_time TIMESTAMPTZ
 ) WITHOUT OIDS;
 CREATE INDEX scheduler_task_runs_task ON scheduler_task_runs(task_id);
 CREATE INDEX scheduler_task_runs_host ON scheduler_task_runs(host_id);
@@ -1002,7 +1002,7 @@ CREATE INDEX scheduler_task_runs_create_time ON scheduler_task_runs(create_time)
 
 CREATE TABLE scheduler_host_data (
         host_id INTEGER REFERENCES host (id) PRIMARY KEY,
-        data JSONB,
+        data JSONB
 ) WITHOUT OIDS;
 
 
