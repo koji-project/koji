@@ -288,12 +288,10 @@ class Task(object):
         else:
             return None
 
-    def free(self, newstate=koji.TASK_STATES['FREE']):
+    def free(self):
         """Free a task"""
-        if newstate not in [koji.TASK_STATES['FREE'], koji.TASK_STATES['REFUSED']]:
-            raise koji.GenericError("Can't be called with other than FREE/REFUSED states")
         info = self.getInfo(request=True)
-        self.runCallbacks('preTaskStateChange', info, 'state', newstate)
+        self.runCallbacks('preTaskStateChange', info, 'state', koji.TASK_STATES['FREE'])
         self.runCallbacks('preTaskStateChange', info, 'host_id', None)
         # access checks should be performed by calling function
         query = QueryProcessor(tables=['task'], columns=['state'], clauses=['id = %(id)i'],
@@ -302,13 +300,14 @@ class Task(object):
         if not oldstate:
             raise koji.GenericError("No such task: %i" % self.id)
         if koji.TASK_STATES[oldstate] in ['CLOSED', 'CANCELED', 'FAILED']:
-            raise koji.GenericError("Cannot free/refuse task %i, state is %s" %
+            raise koji.GenericError("Cannot free task %i, state is %s" %
                                     (self.id, koji.TASK_STATES[oldstate]))
+        newstate = koji.TASK_STATES['FREE']
         newhost = None
         update = UpdateProcessor('task', clauses=['id=%(task_id)s'], values={'task_id': self.id},
                                  data={'state': newstate, 'host_id': newhost})
         update.execute()
-        self.runCallbacks('postTaskStateChange', info, 'state', newstate)
+        self.runCallbacks('postTaskStateChange', info, 'state', koji.TASK_STATES['FREE'])
         self.runCallbacks('postTaskStateChange', info, 'host_id', None)
         return True
 
@@ -14376,6 +14375,8 @@ class HostExports(object):
     def refuseTask(self, task_id):
         host = Host()
         host.verify()
+
+        # XXX
 
         task = Task(task_id)
         task.free(newstate=koji.TASK_STATES['REFUSED'])
