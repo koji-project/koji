@@ -75,9 +75,8 @@ class TaskScheduler(object):
             runs_by_task.setdefault(run['task_id'], [])
             runs_by_task[run['task_id']].append(run)
 
-        # get tasks
-        active_tasks = self.get_tasks()
-        # TODO need a better query, but this will do for now
+        # get tasks to schedule
+        tasks = self.get_tasks()
 
         # get hosts and bin them
         hosts = get_ready_hosts()
@@ -113,33 +112,33 @@ class TaskScheduler(object):
         return True
 
     def get_tasks(self):
-        pass
-
-
-    def get_task_data():
-        joins = ('LEFT OUTER JOIN scheduler_task_runs ON task_id = task.id')
+        """Get the tasks that need scheduling"""
 
         fields = (
             ('task.id', 'task_id'),
-            ('scheduler_task_runs.id', 'id'),
-            ('task_id', 'task_id'),
-            ('host_id', 'host_id'),
-            ('host.name', 'host_name'),
-            ('state', 'state'),
-            ("date_part('epoch', create_time)", 'create_ts'),
-            ("date_part('epoch', start_time)", 'start_ts'),
-            ("date_part('epoch', end_time)", 'end_ts'),
+            ('task.state', 'state'),
+            ('channel_id', 'channel_id'),
+            ('task.host_id', 'host_id'),
+            ('arch', 'arch'),
+            ('method', 'method'),
+            ('priority', 'priority'),
+            ("date_part('epoch', task.create_time)", 'create_ts'),
+            ('scheduler_task_runs.id', 'run_id'),
         )
         fields, aliases = zip(*fields)
 
+        values = {'states': [koji.TASK_STATES[n] for n in ('FREE', 'ASSIGNED')]}
 
         query = QueryProcessor(
-            columns=fields, aliases=aliases, tables=['scheduler_task_runs'],
-            joins=['LEFT OUTER JOIN host on host_id=host.id'],
-            clauses=clauses, values=locals())
+            columns=fields, aliases=aliases, tables=['task'],
+            joins=('LEFT OUTER JOIN scheduler_task_runs ON task_id = task.id'),
+            clauses=('task.state IN %(states)s', 'run_id IS NULL'),
+            # XXX these clauses are not enough
+            values=values,
+            opts={'order': 'priority,create_time'}
+        )
 
-        data = query.execute()
-
+        return query.execute()
 
     def add_run(self, task, host):
         insert = InsertProcessor('scheduler_runs')
