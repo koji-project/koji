@@ -14243,6 +14243,11 @@ class Host(object):
         host = get_host(self.id)
         host['channels'] = [c['id'] for c in list_channels(hostID=self.id)]
         tasks = scheduler.getTaskRuns(hostID=self.id)
+        if not tasks:
+            # try running scheduler
+            if scheduler.TaskScheduler().run():
+                # check again
+                tasks = scheduler.getTaskRuns(hostID=self.id)
         # for builders using this old api, we fake some of this data to get them to take the
         # task runs assigned to them
         for task in tasks:

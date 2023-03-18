@@ -30,6 +30,7 @@ def getTaskRuns(taskID=None, hostID=None, state=None):
         ('task_id', 'task_id'),
         ('host_id', 'host_id'),
         ('host.name', 'host_name'),
+        ('state', 'state'),
         ("date_part('epoch', create_time)", 'create_ts'),
         ("date_part('epoch', start_time)", 'start_ts'),
         ("date_part('epoch', end_time)", 'end_ts'),
@@ -49,7 +50,7 @@ def getTaskRuns(taskID=None, hostID=None, state=None):
         joins=['LEFT OUTER JOIN host on host_id=host.id'],
         clauses=clauses, values=locals())
 
-    return query.execute()
+    data = query.execute()
 
 
 def scheduler_map_task(taskinfo):
@@ -66,27 +67,16 @@ class TaskScheduler(object):
     def run(self):
         if not self.get_lock():
             # already running elsewhere
-            return
+            return False
 
-        # get runs
-        fields = [
-                ('id', 'id'),
-                ('task_id', 'task_id'),
-                ('host_id', 'host_id'),
-                ('state', 'state'),
-                ("date_part('epoch', create_time)", 'create_ts'),
-                ("date_part('epoch', start_time)", 'start_ts'),
-                ("date_part('epoch', end_time)", 'end_ts')]
-        columns, aliases = zip(*fields.items())
-        query = QueryProcessor(columns = columns, aliases=aliases, tables=['scheduler_runs'])
-        runs = query.execute()
+        runs = getTaskRuns()
         runs_by_task = {}
         for run in runs:
             runs_by_task.setdefault(run['task_id'], [])
             runs_by_task[run['task_id']].append(run)
 
         # get tasks
-        active_tasks = get_active_tasks()  # FREE and ASSIGNED, limit 100, priority ordered
+        active_tasks = self.get_tasks()
         # TODO need a better query, but this will do for now
 
         # get hosts and bin them
@@ -119,7 +109,39 @@ class TaskScheduler(object):
                 # XXX need host
                 self.add_run(task, host)
 
-    def add_run(task, host):
+        # indicate that scheduling ran
+        return True
+
+    def get_tasks(self):
+        pass
+
+
+    def get_task_data():
+        joins = ('LEFT OUTER JOIN scheduler_task_runs ON task_id = task.id')
+
+        fields = (
+            ('task.id', 'task_id'),
+            ('scheduler_task_runs.id', 'id'),
+            ('task_id', 'task_id'),
+            ('host_id', 'host_id'),
+            ('host.name', 'host_name'),
+            ('state', 'state'),
+            ("date_part('epoch', create_time)", 'create_ts'),
+            ("date_part('epoch', start_time)", 'start_ts'),
+            ("date_part('epoch', end_time)", 'end_ts'),
+        )
+        fields, aliases = zip(*fields)
+
+
+        query = QueryProcessor(
+            columns=fields, aliases=aliases, tables=['scheduler_task_runs'],
+            joins=['LEFT OUTER JOIN host on host_id=host.id'],
+            clauses=clauses, values=locals())
+
+        data = query.execute()
+
+
+    def add_run(self, task, host):
         insert = InsertProcessor('scheduler_runs')
         insert.set(task_id=task['id'], host_id=host['id'], state=1)
         insert.execute()
