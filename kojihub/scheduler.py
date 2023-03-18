@@ -50,3 +50,80 @@ def getTaskRuns(taskID=None, hostID=None, state=None):
         clauses=clauses, values=locals())
 
     return query.execute()
+
+
+def scheduler_map_task(taskinfo):
+    # map which hosts can take this task
+    # eventually this will involve more complex rules
+    q = QueryProcessor()
+    # select hosts matching arch and channel
+    hosts = q.execute()
+    u = InsertProcessor()
+
+
+class TaskScheduler(object):
+
+    def run(self):
+        if not self.get_lock():
+            # already running elsewhere
+            return
+
+        # get runs
+        fields = [
+                ('id', 'id'),
+                ('task_id', 'task_id'),
+                ('host_id', 'host_id'),
+                ('state', 'state'),
+                ("date_part('epoch', create_time)", 'create_ts'),
+                ("date_part('epoch', start_time)", 'start_ts'),
+                ("date_part('epoch', end_time)", 'end_ts')]
+        columns, aliases = zip(*fields.items())
+        query = QueryProcessor(columns = columns, aliases=aliases, tables=['scheduler_runs'])
+        runs = query.execute()
+        runs_by_task = {}
+        for run in runs:
+            runs_by_task.setdefault(run['task_id'], [])
+            runs_by_task[run['task_id']].append(run)
+
+        # get tasks
+        active_tasks = get_active_tasks()  # FREE and ASSIGNED, limit 100, priority ordered
+        # TODO need a better query, but this will do for now
+
+        # get hosts and bin them
+        hosts = get_ready_hosts()
+        hosts_by_bin = {}
+        for host in hosts:
+            host['_bins'] = []
+            for chan in host['channels']:
+                for arch in host['arches'].split() + ['noarch']:
+                    host_bin = "%s:%s" % (chan, arch)
+                    hosts_by_bin.setdefault(host_bin, []).append(host)
+                    host['_bins'].append(host_bin)
+
+        for task in active_tasks:
+            if task['state'] == koji.TASK_STATES['ASSIGNED']:
+                # TODO -- sort out our interaction with old school assignments
+                continue
+            have_run = False
+            task_runs = runs_by_task.get(task['id'], [])
+            for run in task_runs:
+                if run['state'] in OK_RUN_STATES:
+                    have_run = True
+                    break
+            if have_run:
+                continue
+            elif task_runs:
+                # TODO -- what to do about bad runs?
+            else:
+                # we need a run
+                # XXX need host
+                self.add_run(task, host)
+
+    def add_run(task, host):
+        insert = InsertProcessor('scheduler_runs')
+        insert.set(task_id=task['id'], host_id=host['id'], state=1)
+        insert.execute()
+
+    def get_lock(self):
+        # TODO
+        pass
