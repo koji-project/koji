@@ -752,7 +752,8 @@ class VMExecTask(BaseTaskHandler):
                 raise koji.BuildError('unsupported file type: %s' % type)
             koji.ensuredir(os.path.dirname(localpath))
             # closing needs to be used for requests < 2.18.0
-            with closing(requests.get(remote_url, stream=True)) as response:
+            # nosec - skipping missing timeout, it would be done on VM lifecycle level
+            with closing(requests.get(remote_url, stream=True)) as response:  # nosec
                 response.raise_for_status()
                 with open(localpath, 'wb') as f:
                     for chunk in response.iter_content(chunk_size=65536):
