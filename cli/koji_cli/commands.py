@@ -2727,10 +2727,10 @@ def anon_handle_list_tagged(goptions, session, args):
             for build in builds:
                 build_idx[build['id']] = build
                 builddir = pathinfo.build(build)
-                if os.path.isdir(builddir):
-                    build['_dir'] = builddir
-                else:
+                if options.sigs and not os.path.isdir(builddir):
                     warn('Build directory not found: %s' % builddir)
+                else:
+                    build['_dir'] = builddir
             for rinfo in data:
                 build = build_idx[rinfo['build_id']]
                 builddir = build.get('_dir')
