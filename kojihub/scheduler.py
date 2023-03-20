@@ -103,6 +103,7 @@ class TaskScheduler(object):
                 continue
             elif task_runs:
                 # TODO -- what to do about bad runs?
+                pass
             else:
                 # we need a run
                 # XXX need host
