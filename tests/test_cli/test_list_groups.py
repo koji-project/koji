@@ -40,6 +40,14 @@ class TestListGroups(utils.CliTestCase):
         self.event_from_opts.return_value = {}
         self.__list_groups('', [], '')
 
+    def test_anon_handle_list_groups_list_show_blocked(self):
+        self.event_from_opts.return_value = {}
+        self.__list_groups('', ['--show-blocked'], '')
+
+    def test_anon_handle_list_groups_list_other_tag(self):
+        self.event_from_opts.return_value = {}
+        self.__list_groups('srpm-build', [], '')
+
     def test_anon_handle_list_groups_list_with_group(self):
         self.event_from_opts.return_value = {}
         self.__list_groups('build', [], '')
@@ -57,7 +65,7 @@ class TestListGroups(utils.CliTestCase):
         self.__list_groups('build', ['--ts', '1234567'], expected)
 
     @mock.patch('koji_cli.commands.ensure_connection')
-    def __list_groups(self, query_group, options, expected, ensure_connection_mock):
+    def __list_groups(self, query_group, options, expected, ensure_connection_mock, tag=True):
         _list_tags = [
             {
                 'maven_support': False,
@@ -122,7 +130,7 @@ class TestListGroups(utils.CliTestCase):
                     {
                         "package": "bash",
                         "requires": None,
-                        "tag_id": 2,
+                        "tag_id": 3,
                         "group_id": 2,
                         "type": "mandatory",
                         "basearchonly": None,
@@ -133,13 +141,13 @@ class TestListGroups(utils.CliTestCase):
                 "name": "srpm-build",
                 "uservisible": True,
                 "description": None,
-                "tag_id": 2,
+                "tag_id": 3,
                 "is_default": None,
                 "biarchonly": False,
                 "exported": True,
                 "langonly": None,
                 "group_id": 2,
-                "blocked": False
+                "blocked": True
             },
         ]
 
@@ -166,6 +174,7 @@ class TestListGroups(utils.CliTestCase):
                 if tag['id'] == tag_id:
                     return tag
             return None
+
         self.session.getTag.side_effect = get_tag
         self.session.getTagGroups.return_value = _get_tag_groups
         args = ['fedora26-build']

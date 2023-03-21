@@ -27,6 +27,9 @@ class TestListHistory(utils.CliTestCase):
 %s: error: {message}
 """ % (self.progname, self.progname)
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     @staticmethod
     def get_expected_date_active_action(item, act='add', utc=False):
         if act == 'add':
@@ -40,7 +43,7 @@ class TestListHistory(utils.CliTestCase):
                 active = ''
         else:
             if utc:
-                dt = datetime.fromtimestamp(item['create_ts'], tzutc())
+                dt = datetime.fromtimestamp(item['revoke_ts'], tzutc())
             else:
                 dt = datetime.fromtimestamp(item['revoke_ts'])
             active = ''
@@ -244,7 +247,7 @@ class TestListHistory(utils.CliTestCase):
         }
         self.session.queryHistory.return_value = dict_history
         expected = self.get_expected_channel(dict_history['host_channels'][0], utc=True)
-        anon_handle_list_history(self.options, self.session, ['--channel', channel_name])
+        anon_handle_list_history(self.options, self.session, ['--channel', channel_name, '--utc'])
         self.assert_console_message(stdout, expected)
         self.ensure_connection.assert_called_once_with(self.session, self.options)
 

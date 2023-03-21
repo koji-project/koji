@@ -1,6 +1,8 @@
 from __future__ import absolute_import
 
 import mock
+import os
+import time
 from six.moves import StringIO
 
 import koji
@@ -16,6 +18,9 @@ class TestListBuilds(utils.CliTestCase):
         self.session = mock.MagicMock()
         self.session.getAPIVersion.return_value = koji.API_VERSION
         self.ensure_connection_mock = mock.patch('koji_cli.commands.ensure_connection').start()
+        self.original_timezone = os.environ.get('TZ')
+        os.environ['TZ'] = 'UTC'
+        time.tzset()
         self.user_info = {'id': 1, 'name': 'kojiadmin', 'status': 0, 'usertype': 0,
                           'krb_principals': []}
         self.owner = 'kojiadmin'
@@ -28,23 +33,31 @@ class TestListBuilds(utils.CliTestCase):
             {'build_id': 1, 'epoch': 34, 'name': 'test-build', 'volume_id': 1,
              'nvr': 'test-build-11-12', 'owner_name': 'kojiadmin', 'task_id': None,
              'release': '12', 'state': 1, 'version': '11', 'package_id': 1,
-             'source': 'test-source-1'},
+             'source': 'test-source-1', 'completion_time': '2023-02-03 14:35'},
             {'build_id': 4, 'epoch': 34, 'name': 'test-build', 'volume_id': 0,
              'nvr': 'test-build-8-12', 'owner_name': 'kojiadmin', 'task_id': 40,
              'release': '12', 'state': 2, 'version': '8', 'package_id': 1,
-             'source': 'test-source-2'},
+             'source': 'test-source-2', 'completion_time': '2023-02-01 14:35'},
             {'build_id': 2, 'epoch': 34, 'name': 'test-build', 'volume_id': 0,
              'nvr': 'test-build-11-9', 'owner_name': 'kojitest', 'task_id': 20,
              'release': '9', 'state': 1, 'version': '11', 'package_id': 1,
-             'source': 'test-source-3'},
+             'source': 'test-source-3', 'completion_time': '2023-01-03 14:35'},
             {'build_id': 3, 'epoch': 34, 'name': 'test-build', 'volume_id': 0,
              'nvr': 'test-build-10-12', 'owner_name': 'kojitest', 'task_id': None,
              'release': '12', 'state': 4, 'version': '10', 'package_id': 1,
-             'source': 'test-source-4'},
+             'source': 'test-source-4', 'completion_time': '2023-02-08 14:35'},
             {'build_id': 5, 'epoch': 34, 'name': 'test-zx-build', 'volume_id': 1,
              'nvr': 'build-test-1-12', 'owner_name': 'kojiadmin', 'task_id': 50,
              'release': '12', 'state': 4, 'version': '1', 'package_id': 2,
-             'source': 'test-source-5'}]
+             'source': 'test-source-5', 'completion_time': '2023-02-04 14:35'}]
+
+    def tearDown(self):
+        mock.patch.stopall()
+        if self.original_timezone is None:
+            del os.environ['TZ']
+        else:
+            os.environ['TZ'] = self.original_timezone
+        time.tzset()
 
     def test_list_buildroot_with_args(self):
         self.assert_system_exit(
@@ -213,6 +226,46 @@ test-build-8-12                                          kojiadmin         DELET
         self.session.listVolumes.assert_not_called()
         self.session.getBuild.assert_not_called()
         self.session.listBuilds.assert_called_once_with(userID=1)
+
+    @mock.patch('sys.stdout', new_callable=StringIO)
+    def test_list_builds_opt_before(self, stdout):
+        expected_output = """test-build-11-9                                          kojitest          COMPLETE
+test-build-8-12                                          kojiadmin         DELETED
+"""
+        self.session.getUser.return_value = self.user_info
+        self.session.listBuilds.return_value = [self.list_build[1], self.list_build[2]]
+        rv = anon_handle_list_builds(self.options, self.session, ['--before', "2023-02-01 23:59",
+                                                                  '--sort-key', 'nvr'])
+        self.assertEqual(rv, None)
+        self.assert_console_message(stdout, expected_output)
+
+        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.session.getPackageID.assert_not_called()
+        self.session.getUser.assert_not_called()
+        self.session.listVolumes.assert_not_called()
+        self.session.getBuild.assert_not_called()
+        self.session.listBuilds.assert_called_once_with(completeBefore=1675295940.0)
+
+    @mock.patch('sys.stdout', new_callable=StringIO)
+    def test_list_builds_opt_after(self, stdout):
+        expected_output = """build-test-1-12                                          kojiadmin         CANCELED
+test-build-10-12                                         kojitest          CANCELED
+test-build-11-12                                         kojiadmin         COMPLETE
+"""
+        self.session.getUser.return_value = self.user_info
+        self.session.listBuilds.return_value = [self.list_build[0], self.list_build[3],
+                                                self.list_build[4]]
+        rv = anon_handle_list_builds(self.options, self.session, ['--after', "2023-02-01 23:59",
+                                                                  '--sort-key', 'nvr'])
+        self.assertEqual(rv, None)
+        self.assert_console_message(stdout, expected_output)
+
+        self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
+        self.session.getPackageID.assert_not_called()
+        self.session.getUser.assert_not_called()
+        self.session.listVolumes.assert_not_called()
+        self.session.getBuild.assert_not_called()
+        self.session.listBuilds.assert_called_once_with(completeAfter=1675295940.0)
 
     @mock.patch('sys.stdout', new_callable=StringIO)
     def test_list_builds_opt_owner_sorted_state(self, stdout):
