@@ -2854,7 +2854,7 @@ def anon_handle_list_untagged(goptions, session, args):
     else:
         fmt = "%(name)s-%(version)s-%(release)s"
     if options.show_references:
-        fmt = fmt + "  %(refs)s"
+        fmt = fmt + " %(refs)s"
     output = sorted([fmt % x for x in data])
     for line in output:
         print(line)
