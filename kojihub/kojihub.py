@@ -1001,11 +1001,13 @@ def _pkglist_owner_add(tag_id, pkg_id, owner):
 def _pkglist_add(tag_id, pkg_id, owner, block, extra_arches):
     # revoke old entry (if present)
     _pkglist_remove(tag_id, pkg_id)
+    if extra_arches is not None:
+        extra_arches = koji.parse_arches(extra_arches, strict=True, allow_none=True)
     data = {
         'tag_id': tag_id,
         'package_id': pkg_id,
         'blocked': block,
-        'extra_arches': koji.parse_arches(extra_arches, strict=True, allow_none=True)
+        'extra_arches': extra_arches
     }
     insert = InsertProcessor('tag_packages', data=data)
     insert.make_create()  # XXX user_id?
@@ -1045,7 +1047,8 @@ def _direct_pkglist_add(taginfo, pkginfo, owner, block, extra_arches, force,
     if not pkg:
         pkg = lookup_package(pkginfo, create=True)
     # validate arches before running callbacks
-    extra_arches = koji.parse_arches(extra_arches, strict=True, allow_none=True)
+    if extra_arches is not None:
+        extra_arches = koji.parse_arches(extra_arches, strict=True, allow_none=True)
     user = get_user(context.session.user_id)
     # first check to see if package is:
     #   already present (via inheritance)
