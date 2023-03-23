@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+import koji
 import mock
 import unittest
 from six.moves import StringIO
@@ -9,17 +10,29 @@ from . import utils
 
 class TestListUntagged(utils.CliTestCase):
     def setUp(self):
+        self.maxDiff = None
         self.session = mock.MagicMock()
         self.options = mock.MagicMock()
         self.untagged_values = [{'id': 1,
-                            'name': 'test-package-1234',
-                            'release': '11',
-                            'version': '1.1'},
-                           {'id': 2,
-                            'name': 'test-package-1234',
-                            'release': '99',
-                            'version': '1.33'}
-                           ]
+                                 'name': 'test-package-1234',
+                                 'release': '11',
+                                 'version': '1.1'},
+                                {'id': 2,
+                                 'name': 'test-package-1234',
+                                 'release': '99',
+                                 'version': '1.33'}
+                                ]
+
+    def __vm(self, result):
+        m = koji.VirtualCall('mcall_method', [], {})
+        if isinstance(result, dict) and result.get('faultCode'):
+            m._result = result
+        else:
+            m._result = (result,)
+        return m
+
+    def tearDown(self):
+        mock.patch.stopall()
 
     @mock.patch('sys.stdout', new_callable=StringIO)
     @mock.patch('koji_cli.commands.ensure_connection')
@@ -87,6 +100,34 @@ class TestListUntagged(utils.CliTestCase):
                               for u in self.untagged_values]) + "\n"
         anon_handle_list_untagged(self.options, self.session,
                                   ['--paths', package_name])
+        self.assert_console_message(stdout, expected)
+
+    @mock.patch('sys.stdout', new_callable=StringIO)
+    @mock.patch('koji_cli.commands.ensure_connection')
+    def test_list_untagged_package_show_references(self, ensure_connection, stdout):
+        # test case when package is existing
+        rpms = [{'rpm_id': 123}, {'rpm_id': 125}]
+        archives = [{'archive_id': 999}, {'archive_id': 888}]
+        components = [{'archive_id': 999, 'rpm_id': 125}]
+        build_references = {'tags': [{'name': 'tag-48rj15ma3a', 'tag_id': 2}],
+                            'rpms': rpms,
+                            'component_of': components,
+                            'archives': archives,
+                            'last_used': None,
+                            'images': []}
+        mcall = self.session.multicall.return_value.__enter__.return_value
+        mcall.buildReferences.return_value = self.__vm(build_references)
+        package_name = 'test-package-1234'
+
+        self.session.untaggedBuilds.return_value = self.untagged_values
+        list_untagged = [u['name'] + '-' + u['version'] + '-' + u['release']
+                         for u in self.untagged_values]
+        expected = """(Showing build references)
+%s rpms: %s, images/archives: %s, archives buildroots: %s
+%s rpms: %s, images/archives: %s, archives buildroots: %s
+""" % (list_untagged[0], rpms, components, archives, list_untagged[1], rpms, components, archives)
+        anon_handle_list_untagged(self.options, self.session,
+                                  ['--show-references', package_name])
         self.assert_console_message(stdout, expected)
 
     def test_handle_list_history_help(self):
