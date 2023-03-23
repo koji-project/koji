@@ -290,7 +290,7 @@ def editSideTag(sidetag, debuginfo=None, rpm_macros=None, remove_rpm_macros=None
                                     f"{type(rpm_macros_allowed)}")
         for macro in rpm_macros_allowed:
             if not isinstance(macro, str):
-                raise koji.GenericError(f"Allowed rpm macro list {rpm_macros_allowed:r} "
+                raise koji.GenericError(f"Allowed rpm macro list {rpm_macros_allowed!r} "
                                         f"is invalid for {parent['name']}.")
 
         if not rpm_macros_allowed:
@@ -303,7 +303,7 @@ def editSideTag(sidetag, debuginfo=None, rpm_macros=None, remove_rpm_macros=None
         convert_value(rpm_macros, cast=dict, check_only=True)
         for macro, value in rpm_macros.items():
             if not _valid_rpm_macro_name(macro):
-                raise koji.GenericError(f"Invalid macro name {macro:r}")
+                raise koji.GenericError(f"Invalid macro name {macro!r}")
             if not multi_fnmatch(macro, rpm_macros_allowed):
                 raise koji.GenericError(f"RPM macro {macro} editing is not allowed via parent tag")
             kwargs['extra']['rpm.macro.%s' % macro] = value
