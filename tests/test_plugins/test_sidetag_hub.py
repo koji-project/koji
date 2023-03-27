@@ -367,7 +367,7 @@ class TestEditSideTagHub(unittest.TestCase):
         self._edit_tag = mock.patch('sidetag_hub._edit_tag').start()
         self.sidetag = 'base_tag-sidetag-12346-suffix'
         self.user_info = {
-            'id': 23,
+            'id': 1,
             'name': 'username',
         }
         self.sidetag_info = {
@@ -414,10 +414,13 @@ class TestEditSideTagHub(unittest.TestCase):
         self.read_inheritance_data.assert_called_once_with(self.sidetag_info['id'])
         self._edit_tag.assert_not_called()
 
-    def test_edit_sidetag_rpm_macros_valid(self):
+    def test_edit_sidetag_rpm_macros_list(self):
         read_inheritance_data = [{'parent_id': 999}]
         parent_info = {'id': 999, 'extra': {'sidetag_debuginfo_allowed': True,
-                                            'sidetag_rpm_macros_allowed': True}}
+                                            'sidetag_rpm_macros_allowed':
+                                                ['macro_1_name', 'macro_2_name']},
+                       'name': 'tag'
+                       }
         self.context.session.assertLogin = mock.MagicMock()
         self.context.session.user_id = 23
         self.get_user.return_value = self.user_info
@@ -434,6 +437,160 @@ class TestEditSideTagHub(unittest.TestCase):
                                                extra={'with_debuginfo': True,
                                                       'rpm.macro.macro_1_name': 'macro_1_value'},
                                                remove_extra=['rpm.macro.macro_2_name'])
+
+    def test_edit_sidetag_remove_rpm_macros_not_allowed(self):
+        read_inheritance_data = [{'parent_id': 999}]
+        parent_info = {'id': 999, 'extra': {'sidetag_debuginfo_allowed': True,
+                                            'sidetag_rpm_macros_allowed':
+                                                ['macro_1_name', 'macro_2_name']},
+                       'name': 'tag'
+                       }
+        self.context.session.assertLogin = mock.MagicMock()
+        self.context.session.user_id = 23
+        self.get_user.return_value = self.user_info
+        self.read_inheritance_data.return_value = read_inheritance_data
+        self.get_tag.side_effect = [self.sidetag_info, parent_info]
+        with self.assertRaises(koji.GenericError) as ex:
+            sidetag_hub.editSideTag(self.sidetag, debuginfo=True,
+                                    remove_rpm_macros=['macro_2_name2'])
+        self.assertEqual("RPM macro macro_2_name2 editing is not allowed via parent tag",
+                         str(ex.exception))
+
+        self.get_user.assert_called_once_with(23, strict=True)
+        self.get_tag.assert_has_calls([mock.call(self.sidetag, strict=True), mock.call(999)])
+        self.read_inheritance_data.assert_called_once_with(self.sidetag_info['id'])
+        self._edit_tag.assert_not_called()
+
+    def test_edit_sidetag_rpm_macros_invalid_macro_name(self):
+        read_inheritance_data = [{'parent_id': 999}]
+        parent_info = {'id': 999, 'extra': {'sidetag_debuginfo_allowed': True,
+                                            'sidetag_rpm_macros_allowed':
+                                                ['#macro_1_name', 'macro_2_name']},
+                       'name': 'tag'
+                       }
+        self.context.session.assertLogin = mock.MagicMock()
+        self.context.session.user_id = 23
+        self.get_user.return_value = self.user_info
+        self.read_inheritance_data.return_value = read_inheritance_data
+        self.get_tag.side_effect = [self.sidetag_info, parent_info]
+        with self.assertRaises(koji.GenericError) as ex:
+            sidetag_hub.editSideTag(self.sidetag, rpm_macros={'#macro_1_name': 'macro_1_value'})
+        self.assertEqual("Invalid macro name '#macro_1_name'", str(ex.exception))
+
+        self.get_user.assert_called_once_with(23, strict=True)
+        self.get_tag.assert_has_calls([mock.call(self.sidetag, strict=True), mock.call(999)])
+        self.read_inheritance_data.assert_called_once_with(self.sidetag_info['id'])
+        self._edit_tag.assert_not_called()
+
+    def test_edit_sidetag_rpm_macros_not_allowed_2(self):
+        read_inheritance_data = [{'parent_id': 999}]
+        parent_info = {'id': 999, 'extra': {'sidetag_debuginfo_allowed': True,
+                                            'sidetag_rpm_macros_allowed':
+                                                'macro_1_name macro_2_name'},
+                       'name': 'tag'
+                       }
+        self.context.session.assertLogin = mock.MagicMock()
+        self.context.session.user_id = 23
+        self.get_user.return_value = self.user_info
+        self.read_inheritance_data.return_value = read_inheritance_data
+        self.get_tag.side_effect = [self.sidetag_info, parent_info]
+        with self.assertRaises(koji.GenericError) as ex:
+            sidetag_hub.editSideTag(self.sidetag, rpm_macros={'macro_1_name1': 'macro_1_value1'})
+        self.assertEqual("RPM macro macro_1_name1 editing is not allowed via parent tag",
+                         str(ex.exception))
+
+        self.get_user.assert_called_once_with(23, strict=True)
+        self.get_tag.assert_has_calls([mock.call(self.sidetag, strict=True), mock.call(999)])
+        self.read_inheritance_data.assert_called_once_with(self.sidetag_info['id'])
+        self._edit_tag.assert_not_called()
+
+    def test_edit_sidetag_rpm_macros_none(self):
+        read_inheritance_data = [{'parent_id': 999}]
+        parent_info = {'id': 999, 'extra': {'sidetag_debuginfo_allowed': True,
+                                            'sidetag_rpm_macros_allowed': None},
+                       'name': 'tag'
+                       }
+        self.context.session.assertLogin = mock.MagicMock()
+        self.context.session.user_id = 23
+        self.get_user.return_value = self.user_info
+        self.read_inheritance_data.return_value = read_inheritance_data
+        self.get_tag.side_effect = [self.sidetag_info, parent_info]
+        with self.assertRaises(koji.GenericError) as ex:
+            sidetag_hub.editSideTag(self.sidetag, debuginfo=True,
+                                    rpm_macros={'macro_1_name': 'macro_1_value'},
+                                    remove_rpm_macros=['macro_2_name'])
+        self.assertEqual("RPM macros change is not allowed in parent tag.", str(ex.exception))
+
+        self.get_user.assert_called_once_with(23, strict=True)
+        self.get_tag.assert_has_calls([mock.call(self.sidetag, strict=True), mock.call(999)])
+        self.read_inheritance_data.assert_called_once_with(self.sidetag_info['id'])
+        self._edit_tag.assert_not_called()
+
+    def test_edit_sidetag_rpm_macros_dict(self):
+        rpm_macros_allowed = {'name': 'test'}
+        read_inheritance_data = [{'parent_id': 999}]
+        parent_info = {'id': 999, 'extra': {'sidetag_debuginfo_allowed': True,
+                                            'sidetag_rpm_macros_allowed': rpm_macros_allowed},
+                       'name': 'tag'
+                       }
+        self.context.session.assertLogin = mock.MagicMock()
+        self.context.session.user_id = 23
+        self.get_user.return_value = self.user_info
+        self.read_inheritance_data.return_value = read_inheritance_data
+        self.get_tag.side_effect = [self.sidetag_info, parent_info]
+        with self.assertRaises(koji.GenericError) as ex:
+            sidetag_hub.editSideTag(self.sidetag, debuginfo=True,
+                                    rpm_macros={'macro_1_name': 'macro_1_value'},
+                                    remove_rpm_macros=['macro_2_name'])
+        self.assertEqual(f"rpm_macros_allowed in {parent_info['name']} has invalid "
+                         f"type: {type(rpm_macros_allowed)}", str(ex.exception))
+
+        self.get_user.assert_called_once_with(23, strict=True)
+        self.get_tag.assert_has_calls([mock.call(self.sidetag, strict=True), mock.call(999)])
+        self.read_inheritance_data.assert_called_once_with(self.sidetag_info['id'])
+        self._edit_tag.assert_not_called()
+
+    def test_edit_sidetag_rpm_macros_string_split_lists(self):
+        rpm_macros_allowed = [1, 2, 3]
+        read_inheritance_data = [{'parent_id': 999}]
+        parent_info = {'id': 999, 'extra': {'sidetag_debuginfo_allowed': True,
+                                            'sidetag_rpm_macros_allowed': rpm_macros_allowed},
+                       'name': 'tag'
+                       }
+        self.context.session.assertLogin = mock.MagicMock()
+        self.context.session.user_id = 23
+        self.get_user.return_value = self.user_info
+        self.read_inheritance_data.return_value = read_inheritance_data
+        self.get_tag.side_effect = [self.sidetag_info, parent_info]
+        with self.assertRaises(koji.GenericError) as ex:
+            sidetag_hub.editSideTag(self.sidetag, debuginfo=True,
+                                    rpm_macros={'macro_1_name': 'macro_1_value'},
+                                    remove_rpm_macros=['macro_2_name'])
+        self.assertEqual(f"Allowed rpm macro list {rpm_macros_allowed!r} is invalid "
+                         f"for {parent_info['name']}.", str(ex.exception))
+
+        self.get_user.assert_called_once_with(23, strict=True)
+        self.get_tag.assert_has_calls([mock.call(self.sidetag, strict=True), mock.call(999)])
+        self.read_inheritance_data.assert_called_once_with(self.sidetag_info['id'])
+        self._edit_tag.assert_not_called()
+
+    def test_edit_sidetag_extra_without_perms(self):
+        parent_info = {'id': 999, 'extra': {'sidetag_debuginfo_allowed': True,
+                                            'sidetag_rpm_macros_allowed':
+                                                ['macro_1_name', 'macro_2_name']},
+                       'name': 'tag'
+                       }
+        self.context.session.assertLogin = mock.MagicMock()
+        self.context.session.user_id = 1
+        self.context.session.hasPerm = mock.MagicMock()
+        self.context.session.hasPerm.side_effect = [False, False]
+        self.get_user.return_value = self.user_info
+        self.get_tag.side_effect = [self.sidetag_info, parent_info]
+        with self.assertRaises(koji.GenericError) as ex:
+            sidetag_hub.editSideTag(self.sidetag, debuginfo=True,
+                                    extra={'macro_1_name': 'macro_1_value'})
+        self.assertEqual("Extra can be modified only with sidetag_admin or admin permissions.",
+                         str(ex.exception))
 
 
 class TestSideTagUntagHub(unittest.TestCase):
