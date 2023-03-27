@@ -64,17 +64,18 @@ def scheduler_map_task(taskinfo):
 
 class TaskScheduler(object):
 
+    def __init__(self):
+        self.hosts_by_bin = None
+
     def run(self):
         if not self.get_lock():
             # already running elsewhere
             return False
 
-        runs = getTaskRuns()
-        runs_by_task = {}
-        for run in runs:
-            runs_by_task.setdefault(run['task_id'], [])
-            runs_by_task[run['task_id']].append(run)
+        self.do_schedule()
+        return True
 
+    def do_schedule(self):
         # get tasks to schedule
         tasks = self.get_free_tasks()
         tasks_by_bin = {}
@@ -137,9 +138,6 @@ class TaskScheduler(object):
                 # we need a run
                 # XXX need host
                 self.add_run(task, host)
-
-        # indicate that scheduling ran
-        return True
 
     def get_free_tasks(self):
         """Get the tasks that need scheduling"""

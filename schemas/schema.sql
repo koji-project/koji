@@ -1012,6 +1012,7 @@ CREATE TABLE scheduler_map (
         host_id INTEGER REFERENCES host (id) NOT NULL,
         runnable BOOLEAN NOT NULL,
         refused BOOLEAN NOT NULL,
+        msg TEXT,
         check_time TIMESTAMPTZ NOT NULL DEFAULT NOW()
 ) WITHOUT OIDS;
 
