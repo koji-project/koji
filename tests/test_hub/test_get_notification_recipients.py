@@ -5,28 +5,15 @@ import koji
 import kojihub
 
 QP = kojihub.QueryProcessor
-IP = kojihub.InsertProcessor
-UP = kojihub.UpdateProcessor
 
 
 class TestGetNotificationRecipients(unittest.TestCase):
-    def getInsert(self, *args, **kwargs):
-        insert = IP(*args, **kwargs)
-        insert.execute = mock.MagicMock()
-        self.inserts.append(insert)
-        return insert
 
     def getQuery(self, *args, **kwargs):
         query = QP(*args, **kwargs)
         query.execute = mock.MagicMock()
         self.queries.append(query)
         return query
-
-    def getUpdate(self, *args, **kwargs):
-        update = UP(*args, **kwargs)
-        update.execute = mock.MagicMock()
-        self.updates.append(update)
-        return update
 
     def setUp(self):
         self.context = mock.patch('kojihub.kojihub.context').start()
@@ -38,12 +25,6 @@ class TestGetNotificationRecipients(unittest.TestCase):
         self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
                                          side_effect=self.getQuery).start()
         self.queries = []
-        self.InsertProcessor = mock.patch('kojihub.kojihub.InsertProcessor',
-                                          side_effect=self.getInsert).start()
-        self.inserts = []
-        self.UpdateProcessor = mock.patch('kojihub.kojihub.UpdateProcessor',
-                                          side_effect=self.getUpdate).start()
-        self.updates = []
         self.readPackageList = mock.patch('kojihub.kojihub.readPackageList').start()
         self.get_user = mock.patch('kojihub.kojihub.get_user').start()
 
@@ -75,15 +56,6 @@ class TestGetNotificationRecipients(unittest.TestCase):
         self.assertEqual(q.values['state'], state)
         self.assertEqual(q.values['build'], build)
         self.assertEqual(q.values['tag_id'], tag_id)
-
-        '''
-        q = self.queries[1]
-        self.assertEqual(q.columns, ['user_id'])
-        self.assertEqual(q.tables, ['build_notifications_block'])
-        self.assertEqual(q.clauses, ['user_id IN %(user_ids)s'])
-        self.assertEqual(q.joins, [])
-        self.assertEqual(q.values['user_ids'], None)
-        '''
         self.readPackageList.assert_not_called()
 
     def test_get_notification_recipients_build_without_tag(self):
@@ -128,6 +100,34 @@ class TestGetNotificationRecipients(unittest.TestCase):
 
         self.readPackageList.assert_not_called()
 
+    def test_get_notification_not_recipients(self):
+        ### without build, without tag, result not recipients
+        tag_id = None
+        state = koji.BUILD_STATES['CANCELED']
+        build = None
+        self.queries = []
+        self.set_queries([[]])
+
+        result = kojihub.get_notification_recipients(build, tag_id, state)
+        self.assertEqual(result, [])
+
+        # there should be only query to watchers
+        self.assertEqual(len(self.queries), 1)
+        q = self.queries[0]
+        self.assertEqual(q.columns, ['email', 'user_id'])
+        self.assertEqual(q.tables, ['build_notifications'])
+        self.assertEqual(q.clauses, ['package_id IS NULL',
+                                     'status = %(users_status)i',
+                                     'success_only = FALSE',
+                                     'tag_id IS NULL',
+                                     'usertype IN %(users_usertypes)s'])
+        self.assertEqual(q.joins, ['JOIN users ON build_notifications.user_id = users.id'])
+        self.assertEqual(q.values['state'], state)
+        self.assertEqual(q.values['build'], build)
+        self.assertEqual(q.values['tag_id'], tag_id)
+
+        self.readPackageList.assert_not_called()
+
     def test_get_notification_recipients_tag_without_build(self):
         ### with tag without build makes no sense
         build = None
@@ -135,8 +135,9 @@ class TestGetNotificationRecipients(unittest.TestCase):
         state = koji.BUILD_STATES['CANCELED']
         self.queries = []
 
-        with self.assertRaises(koji.GenericError):
+        with self.assertRaises(koji.GenericError) as ex:
             kojihub.get_notification_recipients(build, tag_id, state)
+        self.assertEqual('Invalid call', str(ex.exception))
         self.assertEqual(self.queries, [])
         self.readPackageList.assert_not_called()
 
@@ -256,3 +257,44 @@ class TestGetNotificationRecipients(unittest.TestCase):
         ])
         emails = kojihub.get_notification_recipients(build, tag_id, state)
         self.assertEqual(emails, ['owner_name@test.domain.com'])
+
+    def test_get_notification_recipients_without_build(self):
+        ### without build, without tag, result not recipients
+        tag_id = None
+        state = koji.BUILD_STATES['CANCELED']
+        build = None
+        self.queries = []
+        self.set_queries([
+            [{'user_id': 5, 'email': 'owner_name@%s' % self.context.opts['EmailDomain']}],
+            []
+        ])
+
+        result = kojihub.get_notification_recipients(build, tag_id, state)
+        self.assertEqual(result, ['owner_name@test.domain.com'])
+
+        # there should be only query to watchers
+        self.assertEqual(len(self.queries), 2)
+        q = self.queries[0]
+        self.assertEqual(q.columns, ['email', 'user_id'])
+        self.assertEqual(q.tables, ['build_notifications'])
+        self.assertEqual(q.clauses, ['package_id IS NULL',
+                                     'status = %(users_status)i',
+                                     'success_only = FALSE',
+                                     'tag_id IS NULL',
+                                     'usertype IN %(users_usertypes)s'])
+        self.assertEqual(q.joins, ['JOIN users ON build_notifications.user_id = users.id'])
+        self.assertEqual(q.values['state'], state)
+        self.assertEqual(q.values['build'], build)
+        self.assertEqual(q.values['tag_id'], tag_id)
+
+        q = self.queries[1]
+        self.assertEqual(q.columns, ['user_id'])
+        self.assertEqual(q.tables, ['build_notifications_block'])
+        self.assertEqual(q.clauses, ['package_id IS NULL',
+                                     'tag_id IS NULL',
+                                     'user_id IN %(user_ids)s',
+                                     ])
+        self.assertEqual(q.joins, None)
+        self.assertEqual(q.values['user_ids'], [5])
+
+        self.readPackageList.assert_not_called()

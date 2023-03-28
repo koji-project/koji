@@ -1,38 +1,23 @@
-import unittest
-
 import mock
 
 import kojihub
+from .utils import DBQueryTestCase
 
-QP = kojihub.QueryProcessor
 
-
-class TestGetTagExternalRepos(unittest.TestCase):
+class TestGetTagExternalRepos(DBQueryTestCase):
 
     def setUp(self):
+        super(TestGetTagExternalRepos, self).setUp()
         self.maxDiff = None
         self.get_tag = mock.patch('kojihub.kojihub.get_tag').start()
         self.get_external_repo = mock.patch('kojihub.kojihub.get_external_repo').start()
         self.exports = kojihub.RootExports()
         self.context = mock.patch('kojihub.kojihub.context').start()
         self.cursor = mock.MagicMock()
-        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
-                                         side_effect=self.getQuery).start()
-        self.queries = []
         self.build_tag = 'tag'
         self.repo = 'repo_name'
         self.build_tag_info = {'id': 111, 'name': self.build_tag}
         self.repo_info = {'id': 123, 'name': self.repo}
-
-    def tearDown(self):
-        mock.patch.stopall()
-
-    def getQuery(self, *args, **kwargs):
-        query = QP(*args, **kwargs)
-        query.execute = mock.MagicMock()
-        query.executeOne = mock.MagicMock()
-        self.queries.append(query)
-        return query
 
     def test_valid(self):
         self.get_tag.return_value = self.build_tag_info

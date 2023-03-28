@@ -1,30 +1,19 @@
-import unittest
-
 import mock
+import unittest
 
 import koji
 import kojihub
+from .utils import DBQueryTestCase
 
-QP = kojihub.QueryProcessor
 
-
-class TestGetUser(unittest.TestCase):
+class TestGetUser(DBQueryTestCase):
 
     def setUp(self):
+        super(TestGetUser, self).setUp()
         self.exports = kojihub.RootExports()
         self.context = mock.patch('kojihub.kojihub.context').start()
-        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
-                                         side_effect=self.getQuery).start()
-        self.queries = []
-
-    def getQuery(self, *args, **kwargs):
-        query = QP(*args, **kwargs)
-        query.execute = mock.MagicMock()
-        self.queries.append(query)
-        return query
-
-    def tearDown(self):
-        mock.patch.stopall()
+        self.list_user_krb_principals = mock.patch(
+            'kojihub.kojihub.list_user_krb_principals').start()
 
     def test_wrong_format_user_info(self):
         userinfo = ['test-user']
@@ -71,9 +60,14 @@ class TestGetUser(unittest.TestCase):
                                        'users.id = user_krb_principals.user_id'])
         self.assertEqual(query.values, {'info': userinfo})
 
-    def test_userinfo_dict(self):
+    def test_userinfo_dict_with_krbs(self):
         userinfo = {'id': 123456, 'name': 'test-user', 'krb_principal': 'test-krb@krb.com'}
-        kojihub.get_user(userinfo, krb_princs=False)
+        self.qp_execute_one_return_value = {'id': 123456, 'name': 'test-user',
+                                            'status': 1, 'usertype': 1}
+        self.list_user_krb_principals.return_value = 'test-krb@krb.com'
+        result = kojihub.get_user(userinfo, krb_princs=True)
+        self.assertEqual(result, {'id': 123456, 'krb_principals': 'test-krb@krb.com',
+                                  'name': 'test-user', 'status': 1, 'usertype': 1})
         self.assertEqual(len(self.queries), 1)
         query = self.queries[0]
         str(query)
@@ -82,6 +76,23 @@ class TestGetUser(unittest.TestCase):
         self.assertEqual(set(query.columns), set(columns))
         self.assertEqual(query.clauses, ['user_krb_principals.krb_principal = %(krb_principal)s',
                                          'users.id = %(id)i', 'users.name = %(name)s'])
+        self.assertEqual(query.joins, ['LEFT JOIN user_krb_principals ON '
+                                       'users.id = user_krb_principals.user_id'])
+        self.assertEqual(query.values, userinfo)
+
+    def test_userinfo_int_user_not_exist_and_strict(self):
+        userinfo = {'id': 123456}
+        self.qp_execute_one_return_value = {}
+        with self.assertRaises(koji.GenericError) as cm:
+            kojihub.get_user(userinfo['id'], strict=True, krb_princs=False)
+        self.assertEqual(f"No such user: {userinfo['id']}", str(cm.exception))
+        self.assertEqual(len(self.queries), 1)
+        query = self.queries[0]
+        str(query)
+        self.assertEqual(query.tables, ['users'])
+        columns = ['id', 'name', 'status', 'usertype']
+        self.assertEqual(set(query.columns), set(columns))
+        self.assertEqual(query.clauses, ['users.id = %(id)i'])
         self.assertEqual(query.joins, ['LEFT JOIN user_krb_principals ON '
                                        'users.id = user_krb_principals.user_id'])
         self.assertEqual(query.values, userinfo)

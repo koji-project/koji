@@ -18,7 +18,7 @@ class TestGetVolume(unittest.TestCase):
             self.exports.getVolume(volume, strict=True)
         self.assertEqual("No such volume: %s" % volume, str(cm.exception))
 
-    def test_non_exist_volume_with_strict(self):
+    def test_non_exist_volume_without_strict(self):
         volume = ['test-volume']
         self.lookup_name.return_value = None
         result = self.exports.getVolume(volume)

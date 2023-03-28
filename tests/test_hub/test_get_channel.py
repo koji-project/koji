@@ -1,32 +1,16 @@
-import unittest
-
 import mock
 
 import koji
 import kojihub
+from .utils import DBQueryTestCase
 
 
-QP = kojihub.QueryProcessor
-
-
-class TestGetChannel(unittest.TestCase):
-
-    def getQuery(self, *args, **kwargs):
-        query = QP(*args, **kwargs)
-        query.execute = mock.MagicMock()
-        query.executeOne = mock.MagicMock()
-        self.queries.append(query)
-        return query
+class TestGetChannel(DBQueryTestCase):
 
     def setUp(self):
-        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
-                                         side_effect=self.getQuery).start()
-        self.queries = []
+        super(TestGetChannel, self).setUp()
         self.context = mock.patch('kojihub.kojihub.context').start()
         self.exports = kojihub.RootExports()
-
-    def tearDown(self):
-        mock.patch.stopall()
 
     def test_wrong_type_channelInfo(self):
         # dict
@@ -54,7 +38,6 @@ class TestGetChannel(unittest.TestCase):
         self.assertEqual(set(query.clauses), set(clauses))
         self.assertEqual(query.values, values)
 
-
     def test_query_by_id(self):
         self.exports.getChannel(12345)
         self.assertEqual(len(self.queries), 1)
@@ -67,7 +50,7 @@ class TestGetChannel(unittest.TestCase):
         self.assertEqual(query.values, values)
 
     def test_query_by_dict(self):
-        self.exports.getChannel({'id':12345, 'name': 'whatever'})
+        self.exports.getChannel({'id': 12345, 'name': 'whatever'})
         self.assertEqual(len(self.queries), 1)
         query = self.queries[0]
         clauses = ['(channels.id = %(channels_id)s)']

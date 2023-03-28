@@ -1,26 +1,15 @@
-import unittest
-import mock
 import datetime
 import sys
 
 import kojihub
+from .utils import DBQueryTestCase
 
-QP = kojihub.QueryProcessor
 
-
-class TestGetLastHostUpdate(unittest.TestCase):
-    def getQuery(self, *args, **kwargs):
-        query = QP(*args, **kwargs)
-        query.singleValue = self.query_singleValue
-        self.queries.append(query)
-        return query
+class TestGetLastHostUpdate(DBQueryTestCase):
 
     def setUp(self):
+        super(TestGetLastHostUpdate, self).setUp()
         self.exports = kojihub.RootExports()
-        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
-                                         side_effect=self.getQuery).start()
-        self.queries = []
-        self.query_singleValue = mock.MagicMock()
 
     def test_valid_ts(self):
         expected = 1615875554.862938
@@ -30,9 +19,16 @@ class TestGetLastHostUpdate(unittest.TestCase):
         else:
             dt = datetime.datetime.strptime(
                 "2021-03-16T06:19:14.862938+00:00", "%Y-%m-%dT%H:%M:%S.%f%z")
-        self.query_singleValue.return_value = dt
+        self.qp_single_value_return_value = dt
         rv = self.exports.getLastHostUpdate(1, ts=True)
         self.assertEqual(rv, expected)
+        self.assertEqual(len(self.queries), 1)
+        query = self.queries[0]
+        self.assertEqual(query.tables, ['sessions'])
+        self.assertEqual(query.joins, ['host ON sessions.user_id = host.user_id'])
+        self.assertEqual(query.clauses, ['host.id = %(hostID)i'])
+        self.assertEqual(query.values, {'hostID': 1})
+        self.assertEqual(query.columns, ['update_time'])
 
     def test_valid_datetime(self):
         if sys.version_info[1] <= 6:
@@ -41,6 +37,6 @@ class TestGetLastHostUpdate(unittest.TestCase):
         else:
             dt = datetime.datetime.strptime(
                 "2021-03-16T06:19:14.862938+00:00", "%Y-%m-%dT%H:%M:%S.%f%z")
-        self.query_singleValue.return_value = dt
+        self.qp_single_value_return_value = dt
         rv = self.exports.getLastHostUpdate(1)
         self.assertEqual(rv, dt)

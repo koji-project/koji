@@ -25,7 +25,7 @@ class TestGetActiveRepos(unittest.TestCase):
 
     def test_get_active_repos(self):
         # currently not really a lot of parameters to test
-        result = kojihub.get_active_repos()
+        kojihub.get_active_repos()
         self.assertEqual(len(self.queries), 1)
         query = self.queries[0]
         # make sure the following does not error

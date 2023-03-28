@@ -9,8 +9,9 @@ from koji.util import adler32_constructor
 class TestGetVerifyClass(unittest.TestCase):
 
     def test_get_verify_class_generic_error(self):
-        with self.assertRaises(GenericError):
+        with self.assertRaises(GenericError) as ex:
             kojihub.get_verify_class('not_a_real_value')
+        self.assertEqual('Unsupported verify type: not_a_real_value', str(ex.exception))
 
     def test_get_verify_class_is_none(self):
         kojihub.get_verify_class(None) is None
@@ -23,4 +24,3 @@ class TestGetVerifyClass(unittest.TestCase):
 
     def test_get_verify_class_is_sha256(self):
         kojihub.get_verify_class('sha256') is hashlib.sha256
-

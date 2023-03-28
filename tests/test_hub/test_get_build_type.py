@@ -1,32 +1,18 @@
 import mock
-import unittest
 
 import kojihub
+from .utils import DBQueryTestCase
 
-QP = kojihub.QueryProcessor
 
-
-class TestGetBuildType(unittest.TestCase):
+class TestGetBuildType(DBQueryTestCase):
 
     def setUp(self):
+        super(TestGetBuildType, self).setUp()
         self.maxDiff = None
-        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
-                                         side_effect=self.getQuery).start()
-        self.queries = []
-        self.query_execute = mock.MagicMock()
         self.get_build = mock.patch('kojihub.kojihub.get_build').start()
         self.get_maven_build = mock.patch('kojihub.kojihub.get_maven_build').start()
         self.get_win_build = mock.patch('kojihub.kojihub.get_win_build').start()
         self.get_image_build = mock.patch('kojihub.kojihub.get_image_build').start()
-
-    def tearDown(self):
-        mock.patch.stopall()
-
-    def getQuery(self, *args, **kwargs):
-        query = QP(*args, **kwargs)
-        query.execute = self.query_execute
-        self.queries.append(query)
-        return query
 
     def test_no_build(self):
         self.get_build.return_value = None
@@ -47,7 +33,7 @@ class TestGetBuildType(unittest.TestCase):
         self.get_win_build.return_value = typeinfo['win']
         self.get_image_build.return_value = typeinfo['image']
 
-        self.query_execute.return_value = [['new_type']]
+        self.qp_execute_return_value = [['new_type']]
 
         ret = kojihub.get_build_type('mytestbuild-1-1', strict=True)
         assert ret == typeinfo

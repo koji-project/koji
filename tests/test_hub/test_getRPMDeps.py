@@ -6,49 +6,50 @@ import kojihub
 
 
 class TestGetRPMDeps(unittest.TestCase):
+    def setUp(self):
+        self.exports = kojihub.RootExports()
+        self.get_rpm = mock.patch('kojihub.kojihub.get_rpm').start()
+        self.get_build = mock.patch('kojihub.kojihub.get_build').start()
 
-    @mock.patch('kojihub.kojihub.get_rpm')
-    def test_getRPMDeps_no_rpminfo(self, get_rpm):
+    def test_getRPMDeps_no_rpminfo(self):
         def mock_get_rpm(rpmID, strict=False):
             if strict:
                 raise koji.GenericError('msg')
             else:
                 return None
-        get_rpm.side_effect = mock_get_rpm
-        re = kojihub.RootExports().getRPMDeps(1)
+        self.get_rpm.side_effect = mock_get_rpm
+        re = self.exports.getRPMDeps(1)
         self.assertEqual(re, [])
         with self.assertRaises(koji.GenericError) as cm:
-            kojihub.RootExports().getRPMDeps(1, strict=True)
+            self.exports.getRPMDeps(1, strict=True)
         self.assertEqual(cm.exception.args[0], 'msg')
 
-    @mock.patch('kojihub.kojihub.get_rpm', return_value={'id': 1, 'build_id': None})
-    def test_getRPMDeps_external_rpm(self, get_rpm):
-        re = kojihub.RootExports().getRPMDeps(1)
+    def test_getRPMDeps_external_rpm(self):
+        self.get_rpm.return_value = {'id': 1, 'build_id': None}
+        re = self.exports.getRPMDeps(1)
         self.assertEqual(re, [])
         with self.assertRaises(koji.GenericError) as cm:
-            kojihub.RootExports().getRPMDeps(1, strict=True)
+            self.exports.getRPMDeps(1, strict=True)
         self.assertEqual(cm.exception.args[0],
                          'Can not get dependencies, because RPM: 1 is not internal')
 
-    @mock.patch('kojihub.kojihub.get_rpm', return_value={'id': 1, 'build_id': 1})
-    @mock.patch('kojihub.kojihub.get_build', return_value={'id': 1})
     @mock.patch('koji.pathinfo.build', return_value='fakebuildpath')
     @mock.patch('koji.pathinfo.rpm', return_value='fakerpmrelpath')
     @mock.patch('os.path.exists', return_value=False)
-    def test_getRPMDeps_no_rpmfile(self, ope, pr, pb, get_build, get_rpm):
-        re = kojihub.RootExports().getRPMDeps(1)
+    def test_getRPMDeps_no_rpmfile(self, ope, pr, pb):
+        self.get_rpm.return_value = {'id': 1, 'build_id': 1}
+        self.get_build.return_value = {'id': 1}
+        re = self.exports.getRPMDeps(1)
         self.assertEqual(re, [])
         with self.assertRaises(koji.GenericError) as cm:
-            kojihub.RootExports().getRPMDeps(1, strict=True)
+            self.exports.getRPMDeps(1, strict=True)
         self.assertEqual(cm.exception.args[0], "RPM file of 1 doesn't exist")
 
-    @mock.patch('kojihub.kojihub.get_rpm')
-    @mock.patch('kojihub.kojihub.get_build')
     @mock.patch('koji.pathinfo')
-    def test_getRPMDeps(self, pi, build, rpm):
+    def test_getRPMDeps(self, pi):
         pi.build.return_value = os.path.join(os.path.dirname(__file__), '../test_lib/data/rpms')
         pi.rpm.return_value = 'test-deps-1-1.fc24.x86_64.rpm'
-        getRPMDeps = kojihub.RootExports().getRPMDeps
+        getRPMDeps = self.exports.getRPMDeps
         res = getRPMDeps('')
         # limit test for rpm < 4.12
         if any(koji.SUPPORTED_OPT_DEP_HDRS.values()):

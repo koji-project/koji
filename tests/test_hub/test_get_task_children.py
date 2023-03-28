@@ -1,34 +1,22 @@
 import mock
-import unittest
 
 import koji
 import kojihub
+from .utils import DBQueryTestCase
 
 QP = kojihub.QueryProcessor
 
 
-class TestGetTaskChildren(unittest.TestCase):
+class TestGetTaskChildren(DBQueryTestCase):
     def setUp(self):
+        super(TestGetTaskChildren, self).setUp()
         self.exports = kojihub.RootExports()
-        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
-                                         side_effect=self.getQuery).start()
-        self.queries = []
-
-    def getQuery(self, *args, **kwargs):
-        query = QP(*args, **kwargs)
-        query.execute = mock.MagicMock()
-        query.executeOne = mock.MagicMock()
-        query.singleValue = mock.MagicMock()
-        self.queries.append(query)
-        return query
 
     def tearDown(self):
         mock.patch.stopall()
 
     def test_get_task_children_non_existing(self):
-        q = self.getQuery()
-        q.execute.return_value = []
-        self.QueryProcessor.side_effect = [q]
+        self.qp_execute_return_value = []
 
         r = self.exports.getTaskChildren(1000)
 
@@ -36,18 +24,14 @@ class TestGetTaskChildren(unittest.TestCase):
 
     def test_get_task_children_non_existing_strict(self):
         # get task info
-        q = self.getQuery()
-        q.executeOne.side_effect = koji.GenericError
-        self.QueryProcessor.side_effect = [q]
+        self.qp_execute_one_side_effect = koji.GenericError
 
         with self.assertRaises(koji.GenericError):
             self.exports.getTaskChildren(1000, strict=True)
 
     def test_get_task_children(self):
         children = [{'id': 1}]
-        q = self.getQuery()
-        q.execute.return_value = children
-        self.QueryProcessor.side_effect = [q]
+        self.qp_execute_return_value = children
 
         r = self.exports.getTaskChildren(1000)
 
