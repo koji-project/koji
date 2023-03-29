@@ -490,7 +490,7 @@ def _rmtree(dev, logger):
     # As we descend into the tree, we append a new entry to dirstack
     # When we ascend back up after removal, we pop them off
     while True:
-        dirs = _stripcwd(dev)
+        dirs = _stripcwd(dev, logger)
 
         # if cwd has no subdirs, walk back up until we find some
         while not dirs and dirstack:
@@ -538,14 +538,15 @@ def _rmtree(dev, logger):
         dirstack.append(dirs)
 
 
-def _stripcwd(dev):
+def _stripcwd(dev, logger):
     """Unlink all files in cwd and return list of subdirs"""
     dirs = []
     try:
         fdirs = os.listdir('.')
     except OSError as e:
-        # cwd has been removed by others, just return an empty list
         if e.errno in (errno.ENOENT, errno.ESTALE):
+            # cwd could have been removed by others, just return an empty list
+            logger.warning("Unable to read directory: %s" % e)
             return dirs
         raise
     for fn in fdirs:
