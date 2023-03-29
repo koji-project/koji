@@ -1270,10 +1270,11 @@ class TestRmtree(unittest.TestCase):
         isdir.return_value = True
         getcwd.return_value = 'cwd'
         path = '/mnt/folder'
+        logger = mock.MagicMock()
 
-        self.assertEqual(koji.util.rmtree(path), None)
+        self.assertEqual(koji.util.rmtree(path, logger), None)
         chdir.assert_called_with('cwd')
-        _rmtree.assert_called_once_with('dev')
+        _rmtree.assert_called_once_with('dev', logger)
         rmdir.assert_called_once_with(path)
 
     @patch('koji.util._rmtree')
@@ -1303,10 +1304,11 @@ class TestRmtree(unittest.TestCase):
     def test_rmtree_internal_empty(self, stripcwd, rmdir, chdir):
         dev = 'dev'
         stripcwd.return_value = []
+        logger = mock.MagicMock()
 
-        koji.util._rmtree(dev)
+        koji.util._rmtree(dev, logger)
 
-        stripcwd.assert_called_once_with(dev)
+        stripcwd.assert_called_once_with(dev, logger)
         rmdir.assert_not_called()
         chdir.assert_not_called()
 
@@ -1316,10 +1318,11 @@ class TestRmtree(unittest.TestCase):
     def test_rmtree_internal_dirs(self, stripcwd, rmdir, chdir):
         dev = 'dev'
         stripcwd.side_effect = (['a', 'b'], [], [])
+        logger = mock.MagicMock()
 
-        koji.util._rmtree(dev)
+        koji.util._rmtree(dev, logger)
 
-        stripcwd.assert_has_calls([call(dev), call(dev), call(dev)])
+        stripcwd.assert_has_calls([call(dev, logger), call(dev, logger), call(dev, logger)])
         rmdir.assert_has_calls([call('b'), call('a')])
         chdir.assert_has_calls([call('b'), call('..'), call('a'), call('..')])
 
@@ -1330,11 +1333,12 @@ class TestRmtree(unittest.TestCase):
         dev = 'dev'
         stripcwd.side_effect = (['a', 'b'], [], [])
         rmdir.side_effect = OSError()
+        logger = mock.MagicMock()
 
         # don't fail on anything
-        koji.util._rmtree(dev)
+        koji.util._rmtree(dev, logger)
 
-        stripcwd.assert_has_calls([call(dev), call(dev), call(dev)])
+        stripcwd.assert_has_calls([call(dev, logger), call(dev, logger), call(dev, logger)])
         rmdir.assert_has_calls([call('b'), call('a')])
         chdir.assert_has_calls([call('b'), call('..'), call('a'), call('..')])
 
@@ -1346,8 +1350,9 @@ class TestRmtree(unittest.TestCase):
         # simple empty directory
         dev = 'dev'
         listdir.return_value = []
+        logger = mock.MagicMock()
 
-        koji.util._stripcwd(dev)
+        koji.util._stripcwd(dev, logger)
 
         listdir.assert_called_once_with('.')
         unlink.assert_not_called()
@@ -1367,8 +1372,9 @@ class TestRmtree(unittest.TestCase):
         st.st_mode = 'mode'
         lstat.return_value = st
         isdir.side_effect = [True, False]
+        logger = mock.MagicMock()
 
-        koji.util._stripcwd(dev)
+        koji.util._stripcwd(dev, logger)
 
         listdir.assert_called_once_with('.')
         unlink.assert_called_once_with('b')
@@ -1391,8 +1397,9 @@ class TestRmtree(unittest.TestCase):
         st2.st_mode = 'mode'
         lstat.side_effect = [st1, st2]
         isdir.side_effect = [True, False]
+        logger = mock.MagicMock()
 
-        koji.util._stripcwd(dev)
+        koji.util._stripcwd(dev, logger)
 
         listdir.assert_called_once_with('.')
         unlink.assert_not_called()
@@ -1413,8 +1420,9 @@ class TestRmtree(unittest.TestCase):
         lstat.return_value = st
         isdir.side_effect = [True, False]
         unlink.side_effect = OSError()
+        logger = mock.MagicMock()
 
-        koji.util._stripcwd(dev)
+        koji.util._stripcwd(dev, logger)
 
         listdir.assert_called_once_with('.')
         unlink.assert_called_once_with('b')
@@ -1430,8 +1438,9 @@ class TestRmtree(unittest.TestCase):
         dev = 'dev'
         listdir.return_value = ['will-not-exist.txt']
         lstat.side_effect = OSError(errno.ENOENT, 'No such file or directory')
+        logger = mock.MagicMock()
 
-        koji.util._stripcwd(dev)
+        koji.util._stripcwd(dev, logger)
 
         listdir.assert_called_once_with('.')
         lstat.assert_called_once_with('will-not-exist.txt')
