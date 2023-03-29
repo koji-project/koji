@@ -1,39 +1,24 @@
-import unittest
-
 import mock
 
 import kojihub
+from .utils import DBQueryTestCase
 
-QP = kojihub.QueryProcessor
 
-
-class TestGetBuildTargets(unittest.TestCase):
+class TestGetBuildTargets(DBQueryTestCase):
 
     def setUp(self):
+        super(TestGetBuildTargets, self).setUp()
         self.maxDiff = None
         self.name_or_id_clause = mock.patch('kojihub.kojihub.name_or_id_clause').start()
         self.get_tag_id = mock.patch('kojihub.kojihub.get_tag_id').start()
         self.exports = kojihub.RootExports()
         self.context = mock.patch('kojihub.kojihub.context').start()
         self.cursor = mock.MagicMock()
-        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
-                                         side_effect=self.getQuery).start()
-        self.queries = []
         self.build_target = 'build-target'
         self.build_tag_name = 'tag'
         self.dest_tag_name = 'dest-tag'
         self.build_tag_id = 1
         self.dest_tag_id = 2
-
-    def tearDown(self):
-        mock.patch.stopall()
-
-    def getQuery(self, *args, **kwargs):
-        query = QP(*args, **kwargs)
-        query.execute = mock.MagicMock()
-        query.executeOne = mock.MagicMock()
-        self.queries.append(query)
-        return query
 
     def test_get_build_targets_strings(self):
         self.name_or_id_clause.return_value = '(build_target.name = %(build_target_name)s)', \

@@ -1,33 +1,18 @@
-import mock
-import unittest
-
 import koji
 import kojihub
+import mock
+from .utils import DBQueryTestCase
 
-QP = kojihub.QueryProcessor
 
-
-class TestGetSessionInfo(unittest.TestCase):
-    def getQuery(self, *args, **kwargs):
-        query = QP(*args, **kwargs)
-        query.execute = mock.MagicMock()
-        self.queries.append(query)
-        return query
-
+class TestGetSessionInfo(DBQueryTestCase):
     def setUp(self):
+        super(TestGetSessionInfo, self).setUp()
         self.context = mock.patch('kojihub.kojihub.context').start()
         self.exports = kojihub.RootExports()
-
-        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
-                                         side_effect=self.getQuery).start()
-        self.queries = []
         self.context.session.hasPerm = mock.MagicMock()
         self.get_user = mock.patch('kojihub.kojihub.get_user').start()
         self.userinfo = {'id': 123, 'name': 'testuser'}
         self.exports.getLoggedInUser = mock.MagicMock()
-
-    def tearDown(self):
-        mock.patch.stopall()
 
     def test_get_session_info_not_logged(self):
         self.context.session.logged_in = False
@@ -94,6 +79,7 @@ class TestGetSessionInfo(unittest.TestCase):
     def test_get_session_info_details(self):
         self.context.session.logged_in = True
         self.context.session.hasPerm.return_value = True
+        self.qp_execute_one_return_value = {'hostip': '10.0.0.0', 'id': 123}
         self.exports.getSessionInfo(details=True)
         self.assertEqual(len(self.queries), 1)
         query = self.queries[0]

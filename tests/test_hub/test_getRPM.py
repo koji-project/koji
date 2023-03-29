@@ -1,33 +1,21 @@
 import os.path
 import shutil
 import tempfile
-import unittest
 import mock
+import unittest
 
 import koji
 import kojihub
+from .utils import DBQueryTestCase
 
-QP = kojihub.QueryProcessor
 
-
-class TestGetRPM(unittest.TestCase):
+class TestGetRPM(DBQueryTestCase):
 
     def setUp(self):
+        super(TestGetRPM, self).setUp()
         self.exports = kojihub.RootExports()
         self.context = mock.patch('kojihub.kojihub.context').start()
         self.get_external_repo_id = mock.patch('kojihub.kojihub.get_external_repo_id').start()
-        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
-                                         side_effect=self.getQuery).start()
-        self.queries = []
-
-    def getQuery(self, *args, **kwargs):
-        query = QP(*args, **kwargs)
-        query.execute = mock.MagicMock()
-        self.queries.append(query)
-        return query
-
-    def tearDown(self):
-        mock.patch.stopall()
 
     def test_wrong_type_rpminfo(self):
         rpminfo = ['test-user']
@@ -37,7 +25,9 @@ class TestGetRPM(unittest.TestCase):
 
     def test_rpm_info_int(self):
         rpminfo = 123
-        kojihub.get_rpm(rpminfo)
+        self.qp_execute_one_return_value = {'rpminfo.id': 123}
+        result = kojihub.get_rpm(rpminfo)
+        self.assertEqual(result, {'rpminfo.id': 123})
 
         self.assertEqual(len(self.queries), 1)
         query = self.queries[0]
@@ -48,6 +38,45 @@ class TestGetRPM(unittest.TestCase):
                    'size', 'buildtime', 'metadata_only', 'extra']
         self.assertEqual(set(query.columns), set(columns))
         self.assertEqual(query.clauses, ['external_repo_id = 0', "rpminfo.id=%(id)s"])
+        self.assertEqual(query.joins,
+                         ['external_repo ON rpminfo.external_repo_id = external_repo.id'])
+        self.assertEqual(query.values, {'id': rpminfo})
+
+    def test_rpm_info_empty_query_result_without_strict(self):
+        rpminfo = 123
+        self.qp_execute_one_return_value = {}
+        result = kojihub.get_rpm(rpminfo)
+        self.assertEqual(result, None)
+
+        self.assertEqual(len(self.queries), 1)
+        query = self.queries[0]
+        str(query)
+        self.assertEqual(query.tables, ['rpminfo'])
+        columns = ['rpminfo.id', 'build_id', 'buildroot_id', 'rpminfo.name', 'version', 'release',
+                   'epoch', 'arch', 'external_repo_id', 'external_repo.name', 'payloadhash',
+                   'size', 'buildtime', 'metadata_only', 'extra']
+        self.assertEqual(set(query.columns), set(columns))
+        self.assertEqual(query.clauses, ["rpminfo.id=%(id)s"])
+        self.assertEqual(query.joins,
+                         ['external_repo ON rpminfo.external_repo_id = external_repo.id'])
+        self.assertEqual(query.values, {'id': rpminfo})
+
+    def test_rpm_info_empty_query_result_with_strict(self):
+        rpminfo = 123
+        self.qp_execute_one_return_value = {}
+        with self.assertRaises(koji.GenericError) as ex:
+            kojihub.get_rpm(rpminfo, strict=True)
+        self.assertEqual("No such rpm: {'id': 123}", str(ex.exception))
+
+        self.assertEqual(len(self.queries), 1)
+        query = self.queries[0]
+        str(query)
+        self.assertEqual(query.tables, ['rpminfo'])
+        columns = ['rpminfo.id', 'build_id', 'buildroot_id', 'rpminfo.name', 'version', 'release',
+                   'epoch', 'arch', 'external_repo_id', 'external_repo.name', 'payloadhash',
+                   'size', 'buildtime', 'metadata_only', 'extra']
+        self.assertEqual(set(query.columns), set(columns))
+        self.assertEqual(query.clauses, ["rpminfo.id=%(id)s"])
         self.assertEqual(query.joins,
                          ['external_repo ON rpminfo.external_repo_id = external_repo.id'])
         self.assertEqual(query.values, {'id': rpminfo})
