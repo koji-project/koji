@@ -17,6 +17,22 @@ from kojihub import kojixmlrpc
 import koji.xmlrpcplus
 
 
+# replace handle_rpc
+original_handle_rpc = kojixmlrpc.ModXMLRPCRequestHandler.handle_rpc
+
+def handle_rpc(self, environ):
+    try:
+        original_handle_rpc(self, environ)
+    except Exception:
+        import pdb
+        import traceback
+        etype, e, tb = sys.exc_info()
+        traceback.print_exc()
+        pdb.post_mortem(tb)
+
+kojixmlrpc.ModXMLRPCRequestHandler.handle_rpc = handle_rpc
+
+
 def get_url(environ):
     url = environ['wsgi.url_scheme']+'://'
 
