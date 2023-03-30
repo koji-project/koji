@@ -1,5 +1,6 @@
 # scheduler code goes here
 
+import koji
 from .db import QueryProcessor
 from .util import convert_value
 
@@ -98,7 +99,7 @@ class TaskScheduler(object):
         # order bins by available host capacity
         order = []
         for _bin in hosts_by_bin:
-            hosts = hosts_by_bin[_bin]
+            hosts = hosts_by_bin.get(_bin, [])
             avail = sum([min(0, h['capacity'] - h['task_load']) for h in hosts])
             order.append((avail, _bin))
         order.sort()
@@ -106,7 +107,7 @@ class TaskScheduler(object):
         # note bin demand for each host
         for n, (avail, _bin) in enumerate(order):
             rank = float(n) / len(order)
-            for host in hosts_by_bin[_bin]:
+            for host in hosts_by_bin.get(_bin, []):
                 host.setdefault('_rank', rank)
                 # so host rank is set by the most contentious bin it covers
                 # TODO - we could be smarter here, but it's a start
@@ -119,25 +120,11 @@ class TaskScheduler(object):
 
         # tasks are already in priority order
         for task in tasks:
-            hosts = hosts_by_bin[task['_bin']]
+            hosts = hosts_by_bin.get(task['_bin'], [])
             # these are the hosts that _can_ take this task
             # TODO - update host ranks as we go
+            # TODO - pick a host and assign
 
-            have_run = False
-            task_runs = runs_by_task.get(task['id'], [])
-            for run in task_runs:
-                if run['state'] in OK_RUN_STATES:
-                    have_run = True
-                    break
-            if have_run:
-                continue
-            elif task_runs:
-                # TODO -- what to do about bad runs?
-                pass
-            else:
-                # we need a run
-                # XXX need host
-                self.add_run(task, host)
 
     def get_free_tasks(self):
         """Get the tasks that need scheduling"""
@@ -163,7 +150,7 @@ class TaskScheduler(object):
             # clauses=('task.state IN %(states)s', 'run_id IS NULL'),
             clauses=('task.state IN %(states)s',),
             values=values,
-            opts={'order': 'priority,create_time'},
+            opts={'order': 'priority,create_ts'},
             # scheduler order
             # lower priority numbers take precedence, like posix process priority
             # at a given priority, earlier creation times take precedence
@@ -171,7 +158,7 @@ class TaskScheduler(object):
 
         return query.execute()
 
-    def get_ready_hosts():
+    def get_ready_hosts(self):
         """Query hosts that are ready to build"""
 
         fields = (
@@ -223,4 +210,4 @@ class TaskScheduler(object):
 
     def get_lock(self):
         # TODO
-        pass
+        return True  # XXX
