@@ -1,8 +1,9 @@
-# scheduler code goes here
+import psycopg2
 
 import koji
 from .db import QueryProcessor
 from .util import convert_value
+from koji.context import context
 
 
 class DBLogger:
@@ -209,5 +210,11 @@ class TaskScheduler(object):
         insert.execute()
 
     def get_lock(self):
-        # TODO
-        return True  # XXX
+        c = context.cnx.cursor()
+        try:
+            c.execute('LOCK TABLE scheduler_map IN EXCLUSIVE MODE NOWAIT', log_errors=False)
+            # This allows parallel reads, but nothing else
+            # Note that even though we don't log the errors, postgres itself might
+        except psycopg2.OperationalError:
+            return False
+        return True
