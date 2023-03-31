@@ -10017,6 +10017,9 @@ def _delete_event_id():
 class RootExports(object):
     '''Contains functions that are made available via XMLRPC'''
 
+    def TEST(self):
+        scheduler.TaskScheduler().run()
+
     def restartHosts(self, priority=5, options=None):
         """Spawns restartHosts task
 
