@@ -206,5 +206,5 @@ class TaskScheduler(object):
 
     def add_run(self, task, host):
         insert = InsertProcessor('scheduler_runs')
-        insert.set(task_id=task['id'], host_id=host['id'], state=1)
+        insert.set(task_id=task['id'], host_id=host['id'], state=koji.TASK_STATES['ASSIGNED'])
         insert.execute()
