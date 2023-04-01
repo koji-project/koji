@@ -1,7 +1,7 @@
 import psycopg2
 
 import koji
-from .db import QueryProcessor
+from .db import QueryProcessor, db_lock
 from .util import convert_value
 from koji.context import context
 
@@ -70,7 +70,7 @@ class TaskScheduler(object):
         self.hosts_by_bin = None
 
     def run(self):
-        if not self.get_lock():
+        if not db_lock('scheduler', wait=False):
             # already running elsewhere
             return False
 
@@ -208,13 +208,3 @@ class TaskScheduler(object):
         insert = InsertProcessor('scheduler_runs')
         insert.set(task_id=task['id'], host_id=host['id'], state=1)
         insert.execute()
-
-    def get_lock(self):
-        c = context.cnx.cursor()
-        try:
-            c.execute('LOCK TABLE scheduler_map IN EXCLUSIVE MODE NOWAIT', log_errors=False)
-            # This allows parallel reads, but nothing else
-            # Note that even though we don't log the errors, postgres itself might
-        except psycopg2.OperationalError:
-            return False
-        return True
