@@ -18,7 +18,7 @@ import koji
 from koji.context import context
 from koji.plugin import callback, convert_datetime, ignore_error
 from kojihub import get_build_type
-from kojihub.db import QueryProcessor, InsertProcessor, DeleteProcessor
+from kojihub.db import QueryProcessor, InsertProcessor, DeleteProcessor, db_lock
 
 CONFIG_FILE = '/etc/koji-hub/plugins/protonmsg.conf'
 CONFIG = None
@@ -361,9 +361,7 @@ def handle_db_msgs(urls, CONFIG):
     c = context.cnx.cursor()
     # we're running in postCommit, so we need to handle new transaction
     c.execute('BEGIN')
-    try:
-        c.execute('LOCK TABLE proton_queue IN ACCESS EXCLUSIVE MODE NOWAIT', log_errors=False)
-    except psycopg2.OperationalError:
+    if not db_lock('protonmsg-plugin', wait=False):
         LOG.debug('skipping db queue due to lock')
         return
     try:
