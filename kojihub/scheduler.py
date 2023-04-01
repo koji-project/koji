@@ -177,12 +177,12 @@ class TaskScheduler(object):
             columns=fields,
             aliases=aliases,
             clauses=[
-                'enabled IS TRUE',
-                'ready IS TRUE',
-                'expired IS FALSE',
-                'master IS NULL',
-                'active IS TRUE',
-                "update_time > NOW() - '5 minutes'::interval"
+                'host.ready IS TRUE',
+                'host_config.enabled IS TRUE',
+                'host_config.active IS TRUE',
+                'sessions.expired IS FALSE',
+                'sessions.master IS NULL',
+                "sessions.update_time > NOW() - '5 minutes'::interval"
             ],
             joins=[
                 'sessions USING (user_id)',
