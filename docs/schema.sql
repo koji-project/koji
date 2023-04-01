@@ -983,4 +983,10 @@ CREATE TABLE rpm_checksum (
 ) WITHOUT OIDS;
 CREATE INDEX rpm_checksum_rpm_id ON rpm_checksum(rpm_id);
 
+
+CREATE TABLE locks (
+        name TEXT NOT NULL PRIMARY KEY
+) WITHOUT OIDS;
+
+
 COMMIT WORK;
