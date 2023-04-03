@@ -32,6 +32,7 @@ class TestCancel(utils.CliTestCase):
 
 %s: error: {message}
 """ % (self.progname, self.progname)
+        self.session.getKojiVersion.return_value = '1.33.0'
 
     def test_anon_cancel(self):
         args = ['123']
@@ -151,6 +152,23 @@ No such build: '%s'
         self.session.cancelTask.assert_called_once_with(int(args[0]))
         self.session.cancelTaskFull.assert_not_called()
         self.session.cancelBuild.assert_called_once_with(args[1], strict=True)
+
+    def test_non_exist_build_and_task_older_hub(self):
+        self.session.getKojiVersion.return_value = '1.32.0'
+        args = ['11111', 'nvr-1-30.1']
+        expected_warn = """No such task: %s
+""" % (args[0])
+        mcall = self.session.multicall.return_value.__enter__.return_value
+        mcall.cancelTask.return_value = self.__vm(
+            {'faultCode': 1000, 'faultString': 'No such task: %s' % args[0]})
+        mcall.cancelBuild.return_value = self.__vm(False)
+        rv = handle_cancel(self.options, self.session, args)
+        self.assertEqual(rv, 1)
+        self.assert_console_message(self.stderr, expected_warn)
+        self.activate_session_mock.assert_called_once_with(self.session, self.options)
+        self.session.cancelTask.assert_called_once_with(int(args[0]))
+        self.session.cancelTaskFull.assert_not_called()
+        self.session.cancelBuild.assert_called_once_with(args[1])
 
     def test_cancel_help(self):
         self.assert_help(

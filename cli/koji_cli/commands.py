@@ -6137,6 +6137,11 @@ def handle_cancel(goptions, session, args):
     if len(args) == 0:
         parser.error("You must specify at least one task id or build")
     activate_session(session, goptions)
+    older_hub = False
+    hub_version = session.getKojiVersion()
+    v = tuple([int(x) for x in hub_version.split('.')])
+    if v < (1, 33, 0):
+        older_hub = True
     tlist = []
     blist = []
     for arg in args:
@@ -6163,7 +6168,10 @@ def handle_cancel(goptions, session, args):
             for task_id in tlist:
                 results.append(remote_fn(task_id, **opts))
         for build in blist:
-            results.append(m.cancelBuild(build, strict=True))
+            if not older_hub:
+                results.append(m.cancelBuild(build, strict=True))
+            else:
+                results.append(m.cancelBuild(build))
 
     err = False
     for r in results:
