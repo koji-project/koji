@@ -4823,7 +4823,10 @@ def get_maven_build(buildInfo, strict=False):
                            columns=['build_id', 'group_id', 'artifact_id', 'version'],
                            clauses=['build_id = %(build_id)i'],
                            values={'build_id': build_id})
-    return query.executeOne(strict=strict)
+    result = query.executeOne()
+    if strict and not result:
+        raise koji.GenericError('no such maven build: %s' % buildInfo)
+    return result
 
 
 def get_win_build(buildInfo, strict=False):
