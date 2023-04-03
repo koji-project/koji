@@ -50,18 +50,15 @@ class TestSideTagCLI(unittest.TestCase):
         with self.assertRaises(SystemExit) as ex:
             sidetag.handle_add_sidetag(self.options, self.session, ['--help'])
         std_output = get_stdout_value(stdout).decode('utf-8')
-        expected_help = """usage: %s add-sidetag [options] <basetag>
+        expected_help = """Usage: %s add-sidetag [options] <basetag>
 (Specify the --help global option for a list of other help options)
 
-positional arguments:
-  basetag          name of basetag
-
-options:
+Options:
   -h, --help       show this help message and exit
   -q, --quiet      Do not print tag name
   -w, --wait       Wait until repo is ready.
   --debuginfo      Buildroot repo will contain debuginfos
-  --suffix SUFFIX  Suffix from hub-supported ones
+  --suffix=SUFFIX  Suffix from hub-supported ones
 """ % self.progname
         self.assertMultiLineEqual(std_output, expected_help)
         self.assertEqual('0', str(ex.exception))
@@ -71,19 +68,16 @@ options:
         with self.assertRaises(SystemExit) as ex:
             sidetag.handle_edit_sidetag(self.options, self.session, ['--help'])
         std_output = get_stdout_value(stdout).decode('utf-8')
-        expected_help = """usage: %s edit-sidetag [options] <sidetag>
+        expected_help = """Usage: %s edit-sidetag [options] <sidetag>
 (Specify the --help global option for a list of other help options)
 
-positional arguments:
-  sidetag               name of sidetag
-
-options:
+Options:
   -h, --help            show this help message and exit
   --debuginfo           Generate debuginfo repository
-  --no-debuginfo
-  --rpm-macro key=value
+  --no-debuginfo        
+  --rpm-macro=key=value
                         Set tag-specific rpm macros
-  --remove-rpm-macro key
+  --remove-rpm-macro=key
                         Remove rpm macros
 """ % self.progname
         self.assertMultiLineEqual(std_output, expected_help)
@@ -94,13 +88,13 @@ options:
         with self.assertRaises(SystemExit) as ex:
             sidetag.handle_list_sidetags(self.options, self.session, ['--help'])
         std_output = get_stdout_value(stdout).decode('utf-8')
-        expected_help = """usage: %s list-sidetags [options]
+        expected_help = """Usage: %s list-sidetags [options]
 (Specify the --help global option for a list of other help options)
 
-options:
+Options:
   -h, --help         show this help message and exit
-  --basetag BASETAG  Filter on basetag
-  --user USER        Filter on user
+  --basetag=BASETAG  Filter on basetag
+  --user=USER        Filter on user
   --mine             Filter on user
 """ % self.progname
         self.assertMultiLineEqual(std_output, expected_help)
@@ -111,13 +105,10 @@ options:
         with self.assertRaises(SystemExit) as ex:
             sidetag.handle_remove_sidetag(self.options, self.session, ['--help'])
         std_output = get_stdout_value(stdout).decode('utf-8')
-        expected_help = """usage: %s remove-sidetag [options] <sidetag> ...
+        expected_help = """Usage: %s remove-sidetag [options] <sidetag> ...
 (Specify the --help global option for a list of other help options)
 
-positional arguments:
-  sidetags    name of sidetag
-
-options:
+Options:
   -h, --help  show this help message and exit
 """ % self.progname
         self.assertMultiLineEqual(std_output, expected_help)
