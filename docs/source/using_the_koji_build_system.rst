@@ -644,3 +644,41 @@ to the xmlrpc standard:
       from Apache's `ws-xmlrpc <https://ws.apache.org/xmlrpc/types.html>`
       implementation. Python's own xmlrpc library understands this tag, even
       thought it will not emit it.
+    * For encoding python-like optional arguments (``**kwargs``) we introduced
+      dictionary in xmlrpc request called ``__starstar``. It is marked by
+      member boolean variable ``__starstar = True``.
+
+So, full example of XML document for hypothetical call ``Method("a", token=1,
+null_value=None, large=10**10)`` would look like:
+
+.. code-block:: xml
+
+    <?xml version='1.0'?>
+    <methodCall>
+        <methodName>Method</methodName>
+        <params>
+            <param>
+                <value><string>first_string</string></value>
+            </param>
+            <param>
+                <value><struct>
+                        <member>
+                            <name>token</name>
+                            <value><int>1</int></value>
+                        </member>
+                        <member>
+                            <name>null_value</name>
+                            <value><nil/></value>
+                        </member>
+                        <member>
+                            <name>large</name>
+                            <value><i8>10000000000</i8></value>
+                        </member>
+                        <member>
+                            <name>__starstar</name>
+                            <value><boolean>1</boolean></value>
+                        </member>
+                </struct></value>
+            </param>
+        </params>
+    </methodCall>

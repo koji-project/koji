@@ -6,6 +6,8 @@
 Various constants used in API calls can be found in first part of <a
 href="https://pagure.io/koji/blob/master/f/koji/__init__.py">koji module</a>.
 Exceptions which can be raised in python client are just after constants section.
+More details about XMLRPC interface are documented
+<a href="https://docs.pagure.org/koji/using_the_koji_build_system/#koji-xmlrpc-api">here</a>.
 
 Basic anonymous client in python would look like this:
 
