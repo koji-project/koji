@@ -1046,7 +1046,7 @@ class BuildTask(BaseTaskHandler):
             policy_data['target'] = target_info['name']
         if not self.opts.get('skip_tag'):
             policy_data['tag'] = dest_tag  # id
-        # backward-compatible deprecated policies (TODO: remove in 1.33)
+        # backward-compatible deprecated policies (TODO: remove if py2 is dropped - rhel6 builders)
         if not SCM.is_scm_url(src) and not opts.get('scratch'):
             # let hub policy decide
             self.session.host.assertPolicy('build_from_srpm', policy_data)
