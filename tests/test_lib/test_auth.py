@@ -49,6 +49,7 @@ class TestAuthSession(unittest.TestCase):
         self.context.opts = {
             'CheckClientIP': True,
             'DisableURLSessions': False,
+            'SessionRenewalTimeout': 0,
         }
         with self.assertRaises(koji.GenericError) as cm:
             kojihub.auth.Session()
@@ -62,6 +63,7 @@ class TestAuthSession(unittest.TestCase):
         self.context.opts = {
             'CheckClientIP': True,
             'DisableURLSessions': False,
+            'SessionRenewalTimeout': 0,
         }
         self.context.environ = {
             'QUERY_STRING': 'session-id=123&session-key=xyz&callnum=345',
@@ -88,6 +90,7 @@ class TestAuthSession(unittest.TestCase):
         self.context.opts = {
             'CheckClientIP': True,
             'DisableURLSessions': True,
+            'SessionRenewalTimeout': 0,
         }
         self.context.environ = {
             'HTTP_KOJI_SESSION_ID': '123',
@@ -112,6 +115,58 @@ class TestAuthSession(unittest.TestCase):
 
     def test_session_old(self):
         self.get_session_old()
+
+    def test_renewal_timeout(self):
+        """Simple kojihub.auth.Session instance"""
+        self.context.opts = {
+            'CheckClientIP': True,
+            'DisableURLSessions': False,
+            'SessionRenewalTimeout': 1440,
+        }
+        self.context.environ = {
+            'QUERY_STRING': 'session-id=123&session-key=xyz&callnum=345',
+            'REMOTE_ADDR': 'remote-addr',
+        }
+
+        self.query_executeOne.side_effect = [
+            {'authtype': 2, 'callnum': 1, "start_ts": 1666599426.227002,
+             "update_ts": 1666599426.254308, 'exclusive': None,
+             'expired': False, 'master': None,
+             'start_time': datetime.datetime(2022, 10, 24, 8, 17, 6, 227002,
+                                             tzinfo=datetime.timezone.utc),
+             'update_time': datetime.datetime(2022, 10, 24, 8, 17, 6, 254308,
+                                              tzinfo=datetime.timezone.utc),
+             'user_id': 1},
+            {'name': 'kojiadmin', 'status': 0, 'usertype': 0}]
+        with self.assertRaises(koji.GenericError) as cm:
+            kojihub.auth.Session()
+        # no args in request/environment
+        self.assertEqual(cm.exception.args[0], 'session "123" has expired')
+
+        self.assertEqual(len(self.updates), 1)
+        self.assertEqual(len(self.queries), 1)
+
+        update = self.updates[0]
+
+        self.assertEqual(update.table, 'sessions')
+        self.assertEqual(update.values['id'], 123)
+        self.assertEqual(update.clauses, ['id = %(id)s OR master = %(id)s'])
+        self.assertEqual(update.data, {'expired': True})
+        self.assertEqual(update.rawdata, {})
+
+        query = self.queries[0]
+        self.assertEqual(query.tables, ['sessions'])
+        self.assertEqual(query.joins, None)
+        self.assertEqual(query.clauses, ['closed IS FALSE', 'hostip = %(hostip)s', 'id = %(id)i',
+                                         'key = %(key)s'])
+        self.assertEqual(query.columns, ['authtype', 'callnum', 'exclusive', 'expired', 'master',
+                                         'start_time', "date_part('epoch', start_time)",
+                                         'update_time', "date_part('epoch', update_time)",
+                                         'user_id'])
+        self.assertEqual(query.aliases, ['authtype', 'callnum', 'exclusive', 'expired', 'master',
+                                         'start_time', 'start_ts', 'update_time', 'update_ts',
+                                         'user_id'])
+        self.assertEqual(query.values, {'id': 123, 'key': 'xyz', 'hostip': 'remote-addr'})
 
     def test_basic_instance(self):
         """auth.Session instance"""

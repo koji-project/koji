@@ -26,6 +26,7 @@ import random
 import re
 import socket
 import string
+import time
 
 import six
 from six.moves import range, urllib
@@ -137,7 +138,18 @@ class Session(object):
                     logger.warning("Session ID %s is not related to host IP %s.", self.id, hostip)
             raise koji.AuthError('Invalid session or bad credentials')
 
-        # check for expiration
+        if not session_data['expired'] and context.opts['SessionRenewalTimeout'] != 0:
+            renewal_cutoff = (session_data['start_ts'] +
+                              context.opts['SessionRenewalTimeout'] * 60)
+            if time.time() > renewal_cutoff:
+                session_data['expired'] = True
+                update = UpdateProcessor('sessions',
+                                         data={'expired': True},
+                                         clauses=['id = %(id)s OR master = %(id)s'],
+                                         values={'id': self.id})
+                update.execute()
+                context.cnx.commit()
+
         if session_data['expired']:
             if getattr(context, 'method') not in AUTH_METHODS:
                 raise koji.AuthExpired('session "%s" has expired' % self.id)
