@@ -5586,7 +5586,7 @@ def get_channel(channelInfo, strict=False):
 
 
 def query_buildroots(hostID=None, tagID=None, state=None, rpmID=None, archiveID=None, taskID=None,
-                     buildrootID=None, queryOpts=None):
+                     buildrootID=None, repoID=None, queryOpts=None):
     """Return a list of matching buildroots
 
     Optional args:
@@ -5679,6 +5679,18 @@ def query_buildroots(hostID=None, tagID=None, state=None, rpmID=None, archiveID=
     if taskID is not None:
         query = QueryProcessor(columns=['buildroot_id'], tables=['standard_buildroot'],
                                clauses=['task_id = %(taskID)i'], opts={'asList': True},
+                               values=locals())
+        result = set(query.execute())
+        if candidate_buildroot_ids:
+            candidate_buildroot_ids &= result
+        else:
+            candidate_buildroot_ids = result
+        if not candidate_buildroot_ids:
+            return _applyQueryOpts([], queryOpts)
+
+    if repoID:
+        query = QueryProcessor(columns=['buildroot_id'], tables=['standard_buildroot'],
+                               clauses=['repo_id = %(repoID)i'], opts={'asList': True},
                                values=locals())
         result = set(query.execute())
         if candidate_buildroot_ids:

@@ -46,7 +46,7 @@ class TestUserinfo(utils.CliTestCase):
         self.assert_console_message(stderr, expected)
 
     @mock.patch('sys.stderr', new_callable=StringIO)
-    def test_userinfo_non_exist_tag(self, stderr):
+    def test_userinfo_non_exist_user(self, stderr):
         expected_warn = "No such user: %s\n\n" % self.user
         mcall = self.session.multicall.return_value.__enter__.return_value
 

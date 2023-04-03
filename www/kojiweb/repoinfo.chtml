@@ -20,6 +20,7 @@
   <tr><th>Repo json</th><td><a href="$repo_json">repo.json</a></td></tr>
   #end if
   <tr><th>Dist repo?</th><td class="$str($repo.dist).lower()">#if $repo.dist then 'yes' else 'no'#</td></tr>
+  <tr><th>Number of buildroots: </th><td><a href="buildroots?repoID=$repo.id">$numBuildroots</a></td></tr>
 </table>
 #else
 Repo $repo_id not found.

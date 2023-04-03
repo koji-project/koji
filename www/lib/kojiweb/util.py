@@ -433,6 +433,13 @@ def brStateName(stateID):
     return koji.BR_STATES[stateID].lower()
 
 
+def brStateImage(stateID):
+    """Return an IMG tag that loads an icon appropriate for
+    the given state"""
+    name = brStateName(stateID)
+    return imageTag(name)
+
+
 def brLabel(brinfo):
     if brinfo['br_type'] == koji.BR_TYPES['STANDARD']:
         return '%(tag_name)s-%(id)i-%(repo_id)i' % brinfo
