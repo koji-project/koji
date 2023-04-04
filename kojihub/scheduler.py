@@ -68,6 +68,9 @@ class TaskScheduler(object):
 
     def __init__(self):
         self.hosts_by_bin = None
+        self.tasks_by_bin = None
+        self.active_tasks = None
+        self.maxjobs = 15  # XXX
 
     def run(self):
         if not db_lock('scheduler', wait=False):
@@ -75,32 +78,26 @@ class TaskScheduler(object):
             return False
 
         self.do_schedule()
+        # TODO clean up bad data (e.g. active tasks with no host)
+        # TODO check for runs that aren't getting picked up
+
         return True
 
-    def do_schedule(self):
-        # get tasks to schedule
-        tasks = self.get_free_tasks()
-        tasks_by_bin = {}
-        for task in tasks:
-            tbin = '%(channel_id)s:%(arch)s' % task
-            task['_bin'] = tbin
-            tasks_by_bin.setdefault(tbin, []).append(task)
+    def get_runs(self):
+        runs = getTaskRuns()
+        runs_by_task = {}
+        for run in runs:
+            runs_by_task.setdefault(run['task_id'], [])
+            runs_by_task[run['task_id']].append(run)
 
-        # get hosts and bin them
-        hosts = self.get_ready_hosts()
-        hosts_by_bin = {}
-        for host in hosts:
-            host['_bins'] = []
-            for chan in host['channels']:
-                for arch in host['arches'].split() + ['noarch']:
-                    host_bin = "%s:%s" % (chan, arch)
-                    hosts_by_bin.setdefault(host_bin, []).append(host)
-                    host['_bins'].append(host_bin)
+    def do_schedule(self):
+        self.get_tasks()
+        self.get_hosts()
 
         # order bins by available host capacity
         order = []
-        for _bin in hosts_by_bin:
-            hosts = hosts_by_bin.get(_bin, [])
+        for _bin in self.hosts_by_bin:
+            hosts = self.hosts_by_bin.get(_bin, [])
             avail = sum([min(0, h['capacity'] - h['task_load']) for h in hosts])
             order.append((avail, _bin))
         order.sort()
@@ -114,25 +111,26 @@ class TaskScheduler(object):
                 # TODO - we could be smarter here, but it's a start
 
         # sort binned hosts by rank
-        for _bin in hosts_by_bin:
-            hosts = hosts_by_bin[_bin]
+        for _bin in self.hosts_by_bin:
+            hosts = self.hosts_by_bin[_bin]
             hosts.sort(key=lambda h: h._rank, reverse=True)
             # hosts with least contention first
 
         # tasks are already in priority order
         for task in tasks:
-            hosts = hosts_by_bin.get(task['_bin'], [])
+            hosts = self.hosts_by_bin.get(task['_bin'], [])
             # these are the hosts that _can_ take this task
             # TODO - update host ranks as we go
             # TODO - pick a host and assign
 
 
-    def get_free_tasks(self):
-        """Get the tasks that need scheduling"""
+    def get_tasks(self):
+        """Get the task data that we need for scheduling"""
 
         fields = (
             ('task.id', 'task_id'),
             ('task.state', 'state'),
+            ('task.waiting', 'waiting'),
             ('channel_id', 'channel_id'),
             ('task.host_id', 'host_id'),
             ('arch', 'arch'),
@@ -143,21 +141,55 @@ class TaskScheduler(object):
         )
         fields, aliases = zip(*fields)
 
-        values = {'states': [koji.TASK_STATES[n] for n in ('FREE',)]}
+        values = {'states': [koji.TASK_STATES[n] for n in ('ASSIGNED', 'OPEN')]}
 
         query = QueryProcessor(
             columns=fields, aliases=aliases, tables=['task'],
-            # joins=('LEFT OUTER JOIN scheduler_task_runs ON task_id = task.id'),
-            # clauses=('task.state IN %(states)s', 'run_id IS NULL'),
-            clauses=('task.state IN %(states)s',),
+            clauses=('task.state IN %(states)s',
+                     'task.host_id IS NOT NULL',  # should always be set, but...
+                    ),
             values=values,
-            opts={'order': 'priority,create_ts'},
+        )
+        active_tasks = query.execute()
+
+        values = {'state': koji.TASK_STATES['FREE']}
+        query = QueryProcessor(
+            columns=fields, aliases=aliases, tables=['task'],
+            clauses=('task.state = %(state)s',),
+            values=values,
+            opts={'order': 'priority,create_ts', 'limit': 1000},  # TODO config
             # scheduler order
             # lower priority numbers take precedence, like posix process priority
             # at a given priority, earlier creation times take precedence
         )
+        free_tasks = query.execute()
 
-        return query.execute()
+        tasks_by_bin = {}
+        for task in free_tasks:
+            tbin = '%(channel_id)s:%(arch)s' % task
+            task['_bin'] = tbin
+            tasks_by_bin.setdefault(tbin, []).append(task)
+
+        for task in active_tasks:
+            tbin = '%(channel_id)s:%(arch)s' % task
+            task['_bin'] = tbin
+
+        self.tasks_by_bin = tasks_by_bin
+        self.active_tasks = active_tasks
+
+    def get_hosts(self):
+        # get hosts and bin them
+        hosts = self.get_ready_hosts()
+        hosts_by_bin = {}
+        for host in hosts:
+            host['_bins'] = []
+            for chan in host['channels']:
+                for arch in host['arches'].split() + ['noarch']:
+                    host_bin = "%s:%s" % (chan, arch)
+                    hosts_by_bin.setdefault(host_bin, []).append(host)
+                    host['_bins'].append(host_bin)
+
+        self.hosts_by_bin = hosts_by_bin
 
     def get_ready_hosts(self):
         """Query hosts that are ready to build"""

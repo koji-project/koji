@@ -1000,6 +1000,13 @@ CREATE INDEX scheduler_task_runs_state ON scheduler_task_runs(state);
 CREATE INDEX scheduler_task_runs_create_time ON scheduler_task_runs(create_time);
 
 
+CREATE TABLE scheduler_queue (
+        task_id INTEGER REFERENCES task (id) NOT NULL PRIMARY KEY,
+        groomed BOOLEAN NOT NULL DEFAULT FALSE,
+        run_id INTEGER REFERENCES scheduler_task_run(id)
+) WITHOUT OIDS;
+
+
 CREATE TABLE scheduler_host_data (
         host_id INTEGER REFERENCES host (id) PRIMARY KEY,
         data JSONB
