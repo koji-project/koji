@@ -1,9 +1,14 @@
+import logging
 import psycopg2
 
 import koji
 from .db import QueryProcessor, db_lock
 from .util import convert_value
 from koji.context import context
+
+
+logger = logging.getLogger('koji.scheduler')
+# TODO set up db logging
 
 
 class DBLogger:
@@ -68,6 +73,7 @@ class TaskScheduler(object):
 
     def __init__(self):
         self.hosts_by_bin = None
+        self.hosts = None
         self.tasks_by_bin = None
         self.active_tasks = None
         self.maxjobs = 15  # XXX
@@ -94,18 +100,41 @@ class TaskScheduler(object):
         self.get_tasks()
         self.get_hosts()
 
+        # calculate host load and task count
+        for task in self.active_tasks:
+            # for now, we mirror what kojid updateTasks has been doing
+            host = self.hosts.get(task['host_id'])
+            if not host:
+                # not showing as ready
+                # TODO log and deal with this condition
+                continue
+            host.setdefault('_load', 0.0)
+            if not task['waiting']:
+                host['_load'] += task['weight']
+            host.setdefault('_ntasks', 0)
+            host['_ntasks'] += 1
+
+        for host in self.hosts.values():
+            host.setdefault('_load', 0.0)
+            # temporary test code
+            logger.info(f'Host: {host}')
+            ldiff = host['task_load'] - host['_load']
+            if abs(ldiff) > 0.01:
+                # this is expected in a number of cases, just observing
+                logger.info(f'Host load differs by {ldiff:.2f}: {host}')
+
         # order bins by available host capacity
         order = []
         for _bin in self.hosts_by_bin:
             hosts = self.hosts_by_bin.get(_bin, [])
-            avail = sum([min(0, h['capacity'] - h['task_load']) for h in hosts])
+            avail = sum([min(0, h['capacity'] - h['_load']) for h in hosts])
             order.append((avail, _bin))
         order.sort()
 
         # note bin demand for each host
         for n, (avail, _bin) in enumerate(order):
             rank = float(n) / len(order)
-            for host in hosts_by_bin.get(_bin, []):
+            for host in self.hosts_by_bin.get(_bin, []):
                 host.setdefault('_rank', rank)
                 # so host rank is set by the most contentious bin it covers
                 # TODO - we could be smarter here, but it's a start
@@ -113,11 +142,11 @@ class TaskScheduler(object):
         # sort binned hosts by rank
         for _bin in self.hosts_by_bin:
             hosts = self.hosts_by_bin[_bin]
-            hosts.sort(key=lambda h: h._rank, reverse=True)
+            hosts.sort(key=lambda h: h['_rank'], reverse=True)
             # hosts with least contention first
 
         # tasks are already in priority order
-        for task in tasks:
+        for task in self.free_tasks:
             hosts = self.hosts_by_bin.get(task['_bin'], [])
             # these are the hosts that _can_ take this task
             # TODO - update host ranks as we go
@@ -131,6 +160,7 @@ class TaskScheduler(object):
             ('task.id', 'task_id'),
             ('task.state', 'state'),
             ('task.waiting', 'waiting'),
+            ('task.weight', 'weight'),
             ('channel_id', 'channel_id'),
             ('task.host_id', 'host_id'),
             ('arch', 'arch'),
@@ -164,25 +194,24 @@ class TaskScheduler(object):
         )
         free_tasks = query.execute()
 
-        tasks_by_bin = {}
         for task in free_tasks:
             tbin = '%(channel_id)s:%(arch)s' % task
             task['_bin'] = tbin
-            tasks_by_bin.setdefault(tbin, []).append(task)
 
         for task in active_tasks:
             tbin = '%(channel_id)s:%(arch)s' % task
             task['_bin'] = tbin
 
-        self.tasks_by_bin = tasks_by_bin
+        self.free_tasks = free_tasks
         self.active_tasks = active_tasks
 
     def get_hosts(self):
         # get hosts and bin them
-        hosts = self.get_ready_hosts()
         hosts_by_bin = {}
-        for host in hosts:
+        hosts_by_id = {}
+        for host in self.get_ready_hosts():
             host['_bins'] = []
+            hosts_by_id[host['id']] = host
             for chan in host['channels']:
                 for arch in host['arches'].split() + ['noarch']:
                     host_bin = "%s:%s" % (chan, arch)
@@ -190,6 +219,7 @@ class TaskScheduler(object):
                     host['_bins'].append(host_bin)
 
         self.hosts_by_bin = hosts_by_bin
+        self.hosts = hosts_by_id
 
     def get_ready_hosts(self):
         """Query hosts that are ready to build"""
