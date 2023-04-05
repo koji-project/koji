@@ -58,6 +58,7 @@ def getTaskRuns(taskID=None, hostID=None, state=None):
         clauses=clauses, values=locals())
 
     data = query.execute()
+    return data
 
 
 def scheduler_map_task(taskinfo):
