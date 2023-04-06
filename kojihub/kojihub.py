@@ -259,16 +259,6 @@ class Task(object):
         if state == koji.TASK_STATES['OPEN']:
             update.rawset(start_time='NOW()')
         update.execute()
-        if state == koji.TASK_STATES['OPEN']:
-            # also update run entry
-            update2 = UpdateProcessor(
-                'scheduler_task_runs',
-                clauses=['task_id=%(task_id)s', 'host_id=%(host_id)s'],
-                values=locals(),
-                data={'state': state},
-                rawdata={'start_time': 'NOW()'},
-            )
-            update2.execute()
         self.runCallbacks('postTaskStateChange', info, 'state', koji.TASK_STATES[newstate])
         self.runCallbacks('postTaskStateChange', info, 'host_id', host_id)
         return True
@@ -370,16 +360,6 @@ class Task(object):
                                  data={'result': info['result'], 'state': state},
                                  rawdata={'completion_time': 'NOW()'})
         update.execute()
-
-        # also update run entry
-        update2 = UpdateProcessor(
-            'scheduler_task_runs',
-            clauses=['task_id=%(task_id)s', 'host_id=%(host_id)s'],
-            values=locals(),
-            data={'state': state},
-            rawdata={'end_time': 'NOW()'},
-        )
-        update2.execute()
 
         self.runCallbacks('postTaskStateChange', info, 'state', state)
         self.runCallbacks('postTaskStateChange', info, 'completion_ts', now)
