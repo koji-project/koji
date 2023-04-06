@@ -266,7 +266,7 @@ class TaskScheduler(object):
             ('host.task_load', 'task_load'),
             ('host_config.arches', 'arches'),
             ('host_config.capacity', 'capacity'),
-            ("date_part('epoch', sessions.update_time)", 'update_ts'),
+        #    ("date_part('epoch', sessions.update_time)", 'update_ts'),
         )
         fields, aliases = zip(*fields)
 
@@ -275,30 +275,33 @@ class TaskScheduler(object):
             columns=fields,
             aliases=aliases,
             clauses=[
-                'host.ready IS TRUE',
+#                'host.ready IS TRUE',
                 'host_config.enabled IS TRUE',
                 'host_config.active IS TRUE',
-                'sessions.expired IS FALSE',
-                'sessions.master IS NULL',
-                "sessions.update_time > NOW() - '5 minutes'::interval"
+#                'sessions.expired IS FALSE',
+#                'sessions.master IS NULL',
+#                "sessions.update_time > NOW() - '5 minutes'::interval"
             ],
             joins=[
-                'sessions USING (user_id)',
+            #    'sessions USING (user_id)',
                 'host_config ON host.id = host_config.host_id'
             ]
         )
 
         hosts = query.execute()
+
+        # also get channel info
+        query = QueryProcessor(
+            tables=['host_channels'],
+            columns=['host_id', 'channel_id'],
+            clauses=['active IS TRUE', 'channels.enabled IS TRUE'],
+            joins=['channels ON host_channels.channel_id = channels.id'],
+        )
+        chan_idx = {}
+        for row in query.execute():
+            chan_idx.setdefault(row['host_id'], []).append(row['channel_id'])
         for host in hosts:
-            query = QueryProcessor(
-                tables=['host_channels'],
-                columns=['channel_id'],
-                clauses=['host_id=%(id)s', 'active IS TRUE', 'enabled IS TRUE'],
-                joins=['channels ON host_channels.channel_id = channels.id'],
-                values=host
-            )
-            rows = query.execute()
-            host['channels'] = [row['channel_id'] for row in rows]
+            host['channels'] = chan_idx.get(host['id'], [])
 
         return hosts
 
