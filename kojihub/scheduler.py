@@ -28,6 +28,29 @@ def intlist(value):
 
 
 def get_tasks_for_host(hostID):
+    """Get the tasks assigned to a given host"""
+    hostID = convert_value(hostID, cast=int, none_allowed=True)
+
+    fields = (
+        ('task.id', 'id'),
+        ('task.state', 'state'),
+        ('task.channel_id', 'channel_id'),
+        ('task.host_id', 'host_id'),
+        ('task.arch', 'arch'),
+        ('task.method', 'method'),
+        ('task.priority', 'priority'),
+        ("date_part('epoch', create_time)", 'create_ts'),
+    )
+    fields, aliases = zip(*fields)
+
+    query = QueryProcessor(
+        columns=fields, aliases=aliases, tables=['task'],
+        clauses=['host_id = %(hostID)s', 'state=%(assigned)s'],
+        values={'hostID': hostID, 'assigned': koji.TASK_STATES['ASSIGNED']},
+    )
+
+    return query.execute()
+
 
 def getTaskRuns(taskID=None, hostID=None, state=None):
     taskID = convert_value(taskID, cast=int, none_allowed=True)
