@@ -262,7 +262,7 @@ class Task(object):
         if state == koji.TASK_STATES['OPEN']:
             # also update run entry
             update2 = UpdateProcessor(
-                'scheduler_runs',
+                'scheduler_task_runs',
                 clauses=['task_id=%(task_id)s', 'host_id=%(host_id)s'],
                 values=locals(),
                 data={'state': state},
@@ -373,7 +373,7 @@ class Task(object):
 
         # also update run entry
         update2 = UpdateProcessor(
-            'scheduler_runs',
+            'scheduler_task_runs',
             clauses=['task_id=%(task_id)s', 'host_id=%(host_id)s'],
             values=locals(),
             data={'state': state},
