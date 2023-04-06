@@ -10041,6 +10041,10 @@ class RootExports(object):
     def TEST(self):
         scheduler.TaskScheduler().run()
 
+    def TEST2(self, hostID=1):
+        return Host(hostID).getLoadData()
+        # return scheduler.get_tasks_for_host(hostID)
+
     def restartHosts(self, priority=5, options=None):
         """Spawns restartHosts task
 
