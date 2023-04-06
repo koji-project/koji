@@ -2785,7 +2785,7 @@ def anon_handle_list_buildroot(goptions, session, args):
     "[info] List the rpms used in or built in a buildroot"
     usage = "usage: %prog list-buildroot [options] <buildroot-id>"
     parser = OptionParser(usage=get_usage_str(usage))
-    parser.add_option("--built", action="store_true", help="Show the built rpms")
+    parser.add_option("--built", action="store_true", help="Show the built rpms and archives")
     parser.add_option("--verbose", "-v", action="store_true", help="Show more information")
     (options, args) = parser.parse_args(args)
     if len(args) != 1:
@@ -2797,15 +2797,34 @@ def anon_handle_list_buildroot(goptions, session, args):
         opts['buildrootID'] = buildrootID
     else:
         opts['componentBuildrootID'] = buildrootID
-    data = session.listRPMs(**opts)
+
+    list_rpms = session.listRPMs(**opts)
+    if list_rpms:
+        if options.built:
+            print('Built RPMs:')
+        else:
+            print('Component RPMs:')
 
     fmt = "%(nvr)s.%(arch)s"
-    order = sorted([(fmt % x, x) for x in data])
+    order = sorted([(fmt % x, x) for x in list_rpms])
     for nvra, rinfo in order:
         if options.verbose and rinfo.get('is_update'):
             print("%s [update]" % nvra)
         else:
             print(nvra)
+
+    list_archives = session.listArchives(**opts)
+    if list_archives:
+        if list_rpms:
+            # print empty line between list of RPMs and archives
+            print('')
+        if options.built:
+            print('Built Archives:')
+        else:
+            print('Component Archives:')
+    order = sorted([x['filename'] for x in list_archives])
+    for filename in order:
+        print(filename)
 
 
 def anon_handle_list_untagged(goptions, session, args):
