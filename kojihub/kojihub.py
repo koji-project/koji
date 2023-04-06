@@ -14276,12 +14276,6 @@ class Host(object):
             if scheduler.TaskScheduler().run():
                 # check again
                 tasks = scheduler.get_tasks_for_host(hostID=self.id)
-        # for builders using this old api, we fake some of this data to get them to take the
-        # task runs assigned to them
-        for task in tasks:
-            task['id'] = task['task_id']  # builder expects task id not run id
-            task['state'] = koji.TASK_STATES['ASSIGNED']
-            task['host_id'] = self.id
         return [[host], tasks]
 
     def isEnabled(self):

@@ -2,7 +2,7 @@ import logging
 import psycopg2
 
 import koji
-from .db import QueryProcessor, InsertProcessor, db_lock
+from .db import QueryProcessor, InsertProcessor, UpdateProcessor, db_lock
 from .util import convert_value
 from koji.context import context
 
@@ -306,4 +306,10 @@ class TaskScheduler(object):
         insert = InsertProcessor('scheduler_task_runs')
         insert.set(task_id=task['task_id'], host_id=host['id'], state=koji.TASK_STATES['ASSIGNED'])
         insert.execute()
-        # TODO actually assign the task entry too
+        update = UpdateProcessor(
+                'task',
+                data={'host_id': host['id'], 'state': koji.TASK_STATES['ASSIGNED']},
+                clauses=['id=%(task_id)s', 'state=%(free)s'],
+                values={'task_id': task['task_id'], 'free': koji.TASK_STATES['FREE']},
+        )
+        update.execute()
