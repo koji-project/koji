@@ -27,6 +27,8 @@ def intlist(value):
         return [int(value)]
 
 
+def get_tasks_for_host(hostID):
+
 def getTaskRuns(taskID=None, hostID=None, state=None):
     taskID = convert_value(taskID, cast=int, none_allowed=True)
     hostID = convert_value(hostID, cast=int, none_allowed=True)
@@ -34,11 +36,11 @@ def getTaskRuns(taskID=None, hostID=None, state=None):
 
     fields = (
         ('scheduler_task_runs.id', 'id'),
-        ('task_id', 'task_id'),
-        ('host_id', 'host_id'),
+        ('scheduler_task_runs.task_id', 'task_id'),
+        ('scheduler_task_runs.host_id', 'host_id'),
         ('host.name', 'host_name'),
         ('task.method', 'method'),
-        ('state', 'state'),
+        ('scheduler_task_runs.state', 'state'),
         ("date_part('epoch', create_time)", 'create_ts'),
         ("date_part('epoch', start_time)", 'start_ts'),
         ("date_part('epoch', end_time)", 'end_ts'),
