@@ -22,7 +22,7 @@ original_handle_rpc = kojixmlrpc.ModXMLRPCRequestHandler.handle_rpc
 
 def handle_rpc(self, environ):
     try:
-        original_handle_rpc(self, environ)
+        return original_handle_rpc(self, environ)
     except Exception:
         import pdb
         import traceback
