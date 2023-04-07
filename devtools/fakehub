@@ -29,6 +29,8 @@ def handle_rpc(self, environ):
         etype, e, tb = sys.exc_info()
         traceback.print_exc()
         pdb.post_mortem(tb)
+        # re-raise or the app handler will commit
+        raise
 
 kojixmlrpc.ModXMLRPCRequestHandler.handle_rpc = handle_rpc
 
