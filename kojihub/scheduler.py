@@ -151,6 +151,7 @@ class TaskScheduler(object):
         for host in self.hosts.values():
             host.setdefault('_load', 0.0)
             host.setdefault('_ntasks', 0)
+            host.setdefault('_demand', 0.0)
             # temporary test code
             logger.info(f'Host: {host}')
             ldiff = host['task_load'] - host['_load']
@@ -162,32 +163,47 @@ class TaskScheduler(object):
         # at the moment this is mostly just bin, but in the future it will be more complex
         for task in self.free_tasks:
             task['_hosts'] = []
-            min_avail = task['weight'] + self.capacity_overcommit
+            min_avail = min(0, task['weight'] - self.capacity_overcommit)
             for host in self.hosts_by_bin.get(task['_bin'], []):
-                if (host['capacity'] > host['_load'] and
-                        host['_ntasks'] < self.maxjobs and
-                        host['capacity'] - host['_load'] > min_avail):
+                if (host['capacity'] - host['_load'] > min_avail and
+                        host['_ntasks'] < self.maxjobs):
                     task['_hosts'].append(host)
             logger.info(f'Task {task["task_id"]}: {len(task["_hosts"])} options')
+            #import pdb; pdb.set_trace()
             for host in task['_hosts']:
                 # demand gives us a rough measure of how much overall load is pending for the host
                 host.setdefault('_demand', 0.0)
                 host['_demand'] += task['weight'] / len(task['_hosts'])
 
+        # normalize demand to 1
+        max_demand = sum([h['_demand'] for h in self.hosts.values()])
+        if max_demand > 0.0:
+            for h in self.hosts.values():
+                h['_demand'] = (h['_demand'] / max_demand)
+
+        for h in self.hosts.values():
+            self._rank_host(h)
+
         # tasks are already in priority order
         for task in self.free_tasks:
-            # pick the host with least demand
-            task['_hosts'].sort(key=lambda h: h['_demand'])
-            min_avail = task['weight'] + self.capacity_overcommit
+            min_avail = task['weight'] - self.capacity_overcommit
+            task['_hosts'].sort(key=lambda h: h['_rank'])
+            logger.debug('Task %i choices: %s', task['task_id'], [(h['name'], "%(_rank).2f" %h) for h in task['_hosts']])
             for host in task['_hosts']:
-                if (host['capacity'] > host['_load'] and
-                        host['_ntasks'] < self.maxjobs and
-                        host['capacity'] - host['_load'] > min_avail):
+                if (host['capacity'] - host['_load'] > min_avail and
+                        host['_ntasks'] < self.maxjobs):
                     # add run entry
                     self.add_run(task, host)
-                    # update our totals
+                    # update our totals and rank
                     host['_load'] += task['weight']
                     host['_ntasks'] += 1
+                    self._rank_host(host)
+                    break
+            else:
+                logger.debug('Could not assign task %s', task['task_id'])
+
+    def _rank_host(self, host):
+        host['_rank'] = host['_load'] + host['_ntasks'] + host['_demand']
 
     def get_tasks(self):
         """Get the task data that we need for scheduling"""
@@ -306,6 +322,8 @@ class TaskScheduler(object):
         return hosts
 
     def add_run(self, task, host):
+        logger.info('Assigning task %s (%s) to host %s',
+                    task['task_id'], task['method'], host['name'])
         insert = InsertProcessor('scheduler_task_runs')
         insert.set(task_id=task['task_id'], host_id=host['id'], state=koji.TASK_STATES['ASSIGNED'])
         insert.execute()
