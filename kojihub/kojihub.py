@@ -5501,6 +5501,7 @@ def get_host(hostInfo, strict=False, event=None):
         ('host.id', 'id'),
         ('host.user_id', 'user_id'),
         ('host.name', 'name'),
+        ("date_part('epoch', host.update_time)", 'update_ts'),
         ('host.ready', 'ready'),
         ('host.task_load', 'task_load'),
         ('host_config.arches', 'arches'),
@@ -13288,6 +13289,7 @@ class RootExports(object):
             ('host.id', 'id'),
             ('host.user_id', 'user_id'),
             ('host.name', 'name'),
+            ("date_part('epoch', host.update_time)", 'update_ts'),
             ('host.ready', 'ready'),
             ('host.task_load', 'task_load'),
             ('host_config.arches', 'arches'),
@@ -14261,11 +14263,14 @@ class Host(object):
     def updateHost(self, task_load, ready):
         host_data = get_host(self.id)
         task_load = float(task_load)
-        if task_load != host_data['task_load'] or ready != host_data['ready']:
-            update = UpdateProcessor('host', clauses=['id=%(id)i'], values={'id': self.id},
-                                     data={'task_load': task_load, 'ready': ready})
-            update.execute()
-            context.commit_pending = True
+        update = UpdateProcessor(
+                'host',
+                 data={'task_load': task_load, 'ready': ready},
+                 rawdata={'update_time': 'NOW()'},
+                 clauses=['id=%(id)i'],
+                 values={'id': self.id},
+        )
+        update.execute()
 
     def getLoadData(self):
         """Get load balancing data
