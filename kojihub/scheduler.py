@@ -236,6 +236,17 @@ class TaskScheduler(object):
                     logger.error('Host for task is not available')
                     # TODO
 
+        # end stale runs
+        update = UpdateProcessor(
+                'scheduler_task_runs',
+                data={'active': False},
+                clauses=['active = TRUE',
+                         '(SELECT id FROM task WHERE task.id=task_id AND state IN %(states)s) IS NULL'],
+                values={'states': [koji.TASK_STATES[s] for s in ('OPEN', 'ASSIGNED')]},
+        )
+        update.execute()
+
+
     def get_active_runs(self):
         runs = get_task_runs(active=True)
         runs_by_task = {}
