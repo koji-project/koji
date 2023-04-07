@@ -1,17 +1,4 @@
 # Task related hub code
-import base64
-import logging
-import time
-import xmlrpc.client
-
-import koji
-from .db import QueryProcessor, UpdateProcessor
-from .util import convert_value
-from koji.context import context
-from koji.util import decode_bytes
-
-
-logger = logging.getLogger('koji.hub.task')
 
 
 class Task(object):
@@ -119,13 +106,12 @@ class Task(object):
             otherhost = r['host_id']
             if state == koji.TASK_STATES['FREE']:
                 if otherhost is not None:
-                    logger.error(f"Error: task {task_id} is both free "
-                                 f"and handled by host {otherhost}")
+                    log_error(f"Error: task {task_id} is both free "
+                              f"and handled by host {otherhost}")
                     return False
             elif state == koji.TASK_STATES['ASSIGNED']:
                 if otherhost is None:
-                    logger.error(f"Error: task {task_id} is assigned, but no host is really "
-                                 "assigned")
+                    log_error(f"Error: task {task_id} is assigned, but no host is really assigned")
                     return False
                 elif otherhost != host_id:
                     # task is assigned to someone else, no error just return
@@ -133,7 +119,7 @@ class Task(object):
                 elif newstate == 'ASSIGNED':
                     # double assign is a weird situation but we can return True as state doesn't
                     # really change
-                    logger.error(f"Error: double assign of task {task_id} and host {host_id}")
+                    log_error(f"Error: double assign of task {task_id} and host {host_id}")
                     return True
                 # otherwise the task is assigned to host_id, so keep going
             elif state == koji.TASK_STATES['CANCELED']:
@@ -141,16 +127,16 @@ class Task(object):
                 return False
             elif state == koji.TASK_STATES['OPEN']:
                 if otherhost is None:
-                    logger.error(f"Error: task {task_id} is opened but not handled by any host")
+                    log_error(f"Error: task {task_id} is opened but not handled by any host")
                 elif otherhost == host_id:
-                    logger.error(f"Error: task {task_id} is already open and handled by "
-                                 f"{host_id} (double open/assign)")
+                    log_error(f"Error: task {task_id} is already open and handled by "
+                              f"{host_id} (double open/assign)")
                 return False
             else:
                 # state is CLOSED or FAILED
                 if otherhost is None:
-                    logger.error(f"Error: task {task_id} is non-free but not handled by any host "
-                                 f"(state {koji.TASK_STATES[state]})")
+                    log_error(f"Error: task {task_id} is non-free but not handled by any host "
+                              f"(state {koji.TASK_STATES[state]})")
                 return False
         # if we reach here, task is either
         #  - free and unlocked

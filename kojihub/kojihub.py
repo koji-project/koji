@@ -93,7 +93,6 @@ from .db import (  # noqa: F401
     nextval,
     currval,
 )
-from .task import Task
 from .util import convert_value
 
 
