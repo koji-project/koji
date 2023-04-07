@@ -3,6 +3,7 @@ import psycopg2
 import time
 
 import koji
+from . import kojihub
 from .db import QueryProcessor, InsertProcessor, UpdateProcessor, db_lock
 from .util import convert_value
 from koji.context import context
@@ -62,8 +63,8 @@ def getTaskRuns(taskID=None, hostID=None, active=None):
         ('scheduler_task_runs.id', 'id'),
         ('scheduler_task_runs.task_id', 'task_id'),
         ('scheduler_task_runs.host_id', 'host_id'),
-    #    ('host.name', 'host_name'),
-    #    ('task.method', 'method'),
+        # ('host.name', 'host_name'),
+        # ('task.method', 'method'),
         ('scheduler_task_runs.active', 'active'),
         ("date_part('epoch', scheduler_task_runs.create_time)", 'create_ts'),
     )
@@ -214,7 +215,7 @@ class TaskScheduler(object):
                 taskruns = runs.get(task['task_id'], [])
                 if not taskruns:
                     logger.error('No active run for assigned task %(task_id)s', task)
-                    # TODO free
+                    kojihub.Task(task['task_id']).free()
                     continue
                 else:
                     if len(taskruns) > 1:
@@ -223,19 +224,21 @@ class TaskScheduler(object):
                         # TODO fix
                     age = time.time() - min([r['create_ts'] for r in taskruns])
                     if age > self.assign_timeout:
-                        # TODO free
                         # TODO check host too
                         logger.info('Task assignment timeout for %(task_id)s', task)
+                        kojihub.Task(task['task_id']).free()
                         pass
             elif task['state'] == koji.TASK_STATES['OPEN']:
                 # TODO sanity check host
                 if not task['host_id']:
                     # shouldn't happen
-                    # TODO
+                    logger.error('Open task with no host %(task_id)s', task)
+                    kojihub.Task(task['task_id']).free()
                     continue
                 host = self.hosts.get(task['host_id'])
                 if not host:
                     logger.error('Host for task is not available')
+                    # TODO
 
     def get_active_runs(self):
         runs = getTaskRuns(active=True)
