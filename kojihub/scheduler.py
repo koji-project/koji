@@ -17,10 +17,6 @@ class DBLogger:
     pass
 
 
-class SchedulerExports:
-    pass
-
-
 def intlist(value):
     """Cast value to a list of ints"""
     if isinstance(value, (list, tuple)):
@@ -54,7 +50,7 @@ def get_tasks_for_host(hostID):
     return query.execute()
 
 
-def getTaskRuns(taskID=None, hostID=None, active=None):
+def get_task_runs(taskID=None, hostID=None, active=None):
     taskID = convert_value(taskID, cast=int, none_allowed=True)
     hostID = convert_value(hostID, cast=int, none_allowed=True)
     active = convert_value(active, cast=bool, none_allowed=True)
@@ -241,7 +237,7 @@ class TaskScheduler(object):
                     # TODO
 
     def get_active_runs(self):
-        runs = getTaskRuns(active=True)
+        runs = get_task_runs(active=True)
         runs_by_task = {}
         for run in runs:
             runs_by_task.setdefault(run['task_id'], [])
@@ -391,3 +387,7 @@ class TaskScheduler(object):
                 values={'task_id': task['task_id'], 'free': koji.TASK_STATES['FREE']},
         )
         update.execute()
+
+
+class SchedulerExports:
+    getTaskRuns = staticmethod(get_task_runs)
