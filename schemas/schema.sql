@@ -989,14 +989,11 @@ CREATE TABLE scheduler_task_runs (
         id SERIAL NOT NULL PRIMARY KEY,
         task_id INTEGER REFERENCES task (id) NOT NULL,
         host_id INTEGER REFERENCES host (id) NOT NULL,
-        state INTEGER NOT NULL,
-        create_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        start_time TIMESTAMPTZ,
-        end_time TIMESTAMPTZ
+        active BOOLEAN NOT NULL DEFAULT TRUE,
+        create_time TIMESTAMPTZ NOT NULL DEFAULT NOW()
 ) WITHOUT OIDS;
 CREATE INDEX scheduler_task_runs_task ON scheduler_task_runs(task_id);
 CREATE INDEX scheduler_task_runs_host ON scheduler_task_runs(host_id);
-CREATE INDEX scheduler_task_runs_state ON scheduler_task_runs(state);
 CREATE INDEX scheduler_task_runs_create_time ON scheduler_task_runs(create_time);
 
 
