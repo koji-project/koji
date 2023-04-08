@@ -336,6 +336,8 @@ def db_lock(name, wait=True):
     rows =_fetchMulti(query, data)
     if not rows:
         insert = "INSERT INTO locks (name) VALUES (%(name)s) ON CONFLICT DO NOTHING"
+        # this could cause us to wait if another transaction is adding the same lock
+        # however that will only happen the first time
         _dml(insert, data)
 
     # and then actually lock the row
