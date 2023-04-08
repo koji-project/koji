@@ -1713,11 +1713,17 @@ def hosts(environ, state='enabled', start=None, order='name', ready='all', chann
 
     values['channels'] = server.listChannels()
 
-    with server.multicall() as m:
-        updates = [m.getLastHostUpdate(host['id'], ts=True) for host in hosts]
+    if hosts and 'update_ts' not in hosts[0]:
+        # be nice with older hub
+        # TODO remove this compat workaround after a release
+        with server.multicall() as m:
+            updates = [m.getLastHostUpdate(host['id'], ts=True) for host in hosts]
 
-    for host, lastUpdate in zip(hosts, updates):
-        host['last_update'] = lastUpdate.result
+        for host, lastUpdate in zip(hosts, updates):
+            host['last_update'] = lastUpdate.result
+    else:
+        for host in hosts:
+            host['last_update'] = koji.formatTimeLong(host['update_ts'])
 
     # Paginate after retrieving last update info so we can sort on it
     kojiweb.util.paginateList(values, hosts, start, 'hosts', 'host', order)
