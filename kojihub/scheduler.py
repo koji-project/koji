@@ -104,6 +104,7 @@ class TaskScheduler(object):
         self.maxjobs = 15  # XXX
         self.capacity_overcommit = 5
         self.assign_timeout = 300
+        self.host_timeout = 900
 
     def run(self):
         if not db_lock('scheduler', wait=False):
@@ -203,38 +204,50 @@ class TaskScheduler(object):
         logger.info('Found %i active runs', len(runs))
         logger.info('Checking on %i active tasks', len(self.active_tasks))
         for task in self.active_tasks:
+
+            if not task['host_id']:
+                logger.error('Active task with no host: %s', task['task_id'])
+                kojihub.Task(task['task_id']).free()
+                continue
+
+            host = self.hosts.get(task['host_id'])
+            if not host:
+                # host disabled?
+                # TODO
+                continue
+
+            taskruns = runs.get(task['task_id'], [])
+            if not taskruns:
+                logger.error('No active run for assigned task %(task_id)s', task)
+                kojihub.Task(task['task_id']).free()
+                continue
+
+            if len(taskruns) > 1:
+                logger.error('Multiple active run entries for assigned task %(task_id)s',
+                             task)
+                # TODO fix
+
             if task['state'] == koji.TASK_STATES['ASSIGNED']:
                 # TODO check time since assigned
                 # if not taken within a timeout
                 #  - if host not checking in, then make sure host marked unavail and free
                 #  - if host *is* checking in, then treat as refusal and free
-                taskruns = runs.get(task['task_id'], [])
-                if not taskruns:
-                    logger.error('No active run for assigned task %(task_id)s', task)
+                age = time.time() - min([r['create_ts'] for r in taskruns])
+                if age > self.assign_timeout:
+                    logger.info('Task assignment timeout for %(task_id)s', task)
                     kojihub.Task(task['task_id']).free()
-                    continue
-                else:
-                    if len(taskruns) > 1:
-                        logger.error('Multiple active run entries for assigned task %(task_id)s',
-                                     task)
-                        # TODO fix
-                    age = time.time() - min([r['create_ts'] for r in taskruns])
-                    if age > self.assign_timeout:
-                        # TODO check host too
-                        logger.info('Task assignment timeout for %(task_id)s', task)
-                        kojihub.Task(task['task_id']).free()
-                        pass
+
             elif task['state'] == koji.TASK_STATES['OPEN']:
-                # TODO sanity check host
-                if not task['host_id']:
-                    # shouldn't happen
-                    logger.error('Open task with no host %(task_id)s', task)
+                if host['update_ts'] is None:
+                    # shouldn't happen?
+                    # fall back to task_run time
+                    age = time.time() - min([r['create_ts'] for r in taskruns])
+                else:
+                    age = time.time() - host['update_ts']
+                if age > self.host_timeout:
+                    logger.info('Freeing task %s from unresponsive host %s',
+                                task['task_id'], host['name'])
                     kojihub.Task(task['task_id']).free()
-                    continue
-                host = self.hosts.get(task['host_id'])
-                if not host:
-                    logger.error('Host for task is not available')
-                    # TODO
 
         # end stale runs
         update = UpdateProcessor(
@@ -330,10 +343,10 @@ class TaskScheduler(object):
         fields = (
             ('host.id', 'id'),
             ('host.name', 'name'),
+            ("date_part('epoch', host.update_time)", 'update_ts'),
             ('host.task_load', 'task_load'),
             ('host_config.arches', 'arches'),
             ('host_config.capacity', 'capacity'),
-        #    ("date_part('epoch', sessions.update_time)", 'update_ts'),
         )
         fields, aliases = zip(*fields)
 
@@ -345,12 +358,8 @@ class TaskScheduler(object):
 #                'host.ready IS TRUE',
                 'host_config.enabled IS TRUE',
                 'host_config.active IS TRUE',
-#                'sessions.expired IS FALSE',
-#                'sessions.master IS NULL',
-#                "sessions.update_time > NOW() - '5 minutes'::interval"
             ],
             joins=[
-            #    'sessions USING (user_id)',
                 'host_config ON host.id = host_config.host_id'
             ]
         )
