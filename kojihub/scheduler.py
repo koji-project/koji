@@ -103,6 +103,7 @@ class TaskScheduler(object):
         # TODO these things need proper config
         self.maxjobs = 15  # XXX
         self.capacity_overcommit = 5
+        self.ready_timeout = 180
         self.assign_timeout = 300
         self.host_timeout = 900
 
@@ -112,8 +113,8 @@ class TaskScheduler(object):
             return False
 
         self.do_schedule()
-        # TODO clean up bad data (e.g. active tasks with no host)
         self.check_active_tasks()
+        self.check_hosts()
 
         return True
 
@@ -260,6 +261,25 @@ class TaskScheduler(object):
         update.execute()
 
 
+    def check_hosts(self):
+        # sanity check ready status
+        hosts_to_mark = []
+        for host in self.hosts.values():
+            if not host['ready']:
+                continue
+            if (host['update_ts'] is None or time.time() - host['update_ts'] > self.ready_timeout):
+                hosts_to_mark.append(host)
+
+        if hosts_to_mark:
+            update = db.UpdateProcessor(
+                    'host',
+                    data={'ready': False},
+                    clauses=['host_id IN %(host_ids)s'],
+                    values={'host_ids': [h['id'] for h in hosts_to_mark]},
+            )
+            update.execute()
+
+
     def get_active_runs(self):
         runs = get_task_runs(active=True)
         runs_by_task = {}
@@ -325,7 +345,7 @@ class TaskScheduler(object):
         # get hosts and bin them
         hosts_by_bin = {}
         hosts_by_id = {}
-        for host in self.get_ready_hosts():
+        for host in self._get_hosts():
             host['_bins'] = []
             hosts_by_id[host['id']] = host
             for chan in host['channels']:
@@ -337,14 +357,15 @@ class TaskScheduler(object):
         self.hosts_by_bin = hosts_by_bin
         self.hosts = hosts_by_id
 
-    def get_ready_hosts(self):
-        """Query hosts that are ready to build"""
+    def _get_hosts(self):
+        """Query enabled hosts"""
 
         fields = (
             ('host.id', 'id'),
             ('host.name', 'name'),
             ("date_part('epoch', host.update_time)", 'update_ts'),
             ('host.task_load', 'task_load'),
+            ('host.ready', 'ready'),
             ('host_config.arches', 'arches'),
             ('host_config.capacity', 'capacity'),
         )
@@ -355,7 +376,6 @@ class TaskScheduler(object):
             columns=fields,
             aliases=aliases,
             clauses=[
-#                'host.ready IS TRUE',
                 'host_config.enabled IS TRUE',
                 'host_config.active IS TRUE',
             ],
