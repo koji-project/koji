@@ -97,7 +97,6 @@ from .util import convert_value
 
 
 logger = logging.getLogger('koji.hub')
-sched_logger = scheduler.DBLogger()
 
 
 NUMERIC_TYPES = (int, float)
@@ -14355,8 +14354,6 @@ class HostExports(object):
             insert = InsertProcessor(table=table, data={'data': hostdata},
                                      clauses=clauses, values=values)
             insert.execute()
-        sched_logger.debug(f"Updating host data with: {hostdata}",
-                           host_id=host.id, location='setHostData')
 
     def getTasks(self):
         host = Host()
@@ -14377,9 +14374,6 @@ class HostExports(object):
             }
         )
         tasks = query.execute()
-        for task in tasks:
-            sched_logger.debug("Sending task", host_id=host.id, task_id=task['id'],
-                               location="getTasks")
         return tasks
 
     def refuseTask(self, task_id):
@@ -14390,8 +14384,6 @@ class HostExports(object):
 
         task = Task(task_id)
         task.free(newstate=koji.TASK_STATES['REFUSED'])
-        sched_logger.warning("Refusing task", host_id=host.id, task_id=task_id,
-                             location="refuseTask")
         return True
 
     def getHostTasks(self):

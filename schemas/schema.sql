@@ -1026,9 +1026,6 @@ CREATE TABLE scheduler_log_messages (
         task_id INTEGER REFERENCES task (id),
         host_id INTEGER REFERENCES host (id),
         msg_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        logger_name VARCHAR(200) NOT NULL,
-        level VARCHAR(10) NOT NULL,
-        location VARCHAR(200),
         msg TEXT NOT NULL
 ) WITHOUT OIDS;
 

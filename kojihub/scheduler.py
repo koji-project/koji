@@ -10,11 +10,21 @@ from koji.context import context
 
 
 logger = logging.getLogger('koji.scheduler')
-# TODO set up db logging
 
 
-class DBLogger:
-    pass
+def log_db(msg, task_id=None, host_id=None):
+    insert = InsertProcessor(
+            'scheduler_log_messages',
+            data={'msg': msg, 'task_id': task_id, 'host_id': host_id},
+    )
+    insert.execute()
+
+
+def log_both(msg, task_id=None, host_id=None, level=logging.INFO):
+    pre1 = f"[task_id={task_id}] " if task_id else ""
+    pre2 = f"[host_id={host_id}] " if host_id else ""
+    logger.log(level, '%s%s%s', pre1, pre2, msg)
+    log_db(msg, task_id, host_id)
 
 
 def intlist(value):
@@ -207,7 +217,7 @@ class TaskScheduler(object):
         for task in self.active_tasks:
 
             if not task['host_id']:
-                logger.error('Active task with no host: %s', task['task_id'])
+                log_both('Active task with no host', task_id=task['task_id'], level=logging.ERROR)
                 kojihub.Task(task['task_id']).free()
                 continue
 
@@ -219,7 +229,8 @@ class TaskScheduler(object):
 
             taskruns = runs.get(task['task_id'], [])
             if not taskruns:
-                logger.error('No active run for assigned task %(task_id)s', task)
+                log_both('Assigned task with no active run entry', task_id=task['task_id'],
+                         host_id=host['id'], level=logging.ERROR)
                 kojihub.Task(task['task_id']).free()
                 continue
 
@@ -235,7 +246,8 @@ class TaskScheduler(object):
                 #  - if host *is* checking in, then treat as refusal and free
                 age = time.time() - min([r['create_ts'] for r in taskruns])
                 if age > self.assign_timeout:
-                    logger.info('Task assignment timeout for %(task_id)s', task)
+                    log_both('Task assignment timeout', task_id=task['task_id'],
+                             host_id=host['id'])
                     kojihub.Task(task['task_id']).free()
 
             elif task['state'] == koji.TASK_STATES['OPEN']:
@@ -246,8 +258,8 @@ class TaskScheduler(object):
                 else:
                     age = time.time() - host['update_ts']
                 if age > self.host_timeout:
-                    logger.info('Freeing task %s from unresponsive host %s',
-                                task['task_id'], host['name'])
+                    log_both('Freeing task from unresponsive host', task_id=task['task_id'],
+                             host_id=host['id'])
                     kojihub.Task(task['task_id']).free()
 
         # end stale runs
@@ -269,6 +281,7 @@ class TaskScheduler(object):
                 continue
             if (host['update_ts'] is None or time.time() - host['update_ts'] > self.ready_timeout):
                 hosts_to_mark.append(host)
+                log_both('Marking host not ready', host_id=host['id'])
 
         if hosts_to_mark:
             update = db.UpdateProcessor(
@@ -402,8 +415,7 @@ class TaskScheduler(object):
         return hosts
 
     def add_run(self, task, host):
-        logger.info('Assigning task %s (%s) to host %s',
-                    task['task_id'], task['method'], host['name'])
+        log_both('Assigning task', task_id=task['task_id'], host_id=host['id'])
 
         # mark any older runs inactive
         update = UpdateProcessor(
