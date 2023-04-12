@@ -122,16 +122,15 @@ class TaskScheduler(object):
             # already running elsewhere
             return False
 
+        self.get_tasks()
+        self.get_hosts()
+        self.check_hosts()
         self.do_schedule()
         self.check_active_tasks()
-        self.check_hosts()
 
         return True
 
     def do_schedule(self):
-        self.get_tasks()
-        self.get_hosts()
-
         # debug
         logger.info('Running task scheduler')
         logger.info(f'Hosts: {len(self.hosts)}')
@@ -169,8 +168,8 @@ class TaskScheduler(object):
             task['_hosts'] = []
             min_avail = min(0, task['weight'] - self.capacity_overcommit)
             for host in self.hosts_by_bin.get(task['_bin'], []):
-                if (host['capacity'] - host['_load'] > min_avail and
-                        host['_ntasks'] < self.maxjobs):
+                if (host['ready'] and host['_ntasks'] < self.maxjobs and
+                        host['capacity'] - host['_load'] > min_avail):
                     task['_hosts'].append(host)
             logger.info(f'Task {task["task_id"]}: {len(task["_hosts"])} options')
             #import pdb; pdb.set_trace()
