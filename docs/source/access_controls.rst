@@ -53,7 +53,8 @@ Examples of access control polices are:
 * dist_repo: control which distRepo tasks are allowed
 * build_rpm: control whether builds are allowed, this is superceding older ``build_from_srpm``
              to handle all task types. ``build_from_srpm`` and ``build_from_repo_id`` are now
-             deprecated and will be removed in koji 1.33. Default policy allows everything.
+             deprecated and will be removed when py2 support will be dropped (rhel6 builders).
+             Default policy allows everything.
 * build_from_srpm [deprecated]: control whether builds from srpm are allowed
 * build_from_scm: control whether builds from the SCM are allowed and the behavior of the SCM
 * build_from_repo_id [deprecated]: control whether builds from user-specified repos ids are allowed
