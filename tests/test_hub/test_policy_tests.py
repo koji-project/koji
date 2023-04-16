@@ -260,6 +260,12 @@ class TestHasTagTest(unittest.TestCase):
     def tearDown(self):
         mock.patch.stopall()
 
+    def test_build_not_in_data(self):
+        data = {'key': 'test'}
+        obj = kojihub.HasTagTest('hastag *-candidate')
+        self.assertFalse(obj.run(data))
+        self.list_tags.assert_not_called()
+
     def test_has_tag_simple(self):
         obj = kojihub.HasTagTest('hastag *-candidate')
         tags = ['foo-1.0', 'foo-2.0', 'foo-3.0-candidate']
@@ -427,3 +433,331 @@ class TestImportedTest(unittest.TestCase):
         self.get_build.assert_called_once_with('nvr-1-1', strict=True)
         self.list_rpms.assert_called_once_with(buildID=1)
         self.list_archives.assert_called_once_with(buildID=1)
+
+
+class TestPolicyGetVersion(unittest.TestCase):
+    def setUp(self):
+        self.get_build = mock.patch('kojihub.kojihub.get_build').start()
+
+    def tearDown(self):
+        mock.patch.stopall()
+
+    def test_policy_version(self):
+        data = {'version': 123}
+        rv = kojihub.policy_get_version(data)
+        self.assertEqual(rv, 123)
+        self.get_build.assert_not_called()
+
+    def test_policy_build(self):
+        data = {'build': 123}
+        buildinfo = {'id': 123, 'version': 100}
+        self.get_build.return_value = buildinfo
+        rv = kojihub.policy_get_version(data)
+        self.assertEqual(rv, 100)
+        self.get_build.assert_called_once_with(data['build'], strict=True)
+
+    def test_policy_version_error(self):
+        data = {'release': 123}
+        with self.assertRaises(koji.GenericError) as cm:
+            kojihub.policy_get_version(data)
+        self.assertEqual("policy requires version data", str(cm.exception))
+        self.get_build.assert_not_called()
+
+
+class TestPolicyGetRelease(unittest.TestCase):
+    def setUp(self):
+        self.get_build = mock.patch('kojihub.kojihub.get_build').start()
+
+    def tearDown(self):
+        mock.patch.stopall()
+
+    def test_policy_release(self):
+        data = {'release': 123}
+        rv = kojihub.policy_get_release(data)
+        self.assertEqual(rv, 123)
+        self.get_build.assert_not_called()
+
+    def test_policy_build(self):
+        data = {'build': 123}
+        buildinfo = {'id': 123, 'release': 100}
+        self.get_build.return_value = buildinfo
+        rv = kojihub.policy_get_release(data)
+        self.assertEqual(rv, 100)
+        self.get_build.assert_called_once_with(data['build'], strict=True)
+
+    def test_policy_release_error(self):
+        data = {'version': 123}
+        with self.assertRaises(koji.GenericError) as cm:
+            kojihub.policy_get_release(data)
+        self.assertEqual("policy requires release data", str(cm.exception))
+        self.get_build.assert_not_called()
+
+
+class TestPolicyGetPkg(unittest.TestCase):
+    def setUp(self):
+        self.get_build = mock.patch('kojihub.kojihub.get_build').start()
+        self.lookup_package = mock.patch('kojihub.kojihub.lookup_package').start()
+
+    def tearDown(self):
+        mock.patch.stopall()
+
+    def test_no_such_pkg(self):
+        data = {'package': 123}
+        self.lookup_package.return_value = None
+        with self.assertRaises(koji.GenericError) as cm:
+            kojihub.policy_get_pkg(data)
+        self.assertEqual(f"No such package: {data['package']}", str(cm.exception))
+        self.lookup_package.assert_called_once_with(data['package'], strict=False)
+        self.get_build.assert_not_called()
+
+    def test_with_pkg_not_found_lookup_pkg(self):
+        data = {'package': 'test-pkg'}
+        self.lookup_package.return_value = None
+        rv = kojihub.policy_get_pkg(data)
+        self.assertEqual(rv, {'id': None, 'name': data['package']})
+        self.lookup_package.assert_called_once_with(data['package'], strict=False)
+        self.get_build.assert_not_called()
+
+    def test_with_pkg(self):
+        data = {'package': 'test-pkg'}
+        self.lookup_package.return_value = {'id': 1, 'name': data['package']}
+        rv = kojihub.policy_get_pkg(data)
+        self.assertEqual(rv, {'id': 1, 'name': data['package']})
+        self.lookup_package.assert_called_once_with(data['package'], strict=False)
+        self.get_build.assert_not_called()
+
+    def test_build(self):
+        data = {'build': 123}
+        buildinfo = {'id': 123, 'package_id': 1, 'name': 'test-pkg'}
+        self.get_build.return_value = buildinfo
+        rv = kojihub.policy_get_pkg(data)
+        self.assertEqual(rv, {'id': buildinfo['package_id'], 'name': buildinfo['name']})
+        self.lookup_package.assert_not_called()
+        self.get_build.assert_called_once_with(data['build'], strict=True)
+
+    def test_wrong_data_key(self):
+        data = {'id': 123}
+        with self.assertRaises(koji.GenericError) as cm:
+            kojihub.policy_get_pkg(data)
+        self.assertEqual("policy requires package data", str(cm.exception))
+        self.lookup_package.assert_not_called()
+        self.get_build.assert_not_called()
+
+
+class TestVolumeTest(unittest.TestCase):
+    def setUp(self):
+        self.lookup_name = mock.patch('kojihub.kojihub.lookup_name').start()
+        self.get_build = mock.patch('kojihub.kojihub.get_build').start()
+
+    def tearDown(self):
+        mock.patch.stopall()
+
+    def test_volume_data(self):
+        self.lookup_name.return_value = {'id': 159, 'name': 'test-volume'}
+        obj = kojihub.VolumeTest('volume - volume data')
+        data = {'volume': 'test-volume'}
+        obj.run(data)
+        self.get_build.assert_not_called()
+        self.lookup_name.assert_called_once_with('volume', data['volume'], strict=False)
+
+    def test_build_data(self):
+        buildinfo = {'volume_id': 5, 'volume_name': 'test-volume', 'id': 2}
+        self.get_build.return_value = buildinfo
+        obj = kojihub.VolumeTest('volume - build data')
+        data = {'build': 'nvr-1-1'}
+        obj.run(data)
+        self.get_build.assert_called_once_with(data['build'])
+        self.lookup_name.assert_not_called()
+
+    def test_not_volinfo(self):
+        data = {'key': 'test'}
+        obj = kojihub.VolumeTest('volume - volume none')
+        self.assertFalse(obj.run(data))
+        self.get_build.assert_not_called()
+        self.lookup_name.assert_not_called()
+
+
+class TestTagTest(unittest.TestCase):
+    def setUp(self):
+        self.get_tag = mock.patch('kojihub.kojihub.get_tag').start()
+
+    def tearDown(self):
+        mock.patch.stopall()
+
+    def test_tag_is_none(self):
+        data = {'key': 'test'}
+        obj = kojihub.TagTest('tagtest - tag none')
+        self.assertFalse(obj.run(data))
+        self.get_tag.assert_not_called()
+
+    def test_taginfo_is_none(self):
+        self.get_tag.return_value = None
+        data = {'tag': 'test-tag'}
+        obj = kojihub.TagTest('tagtest - taginfo none')
+        self.assertFalse(obj.run(data))
+        self.get_tag.assert_called_once_with(data['tag'], strict=False)
+
+    def test_taginfo_valid(self):
+        data = {'tag': 'test-tag'}
+        self.get_tag.return_value = {'name': data['tag']}
+        obj = kojihub.TagTest('tagtest - taginfo none')
+        self.assertIsNotNone(obj.run(data))
+        self.get_tag.assert_called_once_with(data['tag'], strict=False)
+
+
+class FromTagTest(unittest.TestCase):
+    def setUp(self):
+        self.get_tag = mock.patch('kojihub.kojihub.get_tag').start()
+
+    def tearDown(self):
+        mock.patch.stopall()
+
+    def test_tag_is_none(self):
+        data = {'key': 'test'}
+        obj = kojihub.FromTagTest('fromtagtest - tag none')
+        self.assertIsNone(obj.get_tag(data))
+        self.get_tag.assert_not_called()
+
+    def test_valid(self):
+        data = {'fromtag': 'test-tag'}
+        self.get_tag.return_value = {'name': data['fromtag']}
+        obj = kojihub.FromTagTest('fromtagtest - tag none')
+        self.assertEqual(obj.get_tag(data), {'name': data['fromtag']})
+        self.get_tag.assert_called_once_with(data['fromtag'], strict=False)
+
+
+class CGMatchAnyTest(unittest.TestCase):
+    def setUp(self):
+        self.policy_get_cgs = mock.patch('kojihub.kojihub.policy_get_cgs').start()
+        self.multi_fnmatch = mock.patch('kojihub.kojihub.multi_fnmatch').start()
+
+    def tearDown(self):
+        mock.patch.stopall()
+
+    def test_cgname_is_none(self):
+        data = {'key': 'test'}
+        self.policy_get_cgs.return_value = [None]
+        obj = kojihub.CGMatchAnyTest('cgmatchanytest - cg name none')
+        self.assertFalse(obj.run(data))
+
+    def test_cg_name_true(self):
+        data = {'key': 'test'}
+        self.policy_get_cgs.return_value = ['cgname']
+        self.multi_fnmatch.return_value = True
+        obj = kojihub.CGMatchAnyTest('cgmatchanytest - cg name true')
+        self.assertTrue(obj.run(data))
+
+
+class CGMatchAllTest(unittest.TestCase):
+    def setUp(self):
+        self.policy_get_cgs = mock.patch('kojihub.kojihub.policy_get_cgs').start()
+        self.multi_fnmatch = mock.patch('kojihub.kojihub.multi_fnmatch').start()
+
+    def tearDown(self):
+        mock.patch.stopall()
+
+    def test_cgs_none(self):
+        data = {'key': 'test'}
+        self.policy_get_cgs.return_value = []
+        obj = kojihub.CGMatchAllTest('cgmatchalltest - cg name none')
+        self.assertFalse(obj.run(data))
+
+    def test_cgname_is_none(self):
+        data = {'key': 'cgname'}
+        self.policy_get_cgs.return_value = [None]
+        obj = kojihub.CGMatchAllTest('cgmatchalltest - cg name none')
+        self.assertFalse(obj.run(data))
+
+    def test_cg_name_all_true(self):
+        data = {'key': 'cgname'}
+        self.policy_get_cgs.return_value = ['cgname']
+        self.multi_fnmatch.return_value = True
+        obj = kojihub.CGMatchAllTest('cgmatchalltest - cg name true')
+        self.assertTrue(obj.run(data))
+
+    def test_cg_name_not_found(self):
+        data = {'key': 'cgname'}
+        self.policy_get_cgs.return_value = ['cgname']
+        self.multi_fnmatch.return_value = False
+        obj = kojihub.CGMatchAllTest('cgmatchalltest - cg name true')
+        self.assertFalse(obj.run(data))
+
+
+class UserTest(unittest.TestCase):
+    def setUp(self):
+        self.policy_get_user = mock.patch('kojihub.kojihub.policy_get_user').start()
+
+    def tearDown(self):
+        mock.patch.stopall()
+
+    def test_not_user(self):
+        data = {'user': 'username'}
+        self.policy_get_user.return_value = None
+        obj = kojihub.UserTest('usertest - not user')
+        self.assertFalse(obj.run(data))
+
+    def test_valid(self):
+        data = {'user': 'username'}
+        self.policy_get_user.return_value = {'name': 'username'}
+        obj = kojihub.UserTest('usertest - valid')
+        self.assertIsNotNone(obj.run(data))
+
+
+class IsBuildOwnerTest(unittest.TestCase):
+    def setUp(self):
+        self.policy_get_user = mock.patch('kojihub.kojihub.policy_get_user').start()
+        self.get_build = mock.patch('kojihub.kojihub.get_build').start()
+        self.get_user = mock.patch('kojihub.kojihub.get_user').start()
+        self.get_user_groups = mock.patch('kojihub.kojihub.get_user_groups').start()
+
+    def tearDown(self):
+        mock.patch.stopall()
+
+    def test_not_user(self):
+        data = {'build': 1}
+        self.get_build.return_value = {'build_id': data['build'], 'owner_id': 3}
+        self.get_user.return_value = {'id': 3, 'name': 'username'}
+        self.policy_get_user.return_value = None
+        obj = kojihub.IsBuildOwnerTest('isbuildownertest - not user')
+        self.assertFalse(obj.run(data))
+        self.get_build.assert_called_once_with(data['build'])
+        self.get_user.assert_called_once_with(3)
+        self.policy_get_user.assert_called_once_with(data)
+        self.get_user_groups.assert_not_called()
+
+    def test_owner_is_user(self):
+        data = {'build': 1}
+        self.get_build.return_value = {'build_id': data['build'], 'owner_id': 3}
+        self.get_user.return_value = {'id': 3, 'name': 'username'}
+        self.policy_get_user.return_value = {'id': 3, 'name': 'username'}
+        obj = kojihub.IsBuildOwnerTest('isbuildownertest - owner is user')
+        self.assertTrue(obj.run(data))
+        self.get_build.assert_called_once_with(data['build'])
+        self.get_user.assert_called_once_with(3)
+        self.policy_get_user.assert_called_once_with(data)
+        self.get_user_groups.assert_not_called()
+
+    def test_owner_is_group(self):
+        data = {'build': 1}
+        self.get_build.return_value = {'build_id': data['build'], 'owner_id': 3}
+        self.get_user.return_value = {'id': 2, 'name': 'testuser', 'usertype': 2}
+        self.policy_get_user.return_value = {'id': 3, 'name': 'username'}
+        self.get_user_groups.return_value = [2]
+        obj = kojihub.IsBuildOwnerTest('isbuildownertest - owner group')
+        self.assertTrue(obj.run(data))
+        self.get_build.assert_called_once_with(data['build'])
+        self.get_user.assert_called_once_with(3)
+        self.policy_get_user.assert_called_once_with(data)
+        self.get_user_groups.assert_called_once_with(3)
+
+    def test_owner_false(self):
+        data = {'build': 1}
+        self.get_build.return_value = {'build_id': data['build'], 'owner_id': 3}
+        self.get_user.return_value = {'id': 2, 'name': 'testuser', 'usertype': 1}
+        self.policy_get_user.return_value = {'id': 3, 'name': 'username'}
+        obj = kojihub.IsBuildOwnerTest('isbuildownertest - owner false')
+        self.assertFalse(obj.run(data))
+        self.get_build.assert_called_once_with(data['build'])
+        self.get_user.assert_called_once_with(3)
+        self.policy_get_user.assert_called_once_with(data)
+        self.get_user_groups.assert_not_called()
