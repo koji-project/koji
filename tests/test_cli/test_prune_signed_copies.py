@@ -78,11 +78,11 @@ Options:
         self.activate_session_mock.assert_called_once_with(self.session, self.options)
         self.session.getBuild.assert_called_once_with(build_id)
 
-    @mock.patch('time.asctime', return_value='Sat Apr  1 14:08:17 2023')
+    @mock.patch('time.time', return_value=1681043424)
     @mock.patch('koji.pathinfo.build', return_value='fakebuildpath')
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     def test_handle_prune_signes_copies_with_package_verbose_debug(
-            self, stdout, pathinfobuild, timeasctime):
+            self, stdout, pathinfobuild, time_time):
         """Returns info about 1 build, 4 tags, 0 files, 0 bytes and ignoring trashcan tag,
         ignored tag and info about protected tag"""
         self.options.debug = True
@@ -103,15 +103,15 @@ Options:
                               'version': '1.3'}]}]
         rv = handle_prune_signed_copies(self.options, self.session, arguments)
         actual = stdout.getvalue()
-        expected = """Cutoff date: Sat Apr  1 14:08:17 2023
+        expected = """Cutoff date: Tue Apr  4 08:30:24 2023
 Getting builds...
 ...got 1 builds
 DEBUG: package-name-1.3-4
 Tags: ['test-tag1', 'test-tag2', 'test-tag3', 'test-tag4']
 Ignoring trashcan tag for build package-name-1.3-4
 Ignoring tag test-tag2 for build package-name-1.3-4
-Sat Apr  1 14:08:17 2023: Tagged package-name-1.3-4 with test-tag3 [still active]
-Build package-name-1.3-4 had protected tag test-tag3 until Sat Apr  1 14:08:17 2023
+Tue Apr 11 01:43:46 2023: Tagged package-name-1.3-4 with test-tag3 [still active]
+Build package-name-1.3-4 had protected tag test-tag3 until Tue Apr 11 01:43:56 2023
 --- Grand Totals ---
 Files: 0
 Bytes: 0
@@ -156,10 +156,10 @@ Bytes: 0
         self.session.getBuild.assert_not_called()
         self.session.getPackage.assert_called_once_with('package-name')
 
-    @mock.patch('time.asctime', return_value='Sat Apr  1 14:08:17 2023')
+    @mock.patch('time.time', return_value=1681043424)
     @mock.patch('koji.pathinfo.build', return_value='fakebuildpath')
     @mock.patch('sys.stdout', new_callable=six.StringIO)
-    def test_handle_prune_signes_copies_cutoff_package(self, stdout, pathinfobuild, timeasctime):
+    def test_handle_prune_signes_copies_cutoff_package(self, stdout, pathinfobuild, time_time):
         """Returns prune signed copies info with cutoff package"""
         self.options.debug = True
         arguments = ['--verbose', '--package', 'package-name']
@@ -178,14 +178,14 @@ Bytes: 0
                               'version': '1.3'}]}]
         rv = handle_prune_signed_copies(self.options, self.session, arguments)
         actual = stdout.getvalue()
-        expected = """Cutoff date: Sat Apr  1 14:08:17 2023
+        expected = """Cutoff date: Tue Apr  4 08:30:24 2023
 Getting builds...
 ...got 1 builds
 DEBUG: package-name-1.3-4
 Tags: ['test-tag1', 'test-tag2']
-Sat Apr  1 14:08:17 2023: Tagged package-name-1.3-4 with test-tag1 [still active]
-Sat Apr  1 14:08:17 2023: Untagged package-name-1.3-4 from test-tag1
-tag test-tag1: package-name-1.3-4 not latest (revoked Sat Apr  1 14:08:17 2023)
+Tue Apr 11 01:44:06 2023: Tagged package-name-1.3-4 with test-tag1 [still active]
+Tue Apr 11 01:44:16 2023: Untagged package-name-1.3-4 from test-tag1
+tag test-tag1: package-name-1.3-4 not latest (revoked Tue Apr 11 01:44:16 2023)
 package-name-1.3-4 was latest past the cutoff
 --- Grand Totals ---
 Files: 0
