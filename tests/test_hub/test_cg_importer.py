@@ -27,6 +27,32 @@ class TestCGImporter(unittest.TestCase):
         self.lexists = mock.patch('os.path.lexists').start()
         self.path_build = mock.patch('koji.pathinfo.build').start()
         self.new_build = mock.patch('kojihub.kojihub.new_build').start()
+        self.buildinfo = {
+            'id': 43,
+            'package_id': 1,
+            'package_name': 'testpkg',
+            'name': 'testpkg',
+            'version': '1.0.1e',
+            'release': '42.el7',
+            'epoch': None,
+            'nvr': 'testpkg-1.0.1-1.fc24',
+            'state': koji.BUILD_STATES['COMPLETE'],
+            'task_id': 1,
+            'owner_id': 1,
+            'owner_name': 'jvasallo',
+            'volume_id': 'id-1212',
+            'volume_name':'testvolume',
+            'creation_event_id': '',
+            'creation_time': '',
+            'creation_ts': 424242424242,
+            'start_time': None,
+            'start_ts': None,
+            'completion_time': None,
+            'completion_ts': None,
+            'source': 'https://example.com',
+            'extra': {},
+        }
+
 
     def tearDown(self):
         if os.path.exists(self.TMP_PATH):
@@ -121,7 +147,7 @@ class TestCGImporter(unittest.TestCase):
 
     def test_prep_build_exists(self):
         self.path_work.return_value = os.path.dirname(__file__)
-        self.get_build.return_value = True
+        self.get_build.return_value = self.buildinfo
         x = kojihub.CG_Importer()
         x.get_metadata('default.json', 'cg_importer_json')
         with self.assertRaises(GenericError):
@@ -140,20 +166,7 @@ class TestCGImporter(unittest.TestCase):
         x.assert_cg_access()
         x.prep_build()
         x.prepped_outputs = []
-        self.get_build.return_value = {'id': 43, 'package_id': 1,
-                                       'package_name': 'testpkg',
-                                       'name': 'testpkg', 'version': '1.0.1e',
-                                       'release': '42.el7', 'epoch': None,
-                                       'nvr': 'testpkg-1.0.1-1.fc24',
-                                       'state': 'complete', 'task_id': 1,
-                                       'owner_id': 1, 'owner_name': 'jvasallo',
-                                       'volume_id': 'id-1212', 'volume_name': 'testvolume',
-                                       'creation_event_id': '', 'creation_time': '',
-                                       'creation_ts': 424242424242,
-                                       'start_time': None, 'start_ts': None,
-                                       'completion_time': None, 'completion_ts': None,
-                                       'source': 'https://example.com', 'extra': {}
-                                       }
+        self.get_build.return_value = self.buildinfo
         self.new_build.return_value = 43
         x.get_build()
         assert x.buildinfo
