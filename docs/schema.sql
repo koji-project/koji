@@ -889,6 +889,11 @@ INSERT INTO archivetypes (name, description, extensions) VALUES ('vmdk-compresse
 -- add kernel-image and imitramfs: From schema-upgrade-1.18-1.19
 INSERT INTO archivetypes (name, description, extensions) VALUES ('kernel-image', 'Kernel BZ2 Image', 'vmlinuz vmlinuz.gz vmlinuz.xz');
 INSERT INTO archivetypes (name, description, extensions) VALUES ('initramfs', 'Compressed Initramfs Image', 'img');
+-- kiwi plugin
+INSERT INTO archivetypes (name, description, extensions) VALUES ('checksum', 'Checksum file', 'sha256');
+INSERT INTO archivetypes (name, description, extensions) VALUES ('changes', 'Kiwi changes file', 'changes.xz changes');
+INSERT INTO archivetypes (name, description, extensions) VALUES ('packages', 'Kiwi packages listing', 'packages');
+INSERT INTO archivetypes (name, description, extensions) VALUES ('verified', 'Kiwi verified package list', 'verified');
 
 
 -- Do we want to enforce a constraint that a build can only generate one
