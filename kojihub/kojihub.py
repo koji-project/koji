@@ -6664,6 +6664,21 @@ class CG_Importer(object):
             else:
                 raise koji.GenericError("Destination directory already exists: %s" % path)
 
+    @classmethod
+    def get_task_id_from_metadata(cls, metadata):
+        """Extract task_id from metadata"""
+        binfo = metadata['build']
+        task_id = None
+        if 'task_id' in binfo:
+            task_id = convert_value(binfo['task_id'], cast=int)
+        if 'container_koji_task_id' in binfo.get('extra', {}):
+            task_id2 = convert_value(binfo['extra']['container_koji_task_id'], cast=int)
+            if task_id is not None and task_id != task_id2:
+                raise koji.GenericError(f"CG provided non-matching task_id {task_id} "
+                                        f"and container_koji_task_id {task_id2}")
+            return task_id2
+        return task_id
+
     def prep_build(self, token=None):
         metadata = self.metadata
         if metadata['build'].get('build_id'):
@@ -6671,11 +6686,12 @@ class CG_Importer(object):
             build_id = metadata['build']['build_id']
             buildinfo = get_build(build_id, strict=True)
             build_token = get_reservation_token(build_id)
+            task_id = self.get_task_id_from_metadata(metadata)
             if not build_token or build_token['token'] != token:
                 raise koji.GenericError("Token doesn't match build ID %s" % build_id)
             if buildinfo['cg_id'] != cg_id:
                 raise koji.GenericError('Build ID %s is not reserved by this CG' % build_id)
-            if buildinfo.get('task_id'):
+            if buildinfo['task_id'] and buildinfo['task_id'] != task_id:
                 raise koji.GenericError('Build is owned by task %(task_id)s' % buildinfo)
             if buildinfo['state'] != koji.BUILD_STATES['BUILDING']:
                 raise koji.GenericError('Build ID %s is not in BUILDING state' % build_id)
@@ -6708,10 +6724,7 @@ class CG_Importer(object):
             datetime.datetime.fromtimestamp(float(metadata['build']['end_time'])).isoformat(' ')
         owner = metadata['build'].get('owner', None)
         # get task id from OSBS or from standard place
-        if metadata['build'].get('task_id'):
-            buildinfo['task_id'] = int(metadata['build']['task_id'])
-        elif metadata['build'].get('extra', {}).get('container_koji_task_id'):
-            buildinfo['task_id'] = int(metadata['build']['extra']['container_koji_task_id'])
+        buildinfo['task_id'] = self.get_task_id_from_metadata(metadata)
         if owner:
             if not isinstance(owner, str):
                 raise koji.GenericError("Invalid owner format (expected username): %s" % owner)
@@ -6786,16 +6799,27 @@ class CG_Importer(object):
             extra = None
         owner = self.buildinfo.get('owner', context.session.user_id)
         source = self.buildinfo.get('source')
+        task_id = self.buildinfo['task_id']
         st_complete = koji.BUILD_STATES['COMPLETE']
         st_old = old_info['state']
         koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=st_old,
                                   new=st_complete, info=old_info)
-        update = UpdateProcessor('build', clauses=['id=%(build_id)s'], values=self.buildinfo)
-        update.set(state=st_complete, extra=extra, owner=owner, source=source)
+        update = UpdateProcessor(
+            'build',
+            clauses=['id=%(build_id)s'],
+            values=self.buildinfo,
+            data={
+                'state': st_complete,
+                'extra': extra,
+                'owner': owner,
+                'source': source,
+                'task_id': task_id,
+            },
+            rawdata={'completion_time': 'NOW()'},
+        )
         if self.buildinfo.get('volume_id'):
             # reserved builds have reapplied volume policy now
             update.set(volume_id=self.buildinfo['volume_id'])
-        update.rawset(completion_time='NOW()')
         update.execute()
         buildinfo = get_build(build_id, strict=True)
         clear_reservation(build_id)
