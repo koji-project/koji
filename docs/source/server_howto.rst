@@ -1220,7 +1220,11 @@ SCM checkout can contain multiple spec files (checkouted or created by
 be selected.
 
 .. note::
-    We provide ``build_from_scm`` hub policy as an equivalent in version 1.26.0.
+
+    We provide ``build_from_scm`` hub policy as an equivalent in version
+    1.26.0. It is a preffered way now as it a) allows centralized policy
+    management without need to update all builders b) provides whole policy DSL
+    and further information which can be used to determining the result.
 
     For more details, please refer to :ref:`allowed-scms` and
     :doc:`Defining Hub Policies <defining_hub_policies>`.
