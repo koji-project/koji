@@ -8967,7 +8967,7 @@ def tag_notification(is_successful, tag_id, from_id, build_id, user_id, ignore_s
         return
     if user_id:
         if not isinstance(user_id, int):
-            user_id = get_user(user_id, strict=True)
+            user_id = get_user(user_id, strict=True)['id']
     if is_successful:
         state = koji.BUILD_STATES['COMPLETE']
     else:
