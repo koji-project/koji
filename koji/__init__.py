@@ -3371,7 +3371,7 @@ class ClientSession(object):
         fo = open(localfile, "rb")  # specify bufsize?
         totalsize = os.path.getsize(localfile)
         ofs = 0
-        sha256sum = hashlib.sha256sum()
+        sha256sum = hashlib.sha256()
         debug = self.opts.get('debug', False)
         if callback:
             callback(0, totalsize, 0, 0, 0)
