@@ -5,8 +5,10 @@ import time
 import koji
 from . import kojihub
 from .db import QueryProcessor, InsertProcessor, UpdateProcessor, db_lock
-from .util import convert_value
 from koji.context import context
+
+
+convert_value = kojihub.convert_value
 
 
 logger = logging.getLogger('koji.scheduler')
