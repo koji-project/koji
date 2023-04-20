@@ -179,10 +179,12 @@ kojibuilder N   Y    0.0/2.0  x86_64           Tue, 16 Mar 2021 06:19:14 UTC
 
     @mock.patch('sys.stdout', new_callable=StringIO)
     def test_list_hosts_param_error_get_last_host_update(self, stdout):
-        host_update = 1615875554.862938
+        # host_update = 1615875554.862938
+        host_update = '2021-03-16 06:19:14.862938-00:00'
         expected = "kojibuilder N   Y    0.0/2.0  x86_64           " \
                    "Tue, 16 Mar 2021 06:19:14 UTC      \n"
 
+        # simulate an older hub that doesn't support the ts option for getLastHostUpdate
         self.session.getLastHostUpdate.side_effect = [koji.ParameterError, host_update]
         self.session.multiCall.return_value = [[host_update]]
         self.session.listHosts.return_value = self.list_hosts
