@@ -4,6 +4,7 @@ from __future__ import absolute_import, print_function
 
 import ast
 import io
+import optparse
 import os
 import os.path
 import pprint
@@ -12,10 +13,25 @@ import sys
 from urllib.parse import quote
 
 sys.path.insert(0, os.getcwd())
-sys.path.insert(1, os.path.join(os.getcwd(), 'kojihub'))
 import koji
-import kojixmlrpc
+from kojihub import kojixmlrpc
 import koji.xmlrpcplus
+
+
+# alternate handle_rpc, used when --pdb is given
+original_handle_rpc = kojixmlrpc.ModXMLRPCRequestHandler.handle_rpc
+
+def handle_rpc(self, environ):
+    try:
+        return original_handle_rpc(self, environ)
+    except Exception:
+        import pdb
+        import traceback
+        etype, e, tb = sys.exc_info()
+        traceback.print_exc()
+        pdb.post_mortem(tb)
+        # re-raise or the app handler will commit
+        raise
 
 
 def get_url(environ):
@@ -47,20 +63,27 @@ def nice_literal(value):
         return value
 
 
-def get_request():
-    method = sys.argv[1]
-    args = []
+def get_options():
+    parser = optparse.OptionParser(usage='%prog [options] <policy_file>')
+    parser.add_option('--pdb', action='store_true',
+                      help='drop into pdb on error')
+    opts, args = parser.parse_args()
+
+    # parse request from args
+    method = args[0]
+    callargs = []
     kwargs = {}
-    for s in sys.argv[2:]:
+    for s in args[1:]:
         if '=' in s:
             k, v = s.split('=', 1)
             v = nice_literal(v)
             kwargs[k] = v
         else:
-            args.append(nice_literal(s))
-    args = koji.encode_args(*args, **kwargs)
-    request = koji.xmlrpcplus.dumps(args, method, allow_none=1)
-    return request
+            callargs.append(nice_literal(s))
+    callargs = koji.encode_args(*callargs, **kwargs)
+    opts.request = koji.xmlrpcplus.dumps(callargs, method, allow_none=1)
+
+    return opts
 
 
 def start_response(status, headers):
@@ -88,13 +111,17 @@ def set_config(environ):
 
 
 def main():
+    options = get_options()
+    if options.pdb:
+        kojixmlrpc.ModXMLRPCRequestHandler.handle_rpc = handle_rpc
+
     environ = {}
     environ['SCRIPT_FILENAME'] = kojixmlrpc.__file__
     environ['wsgi.url_scheme'] = 'https'
     environ['SERVER_NAME'] = 'myserver'
     environ['SERVER_PORT'] = '443'
     environ['REQUEST_URI'] = get_url(environ)
-    environ['wsgi.input'] = io.StringIO(get_request())
+    environ['wsgi.input'] = io.StringIO(options.request)
     environ['REQUEST_METHOD'] = 'POST'
     environ['CONTENT_TYPE'] = 'text/xml'
     set_config(environ)
