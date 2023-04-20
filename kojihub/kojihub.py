@@ -14278,50 +14278,6 @@ class Host(object):
         tasks = get_active_tasks(host)
         return [hosts, tasks]
 
-    def getTask(self):
-        """Open next available task and return it"""
-        id = self.id
-        # get arch and channel info for host
-        values = {'id': id}
-        query = QueryProcessor(tables=['host_config'], columns=['arches'],
-                               clauses=['host_id = %(id)s', 'active IS TRUE'], values=values)
-        arches = query.singleValue().split()
-        query = QueryProcessor(tables=['host_channels'], columns=['channel_id'],
-                               clauses=['host_id = %(id)s', 'active IS TRUE'], values=values,
-                               opts={'asList': True})
-        channels = [x[0] for x in query.execute()]
-
-        # query tasks
-        query = QueryProcessor(tables=['task'],
-                               columns=['id', 'state', 'method', 'request',
-                                        'channel_id', 'arch', 'parent'],
-                               clauses=['(state = %(st_free)s) OR '
-                                        '(state = %(st_assigned)s AND host_id = %(id)s)'],
-                               values={
-                                   'st_free': koji.TASK_STATES['FREE'],
-                                   'st_assigned': koji.TASK_STATES['ASSIGNED'],
-                                   'id': id, },
-                               queryOpts={'order': 'priority,create_time'}
-                               )
-        for data in query.execute():
-            # XXX - we should do some pruning here, but for now...
-            # check arch
-            if data['arch'] not in arches:
-                continue
-            # NOTE: channels ignored for explicit assignments
-            if data['state'] != koji.TASK_STATES['ASSIGNED'] and \
-                    data['channel_id'] not in channels:
-                continue
-            task = Task(data['id'])
-            ret = task.open(self.id)
-            if ret is None:
-                # someone else got it while we were looking
-                # log_error("task %s seems to be locked" % task['id'])
-                continue
-            return ret
-        # else no appropriate tasks
-        return None
-
     def isEnabled(self):
         """Return whether this host is enabled or not."""
         query = QueryProcessor(tables=['host_config'], columns=['enabled'],
