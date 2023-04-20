@@ -2551,7 +2551,7 @@ def get_ready_hosts():
             'expired IS FALSE',
             'master IS NULL',
             'active IS TRUE',
-            "update_time > NOW() - '5 minutes'::interval"
+            "sessions.update_time > NOW() - '5 minutes'::interval"
         ],
         joins=[
             'sessions USING (user_id)',
@@ -5486,6 +5486,7 @@ def get_host(hostInfo, strict=False, event=None):
     - id
     - user_id
     - name
+    - update_ts
     - arches
     - task_load
     - capacity
@@ -13309,9 +13310,14 @@ class RootExports(object):
 
         The timestamp represents the last time the host with the given
         ID contacted the hub. Returns None if the host has never contacted
-        the hub."""
+        the hub.
+
+        The timestamp returned here may be different than the newer
+        update_ts field now returned by the getHost and listHosts calls.
+        """
         opts = {'order': '-update_time', 'limit': 1}
-        query = QueryProcessor(tables=['sessions'], columns=['update_time'],
+        query = QueryProcessor(tables=['sessions'], columns=['sessions.update_time'],
+                               aliases=['update_time'],
                                joins=['host ON sessions.user_id = host.user_id'],
                                clauses=['host.id = %(hostID)i'], values={'hostID': hostID},
                                opts=opts)
