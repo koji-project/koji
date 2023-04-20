@@ -324,23 +324,16 @@ def currval(sequence):
 def db_lock(name, wait=True):
     """Obtain lock for name
 
+    The named lock must exist in the locks table
+
     :param string name: the lock name
     :param bool wait: whether to wait for the lock (default: True)
     :return: True if locked, False otherwise
 
     This function is implemented using db row locks and the locks table
     """
-    # first see if we need to add the row
-    query = "SELECT name FROM locks WHERE name=%(name)s"
+    # attempt to lock the row
     data = {"name": name}
-    rows =_fetchMulti(query, data)
-    if not rows:
-        insert = "INSERT INTO locks (name) VALUES (%(name)s) ON CONFLICT DO NOTHING"
-        # this could cause us to wait if another transaction is adding the same lock
-        # however that will only happen the first time
-        _dml(insert, data)
-
-    # and then actually lock the row
     if wait:
         query = "SELECT name FROM locks WHERE name=%(name)s FOR UPDATE"
     else:
@@ -351,11 +344,18 @@ def db_lock(name, wait=True):
     if rows:
         # we have the lock
         return True
-    elif wait:
-        # should not happen
-        raise koji.LockError(f"Failed to read lock {name}")
-    else:
-        return False
+
+    if not wait:
+        # in the no-wait case, this could mean either that the row is already locked, or that
+        # the lock does not exist, so we check
+        query = "SELECT name FROM locks WHERE name=%(name)s"
+        rows =_fetchMulti(query, data)
+        if rows:
+            # the lock exists, but we did not acquire it
+            return False
+
+    # otherwise, the lock does not exist
+    raise koji.LockError(f"Lock not defined: {name}")
 
 
 class Savepoint(object):

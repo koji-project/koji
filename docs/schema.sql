@@ -984,9 +984,11 @@ CREATE TABLE rpm_checksum (
 CREATE INDEX rpm_checksum_rpm_id ON rpm_checksum(rpm_id);
 
 
+-- this table is used for locking, see db_lock()
 CREATE TABLE locks (
         name TEXT NOT NULL PRIMARY KEY
 ) WITHOUT OIDS;
+INSERT INTO locks(name) VALUES('protonmsg-plugin')
 
 
 COMMIT WORK;
