@@ -60,6 +60,27 @@ def get_tasks_for_host(hostID):
     return query.execute()
 
 
+def get_host_data(hostID=None):
+    """Return actual builder data
+
+    :param int hostID: Return data for given host (otherwise for all)
+    :returns list[dict]: list of host_id/data dicts
+    """
+    clauses = []
+    columns = ['host_id', 'data']
+    if hostID is not None:
+        clauses.append('host_id = %(hostID)i')
+    query = QueryProcessor(
+        tables=['scheduler_host_data'],
+        clauses=clauses,
+        columns=columns,
+        values=locals(),
+        opts={'order': 'host_id'}
+    )
+
+    return query.execute()
+
+
 def get_task_runs(taskID=None, hostID=None, active=None):
     taskID = convert_value(taskID, cast=int, none_allowed=True)
     hostID = convert_value(hostID, cast=int, none_allowed=True)
@@ -432,3 +453,4 @@ class TaskScheduler(object):
 
 class SchedulerExports:
     getTaskRuns = staticmethod(get_task_runs)
+    getHostData = staticmethod(get_host_data)
