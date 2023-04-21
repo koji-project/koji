@@ -15,6 +15,7 @@ class DBQueryTestCase(unittest.TestCase):
         self.qp_execute_one_return_value = []
         self.qp_execute_one_side_effect = None
         self.qp_single_value_return_value = None
+        self.qp_iterate_return_value = None
         self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
                                          side_effect=self.get_query).start()
         self.queries = []
@@ -36,6 +37,8 @@ class DBQueryTestCase(unittest.TestCase):
         query.executeOne.side_effect = self.qp_execute_one_side_effect
         query.singleValue = mock.MagicMock()
         query.singleValue.return_value = self.qp_single_value_return_value
+        query.iterate = mock.MagicMock()
+        query.iterate.return_value = self.qp_iterate_return_value
         self.queries.append(query)
         return query
 
