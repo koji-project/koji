@@ -6708,10 +6708,12 @@ class CG_Importer(object):
             raise koji.GenericError('Reservation token given, but no build_id '
                                     'in metadata')
         else:
+            # no build reservation
             buildinfo = get_build(metadata['build'], strict=False)
-            if buildinfo and not metadata['build'].get('build_id'):
-                # TODO : allow in some cases
-                raise koji.GenericError("Build already exists: %r" % buildinfo)
+            if buildinfo:
+                if (koji.BUILD_STATES[buildinfo['state']] not in ('CANCELED', 'FAILED')):
+                    raise koji.GenericError("Build already exists: %r" % buildinfo)
+                # note: the checks in recycle_build will also apply when we call new_build later
         # gather needed data
         buildinfo = dslice(metadata['build'], ['name', 'version', 'release', 'extra', 'source'])
         if 'build_id' in metadata['build']:
