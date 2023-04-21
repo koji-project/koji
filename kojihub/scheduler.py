@@ -6,9 +6,6 @@ from . import kojihub
 from .db import QueryProcessor, InsertProcessor, UpdateProcessor, db_lock
 
 
-convert_value = kojihub.convert_value
-
-
 logger = logging.getLogger('koji.scheduler')
 
 
@@ -37,7 +34,7 @@ def intlist(value):
 
 def get_tasks_for_host(hostID):
     """Get the tasks assigned to a given host"""
-    hostID = convert_value(hostID, cast=int, none_allowed=True)
+    hostID = kojihub.convert_value(hostID, cast=int, none_allowed=True)
 
     fields = (
         ('task.id', 'id'),
@@ -82,9 +79,9 @@ def get_host_data(hostID=None):
 
 
 def get_task_runs(taskID=None, hostID=None, active=None):
-    taskID = convert_value(taskID, cast=int, none_allowed=True)
-    hostID = convert_value(hostID, cast=int, none_allowed=True)
-    active = convert_value(active, cast=bool, none_allowed=True)
+    taskID = kojihub.convert_value(taskID, cast=int, none_allowed=True)
+    hostID = kojihub.convert_value(hostID, cast=int, none_allowed=True)
+    active = kojihub.convert_value(active, cast=bool, none_allowed=True)
 
     fields = (
         ('scheduler_task_runs.id', 'id'),
