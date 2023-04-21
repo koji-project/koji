@@ -117,7 +117,8 @@ class Session(object):
         fields = (('authtype', 'authtype'), ('callnum', 'callnum'), ('exclusive', 'exclusive'),
                   ('expired', 'expired'), ('master', 'master'), ('start_time', 'start_time'),
                   ('update_time', 'update_time'), ("date_part('epoch', start_time)", 'start_ts'),
-                  ("date_part('epoch', update_time)", 'update_ts'), ('user_id', 'user_id'))
+                  ("date_part('epoch', update_time)", 'update_ts'), ('user_id', 'user_id'),
+                  ("date_part('epoch', renew_time)", 'renew_ts'))
         columns, aliases = zip(*fields)
 
         query = QueryProcessor(tables=['sessions'], columns=columns, aliases=aliases,
@@ -139,8 +140,12 @@ class Session(object):
             raise koji.AuthError('Invalid session or bad credentials')
 
         if not session_data['expired'] and context.opts['SessionRenewalTimeout'] != 0:
-            renewal_cutoff = (session_data['start_ts'] +
-                              context.opts['SessionRenewalTimeout'] * 60)
+            if session_data['renew_ts']:
+                renewal_cutoff = (session_data['renew_ts'] +
+                                  context.opts['SessionRenewalTimeout'] * 60)
+            else:
+                renewal_cutoff = (session_data['start_ts'] +
+                                  context.opts['SessionRenewalTimeout'] * 60)
             if time.time() > renewal_cutoff:
                 session_data['expired'] = True
                 update = UpdateProcessor('sessions',
@@ -535,7 +540,7 @@ class Session(object):
 
             update = UpdateProcessor('sessions',
                                      clauses=['id=%(id)i'],
-                                     rawdata={'update_time': 'NOW()'},
+                                     rawdata={'update_time': 'NOW()', 'renew_time': 'NOW()'},
                                      data={'key': self.key, 'expired': False},
                                      values={'id': self.id})
             update.execute()
