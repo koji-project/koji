@@ -136,6 +136,7 @@ class TestAuthSession(unittest.TestCase):
                                              tzinfo=datetime.timezone.utc),
              'update_time': datetime.datetime(2022, 10, 24, 8, 17, 6, 254308,
                                               tzinfo=datetime.timezone.utc),
+             'renew_ts': None,
              'user_id': 1},
             {'name': 'kojiadmin', 'status': 0, 'usertype': 0}]
         with self.assertRaises(koji.GenericError) as cm:
@@ -160,12 +161,13 @@ class TestAuthSession(unittest.TestCase):
         self.assertEqual(query.clauses, ['closed IS FALSE', 'hostip = %(hostip)s', 'id = %(id)i',
                                          'key = %(key)s'])
         self.assertEqual(query.columns, ['authtype', 'callnum', 'exclusive', 'expired', 'master',
+                                         'renew_time', "date_part('epoch', renew_time)",
                                          'start_time', "date_part('epoch', start_time)",
                                          'update_time', "date_part('epoch', update_time)",
                                          'user_id'])
         self.assertEqual(query.aliases, ['authtype', 'callnum', 'exclusive', 'expired', 'master',
-                                         'start_time', 'start_ts', 'update_time', 'update_ts',
-                                         'user_id'])
+                                         'renew_time', 'renew_ts', 'start_time', 'start_ts',
+                                         'update_time', 'update_ts', 'user_id'])
         self.assertEqual(query.values, {'id': 123, 'key': 'xyz', 'hostip': 'remote-addr'})
 
     def test_basic_instance(self):
@@ -196,12 +198,13 @@ class TestAuthSession(unittest.TestCase):
         self.assertEqual(query.clauses, ['closed IS FALSE', 'hostip = %(hostip)s', 'id = %(id)i',
                                          'key = %(key)s'])
         self.assertEqual(query.columns, ['authtype', 'callnum', 'exclusive', 'expired', 'master',
+                                         'renew_time', "date_part('epoch', renew_time)",
                                          'start_time', "date_part('epoch', start_time)",
                                          'update_time', "date_part('epoch', update_time)",
                                          'user_id'])
         self.assertEqual(query.aliases, ['authtype', 'callnum', 'exclusive', 'expired', 'master',
-                                         'start_time', 'start_ts', 'update_time', 'update_ts',
-                                         'user_id'])
+                                         'renew_time', 'renew_ts', 'start_time', 'start_ts',
+                                         'update_time', 'update_ts', 'user_id'])
         self.assertEqual(query.values, {'id': 123, 'key': 'xyz', 'hostip': 'remote-addr'})
 
         query = self.queries[1]
@@ -247,12 +250,13 @@ class TestAuthSession(unittest.TestCase):
         self.assertEqual(query.clauses, ['closed IS FALSE', 'hostip = %(hostip)s', 'id = %(id)i',
                                          'key = %(key)s'])
         self.assertEqual(query.columns, ['authtype', 'callnum', 'exclusive', 'expired', 'master',
+                                         'renew_time', "date_part('epoch', renew_time)",
                                          'start_time', "date_part('epoch', start_time)",
                                          'update_time', "date_part('epoch', update_time)",
                                          'user_id'])
         self.assertEqual(query.aliases, ['authtype', 'callnum', 'exclusive', 'expired', 'master',
-                                         'start_time', 'start_ts', 'update_time', 'update_ts',
-                                         'user_id'])
+                                         'renew_time', 'renew_ts', 'start_time', 'start_ts',
+                                         'update_time', 'update_ts', 'user_id'])
         self.assertEqual(query.values, {'id': 123, 'key': 'xyz', 'hostip': 'remote-addr'})
 
         query = self.queries[1]

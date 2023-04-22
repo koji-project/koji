@@ -120,7 +120,7 @@ CREATE TABLE sessions (
 	update_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 	exclusive BOOLEAN CHECK (exclusive),
 	closed BOOLEAN NOT NULL DEFAULT FALSE,
-	renew_time TIMESTAMPTZ DEFAULT NULL,
+	renew_time TIMESTAMPTZ,
 	CONSTRAINT no_exclusive_subsessions CHECK (
 		master IS NULL OR "exclusive" IS NULL),
 	CONSTRAINT no_closed_exclusive CHECK (

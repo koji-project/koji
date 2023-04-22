@@ -118,7 +118,7 @@ class Session(object):
                   ('expired', 'expired'), ('master', 'master'), ('start_time', 'start_time'),
                   ('update_time', 'update_time'), ("date_part('epoch', start_time)", 'start_ts'),
                   ("date_part('epoch', update_time)", 'update_ts'), ('user_id', 'user_id'),
-                  ("date_part('epoch', renew_time)", 'renew_ts'))
+                  ('renew_time', 'renew_time'), ("date_part('epoch', renew_time)", 'renew_ts'))
         columns, aliases = zip(*fields)
 
         query = QueryProcessor(tables=['sessions'], columns=columns, aliases=aliases,
