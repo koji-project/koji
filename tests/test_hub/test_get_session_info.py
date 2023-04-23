@@ -41,10 +41,12 @@ class TestGetSessionInfo(DBQueryTestCase):
         self.assertEqual(query.clauses, ['expired is FALSE', 'user_id = %(user_id)i'])
         self.assertEqual(query.joins, None)
         self.assertEqual(query.columns, ['authtype', 'callnum', 'exclusive', 'expired', 'master',
-                                         "date_part('epoch', start_time)",
-                                         'update_time', 'user_id'])
+                                         'start_time', "date_part('epoch', start_time)",
+                                         'update_time', "date_part('epoch', update_time)",
+                                         'user_id'])
         self.assertEqual(query.aliases, ['authtype', 'callnum', 'exclusive', 'expired', 'master',
-                                         'start_time', 'update_time', 'user_id'])
+                                         'start_time', 'start_ts', 'update_time', 'update_ts',
+                                         'user_id'])
 
     def test_get_session_info_user_and_details(self):
         self.context.session.logged_in = True
@@ -56,10 +58,13 @@ class TestGetSessionInfo(DBQueryTestCase):
         self.assertEqual(query.clauses, ['expired is FALSE', 'user_id = %(user_id)i'])
         self.assertEqual(query.joins, None)
         self.assertEqual(query.columns, ['authtype', 'callnum', 'exclusive', 'expired', 'hostip',
-                                         'id', 'master', "date_part('epoch', start_time)",
-                                         'update_time', 'user_id'])
+                                         'id', 'master', 'start_time',
+                                         "date_part('epoch', start_time)",
+                                         'update_time', "date_part('epoch', update_time)",
+                                         'user_id'])
         self.assertEqual(query.aliases, ['authtype', 'callnum', 'exclusive', 'expired', 'hostip',
-                                         'id', 'master', 'start_time', 'update_time', 'user_id'])
+                                         'id', 'master', 'start_time', 'start_ts', 'update_time',
+                                         'update_ts', 'user_id'])
 
     def test_get_session_info_user(self):
         self.context.session.logged_in = True
@@ -71,10 +76,12 @@ class TestGetSessionInfo(DBQueryTestCase):
         self.assertEqual(query.clauses, ['expired is FALSE', 'user_id = %(user_id)i'])
         self.assertEqual(query.joins, None)
         self.assertEqual(query.columns, ['authtype', 'callnum', 'exclusive', 'expired', 'master',
-                                         "date_part('epoch', start_time)",
-                                         'update_time', 'user_id'])
+                                         'start_time', "date_part('epoch', start_time)",
+                                         'update_time', "date_part('epoch', update_time)",
+                                         'user_id'])
         self.assertEqual(query.aliases, ['authtype', 'callnum', 'exclusive', 'expired', 'master',
-                                         'start_time', 'update_time', 'user_id'])
+                                         'start_time', 'start_ts', 'update_time', 'update_ts',
+                                         'user_id'])
 
     def test_get_session_info_details(self):
         self.context.session.logged_in = True
@@ -87,7 +94,9 @@ class TestGetSessionInfo(DBQueryTestCase):
         self.assertEqual(query.clauses, ['expired is FALSE', 'id = %(id)i'])
         self.assertEqual(query.joins, None)
         self.assertEqual(query.columns, ['authtype', 'callnum', 'exclusive', 'expired', 'hostip',
-                                         'id', 'master', "date_part('epoch', start_time)",
-                                         'update_time', 'user_id'])
+                                         'id', 'master', 'start_time',
+                                         "date_part('epoch', start_time)", 'update_time',
+                                         "date_part('epoch', update_time)", 'user_id'])
         self.assertEqual(query.aliases, ['authtype', 'callnum', 'exclusive', 'expired', 'hostip',
-                                         'id', 'master', 'start_time', 'update_time', 'user_id'])
+                                         'id', 'master', 'start_time', 'start_ts', 'update_time',
+                                         'update_ts', 'user_id'])
