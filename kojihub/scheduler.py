@@ -115,7 +115,6 @@ class TaskScheduler(object):
     def __init__(self):
         self.hosts_by_bin = None
         self.hosts = None
-        self.tasks_by_bin = None
         self.active_tasks = None
         self.free_tasks = None
 
