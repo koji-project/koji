@@ -1010,6 +1010,12 @@ CREATE TABLE scheduler_host_data (
 ) WITHOUT OIDS;
 
 
+CREATE TABLE scheduler_sys_data (
+        name TEXT NOT NULL PRIMARY KEY,
+        data JSONB
+) WITHOUT OIDS;
+
+
 CREATE TABLE scheduler_map (
         id SERIAL NOT NULL PRIMARY KEY,
         task_id INTEGER REFERENCES task (id) NOT NULL,

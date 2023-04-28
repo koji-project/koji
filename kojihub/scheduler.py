@@ -1,3 +1,4 @@
+import json
 import logging
 import time
 
@@ -124,10 +125,15 @@ class TaskScheduler(object):
         self.ready_timeout = 180
         self.assign_timeout = 300
         self.host_timeout = 900
+        self.run_interval = 60
 
     def run(self):
         if not db_lock('scheduler', wait=False):
             # already running elsewhere
+            return False
+
+        if not self.check_ts():
+            # already ran too recently
             return False
 
         self.get_tasks()
@@ -137,6 +143,47 @@ class TaskScheduler(object):
         self.check_active_tasks()
 
         return True
+
+    def check_ts(self):
+        """Check the last run timestamp
+
+        Returns True if the scheduler should run, False otherwise
+        """
+
+        # get last ts
+        query = QueryProcessor(
+            tables=['scheduler_sys_data'],
+            columns=['data'],
+            clauses=['name = %(name)s'],
+            values={'name': 'last_run_ts'},
+        )
+        last = query.singleValue(strict=False) or 0
+
+        now = time.time()
+        delta = now - last
+
+        if delta < 0:
+            logger.error('Last run in the future by %i seconds', -delta)
+            ret = False
+            # update the ts so that a system time rollback doesn't keep us from running
+        elif delta < self.run_interval:
+            logger.debug('Skipping run due to run_interval setting')
+            # return now without updating ts
+            return False
+        else:
+            ret = True
+
+        # save current ts
+        # XXX need an UPSERT
+        update = UpdateProcessor(
+            'scheduler_sys_data',
+            clauses=['name = %(name)s'],
+            values={'name': 'last_run_ts'},
+            data={'data': json.dumps(now)},
+        )
+        update.execute()
+
+        return ret
 
     def do_schedule(self):
         # debug
@@ -294,7 +341,7 @@ class TaskScheduler(object):
             update = UpdateProcessor(
                 'host',
                 data={'ready': False},
-                clauses=['host_id IN %(host_ids)s'],
+                clauses=['id IN %(host_ids)s'],
                 values={'host_ids': [h['id'] for h in hosts_to_mark]},
             )
             update.execute()
