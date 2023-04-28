@@ -174,14 +174,20 @@ class TaskScheduler(object):
             ret = True
 
         # save current ts
-        # XXX need an UPSERT
         update = UpdateProcessor(
             'scheduler_sys_data',
             clauses=['name = %(name)s'],
             values={'name': 'last_run_ts'},
             data={'data': json.dumps(now)},
         )
-        update.execute()
+        chk = update.execute()
+        if not chk:
+            # hasn't been defined yet
+            insert = InsertProcessor(
+                'scheduler_sys_data',
+                data={'name': 'last_run_ts', 'data': json.dumps(now)},
+            )
+            insert.execute()
 
         return ret
 
