@@ -1027,6 +1027,16 @@ CREATE TABLE scheduler_map (
 ) WITHOUT OIDS;
 
 
+CREATE TABLE scheduler_task_refusals (
+        id SERIAL NOT NULL PRIMARY KEY,
+        task_id INTEGER REFERENCES task (id) NOT NULL,
+        host_id INTEGER REFERENCES host (id) NOT NULL,
+        by_host BOOLEAN NOT NULL,
+        msg TEXT,
+        time TIMESTAMPTZ NOT NULL DEFAULT NOW()
+) WITHOUT OIDS;
+
+
 CREATE TABLE scheduler_log_messages (
         id SERIAL NOT NULL PRIMARY KEY,
         task_id INTEGER REFERENCES task (id),

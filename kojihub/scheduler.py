@@ -136,6 +136,7 @@ class TaskScheduler(object):
             # already ran too recently
             return False
 
+        logger.info('Running task scheduler')
         self.get_tasks()
         self.get_hosts()
         self.check_hosts()
@@ -193,7 +194,6 @@ class TaskScheduler(object):
 
     def do_schedule(self):
         # debug
-        logger.info('Running task scheduler')
         logger.info(f'Hosts: {len(self.hosts)}')
         logger.info(f'Free tasks: {len(self.free_tasks)}')
         logger.info(f'Active tasks: {len(self.active_tasks)}')
