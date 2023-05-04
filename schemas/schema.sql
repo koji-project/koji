@@ -1032,6 +1032,7 @@ CREATE TABLE scheduler_task_refusals (
         task_id INTEGER REFERENCES task (id) NOT NULL,
         host_id INTEGER REFERENCES host (id) NOT NULL,
         by_host BOOLEAN NOT NULL,
+        soft BOOLEAN NOT NULL DEFAULT FALSE,
         msg TEXT,
         time TIMESTAMPTZ NOT NULL DEFAULT NOW()
 ) WITHOUT OIDS;

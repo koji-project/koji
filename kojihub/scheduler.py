@@ -58,6 +58,52 @@ def get_tasks_for_host(hostID):
     return query.execute()
 
 
+def set_refusal(hostID, taskID, soft=True, by_host=False, msg=''):
+    data = {
+        'task_id': kojihub.convert_value(hostID, cast=int),
+        'host_id': kojihub.convert_value(taskID, cast=int),
+        'soft': kojihub.convert_value(soft, cast=bool),
+        'by_host': kojihub.convert_value(by_host, cast=bool),
+        'msg': kojihub.convert_value(msg, cast=str),
+    }
+    insert = InsertProcessor('scheduler_task_refusals', data=data)
+    insert.execute()
+    # note: db allows multiple entries here, but in general we shouldn't
+    # make very many
+
+
+def get_task_refusals(taskID=None, hostID=None):
+    taskID = kojihub.convert_value(taskID, cast=int, none_allowed=True)
+    hostID = kojihub.convert_value(hostID, cast=int, none_allowed=True)
+
+    fields = (
+        ('scheduler_task_refusals.id', 'id'),
+        ('scheduler_task_refusals.task_id', 'task_id'),
+        ('scheduler_task_refusals.host_id', 'host_id'),
+        ('scheduler_task_refusals.by_host', 'by_host'),
+        ('scheduler_task_refusals.soft', 'soft'),
+        ('scheduler_task_refusals.msg', 'msg'),
+        # ('host.name', 'host_name'),
+        ("date_part('epoch', scheduler_task_refusals.time)", 'ts'),
+    )
+    fields, aliases = zip(*fields)
+
+    clauses = []
+    if taskID is not None:
+        clauses.append('task_id = %(taskID)s')
+    if hostID is not None:
+        clauses.append('host_id = %(hostID)s')
+
+    query = QueryProcessor(
+        columns=fields, aliases=aliases, tables=['scheduler_task_refusals'],
+        # joins=['host ON host_id=host.id', 'task ON task_id=task.id'],
+        clauses=clauses, values=locals(),
+        opts={'order': '-id'}
+    )
+
+    return query.execute()
+
+
 def get_host_data(hostID=None):
     """Return actual builder data
 
