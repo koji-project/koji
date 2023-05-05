@@ -879,6 +879,7 @@ class QueryView:
         fullname = fullname or field
         if joinkey:
             self.extra_joins.append(joinkey)
+            # duplicates removed later
         return fullname
 
     def get_clauses(self, clauses):
