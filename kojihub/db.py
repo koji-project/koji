@@ -834,6 +834,80 @@ SELECT %(col_str)s
         return results
 
 
+class QueryView:
+    # abstract base class
+
+    # subclasses should provide...
+    tables = []
+    joins = []
+    joinmap = {}
+    fieldmap = {}
+    '''
+    fieldmap looks like:
+
+    {
+        'alias':
+            ['fullname', 'joinkey', 
+
+    }
+    '''
+
+    def __init__(self, fields, clauses, values, opts=None):
+        self.extra_joins = []
+        tables = list(self.tables)  # copy
+        fields = self.get_fields(fields)
+        fields, aliases = zip(*fields.items())
+        clauses = self.get_clauses(clauses)
+        joins = self.get_joins()
+        self.query = QueryProcessor(
+            columns=fields, aliases=aliases,
+            tables=tables, joins=joins,
+            clauses=clauses, values=values,
+            opts=opts)
+
+    def get_fields(self):
+        fields = {}
+        joins = []
+        clauses = []
+
+        x_joins = set()
+        for field in self.fields:
+            f_info = self.fieldmap.get(field)
+            if f_info is None:
+                raise koji.ParameterError(f'Invalid field for query {field}')
+            fullname, joinkey = f_info
+            fullname = fullname or field
+            fields[fullname] = field
+            if joinkey:
+                x_joins.add(joinkey)
+
+    def get_clauses(self):
+        pass
+
+    def get_joins(self):
+        joins = list(self.joins)
+        seen = set()
+        # note we preserve the order that extra joins were added
+        for joinkey in self.extra_joins:
+            if joinkey in seen:
+                continue
+            seen.add(joinkey)
+            joins.append(self.joinmap[joinkey])
+        return joins
+
+    def execute(self):
+        return self.query.execute()
+
+    def executeOne(self, strict=False):
+        return self.query.executeOne(strict=strict)
+
+    def iterate(self):
+        return self.query.iterate()
+
+    def singleValue(self, strict=True):
+        return self.query.singleValue(strict=strict)
+
+
 class BulkInsertProcessor(object):
     def __init__(self, table, data=None, columns=None, strict=True, batch=1000):
         """Do bulk inserts - it has some limitations compared to
