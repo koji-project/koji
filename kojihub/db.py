@@ -852,8 +852,9 @@ class QueryView:
     }
     '''
 
-    def __init__(self, fields, clauses, values, opts=None):
+    def __init__(self, clauses=None, fields=None, opts=None):
         self.extra_joins = []
+        self.values = {}
         tables = list(self.tables)  # copy
         fields = self.get_fields(fields)
         fields, aliases = zip(*fields.items())
@@ -862,27 +863,50 @@ class QueryView:
         self.query = QueryProcessor(
             columns=fields, aliases=aliases,
             tables=tables, joins=joins,
-            clauses=clauses, values=values,
+            clauses=clauses, values=self.values,
             opts=opts)
 
-    def get_fields(self):
-        fields = {}
-        joins = []
-        clauses = []
+    def get_fields(self, fields):
+        fields = fields or self.fieldmap.keys()  # XXX stable order
 
-        x_joins = set()
-        for field in self.fields:
-            f_info = self.fieldmap.get(field)
-            if f_info is None:
-                raise koji.ParameterError(f'Invalid field for query {field}')
-            fullname, joinkey = f_info
-            fullname = fullname or field
-            fields[fullname] = field
-            if joinkey:
-                x_joins.add(joinkey)
+        return {self.map_field(f): f for f in fields}
 
-    def get_clauses(self):
-        pass
+    def map_field(self, field):
+        f_info = self.fieldmap.get(field)
+        if f_info is None:
+            raise koji.ParameterError(f'Invalid field for query {field}')
+        fullname, joinkey = f_info
+        fullname = fullname or field
+        if joinkey:
+            self.extra_joins.append(joinkey)
+        return fullname
+
+    def get_clauses(self, clauses):
+        # for now, just a very simple implementation
+        result = []
+        clauses = clauses or []
+        for n, clause in enumerate(clauses):
+            # TODO checks check checks
+            if len(clause) == 2:
+                # implicit operator
+                field, value = clause
+                if isinstance(value, (list, tuple)):
+                    op = 'IN'
+                else:
+                    op = '='
+            elif len(clause) == 3:
+                field, op, value = clause
+                op = op.upper()
+                if op not in ('IN', '=', '!=', '>', '<', '>=', '<='):
+                    raise koji.ParameterError(f'Invalid operator: {op}')
+            else:
+                raise koji.ParameterError(f'Invalid clause: {clause}')
+            fullname = self.map_field(field)
+            key = f'v_{field}_{n}'
+            self.values[key] = value
+            result.append(f'{fullname} {op} %({key})s')
+
+        return result
 
     def get_joins(self):
         joins = list(self.joins)

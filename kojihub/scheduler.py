@@ -4,7 +4,7 @@ import time
 
 import koji
 from . import kojihub
-from .db import QueryProcessor, InsertProcessor, UpdateProcessor, db_lock
+from .db import QueryProcessor, InsertProcessor, UpdateProcessor, QueryView, db_lock
 
 
 logger = logging.getLogger('koji.scheduler')
@@ -123,6 +123,22 @@ def get_host_data(hostID=None):
     )
 
     return query.execute()
+
+
+class TaskRunsQuery(QueryView):
+
+    tables = ['scheduler_task_runs']
+    fieldmap = {
+        'id': ['scheduler_task_runs.id', None],
+        'task_id': ['scheduler_task_runs.task_id', None],
+        'host_id': ['scheduler_task_runs.host_id', None],
+        'active': ['scheduler_task_runs.active', None],
+        'create_ts': ["date_part('epoch', scheduler_task_runs.create_time)", None],
+    }
+
+
+def get_task_runs2(clauses=None, fields=None):
+    return TaskRunsQuery(clauses, fields).execute()
 
 
 def get_task_runs(taskID=None, hostID=None, active=None):
@@ -548,4 +564,5 @@ class TaskScheduler(object):
 
 class SchedulerExports:
     getTaskRuns = staticmethod(get_task_runs)
+    getTaskRuns2 = staticmethod(get_task_runs2)
     getHostData = staticmethod(get_host_data)
