@@ -146,43 +146,11 @@ class TaskRunsQuery(QueryView):
         'active': ['scheduler_task_runs.active', None],
         'create_ts': ["date_part('epoch', scheduler_task_runs.create_time)", None],
     }
-    default_fields = ('id', 'task_id', 'host_id')
+    default_fields = ('id', 'task_id', 'host_id', 'active', 'create_ts')
 
 
-def get_task_runs2(clauses=None, fields=None):
+def get_task_runs(clauses=None, fields=None):
     return TaskRunsQuery(clauses, fields).execute()
-
-
-def get_task_runs(taskID=None, hostID=None, active=None):
-    taskID = kojihub.convert_value(taskID, cast=int, none_allowed=True)
-    hostID = kojihub.convert_value(hostID, cast=int, none_allowed=True)
-    active = kojihub.convert_value(active, cast=bool, none_allowed=True)
-
-    fields = (
-        ('scheduler_task_runs.id', 'id'),
-        ('scheduler_task_runs.task_id', 'task_id'),
-        ('scheduler_task_runs.host_id', 'host_id'),
-        # ('host.name', 'host_name'),
-        # ('task.method', 'method'),
-        ('scheduler_task_runs.active', 'active'),
-        ("date_part('epoch', scheduler_task_runs.create_time)", 'create_ts'),
-    )
-    fields, aliases = zip(*fields)
-
-    clauses = []
-    if taskID is not None:
-        clauses.append('task_id = %(taskID)s')
-    if hostID is not None:
-        clauses.append('host_id = %(hostID)s')
-    if active is not None:
-        clauses.append('active = %(active)s')
-
-    query = QueryProcessor(
-        columns=fields, aliases=aliases, tables=['scheduler_task_runs'],
-        # joins=['host ON host_id=host.id', 'task ON task_id=task.id'],
-        clauses=clauses, values=locals())
-
-    return query.execute()
 
 
 class TaskScheduler(object):
@@ -427,7 +395,7 @@ class TaskScheduler(object):
             update.execute()
 
     def get_active_runs(self):
-        runs = get_task_runs(active=True)
+        runs = get_task_runs([["active", True]])
         runs_by_task = {}
         for run in runs:
             runs_by_task.setdefault(run['task_id'], [])
@@ -576,5 +544,4 @@ class TaskScheduler(object):
 
 class SchedulerExports:
     getTaskRuns = staticmethod(get_task_runs)
-    getTaskRuns2 = staticmethod(get_task_runs2)
     getHostData = staticmethod(get_host_data)
