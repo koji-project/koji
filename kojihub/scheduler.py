@@ -4,7 +4,7 @@ import time
 
 import koji
 from . import kojihub
-from .db import QueryProcessor, InsertProcessor, UpdateProcessor, QueryView, db_lock
+from .db import QueryProcessor, InsertProcessor, UpsertProcessor, UpdateProcessor, QueryView, db_lock
 
 
 logger = logging.getLogger('koji.scheduler')
@@ -72,36 +72,34 @@ def set_refusal(hostID, taskID, soft=True, by_host=False, msg=''):
     # make very many
 
 
-def get_task_refusals(taskID=None, hostID=None):
-    taskID = kojihub.convert_value(taskID, cast=int, none_allowed=True)
-    hostID = kojihub.convert_value(hostID, cast=int, none_allowed=True)
+class TaskRefusalsQuery(QueryView):
 
-    fields = (
-        ('scheduler_task_refusals.id', 'id'),
-        ('scheduler_task_refusals.task_id', 'task_id'),
-        ('scheduler_task_refusals.host_id', 'host_id'),
-        ('scheduler_task_refusals.by_host', 'by_host'),
-        ('scheduler_task_refusals.soft', 'soft'),
-        ('scheduler_task_refusals.msg', 'msg'),
-        # ('host.name', 'host_name'),
-        ("date_part('epoch', scheduler_task_refusals.time)", 'ts'),
-    )
-    fields, aliases = zip(*fields)
+    tables = ['scheduler_task_refusals']
+    joinmap = {
+        'task': 'task ON scheduler_task_refusals.task_id = task.id',
+        'host': 'host ON scheduler_task_refusals.host_id = host.id',
+    }
+    fieldmap = {
+        'id': ['scheduler_task_refusals.id', None],
+        'task_id': ['scheduler_task_refusals.task_id', None],
+        'host_id': ['scheduler_task_refusals.host_id', None],
+        'by_host': ['scheduler_task_refusals.by_host', None],
+        'soft': ['scheduler_task_refusals.soft', None],
+        'msg': ['scheduler_task_refusals.msg', None],
+        'ts': ["date_part('epoch', scheduler_task_refusals.time)", None],
+        'method': ['task.method', 'task'],
+        'state': ['task.state', 'task'],
+        'owner': ['task.owner', 'task'],
+        'arch': ['task.arch', 'task'],
+        'channel_id': ['task.channel_id', 'task'],
+        'host_name': ['host.name', 'host'],
+        'host_ready': ['host.ready', 'host'],
+    }
+    default_fields = ('id', 'task_id', 'host_id', 'by_host', 'soft', 'msg', 'ts')
 
-    clauses = []
-    if taskID is not None:
-        clauses.append('task_id = %(taskID)s')
-    if hostID is not None:
-        clauses.append('host_id = %(hostID)s')
 
-    query = QueryProcessor(
-        columns=fields, aliases=aliases, tables=['scheduler_task_refusals'],
-        # joins=['host ON host_id=host.id', 'task ON task_id=task.id'],
-        clauses=clauses, values=locals(),
-        opts={'order': '-id'}
-    )
-
-    return query.execute()
+def get_task_refusals(clauses=None, fields=None):
+    return TaskRefusalsQuery(clauses, fields).execute()
 
 
 def get_host_data(hostID=None):
@@ -217,20 +215,13 @@ class TaskScheduler(object):
             ret = True
 
         # save current ts
-        update = UpdateProcessor(
+        upsert = UpsertProcessor(
             'scheduler_sys_data',
-            clauses=['name = %(name)s'],
-            values={'name': 'last_run_ts'},
-            data={'data': json.dumps(now)},
+            data={'name': 'last_run_ts',
+                  'data': json.dumps(now)},
+            keys=['name'],
         )
-        chk = update.execute()
-        if not chk:
-            # hasn't been defined yet
-            insert = InsertProcessor(
-                'scheduler_sys_data',
-                data={'name': 'last_run_ts', 'data': json.dumps(now)},
-            )
-            insert.execute()
+        upsert.execute()
 
         return ret
 
@@ -455,6 +446,9 @@ class TaskScheduler(object):
         self.free_tasks = free_tasks
         self.active_tasks = active_tasks
 
+    def get_refusals(self):
+        pass
+
     def get_hosts(self):
         # get hosts and bin them
         hosts_by_bin = {}
@@ -544,4 +538,5 @@ class TaskScheduler(object):
 
 class SchedulerExports:
     getTaskRuns = staticmethod(get_task_runs)
+    getTaskRefusals = staticmethod(get_task_refusals)
     getHostData = staticmethod(get_host_data)

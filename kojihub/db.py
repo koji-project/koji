@@ -444,6 +444,42 @@ class InsertProcessor(object):
         return _dml(str(self), self.data)
 
 
+class UpsertProcessor(InsertProcessor):
+    """Build a basic upsert statement
+
+    table - the table to insert into
+    data - a dictionary of data to insert (keys = row names)
+    rawdata - data to insert specified as sql expressions rather than python values
+    keys - the rows that are the unique keys
+    skip_dup - if set to true, do nothing on conflict
+    """
+
+    def __init__(self, table, data=None, rawdata=None, keys=None, skip_dup=False):
+        super(UpsertProcessor, self).__init__(table, data=data, rawdata=rawdata)
+        self.keys = keys
+        self.skip_dup = skip_dup
+        if not keys and not skip_dup:
+            raise ValueError('either keys or skip_dup must be set')
+
+    def __repr__(self):
+        return "<UpsertProcessor: %r>" % vars(self)
+
+    def __str__(self):
+        insert = super(UpsertProcessor, self).__str__()
+        parts = [insert]
+        if self.skip_dup:
+            parts.append(' ON CONFLICT DO NOTHING')
+        else:
+            parts.append(f' ON CONFLICT ({",".join(self.keys)}) DO UPDATE SET ')
+            # filter out conflict keys from data
+            data = {k: self.data[k] for k in self.data if k not in self.keys}
+            rawdata = {k: self.rawdata[k] for k in self.rawdata if k not in self.keys}
+            assigns = [f"{key} = %({key})s" for key in data]
+            assigns.extend([f"{key} = ({rawdata[key]})" for key in self.rawdata])
+            parts.append(', '.join(sorted(assigns)))
+        return ''.join(parts)
+
+
 class UpdateProcessor(object):
     """Build an update statement
 
