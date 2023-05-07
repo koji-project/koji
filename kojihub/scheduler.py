@@ -128,13 +128,25 @@ def get_host_data(hostID=None):
 class TaskRunsQuery(QueryView):
 
     tables = ['scheduler_task_runs']
+    joinmap = {
+        'task': 'task ON scheduler_task_runs.task_id = task.id',
+        'host': 'host ON scheduler_task_runs.host_id = host.id',
+    }
     fieldmap = {
         'id': ['scheduler_task_runs.id', None],
         'task_id': ['scheduler_task_runs.task_id', None],
+        'method': ['task.method', 'task'],
+        'state': ['task.state', 'task'],
+        'owner': ['task.owner', 'task'],
+        'arch': ['task.arch', 'task'],
+        'channel_id': ['task.channel_id', 'task'],
+        'host_name': ['host.name', 'host'],
+        'host_ready': ['host.ready', 'host'],
         'host_id': ['scheduler_task_runs.host_id', None],
         'active': ['scheduler_task_runs.active', None],
         'create_ts': ["date_part('epoch', scheduler_task_runs.create_time)", None],
     }
+    default_fields = ('id', 'task_id', 'host_id')
 
 
 def get_task_runs2(clauses=None, fields=None):

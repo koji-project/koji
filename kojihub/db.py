@@ -842,15 +842,7 @@ class QueryView:
     joins = []
     joinmap = {}
     fieldmap = {}
-    '''
-    fieldmap looks like:
-
-    {
-        'alias':
-            ['fullname', 'joinkey', 
-
-    }
-    '''
+    default_fields = ()
 
     def __init__(self, clauses=None, fields=None, opts=None):
         self.extra_joins = []
@@ -867,7 +859,9 @@ class QueryView:
             opts=opts)
 
     def get_fields(self, fields):
-        fields = fields or self.fieldmap.keys()  # XXX stable order
+        fields = fields or self.default_fields
+        if not fields or fields == '*':
+            fields = sorted(self.fieldmap.keys())
 
         return {self.map_field(f): f for f in fields}
 
