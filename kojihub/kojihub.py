@@ -14412,14 +14412,12 @@ class HostExports(object):
         host.verify()
 
         task = Task(task_id)
-        if task['host_id'] != host['id']:
-            logger.warning('Host %s refused unrelated task: %s', host['name'], task['id'])
+        tinfo = task.getInfo(strict=True)
+        if tinfo['host_id'] != host.id:
+            logger.warning('Host %s refused unrelated task: %s', host.id, tinfo['id'])
             return
-        state = koji.TASK_STATES[task['state']]
-        if state not in ('OPEN', 'ASSIGNED'):
-            logger.warning('Host %s refused %s task: %s', host['name'], state, task['id'])
-            return
-        scheduler.set_refusal(host['id'], task['id'], soft=soft, msg=msg, by_host=True)
+        scheduler.set_refusal(host.id, tinfo['id'], soft=soft, msg=msg, by_host=True)
+        # also free the task
         task.free()
 
     def getHostTasks(self):
