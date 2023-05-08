@@ -1780,7 +1780,12 @@ def hostinfo(environ, hostID=None, userID=None):
     values['host'] = host
     values['channels'] = channels
     values['buildroots'] = buildroots
-    values['lastUpdate'] = server.getLastHostUpdate(host['id'], ts=True)
+    if 'update_ts' not in host:
+        # be nice with older hub
+        # TODO remove this compat workaround after a release
+        values['lastUpdate'] = server.getLastHostUpdate(host['id'], ts=True)
+    else:
+        values['lastUpdate'] = koji.formatTimeLong(host['update_ts'])
     if environ['koji.currentUser']:
         values['perms'] = server.getUserPerms(environ['koji.currentUser']['id'])
     else:
