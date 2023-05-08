@@ -14405,15 +14405,22 @@ class HostExports(object):
         tasks = query.execute()
         return tasks
 
-    def refuseTask(self, task_id):
+    def refuseTask(self, task_id, soft=True, msg=''):
+        soft = convert_value(soft, cast=bool)
+        msg = convert_value(msg, cast=str)
         host = Host()
         host.verify()
 
-        # XXX
-
         task = Task(task_id)
-        task.free(newstate=koji.TASK_STATES['REFUSED'])
-        return True
+        if task['host_id'] != host['id']:
+            logger.warning('Host %s refused unrelated task: %s', host['name'], task['id'])
+            return
+        state = koji.TASK_STATES[task['state']]
+        if state not in ('OPEN', 'ASSIGNED'):
+            logger.warning('Host %s refused %s task: %s', host['name'], state, task['id'])
+            return
+        scheduler.set_refusal(host['id'], task['id'], soft=soft, msg=msg, by_host=True)
+        task.free()
 
     def getHostTasks(self):
         host = Host()
