@@ -66,10 +66,8 @@ def set_refusal(hostID, taskID, soft=True, by_host=False, msg=''):
         'by_host': kojihub.convert_value(by_host, cast=bool),
         'msg': kojihub.convert_value(msg, cast=str),
     }
-    insert = InsertProcessor('scheduler_task_refusals', data=data)
-    insert.execute()
-    # note: db allows multiple entries here, but in general we shouldn't
-    # make very many
+    upsert = UpsertProcessor('scheduler_task_refusals', data=data, keys=('task_id', 'host_id'))
+    upsert.execute()
 
 
 class TaskRefusalsQuery(QueryView):
@@ -164,6 +162,7 @@ class TaskScheduler(object):
         self.capacity_overcommit = 5
         self.ready_timeout = 180
         self.assign_timeout = 300
+        self.soft_refusal_timeout = 900
         self.host_timeout = 900
         self.run_interval = 60
 
@@ -258,12 +257,15 @@ class TaskScheduler(object):
 
         # figure out which hosts *can* take each task
         # at the moment this is mostly just bin, but in the future it will be more complex
+        refusals = self.get_refusals()
         for task in self.free_tasks:
             task['_hosts'] = []
             min_avail = min(0, task['weight'] - self.capacity_overcommit)
+            h_refused = refusals.get(task['task_id'], {})
             for host in self.hosts_by_bin.get(task['_bin'], []):
                 if (host['ready'] and host['_ntasks'] < self.maxjobs and
-                        host['capacity'] - host['_load'] > min_avail):
+                        host['capacity'] - host['_load'] > min_avail and
+                        host['id'] not in h_refused):
                     task['_hosts'].append(host)
             logger.info(f'Task {task["task_id"]}: {len(task["_hosts"])} options')
             for host in task['_hosts']:
@@ -447,7 +449,31 @@ class TaskScheduler(object):
         self.active_tasks = active_tasks
 
     def get_refusals(self):
-        pass
+        """Get task refusals and clean stale entries"""
+        refusals = {}
+        cutoff_ts = time.time() - self.soft_refusal_timeout
+        to_drop = []
+        for row in get_task_refusals(fields=('id', 'task_id', 'host_id', 'soft', 'ts', 'state')):
+            if ((row['soft'] and row['ts'] < cutoff_ts ) or
+                    koji.TASK_STATES[row['state']] not in ('FREE', 'OPEN', 'ASSIGNED')):
+                to_drop.append(row['id'])
+            else:
+                # index by task and host
+                refusals.setdefault(row['task_id'], {})[row['host_id']] = row
+
+        if to_drop:
+            # drop stale entries
+            delete = DeleteProcessor(
+                'scheduler_task_refusals',
+                clauses=['id IN %(to_drop)s'],
+                values=locals(),
+            )
+            delete.execute()
+
+        return refusals
+
+    def clean_refusals(self):
+        update = UpdateProcessor()
 
     def get_hosts(self):
         # get hosts and bin them

@@ -1034,7 +1034,8 @@ CREATE TABLE scheduler_task_refusals (
         by_host BOOLEAN NOT NULL,
         soft BOOLEAN NOT NULL DEFAULT FALSE,
         msg TEXT,
-        time TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (task_id, host_id)
 ) WITHOUT OIDS;
 
 
