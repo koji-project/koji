@@ -7955,3 +7955,53 @@ def anon_handle_scheduler_info(goptions, session, args):
             print(host_data[0]['data'])
         else:
             print('-')
+
+
+def handle_scheduler_logs(goptions, session, args):
+    "[monitor] Query scheduler logs"
+    usage = "usage: %prog scheduler-logs <options>"
+    parser = OptionParser(usage=get_usage_str(usage))
+    parser.add_option("--task", type="int", action="store",
+                      help="Filter by task ID")
+    parser.add_option("--host", type="str", action="store",
+                      help="Filter by host (name/ID)")
+    parser.add_option("--from", type="float", action="store", dest="from_ts",
+                      help="Logs from given timestamp")
+    parser.add_option("--to", type="float", action="store", dest="to_ts",
+                      help="Logs until given timestamp (included)")
+    (options, args) = parser.parse_args(args)
+    if len(args) != 0:
+        parser.error("There are no arguments for this command")
+
+    kwargs = {}
+    clauses = []
+    if options.task:
+        clauses.append(['task_id', options.task])
+    if options.host:
+        try:
+            host_id = int(options.host)
+        except ValueError:
+            host_id = session.getHost(options.host)['id']
+        clauses.append(['host_id', host_id])
+    if options.from_ts:
+        clauses.append(['msg_ts', '>=', options.from_ts])
+    if options.to_ts:
+        clauses.append(['msg_ts', '<', options.to_ts])
+
+    logs = session.scheduler.getLogMessages(clauses, fields=('task_id', 'host_id', 'host_name', 'msg_ts', 'msg'))
+    for log in logs:
+        log['time'] = time.asctime(time.localtime(log['msg_ts']))
+
+    mask = ("%(task_id)s\t%(host_name)s\t%(time)s\t%(msg)s")
+    if not goptions.quiet:
+        h = mask % {
+            'task_id': 'Task',
+            'host_name': 'Host',
+            'time': 'Time',
+            'msg': 'Message',
+        }
+        print(h)
+        print('-' * len(h))
+
+    for log in logs:
+        print(mask % log)
