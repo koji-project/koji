@@ -25,6 +25,34 @@ def log_both(msg, task_id=None, host_id=None, level=logging.INFO):
     log_db(msg, task_id, host_id)
 
 
+class LogMessagesQuery(QueryView):
+
+    tables = ['scheduler_log_messages']
+    joinmap = {
+        'task': 'task ON scheduler_log_messages.task_id = task.id',
+        'host': 'host ON scheduler_log_messages.host_id = host.id',
+    }
+    fieldmap = {
+        'id': ['scheduler_log_messages.id', None],
+        'task_id': ['scheduler_log_messages.task_id', None],
+        'host_id': ['scheduler_log_messages.host_id', None],
+        'msg_ts': ["date_part('epoch', scheduler_log_messages.msg_time)", None],
+        'msg': ['scheduler_log_messages.msg', None],
+        'method': ['task.method', 'task'],
+        'state': ['task.state', 'task'],
+        'owner': ['task.owner', 'task'],
+        'arch': ['task.arch', 'task'],
+        'channel_id': ['task.channel_id', 'task'],
+        'host_name': ['host.name', 'host'],
+        'host_ready': ['host.ready', 'host'],
+    }
+    default_fields = ('id', 'task_id', 'host_id', 'msg', 'msg_ts')
+
+
+def get_log_messages(clauses=None, fields=None):
+    return LogMessagesQuery(clauses, fields).execute()
+
+
 def intlist(value):
     """Cast value to a list of ints"""
     if isinstance(value, (list, tuple)):
@@ -68,6 +96,7 @@ def set_refusal(hostID, taskID, soft=True, by_host=False, msg=''):
     }
     upsert = UpsertProcessor('scheduler_task_refusals', data=data, keys=('task_id', 'host_id'))
     upsert.execute()
+    log_both('Host refused task', task_id=taskID, host_id=hostID)
 
 
 class TaskRefusalsQuery(QueryView):
@@ -472,9 +501,6 @@ class TaskScheduler(object):
 
         return refusals
 
-    def clean_refusals(self):
-        update = UpdateProcessor()
-
     def get_hosts(self):
         # get hosts and bin them
         hosts_by_bin = {}
@@ -566,3 +592,4 @@ class SchedulerExports:
     getTaskRuns = staticmethod(get_task_runs)
     getTaskRefusals = staticmethod(get_task_refusals)
     getHostData = staticmethod(get_host_data)
+    getLogMessages = staticmethod(get_log_messages)
