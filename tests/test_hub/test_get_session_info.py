@@ -41,8 +41,8 @@ class TestGetSessionInfo(DBQueryTestCase):
         self.assertEqual(query.clauses, ['expired is FALSE', 'user_id = %(user_id)i'])
         self.assertEqual(query.joins, None)
         self.assertEqual(query.columns, ['authtype', 'callnum', 'exclusive', 'expired', 'master',
-                                         "date_part('epoch', start_time)", 'update_time',
-                                         'user_id'])
+                                         "date_part('epoch', start_time)",
+                                         'update_time', 'user_id'])
         self.assertEqual(query.aliases, ['authtype', 'callnum', 'exclusive', 'expired', 'master',
                                          'start_time', 'update_time', 'user_id'])
 
@@ -71,8 +71,8 @@ class TestGetSessionInfo(DBQueryTestCase):
         self.assertEqual(query.clauses, ['expired is FALSE', 'user_id = %(user_id)i'])
         self.assertEqual(query.joins, None)
         self.assertEqual(query.columns, ['authtype', 'callnum', 'exclusive', 'expired', 'master',
-                                         "date_part('epoch', start_time)", 'update_time',
-                                         'user_id'])
+                                         "date_part('epoch', start_time)",
+                                         'update_time', 'user_id'])
         self.assertEqual(query.aliases, ['authtype', 'callnum', 'exclusive', 'expired', 'master',
                                          'start_time', 'update_time', 'user_id'])
 

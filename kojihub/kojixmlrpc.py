@@ -499,7 +499,9 @@ def load_config(environ):
         ['RegexNameInternal', 'string', r'^[A-Za-z0-9/_.+-]+$'],
         ['RegexUserName', 'string', r'^[A-Za-z0-9/_.@-]+$'],
 
-        ['RPMDefaultChecksums', 'string', 'md5 sha256']
+        ['RPMDefaultChecksums', 'string', 'md5 sha256'],
+
+        ['SessionRenewalTimeout', 'integer', 1440],
     ]
     opts = {}
     for name, dtype, default in cfgmap:

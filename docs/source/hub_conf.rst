@@ -112,6 +112,14 @@ General authentication options
 
       Whether or not to automatically create a new user from valid ssl or gssapi credentials.
 
+   SessionRenewalTimeout
+      Type: integer
+
+      Default: ``1440``
+
+      The number of minutes before sessions are required to re-authenticate.
+      Set to 0 for no timeout.
+
 GSSAPI authentication options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -553,4 +561,4 @@ We have default checksums types for create rpm checksums.
 
       Default: ``md5 sha256``
 
-      Set RPM default checksums type. Default value is set upt to ``md5 sha256``.
+      Set RPM default checksums type. Default value is set up to ``md5 sha256``.

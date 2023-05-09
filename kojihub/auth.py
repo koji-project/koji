@@ -26,6 +26,7 @@ import random
 import re
 import socket
 import string
+import time
 
 import six
 from six.moves import range, urllib
@@ -116,7 +117,8 @@ class Session(object):
         fields = (('authtype', 'authtype'), ('callnum', 'callnum'), ('exclusive', 'exclusive'),
                   ('expired', 'expired'), ('master', 'master'), ('start_time', 'start_time'),
                   ('update_time', 'update_time'), ("date_part('epoch', start_time)", 'start_ts'),
-                  ("date_part('epoch', update_time)", 'update_ts'), ('user_id', 'user_id'))
+                  ("date_part('epoch', update_time)", 'update_ts'), ('user_id', 'user_id'),
+                  ('renew_time', 'renew_time'), ("date_part('epoch', renew_time)", 'renew_ts'))
         columns, aliases = zip(*fields)
 
         query = QueryProcessor(tables=['sessions'], columns=columns, aliases=aliases,
@@ -137,7 +139,22 @@ class Session(object):
                     logger.warning("Session ID %s is not related to host IP %s.", self.id, hostip)
             raise koji.AuthError('Invalid session or bad credentials')
 
-        # check for expiration
+        if not session_data['expired'] and context.opts['SessionRenewalTimeout'] != 0:
+            if session_data['renew_ts']:
+                renewal_cutoff = (session_data['renew_ts'] +
+                                  context.opts['SessionRenewalTimeout'] * 60)
+            else:
+                renewal_cutoff = (session_data['start_ts'] +
+                                  context.opts['SessionRenewalTimeout'] * 60)
+            if time.time() > renewal_cutoff:
+                session_data['expired'] = True
+                update = UpdateProcessor('sessions',
+                                         data={'expired': True},
+                                         clauses=['id = %(id)s OR master = %(id)s'],
+                                         values={'id': self.id})
+                update.execute()
+                context.cnx.commit()
+
         if session_data['expired']:
             if getattr(context, 'method') not in AUTH_METHODS:
                 raise koji.AuthExpired('session "%s" has expired' % self.id)
@@ -523,7 +540,7 @@ class Session(object):
 
             update = UpdateProcessor('sessions',
                                      clauses=['id=%(id)i'],
-                                     rawdata={'update_time': 'NOW()'},
+                                     rawdata={'update_time': 'NOW()', 'renew_time': 'NOW()'},
                                      data={'key': self.key, 'expired': False},
                                      values={'id': self.id})
             update.execute()
