@@ -3494,6 +3494,9 @@ def _create_tag(name, parent=None, arches=None, perm=None, locked=False, maven_s
     else:
         parent_id = None
 
+    if perm is not None:
+        perm = get_perm_id(perm, strict=True)
+
     # there may already be an id for a deleted tag, this will reuse it
     tag_id = get_tag_id(name, create=True)
 

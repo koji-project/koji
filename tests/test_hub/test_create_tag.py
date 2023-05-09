@@ -43,6 +43,12 @@ class TestCreateTag(unittest.TestCase):
         with self.assertRaises(koji.GenericError):
             kojihub.create_tag('duptag')
 
+        self.verify_name_internal.assert_called_once_with('duptag')
+        self.get_tag.assert_called_once_with('duptag')
+        self.get_perm_id.assert_not_called()
+        self.get_tag_id.assert_not_called()
+        self.writeInheritanceData.assert_not_called()
+
     def test_simple_create(self):
         self.get_tag.side_effect = [None, {'id': 1, 'name': 'parent-tag'}]
         self.get_tag_id.return_value = 99
@@ -68,7 +74,18 @@ class TestCreateTag(unittest.TestCase):
         }
         self.assertEqual(insert.data, values)
         self.assertEqual(insert.rawdata, {})
-        insert = self.inserts[0]
+
+        self.verify_name_internal.assert_called_once_with('newtag')
+        self.get_tag.assert_has_calls([mock.call('newtag'), mock.call('parent-tag')])
+        self.get_perm_id.assert_not_called()
+        self.get_tag_id.assert_called_once_with('newtag', create=True)
+        data = {'parent_id': 1,
+                'priority': 0,
+                'maxdepth': None,
+                'intransitive': False,
+                'noconfig': False,
+                'pkg_filter': ''}
+        self.writeInheritanceData.assert_called_once_with(99, data)
 
     def test_invalid_archs(self):
         self.get_tag.return_value = None
@@ -109,6 +126,12 @@ class TestCreateTag(unittest.TestCase):
             kojihub.create_tag('new-tag', parent=parent_tag)
         self.assertEqual("Parent tag '%s' could not be found" % parent_tag, str(ex.exception))
 
+        self.verify_name_internal.assert_called_once_with('new-tag')
+        self.get_tag.assert_has_calls([mock.call('new-tag'), mock.call(parent_tag)])
+        self.get_perm_id.assert_not_called()
+        self.get_tag_id.assert_not_called()
+        self.writeInheritanceData.assert_not_called()
+
     def test_tag_not_maven_support(self):
         self.verify_name_internal.return_value = None
         self.context.opts.get.return_value = False
@@ -118,3 +141,60 @@ class TestCreateTag(unittest.TestCase):
         with self.assertRaises(koji.GenericError) as ex:
             kojihub.create_tag('new-tag', maven_include_all=True)
         self.assertEqual("Maven support not enabled", str(ex.exception))
+
+        self.verify_name_internal.assert_has_calls([mock.call('new-tag'), mock.call('new-tag')])
+        self.get_tag.assert_not_called()
+        self.get_perm_id.assert_not_called()
+        self.get_tag_id.assert_not_called()
+        self.writeInheritanceData.assert_not_called()
+
+    def test_tag_non_exist_perm(self):
+        self.verify_name_internal.return_value = None
+        self.get_tag.return_value = None
+        self.get_perm_id.side_effect = koji.GenericError('No such entry in table permissions: 2')
+        with self.assertRaises(koji.GenericError) as ex:
+            kojihub.create_tag('new-tag', perm=2)
+        self.assertEqual('No such entry in table permissions: 2', str(ex.exception))
+
+        self.verify_name_internal.assert_called_once_with('new-tag')
+        self.get_tag.assert_called_once_with('new-tag')
+        self.get_perm_id.assert_called_once_with(2, strict=True)
+        self.get_tag_id.assert_not_called()
+        self.writeInheritanceData.assert_not_called()
+
+    def test_tag_extra(self):
+        self.get_tag.return_value = None
+        self.get_tag_id.return_value = 99
+        self.verify_name_internal.return_value = None
+        self.context_db.event_id = 42
+        self.context_db.session.user_id = 23
+        kojihub.create_tag('newtag', extra={'extra-test': 'extra-name'})
+
+        # check the insert
+        self.assertEqual(len(self.inserts), 2)
+        insert = self.inserts[0]
+        self.assertEqual(insert.table, 'tag_config')
+        values = {
+            'arches': '',
+            'create_event': 42,
+            'creator_id': 23,
+            'locked': False,
+            'maven_include_all': False,
+            'maven_support': False,
+            'perm_id': None,
+            'tag_id': 99,
+        }
+        self.assertEqual(insert.data, values)
+        self.assertEqual(insert.rawdata, {})
+
+        insert = self.inserts[1]
+        self.assertEqual(insert.table, 'tag_extra')
+        self.assertEqual(insert.data, {'create_event': 42, 'creator_id': 23, 'key': 'extra-test',
+                                       'tag_id': 99, 'value': '"extra-name"'})
+        self.assertEqual(insert.rawdata, {})
+
+        self.verify_name_internal.assert_called_once_with('newtag')
+        self.get_tag.assert_called_once_with('newtag')
+        self.get_perm_id.assert_not_called()
+        self.get_tag_id.assert_called_once_with('newtag', create=True)
+        self.writeInheritanceData.assert_not_called()
