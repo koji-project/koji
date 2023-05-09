@@ -29,8 +29,9 @@ class LogMessagesQuery(QueryView):
 
     tables = ['scheduler_log_messages']
     joinmap = {
-        'task': 'task ON scheduler_log_messages.task_id = task.id',
-        'host': 'host ON scheduler_log_messages.host_id = host.id',
+        # outer joins because these fields can be null
+        'task': 'LEFT JOIN task ON scheduler_log_messages.task_id = task.id',
+        'host': 'LEFT JOIN host ON scheduler_log_messages.host_id = host.id',
     }
     fieldmap = {
         'id': ['scheduler_log_messages.id', None],
