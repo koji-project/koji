@@ -14,7 +14,8 @@ from urllib.parse import quote
 
 sys.path.insert(0, os.getcwd())
 import koji
-from kojihub import kojixmlrpc
+from kojihub import auth, kojixmlrpc, kojihub
+from koji.context import context
 import koji.xmlrpcplus
 
 
@@ -32,6 +33,39 @@ def handle_rpc(self, environ):
         pdb.post_mortem(tb)
         # re-raise or the app handler will commit
         raise
+
+
+# Fake session for authenticated calls
+class FakeSession(auth.Session):
+
+    def __init__(self, user, exclusive=False):
+        user = kojihub.get_user(user, strict=True)
+        self.logged_in = True
+        self.id = 1
+        self.user_id = user['id']
+        self.authtype = koji.AUTHTYPES['GSSAPI']
+        self.hostip = '127.0.0.1'
+        self.master = None
+        self.callnum = 1
+        self.message = 'THIS IS A FAKE SESSION'
+        self.exclusive = exclusive
+        self.user_data = user
+        self.session_data = {'msg': 'this is a fake session'}
+        self._perms = None
+        self._groups = None
+        self._host_id = ''
+
+
+original_check_session = kojixmlrpc.ModXMLRPCRequestHandler.check_session
+
+
+# alternate check_session, used to emulate auth
+def check_session(self):
+    if 'KOJI_FAKEHUB_USER' in context.environ:
+        context.session = FakeSession(context.environ['KOJI_FAKEHUB_USER'],
+                                      context.environ.get('KOJI_FAKEHUB_EXCLUSIVE', False))
+    else:
+        original_check_session(self)
 
 
 def get_url(environ):
@@ -67,6 +101,9 @@ def get_options():
     parser = optparse.OptionParser(usage='%prog [options] <policy_file>')
     parser.add_option('--pdb', action='store_true',
                       help='drop into pdb on error')
+    parser.add_option('--user', '-u', help='execute as user')
+    parser.add_option('--exclusive', '-x', action='store_true',
+                      help='emulate an exclusive session')
     opts, args = parser.parse_args()
 
     # parse request from args
@@ -124,6 +161,12 @@ def main():
     environ['wsgi.input'] = io.StringIO(options.request)
     environ['REQUEST_METHOD'] = 'POST'
     environ['CONTENT_TYPE'] = 'text/xml'
+    if options.user:
+        environ['KOJI_FAKEHUB_USER'] = options.user
+        kojixmlrpc.ModXMLRPCRequestHandler.check_session = check_session
+        if options.exclusive:
+            environ['KOJI_FAKEHUB_EXCLUSIVE'] = True
+
     set_config(environ)
     print('RESULT:')
     data = kojixmlrpc.application(environ, start_response)
