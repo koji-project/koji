@@ -4284,7 +4284,7 @@ def _print_histline(entry, **kwargs):
         parts.insert(1, "(eid %i)" % event_id)
     if who:
         parts.append(who % x)
-    if create and x['active']:
+    if (create and x['active']) or (edit and other[-1]['active']):
         parts.append("[still active]")
     print(' '.join(parts))
     hidden_fields = ['active', 'create_event', 'revoke_event', 'creator_id', 'revoker_id',
