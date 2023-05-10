@@ -194,8 +194,6 @@ TASK_STATES = Enum((
     'CANCELED',
     'ASSIGNED',
     'FAILED',
-    'SCHEDULED',
-    'REFUSED',
 ))
 
 BUILD_STATES = Enum((
