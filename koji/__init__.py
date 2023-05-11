@@ -3103,6 +3103,7 @@ class ClientSession(object):
             self.retries = 0
             max_retries = self.opts.get('max_retries', 30)
             interval = self.opts.get('retry_interval', 20)
+            err = None
             while True:
                 tries += 1
                 self.retries += 1
@@ -3126,7 +3127,9 @@ class ClientSession(object):
                             # server correctly reporting an outage
                             tries = 0
                             continue
-                    raise err
+                    # we don't want tracebacks to show the lower details
+                    # `raise err from None` only works for py 3.3+
+                    # so instead, we will raise err after the try
                 except (SystemExit, KeyboardInterrupt):
                     # (depending on the python version, these may or may not be subclasses of
                     # Exception)
@@ -3156,6 +3159,9 @@ class ClientSession(object):
                         self.logger.debug(tb_str)
                     self.logger.info("Try #%s for call %s (%s) failed: %s",
                                      tries, self.callnum, name, e)
+                if err:
+                    # raise the converted fault from above
+                    raise err
                 if tries > 1:
                     # first retry is immediate, after that we honor retry_interval
                     time.sleep(interval)
