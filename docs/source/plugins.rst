@@ -248,9 +248,6 @@ plugin could attempt to send during a single call.
 Image builds using Kiwi
 =======================
 
-**This is just a tech-preview. API/usage can drastically change in upcoming
-releases**
-
 Plugin for creating images via `kiwi <http://osinside.github.io/kiwi/>`_
 project. Minimal supported version of kiwi is ``kiwi-9.24.2``.
 
