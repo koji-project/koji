@@ -224,12 +224,6 @@ AUTHTYPES = Enum((
     'GSSAPI',
 ))
 
-# authtype values - BACKWARD COMPATIBILITY (could be dropped in Koji 1.34)
-# normal == username/password
-AUTHTYPE_NORMAL = AUTHTYPES['NORMAL']
-AUTHTYPE_KERB = AUTHTYPES['KERBEROS']
-AUTHTYPE_SSL = AUTHTYPES['SSL']
-AUTHTYPE_GSSAPI = AUTHTYPES['GSSAPI']
 
 # dependency types
 DEP_REQUIRE = 0
