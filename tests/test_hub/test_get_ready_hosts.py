@@ -45,7 +45,7 @@ class TestGetReadyHosts(unittest.TestCase):
                                        'host_config ON host.id = host_config.host_id'])
         self.assertEqual(query.clauses, ['active IS TRUE', 'enabled IS TRUE', 'expired IS FALSE',
                                          'master IS NULL', 'ready IS TRUE',
-                                         "update_time > NOW() - '5 minutes'::interval"])
+                                         "sessions.update_time > NOW() - '5 minutes'::interval"])
         self.assertEqual(query.values, {})
         self.assertEqual(query.columns, ['arches', 'capacity', 'host.id', 'name', 'task_load'])
 
