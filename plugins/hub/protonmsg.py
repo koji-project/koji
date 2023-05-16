@@ -9,7 +9,6 @@ import json
 import logging
 import random
 
-import psycopg2
 from proton import Message, SSLDomain
 from proton.handlers import MessagingHandler
 from proton.reactor import Container

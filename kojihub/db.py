@@ -349,7 +349,7 @@ def db_lock(name, wait=True):
         # in the no-wait case, this could mean either that the row is already locked, or that
         # the lock does not exist, so we check
         query = "SELECT name FROM locks WHERE name=%(name)s"
-        rows =_fetchMulti(query, data)
+        rows = _fetchMulti(query, data)
         if rows:
             # the lock exists, but we did not acquire it
             return False
