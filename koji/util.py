@@ -457,13 +457,15 @@ def rmtree(path, logger=None):
                 if e.errno in (errno.ENOENT, errno.ESTALE):
                     # likely racing with another rmtree
                     # if the dir doesn't exist, we're done
+                    logger.warning("Directory to remove has disappeared: %s" % path)
                     return
                 raise
             try:
-                _rmtree(dev)
-            except _RetryRmtree:
+                _rmtree(dev, logger)
+            except _RetryRmtree as e:
                 # reset and retry
                 os.chdir(cwd)
+                logger.warning("Retrying rmtree due to %s" % e)
                 continue
             break
     finally:
@@ -477,7 +479,7 @@ def rmtree(path, logger=None):
             raise
 
 
-def _rmtree(dev):
+def _rmtree(dev, logger):
     """Remove all contents of CWD"""
     # This implementation avoids forming long paths and recursion. Otherwise
     # we will have errors with very deep directory trees.
@@ -488,7 +490,7 @@ def _rmtree(dev):
     # As we descend into the tree, we append a new entry to dirstack
     # When we ascend back up after removal, we pop them off
     while True:
-        dirs = _stripcwd(dev)
+        dirs = _stripcwd(dev, logger)
 
         # if cwd has no subdirs, walk back up until we find some
         while not dirs and dirstack:
@@ -507,11 +509,12 @@ def _rmtree(dev):
             empty_dir = dirs.pop()
             try:
                 os.rmdir(empty_dir)
-            except OSError:
+            except OSError as e:
                 # If this happens, either something else is writing to the dir,
                 # or there is a bug in our code.
                 # For now, we ignore this and proceed, but we'll still fail at
                 # the top level rmdir
+                logger.error("Unable to remove directory %s: %s" % (empty_dir, e))
                 pass
 
         if not dirs:
@@ -529,19 +532,21 @@ def _rmtree(dev):
                 # we'll ignore this and continue
                 # since subdir doesn't exist, we'll pop it off and forget about it
                 dirs.pop()
+                logger.warning("Subdir disappeared during rmtree %s: %s" % (subdir, e))
                 continue  # with dirstack unchanged
             raise
         dirstack.append(dirs)
 
 
-def _stripcwd(dev):
+def _stripcwd(dev, logger):
     """Unlink all files in cwd and return list of subdirs"""
     dirs = []
     try:
         fdirs = os.listdir('.')
     except OSError as e:
-        # cwd has been removed by others, just return an empty list
         if e.errno in (errno.ENOENT, errno.ESTALE):
+            # cwd could have been removed by others, just return an empty list
+            logger.warning("Unable to read directory: %s" % e)
             return dirs
         raise
     for fn in fdirs:
