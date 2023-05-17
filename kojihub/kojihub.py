@@ -14267,14 +14267,13 @@ class Host(object):
         return tasks
 
     def updateHost(self, task_load, ready):
-        host_data = get_host(self.id)
         task_load = float(task_load)
         update = UpdateProcessor(
-                'host',
-                 data={'task_load': task_load, 'ready': ready},
-                 rawdata={'update_time': 'NOW()'},
-                 clauses=['id=%(id)i'],
-                 values={'id': self.id},
+            'host',
+            data={'task_load': task_load, 'ready': ready},
+            rawdata={'update_time': 'NOW()'},
+            clauses=['id=%(id)i'],
+            values={'id': self.id},
         )
         update.execute()
 
