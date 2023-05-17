@@ -50,12 +50,3 @@ class TestBuildImageOz(unittest.TestCase):
             self.exports.buildImageOz(self.name, self.version, self.arches, self.target,
                                       self.inst_tree, priority=priority)
         self.assertEqual("only admins may create high-priority tasks", str(cm.exception))
-
-    def test_opts_without_expected_keys(self):
-        priority = 10
-        opts = {}
-        self.context.session.assertPerm.side_effect = None
-        with self.assertRaises(koji.ActionNotAllowed) as cm:
-            self.exports.buildImageOz(self.name, self.version, self.arches, self.target,
-                                      self.inst_tree, opts=opts, priority=priority)
-        self.assertEqual("Non-scratch builds must provide ksurl", str(cm.exception))

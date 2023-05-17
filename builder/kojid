@@ -2563,6 +2563,23 @@ class BuildBaseImageTask(BuildImageTask):
                 "imagefactory, oz and possibly python-hashlib")
             raise koji.ApplianceError('ImageFactory functions not available')
 
+        # Policy check
+        task_info = self.session.getTaskInfo(self.id)
+        policy_data = {
+            'user_id': task_info['owner'],
+            'source': opts.get('ksurl'),
+            'task_id': self.id,
+            'build_tag': build_tag,  # id
+            'skip_tag': bool(self.opts.get('skip_tag')),
+            'scratch': bool(opts.get('scratch')),
+            'from_scm': False,
+            'repo_id': opts.get('repo_id'),
+            'target': target_info['name'],
+        }
+        if not self.opts.get('skip_tag'):
+            policy_data['tag'] = target_info['dest_tag']  # id
+        self.session.host.assertPolicy('build_rpm', policy_data)
+
         # build image(s)
         bld_info = None
         try:
@@ -2635,7 +2652,7 @@ class BuildBaseImageTask(BuildImageTask):
                 for arch in results:
                     if arch in ignored_arches:
                         continue
-                    ks = os.path.basename(opts.get('kickstart'))
+                    ks = os.path.basename(opts['kickstart'])
                     if ks in results[arch]['files']:
                         if saw_ks:
                             results[arch]['files'].remove(ks)

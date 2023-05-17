@@ -6023,9 +6023,6 @@ def _build_image_oz(options, task_opts, session, args):
     # Upload the KS file to the staging area.
     # If it's a URL, it's kojid's job to go get it when it does the checkout.
     if not task_opts.ksurl:
-        if not task_opts.scratch:
-            # only scratch builds can omit ksurl
-            raise koji.GenericError("Non-scratch builds must provide ksurl")
         ksfile = task_opts.kickstart
         serverdir = unique_path('cli-image')
         session.uploadWrapper(ksfile, serverdir, callback=callback)
