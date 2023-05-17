@@ -34,6 +34,7 @@ class TestHostinfo(utils.CliTestCase):
                          'comment': 'test-comment',
                          'description': 'test-description'}
         self.last_update = 1615875554.862938
+        self.last_update_str = '2021-03-16 06:19:14.862938-00:00'
         self.list_channels = [{'id': 1, 'name': 'default'}, {'id': 2, 'name': 'createrepo'}]
         self.error_format = """Usage: %s hostinfo [options] <hostname> [<hostname> ...]
 (Specify the --help global option for a list of other help options)
@@ -142,6 +143,7 @@ None
 
     @mock.patch('sys.stdout', new_callable=StringIO)
     def test_hostinfo_valid_param_error(self, stdout):
+        '''Test the fallback code for getting timestamps from old hubs'''
         expected = """Name: kojibuilder
 ID: 1
 Arches: x86_64
@@ -157,7 +159,8 @@ Active Buildroots:
 None
 """
         self.session.getHost.return_value = self.hostinfo
-        self.session.getLastHostUpdate.side_effect = [koji.ParameterError, self.last_update]
+        # simulate an older hub that doesn't support the ts option for getLastHostUpdate
+        self.session.getLastHostUpdate.side_effect = [koji.ParameterError, self.last_update_str]
         self.session.listChannels.return_value = self.list_channels
         rv = anon_handle_hostinfo(self.options, self.session, [self.hostinfo['name']])
         self.assertEqual(rv, None)

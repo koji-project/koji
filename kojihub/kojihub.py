@@ -2551,7 +2551,7 @@ def get_ready_hosts():
             'expired IS FALSE',
             'master IS NULL',
             'active IS TRUE',
-            "update_time > NOW() - '5 minutes'::interval"
+            "sessions.update_time > NOW() - '5 minutes'::interval"
         ],
         joins=[
             'sessions USING (user_id)',
@@ -5486,6 +5486,7 @@ def get_host(hostInfo, strict=False, event=None):
     - id
     - user_id
     - name
+    - update_ts
     - arches
     - task_load
     - capacity
@@ -5501,6 +5502,7 @@ def get_host(hostInfo, strict=False, event=None):
         ('host.id', 'id'),
         ('host.user_id', 'user_id'),
         ('host.name', 'name'),
+        ("date_part('epoch', host.update_time)", 'update_ts'),
         ('host.ready', 'ready'),
         ('host.task_load', 'task_load'),
         ('host_config.arches', 'arches'),
@@ -13286,6 +13288,7 @@ class RootExports(object):
             ('host.id', 'id'),
             ('host.user_id', 'user_id'),
             ('host.name', 'name'),
+            ("date_part('epoch', host.update_time)", 'update_ts'),
             ('host.ready', 'ready'),
             ('host.task_load', 'task_load'),
             ('host_config.arches', 'arches'),
@@ -13305,9 +13308,14 @@ class RootExports(object):
 
         The timestamp represents the last time the host with the given
         ID contacted the hub. Returns None if the host has never contacted
-        the hub."""
+        the hub.
+
+        The timestamp returned here may be different than the newer
+        update_ts field now returned by the getHost and listHosts calls.
+        """
         opts = {'order': '-update_time', 'limit': 1}
-        query = QueryProcessor(tables=['sessions'], columns=['update_time'],
+        query = QueryProcessor(tables=['sessions'], columns=['sessions.update_time'],
+                               aliases=['update_time'],
                                joins=['host ON sessions.user_id = host.user_id'],
                                clauses=['host.id = %(hostID)i'], values={'hostID': hostID},
                                opts=opts)
@@ -14257,13 +14265,15 @@ class Host(object):
         return tasks
 
     def updateHost(self, task_load, ready):
-        host_data = get_host(self.id)
         task_load = float(task_load)
-        if task_load != host_data['task_load'] or ready != host_data['ready']:
-            update = UpdateProcessor('host', clauses=['id=%(id)i'], values={'id': self.id},
-                                     data={'task_load': task_load, 'ready': ready})
-            update.execute()
-            context.commit_pending = True
+        update = UpdateProcessor(
+            'host',
+            data={'task_load': task_load, 'ready': ready},
+            rawdata={'update_time': 'NOW()'},
+            clauses=['id=%(id)i'],
+            values={'id': self.id},
+        )
+        update.execute()
 
     def getLoadData(self):
         """Get load balancing data

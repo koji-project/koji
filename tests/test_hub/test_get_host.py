@@ -33,12 +33,13 @@ class TestSetHostEnabled(unittest.TestCase):
 
         self.assertEqual(len(self.queries), 1)
         query = self.queries[0]
-        columns = ['host.id', 'host.user_id', 'host.name', 'host.ready',
+        columns = ['host.id', 'host.user_id', 'host.name',
+                   "date_part('epoch', host.update_time)", 'host.ready',
                    'host.task_load', 'host_config.arches',
                    'host_config.capacity', 'host_config.description',
                    'host_config.comment', 'host_config.enabled']
         joins = ['host ON host.id = host_config.host_id']
-        aliases = ['id', 'user_id', 'name', 'ready', 'task_load',
+        aliases = ['id', 'user_id', 'name', 'update_ts', 'ready', 'task_load',
                    'arches', 'capacity', 'description', 'comment', 'enabled']
         clauses = ['(host_config.active = TRUE)', '(host.name = %(host_name)s)']
         values = {'host_name': 'hostname'}
@@ -54,12 +55,13 @@ class TestSetHostEnabled(unittest.TestCase):
 
         self.assertEqual(len(self.queries), 1)
         query = self.queries[0]
-        columns = ['host.id', 'host.user_id', 'host.name', 'host.ready',
+        columns = ['host.id', 'host.user_id', 'host.name',
+                   "date_part('epoch', host.update_time)", 'host.ready',
                    'host.task_load', 'host_config.arches',
                    'host_config.capacity', 'host_config.description',
                    'host_config.comment', 'host_config.enabled']
         joins = ['host ON host.id = host_config.host_id']
-        aliases = ['id', 'user_id', 'name', 'ready', 'task_load',
+        aliases = ['id', 'user_id', 'name', 'update_ts', 'ready', 'task_load',
                    'arches', 'capacity', 'description', 'comment', 'enabled']
         clauses = ['(host_config.create_event <= 345 AND ( host_config.revoke_event IS NULL '
                    'OR 345 < host_config.revoke_event ))',

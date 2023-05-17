@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division
 
 import ast
+import dateutil.parser
 import fnmatch
 import itertools
 import json
@@ -3155,24 +3156,14 @@ def anon_handle_list_hosts(goptions, session, args):
         else:
             return 'N'
 
-    try:
-        first = session.getLastHostUpdate(hosts[0]['id'], ts=True)
-        opts = {'ts': True}
-    except koji.ParameterError:
-        # Hubs prior to v1.25.0 do not have a "ts" parameter for getLastHostUpdate
-        first = session.getLastHostUpdate(hosts[0]['id'])
-        opts = {}
+    if 'update_ts' not in hosts[0]:
+        _get_host_update_oldhub(session, hosts)
 
-    # pull in the last update using multicall to speed it up a bit
-    with session.multicall() as m:
-        result = [m.getLastHostUpdate(host['id'], **opts) for host in hosts[1:]]
-    updateList = [first] + [x.result for x in result]
-
-    for host, update in zip(hosts, updateList):
-        if update is None:
+    for host in hosts:
+        if host['update_ts'] is None:
             host['update'] = '-'
         else:
-            host['update'] = koji.formatTimeLong(update)
+            host['update'] = koji.formatTimeLong(host['update_ts'])
         host['enabled'] = yesno(host['enabled'])
         host['ready'] = yesno(host['ready'])
         host['arches'] = ','.join(host['arches'].split())
@@ -3220,6 +3211,33 @@ def anon_handle_list_hosts(goptions, session, args):
         mask += " %(channels)s"
     for host in hosts:
         print(mask % host)
+
+
+def _get_host_update_oldhub(session, hosts):
+    """Fetch host update times from older hubs"""
+
+    # figure out if hub supports ts parameter
+    try:
+        first = session.getLastHostUpdate(hosts[0]['id'], ts=True)
+        opts = {'ts': True}
+    except koji.ParameterError:
+        # Hubs prior to v1.25.0 do not have a "ts" parameter for getLastHostUpdate
+        first = session.getLastHostUpdate(hosts[0]['id'])
+        opts = {}
+
+    with session.multicall() as m:
+        result = [m.getLastHostUpdate(host['id'], **opts) for host in hosts[1:]]
+
+    updateList = [first] + [x.result for x in result]
+
+    for host, update in zip(hosts, updateList):
+        if 'ts' in opts:
+            host['update_ts'] = update
+        elif update is None:
+            host['update_ts'] = None
+        else:
+            dt = dateutil.parser.parse(update)
+            host['update_ts'] = time.mktime(dt.timetuple())
 
 
 def anon_handle_list_pkgs(goptions, session, args):
@@ -3662,11 +3680,10 @@ def anon_handle_hostinfo(goptions, session, args):
             print("Comment:")
         print("Enabled: %s" % (info['enabled'] and 'yes' or 'no'))
         print("Ready: %s" % (info['ready'] and 'yes' or 'no'))
-        try:
-            update = session.getLastHostUpdate(info['id'], ts=True)
-        except koji.ParameterError:
-            # Hubs prior to v1.25.0 do not have a "ts" parameter for getLastHostUpdate
-            update = session.getLastHostUpdate(info['id'])
+
+        if 'update_ts' not in info:
+            _get_host_update_oldhub(session, [info])
+        update = info['update_ts']
         if update is None:
             update = "never"
         else:

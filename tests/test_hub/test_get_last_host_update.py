@@ -28,7 +28,7 @@ class TestGetLastHostUpdate(DBQueryTestCase):
         self.assertEqual(query.joins, ['host ON sessions.user_id = host.user_id'])
         self.assertEqual(query.clauses, ['host.id = %(hostID)i'])
         self.assertEqual(query.values, {'hostID': 1})
-        self.assertEqual(query.columns, ['update_time'])
+        self.assertEqual(query.columns, ['sessions.update_time'])
 
     def test_valid_datetime(self):
         if sys.version_info[1] <= 6:
