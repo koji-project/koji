@@ -61,6 +61,9 @@ URL would have the ``?`` and ``#`` right next to each other.
 If we passed ``--ksurl`` the string above, and gave
 ``--kickstart "server-ec2.ks"``, then Koji would do the following:
 
+* Consult hub SCM policy ``build_rpm``. Name of the policy could change in the
+  future as it has misleading name now. Policy could check if the given SCM is
+  allowed for this method, etc. In case it deny the build, it ends here.
 * Clone the repository locally
 * Call ``git reset --hard 68c40eb7``
 * Search in the "fedora22" subdirectory of the clone for a file called
