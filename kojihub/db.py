@@ -321,6 +321,43 @@ def currval(sequence):
     return _singleValue("SELECT currval(%(sequence)s)", data, strict=True)
 
 
+def db_lock(name, wait=True):
+    """Obtain lock for name
+
+    The named lock must exist in the locks table
+
+    :param string name: the lock name
+    :param bool wait: whether to wait for the lock (default: True)
+    :return: True if locked, False otherwise
+
+    This function is implemented using db row locks and the locks table
+    """
+    # attempt to lock the row
+    data = {"name": name}
+    if wait:
+        query = "SELECT name FROM locks WHERE name=%(name)s FOR UPDATE"
+    else:
+        # using SKIP LOCKED rather than NOWAIT to avoid error messages
+        query = "SELECT name FROM locks WHERE name=%(name)s FOR UPDATE SKIP LOCKED"
+    rows = _fetchMulti(query, data)
+
+    if rows:
+        # we have the lock
+        return True
+
+    if not wait:
+        # in the no-wait case, this could mean either that the row is already locked, or that
+        # the lock does not exist, so we check
+        query = "SELECT name FROM locks WHERE name=%(name)s"
+        rows = _fetchMulti(query, data)
+        if rows:
+            # the lock exists, but we did not acquire it
+            return False
+
+    # otherwise, the lock does not exist
+    raise koji.LockError(f"Lock not defined: {name}")
+
+
 class Savepoint(object):
 
     def __init__(self, name):
