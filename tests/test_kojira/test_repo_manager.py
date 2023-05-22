@@ -131,6 +131,7 @@ class RepoManagerTest(unittest.TestCase):
             raise Exception('score should have increased')
 
     def test_check_needed(self):
+        self.options.no_repo_effective_age = 999
         self.session.getBuildTargets.return_value = [
                 {'build_tag': 1, 'build_tag_name': 'tag 1'},
                 {'build_tag': 2, 'build_tag_name': 'tag 2'},
@@ -159,7 +160,7 @@ class RepoManagerTest(unittest.TestCase):
 
         # only the third tag should show up as needed
         expected = {3:
-                {'expire_ts': 1000,
+                {'expire_ts': 1,  # time minus effective age
                  'needed_since': 1100,
                  'taginfo': {
                         'id': 3,
