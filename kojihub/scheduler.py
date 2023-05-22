@@ -4,7 +4,8 @@ import time
 
 import koji
 from . import kojihub
-from .db import QueryProcessor, InsertProcessor, UpsertProcessor, UpdateProcessor, QueryView, db_lock
+from .db import QueryProcessor, InsertProcessor, UpsertProcessor, UpdateProcessor, \
+    DeleteProcessor, QueryView, db_lock
 
 
 logger = logging.getLogger('koji.scheduler')
