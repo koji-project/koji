@@ -953,7 +953,7 @@ class RepoManager(object):
             # how expired are we?
             ts = 0
             for repo in tag_repos.get(tag_id, []):
-                if repo.problem:
+                if repo.problem():
                     continue
                 if repo.expire_ts:
                     if repo.expire_ts > ts:
