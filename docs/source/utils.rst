@@ -89,13 +89,19 @@ especially in relation to throttling in creating ``newRepo`` tasks.
     Note that you need to have your database set to use UTC, as otherwise
     you can end with weird behaviour. For details see
     https://pagure.io/koji/issue/2159
-    
+
 ``queue_file = None``
     Writable path could be set here. In such case, kojira will write a
     list of currently monitored tags there with simple statistics in
     every cycle. File would contain information about how long these
     tags are expired and what is the computed score for them. This can
     be used to debug and check in realtime the actual performance.
+
+``no_repo_effective_age = 2 days (172800)``
+    When prioritizing repo regens, the age of the expired repo is the primary
+    factor. This value (measured in seconds) is used when there is no expired
+    repo (e.g. for a new build tag).
+
 
 Garbage Collector
 -----------------
