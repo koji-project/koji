@@ -583,13 +583,8 @@ class TaskScheduler(object):
         insert.execute()
 
         # mark the task assigned
-        update = UpdateProcessor(
-            'task',
-            data={'host_id': host['id'], 'state': koji.TASK_STATES['ASSIGNED']},
-            clauses=['id=%(task_id)s', 'state=%(free)s'],
-            values={'task_id': task['task_id'], 'free': koji.TASK_STATES['FREE']},
-        )
-        update.execute()
+        task = kojihub.Task(task['task_id'])
+        task.assign(host['id'])
 
 
 class SchedulerExports:
