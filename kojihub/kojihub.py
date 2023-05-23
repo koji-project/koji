@@ -83,6 +83,7 @@ from .db import (  # noqa: F401
     QueryProcessor,
     Savepoint,
     UpdateProcessor,
+    UpsertProcessor,
     _applyQueryOpts,
     _dml,
     _fetchSingle,
@@ -14370,19 +14371,12 @@ class HostExports(object):
         """
         host = Host()
         host.verify()
-        clauses = ['host_id = %(host_id)i']
-        values = {'host_id': host.id}
-        table = 'scheduler_host_data'
-        query = QueryProcessor(tables=[table], clauses=clauses, values=values,
-                               opts={'countOnly': True})
-        if query.singleValue() > 0:
-            update = UpdateProcessor(table=table, data={'data': hostdata},
-                                     clauses=clauses, values=values)
-            update.execute()
-        else:
-            insert = InsertProcessor(table=table, data={'data': hostdata},
-                                     clauses=clauses, values=values)
-            insert.execute()
+        upsert = UpsertProcessor(
+            table='scheduler_host_data',
+            keys=['host_id'],
+            data={'host_id': host.id, 'data': hostdata},
+        )
+        upsert.execute()
 
     def getTasks(self):
         host = Host()
