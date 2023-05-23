@@ -1000,7 +1000,7 @@ CREATE INDEX scheduler_task_runs_create_time ON scheduler_task_runs(create_time)
 CREATE TABLE scheduler_queue (
         task_id INTEGER REFERENCES task (id) NOT NULL PRIMARY KEY,
         groomed BOOLEAN NOT NULL DEFAULT FALSE,
-        run_id INTEGER REFERENCES scheduler_task_run(id)
+        run_id INTEGER REFERENCES scheduler_task_runs(id)
 ) WITHOUT OIDS;
 
 
