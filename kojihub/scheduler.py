@@ -172,6 +172,8 @@ class TaskRunsQuery(QueryView):
         'host_id': ['scheduler_task_runs.host_id', None],
         'active': ['scheduler_task_runs.active', None],
         'create_ts': ["date_part('epoch', scheduler_task_runs.create_time)", None],
+        'start_ts': ["date_part('epoch', task.start_time)", 'task'],
+        'completion_ts': ["date_part('epoch', task.completion_time)", 'task'],
     }
     default_fields = ('id', 'task_id', 'host_id', 'active', 'create_ts')
 

@@ -7901,6 +7901,12 @@ def anon_handle_repoinfo(goptions, session, args):
                 warn("--buildroots option is available with hub 1.33 or newer")
 
 
+def _format_ts(ts):
+    if ts:
+        return time.strftime("%y-%m-%d %H:%M:%S", time.localtime(ts))
+    else:
+        return ''
+
 def anon_handle_scheduler_info(goptions, session, args):
     """[monitor] Show information about scheduling"""
     usage = "usage: %prog schedulerinfo [options]"
@@ -7908,8 +7914,8 @@ def anon_handle_scheduler_info(goptions, session, args):
     parser.add_option("-t", "--task", action="store", type=int, default=None,
                       help="Limit data to given task id")
     parser.add_option("--host", action="store", default=None,
-                      help="Limit data to given builder (name/id)")
-    parser.add_option("--state", action="store", type='str', default=None,
+                      help="Limit data to given builder id")
+    parser.add_option("--state", action="store", type='choice', default=None,
                       choices=[x for x in koji.TASK_STATES.keys()],
                       help="Limit data to task state")
     (options, args) = parser.parse_args(args)
@@ -7925,27 +7931,36 @@ def anon_handle_scheduler_info(goptions, session, args):
         except ValueError:
             host_id = session.getHost(options.host, strict=True)['id']
 
-    if options.state:
-        state = koji.TASK_STATES[options.state]
-    else:
-        state = None
-
     # get the data
-    runs = session.scheduler.getTaskRuns(taskID=options.task, hostID=host_id, state=state)
-    mask = '%(task_id)s\t%(host_id)s\t%(state)s\t%(create_time)s\t%(start_time)s\t%(end_time)s'
+    clauses = []
+    if options.task:
+        clauses.append(('task_id', options.task))
+    if options.host:
+        clauses.append(('host_id', options.host))
+    if options.state:
+        clauses.append(('state', koji.TASK_STATES[options.state]))
+
+    runs = session.scheduler.getTaskRuns(
+        clauses=clauses,
+        fields=('task_id', 'host_name', 'state', 'create_ts', 'start_ts', 'completion_ts')
+    )
+    mask = '%(task_id)-9s %(host_name)-20s %(state)-7s ' \
+           '%(create_ts)-17s %(start_ts)-17s %(completion_ts)-17s'
     if not goptions.quiet:
         header = mask % {
             'task_id': 'Task',
             'host_name': 'Host',
             'state': 'State',
-            'create_time': 'Created',
-            'start_time': 'Started',
-            'end_time': 'Ended'
+            'create_ts': 'Created',
+            'start_ts': 'Started',
+            'completion_ts': 'Ended',
         }
         print(header)
         print('-' * len(header))
     for run in runs:
-        run['state'] = koji.TASK_STATES[runs['state']]
+        run['state'] = koji.TASK_STATES[run['state']]
+        for ts in ('create_ts', 'start_ts', 'completion_ts'):
+            run[ts] = _format_ts(run[ts])
         print(mask % run)
 
     if host_id:
