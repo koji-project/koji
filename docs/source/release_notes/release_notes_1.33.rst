@@ -1,14 +1,14 @@
 
-Koji 1.32.0 Release notes
+Koji 1.33.0 Release notes
 =========================
 
-All changes can be found in `the roadmap <https://pagure.io/koji/roadmap/1.32/>`_.
+All changes can be found in `the roadmap <https://pagure.io/koji/roadmap/1.33/>`_.
 Most important changes are listed here.
 
 Migrating from Koji 1.31/1.31.1
 -------------------------------
 
-For details on migrating see :doc:`../migrations/migrating_to_1.32`
+For details on migrating see :doc:`../migrations/migrating_to_1.33`
 
 Security Fixes
 --------------
