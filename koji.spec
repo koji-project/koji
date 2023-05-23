@@ -83,7 +83,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.32.1
+Version: 1.33.0
 Release: %{release}%{?dist}
 License: LGPL-2.1-only and GPL-2.0-or-later
 # the included arch lib from yum's rpmUtils is GPLv2+
@@ -648,6 +648,54 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Tue May 16 2023  Tomas Kopecek <tkopecek at redhat.com> - 1.33.0-1
+- PR#3775: Import koji archive types
+- PR#3816: kiwi: remove tech-preview warning
+- PR#3800: avoid noisy chained tracebacks when converting Faults
+- PR#3782: Fix typo
+- PR#3803: createTag raises error when perm ID isn't exists
+- PR#3799: Increase sidetag CLI tests
+- PR#3804: use fakehub as a user
+- PR#3769: Add component/built archives in list-buildroot
+- PR#3760: Add renewal session timeout
+- PR#3798: kojira: prioritize awaited repos
+- PR#3777: CG: allow reimports into failed/cancelled builds
+- PR#3791: Increase hub unit tests
+- PR#3788: fix syntax for tox 4.4.8
+- PR#3741: vm: ignore B113: request_without_timeout
+- PR#3784: remove Host.getTask method
+- PR#3783: fakehub --pdb option
+- PR#3780: tagNotification: user_id is int when get_user is used
+- PR#3781: Set COLUMNS for tests to handle different terminals
+- PR#3778: docs: Emphasize new build_from_scm hub policy
+- PR#3773: Fix prune-signed-copies unit tests
+- PR#3751: Save task_id correctly also in CGInitBuild
+- PR#3763: Update deprecated policy comments
+- PR#3771: prune-signed-copies unit tests
+- PR#3754: Unify behavior when result is empty in get_maven/image/win/build
+- PR#3746: Fix backward compatibility
+- PR#3707: Add repoID in listBuildroots and create repoinfo command
+- PR#3752: Increase hub unit tests 03-02
+- PR#3747: Fix editSidetag fstring variable formats and fix test unit tests
+- PR#3722: Increate sidetag hub unit tests
+- PR#3745: Fix pkglist_add when extra_arches is None
+- PR#3703: RawHeader improvements
+- PR#3738: Increase CLI uni tests
+- PR#3720: list-tagged: only check for build dir when --sigs is given
+- PR#3727: Fix mtime logic for py2.x
+- PR#3690: only pad header lengths for signature headers
+- PR#3679: vm: Retry libvirt connection
+- PR#3687: koji-gc: fail on additional arguments
+- PR#3674: sidetag: allowed list for rpm macros
+- PR#3712:  download-build: preserve build artefacts last modification time
+- PR#3716: CLI: cancel error msg
+- PR#3699: Set daemon = true instead of call deaprecated setDaemon
+- PR#3686: Let "--principal=" works for users using multiple TGT's
+- PR#3678: Move db/auth to kojihub module
+- PR#3701: Editing extra in sidetags
+- PR#3695: remove debug print
+- PR#3691: fix doc links
+
 * Fri Feb  3 2023  Tomas Kopecek <tkopecek at redhat.com> - 1.32.0-1
 - PR#3530: use_fast_upload=True as default everywhere
 - PR#3562: rpmdiff: replace deprecated rpm call
