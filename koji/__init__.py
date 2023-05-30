@@ -958,10 +958,19 @@ def rip_rpm_hdr(src):
 
 
 def _ord(s):
-    # in python2 it is char/str, while in py3 it is already int/bytes
+    """Convert a string (single character) to an int (byte).
+
+    Use this method to get bytes from RPM headers in Python 2 and 3.
+
+    :returns: int
+    """
     if isinstance(s, int):
+        # In Python 3, RPM headers are bytes (sequences of integers), so we
+        # already have an int here:
         return s
     else:
+        # In Python 2, RPM headers are strings, so we have a one-character
+        # string here, which we must convert to an int:
         return ord(s)
 
 
