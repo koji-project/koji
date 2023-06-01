@@ -353,6 +353,10 @@ Options:
                         Directory containing compression dictionaries for use
                         by zchunk (on builder)
   --write-signed-rpms   Write a signed rpms for given tag
+  --skip-stat           Skip rpm stat during createrepo (override default
+                        builder setting)
+  --no-skip-stat        Don't skip rpm stat during createrepo (override
+                        default builder setting)
 """ % self.progname)
 
 

@@ -5886,6 +5886,9 @@ class createDistRepoTask(BaseTaskHandler):
 
     def handler(self, tag, repo_id, arch, keys, opts):
         # arch is the arch of the repo, not the task
+        createrepo_skip_stat = opts.get('createrepo_skip_stat')
+        if createrepo_skip_stat:
+            raise koji.ParameterError("createrepo_skip_stat could be only None/False")
         self.rinfo = self.session.repoInfo(repo_id, strict=True)
         if self.rinfo['state'] != koji.REPO_INIT:
             raise koji.GenericError("Repo %(id)s not in INIT state (got %(state)s)" % self.rinfo)
@@ -5936,7 +5939,8 @@ class createDistRepoTask(BaseTaskHandler):
             oldrepodata = os.path.join(oldrepodir, arch, 'repodata')
         self.do_createrepo(self.repodir, '%s/pkglist' % self.repodir,
                            groupdata, oldpkgs=oldpkgs, oldrepodata=oldrepodata,
-                           zck=opts.get('zck'), zck_dict_dir=opts.get('zck_dict_dir'))
+                           zck=opts.get('zck'), zck_dict_dir=opts.get('zck_dict_dir'),
+                           createrepo_skip_stat=createrepo_skip_stat)
         for subrepo in self.subrepos:
             if oldrepo:
                 oldrepodata = os.path.join(oldrepodir, arch, subrepo, 'repodata')
@@ -5998,11 +6002,18 @@ class createDistRepoTask(BaseTaskHandler):
         self.session.uploadWrapper(fn, self.uploadpath)
 
     def do_createrepo(self, repodir, pkglist, groupdata, oldpkgs=None,
-                      logname=None, oldrepodata=None, zck=False, zck_dict_dir=None):
+                      logname=None, oldrepodata=None, zck=False, zck_dict_dir=None,
+                      createrepo_skip_stat=None):
         """Run createrepo
 
         This is derived from CreaterepoTask.create_local_repo, but adapted to
         our requirements here
+
+        :param bool|None createrepo_skip_stat: Override default set in kojid.conf. Note, that
+                                               in True variant could resulting repo contain
+                                               unexpected rpms.
+
+
         """
         koji.ensuredir(repodir)
         if self.options.use_createrepo_c:
@@ -6028,7 +6039,11 @@ class createDistRepoTask(BaseTaskHandler):
                     # to rewrite it (if we have external repos to merge)
                     os.unlink(oldorigins)
                 cmd.append('--update')
-                if self.options.createrepo_skip_stat:
+                if createrepo_skip_stat is not None:
+                    skip_stat = createrepo_skip_stat
+                else:
+                    skip_stat = self.options.distrepo_skip_stat
+                if skip_stat:
                     cmd.append('--skip-stat')
         if oldpkgs:
             # generate delta-rpms
@@ -6457,6 +6472,7 @@ def get_options():
                 'use_createrepo_c': True,
                 'createrepo_skip_stat': True,
                 'createrepo_update': True,
+                'distrepo_skip_stat': False,
                 'mock_bootstrap_image': False,
                 'pkgurl': None,
                 'allowed_scms': '',
@@ -6492,7 +6508,8 @@ def get_options():
                           'createrepo_update', 'use_fast_upload', 'support_rpm_source_layout',
                           'build_arch_can_fail', 'no_ssl_verify', 'log_timestamps',
                           'allow_noverifyssl', 'allowed_scms_use_config',
-                          'allowed_scms_use_policy', 'allow_password_in_scm_url']:
+                          'allowed_scms_use_policy', 'allow_password_in_scm_url',
+                          'distrepo_skip_stat']:
                 defaults[name] = config.getboolean('kojid', name)
             elif name in ['plugin', 'plugins']:
                 defaults['plugin'] = value.split()
