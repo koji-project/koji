@@ -3,6 +3,7 @@ import logging
 import time
 
 import koji
+from koji.context import context
 from . import kojihub
 from .db import QueryProcessor, InsertProcessor, UpsertProcessor, UpdateProcessor, \
     DeleteProcessor, QueryView, db_lock
@@ -199,12 +200,12 @@ class TaskScheduler(object):
         self.host_timeout = 900
         self.run_interval = 60
 
-    def run(self):
-        if not db_lock('scheduler', wait=False):
+    def run(self, force=False):
+        if not db_lock('scheduler', wait=force):
             # already running elsewhere
             return False
 
-        if not self.check_ts():
+        if not force and not self.check_ts():
             # already ran too recently
             return False
 
@@ -592,3 +593,14 @@ class SchedulerExports:
     getTaskRefusals = staticmethod(get_task_refusals)
     getHostData = staticmethod(get_host_data)
     getLogMessages = staticmethod(get_log_messages)
+
+    def doRun(self, force=False):
+        """Run the scheduler
+
+        This is a debug tool and should not normally be needed.
+        Scheduler runs are regularly triggered by builder checkins
+        """
+
+        force = kojihub.convert_value(force, cast=bool)
+        context.session.assertPerm('admin')
+        return TaskScheduler().run(force=force)
