@@ -10047,15 +10047,6 @@ def _delete_event_id():
 class RootExports(object):
     '''Contains functions that are made available via XMLRPC'''
 
-    def TEST(self, fail=False):
-        scheduler.TaskScheduler().run()
-        if fail:
-            raise Exception('DEBUG')
-
-    def TEST2(self, hostID=1):
-        return Host(hostID).getLoadData()
-        # return scheduler.get_tasks_for_host(hostID)
-
     def restartHosts(self, priority=5, options=None):
         """Spawns restartHosts task
 
