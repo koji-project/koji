@@ -14268,16 +14268,16 @@ class Host(object):
     def getLoadData(self):
         """Get load balancing data
 
-        This data is relatively small and the necessary load analysis is
-        relatively complex, so we let the host machines crunch it."""
+        This call is here for backwards compatibility.
+        Originally, it returned broad information about all hosts and tasks so that individual
+        hosts could make informed decisions about which task to take.
+
+        Now it presents only data for the calling host and the tasks that have been assigned to
+        it"""
+
         host = get_host(self.id)
         host['channels'] = [c['id'] for c in list_channels(hostID=self.id)]
-        tasks = scheduler.get_tasks_for_host(hostID=self.id)
-        if not tasks:
-            # try running scheduler
-            if scheduler.TaskScheduler().run():
-                # check again
-                tasks = scheduler.get_tasks_for_host(hostID=self.id)
+        tasks = scheduler.get_tasks_for_host(hostID=self.id, retry=True)
         return [[host], tasks]
 
     def isEnabled(self):
@@ -14372,23 +14372,7 @@ class HostExports(object):
     def getTasks(self):
         host = Host()
         host.verify()
-
-        query = QueryProcessor(
-            tables=['scheduler_task_runs'],
-            clauses=[
-                'host_id = %(host_id)s',
-                'state in %(states)s'
-            ],
-            values={
-                'host_id': host.id,
-                'states': [
-                    koji.TASK_STATES['SCHEDULED'],
-                    koji.TASK_STATES['ASSIGNED'],
-                ],
-            }
-        )
-        tasks = query.execute()
-        return tasks
+        return scheduler.get_tasks_for_host(hostID=host.id, retry=True)
 
     def refuseTask(self, task_id, soft=True, msg=''):
         soft = convert_value(soft, cast=bool)

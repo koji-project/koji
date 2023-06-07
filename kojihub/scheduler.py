@@ -64,7 +64,7 @@ def intlist(value):
         return [int(value)]
 
 
-def get_tasks_for_host(hostID):
+def get_tasks_for_host(hostID, retry=True):
     """Get the tasks assigned to a given host"""
     hostID = kojihub.convert_value(hostID, cast=int, none_allowed=True)
 
@@ -86,7 +86,14 @@ def get_tasks_for_host(hostID):
         values={'hostID': hostID, 'assigned': koji.TASK_STATES['ASSIGNED']},
     )
 
-    return query.execute()
+    tasks = query.execute()
+
+    if not tasks and retry:
+        # run scheduler and try again
+        TaskScheduler().run()
+        tasks = query.execute()
+
+    return tasks
 
 
 def set_refusal(hostID, taskID, soft=True, by_host=False, msg=''):
