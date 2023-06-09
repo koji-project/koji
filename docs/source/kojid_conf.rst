@@ -135,6 +135,13 @@ Building
    createrepo_update=True
       Recycle old repodata (if they exist) in createrepo.
 
+   copy_old_repodata=False
+      ``newRepo`` task can copy old repodata if they exist and there is no
+      apparent change in the content. It should be generally safe to turn on
+      and it would lower number of ``createrepo`` tasks in normal environment.
+      Note, that some cases (especially tags with external repos) will render
+      this as no-op as we can't be sure that content hasn't changed meanwhile.
+
    failed_buildroot_lifetime=14400
       Failed tasks leave buildroot content on disk for debugging purposes.
       They are removed after 4 hours by default. This value is specified

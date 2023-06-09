@@ -24,6 +24,7 @@
 from __future__ import absolute_import, division
 
 import copy
+import filecmp
 import glob
 import grp
 import io
@@ -5557,6 +5558,84 @@ class NewRepoTask(BaseTaskHandler):
     Methods = ['newRepo']
     _taskWeight = 0.1
 
+    def copy_repo(self, src_repo_id, src_repo_path, repo_id, arch):
+        """Copy repodata, return False if it fails"""
+        try:
+            # copy repodata
+            dst_repodata = f'{self.workdir}/{arch}/repodata'
+            #dst_repo_path = koji.pathinfo.repo(repo_id, taginfo['name'])
+            src_repodata = f'{src_repo_path}/{arch}/repodata'
+            #dst_repodata = f'{dst_repo_path}/{arch}/repodata'
+            self.logger.debug(f'Copying repodata {src_repodata} to {dst_repodata}')
+            if os.path.exists(src_repodata):
+                shutil.copytree(src_repodata, dst_repodata)
+            with open(f'{dst_repodata}/repo.json', 'wt') as fp:
+                json.dump({'cloned_from_repo_id': src_repo_id}, fp, indent=2)
+            uploadpath = self.getUploadDir()
+            files = []
+            for f in os.listdir(dst_repodata):
+                files.append(f)
+                self.session.uploadWrapper('%s/%s' % (dst_repodata, f), uploadpath, f)
+            return [uploadpath, files]
+        except Exception as ex:
+            self.logger.warning(f"Copying repo {src_repo_id} to {repo_id} failed. {ex}")
+            return False
+
+    def check_repo(self, src_repo_path, dst_repo_path, src_repo, dst_repo, opts):
+        """Check if oldrepo is reusable as is and can be directly copied"""
+        # with_src, debuginfo, pkglist, blocklist, grouplist
+        if not os.path.exists(src_repo_path):
+            self.logger.debug(f"Source repo doesn't exist {src_repo_path}")
+            return False
+        try:
+            repo_json = json.load(open(f'{src_repo_path}/repo.json'))
+            for key in ('with_debuginfo', 'with_src', 'with_separate_src'):
+                if repo_json.get(key, False) != opts.get(key, False):
+                    print(key, repo_json.get(key), opts.get(key))
+                    return False
+        except IOError:
+            self.logger.debug("Can't open repo.json for repo {repo_info['id']}")
+            return False
+
+        # compare comps if they exist
+        src_comps_path = f'{src_repo_path}/groups/comps.xml'
+        dst_comps_path = f'{dst_repo_path}/groups/comps.xml'
+        src_exists = os.path.exists(src_comps_path)
+        if src_exists != os.path.exists(dst_comps_path):
+            self.logger.debug("Comps exists only in one repo")
+            return False
+        if src_exists and not filecmp.cmp(src_comps_path, dst_comps_path, shallow=False):
+            self.logger.debug("Comps differs")
+            return False
+
+        # if there is any external repo, don't trust the repodata
+        if self.session.getExternalRepoList(src_repo['tag_id'], event=src_repo['create_event']):
+            self.logger.debug("Source repo use external repos")
+            return False
+        if self.session.getExternalRepoList(dst_repo['tag_id'], event=dst_repo['create_event']):
+            self.logger.debug("Destination repo use external repos")
+            return False
+
+        self.logger.debug('Repo test passed')
+        return True
+
+    def check_arch_repo(self, src_repo_path, dst_repo_path, arch):
+        """More checks based on architecture content"""
+        for fname in ('blocklist', 'pkglist'):
+            src_file = f'{src_repo_path}/{arch}/{fname}'
+            dst_file = f'{dst_repo_path}/{arch}/{fname}'
+            # both must non/exist
+            src_exists = os.path.exists(src_file)
+            if src_exists != os.path.exists(dst_file):
+                self.logger.debug(f'{fname} exists only in one repo')
+                return False
+            # if they exist, content must be same
+            if src_exists and not filecmp.cmp(src_file, dst_file, shallow=False):
+                self.logger.debug(f'{fname} differs')
+                return False
+        self.logger.debug(f'Arch repo test passed {arch}')
+        return True
+
     def handler(self, tag, event=None, src=False, debuginfo=False, separate_src=False):
         tinfo = self.session.getTag(tag, strict=True, event=event)
         kwargs = {}
@@ -5585,6 +5664,9 @@ class NewRepoTask(BaseTaskHandler):
         else:
             oldrepo_state = koji.REPO_READY
         oldrepo = self.session.getRepo(tinfo['id'], state=oldrepo_state)
+        if oldrepo:
+            oldrepo_path = koji.pathinfo.repo(oldrepo['id'], tinfo['name'])
+            oldrepo['tag_id'] = tinfo['id']
         # If there is no old repo, try to find first usable repo in
         # inheritance chain and use it as a source. oldrepo is not used if
         # createrepo_update is not set, so don't waste call in such case.
@@ -5595,23 +5677,38 @@ class NewRepoTask(BaseTaskHandler):
             for tag in sorted(tags, key=lambda x: x['currdepth']):
                 oldrepo = self.session.getRepo(tag['parent_id'], state=oldrepo_state)
                 if oldrepo:
+                    parenttag = self.session.getTag(tag['parent_id'])
+                    oldrepo_path = koji.pathinfo.repo(oldrepo['id'], parenttag['name'])
+                    oldrepo['tag_id'] = parenttag['id']
                     break
+        newrepo_path = koji.pathinfo.repo(repo_id, tinfo['name'])
+        newrepo = {'tag_id': tinfo['id'], 'create_event': event_id}
+        if self.options.copy_old_repodata:
+            possibly_clonable = self.check_repo(oldrepo_path, newrepo_path, oldrepo, newrepo, kwargs)
+        else:
+            possibly_clonable = False
         subtasks = {}
+        data = {}
         for arch in arches:
+            if possibly_clonable and self.check_arch_repo(oldrepo_path, newrepo_path, arch):
+                result = self.copy_repo(oldrepo['id'], oldrepo_path, repo_id, arch)
+                if result:
+                    data[arch] = result
+                    continue
+            # if we can't copy old repo directly, trigger normal createrepo
             arglist = [repo_id, arch, oldrepo]
             subtasks[arch] = self.session.host.subtask(method='createrepo',
                                                        arglist=arglist,
                                                        label=arch,
                                                        parent=self.id,
                                                        arch='noarch')
-
         # gather subtask results
-        data = {}
         if subtasks:
             results = self.wait(to_list(subtasks.values()), all=True, failany=True)
             for (arch, task_id) in six.iteritems(subtasks):
                 data[arch] = results[task_id]
-                self.logger.debug("DEBUG: %r : %r " % (arch, data[arch],))
+
+        self.logger.debug("DEBUG: %r : %r " % (arch, data[arch],))
 
         # finalize
         kwargs = {}
@@ -6477,6 +6574,7 @@ def get_options():
                 'createrepo_skip_stat': True,
                 'createrepo_update': True,
                 'distrepo_skip_stat': False,
+                'copy_old_repodata': False,
                 'mock_bootstrap_image': False,
                 'pkgurl': None,
                 'allowed_scms': '',
@@ -6513,7 +6611,7 @@ def get_options():
                           'build_arch_can_fail', 'no_ssl_verify', 'log_timestamps',
                           'allow_noverifyssl', 'allowed_scms_use_config',
                           'allowed_scms_use_policy', 'allow_password_in_scm_url',
-                          'distrepo_skip_stat']:
+                          'distrepo_skip_stat', 'copy_old_repodata']:
                 defaults[name] = config.getboolean('kojid', name)
             elif name in ['plugin', 'plugins']:
                 defaults['plugin'] = value.split()
