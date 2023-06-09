@@ -2,10 +2,6 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-import json
-import logging
-import os
-import shutil
 import koji
 from koji.context import context
 from koji.plugin import callback, export
@@ -22,18 +18,11 @@ from kojihub import (
     get_build_target,
     get_tag,
     get_user,
+    make_task,
     policy_get_user,
     readInheritanceData,
-    repo_init,
-    repo_problem,
-    repo_ready,
-    RootExports,
 )
 from kojihub.db import QueryProcessor, nextval
-
-rootexports = RootExports()
-
-logger = logging.getLogger('koji.plugin.sidetag')
 
 CONFIG_FILE = "/etc/koji-hub/plugins/sidetag.conf"
 CONFIG = None
@@ -98,7 +87,6 @@ def createSideTag(basetag, debuginfo=False, suffix=None):
     :returns dict: sidetag name + id
     """
 
-    logger.debug(f'Creating sidetag for {basetag}')
     if suffix and suffix not in ALLOWED_SUFFIXES:
         raise koji.GenericError("%s suffix is not allowed for sidetag" % suffix)
 
@@ -148,70 +136,11 @@ def createSideTag(basetag, debuginfo=False, suffix=None):
     )
     _create_build_target(sidetag_name, sidetag_id, sidetag_id)
 
-    # Sidetag is ready now, we try to create initial repo but if it is not successful
-    # kojira will take proper care later
-    return_data = {"name": sidetag_name, "id": sidetag_id}
+    # little higher priority than other newRepo tasks
+    args = koji.encode_args(sidetag_name, debuginfo=debuginfo)
+    task_id = make_task('newRepo', args, priority=14, channel='createrepo')
 
-    # In case it it is not maven repo, we can copy old one and don't wait for kojira
-    # for maven and/or src, leave it on kojira
-    if basetag.get('maven_support'):
-        # maven repos contains too many files to be handled sync in hub call, let kojira do that
-        logger.debug(f'Not creating initial repo for {sidetag_name} due to maven_support')
-        return return_data
-
-    # find active basetag repo
-    repo_info = rootexports.getRepo(basetag, state=koji.REPO_READY)
-    if not repo_info:
-        return return_data
-
-    src_repo = koji.pathinfo.repo(repo_info['id'], basetag['name'])
-    try:
-        repo_json = json.load(open(os.path.join(src_repo, 'repo.json')))
-    except IOError:
-        logger.debug("Can't open repo.json for repo {repo_info['id']}")
-        return return_data
-
-    if debuginfo and not repo_json['with_debuginfo']:
-        logger.debug(f'Not creating initial repo for {sidetag_name}'
-                     ' as it requires debuginfo and source not')
-
-    sidetag = get_tag(sidetag_id, strict=True)
-
-    # TODO: without event it could be already irrelevant (even if not expired yet)
-    # maybe at least checking tag_changed_since_event? It would consume some CPU and
-    # user is maybe not interested in most actual repo (if yes, kojira will still
-    # regenerate it later)
-
-    logger.debug(f'Copying repo {repo_info["id"]} for sidetag')
-    new_repo_id, event_id = repo_init(sidetag['name'], with_debuginfo=debuginfo)
-
-    try:
-        # copy repodata
-        # TODO: Does it make sense to run RepoDone callbacks? Probably not as it is hard copy.
-        # koji.plugin.run_callbacks('preRepoDone', repo=repo_info, data=data, expire=False)
-        dst_repo = koji.pathinfo.repo(new_repo_id, sidetag['name'])
-        arches = [koji.canonArch(a) for a in koji.parse_arches(sidetag['arches'], to_list=True)]
-        if repo_json['with_separate_src']:
-            arches.append('src')
-        for arch in arches:
-            src_repodata = f'{src_repo}/{arch}/repodata'
-            dst_repodata = f'{dst_repo}/{arch}/repodata'
-            logger.debug(f'Copying repodata {src_repodata} to {dst_repodata}')
-            if os.path.exists(src_repodata):
-                # TODO: Could be hard linking dangerous here?
-                shutil.copytree(src_repodata, dst_repodata, copy_function=os.link)
-        # mimick host.repoDone, we're sure that there is no previous repo,
-        # so we can omit most steps
-        latestrepolink = koji.pathinfo.repo('latest', sidetag['name'])
-        os.symlink(str(new_repo_id), latestrepolink)
-        repo_ready(new_repo_id)
-        # koji.plugin.run_callbacks('postRepoDone', repo=repo_info, data=data, expire=False)
-    except Exception:
-        logger.error(f"Copying repo {repo_info['id']} to {new_repo_id} failed.")
-        repo_problem(new_repo_id)
-        raise
-
-    return return_data
+    return {"name": sidetag_name, "id": sidetag_id, 'task_id': task_id}
 
 
 @export

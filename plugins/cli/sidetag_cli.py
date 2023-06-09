@@ -9,8 +9,7 @@ from optparse import OptionParser
 
 import koji
 from koji.plugin import export_cli
-from koji_cli.commands import anon_handle_wait_repo
-from koji_cli.lib import activate_session, arg_filter
+from koji_cli.lib import activate_session, arg_filter, watch_tasks
 
 
 @export_cli
@@ -38,7 +37,7 @@ def handle_add_sidetag(options, session, args):
     if opts.suffix:
         kwargs['suffix'] = opts.suffix
     try:
-        tag = session.createSideTag(basetag, **kwargs)
+        info = session.createSideTag(basetag, **kwargs)
     except koji.ActionNotAllowed:
         parser.error("Policy violation")
     except koji.ParameterError as ex:
@@ -48,13 +47,11 @@ def handle_add_sidetag(options, session, args):
             raise
 
     if not opts.quiet:
-        print(tag["name"])
+        print(info["name"])
 
     if opts.wait:
-        args = ["--target", tag["name"]]
-        if opts.quiet:
-            args.append("--quiet")
-        anon_handle_wait_repo(options, session, args)
+        return watch_tasks(session, [info['task_id']], quiet=opts.quiet,
+                           poll_interval=options.poll_interval, topurl=options.topurl)
 
 
 @export_cli
