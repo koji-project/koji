@@ -5876,6 +5876,8 @@ class createDistRepoTask(BaseTaskHandler):
               "armhfp": ("armv7hl", "armv7hnl", "noarch"),
               "aarch64": ("aarch64", "noarch"),
               "riscv64": ("riscv64", "noarch"),
+              "sw_64": ("sw_64", "noarch"),
+              "loongarch64": ("loongarch64", "noarch"),
               "src": ("src",)
               }
 
