@@ -50,10 +50,19 @@ help:
 clean:
 	rm -rf $(BUILDDIR)/*
 
-# nothing to install for docs, we package from this dir
+SQLFILES = $(wildcard *.sql)
+SQLDIR = /usr/share/koji
 install:
-	@echo "(no install for docs dir)"
+	@if [ "$(DESTDIR)" = "" ]; then \
+		echo " "; \
+		echo "ERROR: A destdir is required"; \
+		exit 1; \
+	fi
 
+	mkdir -p $(DESTDIR)/$(SQLDIR)
+	for p in $(SQLFILES) ; do \
+		install -p -m 644 $$p $(DESTDIR)/$(SQLDIR)/$$p; \
+	done
 
 html:
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
