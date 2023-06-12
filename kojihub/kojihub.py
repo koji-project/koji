@@ -12012,14 +12012,38 @@ class RootExports(object):
         return query.iterate()
 
     def getLatestBuilds(self, tag, event=None, package=None, type=None):
-        """List latest builds for tag (inheritance enabled)"""
+        """List latest builds for tag (inheritance enabled, wrapper of readTaggedBuilds)
+
+        :param int tag: tag ID
+        :param int event: query at a time in the past
+        :param int package: filter on package name
+        :param str type: restrict the list to builds of the given type.  Currently the supported
+                         types are 'maven', 'win', 'image', or any custom content generator btypes.
+        :returns [dict]: list of buildinfo dicts
+        """
+
         if not isinstance(tag, int):
             # lookup tag id
             tag = get_tag_id(tag, strict=True)
         return readTaggedBuilds(tag, event, inherit=True, latest=True, package=package, type=type)
 
     def getLatestRPMS(self, tag, package=None, arch=None, event=None, rpmsigs=False, type=None):
-        """List latest RPMS for tag (inheritance enabled)"""
+        """List latest RPMS for tag (inheritance enabled, wrapper of readTaggedBuilds)
+
+        :param int|str tag: The tag name or ID to search
+        :param str package: Filter on a package name.
+        :param str|list arch: Filter on an architecture (eg "x86_64") or list of
+                              architectures.
+        :param int event: The event ID at which to search. If unspecified, the
+                          default behavior is to search for the "active" tag
+                          builds.
+        :param bool rpmsigs: query will return one record per rpm/signature combination
+        :param str type: Filter by build type. Supported types are 'maven',
+                         'win', and 'image'.
+        :returns: a two-element list. The first element is the list of RPMs, and
+                  the second element is the list of builds.
+        """
+
         if not isinstance(tag, int):
             # lookup tag id
             tag = get_tag_id(tag, strict=True)
