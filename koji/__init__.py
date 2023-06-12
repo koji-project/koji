@@ -3935,7 +3935,7 @@ def add_file_logger(logger, fn):
         return
     if not os.access(fn, os.W_OK):
         return
-    handler = logging.handlers.RotatingFileHandler(fn, maxBytes=1024 * 1024 * 10, backupCount=5)
+    handler = logging.handlers.WatchedFileHandler(fn)
     handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s'))
     logging.getLogger(logger).addHandler(handler)
 
