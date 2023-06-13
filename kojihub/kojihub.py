@@ -12957,11 +12957,11 @@ class RootExports(object):
     def getTaskInfo(self, task_id, request=False, strict=False):
         """Get information about a task
 
-        :param int task_id: Task id
+        :param int task_id: Task id (or list of ids)
         :param bool request: if True, return also task's request
         :param bool strict: raise exception, if task is not found
 
-        :returns dict: task info"""
+        :returns dict: task info (or list of dicts)"""
         single = True
         if isinstance(task_id, (list, tuple)):
             single = False
