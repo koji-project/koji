@@ -966,36 +966,70 @@ def handle_call(goptions, session, args):
         Note, that you can use global option --noauth for anonymous calls here"""
     usage = textwrap.dedent(usage)
     parser = OptionParser(usage=get_usage_str(usage))
-    parser.add_option("--python", action="store_true",
+    parser.add_option("-p", "--python", action="store_true",
                       help="Use python syntax for RPC parameter values")
     parser.add_option("--kwargs",
-                      help="Specify keyword arguments as a dictionary (implies --python)")
+                      help="Specify keyword arguments as a dictionary (implies --python or "
+                           "--json-input)")
+    parser.add_option("-j", "--json", action="store_true",
+                      help="Use JSON syntax for input and output")
+    parser.add_option("--json-input", action="store_true", help="Use JSON syntax for input")
     parser.add_option("--json-output", action="store_true", help="Use JSON syntax for output")
+    parser.add_option("-b", "--bare-strings", action="store_true",
+                      help="Treat invalid json/python as bare strings")
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
         parser.error("Please specify the name of the XML-RPC method")
-    if options.kwargs:
+    if options.json:
+        options.json_input = True
+        options.json_output = True
+    if options.python and options.json_input:
+        parser.error('The --python option conflicts with using --json-input')
+    if options.kwargs and not options.json_input:
+        # for backwards compatibility, --python is implied
         options.python = True
     if options.python and ast is None:
         parser.error("The ast module is required to read python syntax")
-    if options.json_output and json is None:
-        parser.error("The json module is required to output JSON syntax")
-    activate_session(session, goptions)
-    name = args[0]
-    non_kw = []
-    kw = {}
-    if options.python:
-        non_kw = [ast.literal_eval(a) for a in args[1:]]
-        if options.kwargs:
-            kw = ast.literal_eval(options.kwargs)
-    else:
-        for arg in args[1:]:
-            if arg.find('=') != -1:
-                key, value = arg.split('=', 1)
-                kw[key] = arg_filter(value)
+    if (options.json_output or options.json_input) and json is None:
+        parser.error("The json module is required to use JSON syntax")
+
+    def parse_arg(arg):
+        try:
+            if options.python:
+                return ast.literal_eval(arg)
+            elif options.json_input:
+                return json.loads(arg)
             else:
-                non_kw.append(arg_filter(arg))
+                return arg_filter(arg)
+        except ValueError as e:
+            if options.bare_strings:
+                return arg
+            else:
+                parser.error(f"Invalid value: {arg!r}")
+
+    # the method to call
+    name = args[0]
+
+    # base kw args
+    # we update with name=value args later
+    kw = {}
+    if options.kwargs:
+        kw = parse_arg(options.kwargs)
+
+    # read the args
+    non_kw = []
+    for arg in args[1:]:
+        if arg.find('=') != -1:
+            key, value = arg.split('=', 1)
+            kw[key] = parse_arg(value)
+        else:
+            non_kw.append(parse_arg(arg))
+
+    # make the call
+    activate_session(session, goptions)
     response = getattr(session, name).__call__(*non_kw, **kw)
+
+    # print the result
     if options.json_output:
         print(json.dumps(response, indent=2, separators=(',', ': '), cls=DatetimeJSONEncoder))
     else:
