@@ -97,7 +97,7 @@ Note, that you can use global option --noauth for anonymous calls here
 
         module = {
             'ast': "The ast module is required to read python syntax",
-            'json': "The json module is required to output JSON syntax",
+            'json': "The json module is required to use JSON syntax",
         }
 
         for mod, msg in module.items():
@@ -119,11 +119,14 @@ Note, that you can use global option --noauth for anonymous calls here
 (Specify the --help global option for a list of other help options)
 
 Options:
-  -h, --help       show this help message and exit
-  --python         Use python syntax for RPC parameter values
-  --kwargs=KWARGS  Specify keyword arguments as a dictionary (implies
-                   --python)
-  --json-output    Use JSON syntax for output
+  -h, --help          show this help message and exit
+  -p, --python        Use python syntax for RPC parameter values
+  --kwargs=KWARGS     Specify keyword arguments as a dictionary (implies
+                      --python or --json-input)
+  -j, --json          Use JSON syntax for input and output
+  --json-input        Use JSON syntax for input
+  --json-output       Use JSON syntax for output
+  -b, --bare-strings  Treat invalid json/python as bare strings
 """ % self.progname)
 
 
