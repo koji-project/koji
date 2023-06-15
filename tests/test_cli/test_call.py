@@ -22,6 +22,7 @@ class TestCall(utils.CliTestCase):
         self.activate_session_mock = mock.patch('koji_cli.commands.activate_session').start()
         self.error_format = """Usage: %s call [options] <name> [<arg> ...]
 
+<arg> values of the form NAME=VALUE are treated as keyword arguments
 Note, that you can use global option --noauth for anonymous calls here
 (Specify the --help global option for a list of other help options)
 
@@ -158,6 +159,7 @@ Note, that you can use global option --noauth for anonymous calls here
             handle_call,
             """Usage: %s call [options] <name> [<arg> ...]
 
+<arg> values of the form NAME=VALUE are treated as keyword arguments
 Note, that you can use global option --noauth for anonymous calls here
 (Specify the --help global option for a list of other help options)
 

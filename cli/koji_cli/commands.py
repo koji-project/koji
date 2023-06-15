@@ -963,6 +963,7 @@ def handle_call(goptions, session, args):
     usage = """\
         usage: %prog call [options] <name> [<arg> ...]
 
+        <arg> values of the form NAME=VALUE are treated as keyword arguments
         Note, that you can use global option --noauth for anonymous calls here"""
     usage = textwrap.dedent(usage)
     parser = OptionParser(usage=get_usage_str(usage))
@@ -1016,11 +1017,14 @@ def handle_call(goptions, session, args):
     if options.kwargs:
         kw = parse_arg(options.kwargs)
 
+    kw_pat = re.compile(r'^([^\W0-9]\w*)=(.*)$')
+
     # read the args
     non_kw = []
     for arg in args[1:]:
-        if arg.find('=') != -1:
-            key, value = arg.split('=', 1)
+        m = kw_pat.match(arg)
+        if m:
+            key, value = m.groups()
             kw[key] = parse_arg(value)
         else:
             non_kw.append(parse_arg(arg))
