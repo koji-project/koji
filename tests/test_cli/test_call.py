@@ -58,6 +58,49 @@ Note, that you can use global option --noauth for anonymous calls here
         self.assert_console_message(stdout, "'%s'\n" % response[1])
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
+    def test_handle_call_json_syntax(self, stdout):
+        """Test handle_call with json input syntax"""
+        response = ["SUCCESS", "FAKE-RESPONSE"]
+        self.session.ssl_login.return_value = response[1]
+
+        # Invalid json syntax
+        arguments = ['--json-input', 'ssl_login', 'cert=/etc/pki/cert']
+        self.assert_system_exit(
+            handle_call,
+            self.options, self.session, arguments,
+            stderr=self.format_error_message("Invalid value: '/etc/pki/cert'"),
+            activate_session=None)
+        self.activate_session_mock.assert_not_called()
+
+        # Incompatible opts
+        arguments = ['--json', '--python', 'ssl_login', 'cert=/etc/pki/cert']
+        self.assert_system_exit(
+            handle_call,
+            self.options, self.session, arguments,
+            stderr=self.format_error_message("The --python option conflicts with using --json-input"),
+            activate_session=None)
+        self.activate_session_mock.assert_not_called()
+
+        arguments = ['--json-input', 'ssl_login', '--kwargs', '{"cert":"/etc/pki/cert"}']
+        handle_call(self.options, self.session, arguments)
+        self.activate_session_mock.assert_called_with(self.session, self.options)
+        self.session.ssl_login.assert_called_with(cert='/etc/pki/cert')
+        self.assert_console_message(stdout, "'%s'\n" % response[1])
+
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    def test_handle_call_bare_strings(self, stdout):
+        """Test handle_call with bare string fallback"""
+        response = ["SUCCESS", "FAKE-RESPONSE"]
+        self.session.ssl_login.return_value = response[1]
+
+        # Invalid json syntax, but with bare-string fallback
+        arguments = ['--json-input', '--bare-strings', 'ssl_login', 'cert=/etc/pki/cert']
+        handle_call(self.options, self.session, arguments)
+        self.activate_session_mock.assert_called_with(self.session, self.options)
+        self.session.ssl_login.assert_called_with(cert='/etc/pki/cert')
+        self.assert_console_message(stdout, "'%s'\n" % response[1])
+
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
     def test_handle_call_json_output(self, stdout):
         """Test handle_call with json output"""
         arguments = ['ssl_login', 'cert=/etc/pki/cert', '--json-output']
