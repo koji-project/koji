@@ -5886,9 +5886,6 @@ class createDistRepoTask(BaseTaskHandler):
 
     def handler(self, tag, repo_id, arch, keys, opts):
         # arch is the arch of the repo, not the task
-        createrepo_skip_stat = opts.get('createrepo_skip_stat')
-        if createrepo_skip_stat:
-            raise koji.ParameterError("createrepo_skip_stat could be only None/False")
         self.rinfo = self.session.repoInfo(repo_id, strict=True)
         if self.rinfo['state'] != koji.REPO_INIT:
             raise koji.GenericError("Repo %(id)s not in INIT state (got %(state)s)" % self.rinfo)
@@ -5940,7 +5937,7 @@ class createDistRepoTask(BaseTaskHandler):
         self.do_createrepo(self.repodir, '%s/pkglist' % self.repodir,
                            groupdata, oldpkgs=oldpkgs, oldrepodata=oldrepodata,
                            zck=opts.get('zck'), zck_dict_dir=opts.get('zck_dict_dir'),
-                           createrepo_skip_stat=createrepo_skip_stat)
+                           createrepo_skip_stat=opts.get('createrepo_skip_stat'))
         for subrepo in self.subrepos:
             if oldrepo:
                 oldrepodata = os.path.join(oldrepodir, arch, subrepo, 'repodata')
