@@ -85,7 +85,7 @@ class TestListPermissions(utils.CliTestCase):
 
         self.activate_session_mock.assert_called_once()
         self.session.getUser.assert_called_once()
-        self.session.getUserPerms.assert_called_once()
+        self.session.getUserPerms.assert_called()
         self.session.getPerms.assert_not_called()
         self.session.getAllPerms.assert_not_called()
 
@@ -108,7 +108,7 @@ repo
 
         self.activate_session_mock.assert_called_once()
         self.session.getUser.assert_called_once()
-        self.session.getUserPerms.assert_called_once()
+        self.session.getUserPerms.assert_called()
         self.session.getPerms.assert_not_called()
         self.session.getAllPerms.assert_not_called()
 
@@ -119,14 +119,15 @@ repo
 repo              
 """
         perms = [p['name'] for p in self.all_perms[1:3]]
-        self.session.getPerms.return_value = perms
+        self.session.getLoggedInUser.return_value = {'id': 1, 'name': 'user'}
+        self.session.getUserPerms.return_value = perms
         handle_list_permissions(self.options, self.session, ['--mine'])
         self.assert_console_message(stdout, expected)
 
         self.activate_session_mock.assert_called_once()
-        self.session.getUser.assert_not_called()
-        self.session.getUserPerms.assert_not_called()
-        self.session.getPerms.assert_called_once()
+        self.session.getUser.assert_called_once()
+        self.session.getUserPerms.assert_called()
+        self.session.getPerms.assert_not_called()
         self.session.getAllPerms.assert_not_called()
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)

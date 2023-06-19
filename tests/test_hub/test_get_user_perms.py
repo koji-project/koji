@@ -21,4 +21,4 @@ class TestGetUserPerms(unittest.TestCase):
     def test_normal(self):
         self.get_user.return_value = {'id': 123, 'name': 'testuser'}
         kojihub.RootExports().getUserPerms(123)
-        self.get_user_perms.assert_called_once_with(123)
+        self.get_user_perms.assert_called_once_with(123, with_groups=True)

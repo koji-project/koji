@@ -2170,15 +2170,19 @@ def handle_list_permissions(goptions, session, args):
         parser.error("This command takes no arguments")
     activate_session(session, goptions)
     perms = []
+    if options.mine:
+        options.user = session.getLoggedInUser()['id']
     if options.user:
         user = session.getUser(options.user)
         if not user:
             error("No such user: %s" % options.user)
-        for p in session.getUserPerms(user['id']):
-            perms.append({'name': p})
-    elif options.mine:
-        for p in session.getPerms():
-            perms.append({'name': p})
+        all = set(session.getUserPerms(user['id']))
+        own = set(session.getUserPerms(user['id'], with_groups=False))
+        for p in all:
+            p = {'name': p}
+            if p['name'] not in own:
+                p['description'] = '[inherited]'
+            perms.append(p)
     else:
         for p in session.getAllPerms():
             perms.append({'name': p['name'], 'description': p['description']})

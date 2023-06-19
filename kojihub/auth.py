@@ -772,7 +772,7 @@ def get_user_groups(user_id):
     are the group names"""
     t_group = koji.USERTYPES['GROUP']
     query = QueryProcessor(tables=['user_groups'], columns=['group_id', 'name'],
-                           clauses=['active = TRUE', 'users.usertype=%(t_group)i',
+                           clauses=['active IS TRUE', 'users.usertype=%(t_group)i',
                                     'user_id=%(user_id)i'],
                            joins=['users ON group_id = users.id'],
                            values={'t_group': t_group, 'user_id': user_id})
@@ -782,13 +782,30 @@ def get_user_groups(user_id):
     return groups
 
 
-def get_user_perms(user_id):
+def get_user_perms(user_id, with_groups=True):
+    # individual permissions
     query = QueryProcessor(tables=['user_perms'], columns=['name'],
-                           clauses=['active = TRUE', 'user_id=%(user_id)s'],
+                           clauses=['active IS TRUE', 'user_id=%(user_id)s'],
                            joins=['permissions ON perm_id = permissions.id'],
                            values={'user_id': user_id})
     result = query.execute()
-    return [r['name'] for r in result]
+    perms = {r['name'] for r in result}
+
+    # inherited group permissions
+    if with_groups:
+        query = QueryProcessor(tables=['user_groups'], columns=['name'],
+                               clauses=[
+                                   'user_groups.active IS TRUE',
+                                   'user_perms.active IS TRUE',
+                                   'user_groups.user_id=%(user_id)s'],
+                               joins=[
+                                   'LEFT JOIN user_perms ON '
+                                   'user_perms.user_id = user_groups.group_id',
+                                   'permissions ON perm_id = permissions.id'],
+                               values={'user_id': user_id})
+        result = query.execute()
+        perms |= {r['name'] for r in result}
+    return list(perms)
 
 
 def get_user_data(user_id):
