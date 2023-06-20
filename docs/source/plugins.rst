@@ -122,8 +122,12 @@ Example for `/etc/koji-hub/hub.conf`:
         match action block && is_sidetag_owner :: allow
         all :: deny
 
-There are two special policy tests `is_sidetag` and `is_sidetag_owner` with
-expectable behaviour.
+There are two special policy tests ``is_sidetag`` and ``is_sidetag_owner`` with
+expectable behaviour. ``is_sidetag_owner`` can handle optional
+``tag``/``fromtag``/``both`` keywords which specify data to be tested. Default
+is testing ``tag`` in policy data, ``fromtag`` can test  this field (e.g. in
+``untagBuild`` case) and ``both`` fails if any of the involved tags is not owned
+by sidetag owner.
 
 Now Sidetag Koji plugin should be installed.  To verify that, run
 `koji list-api` command -- it should now display `createSideTag`
