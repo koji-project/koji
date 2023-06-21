@@ -799,8 +799,7 @@ def get_user_perms(user_id, with_groups=True):
                                    'user_perms.active IS TRUE',
                                    'user_groups.user_id=%(user_id)s'],
                                joins=[
-                                   'LEFT JOIN user_perms ON '
-                                   'user_perms.user_id = user_groups.group_id',
+                                   'user_perms ON user_perms.user_id = user_groups.group_id',
                                    'permissions ON perm_id = permissions.id'],
                                values={'user_id': user_id})
         result = query.execute()
