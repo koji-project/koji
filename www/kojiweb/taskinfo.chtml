@@ -127,11 +127,6 @@ $value
       #end if
       </td>
     </tr>
-    #if $taskBuild
-    <tr>
-      <th>Build</th><td><a href="buildinfo?buildID=$taskBuild.build_id">$util.escapeHTML($koji.buildLabel($taskBuild))</a></td>
-    </tr>
-    #end if
     #if $taskBuilds
     #for $build in $taskBuilds
     <tr>
