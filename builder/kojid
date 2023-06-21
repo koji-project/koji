@@ -478,7 +478,7 @@ class BuildRoot(object):
                         logs[fname] = (None, None, 0, fpath)
                         if self.options.log_timestamps and not fname.endswith('-ts.log'):
                             ts_name = '%s-ts.log' % fname
-                            fpath = os.path.join(resultdir, ts_name)
+                            fpath = os.path.join(workdir, ts_name)
                             if os.path.exists(fpath):
                                 with koji._open_text_file(fpath) as ts_file:
                                     lines = ts_file.readlines()
@@ -533,7 +533,7 @@ class BuildRoot(object):
                         position = fd.tell()
                         ts_offsets.setdefault(fname, 0)
                         if ts_offsets[fname] < position:
-                            fpath = os.path.join(resultdir, '%s-ts.log' % fname)
+                            fpath = os.path.join(workdir, '%s-ts.log' % fname)
                             with koji._open_text_file(fpath, 'at') as ts_file:
                                 ts_file.write('%.0f %i\n' % (time.time(), position))
                             ts_offsets[fname] = position
