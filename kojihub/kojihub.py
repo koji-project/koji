@@ -12670,7 +12670,7 @@ class RootExports(object):
                                      values={'perm_id': perm_id})
             update.set(description=description)
             update.execute()
-        if perm['name'] in get_user_perms(user_id):
+        if perm['name'] in get_user_perms(user_id, with_groups=False):
             raise koji.GenericError('user %s already has permission: %s' %
                                     (userinfo, perm['name']))
         insert = InsertProcessor('user_perms')
@@ -12684,7 +12684,7 @@ class RootExports(object):
         user_id = get_user(userinfo, strict=True)['id']
         perm = lookup_perm(permission, strict=True)
         perm_id = perm['id']
-        if perm['name'] not in get_user_perms(user_id):
+        if perm['name'] not in get_user_perms(user_id, with_groups=False):
             raise koji.GenericError('user %s does not have permission: %s' %
                                     (userinfo, perm['name']))
         update = UpdateProcessor('user_perms', values=locals(),
