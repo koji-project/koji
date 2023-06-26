@@ -1006,7 +1006,7 @@ def handle_call(goptions, session, args):
             if options.bare_strings:
                 return arg
             else:
-                parser.error(f"Invalid value: {arg!r}")
+                parser.error("Invalid value: %r" % arg)
 
     # the method to call
     name = args[0]
