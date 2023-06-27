@@ -776,7 +776,10 @@ def get_user_groups(user_id):
                                     'user_id=%(user_id)i'],
                            joins=['users ON group_id = users.id'],
                            values={'t_group': t_group, 'user_id': user_id})
-    return query.execute()
+    groups = {}
+    for gdata in query.execute():
+        groups[gdata['group_id']] = gdata['name']
+    return groups
 
 
 def get_user_perms(user_id):

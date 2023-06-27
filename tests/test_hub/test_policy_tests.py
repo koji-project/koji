@@ -742,7 +742,7 @@ class IsBuildOwnerTest(unittest.TestCase):
         self.get_build.return_value = {'build_id': data['build'], 'owner_id': 3}
         self.get_user.return_value = {'id': 2, 'name': 'testuser', 'usertype': 2}
         self.policy_get_user.return_value = {'id': 3, 'name': 'username'}
-        self.get_user_groups.return_value = [2]
+        self.get_user_groups.return_value = {2: 'group_name'}
         obj = kojihub.IsBuildOwnerTest('isbuildownertest - owner group')
         self.assertTrue(obj.run(data))
         self.get_build.assert_called_once_with(data['build'])
