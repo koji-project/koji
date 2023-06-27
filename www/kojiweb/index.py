@@ -683,7 +683,6 @@ def taskinfo(environ, taskID):
         taskBuild = builds[0]
     else:
         taskBuild = None
-    values['taskBuild'] = taskBuild
 
     values['estCompletion'] = None
     if taskBuild and taskBuild['state'] == koji.BUILD_STATES['BUILDING']:
@@ -746,7 +745,7 @@ def taskinfo(environ, taskID):
     if 'buildrootID' in params:
         params['buildroot'] = server.getBuildroot(params.pop('buildrootID'))
 
-    values['taskBuilds'] = []
+    taskBuilds = []
     if task['state'] in (koji.TASK_STATES['CLOSED'], koji.TASK_STATES['FAILED']):
         try:
             result = server.getTaskResult(task['id'])
@@ -758,11 +757,15 @@ def taskinfo(environ, taskID):
             values['result'] = result
             values['excClass'] = None
             if task['method'] == 'buildContainer' and 'koji_builds' in result:
-                values['taskBuilds'] = [
+                taskBuilds = [
                     server.getBuild(int(buildID)) for buildID in result['koji_builds']]
     else:
         values['result'] = None
         values['excClass'] = None
+
+    if taskBuild and taskBuild['build_id'] not in [x['build_id'] for x in taskBuilds]:
+        taskBuilds.append(taskBuild)
+    values['taskBuilds'] = taskBuilds
 
     full_result_text, abbr_result_text = kojiweb.util.task_result_to_html(
         values['result'], values['excClass'], abbr_postscript='...')
