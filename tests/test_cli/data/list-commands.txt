@@ -136,6 +136,8 @@ monitor commands:
         edit-notification         Edit user's notification
         list-notifications        List user's notifications and blocks
         remove-notification       Remove user's notifications
+        scheduler-info            Show information about scheduling
+        scheduler-logs            Query scheduler logs
         unblock-notification      Unblock user's notification
         wait-repo                 Wait for a repo to be regenerated
         watch-logs                Watch logs in realtime
