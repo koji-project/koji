@@ -56,14 +56,6 @@ def get_log_messages(clauses=None, fields=None):
     return LogMessagesQuery(clauses, fields).execute()
 
 
-def intlist(value):
-    """Cast value to a list of ints"""
-    if isinstance(value, (list, tuple)):
-        return [int(n) for n in value]
-    else:
-        return [int(value)]
-
-
 def get_tasks_for_host(hostID, retry=True):
     """Get the tasks assigned to a given host"""
     hostID = kojihub.convert_value(hostID, cast=int, none_allowed=True)

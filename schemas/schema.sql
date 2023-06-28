@@ -997,13 +997,6 @@ CREATE INDEX scheduler_task_runs_host ON scheduler_task_runs(host_id);
 CREATE INDEX scheduler_task_runs_create_time ON scheduler_task_runs(create_time);
 
 
-CREATE TABLE scheduler_queue (
-        task_id INTEGER REFERENCES task (id) NOT NULL PRIMARY KEY,
-        groomed BOOLEAN NOT NULL DEFAULT FALSE,
-        run_id INTEGER REFERENCES scheduler_task_runs(id)
-) WITHOUT OIDS;
-
-
 CREATE TABLE scheduler_host_data (
         host_id INTEGER REFERENCES host (id) PRIMARY KEY,
         data JSONB
@@ -1013,17 +1006,6 @@ CREATE TABLE scheduler_host_data (
 CREATE TABLE scheduler_sys_data (
         name TEXT NOT NULL PRIMARY KEY,
         data JSONB
-) WITHOUT OIDS;
-
-
-CREATE TABLE scheduler_map (
-        id SERIAL NOT NULL PRIMARY KEY,
-        task_id INTEGER REFERENCES task (id) NOT NULL,
-        host_id INTEGER REFERENCES host (id) NOT NULL,
-        runnable BOOLEAN NOT NULL,
-        refused BOOLEAN NOT NULL,
-        msg TEXT,
-        check_time TIMESTAMPTZ NOT NULL DEFAULT NOW()
 ) WITHOUT OIDS;
 
 
