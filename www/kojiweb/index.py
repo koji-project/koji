@@ -363,15 +363,21 @@ def index(environ, packageOrder='package_name', packageStart=None):
 
         notifs = server.getBuildNotifications(user['id'])
         notifs.sort(key=lambda x: x['id'])
-        # XXX Make this a multicall
-        for notif in notifs:
-            notif['package'] = None
-            if notif['package_id']:
-                notif['package'] = server.getPackage(notif['package_id'])
+        with server.multicall() as m:
+            for notif in notifs:
+                notif['package'] = None
+                if notif['package_id']:
+                    notif['package'] = m.getPackage(notif['package_id'])
 
-            notif['tag'] = None
-            if notif['tag_id']:
-                notif['tag'] = server.getTag(notif['tag_id'])
+                notif['tag'] = None
+                if notif['tag_id']:
+                    # it's possible a notification could reference a deleted tag
+                    notif['tag'] = m.getTag(notif['tag_id'], event='auto')
+        for notif in notifs:
+            if notif['package']:
+                notif['package'] = notif['package'].result
+            if notif['tag']:
+                notif['tag'] = notif['tag'].result
         values['notifs'] = notifs
 
     values['user'] = user
@@ -701,10 +707,10 @@ def taskinfo(environ, taskID):
         elif isinstance(tag_id, dict):
             return tag_id
         else:
-            try:
-                return server.getTag(tag_id, strict=True)
-            except koji.GenericError:
-                return {'name': "%d (deleted)" % tag_id, 'id': None}
+            info = server.getTag(tag_id, event='auto')
+            if info and 'revoke_event' in info:
+                info['name'] = "%(name)s (deleted)" % info
+            return info
 
     if 'root' in params:
         params['build_tag'] = _get_tag(params.pop('root'))
@@ -998,9 +1004,14 @@ def taginfo(environ, tagID, all='0', packageOrder='package_name', packageStart=N
     server = _getServer(environ)
 
     tagID = _convert_if_int(tagID)
-    tag = server.getTag(tagID, strict=True)
+    tag = server.getTag(tagID, strict=True, event='auto')
 
     values['title'] = tag['name'] + ' | Tag Info'
+    values['tag'] = tag
+    values['tagID'] = tag['id']
+    if 'revoke_event' in tag:
+        values['delete_ts'] = server.getEvent(tag['revoke_event'])['ts']
+        return _genHTML(environ, 'taginfo_deleted.chtml')
 
     all = int(all)
 
@@ -1026,8 +1037,6 @@ def taginfo(environ, tagID, all='0', packageOrder='package_name', packageStart=N
     destTargets = server.getBuildTargets(destTagID=tag['id'])
     destTargets.sort(key=_sortbyname)
 
-    values['tag'] = tag
-    values['tagID'] = tag['id']
     values['inheritance'] = inheritance
     values['tagsByChild'] = tagsByChild
     values['srcTargets'] = srcTargets
