@@ -1002,7 +1002,7 @@ def handle_call(goptions, session, args):
                 return json.loads(arg)
             else:
                 return arg_filter(arg)
-        except ValueError as e:
+        except ValueError:
             if options.bare_strings:
                 return arg
             else:
