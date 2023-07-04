@@ -1,0 +1,21 @@
+#from kojiweb import util
+#from urllib.parse import quote
+#import pprint
+
+#include "includes/header.chtml"
+
+  <h4>Information for deleted tag <a href="taginfo?tagID=$tag.id">$util.escapeHTML($tag.name)</a></h4>
+
+  <table>
+    <tr>
+      <th>Name</th><td>$util.escapeHTML($tag.name)</td>
+    </tr>
+    <tr>
+      <th>ID</th><td>$tag.id</td>
+    </tr>
+    <tr>
+      <th>Deleted</th><td>$util.formatTimeLong($delete_ts)</td>
+    </tr>
+  </table>
+
+#include "includes/footer.chtml"
