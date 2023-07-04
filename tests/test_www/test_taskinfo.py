@@ -240,7 +240,7 @@ class TestTaskInfo(unittest.TestCase):
         server = self.__get_server(task)
         self.get_server.return_value = server
         webidx.taskinfo(self.environ, self.task_id)
-        server.getTag.assert_called_with(2, strict=True)
+        server.getTag.assert_called_with(2, event='auto')
 
         # case 2. buildMaven
         task = copy.deepcopy(self.task)
@@ -249,7 +249,7 @@ class TestTaskInfo(unittest.TestCase):
         server = self.__get_server(task)
         self.get_server.return_value = server
         webidx.taskinfo(self.environ, self.task_id)
-        server.getTag.assert_called_with('testBuildMaven', strict=True)
+        server.getTag.assert_called_with('testBuildMaven', event='auto')
 
         # case 3. buildSRPMFromSCM
         task = copy.deepcopy(self.task)
@@ -258,7 +258,7 @@ class TestTaskInfo(unittest.TestCase):
         server = self.__get_server(task)
         self.get_server.return_value = server
         webidx.taskinfo(self.environ, self.task_id)
-        server.getTag.assert_called_with('testSRPM', strict=True)
+        server.getTag.assert_called_with('testSRPM', event='auto')
 
         # case 4. tagBuild
         task = copy.deepcopy(self.task)
@@ -267,7 +267,7 @@ class TestTaskInfo(unittest.TestCase):
         server = self.__get_server(task)
         self.get_server.return_value = server
         webidx.taskinfo(self.environ, self.task_id)
-        server.getTag.assert_called_with('testTag', strict=True)
+        server.getTag.assert_called_with('testTag', event='auto')
         server.getBuild.assert_called_with('testBuild')
 
         # case 5. newRepo, distRepo, createdstrepo
@@ -278,7 +278,7 @@ class TestTaskInfo(unittest.TestCase):
             server = self.__get_server(task)
             self.get_server.return_value = server
             webidx.taskinfo(self.environ, self.task_id)
-            server.getTag.assert_called_with('RepoTag', strict=True)
+            server.getTag.assert_called_with('RepoTag', event='auto')
 
         for m in ('createdistrepo',):
             task = copy.deepcopy(self.task)
@@ -287,7 +287,7 @@ class TestTaskInfo(unittest.TestCase):
             server = self.__get_server(task)
             self.get_server.return_value = server
             webidx.taskinfo(self.environ, self.task_id)
-            server.getTag.assert_called_with('RepoTag', strict=True)
+            server.getTag.assert_called_with('RepoTag', event='auto')
 
         # case 6. tagNotification
         task = copy.deepcopy(self.task)
@@ -296,7 +296,8 @@ class TestTaskInfo(unittest.TestCase):
         server = self.__get_server(task)
         self.get_server.return_value = server
         webidx.taskinfo(self.environ, self.task_id)
-        server.getTag.assert_has_calls([call('destTag', strict=True), call('srcTag', strict=True)])
+        server.getTag.assert_has_calls([call('destTag', event='auto'),
+                                        call('srcTag', event='auto')])
         server.getBuild.assert_called_with('theBuild')
         server.getUser.assert_called_with('user')
 
