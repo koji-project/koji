@@ -88,7 +88,7 @@ class LibvirtCallable(object):
 class LibvirtConnection(object):
     # Wrapper class for libvirt connection retrying calls failed on libvirt connection
     # e.g. libvirtd restart. Without it kojivmd stucks in main loop
-    def __init__(self) -> None:
+    def __init__(self):
         self._conn = libvirt.open(None)
 
     def __getattr__(self, name):
