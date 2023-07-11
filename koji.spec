@@ -83,7 +83,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.33.0
+Version: 1.33.1
 Release: %{release}%{?dist}
 License: LGPL-2.1-only and GPL-2.0-or-later
 # the included arch lib from yum's rpmUtils is GPLv2+
@@ -648,6 +648,15 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Tue Jul 11 2023  Tomas Kopecek <tkopecek at redhat.com> - 1.33.1-1
+- PR#3834: wait with writing timestamps after results dir is created
+- PR#3836: add support for sw_64 and loongarch64
+- PR#3839: basic vim syntax highlighting for hub policy
+- PR#3840: doc: readTaggedRPMS/Builds API documentation
+- PR#3846: cli: streamline python/json options in call command
+- PR#3857: Fix duplicate build link on CG taskinfo page
+- PR#3864: drop stray typing hint
+
 * Tue May 16 2023  Tomas Kopecek <tkopecek at redhat.com> - 1.33.0-1
 - PR#3775: Import koji archive types
 - PR#3816: kiwi: remove tech-preview warning
