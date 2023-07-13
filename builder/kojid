@@ -5558,19 +5558,19 @@ class NewRepoTask(BaseTaskHandler):
     Methods = ['newRepo']
     _taskWeight = 0.1
 
-    def copy_repo(self, src_repo_id, src_repo_path, repo_id, arch):
+    def copy_arch_repo(self, src_repo_id, src_repo_path, repo_id, arch):
         """Copy repodata, return False if it fails"""
+        dst_repodata = f'{self.workdir}/{arch}/repodata'
+        src_repodata = f'{src_repo_path}/{arch}/repodata'
         try:
             # copy repodata
-            dst_repodata = f'{self.workdir}/{arch}/repodata'
-            #dst_repo_path = koji.pathinfo.repo(repo_id, taginfo['name'])
-            src_repodata = f'{src_repo_path}/{arch}/repodata'
-            #dst_repodata = f'{dst_repo_path}/{arch}/repodata'
             self.logger.debug(f'Copying repodata {src_repodata} to {dst_repodata}')
             if os.path.exists(src_repodata):
+                # symlink=True is not needed as they are no part of arch repodir
                 shutil.copytree(src_repodata, dst_repodata)
-            with open(f'{dst_repodata}/repo.json', 'wt') as fp:
-                json.dump({'cloned_from_repo_id': src_repo_id}, fp, indent=2)
+            repo_json = koji.load_json(f'{src_repodata}/repo.json')
+            repo_json['cloned_from_repo_id'] = src_repo_id
+            koji.dump_json(f'{dst_repodata}/repo.json', repo_json, indent=2)
             uploadpath = self.getUploadDir()
             files = []
             for f in os.listdir(dst_repodata):
@@ -5579,16 +5579,20 @@ class NewRepoTask(BaseTaskHandler):
             return [uploadpath, files]
         except Exception as ex:
             self.logger.warning(f"Copying repo {src_repo_id} to {repo_id} failed. {ex}")
+            # Try to remove potential leftovers and fail if there is some problem
+            koji.util.rmtree(dst_repodata, self.logger)
             return False
 
     def check_repo(self, src_repo_path, dst_repo_path, src_repo, dst_repo, opts):
         """Check if oldrepo is reusable as is and can be directly copied"""
         # with_src, debuginfo, pkglist, blocklist, grouplist
-        if not os.path.exists(src_repo_path):
+        # We're ignoring maven support here. It is handled in repo_init which is called
+        # always, so it doesn't affect efficiency of pre-cloning rpm repos.
+        if not os.path.isdir(src_repo_path):
             self.logger.debug(f"Source repo doesn't exist {src_repo_path}")
             return False
         try:
-            repo_json = json.load(open(f'{src_repo_path}/repo.json'))
+            repo_json = koji.load_json(f'{src_repo_path}/repo.json')
             for key in ('with_debuginfo', 'with_src', 'with_separate_src'):
                 if repo_json.get(key, False) != opts.get(key, False):
                     print(key, repo_json.get(key), opts.get(key))
@@ -5625,12 +5629,11 @@ class NewRepoTask(BaseTaskHandler):
             src_file = f'{src_repo_path}/{arch}/{fname}'
             dst_file = f'{dst_repo_path}/{arch}/{fname}'
             # both must non/exist
-            src_exists = os.path.exists(src_file)
-            if src_exists != os.path.exists(dst_file):
-                self.logger.debug(f'{fname} exists only in one repo')
+            if not os.path.exists(src_file) or not os.path.exists(dst_file):
+                self.logger.debug(f"{fname} doesn't exit in one of the repos")
                 return False
-            # if they exist, content must be same
-            if src_exists and not filecmp.cmp(src_file, dst_file, shallow=False):
+            # content must be same
+            if not filecmp.cmp(src_file, dst_file, shallow=False):
                 self.logger.debug(f'{fname} differs')
                 return False
         self.logger.debug(f'Arch repo test passed {arch}')
@@ -5691,7 +5694,7 @@ class NewRepoTask(BaseTaskHandler):
         data = {}
         for arch in arches:
             if possibly_clonable and self.check_arch_repo(oldrepo_path, newrepo_path, arch):
-                result = self.copy_repo(oldrepo['id'], oldrepo_path, repo_id, arch)
+                result = self.copy_arch_repo(oldrepo['id'], oldrepo_path, repo_id, arch)
                 if result:
                     data[arch] = result
                     continue
@@ -5707,8 +5710,6 @@ class NewRepoTask(BaseTaskHandler):
             results = self.wait(to_list(subtasks.values()), all=True, failany=True)
             for (arch, task_id) in six.iteritems(subtasks):
                 data[arch] = results[task_id]
-
-        self.logger.debug("DEBUG: %r : %r " % (arch, data[arch],))
 
         # finalize
         kwargs = {}
