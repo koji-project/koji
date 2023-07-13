@@ -137,7 +137,6 @@ def createSideTag(basetag, debuginfo=False, suffix=None):
     )
     _create_build_target(sidetag_name, sidetag_id, sidetag_id)
 
-
     if TRIGGER_NEW_REPO:
         # little higher priority than other newRepo tasks
         args = koji.encode_args(sidetag_name, debuginfo=debuginfo)
