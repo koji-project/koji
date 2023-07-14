@@ -4224,7 +4224,7 @@ def get_user(userInfo=None, strict=False, krb_princs=True, groups=False):
         if krb_princs:
             user['krb_principals'] = list_user_krb_principals(user['id'])
         if groups:
-            user['groups'] = list_user_groups(user['id'])
+            user['groups'] = [x['name'] for x in get_user_groups(user['id'])]
     return user
 
 
@@ -4311,28 +4311,6 @@ def _edit_user(userInfo, name=None, krb_principal_mappings=None):
             context.session.removeKrbPrincipal(user['id'], krb_principal=r)
         for a in added:
             context.session.setKrbPrincipal(user['id'], krb_principal=a)
-
-
-def list_user_groups(user_info=None):
-    if user_info is None:
-        user_info = context.session.user_id
-        if user_info is None:
-            # not logged in
-            raise koji.GenericError("No user provided")
-    data = {'info': user_info}
-    clauses = ['active IS TRUE']
-    joins = ['users g on g.id = user_groups.group_id']
-    if isinstance(user_info, int):
-        clauses.append('user_id = %(info)i')
-    elif isinstance(user_info, str):
-        joins.append('users AS u ON u.id = user_groups.user_id')
-        clauses.append('u.name = %(info)s')
-    else:
-        raise koji.GenericError('Invalid type for user_info: %s' % type(user_info))
-    fields = ['g.id', 'g.name']
-    query = QueryProcessor(tables=['user_groups'],
-                           columns=fields, joins=joins, clauses=clauses, values=data)
-    return query.execute() or []
 
 
 def list_user_krb_principals(user_info=None):

@@ -7787,6 +7787,14 @@ def anon_handle_userinfo(goptions, session, args):
 
     with session.multicall() as m:
         userinfos = [m.getUser(user, groups=True) for user in args]
+    try:
+        # hub < 1.34 doesn't support groups option, it also raises an exception on access,
+        # so later it would fail the result iteration cycle
+        userinfos[0].result
+    except koji.ParameterError:
+        with session.multicall() as m:
+            userinfos = [m.getUser(user) for user in args]
+
     user_infos = []
     for username, userinfo in zip(args, userinfos):
         if userinfo.result is None:
@@ -7821,7 +7829,7 @@ def anon_handle_userinfo(goptions, session, args):
             print("Permissions:")
             for perm in perms.result:
                 print("  %s" % perm)
-        if userinfo['groups']:
+        if userinfo.get('groups'):
             print("Groups:")
             for group in sorted(userinfo['groups']):
                 print("  %s" % group)
