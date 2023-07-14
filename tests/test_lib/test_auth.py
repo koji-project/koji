@@ -719,7 +719,7 @@ class TestAuthSession(unittest.TestCase):
         query = self.queries[1]
         self.assertEqual(query.tables, ['user_groups'])
         self.assertEqual(query.joins, [
-            'LEFT JOIN user_perms ON user_perms.user_id = user_groups.group_id',
+            'user_perms ON user_perms.user_id = user_groups.group_id',
             'permissions ON perm_id = permissions.id'])
         self.assertEqual(sorted(query.clauses), sorted([
             'user_groups.active IS TRUE',
