@@ -1174,6 +1174,8 @@ def anon_handle_mock_config(goptions, session, args):
     if 'mock.bootstrap_image' in buildcfg['extra']:
         opts['use_bootstrap_image'] = True
         opts['bootstrap_image'] = buildcfg['extra']['mock.bootstrap_image']
+    else:
+        opts['use_bootstrap_image'] = False
     if 'mock.use_bootstrap' in buildcfg['extra']:
         opts['use_bootstrap'] = buildcfg['extra']['mock.use_bootstrap']
     if 'mock.module_setup_commands' in buildcfg['extra']:
