@@ -7335,9 +7335,9 @@ def handle_dist_repo(options, session, args):
                            '(on builder)')
     parser.add_option("--write-signed-rpms", action='store_true', default=False,
                       help='Write a signed rpms for given tag')
-    parser.add_option("--skip-stat", action='store_true', default=None,
+    parser.add_option("--skip-stat", action='store_true', default=None, dest='skip_stat',
                       help="Skip rpm stat during createrepo (override default builder setting)")
-    parser.add_option("--no-skip-stat", action='store_false', default=None,
+    parser.add_option("--no-skip-stat", action='store_false', default=None, dest='skip_stat',
                       help="Don't skip rpm stat during createrepo "
                            "(override default builder setting)")
     task_opts, args = parser.parse_args(args)
