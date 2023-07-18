@@ -7335,6 +7335,11 @@ def handle_dist_repo(options, session, args):
                            '(on builder)')
     parser.add_option("--write-signed-rpms", action='store_true', default=False,
                       help='Write a signed rpms for given tag')
+    parser.add_option("--skip-stat", action='store_true', default=None, dest='skip_stat',
+                      help="Skip rpm stat during createrepo (override default builder setting)")
+    parser.add_option("--no-skip-stat", action='store_false', default=None, dest='skip_stat',
+                      help="Don't skip rpm stat during createrepo "
+                           "(override default builder setting)")
     task_opts, args = parser.parse_args(args)
     if len(args) < 1:
         parser.error('You must provide a tag to generate the repo from')
@@ -7425,6 +7430,8 @@ def handle_dist_repo(options, session, args):
         'zck_dict_dir': task_opts.zck_dict_dir,
         'write_signed_rpms': task_opts.write_signed_rpms,
     }
+    if task_opts.skip_stat is not None:
+        opts['createrepo_skip_stat'] = task_opts.skip_stat
     task_id = session.distRepo(tag, keys, **opts)
     print("Creating dist repo for tag " + tag)
     if task_opts.wait or (task_opts.wait is None and not _running_in_bg()):
