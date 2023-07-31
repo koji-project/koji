@@ -10913,7 +10913,8 @@ class RootExports(object):
         Associate image metadata with an existing build. When build isn`t existing, creates a
         build. The build must not already have associated image metadata.
 
-        :param build_info: a str (build name) if build is existing
+        :param build_info: int (build ID) if build exists
+                           str (in N-V-R format)
                            or a dict:
                                - name: build name
                                - version: build version
