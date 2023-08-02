@@ -4224,7 +4224,7 @@ def get_user(userInfo=None, strict=False, krb_princs=True, groups=False):
         if krb_princs:
             user['krb_principals'] = list_user_krb_principals(user['id'])
         if groups:
-            user['groups'] = [x['name'] for x in get_user_groups(user['id'])]
+            user['groups'] = [x for x in get_user_groups(user['id']).values()]
     return user
 
 
