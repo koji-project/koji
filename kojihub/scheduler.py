@@ -185,10 +185,10 @@ def get_task_runs(clauses=None, fields=None):
 class TaskScheduler(object):
 
     def __init__(self):
-        self.hosts_by_bin = None
-        self.hosts = None
-        self.active_tasks = None
-        self.free_tasks = None
+        self.hosts_by_bin = {}
+        self.hosts = {}
+        self.active_tasks = []
+        self.free_tasks = []
 
         # TODO these things need proper config
         self.maxjobs = 15  # XXX
