@@ -93,8 +93,7 @@ class TestGetUser(DBQueryTestCase):
         columns = ['id', 'name', 'status', 'usertype']
         self.assertEqual(set(query.columns), set(columns))
         self.assertEqual(query.clauses, ['users.id = %(id)i'])
-        self.assertEqual(query.joins, ['LEFT JOIN user_krb_principals ON '
-                                       'users.id = user_krb_principals.user_id'])
+        self.assertEqual(query.joins, [])
         self.assertEqual(query.values, userinfo)
 
 

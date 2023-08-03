@@ -4155,7 +4155,7 @@ def get_external_repo_list(tag_info, event=None):
     return repos
 
 
-def get_user(userInfo=None, strict=False, krb_princs=True):
+def get_user(userInfo=None, strict=False, krb_princs=True, groups=False):
     """Return information about a user.
 
     :param userInfo: a str (Kerberos principal or name) or an int (user id)
@@ -4172,6 +4172,8 @@ def get_user(userInfo=None, strict=False, krb_princs=True):
         usertype: user type (int), 0 person, 1 for host, may be null
         krb_principals: the user's Kerberos principals (list)
     """
+    krb5_join = False
+    clauses = []
     if userInfo is None:
         userInfo = context.session.user_id
         if userInfo is None:
@@ -4184,11 +4186,11 @@ def get_user(userInfo=None, strict=False, krb_princs=True):
         data = {'id': userInfo}
     elif isinstance(userInfo, str):
         data = {'info': userInfo}
-        clauses = ['krb_principal = %(info)s OR name = %(info)s']
+        clauses.append('krb_principal = %(info)s OR name = %(info)s')
+        krb5_join = True
     else:
         raise koji.GenericError('Invalid type for userInfo: %s' % type(userInfo))
     if isinstance(data, dict) and not data.get('info'):
-        clauses = []
         uid = data.get('id')
         if uid is not None:
             if isinstance(uid, int):
@@ -4206,18 +4208,23 @@ def get_user(userInfo=None, strict=False, krb_princs=True):
             if isinstance(krb_principal, str):
                 clauses.append('user_krb_principals.krb_principal'
                                ' = %(krb_principal)s')
+                krb5_join = True
             else:
                 raise koji.GenericError('Invalid type for krb_principal: %s' % type(krb_principal))
 
-    query = QueryProcessor(tables=['users'], columns=fields,
-                           joins=['LEFT JOIN user_krb_principals'
-                                  ' ON users.id = user_krb_principals.user_id'],
+    joins = []
+    if krb5_join:
+        joins.append('LEFT JOIN user_krb_principals ON users.id = user_krb_principals.user_id')
+    query = QueryProcessor(tables=['users'], columns=fields, joins=joins,
                            clauses=clauses, values=data)
     user = query.executeOne()
     if not user and strict:
         raise koji.GenericError("No such user: %r" % userInfo)
-    if user and krb_princs:
-        user['krb_principals'] = list_user_krb_principals(user['id'])
+    if user:
+        if krb_princs:
+            user['krb_principals'] = list_user_krb_principals(user['id'])
+        if groups:
+            user['groups'] = [x for x in get_user_groups(user['id']).values()]
     return user
 
 

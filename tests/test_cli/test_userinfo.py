@@ -20,6 +20,7 @@ class TestUserinfo(utils.CliTestCase):
                           'krb_principals': ['test-principal'],
                           'name': self.user,
                           'status': 0,
+                          'groups': ['group1', 'group2'],
                           'usertype': 0}
         self.user_perms = ['admin', 'tag']
         self.count_list_packages = 2
@@ -65,6 +66,9 @@ krb principals:
 Permissions:
   admin
   tag
+Groups:
+  group1
+  group2
 Status: NORMAL
 Usertype: NORMAL
 Number of packages: 2
