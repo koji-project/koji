@@ -46,4 +46,6 @@ BEGIN;
             msg_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             msg TEXT NOT NULL
     ) WITHOUT OIDS;
+
+    INSERT INTO locks(name) VALUES('scheduler');
 COMMIT;

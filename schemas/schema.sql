@@ -1035,5 +1035,6 @@ CREATE TABLE locks (
         name TEXT NOT NULL PRIMARY KEY
 ) WITHOUT OIDS;
 INSERT INTO locks(name) VALUES('protonmsg-plugin');
+INSERT INTO locks(name) VALUES('scheduler');
 
 COMMIT WORK;
