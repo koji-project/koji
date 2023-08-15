@@ -725,15 +725,30 @@ class TestAuthSession(unittest.TestCase):
             'user_groups.active IS TRUE',
             'user_perms.active IS TRUE',
             'user_groups.user_id=%(user_id)s']))
-        self.assertEqual(query.columns, ['name'])
+        self.assertEqual(query.columns, ['permissions.name'])
 
     def test_get_user_perms_inherited(self):
         self.query_execute.side_effect = [
             [{'id': 1, 'name': 'perm1'}, {'id': 2, 'name': 'perm2'}],
-            [{'id': 3, 'name': 'perm3'}]
+            [{'name': 'perm3'}]
         ]
         result = kojihub.auth.get_user_perms(1)
         self.assertEqual(set(result), {'perm1', 'perm2', 'perm3'})
+
+    def test_get_user_perms_inherited_data(self):
+        self.query_execute.side_effect = [
+            [{'id': 1, 'name': 'perm1'}, {'id': 2, 'name': 'perm2'}],
+            [{'name': 'perm3', 'group': 'group_a'},
+             {'name': 'perm4', 'group': 'group_b'},
+             {'name': 'perm4', 'group': 'group_c'}]
+        ]
+        result = kojihub.auth.get_user_perms(1, inheritance_data=True)
+        self.assertEqual(result, {
+            'perm1': [None],
+            'perm2': [None],
+            'perm3': ['group_a'],
+            'perm4': ['group_b', 'group_c'],
+        })
 
     def test_logout_logged_not_owner(self):
         s, _ = self.get_session()

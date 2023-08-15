@@ -3,6 +3,7 @@ import unittest
 import koji
 from .utils import DBQueryTestCase
 import kojihub
+from kojihub.auth import get_user_perms
 
 
 class TestGetUserPerms(unittest.TestCase):
@@ -22,7 +23,7 @@ class TestGetUserPerms(unittest.TestCase):
     def test_normal(self):
         self.get_user.return_value = {'id': 123, 'name': 'testuser'}
         kojihub.RootExports().getUserPerms(123)
-        self.get_user_perms.assert_called_once_with(123, with_groups=True)
+        self.get_user_perms.assert_called_once_with(123, with_groups=True, inheritance_data=False)
 
 
 class TestGetUserPermsInheritance(DBQueryTestCase):
@@ -41,18 +42,14 @@ class TestGetUserPermsInheritance(DBQueryTestCase):
         self.get_user_perms.assert_not_called()
 
     def test_normal(self):
-        self.get_user.return_value = {'id': 123, 'name': 'testuser'}
-        self.get_user_perms.return_value = ['test1', 'test2']
-        self.qp_execute_return_value = [
-            {'permission': 'test2', 'group': 'group1'},
-            {'permission': 'test3', 'group': 'group1'},
-            {'permission': 'test3', 'group': 'group2'},
-        ]
-        result = kojihub.RootExports().getUserPermsInheritance(123)
-        self.assertEqual(result, {
+        data = {
             'test1': [None],
             'test2': [None, 'group1'],
             'test3': ['group1', 'group2'],
-        })
+        }
+        self.get_user.return_value = {'id': 123, 'name': 'testuser'}
+        self.get_user_perms.return_value = data
+        result = kojihub.RootExports().getUserPermsInheritance(123)
+        self.assertEqual(result, data)
         self.get_user.assert_called_once_with(123, strict=True)
-        self.get_user_perms.assert_called_once_with(123, with_groups=False)
+        self.get_user_perms.assert_called_once_with(123, inheritance_data=True)

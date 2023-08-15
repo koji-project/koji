@@ -2176,12 +2176,10 @@ def handle_list_permissions(goptions, session, args):
         user = session.getUser(options.user)
         if not user:
             error("No such user: %s" % options.user)
-        all = set(session.getUserPerms(user['id']))
-        own = set(session.getUserPerms(user['id'], with_groups=False))
-        for p in all:
+        for p, groups in session.getUserPermsInheritance(user['id']).items():
             p = {'name': p}
-            if p['name'] not in own:
-                p['description'] = '[inherited]'
+            if groups != [None]:
+                p['description'] = 'inherited from: %s' % ', '.join(groups)
             perms.append(p)
     else:
         for p in session.getAllPerms():

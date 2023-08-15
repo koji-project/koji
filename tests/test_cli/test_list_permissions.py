@@ -79,13 +79,14 @@ class TestListPermissions(utils.CliTestCase):
 """
         self.options.quiet = False
         self.session.getUser.return_value = self.userinfo
-        self.session.getUserPerms.return_value = []
+        self.session.getUserPermsInheritance.return_value = {}
         handle_list_permissions(self.options, self.session, ['--user', self.user])
         self.assert_console_message(stdout, expected)
 
         self.activate_session_mock.assert_called_once()
         self.session.getUser.assert_called_once()
-        self.session.getUserPerms.assert_called()
+        self.session.getUserPerms.assert_not_called()
+        self.session.getUserPermsInheritance.assert_called_once()
         self.session.getPerms.assert_not_called()
         self.session.getAllPerms.assert_not_called()
 
@@ -100,15 +101,16 @@ livecd
 long-permission-appliance
 repo                     
 """
-        perms = [p['name'] for p in self.all_perms[::1]]
-        self.session.getUserPerms.return_value = perms
+        perms = {p['name']: [None] for p in self.all_perms[::1]}
+        self.session.getUserPermsInheritance.return_value = perms
         self.session.getUser.return_value = self.userinfo
         handle_list_permissions(self.options, self.session, ['--user', self.user])
         self.assert_console_message(stdout, expected)
 
         self.activate_session_mock.assert_called_once()
         self.session.getUser.assert_called_once()
-        self.session.getUserPerms.assert_called()
+        self.session.getUserPerms.assert_not_called()
+        self.session.getUserPermsInheritance.assert_called_once_with(self.userinfo['id'])
         self.session.getPerms.assert_not_called()
         self.session.getAllPerms.assert_not_called()
 
@@ -118,15 +120,16 @@ repo
         expected = """build             
 repo              
 """
-        perms = [p['name'] for p in self.all_perms[1:3]]
+        perms = {p['name']: [None] for p in self.all_perms[1:3]}
         self.session.getLoggedInUser.return_value = {'id': 1, 'name': 'user'}
-        self.session.getUserPerms.return_value = perms
+        self.session.getUserPermsInheritance.return_value = perms
         handle_list_permissions(self.options, self.session, ['--mine'])
         self.assert_console_message(stdout, expected)
 
         self.activate_session_mock.assert_called_once()
         self.session.getUser.assert_called_once()
-        self.session.getUserPerms.assert_called()
+        self.session.getUserPerms.assert_not_called()
+        self.session.getUserPermsInheritance.assert_called_once()
         self.session.getPerms.assert_not_called()
         self.session.getAllPerms.assert_not_called()
 

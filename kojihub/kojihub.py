@@ -13390,7 +13390,7 @@ class RootExports(object):
         - userID: User ID or username. If no userID provided, current login user's
                   permissions will be listed."""
         user_info = get_user(userID, strict=True)
-        return get_user_perms(user_info['id'], with_groups=with_groups)
+        return get_user_perms(user_info['id'], with_groups=with_groups, inheritance_data=False)
 
     def getUserPermsInheritance(self, userID):
         """Get a dict of the permissions granted directly to user or inherited from groups
@@ -13400,25 +13400,7 @@ class RootExports(object):
         :returns dict[str, list[str]]: list of permissions with source (None/group)
         """
         user_info = get_user(userID, strict=True)
-        perms = {}
-        for perm in get_user_perms(user_info['id'], with_groups=False):
-            perms[perm] = [None]
-
-        query = QueryProcessor(tables=['user_groups'],
-                               columns=['permissions.name', 'users.name'],
-                               aliases=['permission', 'group'],
-                               clauses=[
-                                   'user_groups.active IS TRUE',
-                                   'user_perms.active IS TRUE',
-                                   'user_groups.user_id=%(user_id)s'],
-                               joins=[
-                                   'user_perms ON user_perms.user_id = user_groups.group_id',
-                                   'permissions ON perm_id = permissions.id',
-                                   'users ON user_groups.group_id = users.id'],
-                               values={'user_id': user_info['id']})
-        for row in query.execute():
-            perms.setdefault(row['permission'], []).append(row['group'])
-        return perms
+        return get_user_perms(user_info['id'], inheritance_data=True)
 
     def getAllPerms(self):
         """Get a list of all permissions in the system.  Returns a list of maps.  Each
