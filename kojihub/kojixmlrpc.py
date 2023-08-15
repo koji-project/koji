@@ -503,6 +503,15 @@ def load_config(environ):
         ['RPMDefaultChecksums', 'string', 'md5 sha256'],
 
         ['SessionRenewalTimeout', 'integer', 1440],
+
+        # scheduler options
+        ['MaxJobs', 'integer', 15],
+        ['CapacityOvercommit', 'integer', 5],
+        ['ReadyTimeout', 'integer', 180],
+        ['AssignTimeout', 'integer', 300],
+        ['SoftRefusalTimeout', 'integer', 900],
+        ['HostTimeout', 'integer', 900],
+        ['RunInterval', 'integer', 60],
     ]
     opts = {}
     for name, dtype, default in cfgmap:

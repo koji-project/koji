@@ -191,13 +191,13 @@ class TaskScheduler(object):
         self.free_tasks = []
 
         # TODO these things need proper config
-        self.maxjobs = 15  # XXX
-        self.capacity_overcommit = 5
-        self.ready_timeout = 180
-        self.assign_timeout = 300
-        self.soft_refusal_timeout = 900
-        self.host_timeout = 900
-        self.run_interval = 60
+        self.maxjobs = context.opts['MaxJobs']
+        self.capacity_overcommit = context.opts['CapacityOvercommit']
+        self.ready_timeout = context.opts['ReadyTimeout']
+        self.assign_timeout = context.opts['AssignTimeout']
+        self.soft_refusal_timeout = context.opts['SoftRefusalTimeout']
+        self.host_timeout = context.opts['HostTimeout']
+        self.run_interval = context.opts['RunInterval']
 
     def run(self, force=False):
         if not db_lock('scheduler', wait=force):
