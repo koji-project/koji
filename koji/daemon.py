@@ -1430,7 +1430,7 @@ class TaskManager(object):
                 self.logger.info(
                     'Skipping task %s (%s) due to host check', task['id'], task['method'])
                 if task['state'] == koji.TASK_STATES['ASSIGNED']:
-                    self.session.host.refuseTask(task_id, soft=False, msg='failed host check')
+                    self.session.host.refuseTask(task['id'], soft=False, msg='failed host check')
                 return False
         data = self.session.host.openTask(task['id'])
         if data is None:
