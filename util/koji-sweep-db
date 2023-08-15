@@ -156,7 +156,7 @@ def clean_scheduler_logs(cursor, vacuum, test, age):
         rows = query.execute()
         print(f"Deleting {rows} scheduler log messages")
     if not test:
-        delete = DeleteProcessor(table="scheduler_log_messages", clauses=clauses)\
+        delete = DeleteProcessor(table="scheduler_log_messages", clauses=[clauses])
         delete.execute()
         if vacuum:
             cursor.execute("VACUUM ANALYZE scheduler_log_messages")
