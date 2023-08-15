@@ -7907,6 +7907,7 @@ def _format_ts(ts):
     else:
         return ''
 
+
 def anon_handle_scheduler_info(goptions, session, args):
     """[monitor] Show information about scheduling"""
     usage = "usage: %prog schedulerinfo [options]"
@@ -7988,7 +7989,6 @@ def handle_scheduler_logs(goptions, session, args):
     if len(args) != 0:
         parser.error("There are no arguments for this command")
 
-    kwargs = {}
     clauses = []
     if options.task:
         clauses.append(['task_id', options.task])
@@ -8003,7 +8003,8 @@ def handle_scheduler_logs(goptions, session, args):
     if options.to_ts:
         clauses.append(['msg_ts', '<', options.to_ts])
 
-    logs = session.scheduler.getLogMessages(clauses, fields=('task_id', 'host_id', 'host_name', 'msg_ts', 'msg'))
+    logs = session.scheduler.getLogMessages(clauses, fields=('task_id', 'host_id', 'host_name',
+                                                             'msg_ts', 'msg'))
     for log in logs:
         log['time'] = time.asctime(time.localtime(log['msg_ts']))
 

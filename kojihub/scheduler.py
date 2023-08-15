@@ -487,7 +487,7 @@ class TaskScheduler(object):
         cutoff_ts = time.time() - self.soft_refusal_timeout
         to_drop = []
         for row in get_task_refusals(fields=('id', 'task_id', 'host_id', 'soft', 'ts', 'state')):
-            if ((row['soft'] and row['ts'] < cutoff_ts ) or
+            if ((row['soft'] and row['ts'] < cutoff_ts) or
                     koji.TASK_STATES[row['state']] not in ('FREE', 'OPEN', 'ASSIGNED')):
                 to_drop.append(row['id'])
             else:
