@@ -1815,6 +1815,8 @@ def genMockConfig(name, arch, managed=False, repoid=None, tag_name=None, **opts)
     if opts.get('bootstrap_image'):
         config_opts['use_bootstrap_image'] = True
         config_opts['bootstrap_image'] = opts['bootstrap_image']
+    else:
+        config_opts['use_bootstrap_image'] = False
     if 'use_bootstrap' in opts:
         config_opts['use_bootstrap'] = bool(opts['use_bootstrap'])
     if 'module_setup_commands' in opts:
