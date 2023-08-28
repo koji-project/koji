@@ -28,11 +28,11 @@ class TestWatchLogs(utils.CliTestCase):
 (Specify the --help global option for a list of other help options)
 
 Options:
-  -h, --help  show this help message and exit
-  --log=LOG   Watch only a specific log
-  --mine      Watch logs for all your tasks, task_id arguments are forbidden
-              in this case.
-  --follow    Follow spawned child tasks
+  -h, --help    show this help message and exit
+  --log=LOG     Watch only a specific log
+  --mine        Watch logs for all your tasks, task_id arguments are forbidden
+                in this case.
+  -f, --follow  Follow spawned child tasks
 """ % self.progname)
 
     def test_watch_task_mine_and_task_id(self):
