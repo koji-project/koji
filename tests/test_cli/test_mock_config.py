@@ -98,6 +98,7 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
             'repoid': buildroot_info['repo_id'],
             'tag_name': buildroot_info['tag_name'],
             'tag_macros': {},
+            'use_bootstrap_image': False,
         })
         del opts['topurl']
         anon_handle_mock_config(self.options, self.session, arguments)
@@ -178,6 +179,7 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
             'repoid': 'latest',
             'tag_name': multi_broots[0]['tag_name'],
             'tag_macros': {},
+            'use_bootstrap_image': False,
         })
         del opts['topurl']
         arguments = self.common_args + ['--task', str(task_id),
@@ -391,6 +393,7 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
             'repoid': 101,
             'tag_name': target['build_tag_name'],
             'tag_macros': {},
+            'use_bootstrap_image': False,
         })
         del opts['topdir']
         self.session.getRepo.return_value = {'id': 101}

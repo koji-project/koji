@@ -9,6 +9,7 @@ config_opts['root'] = 'ROOTNAME'
 config_opts['rpmbuild_networking'] = False
 config_opts['rpmbuild_timeout'] = 86400
 config_opts['target_arch'] = 'x86_64'
+config_opts['use_bootstrap_image'] = False
 config_opts['use_host_resolv'] = False
 config_opts['yum.conf'] = '[main]\ncachedir=/var/cache/yum\ndebuglevel=1\nlogfile=/var/log/yum.log\nreposdir=/dev/null\nretries=20\nobsoletes=1\ngpgcheck=0\nassumeyes=1\nkeepcache=1\ninstall_weak_deps=0\nstrict=1\n\n# repos\n\n[build]\nname=build\nbaseurl=file:///mnt/koji/repos/TAG/99/x86_64\n'
 
