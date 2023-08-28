@@ -10069,6 +10069,8 @@ def importImageInternal(task_id, build_info, imgdata):
         else:
             data = get_rpm(an_rpm, strict=True)
         rpm_ids.append(data['id'])
+    # we sort to try to avoid deadlock issues
+    rpm_ids.sort()
 
     # associate those RPMs with the image
     insert = BulkInsertProcessor('archive_rpm_components')
