@@ -65,9 +65,27 @@ class SidetagOwnerTest(koji.policy.MatchTest):
     name = 'is_sidetag_owner'
 
     def run(self, data):
+        fields = self.str.split()[1:]
+        if len(fields) > 1:
+            raise koji.GenericError("Just one argument is allowed for this test.")
+        elif fields:
+            key = fields[0]
+            if key not in ('tag', 'fromtag', 'both'):
+                raise koji.GenericError("Policy test is_sidetag_owner has only "
+                                        f"/tag/fromtag/both options (got {key})")
+            if key == 'both':
+                fields = ['tag', 'fromtag']
+        else:
+            fields = ['tag']
+
         user = policy_get_user(data)
-        tag = get_tag(data['tag'])
-        return is_sidetag_owner(tag, user)
+        for field in fields:
+            if field not in data:
+                return False
+            tag = get_tag(data[field])
+            if not tag or not is_sidetag_owner(tag, user):
+                return False
+        return True
 
 
 # API calls
