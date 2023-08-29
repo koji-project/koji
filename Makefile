@@ -9,7 +9,7 @@ PYVER_MAJOR := $(shell $(PYTHON) -c 'import sys; print(".".join(sys.version.spli
 ifeq ($(PYVER_MAJOR),2)
 	SUBDIRS = builder koji cli plugins vm
 else
-	SUBDIRS = kojihub builder koji cli util www plugins vm docs
+	SUBDIRS = kojihub builder koji cli util www plugins vm schemas
 endif
 
 
