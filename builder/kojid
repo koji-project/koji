@@ -5570,7 +5570,7 @@ class NewRepoTask(BaseTaskHandler):
                 shutil.copytree(src_repodata, dst_repodata)
             repo_json = koji.load_json(f'{src_repo_path}/repo.json')
             repo_json['cloned_from_repo_id'] = src_repo_id
-            koji.dump_json(f'{dst_repodata}/repo.json', repo_json, indent=2)
+            koji.dump_json(f'{self.workdir}/{arch}/repo.json', repo_json, indent=2)
             uploadpath = self.getUploadDir()
             files = []
             for f in os.listdir(dst_repodata):
