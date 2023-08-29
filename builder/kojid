@@ -5568,7 +5568,7 @@ class NewRepoTask(BaseTaskHandler):
             if os.path.exists(src_repodata):
                 # symlink=True is not needed as they are no part of arch repodir
                 shutil.copytree(src_repodata, dst_repodata)
-            repo_json = koji.load_json(f'{src_repodata}/repo.json')
+            repo_json = koji.load_json(f'{src_repo_path}/repo.json')
             repo_json['cloned_from_repo_id'] = src_repo_id
             koji.dump_json(f'{dst_repodata}/repo.json', repo_json, indent=2)
             uploadpath = self.getUploadDir()
@@ -5588,6 +5588,9 @@ class NewRepoTask(BaseTaskHandler):
         # with_src, debuginfo, pkglist, blocklist, grouplist
         # We're ignoring maven support here. It is handled in repo_init which is called
         # always, so it doesn't affect efficiency of pre-cloning rpm repos.
+        if not src_repo_path:
+            self.logger.debug("Source repo wasn't found")
+            return False
         if not os.path.isdir(src_repo_path):
             self.logger.debug(f"Source repo doesn't exist {src_repo_path}")
             return False
@@ -5667,6 +5670,7 @@ class NewRepoTask(BaseTaskHandler):
         else:
             oldrepo_state = koji.REPO_READY
         oldrepo = self.session.getRepo(tinfo['id'], state=oldrepo_state)
+        oldrepo_path = None
         if oldrepo:
             oldrepo_path = koji.pathinfo.repo(oldrepo['id'], tinfo['name'])
             oldrepo['tag_id'] = tinfo['id']
@@ -5687,7 +5691,8 @@ class NewRepoTask(BaseTaskHandler):
         newrepo_path = koji.pathinfo.repo(repo_id, tinfo['name'])
         newrepo = {'tag_id': tinfo['id'], 'create_event': event_id}
         if self.options.copy_old_repodata:
-            possibly_clonable = self.check_repo(oldrepo_path, newrepo_path, oldrepo, newrepo, kwargs)
+            possibly_clonable = self.check_repo(oldrepo_path, newrepo_path,
+                                                oldrepo, newrepo, kwargs)
         else:
             possibly_clonable = False
         subtasks = {}
