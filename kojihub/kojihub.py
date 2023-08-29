@@ -5843,6 +5843,9 @@ def _set_build_volume(binfo, volinfo, strict=True):
     if os.path.exists(olddir):
         newdir = koji.pathinfo.build(binfo)
         dir_moves.append([olddir, newdir])
+    elif strict:
+        # Shouldn't ever happen
+        raise koji.GenericError(f"Build directory missing: {olddir}")
     for olddir, newdir in dir_moves:
         # Remove old symlink if copying to base volume
         if volinfo['name'] == 'DEFAULT' or volinfo['name'] is None:
