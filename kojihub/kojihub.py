@@ -15272,13 +15272,15 @@ class HostExports(object):
         return repo_init(tag, task_id=task_id, with_src=with_src, with_debuginfo=with_debuginfo,
                          event=event, with_separate_src=with_separate_src)
 
-    def repoDone(self, repo_id, data, expire=False):
+    def repoDone(self, repo_id, data, expire=False, repo_json_updates=None):
         """Finalize a repo
 
         repo_id: the id of the repo
         data: a dictionary of repo files in the form:
               { arch: [uploadpath, [file1, file2, ...]], ...}
         expire: if set to true, mark the repo expired immediately [*]
+        repo_json_updates: dict - if provided it will be shallow copied
+                                  into repo.json file
 
         Actions:
         * Move uploaded repo files into place
@@ -15300,6 +15302,10 @@ class HostExports(object):
             raise koji.GenericError("Repo %(id)s not in INIT state (got %(state)s)" % rinfo)
         repodir = koji.pathinfo.repo(repo_id, rinfo['tag_name'])
         workdir = koji.pathinfo.work()
+        if repo_json_updates:
+            repo_json = koji.load_json(f'{repodir}/repo.json')
+            repo_json.update(repo_json_updates)
+            koji.dump_json(f'{repodir}/repo.json', repo_json, indent=2)
         if not rinfo['dist']:
             for arch, (uploadpath, files) in data.items():
                 archdir = "%s/%s" % (repodir, koji.canonArch(arch))

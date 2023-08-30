@@ -5568,9 +5568,6 @@ class NewRepoTask(BaseTaskHandler):
             if os.path.exists(src_repodata):
                 # symlink=True is not needed as they are no part of arch repodir
                 shutil.copytree(src_repodata, dst_repodata)
-            repo_json = koji.load_json(f'{src_repo_path}/repo.json')
-            repo_json['cloned_from_repo_id'] = src_repo_id
-            koji.dump_json(f'{self.workdir}/{arch}/repo.json', repo_json, indent=2)
             uploadpath = self.getUploadDir()
             files = []
             for f in os.listdir(dst_repodata):
@@ -5697,11 +5694,13 @@ class NewRepoTask(BaseTaskHandler):
             possibly_clonable = False
         subtasks = {}
         data = {}
+        cloned_archs = []
         for arch in arches:
             if possibly_clonable and self.check_arch_repo(oldrepo_path, newrepo_path, arch):
                 result = self.copy_arch_repo(oldrepo['id'], oldrepo_path, repo_id, arch)
                 if result:
                     data[arch] = result
+                    cloned_archs.append(arch)
                     continue
             # if we can't copy old repo directly, trigger normal createrepo
             arglist = [repo_id, arch, oldrepo]
@@ -5720,6 +5719,11 @@ class NewRepoTask(BaseTaskHandler):
         kwargs = {}
         if event is not None:
             kwargs['expire'] = True
+        if cloned_archs:
+            kwargs['repo_json_updates'] = {
+                'cloned_from_repo_id': oldrepo['id'],
+                'cloned_archs': cloned_archs,
+            }
         self.session.host.repoDone(repo_id, data, **kwargs)
         return repo_id, event_id
 
