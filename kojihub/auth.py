@@ -772,7 +772,7 @@ def get_user_groups(user_id):
     are the group names"""
     t_group = koji.USERTYPES['GROUP']
     query = QueryProcessor(tables=['user_groups'], columns=['group_id', 'name'],
-                           clauses=['active = TRUE', 'users.usertype=%(t_group)i',
+                           clauses=['active IS TRUE', 'users.usertype=%(t_group)i',
                                     'user_id=%(user_id)i'],
                            joins=['users ON group_id = users.id'],
                            values={'t_group': t_group, 'user_id': user_id})
@@ -782,13 +782,61 @@ def get_user_groups(user_id):
     return groups
 
 
-def get_user_perms(user_id):
+def get_user_perms(user_id, with_groups=True, inheritance_data=False):
+    """
+    :param int user_id: User ID
+    :param bool with_groups: Add also permissions from all groups and their inheritance chain
+    :param bool inheritance_data: Return extended data about permissions sources
+    :returns list[str]: in case of inheritance_data=False
+    :returns dict[str, list[str]]: in case of inheritance_data=True - keys are permissions' names,
+                                   values list of groups which are in inheritance and provides
+                                   given permission.
+    """
+    if inheritance_data and not with_groups:
+        raise koji.ParameterError("inheritance option implies with_groups")
+
+    # individual permissions
+    perms = {}
     query = QueryProcessor(tables=['user_perms'], columns=['name'],
-                           clauses=['active = TRUE', 'user_id=%(user_id)s'],
+                           clauses=['active IS TRUE', 'user_id=%(user_id)s'],
                            joins=['permissions ON perm_id = permissions.id'],
                            values={'user_id': user_id})
-    result = query.execute()
-    return [r['name'] for r in result]
+    for perm in query.execute():
+        perms[perm['name']] = [None]
+
+    if with_groups:
+        columns = ['permissions.name']
+        aliases = ['name']
+        joins = [
+            'user_perms ON user_perms.user_id = user_groups.group_id',
+            'permissions ON perm_id = permissions.id',
+        ]
+        if inheritance_data:
+            # inheritance data adds one more join and as function
+            # can be called relatively often (e.g. in hub policy tests)
+            # it is a bit faster to ignore this join for "default" code path
+            columns.append('users.name')
+            aliases.append('group')
+            joins.append('users ON user_groups.group_id = users.id')
+        query = QueryProcessor(tables=['user_groups'],
+                               columns=columns,
+                               aliases=aliases,
+                               clauses=[
+                                   'user_groups.active IS TRUE',
+                                   'user_perms.active IS TRUE',
+                                   'user_groups.user_id=%(user_id)s'],
+                               joins=joins,
+                               values={'user_id': user_id})
+        for row in query.execute():
+            if inheritance_data:
+                perms.setdefault(row['name'], []).append(row['group'])
+            else:
+                # group name wouldn't be used in this case
+                perms.setdefault(row['name'], [])
+    if inheritance_data:
+        return perms
+    else:
+        return list(perms.keys())
 
 
 def get_user_data(user_id):

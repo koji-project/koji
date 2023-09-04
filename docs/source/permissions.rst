@@ -17,6 +17,8 @@ referenced in :doc:`hub policies <defining_hub_policies>`. Note, that you need
 to first understand the policy mechanism as most permissions are reflected in
 policy rules.
 
+Any user can be part of user group. User group permissions are inherited by the user.
+
 
 Permission management
 =====================

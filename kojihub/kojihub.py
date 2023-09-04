@@ -12670,7 +12670,7 @@ class RootExports(object):
                                      values={'perm_id': perm_id})
             update.set(description=description)
             update.execute()
-        if perm['name'] in get_user_perms(user_id):
+        if perm['name'] in get_user_perms(user_id, with_groups=False):
             raise koji.GenericError('user %s already has permission: %s' %
                                     (userinfo, perm['name']))
         insert = InsertProcessor('user_perms')
@@ -12684,7 +12684,7 @@ class RootExports(object):
         user_id = get_user(userinfo, strict=True)['id']
         perm = lookup_perm(permission, strict=True)
         perm_id = perm['id']
-        if perm['name'] not in get_user_perms(user_id):
+        if perm['name'] not in get_user_perms(user_id, with_groups=False):
             raise koji.GenericError('user %s does not have permission: %s' %
                                     (userinfo, perm['name']))
         update = UpdateProcessor('user_perms', values=locals(),
@@ -13384,13 +13384,23 @@ class RootExports(object):
         """Get a list of the permissions granted to the currently logged-in user."""
         return context.session.getPerms()
 
-    def getUserPerms(self, userID=None):
+    def getUserPerms(self, userID=None, with_groups=True):
         """Get a list of the permissions granted to the user with the given ID/name.
         Options:
         - userID: User ID or username. If no userID provided, current login user's
                   permissions will be listed."""
         user_info = get_user(userID, strict=True)
-        return get_user_perms(user_info['id'])
+        return get_user_perms(user_info['id'], with_groups=with_groups, inheritance_data=False)
+
+    def getUserPermsInheritance(self, userID):
+        """Get a dict of the permissions granted directly to user or inherited from groups
+        with the sources.
+
+        :param int userID: User id
+        :returns dict[str, list[str]]: list of permissions with source (None/group)
+        """
+        user_info = get_user(userID, strict=True)
+        return get_user_perms(user_info['id'], inheritance_data=True)
 
     def getAllPerms(self):
         """Get a list of all permissions in the system.  Returns a list of maps.  Each

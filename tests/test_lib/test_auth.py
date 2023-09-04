@@ -703,19 +703,52 @@ class TestAuthSession(unittest.TestCase):
         query = self.queries[0]
         self.assertEqual(query.tables, ['user_groups'])
         self.assertEqual(query.joins, ['users ON group_id = users.id'])
-        self.assertEqual(query.clauses, ['active = TRUE', 'user_id=%(user_id)i',
+        self.assertEqual(query.clauses, ['active IS TRUE', 'user_id=%(user_id)i',
                                          'users.usertype=%(t_group)i'])
         self.assertEqual(query.columns, ['group_id', 'name'])
 
     def test_get_user_perms(self):
         """auth.get_user_perms"""
         kojihub.auth.get_user_perms(1)
-        self.assertEqual(len(self.queries), 1)
+        self.assertEqual(len(self.queries), 2)
         query = self.queries[0]
         self.assertEqual(query.tables, ['user_perms'])
         self.assertEqual(query.joins, ['permissions ON perm_id = permissions.id'])
-        self.assertEqual(query.clauses, ['active = TRUE', 'user_id=%(user_id)s'])
+        self.assertEqual(query.clauses, ['active IS TRUE', 'user_id=%(user_id)s'])
         self.assertEqual(query.columns, ['name'])
+        query = self.queries[1]
+        self.assertEqual(query.tables, ['user_groups'])
+        self.assertEqual(query.joins, [
+            'user_perms ON user_perms.user_id = user_groups.group_id',
+            'permissions ON perm_id = permissions.id'])
+        self.assertEqual(sorted(query.clauses), sorted([
+            'user_groups.active IS TRUE',
+            'user_perms.active IS TRUE',
+            'user_groups.user_id=%(user_id)s']))
+        self.assertEqual(query.columns, ['permissions.name'])
+
+    def test_get_user_perms_inherited(self):
+        self.query_execute.side_effect = [
+            [{'id': 1, 'name': 'perm1'}, {'id': 2, 'name': 'perm2'}],
+            [{'name': 'perm3'}]
+        ]
+        result = kojihub.auth.get_user_perms(1)
+        self.assertEqual(set(result), {'perm1', 'perm2', 'perm3'})
+
+    def test_get_user_perms_inherited_data(self):
+        self.query_execute.side_effect = [
+            [{'id': 1, 'name': 'perm1'}, {'id': 2, 'name': 'perm2'}],
+            [{'name': 'perm3', 'group': 'group_a'},
+             {'name': 'perm4', 'group': 'group_b'},
+             {'name': 'perm4', 'group': 'group_c'}]
+        ]
+        result = kojihub.auth.get_user_perms(1, inheritance_data=True)
+        self.assertEqual(result, {
+            'perm1': [None],
+            'perm2': [None],
+            'perm3': ['group_a'],
+            'perm4': ['group_b', 'group_c'],
+        })
 
     def test_logout_logged_not_owner(self):
         s, _ = self.get_session()
