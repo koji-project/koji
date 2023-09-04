@@ -6213,9 +6213,12 @@ def handle_cancel(goptions, session, args):
         parser.error("You must specify at least one task id or build")
     activate_session(session, goptions)
     older_hub = False
-    hub_version = session.getKojiVersion()
-    v = tuple([int(x) for x in hub_version.split('.')])
-    if v < (1, 33, 0):
+    try:
+        hub_version = session.getKojiVersion()
+        v = tuple([int(x) for x in hub_version.split('.')])
+        if v < (1, 33, 0):
+            older_hub = True
+    except koji.GenericError:
         older_hub = True
     tlist = []
     blist = []
