@@ -697,9 +697,16 @@ class BuildRoot(object):
                   'size',
                   'buildtime')
         # Determine db path
-        dbpath = "%s/var/lib/rpm" % self.rootdir()
-        if os.path.exists(os.path.join(dbpath, '.migratedb')):
-            dbpath = "%s/usr/lib/sysimage/rpm" % self.rootdir()
+        dbpath = "%s/usr/lib/sysimage/rpm" % self.rootdir()
+        if not os.path.exists(dbpath):
+            # older variant (<rhel10, <fedora39)
+            dbpath = "%s/var/lib/rpm" % self.rootdir()
+        else:
+            # if new dbpath is used and mock is running older rpm on builder
+            # _db* symlinks could exist in migrated directory
+            for f in glob.glob('%s/__db*' % dbpath):
+                if not os.path.isfile(f):
+                    os.unlink(f)
         if not os.path.exists(dbpath):
             raise koji.GenericError("Can't get list of installed rpms")
         rpm.addMacro("_dbpath", dbpath)
