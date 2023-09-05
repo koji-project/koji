@@ -1723,7 +1723,7 @@ def hosts(environ, state='enabled', start=None, order='name', ready='all', chann
         channel = 'all'
     values['channel'] = channel
 
-    values['channels'] = server.listChannels()
+    values['channels'] = sorted(server.listChannels(), key=lambda x: x['name'])
 
     if hosts and 'update_ts' not in hosts[0]:
         # be nice with older hub
