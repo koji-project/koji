@@ -30,6 +30,36 @@ class TestClientSession(unittest.TestCase):
         my_rsession.close.assert_called()
         self.assertNotEqual(ksession.rsession, my_rsession)
 
+    @mock.patch('requests.Session')
+    def test_hub_version_old(self, rsession):
+        ksession = koji.ClientSession('http://koji.example.com/kojihub')
+        ksession.getKojiVersion = mock.MagicMock()
+        ksession.getKojiVersion.side_effect = koji.GenericError
+        self.assertEqual(ksession.hub_version, (1, 22, 0))
+        ksession.getKojiVersion.assert_called_once()
+
+    @mock.patch('requests.Session')
+    def test_hub_version_interim(self, rsession):
+        ksession = koji.ClientSession('http://koji.example.com/kojihub')
+        ksession.getKojiVersion = mock.MagicMock()
+        ksession.getKojiVersion.return_value = '1.23.1'
+        self.assertEqual(ksession.hub_version, (1, 23, 1))
+        ksession.getKojiVersion.assert_called_once()
+
+    def test_hub_version_str_interim(self):
+        ksession = koji.ClientSession('http://koji.example.com/kojihub')
+        ksession.getKojiVersion = mock.MagicMock()
+        ksession.getKojiVersion.return_value = '1.23.1'
+        self.assertEqual(ksession.hub_version_str, '1.23.1')
+
+    def test_hub_version_new(self):
+        ksession = koji.ClientSession('http://koji.example.com/kojihub')
+        ksession.getKojiVersion = mock.MagicMock()
+        # would be filled by random call
+        ksession._ClientSession__hub_version = '1.35.0'
+        self.assertEqual(ksession.hub_version, (1, 35, 0))
+        ksession.getKojiVersion.assert_not_called()
+
 
 class TestFastUpload(unittest.TestCase):
 
