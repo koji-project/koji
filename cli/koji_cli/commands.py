@@ -24,7 +24,7 @@ import six.moves.xmlrpc_client
 from six.moves import filter, map, range, zip
 
 import koji
-from koji.util import base64encode, md5_constructor, to_list
+from koji.util import base64encode, extract_build_task, md5_constructor, to_list
 from koji_cli.lib import (
     TimeOption,
     DatetimeJSONEncoder,
@@ -3600,8 +3600,9 @@ def anon_handle_buildinfo(goptions, session, args):
             error_hit = True
             continue
         task = None
-        if info['task_id']:
-            task = session.getTaskInfo(info['task_id'], request=True)
+        task_id = extract_build_task(info)
+        if task_id:
+            task = session.getTaskInfo(task_id, request=True)
         taglist = []
         for tag in session.listTags(build):
             taglist.append(tag['name'])

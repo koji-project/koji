@@ -970,3 +970,19 @@ def format_shell_cmd(cmd, text_width=80):
     if line:
         s.append(line)
     return ' \\\n'.join(s)
+
+
+def extract_build_task(binfo):
+    """
+    Helper for extracting task id from buildinfo. CGs and older OSBS approach
+    can put it into different places in binfo
+
+    :param dict binfo: buildinfo
+    :returns int: task id
+    """
+
+    task_id = binfo.get('task_id')
+    if task_id is None:
+        # legacy OSBS task id location
+        task_id = binfo.get('extra', {}).get('container_koji_task_id')
+    return task_id

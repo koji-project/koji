@@ -37,6 +37,7 @@ from koji.tasks import parse_task_params
 import kojiweb.util
 from koji.server import ServerRedirect
 from kojiweb.util import _genHTML, _getValidTokens, _initValues
+from koji.util import extract_build_task
 
 
 # Convenience definition of a commonly-used sort function
@@ -1295,8 +1296,9 @@ def buildinfo(environ, buildID):
             values[header] = koji.fixEncoding(result.get(header))
         values['changelog'] = server.getChangelogEntries(build['id'])
 
-    if build['task_id']:
-        task = server.getTaskInfo(build['task_id'], request=True)
+    task_id = extract_build_task(build)
+    if task_id:
+        task = server.getTaskInfo(task_id, request=True)
         # get the summary, description, and changelogs from the built srpm
         # if the build is not yet complete
         if build['state'] != koji.BUILD_STATES['COMPLETE']:
@@ -2510,8 +2512,9 @@ def recentbuilds(environ, user=None, tag=None, package=None):
 
     server.multicall = True
     for build in builds:
-        if build['task_id']:
-            server.getTaskInfo(build['task_id'], request=True)
+        task_id = extract_build_task(build)
+        if task_id:
+            server.getTaskInfo(task_id, request=True)
         else:
             server.echo(None)
     tasks = server.multiCall()

@@ -68,6 +68,7 @@ from koji.util import (
     base64encode,
     decode_bytes,
     dslice,
+    extract_build_task,
     joinpath,
     md5_constructor,
     move_and_symlink,
@@ -5968,7 +5969,7 @@ def apply_volume_policy(build, strict=False):
     volume we be retained.
     """
     policy_data = {'build': build}
-    task_id = build['task_id']
+    task_id = extract_build_task(build)
     if task_id:
         policy_data.update(policy_data_from_task(task_id))
     volume = check_volume_policy(policy_data, strict=strict)
@@ -9690,14 +9691,15 @@ class SourceTest(koji.policy.MatchTest):
             data[self.field] = data['source']
         elif 'build' in data:
             build = get_build(data['build'])
+            task_id = extract_build_task(build)
             if build['source'] is not None:
                 data[self.field] = build['source']
-            elif build['task_id'] is None:
+            elif task_id is None:
                 # no source to match against
                 return False
             else:
                 # crack open the build task
-                task = Task(build['task_id'])
+                task = Task(task_id)
                 info = task.getInfo(request=True)
                 method = info['method']
                 request = info['request']
@@ -9718,8 +9720,7 @@ class SourceTest(koji.policy.MatchTest):
                 elif 'url' in params:
                     data[self.field] = params['url']
                 else:
-                    print("Unable to determine source from task '{}'".format(
-                        build['task_id']))
+                    print("Unable to determine source from task '{}'".format(task_id))
                     return False
         else:
             return False
