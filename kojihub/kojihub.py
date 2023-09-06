@@ -6082,7 +6082,7 @@ def new_build(data, strict=False):
     old_binfo = get_build(data)
     if old_binfo:
         if strict:
-            raise koji.GenericError('Existing build found: %s' % data)
+            raise koji.GenericError(f'Existing build found: {old_binfo}')
         recycle_build(old_binfo, data)
         # Raises exception if there is a problem
         return old_binfo['id']
