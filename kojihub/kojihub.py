@@ -8093,6 +8093,9 @@ def query_history(tables=None, **kwargs):
     build_target: only relating to a build target
     group: only relating to a (comps) group
     cg: only relating to a content generator
+
+    - query
+    queryOpts: for final query (countOnly/order/offset/limit)
     """
     common_fields = {
         # fields:aliases common to all versioned tables
@@ -8164,6 +8167,10 @@ def query_history(tables=None, **kwargs):
             if table not in table_fields:
                 raise koji.GenericError("No such history table: %s" % table)
     ret = {}
+    if 'queryOpts' in kwargs:
+        queryOpts = kwargs.pop('queryOpts')
+    else:
+        queryOpts = None
     for table in tables:
         fields = {}
         for field in common_fields:
@@ -8349,7 +8356,8 @@ def query_history(tables=None, **kwargs):
             continue
         fields, aliases = zip(*fields.items())
         query = QueryProcessor(columns=fields, aliases=aliases, tables=[table],
-                               joins=joins, clauses=clauses, values=data)
+                               joins=joins, clauses=clauses, values=data,
+                               opts=queryOpts)
         ret[table] = query.iterate()
     return ret
 
