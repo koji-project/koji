@@ -499,7 +499,6 @@ rm -rf $RPM_BUILD_ROOT
 %config(noreplace) /etc/koji.conf
 %dir /etc/koji.conf.d
 %doc docs Authors COPYING LGPL
-%{_datadir}/koji/*.sql
 
 %if 0%{py2_support}
 %{_bindir}/*
@@ -517,6 +516,7 @@ rm -rf $RPM_BUILD_ROOT
 %{python3_sitelib}/%{name}
 %{python3_sitelib}/%{name}-%{version}.*-info
 %{python3_sitelib}/koji_cli
+%{_datadir}/koji/*.sql
 %endif
 
 %if 0%{py2_support}
