@@ -200,6 +200,7 @@ class BuildRoot(object):
         self.logger = logging.getLogger("koji.build.buildroot")
         self.session = session
         self.options = options
+        self.logs = set()
         if len(args) + len(kwargs) == 1:
             # manage an existing mock buildroot
             self._load(*args, **kwargs)
@@ -347,6 +348,8 @@ class BuildRoot(object):
         with koji._open_text_file(configfile, 'wt') as fo:
             fo.write(output)
 
+        self.single_log(configfile, name='mock_config.log')
+
     def get_repo_dir(self):
         pathinfo = koji.PathInfo(topdir='')
         return pathinfo.repo(self.repoid, self.tag_name)
@@ -469,7 +472,6 @@ class BuildRoot(object):
         pid = os.fork()
         if pid:
             resultdir = self.resultdir()
-            uploadpath = self.getUploadPath()
             logs = {}
 
             ts_offsets = {}
@@ -551,7 +553,7 @@ class BuildRoot(object):
                             with koji._open_text_file(fpath, 'at') as ts_file:
                                 ts_file.write('%.0f %i\n' % (time.time(), position))
                             ts_offsets[fname] = position
-                    incremental_upload(self.session, fname, fd, uploadpath, logger=self.logger)
+                    self.incremental_log(fname, fd)
 
             # clean up and return exit status of command
             for (fname, (fd, inode, size, fpath)) in logs.items():
@@ -560,7 +562,7 @@ class BuildRoot(object):
                 if fname.endswith('-ts.log'):
                     # finish upload of ts.log as they could've been missed in
                     # last iteration
-                    incremental_upload(self.session, fname, fd, uploadpath, logger=self.logger)
+                    self.incremental_log(fname, fd)
                 fd.close()
             return status[1]
 
@@ -591,6 +593,17 @@ class BuildRoot(object):
         """Get the path that should be used when uploading files to
         the hub."""
         return koji.pathinfo.taskrelpath(self.task_id)
+
+    def incremental_log(self, fname, fd):
+        ret = incremental_upload(self.session, fname, fd, self.getUploadPath(), logger=self.logger)
+        self.logs.add(fname)
+        return ret
+
+    def single_log(self, fname, name=None):
+        if name is None:
+            name = os.path.basename(fname)
+        self.session.uploadWrapper(fname, self.getUploadPath(), name=name)
+        self.logs.add(name)
 
     def init(self):
         rv = self.mock(['--init'])
@@ -1552,24 +1565,19 @@ class BuildArchTask(BaseBuildTask):
         resultdir = broot.resultdir()
         rpm_files = []
         srpm_files = []
-        log_files = []
+        log_files = list(broot.logs)
         unexpected = []
         for f in os.listdir(resultdir):
             # files here should have one of two extensions: .log and .rpm
-            if f[-4:] == ".log":
-                log_files.append(f)
+            if f[-4:] in (".log"):
+                pass
+                # should already be in log_files
             elif f[-8:] == ".src.rpm":
                 srpm_files.append(f)
             elif f[-4:] == ".rpm":
                 rpm_files.append(f)
             else:
                 unexpected.append(f)
-
-        if broot.workdir:
-            mocklog = 'mock_output.log'
-            f = os.path.join(broot.workdir, mocklog)
-            if os.path.exists(f):
-                log_files.append(os.path.basename(f))
 
         # for noarch rpms compute rpmdiff hash
         rpmdiff_hash = {self.id: {}}
@@ -1582,6 +1590,7 @@ class BuildArchTask(BaseBuildTask):
             log_name = 'noarch_rpmdiff.json'
             noarch_hash_path = os.path.join(broot.workdir, log_name)
             koji.dump_json(noarch_hash_path, rpmdiff_hash, indent=2, sort_keys=True)
+            self.uploadFile(noarch_hash_path)
             log_files.append(log_name)
 
         self.logger.debug("rpms: %r" % rpm_files)
@@ -1615,8 +1624,6 @@ class BuildArchTask(BaseBuildTask):
         else:
             ret['srpms'] = []
         ret['logs'] = ["%s/%s" % (uploadpath, f) for f in log_files]
-        if rpmdiff_hash[self.id]:
-            self.uploadFile(noarch_hash_path)
 
         ret['brootid'] = broot.id
 
@@ -1950,16 +1957,8 @@ class BuildMavenTask(BaseBuildTask):
                 self.uploadFile(os.path.join(outputdir, relpath, filename),
                                 relPath=relpath)
 
-        # Should only find log files in the mock result directory.
-        # Don't upload these log files, they've already been streamed
-        # the hub.
-        for filename in os.listdir(buildroot.resultdir()):
-            root, ext = os.path.splitext(filename)
-            if ext == '.log':
-                filepath = os.path.join(buildroot.resultdir(), filename)
-                if os.path.isfile(filepath) and os.stat(filepath).st_size > 0:
-                    # only files with content get uploaded to the hub
-                    logs.append(filename)
+        # Also include the logs already upload by BuildRoot
+        logs.extend(broot.logs)
 
         buildroot.expire()
 
@@ -2276,7 +2275,7 @@ class WrapperRPMTask(BaseBuildTask):
         srpm = None
         rpms = []
         specfile_name = os.path.basename(specfile)
-        logs = ['checkout.log', specfile_name]
+        logs = ['checkout.log', specfile_name] + list(buildroot.logs)
 
         for filename in os.listdir(resultdir):
             if filename.endswith('.src.rpm'):
@@ -2290,7 +2289,8 @@ class WrapperRPMTask(BaseBuildTask):
             elif filename.endswith('.rpm'):
                 rpms.append(filename)
             elif filename.endswith('.log'):
-                logs.append(filename)
+                pass
+                # already included in buildroot.logs
             else:
                 if self.new_build_id:
                     self.session.host.failBuild(self.id, self.new_build_id)
@@ -5131,14 +5131,13 @@ class RebuildSRPM(BaseBuildTask):
         self.uploadFile(srpm)
 
         brootid = broot.id
-        log_files = glob.glob('%s/*.log' % broot.resultdir())
+        log_files = list(broot.logs)
 
         broot.expire()
 
         return {
             'srpm': "%s/%s" % (uploadpath, srpm_name),
-            'logs': ["%s/%s" % (uploadpath, os.path.basename(f))
-                     for f in log_files],
+            'logs': ["%s/%s" % (uploadpath, f) for f in log_files],
             'brootid': brootid,
             'source': {
                 'source': os.path.basename(srpm),
@@ -5301,13 +5300,12 @@ class BuildSRPMFromSCMTask(BaseBuildTask):
         self.uploadFile(srpm)
 
         brootid = broot.id
-        log_files = glob.glob('%s/*.log' % broot.resultdir())
+        log_files = list(broot.logs)
 
         broot.expire()
 
         return {'srpm': "%s/%s" % (uploadpath, srpm_name),
-                'logs': ["%s/%s" % (uploadpath, os.path.basename(f))
-                         for f in log_files],
+                'logs': ["%s/%s" % (uploadpath, f) for f in log_files],
                 'brootid': brootid,
                 'source': source,
                 }
