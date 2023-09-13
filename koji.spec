@@ -428,7 +428,7 @@ make DESTDIR=$RPM_BUILD_ROOT KOJI_MINIMAL=1 PYTHON=%{__python3} install
 popd
 %endif
 %if 0%{py3_support} > 1
-for D in kojihub builder plugins util www vm ; do
+for D in kojihub builder plugins util www vm schemas ; do
     pushd $D
     make DESTDIR=$RPM_BUILD_ROOT PYTHON=%{__python3} install
     popd
@@ -516,6 +516,7 @@ rm -rf $RPM_BUILD_ROOT
 %{python3_sitelib}/%{name}
 %{python3_sitelib}/%{name}-%{version}.*-info
 %{python3_sitelib}/koji_cli
+%{_datadir}/koji/*.sql
 %endif
 
 %if 0%{py2_support}
