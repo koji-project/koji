@@ -10433,8 +10433,10 @@ class RootExports(object):
             ('master', 'master'),
             ('authtype', 'authtype'),
             ('callnum', 'callnum'),
-            ("date_part('epoch', start_time)", 'start_time'),
+            ('start_time', 'start_time'),
+            ("date_part('epoch', start_time)", 'start_ts'),
             ('update_time', 'update_time'),
+            ("date_part('epoch', update_time)", 'update_ts'),
             ('exclusive', 'exclusive'),
         ]
         columns, aliases = zip(*fields)
