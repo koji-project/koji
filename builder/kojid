@@ -5595,7 +5595,6 @@ class NewRepoTask(BaseTaskHandler):
             repo_json = koji.load_json(f'{src_repo_path}/repo.json')
             for key in ('with_debuginfo', 'with_src', 'with_separate_src'):
                 if repo_json.get(key, False) != opts.get(key, False):
-                    print(key, repo_json.get(key), opts.get(key))
                     return False
         except IOError:
             self.logger.debug("Can't open repo.json for repo {repo_info['id']}")
