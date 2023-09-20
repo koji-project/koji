@@ -6539,7 +6539,7 @@ class CG_Importer(object):
             logsdir = joinpath(koji.pathinfo.build(self.buildinfo), 'data/logs/')
             koji.ensuredir(logsdir)
             path = joinpath(logsdir, 'cg_import.log')
-            self.cg_log('CG import was SUCCESSFUL.')
+            self.log('CG import was SUCCESSFUL.')
             safer_move(self._cg_log_path, path)
 
     def get_metadata(self, metadata, directory):
@@ -6615,7 +6615,7 @@ class CG_Importer(object):
         path = koji.pathinfo.build(self.buildinfo)
         if os.path.lexists(path):
             if delete:
-                logger.warning("Deleting build directory: %s", path)
+                self.log_warning("Deleting build directory: %s", path)
                 koji.util.rmtree(path)
             else:
                 raise koji.GenericError("Destination directory already exists: %s" % path)
@@ -6877,9 +6877,9 @@ class CG_Importer(object):
 
     def log(self, msg, level=logging.WARNING):
         if self._cg_log_file is None:
-            log_dir = os.path.join(koji.pathinfo.work(), 'logs')
+            log_dir = joinpath(koji.pathinfo.work(), 'logs')
             koji.ensuredir(log_dir)
-            self._cg_log_path = os.path.join(log_dir, 'cg_import.log')
+            self._cg_log_path = joinpath(log_dir, 'cg_import.log')
             self._cg_log_file = open(self._cg_log_path, mode='wt')
         logger.log(level=level, msg=msg)
         self._cg_log_file.write(msg + '\n')
