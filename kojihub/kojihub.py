@@ -5835,24 +5835,21 @@ def _set_build_volume(binfo, volinfo, strict=True):
             raise koji.GenericError("Unexpected cross-volume content: %s" % checkdir)
 
     # First copy the build dir(s)
-    dir_moves = []
     old_binfo = binfo.copy()
     binfo['volume_id'] = volinfo['id']
     binfo['volume_name'] = volinfo['name']
     olddir = koji.pathinfo.build(old_binfo)
-    if os.path.exists(olddir):
-        newdir = koji.pathinfo.build(binfo)
-        dir_moves.append([olddir, newdir])
-    elif strict:
-        # Shouldn't ever happen
+    newdir = koji.pathinfo.build(binfo)
+    if not os.path.exists(olddir):
         raise koji.GenericError(f"Build directory missing: {olddir}")
-    for olddir, newdir in dir_moves:
-        # Remove old symlink if copying to base volume
-        if volinfo['name'] == 'DEFAULT' or volinfo['name'] is None:
-            if os.path.islink(newdir):
-                os.unlink(newdir)
-        koji.ensuredir(os.path.dirname(newdir))
-        shutil.copytree(olddir, newdir, symlinks=True)
+    if not os.path.isdir(olddir):
+        raise koji.GenericError(f"Not a directory: {olddir}")
+    # Remove old symlink if copying to base volume
+    if volinfo['name'] == 'DEFAULT' or volinfo['name'] is None:
+        if os.path.islink(newdir):
+            os.unlink(newdir)
+    koji.ensuredir(os.path.dirname(newdir))
+    shutil.copytree(olddir, newdir, symlinks=True)
 
     # Second, update the db
     koji.plugin.run_callbacks('preBuildStateChange', attribute='volume_id',
@@ -5864,8 +5861,7 @@ def _set_build_volume(binfo, volinfo, strict=True):
         set_tag_update(tag['id'], 'VOLUME_CHANGE')
 
     # Third, delete the old content
-    for olddir, newdir in dir_moves:
-        koji.util.rmtree(olddir)
+    koji.util.rmtree(olddir)
 
     # Fourth, maintain a symlink if appropriate
     if volinfo['name'] and volinfo['name'] != 'DEFAULT':
