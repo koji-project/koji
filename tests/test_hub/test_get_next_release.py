@@ -22,7 +22,8 @@ class TestGetNextRelease(DBQueryTestCase):
         self.assertEqual(query.tables, ['build'])
         self.assertEqual(query.joins, ['package ON build.pkg_id = package.id'])
         self.assertEqual(query.clauses,
-                         ['name = %(name)s', 'state in %(states)s', 'version = %(version)s'])
+                         ['NOT draft', 'name = %(name)s', 'state in %(states)s',
+                          'version = %(version)s'])
         self.assertEqual(query.values, {'name': self.binfo['name'],
                                         'version': self.binfo['version'],
                                         'states': (1, 2, 0)

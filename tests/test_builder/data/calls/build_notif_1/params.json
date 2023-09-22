@@ -22,7 +22,8 @@
         "completion_ts": 1424271457.10787, 
         "id": 612609, 
         "volume_name": "DEFAULT", 
-        "nvr": "sisu-0.3.0-0.2.M1.fc23"
+        "nvr": "sisu-0.3.0-0.2.M1.fc23",
+        "draft": false
     }, 
     "target": {
         "dest_tag": 292, 

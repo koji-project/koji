@@ -66,6 +66,7 @@ INSERT INTO permissions (name, description) VALUES ('tag', 'Manage packages in t
 INSERT INTO permissions (name, description) VALUES ('target', 'Add, edit, and remove targets.');
 INSERT INTO permissions (name, description) VALUES ('win-admin', 'The default hub policy rule for "vm" requires this permission to trigger Windows builds.');
 INSERT INTO permissions (name, description) VALUES ('win-import', 'Import win archives.');
+INSERT INTO permissions (name, description) VALUES ('draft-promoter', 'The permission required in the default "draft_promotion" hub policy rule to promote draft build.');
 
 CREATE TABLE user_perms (
 	user_id INTEGER NOT NULL REFERENCES users(id),
@@ -279,11 +280,12 @@ CREATE TABLE content_generator (
 --   null, or may point to a deleted task.
 CREATE TABLE build (
 	id SERIAL NOT NULL PRIMARY KEY,
-        volume_id INTEGER NOT NULL REFERENCES volume (id),
+	volume_id INTEGER NOT NULL REFERENCES volume (id),
 	pkg_id INTEGER NOT NULL REFERENCES package (id) DEFERRABLE,
 	version TEXT NOT NULL,
 	release TEXT NOT NULL,
 	epoch INTEGER,
+	draft BOOLEAN NOT NULL DEFAULT 'false',
 	source TEXT,
 	create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
 	start_time TIMESTAMPTZ,
@@ -294,8 +296,11 @@ CREATE TABLE build (
 	cg_id INTEGER REFERENCES content_generator(id),
 	extra TEXT,
 	CONSTRAINT build_pkg_ver_rel UNIQUE (pkg_id, version, release),
+	CONSTRAINT draft_for_rpminfo UNIQUE (id, draft),
 	CONSTRAINT completion_sane CHECK ((state = 0 AND completion_time IS NULL) OR
-                                          (state != 0 AND completion_time IS NOT NULL))
+                                      (state <> 0 AND completion_time IS NOT NULL)),
+	CONSTRAINT draft_release_sane CHECK ((draft AND release ~ ('^.*#draft_' || id::TEXT || '$')) OR
+                                         NOT draft)
 ) WITHOUT OIDS;
 
 CREATE INDEX build_by_pkg_id ON build (pkg_id);
@@ -721,22 +726,28 @@ CREATE TABLE group_package_listing (
 -- we don't store filename b/c filename should be N-V-R.A.rpm
 CREATE TABLE rpminfo (
 	id SERIAL NOT NULL PRIMARY KEY,
-	build_id INTEGER REFERENCES build (id),
+	build_id INTEGER,
 	buildroot_id INTEGER REFERENCES buildroot (id),
 	name TEXT NOT NULL,
 	version TEXT NOT NULL,
 	release TEXT NOT NULL,
 	epoch INTEGER,
 	arch VARCHAR(16) NOT NULL,
+	draft BOOLEAN,
 	external_repo_id INTEGER NOT NULL REFERENCES external_repo(id),
 	payloadhash TEXT NOT NULL,
 	size BIGINT NOT NULL,
 	buildtime BIGINT NOT NULL,
 	metadata_only BOOLEAN NOT NULL DEFAULT FALSE,
 	extra TEXT,
-	CONSTRAINT rpminfo_unique_nvra UNIQUE (name,version,release,arch,external_repo_id)
+	FOREIGN KEY (build_id, draft) REFERENCES build (id, draft) ON UPDATE CASCADE,
+	CONSTRAINT build_id_draft_external_repo_id_sane CHECK (
+    (draft IS NULL AND build_id IS NULL AND external_repo_id <> 0)
+    OR (draft IS NOT NULL AND build_id IS NOT NULL AND external_repo_id = 0))
 ) WITHOUT OIDS;
 CREATE INDEX rpminfo_build ON rpminfo(build_id);
+CREATE UNIQUE INDEX rpminfo_unique_nvra_not_draft ON rpminfo(name,version,release,arch,external_repo_id)
+  WHERE draft IS NOT TRUE;
 -- index for default search method for rpms, PG11+ can benefit from new include method
 DO $$
    DECLARE version integer;

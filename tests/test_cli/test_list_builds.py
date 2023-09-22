@@ -609,6 +609,8 @@ Options:
                         pattern)
   --owner=OWNER         List builds built by this owner
   --volume=VOLUME       List builds by volume ID
+  --draft-only          Only list draft builds
+  --no-draft            Only list regular builds
   -k FIELD, --sort-key=FIELD
                         Sort the list by the named field. Allowed sort keys:
                         build_id, owner_name, state

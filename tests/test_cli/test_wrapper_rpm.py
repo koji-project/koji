@@ -237,6 +237,7 @@ Options:
   --wait                Wait on build, even if running in the background
   --nowait              Don't wait on build
   --background          Run the build at a lower priority
+  --draft               Build draft build instead
 """ % self.progname)
 
 

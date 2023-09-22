@@ -29,12 +29,13 @@ class TestReadTaggedRPMS(unittest.TestCase):
         self.readTaggedBuilds = mock.patch('kojihub.kojihub.readTaggedBuilds').start()
         self.tag_name = 'test-tag'
         self.columns = ['rpminfo.name', 'rpminfo.version', 'rpminfo.release', 'rpminfo.arch',
-                        'rpminfo.id', 'rpminfo.epoch', 'rpminfo.payloadhash', 'rpminfo.size',
-                        'rpminfo.buildtime', 'rpminfo.buildroot_id', 'rpminfo.build_id',
-                        'rpminfo.metadata_only']
+                        'rpminfo.id', 'rpminfo.epoch', 'rpminfo.draft', 'rpminfo.payloadhash',
+                        'rpminfo.size', 'rpminfo.buildtime', 'rpminfo.buildroot_id',
+                        'rpminfo.build_id', 'rpminfo.metadata_only']
         self.joins = ['tag_listing ON rpminfo.build_id = tag_listing.build_id']
-        self.aliases = ['name', 'version', 'release', 'arch', 'id', 'epoch', 'payloadhash',
-                        'size', 'buildtime', 'buildroot_id', 'build_id', 'metadata_only']
+        self.aliases = ['name', 'version', 'release', 'arch', 'id', 'epoch', 'draft',
+                        'payloadhash', 'size', 'buildtime', 'buildroot_id', 'build_id',
+                        'metadata_only']
         self.clauses = ['(tag_listing.active = TRUE)',
                         'tag_id=%(tagid)s']
         self.tables = ['rpminfo']
@@ -101,3 +102,20 @@ class TestReadTaggedRPMS(unittest.TestCase):
         self.assertEqual(set(query.aliases), set(aliases))
         self.assertEqual(set(query.clauses), set(clauses))
         self.assertEqual(query.values, values)
+
+    def test_get_tagged_rpms_draft(self):
+        self.readTaggedBuilds.return_value = self.build_list
+        kojihub.readTaggedRPMS(self.tag_name, draft=2, extra=False)
+
+        self.assertEqual(len(self.queries), 1)
+        query = self.queries[0]
+
+        clauses = copy.deepcopy(self.clauses)
+        clauses.extend(['rpminfo.draft IS NOT TRUE'])
+
+        self.assertEqual(query.tables, self.tables)
+        self.assertEqual(set(query.columns), set(self.columns))
+        self.assertEqual(set(query.joins), set(self.joins))
+        self.assertEqual(set(query.aliases), set(self.aliases))
+        self.assertEqual(set(query.clauses), set(clauses))
+        self.assertEqual(query.values, {})

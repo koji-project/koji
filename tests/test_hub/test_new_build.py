@@ -2,6 +2,7 @@ import mock
 import unittest
 
 import koji
+from koji.util import dslice
 import kojihub
 
 IP = kojihub.InsertProcessor
@@ -23,6 +24,7 @@ class TestNewBuild(unittest.TestCase):
         self.get_build = mock.patch('kojihub.kojihub.get_build').start()
         self.recycle_build = mock.patch('kojihub.kojihub.recycle_build').start()
         self.context = mock.patch('kojihub.kojihub.context').start()
+        self.find_build_id = mock.patch('kojihub.kojihub.find_build_id').start()
 
     def tearDown(self):
         mock.patch.stopall()
@@ -64,6 +66,7 @@ class TestNewBuild(unittest.TestCase):
             'start_time': 'NOW',
             'state': 1,
             'task_id': None,
+            'draft': False,
             'version': 'test_version',
             'volume_id': 0
         })
@@ -156,3 +159,48 @@ class TestNewBuild(unittest.TestCase):
 
         self.assertEqual(len(self.inserts), 0)
         self.assertEqual("No such build extra data: %(extra)r" % data, str(cm.exception))
+
+    def test_draft(self):
+        data = {
+            'owner': 123456,
+            'name': 'test_name',
+            'version': 'test_version',
+            'release': 'test_release',
+            'epoch': 'test_epoch',
+            'draft': True
+        }
+        insert_data = {
+            'completion_time': 'NOW',
+            'epoch': 'test_epoch',
+            'extra': '{"draft": {"target_release": "test_release", "promoted": false}}',
+            'id': 108,
+            'owner': 123,
+            'pkg_id': 54,
+            'release': 'test_release#draft_108',
+            'source': None,
+            'start_time': 'NOW',
+            'state': 1,
+            'task_id': None,
+            'draft': True,
+            'version': 'test_version',
+            'volume_id': 0
+        }
+        self.nextval.return_value = 108
+        self.new_package.return_value = 54
+        self.get_user.return_value = {'id': 123}
+        self.find_build_id.return_value = None
+
+        kojihub.new_build(data)
+
+        self.assertEqual(len(self.inserts), 1)
+        insert = self.inserts[0]
+        self.assertEqual(insert.table, 'build')
+        self.assertEqual(insert.data, insert_data)
+        self.get_build.assert_called_once_with(108, strict=True)
+        self.assertEqual(self.get_build.call_count, 1)
+        self.find_build_id.assert_called_once_with(
+            {
+                'name': 'test_name',
+                'version': 'test_version',
+                'release': 'test_release#draft_108'
+            })

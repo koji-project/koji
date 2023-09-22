@@ -320,6 +320,22 @@ def prep_repo_done(cbtype, *args, **kws):
     queue_msg(address, props, kws)
 
 
+@convert_datetime
+@callback('postBuildPromote')
+def prep_build_promote(cbtype, *args, **kws):
+    kws['build'] = _strip_extra(kws['build'])
+    address = 'build.promote'
+    props = {'type': cbtype[4:],
+             'build_id': kws['build']['id'],
+             'name': kws['build']['name'],
+             'version': kws['build']['version'],
+             'release': kws['build']['release'],
+             'draft_release': kws['draft_release'],
+             'target_release': kws['target_release'],
+             'user': kws['user']['name']}
+    queue_msg(address, props, kws)
+
+
 def _send_msgs(urls, msgs, CONFIG):
     random.shuffle(urls)
     for url in urls:

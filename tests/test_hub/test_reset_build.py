@@ -44,6 +44,9 @@ class TestResetBuild(unittest.TestCase):
         self.get_build = mock.patch('kojihub.kojihub.get_build').start()
         self.context = mock.patch('kojihub.kojihub.context').start()
         self.context.session.assertPerm = mock.MagicMock()
+        # don't remove anything unexpected
+        self.rmtree = mock.patch('koji.util.rmtree').start()
+        self.unlink = mock.patch('os.unlink').start()
         self.build_id = 3
         self.binfo = {'id': 3, 'state': koji.BUILD_STATES['COMPLETE'], 'name': 'test_nvr',
                       'nvr': 'test_nvr-3.3-20.el8', 'version': '3.3', 'release': '20',

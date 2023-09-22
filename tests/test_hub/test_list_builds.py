@@ -17,6 +17,32 @@ class TestListBuilds(unittest.TestCase):
         return query
 
     def setUp(self):
+        
+        # defaults
+        self.tables= ['build']
+        self.columns = [
+            'build.id', 'build.completion_time',
+            "date_part('epoch', build.completion_time)",
+            'events.id', 'events.time',
+            "date_part('epoch', events.time)",
+            'build.draft',
+            'build.epoch',
+            'build.extra', 'package.name',
+            "package.name || '-' || build.version || '-' || "
+            "build.release", 'users.id', 'users.name', 'package.id',
+            'package.name', 'build.release', 'build.source',
+            'build.start_time', "date_part('epoch', build.start_time)",
+            'build.state', 'build.task_id', 'build.version',
+            'volume.id', 'volume.name'
+        ]
+        self.clauses = ['package.id = %(packageID)i']
+        self.joins = [
+            'LEFT JOIN events ON build.create_event = events.id',
+            'LEFT JOIN package ON build.pkg_id = package.id',
+            'LEFT JOIN volume ON build.volume_id = volume.id',
+            'LEFT JOIN users ON build.owner = users.id'
+        ]
+        
         self.maxDiff = None
         self.exports = kojihub.RootExports()
         self.query_executeOne = mock.MagicMock()
@@ -41,7 +67,8 @@ class TestListBuilds(unittest.TestCase):
                             'task_id': 879,
                             'version': '11',
                             'volume_id': 0,
-                            'volume_name': 'DEFAULT'}]
+                            'volume_name': 'DEFAULT',
+                            'draft': False},]
 
     def test_wrong_package(self):
         package = 'test-package'
@@ -58,26 +85,27 @@ class TestListBuilds(unittest.TestCase):
         self.assertEqual(len(self.queries), 1)
         args, kwargs = self.QueryProcessor.call_args
         qp = QP(**kwargs)
-        self.assertEqual(qp.tables, ['build'])
-        self.assertEqual(qp.columns, ['build.id', 'build.completion_time',
-                                      "date_part('epoch', build.completion_time)",
-                                      'events.id', 'events.time',
-                                      "date_part('epoch', events.time)", 'build.epoch',
-                                      'build.extra', 'package.name',
-                                      "package.name || '-' || build.version || '-' || "
-                                      "build.release", 'users.id', 'users.name', 'package.id',
-                                      'package.name', 'build.release', 'build.source',
-                                      'build.start_time', "date_part('epoch', build.start_time)",
-                                      'build.state', 'build.task_id', 'build.version',
-                                      'volume.id', 'volume.name'])
-        self.assertEqual(qp.clauses, ['package.id = %(packageID)i'])
-        self.assertEqual(qp.joins, ['LEFT JOIN events ON build.create_event = events.id',
-                                    'LEFT JOIN package ON build.pkg_id = package.id',
-                                    'LEFT JOIN volume ON build.volume_id = volume.id',
-                                    'LEFT JOIN users ON build.owner = users.id'])
+        self.assertEqual(qp.tables, self.tables)
+        self.assertEqual(qp.columns, self.columns)
+        self.assertEqual(qp.clauses, self.clauses)
+        self.assertEqual(qp.joins, self.joins)
 
     def test_wrong_user(self):
         user = 'test-user'
         self.get_user.return_value = None
         rv = self.exports.listBuilds(userID=user)
         self.assertEqual(rv, [])
+    
+    def test_draft(self):
+        package = 'test-package'
+        package_id = 1
+        self.get_package_id.return_value = package_id
+        self.query_executeOne.return_value = None
+        self.exports.listBuilds(packageID=package, draft=1)
+        self.assertEqual(len(self.queries), 1)
+        args, kwargs = self.QueryProcessor.call_args
+        qp = QP(**kwargs)
+        self.assertEqual(qp.tables, self.tables)
+        self.assertEqual(qp.columns, self.columns)
+        self.assertEqual(qp.clauses, ['draft IS TRUE'] + self.clauses)
+        self.assertEqual(qp.joins, self.joins)

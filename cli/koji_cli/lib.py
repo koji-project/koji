@@ -925,3 +925,10 @@ class DatetimeJSONEncoder(json.JSONEncoder):
         if isinstance(o, xmlrpc_client.DateTime):
             return str(o)
         return json.JSONEncoder.default(self, o)
+
+
+def yesno(x):
+    if x:
+        return 'Y'
+    else:
+        return 'N'

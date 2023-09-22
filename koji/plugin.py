@@ -60,6 +60,8 @@ callbacks = {
     'postRepoInit': [],
     'preRepoDone': [],
     'postRepoDone': [],
+    'preBuildPromote': [],
+    'postBuildPromote': [],
     'preCommit': [],
     'postCommit': [],
     # builder

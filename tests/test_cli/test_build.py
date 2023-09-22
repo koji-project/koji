@@ -176,6 +176,7 @@ Options:
                         Provide a JSON string of custom metadata to be
                         deserialized and stored under the build's
                         extra.custom_user_metadata field
+  --draft               Build draft build instead
 """ % (self.progname, self.progname))
 
         # Finally, assert that things were called as we expected.

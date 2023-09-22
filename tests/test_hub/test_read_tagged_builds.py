@@ -31,7 +31,7 @@ class TestReadTaggedBuilds(unittest.TestCase):
         self.tag_name = 'test-tag'
         self.columns = ['tag.id', 'tag.name', 'build.id', 'build.version', 'build.release',
                         'build.epoch', 'build.state', 'build.completion_time', 'build.start_time',
-                        'build.task_id', 'users.id', 'users.name', 'events.id', 'events.time',
+                        'build.task_id', 'build.draft', 'users.id', 'users.name', 'events.id', 'events.time',
                         'volume.id', 'volume.name', 'package.id', 'package.name',
                         'package.name || \'-\' || build.version || \'-\' || build.release',
                         'tag_listing.create_event']
@@ -40,6 +40,7 @@ class TestReadTaggedBuilds(unittest.TestCase):
                        ('build.release', 'release'), ('build.epoch', 'epoch'),
                        ('build.state', 'state'), ('build.completion_time', 'completion_time'),
                        ('build.start_time', 'start_time'), ('build.task_id', 'task_id'),
+                       ('build.draft', 'draft'),
                        ('users.id', 'owner_id'), ('users.name', 'owner_name'),
                        ('events.id', 'creation_event_id'), ('events.time', 'creation_time'),
                        ('volume.id', 'volume_id'), ('volume.name', 'volume_name'),
@@ -54,7 +55,7 @@ class TestReadTaggedBuilds(unittest.TestCase):
                       'volume ON volume.id = build.volume_id',
                       'users ON users.id = build.owner', ]
         self.aliases = ['tag_id', 'tag_name', 'id', 'build_id', 'version', 'release', 'epoch',
-                        'state', 'completion_time', 'start_time', 'task_id', 'owner_id',
+                        'state', 'completion_time', 'start_time', 'task_id', 'draft', 'owner_id',
                         'owner_name', 'creation_event_id', 'creation_time', 'volume_id',
                         'volume_name', 'package_id', 'package_name', 'name', 'nvr', 'create_event']
         self.clauses = ['(tag_listing.active = TRUE)',
@@ -83,7 +84,7 @@ class TestReadTaggedBuilds(unittest.TestCase):
                   'package': None, 'packages': self.package_list,
                   'queryOpts': {'order': '-create_event'}, 'st_complete': 1, 'tables': self.tables,
                   'tag': self.tag_name, 'tagid': self.tag_name, 'taglist': [self.tag_name],
-                  'type': None
+                  'type': None, 'draft': 3
                   }
         self.assertEqual(query.tables, self.tables)
         self.assertEqual(query.joins, self.joins)
@@ -119,7 +120,7 @@ class TestReadTaggedBuilds(unittest.TestCase):
                   'package': self.pkg_name, 'packages': self.package_list,
                   'queryOpts': {'order': '-create_event'}, 'st_complete': 1, 'tables': self.tables,
                   'tag': self.tag_name, 'tagid': self.tag_name, 'taglist': [self.tag_name],
-                  'type': 'maven'}
+                  'type': 'maven', 'draft': 3}
         self.assertEqual(query.tables, self.tables)
         self.assertEqual(query.joins, joins)
         self.assertEqual(set(query.columns), set(columns))
@@ -148,7 +149,7 @@ class TestReadTaggedBuilds(unittest.TestCase):
                   'package': None, 'packages': self.package_list,
                   'queryOpts': {'order': '-create_event'}, 'st_complete': 1, 'tables': self.tables,
                   'tag': self.tag_name, 'tagid': self.tag_name, 'taglist': [self.tag_name],
-                  'type': 'win'}
+                  'type': 'win', 'draft': 3}
         self.assertEqual(query.tables, self.tables)
         self.assertEqual(query.joins, joins)
         self.assertEqual(set(query.columns), set(columns))
@@ -177,7 +178,7 @@ class TestReadTaggedBuilds(unittest.TestCase):
                   'package': None, 'packages': self.package_list,
                   'queryOpts': {'order': '-create_event'}, 'st_complete': 1, 'tables': self.tables,
                   'tag': self.tag_name, 'tagid': self.tag_name, 'taglist': [self.tag_name],
-                  'type': 'image'}
+                  'type': 'image', 'draft': 3}
         self.assertEqual(query.tables, self.tables)
         self.assertEqual(query.joins, joins)
         self.assertEqual(set(query.columns), set(columns))
@@ -212,10 +213,35 @@ class TestReadTaggedBuilds(unittest.TestCase):
                   'package': None, 'packages': self.package_list,
                   'queryOpts': {'order': '-create_event'}, 'st_complete': 1, 'tables': self.tables,
                   'tag': self.tag_name, 'tagid': self.tag_name, 'taglist': [self.tag_name],
-                  'type': type}
+                  'type': type, 'draft': 3}
         self.assertEqual(query.tables, self.tables)
         self.assertEqual(query.joins, joins)
         self.assertEqual(set(query.columns), set(self.columns))
         self.assertEqual(set(query.aliases), set(self.aliases))
         self.assertEqual(set(query.clauses), set(self.clauses))
+        self.assertEqual(query.values, values)
+    
+    def test_get_tagged_builds_draft(self):
+        self.readPackageList.return_value = self.package_list
+        kojihub.readTaggedBuilds(self.tag_name, draft=koji.DRAFT_FLAG.DRAFT)
+
+        self.assertEqual(len(self.queries), 1)
+        query = self.queries[0]
+
+        clauses = copy.deepcopy(self.clauses)
+        clauses.extend(['draft IS TRUE'])
+
+        values = {'clauses': clauses, 'event': None, 'extra': False, 'fields': self.fields,
+                  'inherit': False, 'joins': self.joins, 'latest': False, 'owner': None,
+                  'package': None, 'packages': self.package_list,
+                  'queryOpts': {'order': '-create_event'}, 'st_complete': 1, 'tables': self.tables,
+                  'tag': self.tag_name, 'tagid': self.tag_name, 'taglist': [self.tag_name],
+                  'type': None, 'draft': koji.DRAFT_FLAG.DRAFT
+                  }
+
+        self.assertEqual(query.tables, self.tables)
+        self.assertEqual(query.joins, self.joins)
+        self.assertEqual(set(query.columns), set(self.columns))
+        self.assertEqual(set(query.aliases), set(self.aliases))
+        self.assertEqual(set(query.clauses), set(clauses))
         self.assertEqual(query.values, values)

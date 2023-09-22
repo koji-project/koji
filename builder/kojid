@@ -1102,6 +1102,8 @@ class BuildTask(BaseTaskHandler):
                                       % (data['name'], target_info['dest_tag_name']))
             # TODO - more pre tests
         archlist = self.getArchList(build_tag, h, extra=extra_arches)
+        # pass draft option in
+        data['draft'] = opts.get('draft')
         # let the system know about the build we're attempting
         if not self.opts.get('scratch'):
             # scratch builds do not get imported
@@ -2176,6 +2178,8 @@ class WrapperRPMTask(BaseBuildTask):
             data['extra'] = {'source': {'original_url': source['url']}}
             if opts.get('custom_user_metadata'):
                 data['extra']['custom_user_metadata'] = opts['custom_user_metadata']
+            # pass draft option in
+            data['draft'] = opts.get('draft')
             self.logger.info("Reading package config for %(name)s" % data)
             pkg_cfg = self.session.getPackageConfig(build_target['dest_tag'], data['name'])
             if not opts.get('skip_tag'):
@@ -5249,6 +5253,7 @@ Subject: %(nvr)s %(result)s %(operation)s by %(user_name)s\r
 To: %(to_addrs)s\r
 X-Koji-Package: %(pkg_name)s\r
 X-Koji-NVR: %(nvr)s\r
+X-Koji-Draft: %(draft)s\r
 X-Koji-User: %(user_name)s\r
 X-Koji-Status: %(status)s\r
 %(tag_headers)s\r
@@ -5278,6 +5283,7 @@ Status: %(status)s\r
         user = self.session.getUser(user_info)
         pkg_name = build['package_name']
         nvr = koji.buildLabel(build)
+        draft = build.get('draft', False)
         user_name = user['name']
 
         from_addr = self.options.from_addr
@@ -5349,6 +5355,7 @@ X-Koji-Tag: %(dest_tag)s\r
 X-Koji-Package: %(build_pkg_name)s\r
 X-Koji-Builder: %(build_owner)s\r
 X-Koji-Status: %(status)s\r
+X-Koji-Draft: %(draft)s\r
 \r
 Package: %(build_nvr)s\r
 Tag: %(dest_tag)s\r
@@ -5448,6 +5455,7 @@ Build Info: %(weburl)s/buildinfo?buildID=%(build_id)i\r
         build_nvr = koji.buildLabel(build)
         build_id = build['id']
         build_owner = build['owner_name']
+        draft = build.get('draft', False)
         # target comes from session.py:_get_build_target()
         dest_tag = None
         if target is not None:

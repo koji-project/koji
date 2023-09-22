@@ -27,6 +27,7 @@ from __future__ import absolute_import, division
 import base64
 import datetime
 import errno
+import functools
 import hashlib
 import json
 import logging
@@ -274,6 +275,7 @@ TAG_UPDATE_TYPES = Enum((
     'VOLUME_CHANGE',
     'IMPORT',
     'MANUAL',
+    'DRAFT_PROMOTION',
 ))
 
 # BEGIN kojikamid dup #
@@ -294,6 +296,44 @@ PRIO_DEFAULT = 20
 # default timeouts
 DEFAULT_REQUEST_TIMEOUT = 60 * 60 * 12
 DEFAULT_AUTH_TIMEOUT = 60
+
+# draft release format
+DRAFT_RELEASE_FORMAT = '{release}#draft_{id}'
+
+FLAG_DRAFT_BUILD = 1
+FLAG_REGULAR_BUILD = 2
+FLAG_ALL_BUILD = FLAG_DRAFT_BUILD | FLAG_REGULAR_BUILD
+
+if six.PY3:
+    from enum import IntFlag
+
+    # draft build bit FLAGs
+    class DRAFT_FLAG(IntFlag):
+
+        DRAFT = FLAG_DRAFT_BUILD
+        REGULAR = FLAG_REGULAR_BUILD
+        ALL = FLAG_ALL_BUILD
+
+        @classmethod
+        def _missing_(cls, value):
+            if not isinstance(value, int):
+                raise ValueError("%r is not a valid %s" % (value, cls.__name__))
+            # diable member creation and negative integer
+            return cls._value2member_map_.get(value)
+
+    def convert_draft_option(func=None, kw='draft'):
+        def wrapper(func):
+            @functools.wraps(func)
+            def convert(*args, **kwargs):
+                if kw in kwargs:
+                    kwargs[kw] = DRAFT_FLAG(kwargs[kw])
+                return func(*args, **kwargs)
+            return convert
+        if func is None:
+            return wrapper
+        else:
+            return wrapper(func)
+
 
 # BEGIN kojikamid dup #
 
@@ -2363,6 +2403,39 @@ class PathInfo(object):
         return self.volumedir(build.get('volume_name')) + \
             ("/packages/%(name)s/%(version)s/%(release)s" % build)
 
+    def to_buildinfo(self, path):
+        """Revert build dir path (<topdir>/[<volumedir>/]packages/<name>/<version>/<release>)
+        to build map with the data below:
+
+        - name
+        - version
+        - release
+        - volume_name
+        """
+        path = path.rstrip('/')
+        parts = path.rsplit('/', 4)
+        if len(parts) != 5:
+            raise GenericError("Invalid build path: %s" % path)
+        if parts[-4] != 'packages':
+            raise GenericError("Invalid build path: %s, packages subdir not found" % path)
+        nvr = parts[-3:]
+        rest = parts[0]
+        if not rest.startswith(self.topdir):
+            raise GenericError("Invalid build path: %s, topdir is not %r" % (path, self.topdir))
+        vol_part = rest[len(self.topdir):]
+        if not vol_part:
+            vol = 'DEFAULT'
+        elif vol_part.startswith('/vol/'):
+            vol = vol_part[5:]
+        else:
+            raise GenericError(
+                "Invalid build path: %s, volume dir: %s is incorrect" % (path, vol_part)
+            )
+        return {'name': nvr[0],
+                'version': nvr[1],
+                'release': nvr[2],
+                'volume_name': vol}
+
     def mavenbuild(self, build):
         """Return the directory where the Maven build exists in the global store
            (/mnt/koji/packages)"""
@@ -2409,6 +2482,27 @@ class PathInfo(object):
     def rpm(self, rpminfo):
         """Return the path (relative to build_dir) where an rpm belongs"""
         return "%(arch)s/%(name)s-%(version)s-%(release)s.%(arch)s.rpm" % rpminfo
+
+    def to_rpminfo(self, path, full=False):
+        """Revert rpm path in build dir to rpm nvra map with/without build dir"""
+        if path.endswith('/'):
+            raise GenericError("Invalid path: %s, cannot be a directory" % path)
+        parts = path.rsplit('/', 2)
+        if full:
+            if len(parts) != 3:
+                raise GenericError("No build dir in path: %s" % path)
+            return self.to_buildinfo(parts[-3]), self._to_rpminfo(parts[-2:])
+        return self._to_rpminfo(parts)
+
+    def _to_rpminfo(self, parts):
+        if len(parts) != 2 or not parts[0]:
+            raise GenericError("Invalid path: %s" % '/'.join(parts))
+        rpminfo = parse_NVRA(parts[-1])
+        if parts[0] != rpminfo['arch']:
+            raise GenericError(
+                'mismatch between arch dir (%s) and arch (%s) in rpm' % (parts[0], rpminfo)
+            )
+        return rpminfo
 
     def signed(self, rpminfo, sigkey):
         """Return the path (relative to build dir) where a signed rpm lives"""
