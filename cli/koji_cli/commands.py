@@ -7220,7 +7220,7 @@ def anon_handle_wait_repo(options, session, args):
     for nvr in builds:
         data = session.getLatestBuilds(tag_id, package=nvr["name"])
         if len(data) == 0:
-            warn("Package %s is not in tag %s" % (nvr["name"], tag))
+            warn("No %s builds in tag %s" % (nvr["name"], tag))
         else:
             present_nvr = [x["nvr"] for x in data][0]
             expected_nvr = '%(name)s-%(version)s-%(release)s' % nvr
