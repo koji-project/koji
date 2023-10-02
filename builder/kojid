@@ -81,7 +81,15 @@ from koji.tasks import (
     ServerExit,
     ServerRestart
 )
-from koji.util import dslice, dslice_ex, isSuccess, parseStatus, to_list, format_shell_cmd
+from koji.util import (
+    dslice,
+    dslice_ex,
+    format_shell_cmd,
+    isSuccess,
+    joinpath,
+    parseStatus,
+    to_list,
+)
 
 try:
     import requests_gssapi as reqgssapi
@@ -5560,11 +5568,11 @@ class NewRepoTask(BaseTaskHandler):
 
     def copy_arch_repo(self, src_repo_id, src_repo_path, repo_id, arch):
         """Copy repodata, return False if it fails"""
-        dst_repodata = f'{self.workdir}/{arch}/repodata'
-        src_repodata = f'{src_repo_path}/{arch}/repodata'
+        dst_repodata = joinpath(self.workdir, arch, 'repodata')
+        src_repodata = joinpath(src_repo_path, arch, 'repodata')
         try:
             # copy repodata
-            self.logger.debug(f'Copying repodata {src_repodata} to {dst_repodata}')
+            self.logger.debug('Copying repodata %s to %s' % (src_repodata, dst_repodata))
             if os.path.exists(src_repodata):
                 # symlink=True is not needed as they are no part of arch repodir
                 shutil.copytree(src_repodata, dst_repodata)
@@ -5575,7 +5583,7 @@ class NewRepoTask(BaseTaskHandler):
                 self.session.uploadWrapper('%s/%s' % (dst_repodata, f), uploadpath, f)
             return [uploadpath, files]
         except Exception as ex:
-            self.logger.warning(f"Copying repo {src_repo_id} to {repo_id} failed. {ex}")
+            self.logger.warning("Copying repo %i to %i failed. %r" % (src_repo_id, repo_id, ex))
             # Try to remove potential leftovers and fail if there is some problem
             koji.util.rmtree(dst_repodata, self.logger)
             return False
@@ -5589,10 +5597,10 @@ class NewRepoTask(BaseTaskHandler):
             self.logger.debug("Source repo wasn't found")
             return False
         if not os.path.isdir(src_repo_path):
-            self.logger.debug(f"Source repo doesn't exist {src_repo_path}")
+            self.logger.debug("Source repo doesn't exist %s" % src_repo_path)
             return False
         try:
-            repo_json = koji.load_json(f'{src_repo_path}/repo.json')
+            repo_json = koji.load_json(joinpath(src_repo_path, 'repo.json'))
             for key in ('with_debuginfo', 'with_src', 'with_separate_src'):
                 if repo_json.get(key, False) != opts.get(key, False):
                     return False
@@ -5601,8 +5609,8 @@ class NewRepoTask(BaseTaskHandler):
             return False
 
         # compare comps if they exist
-        src_comps_path = f'{src_repo_path}/groups/comps.xml'
-        dst_comps_path = f'{dst_repo_path}/groups/comps.xml'
+        src_comps_path = joinpath(src_repo_path, 'groups/comps.xml')
+        dst_comps_path = joinpath(dst_repo_path, 'groups/comps.xml')
         src_exists = os.path.exists(src_comps_path)
         if src_exists != os.path.exists(dst_comps_path):
             self.logger.debug("Comps exists only in one repo")
@@ -5625,17 +5633,17 @@ class NewRepoTask(BaseTaskHandler):
     def check_arch_repo(self, src_repo_path, dst_repo_path, arch):
         """More checks based on architecture content"""
         for fname in ('blocklist', 'pkglist'):
-            src_file = f'{src_repo_path}/{arch}/{fname}'
-            dst_file = f'{dst_repo_path}/{arch}/{fname}'
+            src_file = joinpath(src_repo_path, arch, fname)
+            dst_file = joinpath(dst_repo_path, arch, fname)
             # both must non/exist
             if not os.path.exists(src_file) or not os.path.exists(dst_file):
-                self.logger.debug(f"{fname} doesn't exit in one of the repos")
+                self.logger.debug("%s doesn't exit in one of the repos" % fname)
                 return False
             # content must be same
             if not filecmp.cmp(src_file, dst_file, shallow=False):
-                self.logger.debug(f'{fname} differs')
+                self.logger.debug('%s differs' % fname)
                 return False
-        self.logger.debug(f'Arch repo test passed {arch}')
+        self.logger.debug('Arch repo test passed %s' % arch)
         return True
 
     def handler(self, tag, event=None, src=False, debuginfo=False, separate_src=False):
