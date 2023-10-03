@@ -53,7 +53,8 @@ class TestPromoteBuild(unittest.TestCase):
                 }},
             'draft': True,
             'volume_id': 99,
-            'volume_name': 'X'
+            'volume_name': 'X',
+            'task_id': 222
         }
         
         self.new_build = {   
@@ -125,7 +126,8 @@ class TestPromoteBuild(unittest.TestCase):
                 }},
             'draft': True,
             'volume_id': 99,
-            'volume_name': 'X'
+            'volume_name': 'X',
+            'task_id': 222
         }
         
         self.get_build.return_value = draft
@@ -152,7 +154,9 @@ class TestPromoteBuild(unittest.TestCase):
         self.get_build.assert_called_with({
             'name': 'foo',
             'version': 'bar',
-            'release': 'tgtrel_1'
+            'release': 'tgtrel_1',
+            'task_id': 222,
+            'volume_id': 99
         })
         
         self.get_build.reset_mock()

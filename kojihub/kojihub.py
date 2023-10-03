@@ -6308,8 +6308,14 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None,
         binfo = get_build(build_id, strict=True)
         st_complete = koji.BUILD_STATES['COMPLETE']
         st_old = binfo['state']
+
         koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=st_old,
                                   new=st_complete, info=binfo)
+        if binfo.get('draft') != draft:
+            raise koji.GenericError(
+                f"draft propetry of build: {binfo['nvr']} is not correct. Expected: {draft},"
+                f" got {binfo['draft']}"
+            )
         if draft:
             build['release'] = koji.DRAFT_RELEASE_FORMAT.format(**build)
         for key in ('name', 'version', 'release', 'epoch', 'task_id'):
@@ -6333,7 +6339,7 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None,
     # now to handle the individual rpms
     for relpath in [srpm] + rpms:
         fn = "%s/%s" % (uploadpath, relpath)
-        rpminfo = import_rpm(fn, binfo, brmap.get(relpath))
+        rpminfo = import_rpm(fn, binfo, brmap.get(relpath), draft=draft)
         import_rpm_file(fn, binfo, rpminfo)
         add_rpm_sig(rpminfo['id'], koji.rip_rpm_sighdr(fn))
     if logs:
@@ -13702,7 +13708,9 @@ class RootExports(object):
                 )
             else:
                 return None
-        target_build = dslice(binfo, ['name', 'version'])
+        # task_id and volume_id are for apply_volume_policy
+        # drop id to get build by NVR
+        target_build = dslice(binfo, ['name', 'version', 'task_id', 'volume_id'])
         target_build['release'] = target_release
         old_build = get_build(target_build)
         if old_build:
@@ -14924,7 +14932,7 @@ class HostExports(object):
         host.verify()
         task = Task(task_id)
         task.assertHost(host.id)
-        result = import_build(srpm, rpms, brmap, task_id, build_id, logs=logs, draft=False)
+        result = import_build(srpm, rpms, brmap, task_id, build_id, logs=logs, draft=draft)
         build_notification(task_id, build_id)
         return result
 

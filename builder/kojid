@@ -1120,7 +1120,8 @@ class BuildTask(BaseTaskHandler):
                 # scratch builds do not get imported
                 self.session.host.moveBuildToScratch(self.id, srpm, rpms, logs=logs)
             else:
-                self.session.host.completeBuild(self.id, build_id, srpm, rpms, brmap, logs=logs)
+                self.session.host.completeBuild(self.id, build_id, srpm, rpms, brmap, logs=logs,
+                                                draft=opts.get('draft'))
         except (SystemExit, ServerExit, KeyboardInterrupt):
             # we do not trap these
             raise
@@ -2270,7 +2271,8 @@ class WrapperRPMTask(BaseBuildTask):
                     try:
                         self.session.host.completeBuild(self.id, self.new_build_id,
                                                         relsrpm, relrpms, brmap,
-                                                        {'noarch': rellogs})
+                                                        {'noarch': rellogs},
+                                                        draft=opts.get('draft'))
                     except (SystemExit, ServerExit, KeyboardInterrupt):
                         raise
                     except Exception:
