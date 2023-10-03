@@ -148,7 +148,7 @@ class TestWaitRepo(utils.CliTestCase):
         ]
         expected_warn = 'nvr %s is not current in tag %s\n  latest build in %s is %s' % \
                    (builds[0], self.tag_name, self.tag_name, new_ver) + "\n"
-        expected_warn += 'Package sed is not in tag %s' % self.tag_name + '\n'
+        expected_warn += 'No sed builds in tag %s' % self.tag_name + '\n'
         expected = 'Successfully waited 0:03 for %s to appear in the ' \
                     '%s repo\n' % (pkgs, self.tag_name)
         self.__test_wait_repo(arguments, expected, expected_warn=expected_warn)
