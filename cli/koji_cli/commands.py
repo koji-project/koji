@@ -7899,3 +7899,125 @@ def anon_handle_repoinfo(goptions, session, args):
             # repoID option added in 1.33
             if options.buildroots:
                 warn("--buildroots option is available with hub 1.33 or newer")
+
+
+def _format_ts(ts):
+    if ts:
+        return time.strftime("%y-%m-%d %H:%M:%S", time.localtime(ts))
+    else:
+        return ''
+
+
+def anon_handle_scheduler_info(goptions, session, args):
+    """[monitor] Show information about scheduling"""
+    usage = "usage: %prog schedulerinfo [options]"
+    parser = OptionParser(usage=get_usage_str(usage))
+    parser.add_option("-t", "--task", action="store", type=int, default=None,
+                      help="Limit data to given task id")
+    parser.add_option("--host", action="store", default=None,
+                      help="Limit data to given builder id")
+    parser.add_option("--state", action="store", type='choice', default=None,
+                      choices=[x for x in koji.TASK_STATES.keys()],
+                      help="Limit data to task state")
+    (options, args) = parser.parse_args(args)
+    if len(args) > 0:
+        parser.error("This command takes no arguments")
+
+    ensure_connection(session, goptions)
+
+    host_id = None
+    if options.host:
+        try:
+            host_id = int(options.host)
+        except ValueError:
+            host_id = session.getHost(options.host, strict=True)['id']
+
+    # get the data
+    clauses = []
+    if options.task:
+        clauses.append(('task_id', options.task))
+    if options.host:
+        clauses.append(('host_id', options.host))
+    if options.state:
+        clauses.append(('state', koji.TASK_STATES[options.state]))
+
+    runs = session.scheduler.getTaskRuns(
+        clauses=clauses,
+        fields=('task_id', 'host_name', 'state', 'create_ts', 'start_ts', 'completion_ts')
+    )
+    mask = '%(task_id)-9s %(host_name)-20s %(state)-7s ' \
+           '%(create_ts)-17s %(start_ts)-17s %(completion_ts)-17s'
+    if not goptions.quiet:
+        header = mask % {
+            'task_id': 'Task',
+            'host_name': 'Host',
+            'state': 'State',
+            'create_ts': 'Created',
+            'start_ts': 'Started',
+            'completion_ts': 'Ended',
+        }
+        print(header)
+        print('-' * len(header))
+    for run in runs:
+        run['state'] = koji.TASK_STATES[run['state']]
+        for ts in ('create_ts', 'start_ts', 'completion_ts'):
+            run[ts] = _format_ts(run[ts])
+        print(mask % run)
+
+    if host_id:
+        print('Host data for %s:' % options.host)
+        host_data = session.scheduler.getHostData(hostID=host_id)
+        if len(host_data) > 0:
+            print(host_data[0]['data'])
+        else:
+            print('-')
+
+
+def handle_scheduler_logs(goptions, session, args):
+    "[monitor] Query scheduler logs"
+    usage = "usage: %prog scheduler-logs <options>"
+    parser = OptionParser(usage=get_usage_str(usage))
+    parser.add_option("--task", type="int", action="store",
+                      help="Filter by task ID")
+    parser.add_option("--host", type="str", action="store",
+                      help="Filter by host (name/ID)")
+    parser.add_option("--from", type="float", action="store", dest="from_ts",
+                      help="Logs from given timestamp")
+    parser.add_option("--to", type="float", action="store", dest="to_ts",
+                      help="Logs until given timestamp (included)")
+    (options, args) = parser.parse_args(args)
+    if len(args) != 0:
+        parser.error("There are no arguments for this command")
+
+    clauses = []
+    if options.task:
+        clauses.append(['task_id', options.task])
+    if options.host:
+        try:
+            host_id = int(options.host)
+        except ValueError:
+            host_id = session.getHost(options.host)['id']
+        clauses.append(['host_id', host_id])
+    if options.from_ts:
+        clauses.append(['msg_ts', '>=', options.from_ts])
+    if options.to_ts:
+        clauses.append(['msg_ts', '<', options.to_ts])
+
+    logs = session.scheduler.getLogMessages(clauses, fields=('task_id', 'host_id', 'host_name',
+                                                             'msg_ts', 'msg'))
+    for log in logs:
+        log['time'] = time.asctime(time.localtime(log['msg_ts']))
+
+    mask = ("%(task_id)s\t%(host_name)s\t%(time)s\t%(msg)s")
+    if not goptions.quiet:
+        h = mask % {
+            'task_id': 'Task',
+            'host_name': 'Host',
+            'time': 'Time',
+            'msg': 'Message',
+        }
+        print(h)
+        print('-' * len(h))
+
+    for log in logs:
+        print(mask % log)

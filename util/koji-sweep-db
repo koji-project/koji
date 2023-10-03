@@ -11,17 +11,17 @@ from kojihub.db import DeleteProcessor, QueryProcessor, BulkInsertProcessor
 
 
 def clean_sessions(cursor, vacuum, test, age, absolute):
-    clauses = f"(update_time < NOW() - '{age:d} days'::interval)"
+    clause = f"(update_time < NOW() - '{age:d} days'::interval)"
     if absolute is not None:
-        clauses += f"OR (start_time < NOW() - '{absolute:d} days'::interval)"
+        clause += f"OR (start_time < NOW() - '{absolute:d} days'::interval)"
 
     if options.verbose:
-        query = QueryProcessor(tables=['sessions'], clauses=[clauses], opts={'countOnly': True})
+        query = QueryProcessor(tables=['sessions'], clauses=[clause], opts={'countOnly': True})
         rows = query.execute()
         print(f"Deleting {rows} sessions")
 
     if not test:
-        delete = DeleteProcessor(table='sessions', clauses=[clauses])
+        delete = DeleteProcessor(table='sessions', clauses=[clause])
         delete.execute()
         if vacuum:
             cursor.execute("VACUUM ANALYZE sessions")
@@ -147,6 +147,21 @@ def clean_buildroots(cursor, vacuum, test):
             cursor.execute("VACUUM ANALYZE buildroot")
 
 
+def clean_scheduler_logs(cursor, vacuum, test, age):
+    clauses = [f"(msg_time < NOW() - '{age:d} days'::interval)"]
+    if options.verbose:
+        query = QueryProcessor(tables=["scheduler_log_messages"],
+                               clauses=clauses,
+                               opts={'countOnly': True})
+        rows = query.execute()
+        print(f"Deleting {rows} scheduler log messages")
+    if not test:
+        delete = DeleteProcessor(table="scheduler_log_messages", clauses=clauses)
+        delete.execute()
+        if vacuum:
+            cursor.execute("VACUUM ANALYZE scheduler_log_messages")
+
+
 if __name__ == "__main__":
     global options
     parser = OptionParser("%prog cleans koji database")
@@ -180,6 +195,9 @@ if __name__ == "__main__":
     parser.add_option('--scratch-builds-age', type=int, dest="scratch_age",
                       action="store", default=730, metavar="DAYS",
                       help="Delete scratch builds' tasks older than this (default: 2 years")
+    parser.add_option('--logs-age', type=int,
+                      action="store", default=7, metavar="DAYS",
+                      help="Delete scheduler log messages older than this (default: 7 days)")
     parser.add_option('--buildroots', action="store_true",
                       help="Delete unreferenced buildroots")
     parser.add_option('-f', '--force', action="store_true",
@@ -240,6 +258,7 @@ if __name__ == "__main__":
     clean_sessions(cursor, options.vacuum, options.test, options.sessions_age,
                    options.sessions_absolute_age)
     clean_reservations(cursor, options.vacuum, options.test, options.reservations_age)
+    clean_scheduler_logs(cursor, options.vacuum, options.test, options.logs_age)
     if options.tag_notifications:
         clean_notification_tasks(cursor, options.vacuum, options.test,
                                  age=options.tag_notifications_age)

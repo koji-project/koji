@@ -261,12 +261,13 @@ class TaskWatcher(object):
         # not finished either.  info would be none.
         if not info:
             return 'unknown'
-        if info['state'] == koji.TASK_STATES['OPEN']:
+        if koji.TASK_STATES[info['state']] in ['OPEN', 'ASSIGNED']:
+            state = koji.TASK_STATES[info['state']].lower()
             if info['host_id']:
                 host = self.session.getHost(info['host_id'])
-                return 'open (%s)' % host['name']
+                return '%s (%s)' % (state, host['name'])
             else:
-                return 'open'
+                return state
         elif info['state'] == koji.TASK_STATES['FAILED']:
             s = 'FAILED: %s' % self.get_failure()
 

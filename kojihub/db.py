@@ -444,6 +444,42 @@ class InsertProcessor(object):
         return _dml(str(self), self.data)
 
 
+class UpsertProcessor(InsertProcessor):
+    """Build a basic upsert statement
+
+    table - the table to insert into
+    data - a dictionary of data to insert (keys = row names)
+    rawdata - data to insert specified as sql expressions rather than python values
+    keys - the rows that are the unique keys
+    skip_dup - if set to true, do nothing on conflict
+    """
+
+    def __init__(self, table, data=None, rawdata=None, keys=None, skip_dup=False):
+        super(UpsertProcessor, self).__init__(table, data=data, rawdata=rawdata)
+        self.keys = keys
+        self.skip_dup = skip_dup
+        if not keys and not skip_dup:
+            raise ValueError('either keys or skip_dup must be set')
+
+    def __repr__(self):
+        return "<UpsertProcessor: %r>" % vars(self)
+
+    def __str__(self):
+        insert = super(UpsertProcessor, self).__str__()
+        parts = [insert]
+        if self.skip_dup:
+            parts.append(' ON CONFLICT DO NOTHING')
+        else:
+            parts.append(f' ON CONFLICT ({",".join(self.keys)}) DO UPDATE SET ')
+            # filter out conflict keys from data
+            data = {k: self.data[k] for k in self.data if k not in self.keys}
+            rawdata = {k: self.rawdata[k] for k in self.rawdata if k not in self.keys}
+            assigns = [f"{key} = %({key})s" for key in data]
+            assigns.extend([f"{key} = ({rawdata[key]})" for key in self.rawdata])
+            parts.append(', '.join(sorted(assigns)))
+        return ''.join(parts)
+
+
 class UpdateProcessor(object):
     """Build an update statement
 
@@ -832,6 +868,99 @@ SELECT %(col_str)s
             else:
                 return None
         return results
+
+
+class QueryView:
+    # abstract base class
+
+    # subclasses should provide...
+    tables = []
+    joins = []
+    joinmap = {}
+    fieldmap = {}
+    default_fields = ()
+
+    def __init__(self, clauses=None, fields=None, opts=None):
+        self.extra_joins = []
+        self.values = {}
+        tables = list(self.tables)  # copy
+        fields = self.get_fields(fields)
+        fields, aliases = zip(*fields.items())
+        clauses = self.get_clauses(clauses)
+        joins = self.get_joins()
+        self.query = QueryProcessor(
+            columns=fields, aliases=aliases,
+            tables=tables, joins=joins,
+            clauses=clauses, values=self.values,
+            opts=opts)
+
+    def get_fields(self, fields):
+        fields = fields or self.default_fields
+        if not fields or fields == '*':
+            fields = sorted(self.fieldmap.keys())
+
+        return {self.map_field(f): f for f in fields}
+
+    def map_field(self, field):
+        f_info = self.fieldmap.get(field)
+        if f_info is None:
+            raise koji.ParameterError(f'Invalid field for query {field}')
+        fullname, joinkey = f_info
+        fullname = fullname or field
+        if joinkey:
+            self.extra_joins.append(joinkey)
+            # duplicates removed later
+        return fullname
+
+    def get_clauses(self, clauses):
+        # for now, just a very simple implementation
+        result = []
+        clauses = clauses or []
+        for n, clause in enumerate(clauses):
+            # TODO checks check checks
+            if len(clause) == 2:
+                # implicit operator
+                field, value = clause
+                if isinstance(value, (list, tuple)):
+                    op = 'IN'
+                else:
+                    op = '='
+            elif len(clause) == 3:
+                field, op, value = clause
+                op = op.upper()
+                if op not in ('IN', '=', '!=', '>', '<', '>=', '<='):
+                    raise koji.ParameterError(f'Invalid operator: {op}')
+            else:
+                raise koji.ParameterError(f'Invalid clause: {clause}')
+            fullname = self.map_field(field)
+            key = f'v_{field}_{n}'
+            self.values[key] = value
+            result.append(f'{fullname} {op} %({key})s')
+
+        return result
+
+    def get_joins(self):
+        joins = list(self.joins)
+        seen = set()
+        # note we preserve the order that extra joins were added
+        for joinkey in self.extra_joins:
+            if joinkey in seen:
+                continue
+            seen.add(joinkey)
+            joins.append(self.joinmap[joinkey])
+        return joins
+
+    def execute(self):
+        return self.query.execute()
+
+    def executeOne(self, strict=False):
+        return self.query.executeOne(strict=strict)
+
+    def iterate(self):
+        return self.query.iterate()
+
+    def singleValue(self, strict=True):
+        return self.query.singleValue(strict=strict)
 
 
 class BulkInsertProcessor(object):

@@ -41,6 +41,7 @@ from koji.server import ServerError, BadRequest, RequestTimeout
 from koji.xmlrpcplus import ExtendedMarshaller, Fault, dumps, getparser
 from . import auth
 from . import db
+from . import scheduler
 
 
 class Marshaller(ExtendedMarshaller):
@@ -502,6 +503,15 @@ def load_config(environ):
         ['RPMDefaultChecksums', 'string', 'md5 sha256'],
 
         ['SessionRenewalTimeout', 'integer', 1440],
+
+        # scheduler options
+        ['MaxJobs', 'integer', 15],
+        ['CapacityOvercommit', 'integer', 5],
+        ['ReadyTimeout', 'integer', 180],
+        ['AssignTimeout', 'integer', 300],
+        ['SoftRefusalTimeout', 'integer', 900],
+        ['HostTimeout', 'integer', 900],
+        ['RunInterval', 'integer', 60],
     ]
     opts = {}
     for name, dtype, default in cfgmap:
@@ -844,8 +854,10 @@ def get_registry(opts, plugins):
     registry = HandlerRegistry()
     functions = kojihub.RootExports()
     hostFunctions = kojihub.HostExports()
+    schedulerFunctions = scheduler.SchedulerExports()
     registry.register_instance(functions)
     registry.register_module(hostFunctions, "host")
+    registry.register_module(schedulerFunctions, "scheduler")
     registry.register_function(auth.login)
     registry.register_function(auth.sslLogin)
     registry.register_function(auth.logout)
