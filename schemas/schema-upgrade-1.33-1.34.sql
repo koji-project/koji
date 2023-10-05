@@ -60,6 +60,7 @@ BEGIN;
         OR NOT draft);
 
     ALTER TABLE rpminfo ADD COLUMN draft BOOLEAN;
+    UPDATE rpminfo SET draft=FALSE WHERE build_id IS NOT NULL;
     ALTER TABLE rpminfo DROP CONSTRAINT rpminfo_build_id_fkey;
     ALTER TABLE rpminfo ADD CONSTRAINT rpminfo_build_id_draft_fkey
         FOREIGN KEY (build_id, draft) REFERENCES build(id, draft)
