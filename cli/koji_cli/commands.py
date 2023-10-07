@@ -8161,3 +8161,29 @@ def handle_scheduler_logs(goptions, session, args):
 
     for log in logs:
         print(mask % log)
+
+
+def handle_promote_build(goptions, session, args):
+    "[misc] Promote a draft build"
+    usage = "usage: %prog promote-build [options] <draft-build>"
+    parser = OptionParser(usage=get_usage_str(usage))
+    parser.add_option('-f', '--force', action='store_true', default=False,
+                      help='force operation')
+    (options, args) = parser.parse_args(args)
+    if len(args) != 1:
+        parser.error("Please specify a draft build")
+    draft_build = args[0]
+    try:
+        draft_build = int(draft_build)
+    except ValueError:
+        pass
+    activate_session(session, goptions)
+    if options.force and not session.hasPerm('admin'):
+        parser.error("--force requires admin privilege")
+    binfo = session.getBuild(draft_build)
+    if not binfo:
+        error("No such build: %s" % draft_build)
+    if not binfo.get('draft'):
+        error("Not a draft build: %s" % draft_build)
+    rinfo = session.promoteBuild(binfo['id'], force=options.force)
+    print("%s has been promoted to %s" % (binfo['nvr'], rinfo['nvr']))
