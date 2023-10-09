@@ -105,7 +105,7 @@ class TestReadTaggedRPMS(unittest.TestCase):
 
     def test_get_tagged_rpms_draft(self):
         self.readTaggedBuilds.return_value = self.build_list
-        kojihub.readTaggedRPMS(self.tag_name, draft=2, extra=False)
+        kojihub.readTaggedRPMS(self.tag_name, draft=False, extra=False)
 
         self.assertEqual(len(self.queries), 1)
         query = self.queries[0]

@@ -27,7 +27,6 @@ from __future__ import absolute_import, division
 import base64
 import datetime
 import errno
-import functools
 import hashlib
 import json
 import logging
@@ -299,41 +298,6 @@ DEFAULT_AUTH_TIMEOUT = 60
 
 # draft release format
 DRAFT_RELEASE_FORMAT = '{release}#draft_{id}'
-
-FLAG_DRAFT_BUILD = 1
-FLAG_REGULAR_BUILD = 2
-FLAG_ALL_BUILD = FLAG_DRAFT_BUILD | FLAG_REGULAR_BUILD
-
-if six.PY3:
-    from enum import IntFlag
-
-    # draft build bit FLAGs
-    class DRAFT_FLAG(IntFlag):
-
-        DRAFT = FLAG_DRAFT_BUILD
-        REGULAR = FLAG_REGULAR_BUILD
-        ALL = FLAG_ALL_BUILD
-
-        @classmethod
-        def _missing_(cls, value):
-            if not isinstance(value, int):
-                raise ValueError("%r is not a valid %s" % (value, cls.__name__))
-            # diable member creation and negative integer
-            return cls._value2member_map_.get(value)
-
-    def convert_draft_option(func=None, kw='draft'):
-        def wrapper(func):
-            @functools.wraps(func)
-            def convert(*args, **kwargs):
-                if kw in kwargs:
-                    kwargs[kw] = DRAFT_FLAG(kwargs[kw])
-                return func(*args, **kwargs)
-            return convert
-        if func is None:
-            return wrapper
-        else:
-            return wrapper(func)
-
 
 # BEGIN kojikamid dup #
 

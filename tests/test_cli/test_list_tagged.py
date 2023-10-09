@@ -103,7 +103,7 @@ n-v-r                                     tag                   owner
         self.session.getTag.assert_called_once_with(self.tag, event=self.event_id)
         self.session.listTagged.assert_called_once_with(
             self.tag, event=self.event_id, inherit=True, latest=True, package=self.pkg,
-            draft=2)
+            draft=False)
         self.session.listTaggedRPMS.assert_not_called()
         self.assert_console_message(stdout, expected)
 
@@ -121,7 +121,7 @@ n-v-r                                     tag                   owner
         self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
         self.session.getTag.assert_called_once_with(self.tag, event=None)
         self.session.listTagged.assert_called_once_with(
-            self.tag, inherit=True, latest=True, package=self.pkg, draft=1)
+            self.tag, inherit=True, latest=True, package=self.pkg, draft=True)
         self.session.listTaggedRPMS.assert_not_called()
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)

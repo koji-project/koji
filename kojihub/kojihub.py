@@ -55,7 +55,6 @@ import rpm
 from psycopg2._psycopg import IntegrityError
 
 import koji
-from koji import DRAFT_FLAG, convert_draft_option
 import koji.plugin
 import koji.policy
 import koji.rpmdiff
@@ -1395,9 +1394,8 @@ def list_tags(build=None, package=None, perms=True, queryOpts=None, pattern=None
     return query.iterate()
 
 
-@convert_draft_option
 def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None, owner=None,
-                     type=None, extra=False, *, draft=DRAFT_FLAG.ALL):
+                     type=None, extra=False, *, draft=None):
     """Returns a list of builds for specified tag
 
     :param int tag: tag ID
@@ -1409,10 +1407,10 @@ def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None,
     :param str type: restrict the list to builds of the given type.  Currently the supported
                      types are 'maven', 'win', 'image', or any custom content generator btypes.
     :param bool extra: Set to "True" to get the build extra info
-    :param DRAFT_FLAG draft: bit flag(enum.IntFlag) indicates
-                             - DRAFT(1): draft only
-                             - REGULAR(2): regular only
-                             - ALL(3): both draft and regular builds
+    :param bool draft: bool or None option that indicates the filter based on draft field
+                       - None: no filter (both draft and regular builds)
+                       - True: draft only
+                       - False: regular only
     :returns [dict]: list of buildinfo dicts
     """
     # build - id pkg_id version release epoch
@@ -1522,9 +1520,8 @@ def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None,
     return builds
 
 
-@convert_draft_option
 def readTaggedRPMS(tag, package=None, arch=None, event=None, inherit=False, latest=True,
-                   rpmsigs=False, owner=None, type=None, extra=True, *, draft=DRAFT_FLAG.ALL):
+                   rpmsigs=False, owner=None, type=None, extra=True, draft=None):
     """Returns a list of rpms and builds for specified tag
 
     :param int|str tag: The tag name or ID to search
@@ -1544,10 +1541,10 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None, inherit=False, late
     :param str type: Filter by build type. Supported types are 'maven',
                      'win', and 'image'.
     :param bool extra: Set to "False" to skip the rpm extra info
-    :param DRAFT_FLAG draft: bit flag(enum.IntFlag) indicates
-                             - DRAFT(1): draft only
-                             - REGULAR(2): regular only
-                             - ALL(3): both draft and regular builds
+    :param bool draft: bool or None option that indicates the filter based on draft field
+                             - None: no filter (both draft and regular builds)
+                             - True: draft only
+                             - False: regular only
     :returns: a two-element list. The first element is the list of RPMs, and
               the second element is the list of builds.
     """
@@ -4708,9 +4705,8 @@ def get_rpm(rpminfo, strict=False, multi=False, build=None):
     return ret
 
 
-@convert_draft_option
 def list_rpms(buildID=None, buildrootID=None, imageID=None, componentBuildrootID=None, hostID=None,
-              arches=None, queryOpts=None, *, draft=DRAFT_FLAG.ALL):
+              arches=None, queryOpts=None, draft=None):
     """List RPMS.  If buildID, imageID and/or buildrootID are specified,
     restrict the list of RPMs to only those RPMs that are part of that
     build, or were built in that buildroot.  If componentBuildrootID is specified,
@@ -4743,11 +4739,11 @@ def list_rpms(buildID=None, buildrootID=None, imageID=None, componentBuildrootID
     If no build has the given ID, or the build generated no RPMs,
     an empty list is returned.
 
-    The option draft with a bit flag(enum.IntFlag) value is to filter rpm by that
-    rpm belongs to a draft build, a regular build or both (default).
-    - DRAFT(1): draft only
-    - REGULAR(2): regular only
-    - ALL(3): both draft and regular
+    The option draft with a bool/None value is to filter rpm by that
+    rpm belongs to a draft build, a regular build or both (default). It stands for:
+    - None: no filter (both draft and regular builds)
+    - True: draft only
+    - False: regular only
     """
 
     fields = [('rpminfo.id', 'id'), ('rpminfo.name', 'name'), ('rpminfo.version', 'version'),
@@ -8501,8 +8497,7 @@ def query_history(tables=None, **kwargs):
     return ret
 
 
-@convert_draft_option
-def untagged_builds(name=None, queryOpts=None, *, draft=DRAFT_FLAG.ALL):
+def untagged_builds(name=None, queryOpts=None, *, draft=None):
     """Returns the list of untagged builds"""
     st_complete = koji.BUILD_STATES['COMPLETE']
     # following can be achieved with simple query but with
@@ -11884,9 +11879,8 @@ class RootExports(object):
             raise koji.GenericError("Finished task's priority can't be updated")
         task.setPriority(priority, recurse=recurse)
 
-    @convert_draft_option
     def listTagged(self, tag, event=None, inherit=False, prefix=None, latest=False, package=None,
-                   owner=None, type=None, strict=True, extra=False, *, draft=DRAFT_FLAG.ALL):
+                   owner=None, type=None, strict=True, extra=False, draft=None):
         """List builds tagged with tag.
 
             :param int|str tag: tag name or ID number
@@ -11902,10 +11896,10 @@ class RootExports(object):
             :param bool strict: If tag doesn't exist, an exception is raised,
                                 unless strict is False in which case returns an empty list.
             :param bool extra: Set to "True" to get the build extra info
-            :param DRAFT_FLAG draft: bit flag(enum.IntFlag) indicates
-                                     - DRAFT(1): draft only
-                                     - REGULAR(2): regular only
-                                     - ALL(3): both draft and regular builds
+            :param bool draft: bool or None option that indicates the filter based on draft field
+                               - None: no filter (both draft and regular builds)
+                               - True: draft only
+                               - False: regular only
         """
         # lookup tag id
         tag = get_tag(tag, strict=strict, event=event)
@@ -11920,10 +11914,9 @@ class RootExports(object):
                        if build['package_name'].lower().startswith(prefix)]
         return results
 
-    @convert_draft_option
     def listTaggedRPMS(self, tag, event=None, inherit=False, latest=False, package=None, arch=None,
                        rpmsigs=False, owner=None, type=None, strict=True, extra=True,
-                       *, draft=DRAFT_FLAG.ALL):
+                       draft=None):
         """List rpms and builds within tag.
 
             :param int|str tag: tag name or ID number
@@ -11942,10 +11935,10 @@ class RootExports(object):
             :param bool strict: If tag doesn't exist, an exception is raised,
                             unless strict is False in which case returns an empty list.
             :param bool extra: Set to "False" to skip the rpms extra info
-            :param DRAFT_FLAG draft: bit flag(enum.IntFlag) indicates
-                                     - DRAFT(1): draft only
-                                     - REGULAR(2): regular only
-                                     - ALL(3): both draft and regular
+            :param bool draft: bool or None option that indicates the filter based on draft field
+                               - None: no filter (both draft and regular builds)
+                               - True: draft only
+                               - False: regular only
         """
         # lookup tag id
         tag = get_tag(tag, strict=strict, event=event)
@@ -11978,11 +11971,10 @@ class RootExports(object):
         return readTaggedArchives(tag['id'], event=event, inherit=inherit, latest=latest,
                                   package=package, type=type, extra=extra)
 
-    @convert_draft_option
     def listBuilds(self, packageID=None, userID=None, taskID=None, prefix=None, state=None,
                    volumeID=None, source=None, createdBefore=None, createdAfter=None,
                    completeBefore=None, completeAfter=None, type=None, typeInfo=None,
-                   queryOpts=None, pattern=None, cgID=None, *, draft=DRAFT_FLAG.ALL):
+                   queryOpts=None, pattern=None, cgID=None, draft=None):
         """
         Return a list of builds that match the given parameters
 
@@ -12018,10 +12010,10 @@ class RootExports(object):
             fields are matched
 
             For type=win, the provided platform fields are matched
-        :param DRAFT_FLAG draft: bit flag(enum.IntFlag) indicates
-                                 - DRAFT(1): draft only
-                                 - REGULAR(2): regular only
-                                 - ALL(3): both draft and regular builds
+        :param bool draft: bool or None option that indicates the filter based on draft field
+                           - None: no filter (both draft and regular builds)
+                           - True: draft only
+                           - False: regular only
 
         :returns: Returns a list of maps.  Each map contains the following keys:
 
@@ -12182,8 +12174,7 @@ class RootExports(object):
 
         return query.iterate()
 
-    @convert_draft_option
-    def getLatestBuilds(self, tag, event=None, package=None, type=None, *, draft=DRAFT_FLAG.ALL):
+    def getLatestBuilds(self, tag, event=None, package=None, type=None, draft=None):
         """List latest builds for tag (inheritance enabled, wrapper of readTaggedBuilds)
 
         :param int tag: tag ID
@@ -12191,10 +12182,10 @@ class RootExports(object):
         :param int package: filter on package name
         :param str type: restrict the list to builds of the given type.  Currently the supported
                          types are 'maven', 'win', 'image', or any custom content generator btypes.
-        :param DRAFT_FLAG draft: bit flag(enum.IntFlag) indicates
-                                 - DRAFT(1): draft only
-                                 - REGULAR(2): regular only
-                                 - ALL(3): both draft and regular builds
+        :param bool draft: bool or None option that indicates the filter based on draft field
+                           - None: no filter (both draft and regular builds)
+                           - True: draft only
+                           - False: regular only
         :returns [dict]: list of buildinfo dicts
         """
 
@@ -12204,9 +12195,8 @@ class RootExports(object):
         return readTaggedBuilds(tag, event, inherit=True, latest=True, package=package, type=type,
                                 draft=draft)
 
-    @convert_draft_option
     def getLatestRPMS(self, tag, package=None, arch=None, event=None, rpmsigs=False, type=None,
-                      *, draft=DRAFT_FLAG.ALL):
+                      draft=None):
         """List latest RPMS for tag (inheritance enabled, wrapper of readTaggedBuilds)
 
         :param int|str tag: The tag name or ID to search
@@ -12219,10 +12209,10 @@ class RootExports(object):
         :param bool rpmsigs: query will return one record per rpm/signature combination
         :param str type: Filter by build type. Supported types are 'maven',
                          'win', and 'image'.
-        :param DRAFT_FLAG draft: bit flag(enum.IntFlag) indicates
-                                 - DRAFT(1): draft only
-                                 - REGULAR(2): regular only
-                                 - ALL(3): both draft and regular
+        :param bool draft: bool or None option that indicates the filter based on draft field
+                           - None: no filter (both draft and regular builds)
+                           - True: draft only
+                           - False: regular only
         :returns: a two-element list. The first element is the list of RPMs, and
                   the second element is the list of builds.
         """
@@ -16027,27 +16017,24 @@ def reject_draft(buildinfo, error=None):
 
 
 def append_draft_clause(draft, clauses, table=None):
-    """append proper clause in build/rpm query for draft flags
+    """append proper clause in build/rpm query for draft option
 
-    DRAFT=1: append "draft IS True"
-    REGULAR=2: append "draft IS NOT True"
-    ALL(DRAFT|REGULAR)=3: do nothing
-
-    :param DRAFT_FLAGS draft: draft bit flag(s)
+    :param bool draft: draft option:
+        True: append "draft IS True"
+        False: append "draft IS NOT True"
+        None: do nothing
     :param list clauses: clauses list to construct query by QueryProcessor, which the draft clause
                          to append
     """
-    if not isinstance(draft, (DRAFT_FLAG)):
-        raise koji.ParameterError(f'draft must be a DRAFT_FLAG, but got {draft}')
     if not table:
         table = ''
     else:
         table += '.'
-    if DRAFT_FLAG.ALL in draft:
+    if draft is None:
         return
-    if DRAFT_FLAG.DRAFT in draft:
+    if draft:
         clauses.append(f'{table}draft IS TRUE')
-    if DRAFT_FLAG.REGULAR in draft:
+    else:
         # null is included
         clauses.append(f'{table}draft IS NOT TRUE')
 

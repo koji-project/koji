@@ -101,7 +101,7 @@ class TestListBuilds(unittest.TestCase):
         package_id = 1
         self.get_package_id.return_value = package_id
         self.query_executeOne.return_value = None
-        self.exports.listBuilds(packageID=package, draft=1)
+        self.exports.listBuilds(packageID=package, draft=True)
         self.assertEqual(len(self.queries), 1)
         args, kwargs = self.QueryProcessor.call_args
         qp = QP(**kwargs)

@@ -84,7 +84,7 @@ class TestReadTaggedBuilds(unittest.TestCase):
                   'package': None, 'packages': self.package_list,
                   'queryOpts': {'order': '-create_event'}, 'st_complete': 1, 'tables': self.tables,
                   'tag': self.tag_name, 'tagid': self.tag_name, 'taglist': [self.tag_name],
-                  'type': None, 'draft': 3
+                  'type': None, 'draft': None
                   }
         self.assertEqual(query.tables, self.tables)
         self.assertEqual(query.joins, self.joins)
@@ -120,7 +120,7 @@ class TestReadTaggedBuilds(unittest.TestCase):
                   'package': self.pkg_name, 'packages': self.package_list,
                   'queryOpts': {'order': '-create_event'}, 'st_complete': 1, 'tables': self.tables,
                   'tag': self.tag_name, 'tagid': self.tag_name, 'taglist': [self.tag_name],
-                  'type': 'maven', 'draft': 3}
+                  'type': 'maven', 'draft': None}
         self.assertEqual(query.tables, self.tables)
         self.assertEqual(query.joins, joins)
         self.assertEqual(set(query.columns), set(columns))
@@ -149,7 +149,7 @@ class TestReadTaggedBuilds(unittest.TestCase):
                   'package': None, 'packages': self.package_list,
                   'queryOpts': {'order': '-create_event'}, 'st_complete': 1, 'tables': self.tables,
                   'tag': self.tag_name, 'tagid': self.tag_name, 'taglist': [self.tag_name],
-                  'type': 'win', 'draft': 3}
+                  'type': 'win', 'draft': None}
         self.assertEqual(query.tables, self.tables)
         self.assertEqual(query.joins, joins)
         self.assertEqual(set(query.columns), set(columns))
@@ -178,7 +178,7 @@ class TestReadTaggedBuilds(unittest.TestCase):
                   'package': None, 'packages': self.package_list,
                   'queryOpts': {'order': '-create_event'}, 'st_complete': 1, 'tables': self.tables,
                   'tag': self.tag_name, 'tagid': self.tag_name, 'taglist': [self.tag_name],
-                  'type': 'image', 'draft': 3}
+                  'type': 'image', 'draft': None}
         self.assertEqual(query.tables, self.tables)
         self.assertEqual(query.joins, joins)
         self.assertEqual(set(query.columns), set(columns))
@@ -213,7 +213,7 @@ class TestReadTaggedBuilds(unittest.TestCase):
                   'package': None, 'packages': self.package_list,
                   'queryOpts': {'order': '-create_event'}, 'st_complete': 1, 'tables': self.tables,
                   'tag': self.tag_name, 'tagid': self.tag_name, 'taglist': [self.tag_name],
-                  'type': type, 'draft': 3}
+                  'type': type, 'draft': None}
         self.assertEqual(query.tables, self.tables)
         self.assertEqual(query.joins, joins)
         self.assertEqual(set(query.columns), set(self.columns))
@@ -223,7 +223,7 @@ class TestReadTaggedBuilds(unittest.TestCase):
     
     def test_get_tagged_builds_draft(self):
         self.readPackageList.return_value = self.package_list
-        kojihub.readTaggedBuilds(self.tag_name, draft=koji.DRAFT_FLAG.DRAFT)
+        kojihub.readTaggedBuilds(self.tag_name, draft=True)
 
         self.assertEqual(len(self.queries), 1)
         query = self.queries[0]
@@ -236,7 +236,7 @@ class TestReadTaggedBuilds(unittest.TestCase):
                   'package': None, 'packages': self.package_list,
                   'queryOpts': {'order': '-create_event'}, 'st_complete': 1, 'tables': self.tables,
                   'tag': self.tag_name, 'tagid': self.tag_name, 'taglist': [self.tag_name],
-                  'type': None, 'draft': koji.DRAFT_FLAG.DRAFT
+                  'type': None, 'draft': True
                   }
 
         self.assertEqual(query.tables, self.tables)

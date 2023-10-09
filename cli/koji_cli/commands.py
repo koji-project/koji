@@ -2847,9 +2847,9 @@ def anon_handle_list_tagged(goptions, session, args):
     if options.type:
         opts['type'] = options.type
     elif options.no_draft:
-        opts['draft'] = koji.FLAG_REGULAR_BUILD
+        opts['draft'] = False
     elif options.draft_only:
-        opts['draft'] = koji.FLAG_DRAFT_BUILD
+        opts['draft'] = True
     event = koji.util.eventFromOpts(session, options)
     event_id = None
     if event:
@@ -3526,9 +3526,9 @@ def anon_handle_list_builds(goptions, session, args):
     if options.no_draft and options.draft_only:
         parser.error("--draft-only conflits with --no-draft")
     elif options.no_draft:
-        opts['draft'] = koji.FLAG_REGULAR_BUILD
+        opts['draft'] = False
     elif options.draft_only:
-        opts['draft'] = koji.FLAG_DRAFT_BUILD
+        opts['draft'] = True
     if options.cg:
         opts['cgID'] = options.cg
     if options.package:
