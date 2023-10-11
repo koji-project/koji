@@ -1103,7 +1103,8 @@ class BuildTask(BaseTaskHandler):
             # TODO - more pre tests
         archlist = self.getArchList(build_tag, h, extra=extra_arches)
         # pass draft option in
-        data['draft'] = opts.get('draft')
+        if opts.get('draft'):
+            data['draft'] = opts.get('draft')
         # let the system know about the build we're attempting
         if not self.opts.get('scratch'):
             # scratch builds do not get imported
@@ -1121,7 +1122,7 @@ class BuildTask(BaseTaskHandler):
                 self.session.host.moveBuildToScratch(self.id, srpm, rpms, logs=logs)
             else:
                 self.session.host.completeBuild(self.id, build_id, srpm, rpms, brmap, logs=logs,
-                                                draft=opts.get('draft'))
+                                                draft=opts.get('draft') or False)
         except (SystemExit, ServerExit, KeyboardInterrupt):
             # we do not trap these
             raise
@@ -2180,7 +2181,8 @@ class WrapperRPMTask(BaseBuildTask):
             if opts.get('custom_user_metadata'):
                 data['extra']['custom_user_metadata'] = opts['custom_user_metadata']
             # pass draft option in
-            data['draft'] = opts.get('draft')
+            if opts.get('draft'):
+                data['draft'] = opts.get('draft')
             self.logger.info("Reading package config for %(name)s" % data)
             pkg_cfg = self.session.getPackageConfig(build_target['dest_tag'], data['name'])
             if not opts.get('skip_tag'):
@@ -2272,7 +2274,7 @@ class WrapperRPMTask(BaseBuildTask):
                         self.session.host.completeBuild(self.id, self.new_build_id,
                                                         relsrpm, relrpms, brmap,
                                                         {'noarch': rellogs},
-                                                        draft=opts.get('draft'))
+                                                        draft=opts.get('draft') or False)
                     except (SystemExit, ServerExit, KeyboardInterrupt):
                         raise
                     except Exception:

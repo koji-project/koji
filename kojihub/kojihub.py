@@ -6069,6 +6069,8 @@ def new_build(data, strict=False):
             raise koji.GenericError("No such build extra data: %(extra)r" % data)
     else:
         data['extra'] = None
+    if 'draft' in data:
+        data['draft'] = bool(data['draft'])
 
     # provide a few default values
     data.setdefault('state', koji.BUILD_STATES['COMPLETE'])
@@ -6255,6 +6257,7 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None,
         convert_value(brmap, cast=dict, check_only=True)
     convert_value(srpm, cast=str, check_only=True)
     convert_value(rpms, cast=list, check_only=True)
+    draft = bool(draft)
     koji.plugin.run_callbacks('preImport', type='build', srpm=srpm, rpms=rpms, brmap=brmap,
                               task_id=task_id, build_id=build_id, build=None, logs=logs)
     uploadpath = koji.pathinfo.work()
