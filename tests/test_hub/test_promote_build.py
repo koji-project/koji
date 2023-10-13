@@ -45,11 +45,13 @@ class TestPromoteBuild(unittest.TestCase):
             'name': 'foo',
             'version': 'bar',
             'release': 'dftrel_1',
+            'nvr': 'testnvr',
             'extra': {
                 'draft': {
                     'promoted': False,
                     'target_release': 'tgtrel_1'
                 }},
+            'state': 1,
             'draft': True,
             'volume_id': 99,
             'volume_name': 'X',
@@ -123,6 +125,7 @@ class TestPromoteBuild(unittest.TestCase):
                     'promoted': False
                     # no target_release
                 }},
+            'state': 1,
             'draft': True,
             'volume_id': 99,
             'volume_name': 'X',
@@ -136,6 +139,39 @@ class TestPromoteBuild(unittest.TestCase):
         self.assertEqual(str(cm.exception), f"draft.target_release not found in extra of build: {draft}")
         self.assertEqual(len(self.updates), 0)
         
+        ret = self.exports.promoteBuild('a-regular-build', strict=False)
+        self.assertIsNone(ret)
+        self.assertEqual(len(self.updates), 0)
+
+    def test_promote_build_not_completed(self):
+        draft = {
+            'id': 1,
+            'name': 'foo',
+            'version': 'bar',
+            'release': 'dftrel_1',
+            'nvr': 'testnvr',
+            'extra': {
+                'draft': {
+                    'promoted': False
+                    # no target_release
+                }},
+            'draft': True,
+            'state': 0,
+            'volume_id': 99,
+            'volume_name': 'X',
+            'task_id': 222
+        }
+
+        self.get_build.return_value = draft
+
+        with self.assertRaises(koji.GenericError) as cm:
+            self.exports.promoteBuild('a-regular-build', strict=True)
+        self.assertEqual(
+            str(cm.exception),
+            f"Cannot promote build - {draft['nvr']}. Reason: state (BUILDING) is not COMPLETE."
+        )
+        self.assertEqual(len(self.updates), 0)
+
         ret = self.exports.promoteBuild('a-regular-build', strict=False)
         self.assertIsNone(ret)
         self.assertEqual(len(self.updates), 0)

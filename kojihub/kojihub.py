@@ -15981,6 +15981,13 @@ def _promote_build(build, user=None, strict=True, force=False):
             raise koji.GenericError(f'Not a draft build: {binfo}')
         else:
             return None
+    state = koji.BUILD_STATES[binfo['state']]
+    if state != 'COMPLETE':
+        if strict:
+            raise koji.GenericError(f"Cannot promote build - {binfo['nvr']}."
+                                    f' Reason: state ({state}) is not COMPLETE.')
+        else:
+            return None
     old_release = binfo['release']
     extra = binfo.get('extra') or {}
     # get target release in binfo.extra
