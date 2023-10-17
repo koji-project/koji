@@ -10098,7 +10098,8 @@ class RootExports(object):
                   to the default priority; higher values mean lower priority; only
                   admins have the right to specify a negative priority here
         channel: the channel to allocate the task to
-        Returns a list of all the dependent task ids
+
+        :returns int: Task ID
         """
         context.session.assertLogin()
         convert_value(srcs, cast=list, check_only=True)
