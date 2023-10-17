@@ -2367,39 +2367,6 @@ class PathInfo(object):
         return self.volumedir(build.get('volume_name')) + \
             ("/packages/%(name)s/%(version)s/%(release)s" % build)
 
-    def to_buildinfo(self, path):
-        """Revert build dir path (<topdir>/[<volumedir>/]packages/<name>/<version>/<release>)
-        to build map with the data below:
-
-        - name
-        - version
-        - release
-        - volume_name
-        """
-        path = path.rstrip('/')
-        parts = path.rsplit('/', 4)
-        if len(parts) != 5:
-            raise GenericError("Invalid build path: %s" % path)
-        if parts[-4] != 'packages':
-            raise GenericError("Invalid build path: %s, packages subdir not found" % path)
-        nvr = parts[-3:]
-        rest = parts[0]
-        if not rest.startswith(self.topdir):
-            raise GenericError("Invalid build path: %s, topdir is not %r" % (path, self.topdir))
-        vol_part = rest[len(self.topdir):]
-        if not vol_part:
-            vol = 'DEFAULT'
-        elif vol_part.startswith('/vol/'):
-            vol = vol_part[5:]
-        else:
-            raise GenericError(
-                "Invalid build path: %s, volume dir: %s is incorrect" % (path, vol_part)
-            )
-        return {'name': nvr[0],
-                'version': nvr[1],
-                'release': nvr[2],
-                'volume_name': vol}
-
     def mavenbuild(self, build):
         """Return the directory where the Maven build exists in the global store
            (/mnt/koji/packages)"""
@@ -2446,27 +2413,6 @@ class PathInfo(object):
     def rpm(self, rpminfo):
         """Return the path (relative to build_dir) where an rpm belongs"""
         return "%(arch)s/%(name)s-%(version)s-%(release)s.%(arch)s.rpm" % rpminfo
-
-    def to_rpminfo(self, path, full=False):
-        """Revert rpm path in build dir to rpm nvra map with/without build dir"""
-        if path.endswith('/'):
-            raise GenericError("Invalid path: %s, cannot be a directory" % path)
-        parts = path.rsplit('/', 2)
-        if full:
-            if len(parts) != 3:
-                raise GenericError("No build dir in path: %s" % path)
-            return self.to_buildinfo(parts[-3]), self._to_rpminfo(parts[-2:])
-        return self._to_rpminfo(parts)
-
-    def _to_rpminfo(self, parts):
-        if len(parts) != 2 or not parts[0]:
-            raise GenericError("Invalid path: %s" % '/'.join(parts))
-        rpminfo = parse_NVRA(parts[-1])
-        if parts[0] != rpminfo['arch']:
-            raise GenericError(
-                'mismatch between arch dir (%s) and arch (%s) in rpm' % (parts[0], rpminfo)
-            )
-        return rpminfo
 
     def signed(self, rpminfo, sigkey):
         """Return the path (relative to build dir) where a signed rpm lives"""
