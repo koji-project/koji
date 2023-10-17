@@ -13679,94 +13679,7 @@ class RootExports(object):
         :rtype: dict
         """
         context.session.assertLogin()
-        user = self.getLoggedInUser()
-
-        binfo = get_build(build, strict=strict)
-        if not binfo:
-            return None
-        if not binfo.get('draft'):
-            if strict:
-                raise koji.GenericError(f'Not a draft build: {binfo}')
-            else:
-                return None
-        old_release = binfo['release']
-        extra = binfo.get('extra') or {}
-        # get target release in binfo.extra
-        draft_info = extra.get('draft', {}).copy()
-        target_release = draft_info.get('target_release')
-        if not target_release:
-            if strict:
-                raise koji.GenericError(
-                    f'draft.target_release not found in extra of build: {binfo}'
-                )
-            else:
-                return None
-        # task_id and volume_id are for apply_volume_policy
-        # drop id to get build by NVR
-        target_build = dslice(binfo, ['name', 'version', 'task_id', 'volume_id'])
-        target_build['release'] = target_release
-        old_build = get_build(target_build)
-        if old_build:
-            if strict:
-                raise koji.GenericError(f'Target build already exists: {old_build}')
-            else:
-                return None
-        # policy checks
-        policy_data = {
-            'build': binfo['id'],
-            'target_release': target_release
-        }
-        assert_policy('draft_promotion', policy_data, force=force)
-        # volume check, deny it if volume is changed as it's only allowed for admin
-        # after building, see applyVolumePolicy
-        new_volume = apply_volume_policy(target_build, strict=False, dry_run=True)
-        if new_volume is not None and new_volume['id'] != binfo['volume_id']:
-            # probably we can just apply the volume change here
-            if strict:
-                raise koji.GenericError(
-                    f'Denial as volume will be changed to {new_volume["name"]}'
-                )
-            else:
-                return None
-
-        koji.plugin.run_callbacks(
-            'preBuildPromote',
-            draft_release=old_release,
-            target_release=target_release,
-            build=binfo,
-            user=user
-        )
-
-        # temp solution with python generated time, maybe better to be an event?
-        now = datetime.datetime.now()
-
-        extra['draft'] = draft_info
-        draft_info['promoted'] = True
-        draft_info['old_release'] = old_release
-        draft_info['promotion_time'] = encode_datetime(now)
-        draft_info['promotion_ts'] = now.timestamp()
-        draft_info['promoter'] = user['name']
-        extra = json.dumps(extra)
-
-        update = UpdateProcessor('build', clauses=['id=%(id)i'], values=binfo)
-        update.set(draft=False, release=target_release, extra=extra)
-        update.execute()
-
-        new_binfo = get_build(binfo['id'], strict=strict)
-        move_and_symlink(koji.pathinfo.build(binfo), koji.pathinfo.build(new_binfo))
-        ensure_volume_symlink(new_binfo)
-
-        for tag in list_tags(build=binfo['id']):
-            set_tag_update(tag['id'], 'DRAFT_PROMOTION')
-
-        koji.plugin.run_callbacks(
-            'postBuildPromote',
-            draft_release=old_release,
-            target_release=target_release,
-            build=new_binfo,
-            user=user
-        )
-        return new_binfo
+        return _promote_build(build, strict=strict, force=force)
 
     def count(self, methodName, *args, **kw):
         """Execute the XML-RPC method with the given name and count the results.
@@ -16056,3 +15969,99 @@ def _clean_draft_link(promoted_build):
     # only unlink whe its a symlink.
     if os.path.islink(draft_builddir):
         os.unlink(draft_builddir)
+
+
+def _promote_build(build, user=None, strict=True, force=False):
+    """promote a draft build to a regular one"""
+    binfo = get_build(build, strict=strict)
+    if not binfo:
+        return None
+    if not binfo.get('draft'):
+        if strict:
+            raise koji.GenericError(f'Not a draft build: {binfo}')
+        else:
+            return None
+    old_release = binfo['release']
+    extra = binfo.get('extra') or {}
+    # get target release in binfo.extra
+    draft_info = extra.get('draft', {}).copy()
+    target_release = draft_info.get('target_release')
+    if not target_release:
+        if strict:
+            raise koji.GenericError(
+                f'draft.target_release not found in extra of build: {binfo}'
+            )
+        else:
+            return None
+    # task_id and volume_id are for apply_volume_policy
+    # drop id to get build by NVR
+    target_build = dslice(binfo, ['name', 'version', 'task_id', 'volume_id'])
+    target_build['release'] = target_release
+    old_build = get_build(target_build)
+    if old_build:
+        if strict:
+            raise koji.GenericError(f'Target build already exists: {old_build}')
+        else:
+            return None
+
+    user = get_user(user, strict=strict)
+    if not user and not strict:
+        return None
+
+    # policy checks
+    policy_data = {
+        'build': binfo['id'],
+        'target_release': target_release,
+        'user_id': user['id']
+    }
+    assert_policy('draft_promotion', policy_data, force=force)
+    # volume check, deny it if volume is changed as it's only allowed for admin
+    # after building, see applyVolumePolicy
+    new_volume = apply_volume_policy(target_build, strict=False, dry_run=True)
+    if new_volume is not None and new_volume['id'] != binfo['volume_id']:
+        # probably we can just apply the volume change here
+        if strict:
+            raise koji.GenericError(
+                f'Denial as volume will be changed to {new_volume["name"]}'
+            )
+        else:
+            return None
+
+    koji.plugin.run_callbacks(
+        'preBuildPromote',
+        draft_release=old_release,
+        target_release=target_release,
+        build=binfo,
+        user=user
+    )
+
+    # temp solution with python generated time, maybe better to be an event?
+    now = datetime.datetime.now()
+
+    extra['draft'] = draft_info
+    draft_info['promoted'] = True
+    draft_info['old_release'] = old_release
+    draft_info['promotion_time'] = encode_datetime(now)
+    draft_info['promotion_ts'] = now.timestamp()
+    draft_info['promoter'] = user['name']
+    extra = json.dumps(extra)
+
+    update = UpdateProcessor('build', clauses=['id=%(id)i'], values=binfo)
+    update.set(draft=False, release=target_release, extra=extra)
+    update.execute()
+
+    new_binfo = get_build(binfo['id'], strict=strict)
+    move_and_symlink(koji.pathinfo.build(binfo), koji.pathinfo.build(new_binfo))
+    ensure_volume_symlink(new_binfo)
+
+    for tag in list_tags(build=binfo['id']):
+        set_tag_update(tag['id'], 'DRAFT_PROMOTION')
+
+    koji.plugin.run_callbacks(
+        'postBuildPromote',
+        draft_release=old_release,
+        target_release=target_release,
+        build=new_binfo,
+        user=user
+    )
+    return new_binfo

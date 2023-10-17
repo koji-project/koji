@@ -25,8 +25,7 @@ class TestPromoteBuild(unittest.TestCase):
         self.context = mock.patch('kojihub.kojihub.context').start()
         self.context.session.assertLogin = mock.MagicMock()
         self.user = {'id': 1, 'name': 'jdoe'}
-        self.getLoggedInUser = mock.patch.object(self.exports, 'getLoggedInUser',
-                                                 return_value=self.user).start()
+        self.get_user = mock.patch('kojihub.kojihub.get_user', return_value=self.user).start()
         self.get_build = mock.patch('kojihub.kojihub.get_build').start()
         self.assert_policy = mock.patch('kojihub.kojihub.assert_policy').start()
         self.apply_volume_policy = mock.patch('kojihub.kojihub.apply_volume_policy',
