@@ -834,8 +834,8 @@ def handle_wrapper_rpm(options, session, args):
     parser.add_option("--nowait", action="store_false", dest="wait", help="Don't wait on build")
     parser.add_option("--background", action="store_true",
                       help="Run the build at a lower priority")
-    parser.add_option("--draft", action="store_true",
-                      help="Build draft build instead")
+    parser.add_option("--create-draft", action="store_true",
+                      help="Create a new draft build instead")
 
     (build_opts, args) = parser.parse_args(args)
     if build_opts.inis:
@@ -845,8 +845,12 @@ def handle_wrapper_rpm(options, session, args):
         if len(args) < 3:
             parser.error("You must provide a build target, a build ID or NVR, "
                          "and a SCM URL to a specfile fragment")
-    if build_opts.scratch and build_opts.draft:
-        parser.error("--scratch and --draft cannot be both specfied")
+    if build_opts.create_draft:
+        print("Will create a draft build instead")
+        build_opts.create_build = True
+        if build_opts.scratch:
+            # TODO: --scratch and --create-build conflict too
+            parser.error("--scratch and --create-draft cannot be both specfied")
     activate_session(session, options)
 
     target = args[0]
@@ -882,7 +886,7 @@ def handle_wrapper_rpm(options, session, args):
         opts['skip_tag'] = True
     if build_opts.scratch:
         opts['scratch'] = True
-    if build_opts.draft:
+    if build_opts.create_draft:
         opts['draft'] = True
     task_id = session.wrapperRPM(build_id, url, target, priority, opts=opts)
     print("Created task: %d" % task_id)
