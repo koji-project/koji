@@ -599,10 +599,10 @@ class BuildRoot(object):
         self.logs.add(fname)
         return ret
 
-    def single_log(self, fname, name=None):
+    def single_log(self, localfile, name=None):
         if name is None:
-            name = os.path.basename(fname)
-        self.session.uploadWrapper(fname, self.getUploadPath(), name=name)
+            name = os.path.basename(localfile)
+        self.session.uploadWrapper(localfile, self.getUploadPath(), name=name)
         self.logs.add(name)
 
     def init(self):
