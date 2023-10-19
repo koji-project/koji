@@ -3427,13 +3427,13 @@ class ApplianceTask(ImageTask):
         self.logger.debug('output: %s' % results)
         if len(results) == 0:
             raise koji.ApplianceError("Could not find image build results!")
+        logs = ['appliance.log', os.path.basename(ksfile), os.path.basename(kskoji)]
+        logs.extend(broot.logs)
         imgdata = {
             'arch': arch,
             'rootdev': self.getRootDevice(),
             'task_id': self.id,
-            'logs': ['build.log', 'mock_output.log', 'root.log', 'state.log',
-                     'appliance.log', os.path.basename(ksfile),
-                     os.path.basename(kskoji)],
+            'logs': logs,
             'name': name,
             'version': version,
             'release': release
@@ -3599,13 +3599,13 @@ class LiveCDTask(ImageTask):
         self.uploadFile(manifest)
         self.uploadFile(isosrc, remoteName=isoname)
 
+        logs = ['livecd.log', os.path.basename(ksfile), os.path.basename(kskoji)]
+        logs.extend(broot.logs)
         imgdata = {'arch': arch,
                    'files': [isoname],
                    'rootdev': None,
                    'task_id': self.id,
-                   'logs': ['build.log', 'mock_output.log', 'root.log', 'state.log',
-                            'livecd.log', os.path.basename(ksfile),
-                            os.path.basename(kskoji)],
+                   'logs': logs,
                    'name': name,
                    'version': version,
                    'release': release
@@ -3854,13 +3854,13 @@ class LiveMediaTask(ImageTask):
         self.logger.debug('uploading image: %s' % isosrc)
         self.uploadFile(isosrc, remoteName=isoname)
 
+        logs = ['livemedia-out.log', os.path.basename(ksfile), os.path.basename(kskoji)]
+        logs.extend(broot.logs)
         imgdata = {'arch': arch,
                    'files': [isoname],
                    'rootdev': None,
                    'task_id': self.id,
-                   'logs': ['build.log', 'mock_output.log', 'root.log', 'state.log',
-                            'livemedia-out.log', os.path.basename(ksfile),
-                            os.path.basename(kskoji)],
+                   'logs': logs,
                    'name': name,
                    'version': version,
                    'release': release
