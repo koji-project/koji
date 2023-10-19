@@ -2,6 +2,7 @@ import datetime
 import json
 import mock
 import unittest
+
 import koji
 import kojihub
 
@@ -101,6 +102,9 @@ class TestPromoteBuild(unittest.TestCase):
                                        'extra': extra})
         self.assertEqual(update.rawdata, {})
         self.assertEqual(update.clauses, ['id=%(id)i'])
+        self.apply_volume_policy.assert_called_once_with(
+            self.new_build, strict=False
+        )
 
     def test_promote_build_not_draft(self):
         self.get_build.return_value = {'draft': False}
@@ -189,30 +193,11 @@ class TestPromoteBuild(unittest.TestCase):
         self.get_build.assert_called_with({
             'name': 'foo',
             'version': 'bar',
-            'release': 'tgtrel_1',
-            'task_id': 222,
-            'volume_id': 99
+            'release': 'tgtrel_1'
         })
         
         self.get_build.reset_mock()
         self.get_build.side_effect = [self.draft_build, old]
-        ret = self.exports.promoteBuild('a-regular-build', strict=False)
-        self.assertIsNone(ret)
-        self.assertEqual(len(self.updates), 0)
-
-    def test_promote_build_volume_changed(self):
-        self.get_build.side_effect = [self.draft_build, None]
-        self.apply_volume_policy.return_value = {
-            'id': 100,
-            'name': 'Y'
-        }
-        with self.assertRaises(koji.GenericError) as cm:
-            self.exports.promoteBuild('a-regular-build', strict=True)
-        self.assertEqual(str(cm.exception), f"Denial as volume will be changed to Y")
-        self.assertEqual(len(self.updates), 0)
-
-        self.get_build.reset_mock()
-        self.get_build.side_effect = [self.draft_build, None]
         ret = self.exports.promoteBuild('a-regular-build', strict=False)
         self.assertIsNone(ret)
         self.assertEqual(len(self.updates), 0)

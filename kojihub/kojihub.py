@@ -16000,9 +16000,8 @@ def _promote_build(build, user=None, strict=True, force=False):
             )
         else:
             return None
-    # task_id and volume_id are for apply_volume_policy
     # drop id to get build by NVR
-    target_build = dslice(binfo, ['name', 'version', 'task_id', 'volume_id'])
+    target_build = dslice(binfo, ['name', 'version'])
     target_build['release'] = target_release
     old_build = get_build(target_build)
     if old_build:
@@ -16022,17 +16021,6 @@ def _promote_build(build, user=None, strict=True, force=False):
         'user_id': user['id']
     }
     assert_policy('draft_promotion', policy_data, force=force)
-    # volume check, deny it if volume is changed as it's only allowed for admin
-    # after building, see applyVolumePolicy
-    new_volume = apply_volume_policy(target_build, strict=False, dry_run=True)
-    if new_volume is not None and new_volume['id'] != binfo['volume_id']:
-        # probably we can just apply the volume change here
-        if strict:
-            raise koji.GenericError(
-                f'Denial as volume will be changed to {new_volume["name"]}'
-            )
-        else:
-            return None
 
     koji.plugin.run_callbacks(
         'preBuildPromote',
@@ -16061,6 +16049,11 @@ def _promote_build(build, user=None, strict=True, force=False):
     move_and_symlink(koji.pathinfo.build(binfo), koji.pathinfo.build(new_binfo))
     ensure_volume_symlink(new_binfo)
 
+    # apply volume policy in case it's changed by release update.
+    apply_volume_policy(new_binfo, strict=False)
+
+    # adding DRAFT_PROMOTION for kojira,
+    # as the latest promoted build should be that latest one.
     for tag in list_tags(build=binfo['id']):
         set_tag_update(tag['id'], 'DRAFT_PROMOTION')
 
