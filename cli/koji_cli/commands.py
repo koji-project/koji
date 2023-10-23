@@ -6473,7 +6473,7 @@ def anon_handle_watch_logs(goptions, session, args):
     parser.add_option("--mine", action="store_true",
                       help="Watch logs for all your tasks, task_id arguments are forbidden in "
                            "this case.")
-    parser.add_option("-f", "--follow", action="store_true", help="Follow spawned child tasks")
+    parser.add_option("--follow", action="store_true", help="Follow spawned child tasks")
     (options, args) = parser.parse_args(args)
 
     if options.mine:
