@@ -5830,6 +5830,21 @@ def handle_image_build_indirection(options, session, args):
                       help="Do not display progress of the upload")
 
     (task_options, args) = parser.parse_args(args)
+    if task_options.config:
+        section = 'image-build-indirection'
+        config = koji.read_config_files([(task_options.config, True)])
+        if not config.has_section(section):
+            parser.error("single section called [%s] is required" % section)
+
+        # We avoid manually listing options
+        parser_options = [opt.dest for opt in parser.option_list]
+        parser_options.remove(None)  # --help has a dest of None, remove it to avoid errors
+        for opt in parser_options:
+            if not config.has_option(section, opt):
+                continue
+
+            setattr(task_options, opt, config.get(section, opt))
+
     _build_image_indirection(options, task_options, session, args)
 
 
