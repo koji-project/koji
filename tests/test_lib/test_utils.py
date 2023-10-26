@@ -1634,6 +1634,16 @@ class TestFormatShellCmd(unittest.TestCase):
         for inp, out in cases:
             self.assertEqual(koji.util.format_shell_cmd(inp, text_width=40), out)
 
+class TestExtractBuildTask(unittest.TestCase):
+    def test_valid_binfos(self):
+        binfos = [
+            {'id': 1, 'task_id': 123},
+            {'id': 1, 'extra': {'container_koji_task_id': 123}},
+        ]
+        for binfo in binfos:
+            res = koji.util.extract_build_task(binfo)
+            self.assertEqual(res, 123)
+
 
 if __name__ == '__main__':
     unittest.main()
