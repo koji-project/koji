@@ -10382,6 +10382,8 @@ class RootExports(object):
             ("date_part('epoch', start_time)", 'start_ts'),
             ('update_time', 'update_time'),
             ("date_part('epoch', update_time)", 'update_ts'),
+            ('renew_time', 'renew_time'),
+            ("date_part('epoch', renew_time)", 'renew_ts'),
             ('exclusive', 'exclusive'),
         ]
         columns, aliases = zip(*fields)
