@@ -131,7 +131,7 @@ in $channel channel
           </td>
           <td class="$str($bool($host.enabled)).lower()">#if $host.enabled then $util.imageTag('yes') else $util.imageTag('no')#</td>
           <td class="$str($bool($host.ready)).lower()">#if $host.ready then $util.imageTag('yes') else $util.imageTag('no')#</td>
-          <td>$host.task_load</td>
+          <td>#echo '%.2f' % $host.task_load#</td>
           <td>$host.capacity</td>
           <td>$util.formatTime($host.last_update)</td>
         </tr>
