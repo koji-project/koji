@@ -984,5 +984,7 @@ def extract_build_task(binfo):
     task_id = binfo.get('task_id')
     if task_id is None:
         # legacy OSBS task id location
-        task_id = binfo.get('extra', {}).get('container_koji_task_id')
+        extra = binfo.get('extra')
+        if extra is not None:
+            task_id = extra.get('container_koji_task_id')
     return task_id
