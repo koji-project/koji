@@ -34,7 +34,7 @@ class TestClientSession(unittest.TestCase):
     def test_hub_version_old(self, rsession):
         ksession = koji.ClientSession('http://koji.example.com/kojihub')
         ksession.getKojiVersion = mock.MagicMock()
-        ksession.getKojiVersion.side_effect = koji.GenericError
+        ksession.getKojiVersion.side_effect = koji.GenericError('Invalid method: getKojiVersion')
         self.assertEqual(ksession.hub_version, (1, 22, 0))
         ksession.getKojiVersion.assert_called_once()
 

@@ -2629,22 +2629,24 @@ class ClientSession(object):
 
     @property
     def hub_version(self):
-        """Cached version of getKojiVersion call for use in version checks"""
-        # If any call was made before, it should be populated by Koji-Version header
-        # for hub >= 1.35
-        if self.__hub_version is None:
-            try:
-                # no call was made yet AND 1.22.0 < hub_version < 1.35
-                self.__hub_version = self.getKojiVersion()
-            except GenericError:
-                # hub is older than 1.23, return latest version without the getKojiVersion
-                self.__hub_version = '1.22.0'
-        return tuple([int(x) for x in self.__hub_version.split('.')])
+        """Return the hub version as a tuple of ints"""
+        return tuple([int(x) for x in self.hub_version_str.split('.')])
 
     @property
     def hub_version_str(self):
-        # fill cache
-        self.hub_version
+        """Return the hub version as string"""
+        # If any call was made before, it should be populated by Koji-Version header
+        # for hub >= 1.35
+        if self.__hub_version is None:
+            # no call was made yet OR hub_version < 1.35
+            try:
+                self.__hub_version = self.getKojiVersion()
+            except GenericError as e:
+                if 'Invalid method' in str(e):
+                    # hub is older than 1.23, return latest version without the getKojiVersion
+                    self.__hub_version = '1.22.0'
+                else:
+                    raise
         return self.__hub_version
 
     @property
