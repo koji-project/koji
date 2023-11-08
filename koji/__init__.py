@@ -3079,7 +3079,9 @@ class ClientSession(object):
             warnings.simplefilter("ignore")
             r = self.rsession.post(handler, **callopts)
             r.raise_for_status()
-            self.__hub_version = r.headers.get('Koji-Version')
+            hub_version = r.headers.get('Koji-Version')
+            if hub_version:
+                self.__hub_version = hub_version
             try:
                 ret = self._read_xmlrpc_response(r)
             finally:
