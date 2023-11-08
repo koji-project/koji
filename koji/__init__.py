@@ -2643,7 +2643,8 @@ class ClientSession(object):
                 self.__hub_version = self.getKojiVersion()
             except GenericError as e:
                 if 'Invalid method' in str(e):
-                    # hub is older than 1.23, return latest version without the getKojiVersion
+                    # use latest version without the getKojiVersion handler
+                    self.logger.debug("hub is older than 1.23, assuming 1.22.0")
                     self.__hub_version = '1.22.0'
                 else:
                     raise
