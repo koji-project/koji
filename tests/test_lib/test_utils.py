@@ -8,7 +8,6 @@ import mock
 import optparse
 import os
 import resource
-import six.moves.configparser
 import time
 import six
 import shutil
@@ -240,10 +239,12 @@ class ConfigFileTestCase(unittest.TestCase):
         self.manager.isdir = mock.patch("os.path.isdir").start()
         self.manager.isfile = mock.patch("os.path.isfile").start()
         self.manager.access = mock.patch("os.access", return_value=True).start()
-        self.manager.cp_clz = mock.patch("six.moves.configparser.ConfigParser",
-                                         spec=True).start()
-        self.manager.scp_clz = mock.patch("six.moves.configparser.SafeConfigParser",
-                                          spec=True).start()
+        if six.PY2:
+            self.manager.scp_clz = mock.patch("ConfigParser.SafeConfigParser",
+                                              spec=True).start()
+        else:
+            self.manager.cp_clz = mock.patch("configparser.ConfigParser",
+                                             spec=True).start()
         self.manager.rcp_clz = mock.patch("six.moves.configparser.RawConfigParser",
                                           spec=True).start()
         if six.PY2:
