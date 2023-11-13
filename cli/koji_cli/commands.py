@@ -3664,11 +3664,14 @@ def anon_handle_rpminfo(goptions, session, args):
             if info['arch'] == 'src':
                 srpminfo = info.copy()
             else:
-                srpminfo = session.listRPMs(buildID=info['build_id'], arches='src')[0]
-                if srpminfo['epoch'] is None:
-                    srpminfo['epoch'] = ""
-                else:
-                    srpminfo['epoch'] = str(srpminfo['epoch']) + ":"
+                srpminfo = None
+                srpms = session.listRPMs(buildID=info['build_id'], arches='src')
+                if srpms:
+                    srpminfo = srpms[0]
+                    if srpminfo['epoch'] is None:
+                        srpminfo['epoch'] = ""
+                    else:
+                        srpminfo['epoch'] = str(srpminfo['epoch']) + ":"
             buildinfo = session.getBuild(info['build_id'])
         print("RPM: %(epoch)s%(name)s-%(version)s-%(release)s.%(arch)s [%(id)d]" % info)
         if info.get('draft'):
@@ -3681,9 +3684,16 @@ def anon_handle_rpminfo(goptions, session, args):
             print("Build: %(nvr)s [%(id)d]" % buildinfo)
             print("RPM Path: %s" %
                   os.path.join(koji.pathinfo.build(buildinfo), koji.pathinfo.rpm(info)))
-            print("SRPM: %(epoch)s%(name)s-%(version)s-%(release)s [%(id)d]" % srpminfo)
-            print("SRPM Path: %s" %
-                  os.path.join(koji.pathinfo.build(buildinfo), koji.pathinfo.rpm(srpminfo)))
+            if srpminfo:
+                srpm_str = "%(epoch)s%(name)s-%(version)s-%(release)s [%(id)d]" % srpminfo
+                srpm_path = os.path.join(
+                    koji.pathinfo.build(buildinfo),
+                    koji.pathinfo.rpm(srpminfo)
+                )
+            else:
+                srpm_path = srpm_str = "(none)"
+            print("SRPM: %s" % srpm_str)
+            print("SRPM Path: %s" % srpm_path)
             print("Built: %s" % time.strftime('%a, %d %b %Y %H:%M:%S %Z',
                                               time.localtime(info['buildtime'])))
         print("SIGMD5: %(payloadhash)s" % info)
