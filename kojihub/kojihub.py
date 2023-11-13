@@ -1483,7 +1483,8 @@ def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None,
         clauses.append('package.name = %(package)s')
     if owner:
         clauses.append('users.name = %(owner)s')
-    append_draft_clause(draft, clauses)
+    if draft is not None:
+        clauses.append(draft_clause(draft))
     queryOpts = {'order': '-create_event'}  # latest first
     if extra:
         fields.append(('build.extra', 'extra'))
@@ -1594,7 +1595,8 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None, inherit=False, late
             clauses.append('rpminfo.arch IN %(arch)s')
         else:
             raise koji.GenericError('Invalid type for arch option: %s' % builtins.type(arch))
-    append_draft_clause(draft, clauses, table='rpminfo')
+    if draft is not None:
+        clauses.append(draft_clause(draft, table='rpminfo'))
 
     if extra:
         fields.append(('rpminfo.extra', 'extra'))
@@ -4790,7 +4792,8 @@ def list_rpms(buildID=None, buildrootID=None, imageID=None, componentBuildrootID
             clauses.append('rpminfo.arch = %(arches)s')
         else:
             raise koji.GenericError('Invalid type for "arches" parameter: %s' % type(arches))
-    append_draft_clause(draft, clauses)
+    if draft is not None:
+        clauses.append(draft_clause(draft))
 
     fields, aliases = zip(*fields)
     query = QueryProcessor(columns=fields, aliases=aliases,
@@ -8514,7 +8517,8 @@ def untagged_builds(name=None, queryOpts=None, *, draft=None):
     if name is not None:
         clauses.append('package.name = %(name)s')
 
-    append_draft_clause(draft, clauses)
+    if draft is not None:
+        clauses.append(draft_clause(draft))
 
     query = QueryProcessor(tables=['build', 'package'],
                            columns=['build.id', 'package.name', 'build.version', 'build.release'],
@@ -12164,7 +12168,8 @@ class RootExports(object):
             btype_id = btype['id']
             joins.append('build_types ON build.id = build_types.build_id '
                          'AND btype_id = %(btype_id)s')
-        append_draft_clause(draft, clauses)
+        if draft is not None:
+            clauses.append(draft_clause(draft))
 
         query = QueryProcessor(columns=[pair[0] for pair in fields],
                                aliases=[pair[1] for pair in fields],
@@ -15929,31 +15934,33 @@ def reject_draft(buildinfo, error=None):
         raise error
 
 
-def append_draft_clause(draft, clauses, table=None):
-    """append proper clause in build/rpm query for draft option
+def draft_clause(draft, table=None):
+    """get proper clause in build/rpm query for draft option
 
     :param bool draft: draft option:
-        True: append "draft IS True"
-        False: append "draft IS NOT True"
-        None: do nothing
-    :param list clauses: clauses list to construct query by QueryProcessor, which the draft clause
-                         to append
+        True: "draft IS True"
+        False: "draft IS NOT True"
+
+    :param str table: the table(alias) the draft belongs to
+    :return: the generated clause.
+    :rtype: str or None
+    :raises: GenericError if draft is None
     """
+    if draft is None:
+        raise koji.GenericError('draft cannot be None')
     if not table:
         table = ''
     else:
         table += '.'
-    if draft is None:
-        return
     if draft:
-        clauses.append(f'{table}draft IS TRUE')
+        return f'{table}draft IS TRUE'
     else:
         # null is included
-        clauses.append(f'{table}draft IS NOT TRUE')
+        return f'{table}draft IS NOT TRUE'
 
 
 def _clean_draft_link(promoted_build):
-    """remove the symlink of old builddir to prmoted builddir"""
+    """remove the symlink of old builddir to promoted builddir"""
     draft_info = (promoted_build.get('extra') or {}).get('draft', {})
     if not (draft_info and draft_info.get('promoted')):
         # skipped as it's not a promoted build.
