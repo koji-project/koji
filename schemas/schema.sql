@@ -296,6 +296,7 @@ CREATE TABLE build (
 	cg_id INTEGER REFERENCES content_generator(id),
 	extra TEXT,
 	CONSTRAINT build_pkg_ver_rel UNIQUE (pkg_id, version, release),
+	-- required by constraint rpminfo_build_id_draft_fkey on table rpminfo
 	CONSTRAINT draft_for_rpminfo UNIQUE (id, draft),
 	CONSTRAINT completion_sane CHECK ((state = 0 AND completion_time IS NULL) OR
                                       (state <> 0 AND completion_time IS NOT NULL)),

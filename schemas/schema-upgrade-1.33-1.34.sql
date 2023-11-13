@@ -54,6 +54,7 @@ BEGIN;
     INSERT INTO permissions (name, description) VALUES ('draft-promoter', 'The permission required in the default "draft_promotion" hub policy rule to promote draft build.');
 
     ALTER TABLE build ADD COLUMN draft BOOLEAN NOT NULL DEFAULT 'false';
+    -- required by constraint rpminfo_build_id_draft_fkey on table rpminfo
     ALTER TABLE build ADD CONSTRAINT draft_for_rpminfo UNIQUE (id, draft);
     ALTER TABLE build ADD CONSTRAINT draft_release_sane CHECK
         ((draft AND release ~ ('^.*#draft_' || id::TEXT || '$'))
