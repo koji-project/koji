@@ -36,7 +36,9 @@ class TestPromoteBuild(unittest.TestCase):
         self.list_tags = mock.patch('kojihub.kojihub.list_tags',
                                     return_value=[{'id': 101}]).start()
         self.set_tag_update = mock.patch('kojihub.kojihub.set_tag_update').start()
-        self.encode_datetime = mock.patch('kojihub.kojihub.encode_datetime', return_value='NOW').start()
+        self.encode_datetime = mock.patch(
+            'kojihub.kojihub.encode_datetime', return_value='NOW'
+        ).start()
         self._now = datetime.datetime.now()
         self._datetime = mock.patch('kojihub.kojihub.datetime.datetime').start()
         self.now = self._datetime.now = mock.MagicMock(return_value=self._now)
@@ -45,12 +47,12 @@ class TestPromoteBuild(unittest.TestCase):
             'id': 1,
             'name': 'foo',
             'version': 'bar',
-            'release': 'dftrel_1',
+            'release': 'tgtrel#draft_1',
             'nvr': 'testnvr',
             'extra': {
                 'draft': {
                     'promoted': False,
-                    'target_release': 'tgtrel_1'
+                    'target_release': 'tgtrel'
                 }},
             'state': 1,
             'draft': True,
@@ -58,13 +60,13 @@ class TestPromoteBuild(unittest.TestCase):
             'volume_name': 'X',
             'task_id': 222
         }
-        
-        self.new_build = {   
+
+        self.new_build = {
             # no check on the info
             'id': 1,
             'name': 'foo',
             'version': 'bar',
-            'release': 'tgtrel_1',
+            'release': 'tgtrel',
             'volume_name': 'X'
         }
 
@@ -82,15 +84,15 @@ class TestPromoteBuild(unittest.TestCase):
             {
                 'draft': {
                     'promoted': True,
-                    'target_release': 'tgtrel_1',
-                    'old_release': 'dftrel_1',
+                    'target_release': 'tgtrel',
+                    'old_release': 'tgtrel#draft_1',
                     'promotion_time': 'NOW',
                     'promotion_ts': self._now.timestamp(),
                     'promoter': self.user['name']
                 }
             }
         )
-        
+
         ret = self.exports.promoteBuild('a-draft-build', strict=True)
         self.assertEqual(ret, self.new_build)
         self.assertEqual(len(self.updates), 1)
@@ -98,7 +100,7 @@ class TestPromoteBuild(unittest.TestCase):
         self.assertEqual(update.table, 'build')
         self.assertEqual(update.values, self.draft_build)
         self.assertEqual(update.data, {'draft': False,
-                                       'release': 'tgtrel_1',
+                                       'release': 'tgtrel',
                                        'extra': extra})
         self.assertEqual(update.rawdata, {})
         self.assertEqual(update.clauses, ['id=%(id)i'])
@@ -113,21 +115,22 @@ class TestPromoteBuild(unittest.TestCase):
             self.exports.promoteBuild('a-regular-build', strict=True)
         self.assertEqual(str(cm.exception), "Not a draft build: {'draft': False}")
         self.assertEqual(len(self.updates), 0)
-        
+
         ret = self.exports.promoteBuild('a-regular-build', strict=False)
         self.assertIsNone(ret)
         self.assertEqual(len(self.updates), 0)
 
-    def test_promote_build_no_target_release(self):
+    def test_promote_build__target_release(self):
         draft = {
             'id': 1,
             'name': 'foo',
             'version': 'bar',
-            'release': 'dftrel_1',
+            'release': 'tgtrel#draft_2',
             'extra': {
                 'draft': {
-                    'promoted': False
-                    # no target_release
+                    'promoted': False,
+                    # target_release doesn't matter now
+                    'target_release': 'any'
                 }},
             'state': 1,
             'draft': True,
@@ -135,14 +138,17 @@ class TestPromoteBuild(unittest.TestCase):
             'volume_name': 'X',
             'task_id': 222
         }
-        
+
         self.get_build.return_value = draft
 
         with self.assertRaises(koji.GenericError) as cm:
             self.exports.promoteBuild('a-regular-build', strict=True)
-        self.assertEqual(str(cm.exception), f"draft.target_release not found in extra of build: {draft}")
+        self.assertEqual(
+            str(cm.exception),
+            "buildinfo.id: 1 doesn't match build id part: 2 in buildinfo.release: tgtrel#draft_2"
+        )
         self.assertEqual(len(self.updates), 0)
-        
+
         ret = self.exports.promoteBuild('a-regular-build', strict=False)
         self.assertIsNone(ret)
         self.assertEqual(len(self.updates), 0)
@@ -152,12 +158,12 @@ class TestPromoteBuild(unittest.TestCase):
             'id': 1,
             'name': 'foo',
             'version': 'bar',
-            'release': 'dftrel_1',
+            'release': 'tgtrel#draft_1',
             'nvr': 'testnvr',
             'extra': {
                 'draft': {
-                    'promoted': False
-                    # no target_release
+                    'promoted': False,
+                    'target_release': 'any'
                 }},
             'draft': True,
             'state': 0,
@@ -193,9 +199,9 @@ class TestPromoteBuild(unittest.TestCase):
         self.get_build.assert_called_with({
             'name': 'foo',
             'version': 'bar',
-            'release': 'tgtrel_1'
+            'release': 'tgtrel'
         })
-        
+
         self.get_build.reset_mock()
         self.get_build.side_effect = [self.draft_build, old]
         ret = self.exports.promoteBuild('a-regular-build', strict=False)

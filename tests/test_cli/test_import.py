@@ -1,8 +1,10 @@
 from __future__ import absolute_import
-import mock
+
 import os
-import six
 import unittest
+
+import mock
+import six
 
 import koji
 from koji_cli.commands import handle_import
@@ -111,22 +113,24 @@ class TestImport(utils.CliTestCase):
 
         # check mock calls
         activate_session_mock.assert_called_with(session, options)
-        
+
         get_header_fields_calls = [
             mock.call(arguments[i],
                       ('name', 'version', 'release', 'epoch',
                        'arch', 'sigmd5', 'sourcepackage', 'sourcerpm')
                       ) for i in range(len(rpm_headers) - 1)
-            ]
+        ]
 
         get_header_fields_mock.assert_has_calls(get_header_fields_calls)
-        
+
         if getrpm_calls:
             session.getRPM.assert_has_calls(getrpm_calls)
         elif getrpm_called:
             session.getRPM.assert_called_with(
-                dict((k, rpm_header.get(k, ''))
-                    for k in ['release', 'version', 'arch', 'name'])
+                dict(
+                    (k, rpm_header.get(k, ''))
+                    for k in ['release', 'version', 'arch', 'name']
+                )
             )
         else:
             session.getRPM.assert_not_called()
@@ -174,8 +178,10 @@ class TestImport(utils.CliTestCase):
         )
         if getrpm_called:
             session.getRPM.assert_called_with(
-                dict((k, rpm_header.get(k, ''))
-                    for k in ['release', 'version', 'arch', 'name'])
+                dict(
+                    (k, rpm_header.get(k, ''))
+                    for k in ['release', 'version', 'arch', 'name']
+                )
             )
         else:
             session.getRPM.assert_not_called()
@@ -821,17 +827,13 @@ class TestImport(utils.CliTestCase):
             'version': '4.4.12',
             'release': '5.fc26#draft_123',
             'nvr': 'bash-4.4.12-5.fc26',
+            'id': '123',
             'draft': True,
-            'extra': {
-                'draft': {
-                    'target_release': '5.fc26'
-                }
-            },
             'state': self.bstate['COMPLETE']
         }
         session.getBuild.return_value = build
 
-        # Case 1. import src rpm with --draft-build 
+        # Case 1. import src rpm with --draft-build
         # result: success
         expected = "uploading %s... done\n" % arguments[0]
         expected += "importing %s... done\n" % arguments[0]
@@ -859,25 +861,21 @@ class TestImport(utils.CliTestCase):
         session = mock.MagicMock()
         session.getRPM.return_value = None
         build = {
+            'id': '123',
             'name': 'bash',
             'version': '4.4.12',
             'release': '5.fc26#draft_123',
             'nvr': 'bash-4.4.12-5.fc26',
             'draft': True,
-            'extra': {
-                'draft': {
-                    'target_release': '5.fc26'
-                }
-            },
             'state': self.bstate['COMPLETE']
         }
         session.getBuild.return_value = build
 
-        # Case 1. import bin rpm with --draft-build 
+        # Case 1. import bin rpm with --draft-build
         # result: success
         expected = "uploading %s... done\n" % arguments[0]
         expected += "importing %s... done\n" % arguments[0]
-        
+
         self.__do_import_test(
             options, session, arguments,
             rpm_header=self.rpm_header,
@@ -892,31 +890,54 @@ class TestImport(utils.CliTestCase):
         arguments = ['/path/to/bash-4.4.12-5.fc26.rpm', '--draft-build', '286']
         options = mock.MagicMock()
         session = mock.MagicMock()
-        
+
         cases = [
-            # build, stderr 
+            # build, stderr
             (None, "No such build: 286"),
             ({'draft': False, 'nvr': 'a-bad-draft'}, "a-bad-draft is not a draft build"),
             ({'draft': True, 'nvr': 'a-bad-draft', 'state': koji.BUILD_STATES['DELETED']},
-             "draft build a-bad-draft is expected as COMPLETE, got DELETED"),
-            ({'draft': True, 'nvr': 'a-bad-draft', 'state': koji.BUILD_STATES['COMPLETE'],
-              'extra': {'draft': {'no_target_release': 'omg'}}},
-             "Invalid draft build: a-bad-draft, no draft.target_release found in extra")
+             "draft build a-bad-draft is expected as COMPLETE, got DELETED")
         ]
         for build, expected in cases:
             session.getBuild.return_value = build
             # result: error
             expected += "\n"
             self.assert_system_exit(
-                    handle_import,
-                    options,
-                    session,
-                    arguments,
-                    stderr=expected,
-                    activate_session=None,
-                    exit_code=1)
+                handle_import,
+                options,
+                session,
+                arguments,
+                stderr=expected,
+                activate_session=None,
+                exit_code=1)
             options.reset_mock()
             session.reset_mock()
+
+    def test_handle_import_specified_draft_build_invalid_target_release(self):
+        """Test handle_import RPM import with --draft-build case.
+        Invalid target_release parsing
+        """
+        arguments = ['/path/to/bash-4.4.12-5.fc26.rpm', '--draft-build', '286']
+        options = mock.MagicMock()
+        session = mock.MagicMock()
+
+        cases = [
+            # build, stderr
+            ({'draft': True, 'nvr': 'a-bad-draft', 'state': koji.BUILD_STATES['COMPLETE'],
+              'release': 'no_id'},
+             "'id' not found in"
+             " {'draft': True, 'nvr': 'a-bad-draft', 'state': 1, 'release': 'no_id'}"),
+            ({'draft': True, 'nvr': 'a-bad-draft', 'state': koji.BUILD_STATES['COMPLETE'],
+              'id': 123, 'release': 'tgt#draft_234'},
+             "buildinfo.id: 123 doesn't match build id part: 234"
+             " in buildinfo.release: tgt#draft_234")
+        ]
+        for build, expected in cases:
+            session.getBuild.return_value = build
+            # result: error
+            with self.assertRaises(koji.GenericError) as cm:
+                handle_import(options, session, arguments)
+            self.assertEqual(str(cm.exception), expected)
 
     def test_handle_import_help(self):
         """Test handle_import function help message"""

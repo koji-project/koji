@@ -78,7 +78,6 @@ class TestImportRPM(unittest.TestCase):
             kojihub.import_rpm(self.filename)
         self.assertEqual("Build is FAILED: name-version-release", str(cm.exception))
         self.assertEqual(len(self.inserts), 0)
-        
 
     def test_import_rpm_completed_build(self):
         self.os_path_basename.return_value = 'name-version-release.arch.rpm'
@@ -212,14 +211,13 @@ class TestImportRPM(unittest.TestCase):
         self.assertEqual(insert.data, data)
         self.assertEqual(insert.rawdata, {})
 
-
     def test_import_draft_conflict(self):
         with self.assertRaises(koji.GenericError) as cm:
             kojihub.import_rpm(self.filename, buildinfo={'id': 1024, 'draft': False}, draft=True)
         self.assertEqual("draft property: False of build: 1024 mismatch, True is expected",
                          str(cm.exception))
         self.assertEqual(len(self.inserts), 0)
-    
+
     def test_import_draft_rpm_without_buildinfo(self):
         self.os_path_basename.return_value = 'name-version-release.arch.rpm'
         self.get_rpm_header.return_value = self.rpm_header_retval
@@ -229,8 +227,8 @@ class TestImportRPM(unittest.TestCase):
         self.assertEqual(f"Cannot import draft rpm: {self.os_path_basename.return_value}"
                          " without specifying a build", str(cm.exception))
         self.assertEqual(len(self.inserts), 0)
-        
-    def test_import_draft_rpm_non_extra_target_release(self):
+
+    def test_import_draft_rpm_invalid_release(self):
         self.os_path_basename.return_value = 'name-version-release.arch.rpm'
         self.get_rpm_header.return_value = self.rpm_header_retval
 
@@ -238,7 +236,7 @@ class TestImportRPM(unittest.TestCase):
             'state': koji.BUILD_STATES['DELETED'],
             'name': 'name',
             'version': 'version',
-            'release': 'release',
+            'release': 'badrelease',
             'id': 12345,
             'draft': True
         }
@@ -246,11 +244,11 @@ class TestImportRPM(unittest.TestCase):
         with self.assertRaises(koji.GenericError) as cm:
             kojihub.import_rpm(self.filename, buildinfo=buildinfo, draft=True)
         self.assertEqual(
-            f'target release of draft build not found in extra of build: {buildinfo}',
+            'draft release: badrelease is not in valid format',
             str(cm.exception)
         )
         self.assertEqual(len(self.inserts), 0)
-    
+
     def test_import_draft_rpm_valid(self):
         self.os_path_basename.return_value = 'name-version-release.arch.rpm'
         self.get_rpm_header.return_value = self.rpm_header_retval
@@ -259,7 +257,7 @@ class TestImportRPM(unittest.TestCase):
             'state': koji.BUILD_STATES['COMPLETE'],
             'name': 'name',
             'version': 'version',
-            'release': 'release',
+            'release': 'release#draft_12345',
             'id': 12345,
             'draft': True,
             'extra': {
@@ -305,14 +303,9 @@ class TestImportRPM(unittest.TestCase):
             'state': koji.BUILD_STATES['COMPLETE'],
             'name': 'name',
             'version': 'version',
-            'release': 'release',
+            'release': 'release#draft_12345',
             'id': 12345,
-            'draft': True,
-            'extra': {
-                'draft': {
-                    'target_release': 'release'
-                }
-            }
+            'draft': True
         }
         self.nextval.return_value = 9876
         kojihub.import_rpm(self.src_filename, buildinfo=buildinfo, draft=True)

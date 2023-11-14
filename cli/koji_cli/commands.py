@@ -1364,10 +1364,7 @@ def handle_import(goptions, session, args):
         b_state = koji.BUILD_STATES[draft_build['state']]
         if b_state != 'COMPLETE':
             error("draft build %s is expected as COMPLETE, got %s" % (draft_build['nvr'], b_state))
-        target_release = draft_build.get('extra', {}).get('draft', {}).get('target_release')
-        if not target_release:
-            error("Invalid draft build: %s,"
-                  " no draft.target_release found in extra" % draft_build['nvr'])
+        target_release = koji.parse_target_release(draft_build)
         draft_target_nvr = "%s-%s-%s" % (
             draft_build['name'], draft_build['version'], target_release
         )

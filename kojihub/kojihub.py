@@ -6104,7 +6104,7 @@ def new_build(data, strict=False):
     # handle draft suffix in release
     if data.get('draft'):
         target_release = data['release']
-        data['release'] = insert_data['release'] = koji.DRAFT_RELEASE_FORMAT.format(**data)
+        data['release'] = insert_data['release'] = koji.gen_draft_release(data)
         # it's still possible to already have a build with the same nvr
         draft_nvr = dslice(data, ['name', 'version', 'release'])
         if find_build_id(draft_nvr):
@@ -6413,13 +6413,8 @@ def import_rpm(fn, buildinfo=None, brootid=None, wrapper=False, fileinfo=None, d
         # only enforce the srpm name matching the build for non-wrapper rpms
         nvrinfo = buildinfo.copy()
         if draft:
-            # for draft build the release is buildinfo.extra.draft.target_release
-            target_release = (buildinfo.get('extra') or {}).get('draft', {}).get('target_release')
-            if not target_release:
-                raise koji.GenericError(
-                    f'target release of draft build not found in extra of build: {buildinfo}'
-                )
-            nvrinfo['release'] = target_release
+            # for draft build, change release to target_release
+            nvrinfo['release'] = koji.parse_target_release(buildinfo)
         srpmname = "%(name)s-%(version)s-%(release)s.src.rpm" % nvrinfo
         # either the sourcerpm field should match the build, or the filename
         # itself (for the srpm)
@@ -15996,17 +15991,20 @@ def _promote_build(build, user=None, strict=True, force=False):
         else:
             return None
     old_release = binfo['release']
-    extra = binfo.get('extra') or {}
-    # get target release in binfo.extra
-    draft_info = extra.get('draft', {}).copy()
-    target_release = draft_info.get('target_release')
+
+    # get target release
+    target_release = None
+    try:
+        target_release = koji.parse_target_release(binfo)
+    except Exception:
+        if strict:
+            raise
     if not target_release:
         if strict:
-            raise koji.GenericError(
-                f'draft.target_release not found in extra of build: {binfo}'
-            )
-        else:
-            return None
+            # should never happen
+            raise koji.GenericError('Cannot generate target_release')
+        return None
+
     # drop id to get build by NVR
     target_build = dslice(binfo, ['name', 'version'])
     target_build['release'] = target_release
@@ -16040,7 +16038,8 @@ def _promote_build(build, user=None, strict=True, force=False):
     # temp solution with python generated time, maybe better to be an event?
     now = datetime.datetime.now()
 
-    extra['draft'] = draft_info
+    extra = binfo.get('extra') or {}
+    draft_info = extra.setdefault('draft', {})
     draft_info['promoted'] = True
     draft_info['old_release'] = old_release
     draft_info['promotion_time'] = encode_datetime(now)

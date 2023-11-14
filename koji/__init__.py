@@ -296,8 +296,9 @@ PRIO_DEFAULT = 20
 DEFAULT_REQUEST_TIMEOUT = 60 * 60 * 12
 DEFAULT_AUTH_TIMEOUT = 60
 
-# draft release format
+# draft release constants
 DRAFT_RELEASE_FORMAT = '{release}#draft_{id}'
+DRAFT_RELEASE_PARSING_REGEX = r'^(?P<release>.+)#draft_(?P<id>[0-9]+)$'
 
 # BEGIN kojikamid dup #
 
@@ -3926,6 +3927,52 @@ def fixEncodingRecurse(value, fallback='iso8859-15', remove_nonprintable=False):
     kwargs = {'fallback': fallback, 'remove_nonprintable': remove_nonprintable}
     walker = util.DataWalker(value, fix_encoding, kwargs)
     return walker.walk()
+
+
+def gen_draft_release(buildinfo):
+    """Generate draft_release based on input build information
+
+    Currently, it's generated as {target_release}#draft_{build_id}
+
+    :param buildinfo: buildinfo with target "release", used to generate draft_release
+    :type buildinfo: dict
+    :return: draft release
+    :rtype: str
+    :raises GenericError: if missing any required field
+    """
+    for k in ('id', 'release'):
+        if not buildinfo.get(k):
+            raise GenericError("key: '%s' not found in %s" % (k, buildinfo))
+    return DRAFT_RELEASE_FORMAT.format(**buildinfo)
+
+
+def parse_target_release(buildinfo):
+    """Generate target_release from a draft buildinfo reversely
+
+    :param buildinfo: buildinfo of a draft build
+    :type buildinfo: dict
+    :rtype: str
+    :raises GenericError: if missing draft field in buildinfo
+    :raises GenericError: if cannot get a valid target_release
+    """
+    draft_release = buildinfo.get('release')
+    if not draft_release:
+        raise GenericError("'release' not found in %s" % buildinfo)
+    build_id = buildinfo.get('id')
+    if build_id:
+        build_id = str(build_id)
+    else:
+        raise GenericError("'id' not found in %s" % buildinfo)
+    match = re.match(DRAFT_RELEASE_PARSING_REGEX, draft_release)
+    if match:
+        if build_id != match.group('id'):
+            raise GenericError(
+                "buildinfo.id: %s doesn't match build id part: %s in buildinfo.release: %s" %
+                (build_id, match.group('id'), draft_release)
+            )
+        return match.group('release')
+    else:
+        raise GenericError("draft release: %s is not in valid format" % draft_release)
 
 
 def add_file_logger(logger, fn):
