@@ -1328,10 +1328,6 @@ def handle_import(goptions, session, args):
     parser.add_option("--test", action="store_true", help="Don't actually import")
     parser.add_option("--create-build", action="store_true", help="Auto-create builds as needed")
     parser.add_option("--src-epoch", help="When auto-creating builds, use this epoch")
-    parser.add_option("--create-draft", action="store_true",
-                      help="Auto-create draft builds instead as needed")
-    parser.add_option("--draft-build", metavar='NVR|ID',
-                      help="The target draft build to import to")
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
         parser.error("At least one package must be specified")
@@ -1342,32 +1338,6 @@ def handle_import(goptions, session, args):
             options.src_epoch = int(options.src_epoch)
         except (ValueError, TypeError):
             parser.error("Invalid value for epoch: %s" % options.src_epoch)
-    if options.create_draft:
-        print("Will create draft build instead if desired nvr doesn't exist")
-        options.create_build = True
-    draft_build = None
-    draft_target_nvr = None
-    if options.draft_build:
-        if options.create_build:
-            parser.error(
-                "To ensure no misuse, don't specify --draft-build while auto-creating."
-            )
-        try:
-            draft_build = int(options.draft_build)
-        except ValueError:
-            draft_build = options.draft_build
-        draft_build = session.getBuild(draft_build)
-        if not draft_build:
-            error("No such build: %s" % options.draft_build)
-        if not draft_build.get('draft'):
-            error("%s is not a draft build" % draft_build['nvr'])
-        b_state = koji.BUILD_STATES[draft_build['state']]
-        if b_state != 'COMPLETE':
-            error("draft build %s is expected as COMPLETE, got %s" % (draft_build['nvr'], b_state))
-        target_release = koji.parse_target_release(draft_build)
-        draft_target_nvr = "%s-%s-%s" % (
-            draft_build['name'], draft_build['version'], target_release
-        )
     activate_session(session, goptions)
     to_import = {}
     for path in args:
@@ -1379,7 +1349,6 @@ def handle_import(goptions, session, args):
         else:
             nvr = "%(name)s-%(version)s-%(release)s" % koji.parse_NVRA(data['sourcerpm'])
         to_import.setdefault(nvr, []).append((path, data))
-
     builds_missing = False
     nvrs = sorted(to_list(to_import.keys()))
     for nvr in nvrs:
@@ -1388,41 +1357,29 @@ def handle_import(goptions, session, args):
             if data['sourcepackage']:
                 break
         else:
-            if nvr == draft_target_nvr:
-                continue
-            # when no srpm and create_draft
-            elif options.create_draft:
-                print("Missing srpm for draft build creating with target nvr: %s" % nvr)
-                builds_missing = True
-                continue
             # no srpm included, check for build
             binfo = session.getBuild(nvr)
             if not binfo:
                 print("Missing build or srpm: %s" % nvr)
                 builds_missing = True
-    if builds_missing and (not options.create_build or options.create_draft):
+    if builds_missing and not options.create_build:
         print("Aborting import")
         return
 
     # local function to help us out below
-    def do_import(path, data, draft_build=None):
-        draft = bool(draft_build) or options.create_draft
+    def do_import(path, data):
         rinfo = dict([(k, data[k]) for k in ('name', 'version', 'release', 'arch')])
-        if draft_build or not options.create_draft:
-            opts = {}
-            if draft_build:
-                opts['build'] = draft_build
-            prev = session.getRPM(rinfo, **opts)
-            if prev and not prev.get('external_repo_id', 0):
-                if prev['payloadhash'] == koji.hex_string(data['sigmd5']):
-                    print("RPM already imported: %s" % path)
-                else:
-                    warn("md5sum mismatch for %s" % path)
-                    warn("  A different rpm with the same name has already been imported")
-                    warn("  Existing sigmd5 is %r, your import has %r" % (
-                        prev['payloadhash'], koji.hex_string(data['sigmd5'])))
-                print("Skipping import")
-                return
+        prev = session.getRPM(rinfo)
+        if prev and not prev.get('external_repo_id', 0):
+            if prev['payloadhash'] == koji.hex_string(data['sigmd5']):
+                print("RPM already imported: %s" % path)
+            else:
+                warn("md5sum mismatch for %s" % path)
+                warn("  A different rpm with the same name has already been imported")
+                warn("  Existing sigmd5 is %r, your import has %r" % (
+                    prev['payloadhash'], koji.hex_string(data['sigmd5'])))
+            print("Skipping import")
+            return
         if options.test:
             print("Test mode -- skipping import for %s" % path)
             return
@@ -1438,69 +1395,41 @@ def handle_import(goptions, session, args):
         sys.stdout.write("importing %s... " % path)
         sys.stdout.flush()
         try:
-            opts = {}
-            if draft_build:
-                opts['build'] = draft_build
-            if draft:
-                opts['draft'] = draft
-            rpminfo = session.importRPM(serverdir, os.path.basename(path), **opts)
+            session.importRPM(serverdir, os.path.basename(path))
         except koji.GenericError as e:
-            rpminfo = None
             print("\nError importing: %s" % str(e).splitlines()[-1])
             sys.stdout.flush()
         else:
             print("done")
         sys.stdout.flush()
-        return rpminfo
 
     for nvr in nvrs:
         # check for existing build
         need_build = True
-        is_draft = True
-        if nvr == draft_target_nvr:
-            binfo = draft_build
-            need_build = False
-        elif options.create_draft:
-            binfo = None
-            need_build = True
-        else:
-            is_draft = False
-            binfo = session.getBuild(nvr)
-            if binfo:
-                b_state = koji.BUILD_STATES[binfo['state']]
-                if b_state == 'COMPLETE':
-                    need_build = False
-                elif b_state in ['FAILED', 'CANCELED']:
-                    if not options.create_build:
-                        print("Build %s state is %s. Skipping import" % (nvr, b_state))
-                        continue
-                else:
-                    print("Build %s exists with state=%s. Skipping import" % (nvr, b_state))
+        binfo = session.getBuild(nvr)
+        if binfo:
+            b_state = koji.BUILD_STATES[binfo['state']]
+            if b_state == 'COMPLETE':
+                need_build = False
+            elif b_state in ['FAILED', 'CANCELED']:
+                if not options.create_build:
+                    print("Build %s state is %s. Skipping import" % (nvr, b_state))
                     continue
+            else:
+                print("Build %s exists with state=%s. Skipping import" % (nvr, b_state))
+                continue
 
         # import srpms first, if any
         for path, data in to_import[nvr]:
             if data['sourcepackage']:
-                # we can not fix state for draft build by createEmptyBuild
-                if not is_draft and binfo and b_state != 'COMPLETE':
+                if binfo and b_state != 'COMPLETE':
                     # need to fix the state
                     print("Creating empty build: %s" % nvr)
                     b_data = koji.util.dslice(binfo, ['name', 'version', 'release'])
                     b_data['epoch'] = data['epoch']
                     session.createEmptyBuild(**b_data)
                     binfo = session.getBuild(nvr)
-                dbld = binfo if is_draft else None
-                will_create = False
-                if options.create_draft and not dbld:
-                    will_create = True
-                    print("Will create draft build with target nvr: %s while importing" % nvr)
-                rpminfo = do_import(path, data, draft_build=dbld)
-                # only needed for draft build, but
-                # TODO: should be able to apply to regular import
-                if rpminfo and rpminfo.get('build', {}).get('draft'):
-                    binfo = rpminfo['build']
-                    if will_create:
-                        print("Draft build: %s created" % binfo['nvr'])
+                do_import(path, data)
                 need_build = False
 
         if need_build:
@@ -1509,11 +1438,11 @@ def handle_import(goptions, session, args):
                 if binfo:
                     # should have caught this earlier, but just in case...
                     b_state = koji.BUILD_STATES[binfo['state']]
-                    print("Build %s state is %s. Skipping import" % (binfo['nvr'], b_state))
+                    print("Build %s state is %s. Skipping import" % (nvr, b_state))
                     continue
                 else:
                     print("No such build: %s (include matching srpm or use "
-                          "--create-build/--create-draft option to add it)" % nvr)
+                          "--create-build option to add it)" % nvr)
                     continue
             else:
                 # let's make a new build
@@ -1524,22 +1453,17 @@ def handle_import(goptions, session, args):
                     # pull epoch from first rpm
                     data = to_import[nvr][0][1]
                     b_data['epoch'] = data['epoch']
-                if options.create_draft:
-                    b_data['draft'] = True
-                    b_display = "empty draft build with target nvr: %s" % nvr
-                else:
-                    b_display = "empty build: %s" % nvr
                 if options.test:
-                    print("Test mode -- would have created %s" % b_display)
+                    print("Test mode -- would have created empty build: %s" % nvr)
                 else:
-                    print("Creating %s" % b_display)
-                    buildid = session.createEmptyBuild(**b_data)
-                    binfo = session.getBuild(buildid)
+                    print("Creating empty build: %s" % nvr)
+                    session.createEmptyBuild(**b_data)
+                    binfo = session.getBuild(nvr)
 
         for path, data in to_import[nvr]:
             if data['sourcepackage']:
                 continue
-            do_import(path, data, draft_build=binfo if is_draft else None)
+            do_import(path, data)
 
 
 def handle_import_cg(goptions, session, args):
