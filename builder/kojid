@@ -6409,10 +6409,16 @@ enabled=1
         for a in self.compat[arch]:
             # note: self.compat includes noarch for non-src already
             rpm_iter, builds = self.session.listTaggedRPMS(tag_id,
-                                                           event=opts['event'], arch=a,
+                                                           event=opts['event'],
+                                                           arch=a,
                                                            latest=opts['latest'],
-                                                           inherit=opts['inherit'], rpmsigs=True)
+                                                           inherit=opts['inherit'],
+                                                           rpmsigs=True)
+            
             for build in builds:
+                # disable draft for distRepo so far
+                if build.get('draft'):
+                    raise koji.BuildError("Draft build: %s is not allowed" % build['nvr'])
                 builddirs[build['id']] = koji.pathinfo.build(build)
             rpms += list(rpm_iter)
 
