@@ -204,6 +204,7 @@ class BuildRoot(object):
             self._load(*args, **kwargs)
         else:
             self._new(*args, **kwargs)
+        self._init_repo_data()
 
     def _load(self, data):
         # manage an existing buildroot
@@ -345,6 +346,17 @@ class BuildRoot(object):
         # write config
         with koji._open_text_file(configfile, 'wt') as fo:
             fo.write(output)
+
+    def _init_repo_data(self):
+        pathinfo = koji.PathInfo(topdir='')
+        self.repodir = pathinfo.repo(self.repoid, self.tag_name)
+        rel_repo_url = os.path.join(self.repodir, self.br_arch)
+        # repo_url can start with '/', don't use os.path.join
+        if self.options.topurl:
+            self.repo_url = '%s/%s' % (self.options.topurl, rel_repo_url)
+        elif self.options.topdir:
+            self.repo_url = '%s/%s' % (self.options.topdir, rel_repo_url)
+        logging.info("repo url of buildroot: %s is %s", self.name, self.repo_url)
 
     def _repositoryEntries(self, pi, plugin=False):
         entries = []
@@ -688,6 +700,7 @@ class BuildRoot(object):
         """Return a list of packages from the buildroot
 
         Each member of the list is a dictionary containing the following fields:
+            - id, optional for internal rpm available in content.json
             - name
             - version
             - release
@@ -696,6 +709,8 @@ class BuildRoot(object):
             - payloadhash
             - size
             - buildtime
+            - external_repo, optional for external rpm
+            - location, optional for external rpm
         """
         fields = ('name',
                   'version',
@@ -734,6 +749,7 @@ class BuildRoot(object):
         finally:
             rpm.delMacro("_dbpath")
         self.markExternalRPMs(ret)
+        self.mapInternalRPMs(ret)
         return ret
 
     def getMavenPackageList(self, repodir):
@@ -825,25 +841,16 @@ class BuildRoot(object):
             # substitute $arch in the url with the arch of the repo we're generating
             ext_url = erepo['url'].replace('$arch', self.br_arch)
             erepo_idx[ext_url] = erepo
-        pathinfo = koji.PathInfo(topdir='')
 
-        repodir = pathinfo.repo(self.repo_info['id'], self.repo_info['tag_name'])
         opts = dict([(k, getattr(self.options, k)) for k in ('topurl', 'topdir')])
         opts['tempdir'] = self.options.workdir
 
-        repo_url = os.path.join(repodir, self.br_arch)
-        # repo_url can start with '/', don't use os.path.join
-        if self.options.topurl:
-            repo_url = '%s/%s' % (self.options.topurl, repo_url)
-        elif self.options.topdir:
-            repo_url = '%s/%s' % (self.options.topdir, repo_url)
-        logging.error(repo_url)
         tmpdir = os.path.join(self.tmpdir(), 'librepo-markExternalRPMs')
         koji.ensuredir(tmpdir)
         h = librepo.Handle()
         r = librepo.Result()
         h.setopt(librepo.LRO_REPOTYPE, librepo.LR_YUMREPO)
-        h.setopt(librepo.LRO_URLS, [repo_url])
+        h.setopt(librepo.LRO_URLS, [self.repo_url])
         h.setopt(librepo.LRO_DESTDIR, tmpdir)
         # We are using this just to find out location of 'origin',
         # we don't even need to download it since we use openRemoteFile
@@ -852,7 +859,7 @@ class BuildRoot(object):
         pkgorigins = r.getinfo(librepo.LRR_YUM_REPOMD)['origin']['location_href']
         koji.util.rmtree(tmpdir)
 
-        relpath = os.path.join(repodir, self.br_arch, pkgorigins)
+        relpath = os.path.join(self.repodir, self.br_arch, pkgorigins)
         with koji.openRemoteFile(relpath, **opts) as fo:
             # at this point we know there were external repos at the create event,
             # so there should be an origins file.
@@ -885,6 +892,61 @@ class BuildRoot(object):
                 raise koji.BuildError("Unknown origin for %s: %s" % (key, ext_url))
             rpm_info['external_repo'] = erepo
             rpm_info['location'] = erepo['external_repo_id']
+
+    def mapInternalRPMs(self, rpmlist):
+        """
+        Map each rpm item of rpmlist by attaching rpm_id in repodir's content.json which
+        is generated while repo initiation.
+
+        Skipped if content.json doesn't exist for backward compatibility.
+
+        For now, content.json is a dict[nvra, rpmdata], where rpmdata contains keys below:
+          - id
+          - build_id
+          - name
+          - version
+          - release
+          - epoch
+          - arch
+          - payloadhash
+          - size
+          - buildtime
+
+        Notes:
+          - Because the nvra uniqueness is still being kept, we don't need the check so far.
+          - it must be called after markExternalRPMs, as it use "external_repo" to skip external
+            rpms.
+
+        :param list rpmlist: rpm list fetched from local RPMDB.
+        :return: the same rpmlist as the parameter with build nvrs attached
+        :rtype: list
+        """
+
+        opts = dict([(k, getattr(self.options, k)) for k in ('topurl', 'topdir')])
+        content_json_file = os.path.join(self.repodir, self.br_arch, 'pkglist')
+        if not os.path.exists(content_json_file):
+            self.logger.warning(
+                "% not found, don't mapping internal rpms with ids for repo#%i",
+                content_json_file, self.repoid)
+        with koji.openRemoteFile(content_json_file, **opts) as fo:
+            content = json.load(fo)
+
+        for rpm_info in rpmlist:
+            if 'external_repo' in rpm_info:
+                continue
+            nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" % rpm_info
+            data = content.get(nvra)
+            if not data:
+                self.logger.warning("%s not found in content.json", nvra)
+                continue
+            # check payloadhash in case they are different
+            elif data['payloadhash'] != rpm_info['payloadhash']:
+                self.logger.error(
+                    "RPM: %s: payloadhash: %s mismatch expected %s in content.json",
+                    nvra, rpm_info['payloadhash'], data['payloadhash'])
+            else:
+                # set rpm id
+                rpm_info['id'] = data['id']
 
     def path_without_to_within(self, path):
         """
