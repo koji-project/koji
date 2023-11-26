@@ -7678,7 +7678,9 @@ def new_image_build(build_info):
 
 def new_typed_build(build_info, btype):
     """Mark build as a given btype"""
-
+    # add here in case disabling draft build for non-rpm is missing before calling this
+    if btype != 'rpm':
+        reject_draft(build_info)
     btype_id = lookup_name('btype', btype, strict=True)['id']
     query = QueryProcessor(tables=['build_types'], columns=['build_id'],
                            clauses=['build_id = %(build_id)i', 'btype_id = %(btype_id)i'],
@@ -10210,6 +10212,9 @@ def importImageInternal(task_id, build_info, imgdata):
             data = add_external_rpm(an_rpm, location, strict=False)
         else:
             data = get_rpm(an_rpm, strict=True)
+            # unlike buildroot, we simply reject draft rpms as rpm components
+            # because we probably don't want to keep the nvra uniqueness here.
+            reject_draft(data, is_rpm=True)
         rpm_ids.append(data['id'])
     # we sort to try to avoid deadlock issues
     rpm_ids.sort()
@@ -14935,6 +14940,7 @@ class HostExports(object):
         # ensure release is None so get_next_build will handle incrementing
         build_info['release'] = None
         data = build_info.copy()
+        reject_draft(data)
         data['task_id'] = task_id
         data['owner'] = task.getOwner()
         data['state'] = koji.BUILD_STATES['BUILDING']
@@ -15100,6 +15106,7 @@ class HostExports(object):
         task = Task(task_id)
         task.assertHost(host.id)
         data = build_info.copy()
+        reject_draft(data)
         data['task_id'] = task_id
         data['owner'] = task.getOwner()
         data['state'] = koji.BUILD_STATES['BUILDING']
@@ -15122,6 +15129,7 @@ class HostExports(object):
         task.assertHost(host.id)
         # build_info must contain name, version, and release
         data = build_info.copy()
+        reject_draft(data)
         data['task_id'] = task_id
         data['owner'] = task.getOwner()
         data['state'] = koji.BUILD_STATES['BUILDING']
@@ -15298,6 +15306,7 @@ class HostExports(object):
             importImageInternal(task_id, build_info, sub_results)
             if 'rpmresults' in sub_results:
                 rpm_results = sub_results['rpmresults']
+                # draft will be rejected
                 _import_wrapper(rpm_results['task_id'],
                                 get_build(build_info['id'], strict=True), rpm_results)
 
