@@ -7051,12 +7051,13 @@ class CG_Importer(object):
             # not in metadata spec, and will confuse get_rpm
             raise koji.GenericError("Unexpected 'id' field in component")
         # rpm is no more unique with NVRA as draft build is introduced
-        # TODO: we should consider how to handle them once draft build is enabled for CG
         rinfo = get_rpm(comp, strict=False)
         if not rinfo:
             # XXX - this is a temporary workaround until we can better track external refs
             self.log_warning("IGNORING unmatched rpm component: %r" % comp)
             return None
+        # TODO: we should consider how to handle them once draft build is enabled for CG
+        reject_draft(rinfo, is_rpm=True, strict=True)
         if rinfo['payloadhash'] != comp['sigmd5']:
             # XXX - this is a temporary workaround until we can better track external refs
             self.log_warning("IGNORING rpm component (md5 mismatch): %r" % comp)
@@ -15946,19 +15947,24 @@ def create_rpm_checksum(rpm_id, sigkey, chsum_dict):
         insert.execute()
 
 
-def reject_draft(buildinfo, error=None):
-    """block draft build
+def reject_draft(data, is_rpm=False, error=None, strict=True):
+    """block draft build/rpm
 
     TODO: remove this once draft build is open for all build types
 
-    :param dict buildinfo: buildinfo dict
+    :param dict data: buildinfo dict or rpminfo dict if is_rpm is true
+    :param bool is_rpm: indicates data is rpm or build (true/false) in default error msg
     :param koji.GenericError error: the error raised if not a draft build,
                                     defaults to None to raise the default "unsupported" error
-    :raises error: default or specified by input error when draft==True in buldinfo
+    :param bool strict: if True will raise an error if it's draft, else return the draft value.
+    :raises error: default or specified by input error when draft==True in data
     """
-    if buildinfo.get('draft'):
+    if not strict:
+        return bool(data.get('draft'))
+    if data.get('draft'):
         if error is None:
-            error = koji.GenericError("Draft build not supported")
+            entry_type = 'rpm' if is_rpm else 'build'
+            error = koji.GenericError(f"Draft {entry_type} not supported")
         raise error
 
 
