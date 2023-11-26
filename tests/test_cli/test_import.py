@@ -1,10 +1,8 @@
 from __future__ import absolute_import
-
-import os
-import unittest
-
 import mock
+import os
 import six
+import unittest
 
 import koji
 from koji_cli.commands import handle_import
@@ -89,22 +87,15 @@ class TestImport(utils.CliTestCase):
     def __do_import_test(self, options, session, arguments, **kwargs):
         expected = kwargs.get('expected', None)
         rpm_header = kwargs.get('rpm_header', {})
-        rpm_headers = kwargs.get('rpm_headers', [])
-        if not rpm_headers:
-            rpm_headers = [rpm_header]
         fake_srv_path = kwargs.get('srv_path', '/path/to/server/import')
         upload_rpm_mock = kwargs.get('upload_rpm_mock', session.uploadWrapper)
-        getrpm_called = kwargs.get('getrpm_called', True)
-        getrpm_calls = kwargs.get('getrpm_calls', [])
-        import_opts = kwargs.get('import_opts', {})
-        import_rpm_calls = kwargs.get('import_rpm_calls', None)
 
         with mock.patch('koji.get_header_fields') as get_header_fields_mock:
             with mock.patch('koji_cli.commands.unique_path') as unique_path_mock:
                 with mock.patch('koji_cli.commands.activate_session') as activate_session_mock:
                     with mock.patch('sys.stdout', new_callable=six.StringIO) as stdout:
                         with upload_rpm_mock:
-                            get_header_fields_mock.side_effect = rpm_headers
+                            get_header_fields_mock.return_value = rpm_header
                             unique_path_mock.return_value = fake_srv_path
                             handle_import(options, session, arguments)
 
@@ -113,35 +104,21 @@ class TestImport(utils.CliTestCase):
 
         # check mock calls
         activate_session_mock.assert_called_with(session, options)
+        get_header_fields_mock.assert_called_with(
+            arguments[0],
+            ('name', 'version', 'release', 'epoch',
+             'arch', 'sigmd5', 'sourcepackage', 'sourcerpm')
+        )
 
-        get_header_fields_calls = [
-            mock.call(arguments[i],
-                      ('name', 'version', 'release', 'epoch',
-                       'arch', 'sigmd5', 'sourcepackage', 'sourcerpm')
-                      ) for i in range(len(rpm_headers) - 1)
-        ]
-
-        get_header_fields_mock.assert_has_calls(get_header_fields_calls)
-
-        if getrpm_calls:
-            session.getRPM.assert_has_calls(getrpm_calls)
-        elif getrpm_called:
-            session.getRPM.assert_called_with(
-                dict(
-                    (k, rpm_header.get(k, ''))
-                    for k in ['release', 'version', 'arch', 'name']
-                )
-            )
-        else:
-            session.getRPM.assert_not_called()
+        session.getRPM.assert_called_with(
+            dict((k, rpm_header.get(k, ''))
+                 for k in ['release', 'version', 'arch', 'name'])
+        )
 
         unique_path_mock.assert_called_with('cli-import')
         upload_rpm_mock.assert_called_with(arguments[0], self.fake_srv_dir)
-        if import_rpm_calls:
-            session.importRPM.assert_has_calls(import_rpm_calls)
-        else:
-            session.importRPM.assert_called_with(
-                self.fake_srv_dir, os.path.basename(arguments[0]), **import_opts)
+        session.importRPM.assert_called_with(
+            self.fake_srv_dir, os.path.basename(arguments[0]))
 
         # reset for next test
         activate_session_mock.reset_mock()
@@ -159,7 +136,6 @@ class TestImport(utils.CliTestCase):
         expected = kwargs.get('expected', None)
         expected_warn = kwargs.get('expected_warn', None)
         rpm_header = kwargs.get('rpm_header', {})
-        getrpm_called = kwargs.get('getrpm_called', True)
 
         with mock.patch('koji.get_header_fields') as get_header_fields_mock:
             get_header_fields_mock.return_value = rpm_header
@@ -176,15 +152,11 @@ class TestImport(utils.CliTestCase):
             ('name', 'version', 'release', 'epoch',
              'arch', 'sigmd5', 'sourcepackage', 'sourcerpm')
         )
-        if getrpm_called:
-            session.getRPM.assert_called_with(
-                dict(
-                    (k, rpm_header.get(k, ''))
-                    for k in ['release', 'version', 'arch', 'name']
-                )
-            )
-        else:
-            session.getRPM.assert_not_called()
+
+        session.getRPM.assert_called_with(
+            dict((k, rpm_header.get(k, ''))
+                 for k in ['release', 'version', 'arch', 'name'])
+        )
 
         session.uploadWrapper.assert_not_called()
         session.importRPM.assert_not_called()
@@ -705,240 +677,6 @@ class TestImport(utils.CliTestCase):
                 activate_session=None)
             activate_session_mock.assert_not_called()
 
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_import_src_rpm_with_create_draft(
-            self,
-            activate_session_mock,
-            stderr,
-            stdout):
-        """Test handle_import SRPM import with creating draft build case."""
-        arguments = ['/path/to/bash-4.4.12-5.fc26.rpm', '--create-draft']
-        options = mock.MagicMock()
-        session = mock.MagicMock()
-        session.importRPM.return_value = {'build': {'nvr': 'a-draft-build', 'draft': True}}
-
-        nvr = '%(name)s-%(version)s-%(release)s' % self.srpm_header
-
-        # Case 1. import src rpm with --create-draft
-        # result: success
-        expected = "Will create draft build instead if desired nvr doesn't exist\n"
-        expected += "Will create draft build with target nvr: %s while importing\n" % nvr
-        expected += "uploading %s... done\n" % arguments[0]
-        expected += "importing %s... done\n" % arguments[0]
-        expected += "Draft build: a-draft-build created\n"
-
-        self.__do_import_test(
-            options, session, arguments,
-            rpm_header=self.srpm_header,
-            expected=expected,
-            getrpm_called=False,
-            import_opts={'draft': True})
-
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_import_binary_rpm_with_create_draft(
-            self,
-            activate_session_mock,
-            stderr,
-            stdout):
-        """Test handle_import binary RPM import with creating draft build case."""
-        arguments = ['/path/to/bash-4.4.12-5.fc26.rpm', '--create-draft']
-        options = mock.MagicMock()
-        session = mock.MagicMock()
-
-        nvr = '%(name)s-%(version)s-%(release)s' % self.rpm_header
-
-        # Case 1. import bin rpm with --create-draft
-        # result: Aborting import
-        expected = "Will create draft build instead if desired nvr doesn't exist\n"
-        expected += "Missing srpm for draft build creating with target nvr: %s\n" % nvr
-        expected += "Aborting import\n"
-        self.__skip_import_test(
-            options, session, arguments,
-            rpm_header=self.rpm_header,
-            expected=expected,
-            getrpm_called=False)
-
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_import_src_bin_rpm_with_create_draft(
-            self,
-            activate_session_mock,
-            stderr,
-            stdout):
-        """Test handle_import SRPM & RPM import with creating draft build case."""
-        arguments = ['/path/to/bash-4.4.12-5.fc26.rpm', '/path/to/bash-4.4.12-5.fc26.src.rpm',
-                     '--create-draft']
-        options = mock.MagicMock()
-        session = mock.MagicMock()
-        session.getRPM.return_value = None
-        session.importRPM.return_value = {'build': {'nvr': 'a-draft-build', 'draft': True}}
-
-        nvr = '%(name)s-%(version)s-%(release)s' % self.srpm_header
-
-        # Case 1. import src & bin rpm with --create-draft
-        # result: success
-        expected = "Will create draft build instead if desired nvr doesn't exist\n"
-        expected += "Will create draft build with target nvr: %s while importing\n" % nvr
-        expected += "uploading %s... done\n" % arguments[1]
-        expected += "importing %s... done\n" % arguments[1]
-        expected += "Draft build: a-draft-build created\n"
-        expected += "uploading %s... done\n" % arguments[0]
-        expected += "importing %s... done\n" % arguments[0]
-
-        self.__do_import_test(
-            options, session, arguments,
-            rpm_headers=[self.rpm_header, self.srpm_header],
-            expected=expected,
-            getrpm_calls=[
-                mock.call(
-                    {'name': 'bash', 'version': '4.4.12', 'release': '5.fc26', 'arch': 'x86_64'},
-                    build=session.importRPM.return_value['build']
-                )
-            ],
-            import_rpm_calls=[
-                mock.call(
-                    self.fake_srv_dir, os.path.basename(arguments[1]), draft=True
-                ),
-                mock.call(
-                    self.fake_srv_dir, os.path.basename(arguments[0]),
-                    build=session.importRPM.return_value['build'], draft=True
-                )
-            ])
-
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_import_src_rpm_with_specified_draft_build(
-            self,
-            activate_session_mock,
-            stderr,
-            stdout):
-        """Test handle_import SRPM import with --draft-build case."""
-        arguments = ['/path/to/bash-4.4.12-5.fc26.rpm', '--draft-build', 'a-draft-build']
-        options = mock.MagicMock()
-        session = mock.MagicMock()
-        build = {
-            'name': 'bash',
-            'version': '4.4.12',
-            'release': '5.fc26#draft_123',
-            'nvr': 'bash-4.4.12-5.fc26',
-            'id': '123',
-            'draft': True,
-            'state': self.bstate['COMPLETE']
-        }
-        session.getBuild.return_value = build
-
-        # Case 1. import src rpm with --draft-build
-        # result: success
-        expected = "uploading %s... done\n" % arguments[0]
-        expected += "importing %s... done\n" % arguments[0]
-
-        self.__do_import_test(
-            options, session, arguments,
-            rpm_header=self.srpm_header,
-            expected=expected,
-            getrpm_calls=[mock.call(
-                {'name': 'bash', 'version': '4.4.12', 'release': '5.fc26', 'arch': 'src'},
-                build=build)],
-            import_opts={'build': build, 'draft': True})
-
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    @mock.patch('koji_cli.commands.activate_session')
-    def test_handle_import_binary_rpm_with_specified_draft_build(
-            self,
-            activate_session_mock,
-            stderr,
-            stdout):
-        """Test handle_import RPM import with --draft-build case."""
-        arguments = ['/path/to/bash-4.4.12-5.fc26.rpm', '--draft-build', 'a-draft-build']
-        options = mock.MagicMock()
-        session = mock.MagicMock()
-        session.getRPM.return_value = None
-        build = {
-            'id': '123',
-            'name': 'bash',
-            'version': '4.4.12',
-            'release': '5.fc26#draft_123',
-            'nvr': 'bash-4.4.12-5.fc26',
-            'draft': True,
-            'state': self.bstate['COMPLETE']
-        }
-        session.getBuild.return_value = build
-
-        # Case 1. import bin rpm with --draft-build
-        # result: success
-        expected = "uploading %s... done\n" % arguments[0]
-        expected += "importing %s... done\n" % arguments[0]
-
-        self.__do_import_test(
-            options, session, arguments,
-            rpm_header=self.rpm_header,
-            expected=expected,
-            getrpm_calls=[mock.call(
-                {'name': 'bash', 'version': '4.4.12', 'release': '5.fc26', 'arch': 'x86_64'},
-                build=build)],
-            import_opts={'build': build, 'draft': True})
-
-    def test_handle_import_specified_draft_build_invalid(self):
-        """Test handle_import RPM import with --draft-build case."""
-        arguments = ['/path/to/bash-4.4.12-5.fc26.rpm', '--draft-build', '286']
-        options = mock.MagicMock()
-        session = mock.MagicMock()
-
-        cases = [
-            # build, stderr
-            (None, "No such build: 286"),
-            ({'draft': False, 'nvr': 'a-bad-draft'}, "a-bad-draft is not a draft build"),
-            ({'draft': True, 'nvr': 'a-bad-draft', 'state': koji.BUILD_STATES['DELETED']},
-             "draft build a-bad-draft is expected as COMPLETE, got DELETED")
-        ]
-        for build, expected in cases:
-            session.getBuild.return_value = build
-            # result: error
-            expected += "\n"
-            self.assert_system_exit(
-                handle_import,
-                options,
-                session,
-                arguments,
-                stderr=expected,
-                activate_session=None,
-                exit_code=1)
-            options.reset_mock()
-            session.reset_mock()
-
-    def test_handle_import_specified_draft_build_invalid_target_release(self):
-        """Test handle_import RPM import with --draft-build case.
-        Invalid target_release parsing
-        """
-        arguments = ['/path/to/bash-4.4.12-5.fc26.rpm', '--draft-build', '286']
-        options = mock.MagicMock()
-        session = mock.MagicMock()
-
-        cases = [
-            # build, stderr
-            ({'draft': True, 'nvr': 'a-bad-draft', 'state': koji.BUILD_STATES['COMPLETE'],
-              'release': 'no_id'},
-             "'id' not found in"
-             " {'draft': True, 'nvr': 'a-bad-draft', 'state': 1, 'release': 'no_id'}"),
-            ({'draft': True, 'nvr': 'a-bad-draft', 'state': koji.BUILD_STATES['COMPLETE'],
-              'id': 123, 'release': 'tgt#draft_234'},
-             "buildinfo.id: 123 doesn't match build id part: 234"
-             " in buildinfo.release: tgt#draft_234")
-        ]
-        for build, expected in cases:
-            session.getBuild.return_value = build
-            # result: error
-            with self.assertRaises(koji.GenericError) as cm:
-                handle_import(options, session, arguments)
-            self.assertEqual(str(cm.exception), expected)
-
     def test_handle_import_help(self):
         """Test handle_import function help message"""
         self.assert_help(
@@ -953,8 +691,6 @@ Options:
   --create-build        Auto-create builds as needed
   --src-epoch=SRC_EPOCH
                         When auto-creating builds, use this epoch
-  --create-draft        Auto-create draft builds instead as needed
-  --draft-build=NVR|ID  The target draft build to import to
 """ % self.progname)
 
 
