@@ -132,13 +132,13 @@ def convert_value(value, cast=None, message=None,
     if check_only:
         if not isinstance(value, cast):
             raise exc_type(message or f"Invalid type for value '{value}': {type(value)}, "
-                                      f"expected type {cast}")
+                           f"expected type {cast}")
     else:
         try:
             value = cast(value)
         except (ValueError, TypeError):
             raise exc_type(message or f"Invalid type for value '{value}': {type(value)}, "
-                                      f"expected type {cast}")
+                           f"expected type {cast}")
     return value
 
 
@@ -13441,7 +13441,7 @@ class RootExports(object):
         update = UpdateProcessor('build',
                                  clauses=['id = %(buildid)i'], values={'buildid': buildid})
         update.rawset(completion_time=f"TIMESTAMP 'epoch' AT TIME ZONE 'utc' + "
-                                      f"'{ts:f} seconds'::interval")
+                      f"'{ts:f} seconds'::interval")
         update.execute()
         buildinfo = get_build(build, strict=True)
         koji.plugin.run_callbacks('postBuildStateChange',
