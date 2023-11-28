@@ -3445,7 +3445,7 @@ class ClientSession(object):
 
     def exclusiveSession(self, force=False):
         """Make this session exclusive"""
-        self._callMethod('exclusiveSession', {'force': force})
+        self._callMethod('exclusiveSession', (), {'force': force})
         self.exclusive = True
 
 
