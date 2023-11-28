@@ -11223,7 +11223,7 @@ class RootExports(object):
         """
         Copy the tag and its current (or event) contents to existing one. It doesn't copy
         inheritance. Suitable for creating snapshots of tags. External repos are not linked.
-        Destination tag must not exist. For creating new snapshots use snapshotTag
+        Destination tag must already exist. For creating new snapshots use snapshotTag
 
         Calling user needs to have 'admin' or 'tag' permission.
 
