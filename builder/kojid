@@ -923,7 +923,7 @@ class BuildRoot(object):
         """
 
         opts = dict([(k, getattr(self.options, k)) for k in ('topurl', 'topdir')])
-        content_json_file = os.path.join(self.repodir, self.br_arch, 'pkglist')
+        content_json_file = os.path.join(self.repodir, self.br_arch, 'content.json')
         if not os.path.exists(content_json_file):
             self.logger.warning(
                 "% not found, don't mapping internal rpms with ids for repo#%i",
