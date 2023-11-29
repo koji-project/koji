@@ -10006,7 +10006,6 @@ def check_policy(name, data, default='deny', strict=False, force=False):
             parts = result.split(None, 1)
             parts.extend(['', ''])
             result, reason = parts[:2]
-            reason = reason.lower()
         lastrule = ruleset.last_rule()
     if context.opts.get('KojiDebug', False):
         logger.error(
