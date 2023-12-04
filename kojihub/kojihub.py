@@ -6615,7 +6615,7 @@ class CG_Importer(object):
         path = koji.pathinfo.build(self.buildinfo)
         if os.path.lexists(path):
             if delete:
-                self.log_warning("Deleting build directory: %s", path)
+                self.log_warning("Deleting build directory: %s" % path)
                 koji.util.rmtree(path)
             else:
                 raise koji.GenericError("Destination directory already exists: %s" % path)
