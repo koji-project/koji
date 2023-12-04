@@ -6491,7 +6491,7 @@ class CG_Importer(object):
     def __init__(self):
         self.buildinfo = None
         self.metadata_only = False
-        self.rpm_log_file = None
+        self._cg_log_file = None
 
     def do_import(self, metadata, directory, token=None):
         metadata = self.get_metadata(metadata, directory)
@@ -6527,20 +6527,20 @@ class CG_Importer(object):
             self.check_build_dir(delete=True)
             raise
 
-        self.move_rpm_log_file()
+        self.move_cg_log_file()
 
         koji.plugin.run_callbacks('postImport', type='cg', metadata=metadata,
                                   directory=directory, build=self.buildinfo)
 
         return self.buildinfo
 
-    def move_rpm_log_file(self):
-        if self.rpm_log_file is not None:
+    def move_cg_log_file(self):
+        if self._cg_log_file is not None:
             logsdir = joinpath(koji.pathinfo.build(self.buildinfo), 'data/logs/')
             koji.ensuredir(logsdir)
             path = joinpath(logsdir, 'cg_import.log')
-            self.rpm_log_file.write('CG import was SUCCESSFUL.\n')
-            safer_move(self.rpm_log_file.name, path)
+            self.log('CG import was SUCCESSFUL.')
+            safer_move(self._cg_log_path, path)
 
     def get_metadata(self, metadata, directory):
         """Get the metadata from the args"""
@@ -6615,7 +6615,7 @@ class CG_Importer(object):
         path = koji.pathinfo.build(self.buildinfo)
         if os.path.lexists(path):
             if delete:
-                logger.warning("Deleting build directory: %s", path)
+                self.log_warning("Deleting build directory: %s" % path)
                 koji.util.rmtree(path)
             else:
                 raise koji.GenericError("Destination directory already exists: %s" % path)
@@ -6875,11 +6875,19 @@ class CG_Importer(object):
                 raise koji.GenericError("No such component type: %(type)s" % comp)
         return rpms, files
 
-    def unmatched_rpm_log(self, msg):
-        if self.rpm_log_file is None:
-            self.rpm_log_file = tempfile.NamedTemporaryFile(mode='w+', dir=koji.pathinfo.work())
-        logger.warning(msg)
-        self.rpm_log_file.write(msg + '\n')
+    def log(self, msg, level=logging.WARNING):
+        if self._cg_log_file is None:
+            log_dir = joinpath(koji.pathinfo.work(), 'logs')
+            koji.ensuredir(log_dir)
+            self._cg_log_path = joinpath(log_dir, 'cg_import.log')
+            self._cg_log_file = open(self._cg_log_path, mode='wt')
+        logger.log(level=level, msg=msg)
+        self._cg_log_file.write(msg + '\n')
+        self._cg_log_file.flush()
+
+    log_info = functools.partialmethod(log, level=logging.INFO)
+    log_warning = functools.partialmethod(log, level=logging.WARNING)
+    log_error = functools.partialmethod(log, level=logging.ERROR)
 
     def match_rpm(self, comp):
         # TODO: do we allow inclusion of external rpms?
@@ -6891,11 +6899,11 @@ class CG_Importer(object):
         rinfo = get_rpm(comp, strict=False)
         if not rinfo:
             # XXX - this is a temporary workaround until we can better track external refs
-            self.unmatched_rpm_log("IGNORING unmatched rpm component: %r" % comp)
+            self.log_warning("IGNORING unmatched rpm component: %r" % comp)
             return None
         if rinfo['payloadhash'] != comp['sigmd5']:
             # XXX - this is a temporary workaround until we can better track external refs
-            self.unmatched_rpm_log("IGNORING rpm component (md5 mismatch): %r" % comp)
+            self.log_warning("IGNORING rpm component (md5 mismatch): %r" % comp)
             # nvr = "%(name)s-%(version)s-%(release)s" % rinfo
             # raise koji.GenericError("md5sum mismatch for %s: %s != %s"
             #            % (nvr, comp['sigmd5'], rinfo['payloadhash']))
@@ -6917,13 +6925,13 @@ class CG_Importer(object):
             if archive['checksum'] == comp['checksum']:
                 return archive
         # else
-        logger.error("Failed to match archive %(filename)s (size %(filesize)s, sum %(checksum)s",
-                     comp)
+        self.log_error("Failed to match archive %(filename)s (size %(filesize)s, "
+                       "sum %(checksum)s" % comp)
         if type_mismatches:
-            logger.error("Match failed with %i type mismatches", type_mismatches)
+            self.log_error("Match failed with %i type mismatches" % type_mismatches)
         # TODO: allow external archives
         # XXX - this is a temporary workaround until we can better track external refs
-        logger.warning("IGNORING unmatched archive: %r", comp)
+        self.log_warning("IGNORING unmatched archive: %r" % comp)
         return None
         # raise koji.GenericError("No match: %(filename)s (size %(filesize)s, sum %(checksum)s" %
         #                         comp)
