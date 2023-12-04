@@ -2028,6 +2028,7 @@ def downloadFile(url, path=None, fo=None):
             fo.write(chunk)
     finally:
         resp.close()
+    resp.raise_for_status()
     if resp.headers.get('Content-Length') and fo.tell() != int(resp.headers['Content-Length']):
         raise GenericError("Downloaded file %s doesn't match expected size (%s vs %s)" %
                            (url, fo.tell(), resp.headers['Content-Length']))
