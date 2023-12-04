@@ -924,13 +924,16 @@ class BuildRoot(object):
 
         opts = dict([(k, getattr(self.options, k)) for k in ('topurl', 'topdir')])
         content_json_file = os.path.join(self.repodir, self.br_arch, 'content.json')
-        if not os.path.exists(content_json_file):
-            self.logger.warning(
-                "% not found, don't mapping internal rpms with ids for repo#%i",
-                content_json_file, self.repoid)
-        with koji.openRemoteFile(content_json_file, **opts) as fo:
-            content = json.load(fo)
-
+        try:
+            with koji.openRemoteFile(content_json_file, **opts) as fo:
+                content = json.load(fo)
+        except requests.exceptions.HTTPError as e:
+            if '404' in str(e):
+                self.logger.warning("Missing repo content file: %s", content_json_file)
+                # TODO: remove this workaround once we can assume that repos contain this file
+                self.compat_map_internal_rpms(rpmlist)
+                return
+            raise
         for rpm_info in rpmlist:
             if 'external_repo' in rpm_info:
                 continue
@@ -947,6 +950,30 @@ class BuildRoot(object):
             else:
                 # set rpm id
                 rpm_info['id'] = data['id']
+
+    def compat_map_internal_rpms(self, rpmlist):
+        drafts, draftbuilds = self.session.listTaggedRPMS(
+                tag=self.repo_info['tag_id'],
+                event=self.repo_info['create_event'],
+                latest=True,
+                draft=True)
+        fmt = "%(name)s-%(version)s-%(release)s.%(arch)s"
+        content = {}
+        for draftinfo in drafts:
+            nvra = fmt % draftinfo
+            content[nvra] = draftinfo
+        for rpminfo in rpmlist:
+            nvra = fmt % rpminfo
+            data = content.get(nvra)
+            if data:
+                # draft rpm!
+                if data['payloadhash'] != rpminfo['payloadhash']:
+                    self.logger.error(
+                        "RPM: %s: payloadhash: %s mismatch expected %s",
+                        nvra, rpminfo['payloadhash'], data['payloadhash'])
+                else:
+                    # set rpm id
+                    rpminfo['id'] = data['id']
 
     def path_without_to_within(self, path):
         """
