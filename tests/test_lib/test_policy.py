@@ -113,6 +113,23 @@ class TestBasicTests(unittest.TestCase):
             koji.policy.CompareTest('some thing LOL 2')
 
 
+    def test_match_any_test(self):
+        obj = koji.policy.MatchAnyTest('not_important foo *bar* ext')
+        self.assertTrue(obj.run({'foo': ['barrrr', 'any']}))
+        self.assertTrue(obj.run({'foo': [None, 'bbbbbarrr', None]}))
+        self.assertFalse(obj.run({'foo': ['nah....']}))
+        self.assertFalse(obj.run({'foo': 'nah...'}))
+        self.assertFalse(obj.run({'bar': ['any']}))
+
+    def test_match_all_test(self):
+        obj = koji.policy.MatchAllTest('not_important foo *bar* ext')
+        self.assertTrue(obj.run({'foo': ['barrrr', 'bbbarrr']}))
+        self.assertFalse(obj.run({'foo': ['barrrr', 'nah....']}))
+        self.assertFalse(obj.run({'foo': [None, 'barrrr', None]}))
+        self.assertFalse(obj.run({'foo': 'nah...'}))
+        self.assertFalse(obj.run({'bar': ['any']}))
+
+
 class TestDiscovery(unittest.TestCase):
 
     def test_find_simple_tests(self):
@@ -124,6 +141,8 @@ class TestDiscovery(unittest.TestCase):
             'false': koji.policy.FalseTest,
             'has': koji.policy.HasTest,
             'match': koji.policy.MatchTest,
+            'match_all': koji.policy.MatchAllTest,
+            'match_any': koji.policy.MatchAnyTest,
             'none': koji.policy.NoneTest,
             'target': koji.policy.TargetTest,
             'true': koji.policy.TrueTest,

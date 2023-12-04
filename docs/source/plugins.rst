@@ -442,3 +442,45 @@ For example:
 For each RPM in the tag, Koji will use the first signed copy that it finds. In other words,
 Koji will try the first key (`45719a39`), and if Koji does not have the first key's signature
 for that RPM, then it will try the second key (`9867c58f`), third key (`38ab71f4`), and so on.
+
+
+SCM policy
+==========
+
+This plugin adds additional policy check after content is checked out from SCM.
+New policy is simply named ``scm``.
+
+Data which can be checked there contains ``build_tag``, ``method``,
+``scratch``, and ``branches`` fields. Especially ``branches`` is the reason -
+policy can e.g. check if reference being built is part of any allowed branch
+and e.g. not random commit which can disappear later. Two new policy tests are
+part of the plugin ``match_any`` and ``match_all`` which tests the list
+against glob. So, in this case any (or all respectively) branch must pass the
+glob test.
+
+
+Example policy:
+
+::
+
+  scm =
+     # anything can be built as a scratch build
+     bool scratch :: allow
+
+     # regular build must be present at lease on one branch
+     match_all branches * !! deny Source ref must be contained in a branch
+
+     # Combination of method, scm and repo
+     method buildContainer && buildtag container-test-* && match scm_host git.example.com && match scm_repository /containers/* :: allow
+
+     # deny any other buildContainer task
+     method buildContainer :: deny Only specific buildContainer tasks can be executed
+
+     # allow anything else
+     all :: allow
+
+Builder
+-------
+
+Plugin is simply activated by adding it as ``plugin = scmpolicy`` to
+``/etc/kojid.conf``. No other configuration is required.
