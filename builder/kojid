@@ -959,10 +959,10 @@ class BuildRoot(object):
 
     def compat_map_internal_rpms(self, rpmlist):
         drafts, draftbuilds = self.session.listTaggedRPMS(
-                tag=self.repo_info['tag_id'],
-                event=self.repo_info['create_event'],
-                latest=True,
-                draft=True)
+            tag=self.repo_info['tag_id'],
+            event=self.repo_info['create_event'],
+            latest=True,
+            draft=True)
         fmt = "%(name)s-%(version)s-%(release)s.%(arch)s"
         content = {}
         for draftinfo in drafts:
@@ -6448,7 +6448,7 @@ enabled=1
                                                            latest=opts['latest'],
                                                            inherit=opts['inherit'],
                                                            rpmsigs=True)
-            
+
             for build in builds:
                 # disable draft for distRepo so far
                 if build.get('draft'):
