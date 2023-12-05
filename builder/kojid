@@ -938,19 +938,21 @@ class BuildRoot(object):
                 self.compat_map_internal_rpms(rpmlist)
                 return
             raise
+        fmt = "%(name)s-%(version)s-%(release)s.%(arch)s"
         for rpm_info in rpmlist:
             if 'external_repo' in rpm_info:
                 continue
-            nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" % rpm_info
+            nvra = fmt % rpm_info
             data = repo_rpms.get(nvra)
             if not data:
                 self.logger.warning("%s not found in rpmlist.jsonl", nvra)
                 continue
             # check payloadhash in case they are different
             elif data['payloadhash'] != rpm_info['payloadhash']:
-                self.logger.error(
-                    "RPM: %s: payloadhash: %s mismatch expected %s in rpmlist.jsonl",
-                    nvra, rpm_info['payloadhash'], data['payloadhash'])
+                raise koji.BuildrootError(
+                    "RPM: %s: payloadhash: %s mismatch expected %s in rpmlist.jsonl"
+                    % (nvra, rpm_info['payloadhash'], data['payloadhash'])
+                )
             else:
                 # set rpm id
                 rpm_info['id'] = data['id']
@@ -972,9 +974,10 @@ class BuildRoot(object):
             if data:
                 # draft rpm!
                 if data['payloadhash'] != rpminfo['payloadhash']:
-                    self.logger.error(
-                        "RPM: %s: payloadhash: %s mismatch expected %s",
-                        nvra, rpminfo['payloadhash'], data['payloadhash'])
+                    raise koji.BuildrootError(
+                        "RPM: %s: payloadhash: %s mismatch expected %s"
+                        % (nvra, rpminfo['payloadhash'], data['payloadhash'])
+                    )
                 else:
                     # set rpm id
                     rpminfo['id'] = data['id']
