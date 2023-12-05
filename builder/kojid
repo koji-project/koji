@@ -204,7 +204,6 @@ class BuildRoot(object):
             self._load(*args, **kwargs)
         else:
             self._new(*args, **kwargs)
-        self._init_repo_data()
 
     def _load(self, data):
         # manage an existing buildroot
@@ -347,16 +346,9 @@ class BuildRoot(object):
         with koji._open_text_file(configfile, 'wt') as fo:
             fo.write(output)
 
-    def _init_repo_data(self):
+    def get_repo_dir(self):
         pathinfo = koji.PathInfo(topdir='')
-        self.repodir = pathinfo.repo(self.repoid, self.tag_name)
-        rel_repo_url = os.path.join(self.repodir, self.br_arch)
-        # repo_url can start with '/', don't use os.path.join
-        if self.options.topurl:
-            self.repo_url = '%s/%s' % (self.options.topurl, rel_repo_url)
-        elif self.options.topdir:
-            self.repo_url = '%s/%s' % (self.options.topdir, rel_repo_url)
-        logging.info("repo url of buildroot: %s is %s", self.name, self.repo_url)
+        return pathinfo.repo(self.repoid, self.tag_name)
 
     def _repositoryEntries(self, pi, plugin=False):
         entries = []
@@ -845,12 +837,20 @@ class BuildRoot(object):
         opts = dict([(k, getattr(self.options, k)) for k in ('topurl', 'topdir')])
         opts['tempdir'] = self.options.workdir
 
+        repo_url = os.path.join(self.get_repo_dir(), self.br_arch)
+        # repo_url can start with '/', don't use os.path.join
+        if self.options.topurl:
+            repo_url = '%s/%s' % (self.options.topurl, repo_url)
+        elif self.options.topdir:
+            repo_url = '%s/%s' % (self.options.topdir, repo_url)
+        self.logger.info("repo url of buildroot: %s is %s", self.name, repo_url)
+
         tmpdir = os.path.join(self.tmpdir(), 'librepo-markExternalRPMs')
         koji.ensuredir(tmpdir)
         h = librepo.Handle()
         r = librepo.Result()
         h.setopt(librepo.LRO_REPOTYPE, librepo.LR_YUMREPO)
-        h.setopt(librepo.LRO_URLS, [self.repo_url])
+        h.setopt(librepo.LRO_URLS, [repo_url])
         h.setopt(librepo.LRO_DESTDIR, tmpdir)
         # We are using this just to find out location of 'origin',
         # we don't even need to download it since we use openRemoteFile
@@ -859,7 +859,7 @@ class BuildRoot(object):
         pkgorigins = r.getinfo(librepo.LRR_YUM_REPOMD)['origin']['location_href']
         koji.util.rmtree(tmpdir)
 
-        relpath = os.path.join(self.repodir, self.br_arch, pkgorigins)
+        relpath = os.path.join(self.get_repo_dir(), self.br_arch, pkgorigins)
         with koji.openRemoteFile(relpath, **opts) as fo:
             # at this point we know there were external repos at the create event,
             # so there should be an origins file.
@@ -923,7 +923,7 @@ class BuildRoot(object):
         """
 
         opts = dict([(k, getattr(self.options, k)) for k in ('topurl', 'topdir')])
-        rpmlist_path = os.path.join(self.repodir, self.br_arch, 'rpmlist.jsonl')
+        rpmlist_path = os.path.join(self.get_repo_dir(), self.br_arch, 'rpmlist.jsonl')
         repo_rpms = {}
         try:
             with koji.openRemoteFile(rpmlist_path, **opts) as fo:
