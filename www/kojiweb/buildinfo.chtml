@@ -24,6 +24,11 @@
     <tr>
       <th>Epoch</th><td>$build.epoch</td>
     </tr>
+    #if $build.draft
+      <th>Draft</th><td>True</td>
+      #else
+      <th>Draft</th><td>False</td>
+    #end if
     #if $build.get('source')
     <tr>
       <th>Source</th><td>$build['source']</td>
