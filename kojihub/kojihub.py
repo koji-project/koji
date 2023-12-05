@@ -6050,7 +6050,7 @@ def new_build(data, strict=False):
 
     If the build to create is a draft, the release field is the target release
     rather than its actual release with draft suffix. The draft suffix will be
-    generated here as #draft_<buildid>.
+    generated here as ",draft_<buildid>".
 
     If strict is specified, raise an exception, if build already exists.
     """

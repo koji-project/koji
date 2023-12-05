@@ -2822,7 +2822,7 @@ def anon_handle_list_tagged(goptions, session, args):
         else:
             fmt = "%(name)s-%(version)s-%(release)s.%(arch)s%(draft_suffix)s"
             for x in data:
-                x['draft_suffix'] = (' (#draft_%s)' % x['build_id']) if x.get('draft') else ''
+                x['draft_suffix'] = (' (,draft_%s)' % x['build_id']) if x.get('draft') else ''
             if options.sigs:
                 fmt = "%(sigkey)s " + fmt
     else:
@@ -2888,7 +2888,7 @@ def anon_handle_list_buildroot(goptions, session, args):
         line = nvra
         if options.verbose:
             if rinfo.get('draft'):
-                line += " (#draft_%s)" % rinfo['build_id']
+                line += " (,draft_%s)" % rinfo['build_id']
             if rinfo.get('is_update'):
                 line += " [update]"
         print(line)
