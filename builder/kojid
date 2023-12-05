@@ -932,7 +932,7 @@ class BuildRoot(object):
                     nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" % repo_rpm
                     repo_rpms[nvra] = repo_rpm
         except requests.exceptions.HTTPError as e:
-            if '404' in str(e):
+            if e.response.status_code == 404:
                 self.logger.warning("Missing repo content file: %s", rpmlist_path)
                 # TODO: remove this workaround once we can assume that repos contain this file
                 self.compat_map_internal_rpms(rpmlist)
