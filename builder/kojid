@@ -700,7 +700,7 @@ class BuildRoot(object):
         """Return a list of packages from the buildroot
 
         Each member of the list is a dictionary containing the following fields:
-            - id, optional for internal rpm available in content.json
+            - id, optional for internal rpm available in rpmlist.jsonl
             - name
             - version
             - release
@@ -895,12 +895,12 @@ class BuildRoot(object):
 
     def mapInternalRPMs(self, rpmlist):
         """
-        Map each rpm item of rpmlist by attaching rpm_id in repodir's content.json which
+        Map each rpm item of rpmlist by attaching rpm_id in repodir's rpmlist.jsonl which
         is generated while repo initiation.
 
-        Skipped if content.json doesn't exist for backward compatibility.
+        Skipped if rpmlist.jsonl doesn't exist for backward compatibility.
 
-        For now, content.json is a dict[nvra, rpmdata], where rpmdata contains keys below:
+        For now, rpmlist.jsonl is a dict[nvra, rpmdata], where rpmdata contains keys below:
           - id
           - build_id
           - name
@@ -923,13 +923,17 @@ class BuildRoot(object):
         """
 
         opts = dict([(k, getattr(self.options, k)) for k in ('topurl', 'topdir')])
-        content_json_file = os.path.join(self.repodir, self.br_arch, 'content.json')
+        rpmlist_path = os.path.join(self.repodir, self.br_arch, 'rpmlist.jsonl')
+        repo_rpms = {}
         try:
-            with koji.openRemoteFile(content_json_file, **opts) as fo:
-                content = json.load(fo)
+            with koji.openRemoteFile(rpmlist_path, **opts) as fo:
+                for line in fo:
+                    repo_rpm = json.loads(line)
+                    nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" % repo_rpm
+                    repo_rpms[nvra] = repo_rpm
         except requests.exceptions.HTTPError as e:
             if '404' in str(e):
-                self.logger.warning("Missing repo content file: %s", content_json_file)
+                self.logger.warning("Missing repo content file: %s", rpmlist_path)
                 # TODO: remove this workaround once we can assume that repos contain this file
                 self.compat_map_internal_rpms(rpmlist)
                 return
@@ -938,14 +942,14 @@ class BuildRoot(object):
             if 'external_repo' in rpm_info:
                 continue
             nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" % rpm_info
-            data = content.get(nvra)
+            data = repo_rpms.get(nvra)
             if not data:
-                self.logger.warning("%s not found in content.json", nvra)
+                self.logger.warning("%s not found in rpmlist.jsonl", nvra)
                 continue
             # check payloadhash in case they are different
             elif data['payloadhash'] != rpm_info['payloadhash']:
                 self.logger.error(
-                    "RPM: %s: payloadhash: %s mismatch expected %s in content.json",
+                    "RPM: %s: payloadhash: %s mismatch expected %s in rpmlist.jsonl",
                     nvra, rpm_info['payloadhash'], data['payloadhash'])
             else:
                 # set rpm id
