@@ -57,7 +57,7 @@ BEGIN;
     -- required by constraint rpminfo_build_id_draft_fkey on table rpminfo
     ALTER TABLE build ADD CONSTRAINT draft_for_rpminfo UNIQUE (id, draft);
     ALTER TABLE build ADD CONSTRAINT draft_release_sane CHECK
-        ((draft AND release ~ ('^.*#draft_' || id::TEXT || '$'))
+        ((draft AND release ~ ('^.*,draft_' || id::TEXT || '$'))
         OR NOT draft);
 
     ALTER TABLE rpminfo ADD COLUMN draft BOOLEAN;

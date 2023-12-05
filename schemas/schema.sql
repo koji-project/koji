@@ -300,7 +300,7 @@ CREATE TABLE build (
 	CONSTRAINT draft_for_rpminfo UNIQUE (id, draft),
 	CONSTRAINT completion_sane CHECK ((state = 0 AND completion_time IS NULL) OR
                                       (state <> 0 AND completion_time IS NOT NULL)),
-	CONSTRAINT draft_release_sane CHECK ((draft AND release ~ ('^.*#draft_' || id::TEXT || '$')) OR
+	CONSTRAINT draft_release_sane CHECK ((draft AND release ~ ('^.*,draft_' || id::TEXT || '$')) OR
                                          NOT draft)
 ) WITHOUT OIDS;
 
