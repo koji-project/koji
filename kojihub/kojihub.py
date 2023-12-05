@@ -2717,20 +2717,6 @@ def repo_init(tag, task_id=None, with_src=False, with_debuginfo=False, event=Non
     # Note: the repo_include_all option is not recommended for common use
     #       see https://pagure.io/koji/issue/588 for background
     rpms, builds = readTaggedRPMS(tag_id, event=event_id, inherit=True, latest=latest)
-    # we will iterate rpms twice, so covert it from generator to list
-    rpms = list(rpms)
-    # Since draft builds are introduced, we cannot guarantee the uniqueness of NVRA
-    # don't allow duplicate nvras in tag for repo generation.
-    rpm_mappings = {}
-    for r in rpms:
-        nvra = "{name}-{version}-{release}.{arch}".format(**r)
-        dup_rpms = rpm_mappings.setdefault(nvra, [])
-        dup_rpms.append(r['id'])
-    dups = {nvra: d for nvra, d in rpm_mappings.items() if len(d) > 1}
-    if dups:
-        raise koji.GenericError(
-            f"duplicate nvras found while repo#{repo_id} initiation: {dups}"
-        )
 
     groups = readTagGroups(tag_id, event=event_id, inherit=True)
     blocks = [pkg for pkg in readPackageList(tag_id, event=event_id, inherit=True,
@@ -2766,9 +2752,9 @@ def repo_init(tag, task_id=None, with_src=False, with_debuginfo=False, event=Non
     for build in builds:
         relpath = relpathinfo.build(build)
         builddirs[build['id']] = relpath.lstrip('/')
-    # generate pkglist files
+    # generate pkglist and rpmlist files
     pkglist = {}
-    content_jsons = {}
+    rpmlist = {}
     for repoarch in repo_arches:
         archdir = joinpath(repodir, repoarch)
         koji.ensuredir(archdir)
@@ -2777,48 +2763,43 @@ def repo_init(tag, task_id=None, with_src=False, with_debuginfo=False, event=Non
         top_link = joinpath(archdir, 'toplink')
         os.symlink(top_relpath, top_link)
         pkglist[repoarch] = open(joinpath(archdir, 'pkglist'), 'wt', encoding='utf-8')
-        content_jsons[repoarch] = (joinpath(archdir, 'content.json'), {})
-    # NOTE - rpms is now an iterator
+        rpmlist[repoarch] = open(joinpath(archdir, 'rpmlist.jsonl'), 'wt', encoding='utf-8')
+    # NOTE - rpms is a generator
     for rpminfo in rpms:
         if not with_debuginfo and koji.is_debuginfo(rpminfo['name']):
             continue
         relpath = "%s/%s\n" % (builddirs[rpminfo['build_id']], relpathinfo.rpm(rpminfo))
-        content = dslice(
-            rpminfo,
-            (
-                'id', 'build_id', 'name', 'version', 'release', 'epoch',
-                'arch', 'payloadhash', 'size', 'buildtime'
-            ),
-            strict=True
-        )
-        content['filepath'] = relpath
-        nvra = "{name}-{version}-{release}.{arch}".format(**content)
+        rpm_json = json.dumps(rpminfo, indent=None)
+        # must be one line for nl-delimited json
         arch = rpminfo['arch']
         if arch == 'src':
             if with_src:
                 for repoarch in repo_arches:
                     pkglist[repoarch].write(relpath)
-                    content_jsons[repoarch][1][nvra] = content
+                    rpmlist[repoarch].write(rpm_json)
+                    rpmlist[repoarch].write('\n')
             if with_separate_src:
                 pkglist[arch].write(relpath)
-                content_jsons[repoarch][1][nvra] = content
+                rpmlist[arch].write(rpm_json)
+                rpmlist[arch].write('\n')
         elif arch == 'noarch':
             for repoarch in repo_arches:
                 if repoarch == 'src':
                     continue
                 pkglist[repoarch].write(relpath)
-                content_jsons[repoarch][1][nvra] = content
+                rpmlist[repoarch].write(rpm_json)
+                rpmlist[repoarch].write('\n')
         else:
             repoarch = koji.canonArch(arch)
             if repoarch not in repo_arches:
                 # Do not create a repo for arches not in the arch list for this tag
                 continue
             pkglist[repoarch].write(relpath)
-            content_jsons[repoarch][1][nvra] = content
+            rpmlist[repoarch].write(rpm_json)
+            rpmlist[repoarch].write('\n')
     for repoarch in repo_arches:
         pkglist[repoarch].close()
-        with open(content_jsons[repoarch][0], 'wt', encoding='utf-8') as fp:
-            json.dump(content_jsons[repoarch][1], fp, indent=2)
+        rpmlist[repoarch].close()
 
     # write blocked package lists
     for repoarch in repo_arches:
