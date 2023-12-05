@@ -297,8 +297,8 @@ DEFAULT_REQUEST_TIMEOUT = 60 * 60 * 12
 DEFAULT_AUTH_TIMEOUT = 60
 
 # draft release constants
-DRAFT_RELEASE_FORMAT = '{release}#draft_{id}'
-DRAFT_RELEASE_PARSING_REGEX = r'^(?P<release>.+)#draft_(?P<id>[0-9]+)$'
+DRAFT_RELEASE_FORMAT = '{release},draft_{id}'
+DRAFT_RELEASE_PARSING_REGEX = r'^(?P<release>.+),draft_(?P<id>[0-9]+)$'
 
 # BEGIN kojikamid dup #
 
@@ -3933,7 +3933,7 @@ def fixEncodingRecurse(value, fallback='iso8859-15', remove_nonprintable=False):
 def gen_draft_release(buildinfo):
     """Generate draft_release based on input build information
 
-    Currently, it's generated as {target_release}#draft_{build_id}
+    Currently, it's generated as {target_release},draft_{build_id}
 
     :param buildinfo: buildinfo with target "release", used to generate draft_release
     :type buildinfo: dict
