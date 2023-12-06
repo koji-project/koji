@@ -65,7 +65,7 @@ colspan="2" #slurp
     #for $rpm in $rpms
     <tr class="$util.rowToggle($self)">
       #set $epoch = ($rpm.epoch != None and $str($rpm.epoch) + ':' or '')
-      <td><a href="rpminfo?rpmID=$rpm.id">$util.escapeHTML($rpm.name)-$epoch$rpm.version-$rpm.release.${rpm.arch}.rpm</a></td>
+      <td>$util.formatRPM($rpm)</td>
       #if $type in ['component', 'image']
       #if $rpm.external_repo_id == 0
       <td>internal</td>
