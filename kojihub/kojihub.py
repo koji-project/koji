@@ -6118,7 +6118,9 @@ def new_build(data, strict=False):
     # handle draft suffix in release
     if data.get('draft'):
         target_release = data['release']
-        data['release'] = insert_data['release'] = koji.gen_draft_release(data)
+        data['release'] = insert_data['release'] = koji.gen_draft_release(
+            data['release'], data['id']
+        )
         # it's still possible to already have a build with the same nvr
         draft_nvr = dslice(data, ['name', 'version', 'release'])
         if find_build_id(draft_nvr):
@@ -6428,7 +6430,7 @@ def import_rpm(fn, buildinfo=None, brootid=None, wrapper=False, fileinfo=None, d
         nvrinfo = buildinfo.copy()
         if draft:
             # for draft build, change release to target_release
-            nvrinfo['release'] = koji.parse_target_release(buildinfo)
+            nvrinfo['release'] = koji.parse_target_release(buildinfo['release'])
         srpmname = "%(name)s-%(version)s-%(release)s.src.rpm" % nvrinfo
         # either the sourcerpm field should match the build, or the filename
         # itself (for the srpm)
@@ -7660,6 +7662,7 @@ def new_image_build(build_info):
 def new_typed_build(build_info, btype):
     """Mark build as a given btype"""
     # add here in case disabling draft build for non-rpm is missing before calling this
+    # TODO: remove it once draft build is expended to all types
     if btype != 'rpm':
         reject_draft(build_info)
     btype_id = lookup_name('btype', btype, strict=True)['id']
@@ -16024,7 +16027,7 @@ def _promote_build(build, user=None, strict=True, force=False):
     # get target release
     target_release = None
     try:
-        target_release = koji.parse_target_release(binfo)
+        target_release = koji.parse_target_release(old_release)
     except Exception:
         if strict:
             raise

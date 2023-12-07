@@ -63,7 +63,7 @@ class TestCliListTagged(utils.CliTestCase):
                                                          {'id': 2,
                                                           'name': 'packagename',
                                                           'version': 'version',
-                                                          'release': '2.el6#draft_2',
+                                                          'release': '2.el6,draft_2',
                                                           'nvr': 'n-v-r',
                                                           'draft': True,
                                                           'tag_name': 'tag',
@@ -129,7 +129,7 @@ n-v-r                                     tag                   owner
     def test_list_tagged_rpms(self, event_from_opts_mock, stdout):
         expected = """sigkey rpmA-0.0.1-1.el6.noarch
 sigkey rpmA-0.0.1-1.el6.x86_64
-sigkey rpmA-0.0.1-2.el6.x86_64 (#draft_2)
+sigkey rpmA-0.0.1-2.el6.x86_64 (,draft_2)
 """
         args = [self.tag, self.pkg, '--latest-n=3', '--rpms', '--sigs',
                 '--arch=x86_64', '--arch=noarch']
@@ -150,7 +150,7 @@ sigkey rpmA-0.0.1-2.el6.x86_64 (#draft_2)
     def test_list_tagged_rpms_paths(self, event_from_opts_mock, stdout, os_path_exists, isdir):
         expected = """/mnt/koji/packages/packagename/version/1.el6/noarch/rpmA-0.0.1-1.el6.noarch.rpm
 /mnt/koji/packages/packagename/version/1.el6/x86_64/rpmA-0.0.1-1.el6.x86_64.rpm
-/mnt/koji/packages/packagename/version/2.el6#draft_2/x86_64/rpmA-0.0.1-2.el6.x86_64.rpm
+/mnt/koji/packages/packagename/version/2.el6,draft_2/x86_64/rpmA-0.0.1-2.el6.x86_64.rpm
 """
         args = [self.tag, self.pkg, '--latest-n=3', '--rpms', '--arch=x86_64', '--paths']
 

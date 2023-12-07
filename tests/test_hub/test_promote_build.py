@@ -47,7 +47,7 @@ class TestPromoteBuild(unittest.TestCase):
             'id': 1,
             'name': 'foo',
             'version': 'bar',
-            'release': 'tgtrel#draft_1',
+            'release': 'tgtrel,draft_1',
             'nvr': 'testnvr',
             'extra': {
                 'draft': {
@@ -85,7 +85,7 @@ class TestPromoteBuild(unittest.TestCase):
                 'draft': {
                     'promoted': True,
                     'target_release': 'tgtrel',
-                    'old_release': 'tgtrel#draft_1',
+                    'old_release': 'tgtrel,draft_1',
                     'promotion_time': 'NOW',
                     'promotion_ts': self._now.timestamp(),
                     'promoter': self.user['name']
@@ -120,12 +120,13 @@ class TestPromoteBuild(unittest.TestCase):
         self.assertIsNone(ret)
         self.assertEqual(len(self.updates), 0)
 
-    def test_promote_build__target_release(self):
+    def test_promote_build_target_release(self):
         draft = {
             'id': 1,
             'name': 'foo',
             'version': 'bar',
-            'release': 'tgtrel#draft_2',
+            # bad delimiter
+            'release': 'tgtrel@draft_1',
             'extra': {
                 'draft': {
                     'promoted': False,
@@ -145,7 +146,7 @@ class TestPromoteBuild(unittest.TestCase):
             self.exports.promoteBuild('a-regular-build', strict=True)
         self.assertEqual(
             str(cm.exception),
-            "buildinfo.id: 1 doesn't match build id part: 2 in buildinfo.release: tgtrel#draft_2"
+            "draft release: tgtrel@draft_1 is not in valid format"
         )
         self.assertEqual(len(self.updates), 0)
 

@@ -257,7 +257,7 @@ class TestImportRPM(unittest.TestCase):
             'state': koji.BUILD_STATES['COMPLETE'],
             'name': 'name',
             'version': 'version',
-            'release': 'release#draft_12345',
+            'release': 'release,draft_12345',
             'id': 12345,
             'draft': True,
             'extra': {
@@ -303,7 +303,7 @@ class TestImportRPM(unittest.TestCase):
             'state': koji.BUILD_STATES['COMPLETE'],
             'name': 'name',
             'version': 'version',
-            'release': 'release#draft_12345',
+            'release': 'release,draft_12345',
             'id': 12345,
             'draft': True
         }

@@ -176,7 +176,7 @@ class TestNewBuild(unittest.TestCase):
             'id': 108,
             'owner': 123,
             'pkg_id': 54,
-            'release': 'test_release#draft_108',
+            'release': 'test_release,draft_108',
             'source': None,
             'start_time': 'NOW',
             'state': 1,
@@ -202,5 +202,5 @@ class TestNewBuild(unittest.TestCase):
             {
                 'name': 'test_name',
                 'version': 'test_version',
-                'release': 'test_release#draft_108'
+                'release': 'test_release,draft_108'
             })
