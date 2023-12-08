@@ -6463,11 +6463,6 @@ def import_rpm(fn, buildinfo=None, brootid=None, wrapper=False, fileinfo=None, d
     if fileinfo is not None:
         extra = fileinfo.get('extra')
         if extra is not None:
-            if draft:
-                # simply deny draft
-                raise koji.GenericError(
-                    f'When importing draft rpm, cannot specify extra in fileinfo: {fileinfo}'
-                )
             rpminfo['extra'] = json.dumps(extra)
 
     koji.plugin.run_callbacks('preImport', type='rpm', rpm=rpminfo, build=buildinfo,
