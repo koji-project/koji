@@ -14919,7 +14919,6 @@ class HostExports(object):
         # ensure release is None so get_next_build will handle incrementing
         build_info['release'] = None
         data = build_info.copy()
-        reject_draft(data)
         data['task_id'] = task_id
         data['owner'] = task.getOwner()
         data['state'] = koji.BUILD_STATES['BUILDING']
@@ -15085,7 +15084,6 @@ class HostExports(object):
         task = Task(task_id)
         task.assertHost(host.id)
         data = build_info.copy()
-        reject_draft(data)
         data['task_id'] = task_id
         data['owner'] = task.getOwner()
         data['state'] = koji.BUILD_STATES['BUILDING']
@@ -15108,7 +15106,6 @@ class HostExports(object):
         task.assertHost(host.id)
         # build_info must contain name, version, and release
         data = build_info.copy()
-        reject_draft(data)
         data['task_id'] = task_id
         data['owner'] = task.getOwner()
         data['state'] = koji.BUILD_STATES['BUILDING']
