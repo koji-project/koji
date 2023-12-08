@@ -7656,10 +7656,6 @@ def new_image_build(build_info):
 
 def new_typed_build(build_info, btype):
     """Mark build as a given btype"""
-    # add here in case disabling draft build for non-rpm is missing before calling this
-    # TODO: remove it once draft build is expended to all types
-    if btype != 'rpm':
-        reject_draft(build_info)
     btype_id = lookup_name('btype', btype, strict=True)['id']
     query = QueryProcessor(tables=['build_types'], columns=['build_id'],
                            clauses=['build_id = %(build_id)i', 'btype_id = %(btype_id)i'],
