@@ -173,6 +173,35 @@ class TestDeleteRPMSig(unittest.TestCase):
         self.query_rpm_sigs.assert_called_once_with(rpm_id=self.rinfo['id'], sigkey='testkey')
         self.get_build.assert_called_once_with(self.rinfo['build_id'], strict=True)
 
+    def test_header_not_a_file(self):
+        rpminfo = self.rinfo['id']
+        self.get_rpm.return_value = self.rinfo
+        self.get_build.return_value = self.buildinfo
+        self.get_user.return_value = self.userinfo
+        self.query_rpm_sigs.return_value = self.queryrpmsigs
+
+        # we should error, without making any changes, if a header is not a regular file
+        builddir = self.pathinfo.build(self.buildinfo)
+        bad_sigkey = '2f86d6a1'
+        bad_hdr= self.sighdr[bad_sigkey]
+        os.remove(bad_hdr)
+        os.mkdir(bad_hdr)
+        with self.assertRaises(koji.GenericError) as ex:
+            r = kojihub.delete_rpm_sig(rpminfo, sigkey='testkey')
+        expected_msg = "Not a regular file: %s" % bad_hdr
+        self.assertEqual(ex.exception.args[0], expected_msg)
+
+        # the files should still be there
+        for sigkey in self.signed:
+            if not os.path.exists(self.signed[sigkey]):
+                raise Exception('signed copy was deleted')
+        for sigkey in self.sighdr:
+            if not os.path.exists(self.sighdr[sigkey]):
+                raise Exception('header was deleted')
+        if not os.path.isdir(bad_hdr):
+            # the function should not have touched the invalid path
+            raise Exception('bad header file was removed')
+
     def test_stray_backup(self):
         rpminfo = self.rinfo['id']
         self.get_rpm.return_value = self.rinfo
@@ -180,16 +209,54 @@ class TestDeleteRPMSig(unittest.TestCase):
         self.get_user.return_value = self.userinfo
         self.query_rpm_sigs.return_value = self.queryrpmsigs
 
-        # a missing signed copy or header should not error
         siginfo = self.queryrpmsigs[0]
         sigkey = siginfo['sigkey']
         backup = "%s.%s.save" % (self.sighdr[sigkey], siginfo['sighash'])
         with open(backup, 'wt') as fo:
             fo.write('STRAY FILE\n')
+            # different contents
         with self.assertRaises(koji.GenericError) as ex:
             r = kojihub.delete_rpm_sig(rpminfo, sigkey='testkey')
         expected_msg = "Stray header backup file: %s" % backup
         self.assertEqual(ex.exception.args[0], expected_msg)
+        # files should not have been removed
+        for sigkey in self.signed:
+            if not os.path.exists(self.signed[sigkey]):
+                raise Exception('signed copy was deleted incorrectly')
+        for sigkey in self.sighdr:
+            if not os.path.exists(self.sighdr[sigkey]):
+                raise Exception('header was deleted incorrectly')
+
+    def test_dup_backup(self):
+        rpminfo = self.rinfo['id']
+        self.get_rpm.return_value = self.rinfo
+        self.get_build.return_value = self.buildinfo
+        self.get_user.return_value = self.userinfo
+        self.query_rpm_sigs.return_value = self.queryrpmsigs
+
+        siginfo = self.queryrpmsigs[0]
+        sigkey = siginfo['sigkey']
+        backup = "%s.%s.save" % (self.sighdr[sigkey], siginfo['sighash'])
+        with open(backup, 'wt') as fo:
+            fo.write('DETACHED SIGHDR\n')
+            # SAME contents
+
+        r = kojihub.delete_rpm_sig(rpminfo, sigkey='testkey')
+
+        # the files should be gone
+        for sigkey in self.signed:
+            if os.path.exists(self.signed[sigkey]):
+                raise Exception('signed copy not deleted')
+        for sigkey in self.sighdr:
+            if os.path.exists(self.sighdr[sigkey]):
+                raise Exception('header still in place')
+
+        # the sighdrs should be saved
+        for siginfo in self.queryrpmsigs:
+            sigkey = siginfo['sigkey']
+            backup = "%s.%s.save" % (self.sighdr[sigkey], siginfo['sighash'])
+            with open(backup, 'rt') as fo:
+                self.assertEqual(fo.read(), 'DETACHED SIGHDR\n')
 
     @mock.patch('os.remove', side_effect=OSError)
     def test_not_valid(self, os_remove):

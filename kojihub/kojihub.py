@@ -30,6 +30,7 @@ import calendar
 import copy
 import datetime
 import fcntl
+import filecmp
 import fnmatch
 import functools
 import hashlib
@@ -7976,6 +7977,32 @@ def delete_rpm_sig(rpminfo, sigkey=None, all_sigs=False):
     binfo = get_build(rinfo['build_id'], strict=True)
     builddir = koji.pathinfo.build(binfo)
 
+    # Check header files
+    hdr_renames = []
+    hdr_deletes = []
+    for rpmsig in rpm_query_result:
+        hdr_path = joinpath(builddir, koji.pathinfo.sighdr(rinfo, rpmsig['sigkey']))
+        backup_path = hdr_path + f".{rpmsig['sighash']}.save"
+        if not os.path.exists(hdr_path):
+            logger.error(f'Missing signature header file: {hdr_path}')
+            # this doesn't prevent us from deleting the signature
+            # it just means we have nothing to back up
+            continue
+        if not os.path.isfile(hdr_path):
+            # this should not happen and requires human intervention
+            raise koji.GenericError(f"Not a regular file: {hdr_path}")
+        if os.path.exists(backup_path):
+            # Likely residue of previous failed deletion
+            if filecmp.cmp(hdr_path, backup_path, shallow=False):
+                # same file contents, so we're already backed up
+                logger.warning(f"Signature header already backed up: {backup_path}")
+                hdr_deletes.append([rpmsig, hdr_path])
+            else:
+                # this shouldn't happen
+                raise koji.GenericError(f"Stray header backup file: {backup_path}")
+        else:
+            hdr_renames.append([rpmsig, hdr_path, backup_path])
+
     # Delete signed copies
     # We do these first since they are the lowest risk
     for rpmsig in rpm_query_result:
@@ -7986,29 +8013,28 @@ def delete_rpm_sig(rpminfo, sigkey=None, all_sigs=False):
         try:
             os.remove(signed_path)
             logger.warning(f"Deleted signed copy {signed_path}")
-        except FileNotFoundError:
-            # possibly a race?
-            # not fatal -- log and continue
-            logger.error(f"Signed copy disappeared during call: {signed_path}")
         except Exception:
             logger.error(f"Failed to delete {signed_path}", exc_info=True)
             raise koji.GenericError(f"Failed to delete {signed_path}")
 
     # Backup header files
-    for rpmsig in rpm_query_result:
-        hdr_path = joinpath(builddir, koji.pathinfo.sighdr(rinfo, rpmsig['sigkey']))
-        backup_path = hdr_path + f".{rpmsig['sighash']}.save"
-        if os.path.exists(backup_path):
-            # Likely residue of previous failed deletion
-            raise koji.GenericError(f"Stray header backup file: {backup_path}")
-        if not os.path.exists(hdr_path):
-            logger.error(f'Missing signature header file: {hdr_path}')
-            # not fatal
-        elif not os.path.isfile(hdr_path):
-            raise koji.GenericError(f"Not a regular file: {hdr_path}")
-        else:
+    for rpmsig, hdr_path, backup_path in hdr_renames:
+        # sanity checked above
+        try:
             os.rename(hdr_path, backup_path)
-            logger.debug(f"Signature header saved to {backup_path}")
+            logger.warning(f"Signature header saved to {backup_path}")
+        except Exception:
+            logger.error(f"Failed to rename {hdr_path} to {backup_path}", exc_info=True)
+
+    # Delete already backed-up headers
+    for rpmsig, hdr_path in hdr_deletes:
+        # verified backup above
+        try:
+            os.remove(hdr_path)
+            logger.warning(f"Deleted signature header {hdr_path}")
+        except Exception:
+            logger.error(f"Failed to delete {hdr_path}", exc_info=True)
+            raise koji.GenericError(f"Failed to delete {hdr_path}")
 
     # Note: we do not delete any empty parent dirs as the primary use case for deleting these
     # signatures is to allow the import of new, overlapping ones
