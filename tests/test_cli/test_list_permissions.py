@@ -3,6 +3,7 @@ import mock
 import six
 import unittest
 
+import koji
 from koji_cli.commands import handle_list_permissions
 from . import utils
 
@@ -130,6 +131,27 @@ repo
         self.session.getUser.assert_called_once()
         self.session.getUserPerms.assert_not_called()
         self.session.getUserPermsInheritance.assert_called_once()
+        self.session.getPerms.assert_not_called()
+        self.session.getAllPerms.assert_not_called()
+
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    def test_handle_list_permissions_without_group_perm_inheritance(self, stdout):
+        """Test handle_list_permissions without group perm inheritance"""
+        expected = """build             
+repo              
+"""
+        self.session.getLoggedInUser.return_value = {'id': 1, 'name': 'user'}
+        self.session.getUserPermsInheritance.side_effect = koji.GenericError(
+            "Invalid method: getUserPermsInheritance"
+        )
+        self.session.getUserPerms.return_value = [p['name'] for p in self.all_perms[1:3]]
+        handle_list_permissions(self.options, self.session, ['--mine'])
+        self.assert_console_message(stdout, expected)
+
+        self.activate_session_mock.assert_called_once()
+        self.session.getUser.assert_called_once()
+        self.session.getUserPermsInheritance.assert_called_once()
+        self.session.getUserPerms.assert_called_once()
         self.session.getPerms.assert_not_called()
         self.session.getAllPerms.assert_not_called()
 
