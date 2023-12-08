@@ -127,23 +127,28 @@ class TestCGImporter(unittest.TestCase):
         self.path_build.return_value = path
 
         x = kojihub.CG_Importer()
+        x.log_warning = mock.MagicMock()
 
         # directory exists
         self.lexists.return_value = True
         with self.assertRaises(koji.GenericError):
             x.check_build_dir(delete=False)
         self.rmtree.assert_not_called()
+        x.log_warning.assert_not_called()
 
         # directory exists + delete
         self.lexists.return_value = True
         x.check_build_dir(delete=True)
         self.rmtree.assert_called_once_with(path)
+        x.log_warning.assert_called_once_with("Deleting build directory: /random_path/random_dir")
+        x.log_warning.reset_mock()
 
         # directory doesn't exist
         self.rmtree.reset_mock()
         self.lexists.return_value = False
         x.check_build_dir()
         self.rmtree.assert_not_called()
+        x.log_warning.assert_not_called()
 
     def test_prep_build_exists(self):
         self.path_work.return_value = os.path.dirname(__file__)
