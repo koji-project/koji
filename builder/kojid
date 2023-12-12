@@ -925,6 +925,7 @@ class BuildRoot(object):
         opts = dict([(k, getattr(self.options, k)) for k in ('topurl', 'topdir')])
         rpmlist_path = os.path.join(self.get_repo_dir(), self.br_arch, 'rpmlist.jsonl')
         repo_rpms = {}
+        compat_mode = False
         try:
             with koji.openRemoteFile(rpmlist_path, **opts) as fo:
                 for line in fo:
@@ -935,9 +936,10 @@ class BuildRoot(object):
             if e.response.status_code == 404:
                 self.logger.warning("Missing repo content file: %s", rpmlist_path)
                 # TODO: remove this workaround once we can assume that repos contain this file
-                self.compat_map_internal_rpms(rpmlist)
-                return
-            raise
+                repo_rpms = self.repo_draft_rpms()
+                compat_mode = True
+            else:
+                raise
         fmt = "%(name)s-%(version)s-%(release)s.%(arch)s"
         for rpm_info in rpmlist:
             if 'external_repo' in rpm_info:
@@ -945,7 +947,9 @@ class BuildRoot(object):
             nvra = fmt % rpm_info
             data = repo_rpms.get(nvra)
             if not data:
-                self.logger.warning("%s not found in rpmlist.jsonl", nvra)
+                # happens a lot in compat mode because we only query for drafts
+                if not compat_mode:
+                    self.logger.warning("%s not found in rpmlist.jsonl", nvra)
                 continue
             # check payloadhash in case they are different
             elif data['payloadhash'] != rpm_info['payloadhash']:
@@ -957,30 +961,13 @@ class BuildRoot(object):
                 # set rpm id
                 rpm_info['id'] = data['id']
 
-    def compat_map_internal_rpms(self, rpmlist):
+    def repo_draft_rpms(self):
         drafts, draftbuilds = self.session.listTaggedRPMS(
             tag=self.repo_info['tag_id'],
             event=self.repo_info['create_event'],
             latest=True,
             draft=True)
-        fmt = "%(name)s-%(version)s-%(release)s.%(arch)s"
-        content = {}
-        for draftinfo in drafts:
-            nvra = fmt % draftinfo
-            content[nvra] = draftinfo
-        for rpminfo in rpmlist:
-            nvra = fmt % rpminfo
-            data = content.get(nvra)
-            if data:
-                # draft rpm!
-                if data['payloadhash'] != rpminfo['payloadhash']:
-                    raise koji.BuildrootError(
-                        "RPM: %s: payloadhash: %s mismatch expected %s"
-                        % (nvra, rpminfo['payloadhash'], data['payloadhash'])
-                    )
-                else:
-                    # set rpm id
-                    rpminfo['id'] = data['id']
+        return drafts
 
     def path_without_to_within(self, path):
         """
