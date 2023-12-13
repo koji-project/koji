@@ -29,7 +29,7 @@ class TestGetRPM(DBQueryTestCase):
 
     def test_rpm_info_int(self):
         rpminfo = 123
-        self.qp_execute_one_return_value = {'rpminfo.id': 123}
+        self.qp_execute_return_value = [{'rpminfo.id': 123}]
         result = kojihub.get_rpm(rpminfo)
         self.assertEqual(result, {'rpminfo.id': 123})
 
@@ -40,7 +40,7 @@ class TestGetRPM(DBQueryTestCase):
                    'epoch', 'arch', 'draft', 'external_repo_id', 'external_repo.name',
                    'payloadhash', 'size', 'buildtime', 'metadata_only', 'extra']
         self.assertEqual(set(query.columns), set(columns))
-        self.assertEqual(query.clauses, ['external_repo_id = 0', "rpminfo.id=%(id)s"])
+        self.assertEqual(query.clauses, ["rpminfo.id=%(id)s"])
         self.assertEqual(query.joins,
                          ['external_repo ON rpminfo.external_repo_id = external_repo.id'])
         self.assertEqual(query.values, {'id': rpminfo})
@@ -116,27 +116,7 @@ class TestGetRPM(DBQueryTestCase):
                    'payloadhash', 'size', 'buildtime', 'metadata_only', 'extra']
         self.assertEqual(set(query.columns), set(columns))
         self.assertEqual(query.clauses,
-                         ["external_repo_id = %(external_repo_id)i", "rpminfo.id=%(id)s"])
-        self.assertEqual(query.joins,
-                         ['external_repo ON rpminfo.external_repo_id = external_repo.id'])
-        self.assertEqual(query.values, rpminfo_data)
-    
-    def test_rpm_info_with_build(self):
-        rpminfo = {'id': 123, 'name': 'testrpm-1.23-4.x86_64.rpm', 'build_id': 101}
-        self.find_build_id.return_value = 101
-        rpminfo_data = rpminfo.copy()
-
-        kojihub.get_rpm(rpminfo, multi=True, build='any')
-
-        self.assertEqual(len(self.queries), 1)
-        query = self.queries[0]
-        self.assertEqual(query.tables, ['rpminfo'])
-        columns = ['rpminfo.id', 'build_id', 'buildroot_id', 'rpminfo.name', 'version', 'release',
-                   'epoch', 'arch', 'draft', 'external_repo_id', 'external_repo.name',
-                   'payloadhash', 'size', 'buildtime', 'metadata_only', 'extra']
-        self.assertEqual(set(query.columns), set(columns))
-        self.assertEqual(query.clauses,
-                         ["rpminfo.build_id = %(build_id)s", "rpminfo.id=%(id)s"])
+                         ["external_repo_id = %(external_repo_id)s", "rpminfo.id=%(id)s"])
         self.assertEqual(query.joins,
                          ['external_repo ON rpminfo.external_repo_id = external_repo.id'])
         self.assertEqual(query.values, rpminfo_data)

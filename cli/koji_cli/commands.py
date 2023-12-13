@@ -3551,28 +3551,18 @@ def anon_handle_list_builds(goptions, session, args):
 
 def anon_handle_rpminfo(goptions, session, args):
     "[info] Print basic information about an RPM"
-    usage = "usage: %prog rpminfo [options] <n-v-r.a> [<n-v-r.a> ...]"
+    usage = "usage: %prog rpminfo [options] <n-v-r.a|id> [<n-v-r.a|id> ...]"
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--buildroots", action="store_true",
                       help="show buildroots the rpm was used in")
-    parser.add_option("--build", metavar="NVR|ID",
-                      help="show the rpm(s) in the build")
 
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
         parser.error("Please specify an RPM")
-    opts = {}
-    build = options.build
-    if options.build:
-        try:
-            build = int(build)
-        except ValueError:
-            pass
-        opts['build'] = build
     ensure_connection(session, goptions)
     error_hit = False
     for rpm in args:
-        info = session.getRPM(rpm, **opts)
+        info = session.getRPM(rpm)
         if info is None:
             warn("No such rpm: %s\n" % rpm)
             error_hit = True

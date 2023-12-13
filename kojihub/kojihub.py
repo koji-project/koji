@@ -4609,21 +4609,18 @@ def _fix_rpm_row(row):
 _fix_archive_row = _fix_rpm_row
 
 
-def get_rpm(rpminfo, strict=False, multi=False, build=None):
+def get_rpm(rpminfo, strict=False, multi=False):
     """Get information about the specified RPM
 
-    rpminfo ma4666y be any one of the following:
-    - a int ID
+    rpminfo may be any one of the following:
+    - the rpm id as an int
+    - the rpm id as a string
     - a string N-V-R.A
     - a string N-V-R.A@location
     - a map containing 'name', 'version', 'release', and 'arch'
       (and optionally 'location')
 
     If specified, location should match the name of an external repo
-
-    If build is specfied, the rpm is limited to the build's
-
-    build and location(not INTERNAL) is conflict because a rpm in
 
     A map will be returned, with the following keys:
     - id
@@ -4646,10 +4643,70 @@ def get_rpm(rpminfo, strict=False, multi=False, build=None):
     If there is no RPM with the given ID, None is returned, unless strict
     is True in which case an exception is raised
 
-    If more than one RPM matches, and multi is True, then a list of results is
-    returned. If multi is False, a single match is returned (an internal one if
-    possible).
+    This function is normally expected to return a single rpm. However, there
+    are cases where the given rpminfo could refer to multiple rpms. This is
+    because of nvra overlap involving:
+      * draft rpms
+      * external rpms
+
+    If more than one RPM matches, then in the default case (multi=False), this function
+    will choose the best option in order of preference:
+      1. internal non-draft rpms (nvras are unique within this subset)
+      2. internal draft rpms (highest rpm id)
+      3. external rpms (highest rpm id)
+    OTOH if multi is True, then all matching results are returned as a list
     """
+    # we can look up by id or NVRA
+    data = None
+    if isinstance(rpminfo, int):
+        data = {'id': rpminfo}
+    elif isinstance(rpminfo, str):
+        # either nvra or id as a string
+        try:
+            data = {'id': int(rpminfo)}
+        except ValueError:
+            data = koji.parse_NVRA(rpminfo)
+    elif isinstance(rpminfo, dict):
+        data = rpminfo.copy()
+    else:
+        raise koji.GenericError("Invalid type for rpminfo: %r" % type(rpminfo))
+
+    rpms = _get_rpms(data)
+    if multi:
+        return rpms
+
+    # otherwise make sure we have a single rpm
+    if not rpms:
+        if strict:
+            raise koji.GenericError("No such rpm: %r" % data)
+        return None
+    elif len(rpms) == 1:
+        return rpms[0]
+    else:
+        # pick our preferred, as described above
+        nondraft = None
+        draft = None
+        external = None
+        for rinfo in rpms:
+            if rinfo['external_repo_id']:
+                if external is None or rinfo['id'] > external['id']:
+                    external = rinfo
+            elif rinfo['draft']:
+                if draft is None or rinfo['id'] > draft['id']:
+                    draft = rinfo
+            else:
+                # rinfo is internal and nondraft
+                if nondraft:
+                    # should not happen
+                    # none of our selection options should result in more than one nondraft build
+                    raise koji.GenericError("Multiple nondraft rpm matches for: %r" % data)
+                else:
+                    nondraft = rinfo
+        return nondraft or draft or external
+
+
+def _get_rpms(data):
+    """Helper function for get_rpm"""
     fields = (
         ('rpminfo.id', 'id'),
         ('build_id', 'build_id'),
@@ -4668,57 +4725,21 @@ def get_rpm(rpminfo, strict=False, multi=False, build=None):
         ('metadata_only', 'metadata_only'),
         ('extra', 'extra'),
     )
-    # we can look up by id or NVRA
-    data = None
-    if isinstance(rpminfo, int):
-        data = {'id': rpminfo}
-    elif isinstance(rpminfo, str):
-        data = koji.parse_NVRA(rpminfo)
-    elif isinstance(rpminfo, dict):
-        data = rpminfo.copy()
-    else:
-        raise koji.GenericError("Invalid type for rpminfo: %r" % type(rpminfo))
     clauses = []
     if 'id' in data:
         clauses.append("rpminfo.id=%(id)s")
     else:
         clauses.append("rpminfo.name=%(name)s AND version=%(version)s "
                        "AND release=%(release)s AND arch=%(arch)s")
-    # build and non-INTERNAL location (and multi=True) conflict in theory,
-    # but we just do the query and return None.
-    if build:
-        # strict=True as we treate build not found as an input error
-        data['build_id'] = find_build_id(build, strict=True)
-        clauses.append("rpminfo.build_id = %(build_id)s")
-    retry = False
     if 'location' in data:
         data['external_repo_id'] = get_external_repo_id(data['location'], strict=True)
-        clauses.append("""external_repo_id = %(external_repo_id)i""")
-    elif not multi:
-        # try to match internal first, otherwise first matching external
-        retry = True  # if no internal match
-        orig_clauses = list(clauses)  # copy
-        clauses.append("""external_repo_id = 0""")
-
+        clauses.append("""external_repo_id = %(external_repo_id)s""")
     joins = ['external_repo ON rpminfo.external_repo_id = external_repo.id']
 
     query = QueryProcessor(columns=[f[0] for f in fields], aliases=[f[1] for f in fields],
                            tables=['rpminfo'], joins=joins, clauses=clauses,
                            values=data, transform=_fix_rpm_row)
-    if multi:
-        return query.execute()
-    ret = query.executeOne()
-    if ret:
-        return ret
-    if retry:
-        # at this point we have just an NVRA with no internal match. Open it up to externals
-        query.clauses = orig_clauses
-        ret = query.executeOne()
-    if not ret:
-        if strict:
-            raise koji.GenericError("No such rpm: %r" % data)
-        return None
-    return ret
+    return query.execute()
 
 
 def list_rpms(buildID=None, buildrootID=None, imageID=None, componentBuildrootID=None, hostID=None,
