@@ -6414,6 +6414,8 @@ def import_rpm(fn, buildinfo=None, brootid=None, wrapper=False, fileinfo=None):
         if draft:
             # shouldn't happen with current code
             raise koji.GenericError('rpm import is not supported for draft builds')
+        # the existing build got by rpminfo below should never be draft,
+        # because "," is an invalid char for rpm "release"
         if rpminfo['sourcepackage'] == 1:
             buildinfo = get_build(rpminfo, strict=False)
             if not buildinfo:
