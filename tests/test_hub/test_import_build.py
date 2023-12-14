@@ -82,6 +82,7 @@ class TestImportBuild(unittest.TestCase):
             'version': 'version',
             'release': 'release',
             'id': 12345,
+            'draft': False
         }
         # get_build called once to check for existing,
         # if it doesn't exist, called another time after creating

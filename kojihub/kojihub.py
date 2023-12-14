@@ -6273,7 +6273,7 @@ def check_noarch_rpms(basepath, rpms, logs=None):
     return result
 
 
-def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None, draft=False):
+def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None):
     """Import a build into the database (single transaction)
 
     Files must be uploaded and specified with path relative to the workdir
@@ -6283,9 +6283,6 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None,
         brmap - dictionary mapping [s]rpms to buildroot ids
         task_id - associate the build with a task
         build_id - build is a finalization of existing entry
-        draft - If True and
-                - build_id: None, to create a draft build
-                            Not None, the build_id must be a draft build with a valid release
     """
     if brmap is None:
         brmap = {}
@@ -6293,7 +6290,6 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None,
         convert_value(brmap, cast=dict, check_only=True)
     convert_value(srpm, cast=str, check_only=True)
     convert_value(rpms, cast=list, check_only=True)
-    draft = bool(draft)
     koji.plugin.run_callbacks('preImport', type='build', srpm=srpm, rpms=rpms, brmap=brmap,
                               task_id=task_id, build_id=build_id, build=None, logs=logs)
     uploadpath = koji.pathinfo.work()
@@ -6337,7 +6333,7 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None,
     build['volume_name'] = vol['name']
 
     if build_id is None:
-        build['draft'] = draft
+        # it is always a non-draft build
         build_id = new_build(build)
         binfo = get_build(build_id, strict=True)
         new_typed_build(binfo, 'rpm')
@@ -6350,13 +6346,8 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None,
 
         koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=st_old,
                                   new=st_complete, info=binfo)
-        if binfo.get('draft') != draft:
-            raise koji.GenericError(
-                f"draft propetry of build: {binfo['nvr']} is not correct. Expected: {draft},"
-                f" got {binfo['draft']}"
-            )
-        if draft:
-            build['release'] = koji.DRAFT_RELEASE_FORMAT.format(**build)
+        if binfo.get('draft'):
+            build['release'] = koji.gen_draft_release(build['release'], build['id'])
         for key in ('name', 'version', 'release', 'epoch', 'task_id'):
             if build[key] != binfo[key]:
                 raise koji.GenericError(
@@ -6378,7 +6369,7 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None,
     # now to handle the individual rpms
     for relpath in [srpm] + rpms:
         fn = "%s/%s" % (uploadpath, relpath)
-        rpminfo = import_rpm(fn, binfo, brmap.get(relpath), draft=draft)
+        rpminfo = import_rpm(fn, binfo, brmap.get(relpath), draft=binfo['draft'])
         import_rpm_file(fn, binfo, rpminfo)
         add_rpm_sig(rpminfo['id'], koji.rip_rpm_sighdr(fn))
     if logs:
@@ -14866,14 +14857,14 @@ class HostExports(object):
         new_typed_build(binfo, 'rpm')
         return build_id
 
-    def completeBuild(self, task_id, build_id, srpm, rpms, brmap=None, logs=None, draft=False):
+    def completeBuild(self, task_id, build_id, srpm, rpms, brmap=None, logs=None):
         """Import final build contents into the database"""
         # sanity checks
         host = Host()
         host.verify()
         task = Task(task_id)
         task.assertHost(host.id)
-        result = import_build(srpm, rpms, brmap, task_id, build_id, logs=logs, draft=draft)
+        result = import_build(srpm, rpms, brmap, task_id, build_id, logs=logs)
         build_notification(task_id, build_id)
         return result
 
