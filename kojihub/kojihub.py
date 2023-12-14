@@ -14302,7 +14302,7 @@ class BuildRoot(object):
                 data = add_external_rpm(an_rpm, location, strict=False)
                 # will add if missing, compare if not
             else:
-                data = get_rpm(an_rpm, strict=True, build=an_rpm.get('build', None))
+                data = get_rpm(an_rpm, strict=True)
             rpm_id = data['id']
             if update and rpm_id in current:
                 # ignore duplicate packages for updates
