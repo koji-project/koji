@@ -16012,7 +16012,7 @@ def _promote_build(build, user=None, strict=True, force=False):
         return None
     if not binfo.get('draft'):
         if strict:
-            raise koji.GenericError(f'Not a draft build: {binfo}')
+            raise koji.GenericError(f"Not a draft build: {binfo['nvr']}")
         else:
             return None
     state = koji.BUILD_STATES[binfo['state']]
@@ -16043,7 +16043,9 @@ def _promote_build(build, user=None, strict=True, force=False):
     old_build = get_build(target_build)
     if old_build:
         if strict:
-            raise koji.GenericError(f'Target build already exists: {old_build}')
+            raise koji.GenericError(
+                f"Cannot promote to an existing target build: {old_build['nvr']}(#{old_build['id']})"
+            )
         else:
             return None
 
