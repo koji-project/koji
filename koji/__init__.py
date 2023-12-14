@@ -298,7 +298,7 @@ DEFAULT_AUTH_TIMEOUT = 60
 
 # draft release constants
 DRAFT_RELEASE_DELIMITER = ','
-DRAFT_RELEASE_FORMAT = '{release}' + DRAFT_RELEASE_DELIMITER + 'draft_{id}'
+DRAFT_RELEASE_FORMAT = '{target_release}' + DRAFT_RELEASE_DELIMITER + 'draft_{build_id}'
 
 # BEGIN kojikamid dup #
 
@@ -3930,15 +3930,15 @@ def fixEncodingRecurse(value, fallback='iso8859-15', remove_nonprintable=False):
     return walker.walk()
 
 
-def gen_draft_release(release, id):
+def gen_draft_release(target_release, build_id):
     """Generate draft_release based on input build information
 
     Currently, it's generated as {target_release},draft_{build_id}
 
-    :param str release: target "release", which is the release part of rpms' nvra,
+    :param str target_release: target "release", which is the release part of rpms' nvra,
                                and will be the release of the build the draft build is going to be
                                promoted to.
-    :param int id: the build "id" part in draft_release (it's unchanged so it can be used to
+    :param int build_id: the build "id" part in draft_release (it's unchanged so it can be used to
                          keep the uniqueness of build NVR)
     :return: draft release
     :rtype: str
