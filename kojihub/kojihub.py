@@ -7047,7 +7047,7 @@ class CG_Importer(object):
             self.log_warning("IGNORING unmatched rpm component: %r" % comp)
             return None
         # TODO: we should consider how to handle them once draft build is enabled for CG
-        reject_draft(rinfo, is_rpm=True, strict=True)
+        reject_draft(rinfo, is_rpm=True)
         if rinfo['payloadhash'] != comp['sigmd5']:
             # XXX - this is a temporary workaround until we can better track external refs
             self.log_warning("IGNORING rpm component (md5 mismatch): %r" % comp)
@@ -15940,7 +15940,7 @@ def create_rpm_checksum(rpm_id, sigkey, chsum_dict):
         insert.execute()
 
 
-def reject_draft(data, is_rpm=False, error=None, strict=True):
+def reject_draft(data, is_rpm=False, error=None):
     """block draft build/rpm
 
     TODO: remove this once draft build is open for all build types
@@ -15949,11 +15949,8 @@ def reject_draft(data, is_rpm=False, error=None, strict=True):
     :param bool is_rpm: indicates data is rpm or build (true/false) in default error msg
     :param koji.GenericError error: the error raised if not a draft build,
                                     defaults to None to raise the default "unsupported" error
-    :param bool strict: if True will raise an error if it's draft, else return the draft value.
     :raises error: default or specified by input error when draft==True in data
     """
-    if not strict:
-        return bool(data.get('draft'))
     if data.get('draft'):
         if error is None:
             entry_type = 'rpm' if is_rpm else 'build'
