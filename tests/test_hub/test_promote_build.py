@@ -93,7 +93,7 @@ class TestPromoteBuild(unittest.TestCase):
             }
         )
 
-        ret = self.exports.promoteBuild('a-draft-build', strict=True)
+        ret = self.exports.promoteBuild('a-draft-build')
         self.assertEqual(ret, self.new_build)
         self.assertEqual(len(self.updates), 1)
         update = self.updates[0]
@@ -109,15 +109,11 @@ class TestPromoteBuild(unittest.TestCase):
         )
 
     def test_promote_build_not_draft(self):
-        self.get_build.return_value = {'draft': False}
+        self.get_build.return_value = {'draft': False, 'nvr': 'testnvr'}
 
         with self.assertRaises(koji.GenericError) as cm:
-            self.exports.promoteBuild('a-regular-build', strict=True)
-        self.assertEqual(str(cm.exception), "Not a draft build: {'draft': False}")
-        self.assertEqual(len(self.updates), 0)
-
-        ret = self.exports.promoteBuild('a-regular-build', strict=False)
-        self.assertIsNone(ret)
+            self.exports.promoteBuild('a-regular-build')
+        self.assertEqual(str(cm.exception), "Not a draft build: testnvr")
         self.assertEqual(len(self.updates), 0)
 
     def test_promote_build_target_release(self):
@@ -143,15 +139,11 @@ class TestPromoteBuild(unittest.TestCase):
         self.get_build.return_value = draft
 
         with self.assertRaises(koji.GenericError) as cm:
-            self.exports.promoteBuild('a-regular-build', strict=True)
+            self.exports.promoteBuild('a-regular-build')
         self.assertEqual(
             str(cm.exception),
             "draft release: tgtrel@draft_1 is not in valid format"
         )
-        self.assertEqual(len(self.updates), 0)
-
-        ret = self.exports.promoteBuild('a-regular-build', strict=False)
-        self.assertIsNone(ret)
         self.assertEqual(len(self.updates), 0)
 
     def test_promote_build_not_completed(self):
@@ -176,35 +168,29 @@ class TestPromoteBuild(unittest.TestCase):
         self.get_build.return_value = draft
 
         with self.assertRaises(koji.GenericError) as cm:
-            self.exports.promoteBuild('a-regular-build', strict=True)
+            self.exports.promoteBuild('a-regular-build')
         self.assertEqual(
             str(cm.exception),
             f"Cannot promote build - {draft['nvr']}. Reason: state (BUILDING) is not COMPLETE."
         )
         self.assertEqual(len(self.updates), 0)
 
-        ret = self.exports.promoteBuild('a-regular-build', strict=False)
-        self.assertIsNone(ret)
-        self.assertEqual(len(self.updates), 0)
-
     def test_promote_build_target_build_exists(self):
         old = {
-            'id': 'any'
+            'id': 'any',
+            'nvr': 'oldnvr'
         }
         self.get_build.side_effect = [self.draft_build, old]
 
         with self.assertRaises(koji.GenericError) as cm:
-            self.exports.promoteBuild('a-regular-build', strict=True)
-        self.assertEqual(str(cm.exception), f"Target build already exists: {old}")
+            self.exports.promoteBuild('a-regular-build')
+        self.assertEqual(
+            str(cm.exception),
+            "Cannot promote to an existing target build: oldnvr(#any)"
+        )
         self.assertEqual(len(self.updates), 0)
         self.get_build.assert_called_with({
             'name': 'foo',
             'version': 'bar',
             'release': 'tgtrel'
         })
-
-        self.get_build.reset_mock()
-        self.get_build.side_effect = [self.draft_build, old]
-        ret = self.exports.promoteBuild('a-regular-build', strict=False)
-        self.assertIsNone(ret)
-        self.assertEqual(len(self.updates), 0)

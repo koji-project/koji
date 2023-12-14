@@ -13680,7 +13680,7 @@ class RootExports(object):
         koji.plugin.run_callbacks('postBuildStateChange',
                                   attribute='completion_ts', old=ts_old, new=ts, info=buildinfo)
 
-    def promoteBuild(self, build, strict=True, force=False):
+    def promoteBuild(self, build, force=False):
         """Promote a draft build to a regular build.
 
         - The build type is limited to rpm so far.
@@ -13692,20 +13692,17 @@ class RootExports(object):
         :param build: A build ID (int), a NVR (string), or a dict containing
                       "name", "version" and "release" of a draft build
         :type build: int, str, dict
-        :param bool strict: Whether raising Error (default)
-                            or depress it by return None
         :param bool force: If False (default), Koji will check this
                            operation against the draft_promotion hub policy. If hub
                            policy does not allow the current user to promote the draft build,
-                           then this method will raise an error (strict=True) or return None
-                           (strict=False).
+                           then this method will raise an error
                            If True, then this method will bypass hub policy settings.
                            Only admin users can set force to True.
-        :returns: latest build info, or None if any failure with strict=False
+        :returns: latest build info
         :rtype: dict
         """
         context.session.assertLogin()
-        return _promote_build(build, strict=strict, force=force)
+        return _promote_build(build, force=force)
 
     def count(self, methodName, *args, **kw):
         """Execute the XML-RPC method with the given name and count the results.
@@ -16002,53 +15999,29 @@ def _clean_draft_link(promoted_build):
         os.unlink(draft_builddir)
 
 
-def _promote_build(build, user=None, strict=True, force=False):
+def _promote_build(build, user=None, force=False):
     """promote a draft build to a regular one"""
-    binfo = get_build(build, strict=strict)
-    if not binfo:
-        return None
+    binfo = get_build(build, strict=True)
     if not binfo.get('draft'):
-        if strict:
-            raise koji.GenericError(f"Not a draft build: {binfo['nvr']}")
-        else:
-            return None
+        raise koji.GenericError(f"Not a draft build: {binfo['nvr']}")
     state = koji.BUILD_STATES[binfo['state']]
     if state != 'COMPLETE':
-        if strict:
-            raise koji.GenericError(f"Cannot promote build - {binfo['nvr']}."
-                                    f' Reason: state ({state}) is not COMPLETE.')
-        else:
-            return None
-    old_release = binfo['release']
+        raise koji.GenericError(f"Cannot promote build - {binfo['nvr']}."
+                                f' Reason: state ({state}) is not COMPLETE.')
 
-    # get target release
-    target_release = None
-    try:
-        target_release = koji.parse_target_release(old_release)
-    except Exception:
-        if strict:
-            raise
-    if not target_release:
-        if strict:
-            # should never happen
-            raise koji.GenericError('Cannot generate target_release')
-        return None
+    old_release = binfo['release']
+    target_release = koji.parse_target_release(old_release)
 
     # drop id to get build by NVR
     target_build = dslice(binfo, ['name', 'version'])
     target_build['release'] = target_release
     old_build = get_build(target_build)
     if old_build:
-        if strict:
-            raise koji.GenericError(
-                f"Cannot promote to an existing target build: {old_build['nvr']}(#{old_build['id']})"
-            )
-        else:
-            return None
+        raise koji.GenericError(
+            f"Cannot promote to an existing target build: {old_build['nvr']}(#{old_build['id']})"
+        )
 
-    user = get_user(user, strict=strict)
-    if not user and not strict:
-        return None
+    user = get_user(user, strict=True)
 
     # policy checks
     policy_data = {
@@ -16082,7 +16055,7 @@ def _promote_build(build, user=None, strict=True, force=False):
     update.set(draft=False, release=target_release, extra=extra)
     update.execute()
 
-    new_binfo = get_build(binfo['id'], strict=strict)
+    new_binfo = get_build(binfo['id'], strict=True)
     move_and_symlink(koji.pathinfo.build(binfo), koji.pathinfo.build(new_binfo))
     ensure_volume_symlink(new_binfo)
 
