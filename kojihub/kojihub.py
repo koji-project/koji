@@ -16002,12 +16002,12 @@ def _clean_draft_link(promoted_build):
 def _promote_build(build, user=None, force=False):
     """promote a draft build to a regular one"""
     binfo = get_build(build, strict=True)
+    err_fmt = f"Cannot promote build {binfo['nvr']}. Reason: {{}}"
     if not binfo.get('draft'):
-        raise koji.GenericError(f"Not a draft build: {binfo['nvr']}")
+        raise koji.GenericError(err_fmt.format("Not a draft build"))
     state = koji.BUILD_STATES[binfo['state']]
     if state != 'COMPLETE':
-        raise koji.GenericError(f"Cannot promote build - {binfo['nvr']}."
-                                f' Reason: state ({state}) is not COMPLETE.')
+        raise koji.GenericError(err_fmt.format(f'state ({state}) is not COMPLETE.'))
 
     old_release = binfo['release']
     target_release = koji.parse_target_release(old_release)
@@ -16015,11 +16015,11 @@ def _promote_build(build, user=None, force=False):
     # drop id to get build by NVR
     target_build = dslice(binfo, ['name', 'version'])
     target_build['release'] = target_release
-    old_build = get_build(target_build)
+    old_build = get_build(target_build, strict=False)
     if old_build:
-        raise koji.GenericError(
-            f"Cannot promote to an existing target build: {old_build['nvr']}(#{old_build['id']})"
-        )
+        raise koji.GenericError(err_fmt.format(
+            f"Target build exists: {old_build['nvr']}(#{old_build['id']})"
+        ))
 
     user = get_user(user, strict=True)
 

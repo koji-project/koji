@@ -113,7 +113,10 @@ class TestPromoteBuild(unittest.TestCase):
 
         with self.assertRaises(koji.GenericError) as cm:
             self.exports.promoteBuild('a-regular-build')
-        self.assertEqual(str(cm.exception), "Not a draft build: testnvr")
+        self.assertEqual(
+            str(cm.exception),
+            "Cannot promote build testnvr. Reason: Not a draft build"
+        )
         self.assertEqual(len(self.updates), 0)
 
     def test_promote_build_target_release(self):
@@ -123,6 +126,7 @@ class TestPromoteBuild(unittest.TestCase):
             'version': 'bar',
             # bad delimiter
             'release': 'tgtrel@draft_1',
+            'nvr': 'testnvr',
             'extra': {
                 'draft': {
                     'promoted': False,
@@ -171,7 +175,7 @@ class TestPromoteBuild(unittest.TestCase):
             self.exports.promoteBuild('a-regular-build')
         self.assertEqual(
             str(cm.exception),
-            f"Cannot promote build - {draft['nvr']}. Reason: state (BUILDING) is not COMPLETE."
+            f"Cannot promote build {draft['nvr']}. Reason: state (BUILDING) is not COMPLETE."
         )
         self.assertEqual(len(self.updates), 0)
 
@@ -186,11 +190,11 @@ class TestPromoteBuild(unittest.TestCase):
             self.exports.promoteBuild('a-regular-build')
         self.assertEqual(
             str(cm.exception),
-            "Cannot promote to an existing target build: oldnvr(#any)"
+            "Cannot promote build testnvr. Reason: Target build exists: oldnvr(#any)"
         )
         self.assertEqual(len(self.updates), 0)
         self.get_build.assert_called_with({
             'name': 'foo',
             'version': 'bar',
             'release': 'tgtrel'
-        })
+        }, strict=False)
