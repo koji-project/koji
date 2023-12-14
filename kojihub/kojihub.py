@@ -10222,6 +10222,104 @@ def importImageInternal(task_id, build_info, imgdata):
                               build=build_info, fullpath=fullpath)
 
 
+def _promote_build(build, force=False):
+    """Promote a draft build to a regular build.
+
+    - The build type is limited to rpm so far.
+    - The promoting action cannot be revoked.
+    - The release wil be changed to the target one, so build_id isn't changed
+    - buildpath will be changed as well and the old build path will symlink
+      to the new one, so both paths still will be existing until deleted.
+
+    :param build: A build ID (int), a NVR (string), or a dict containing
+                  "name", "version" and "release" of a draft build
+    :type build: int, str, dict
+    :param bool force: If False (default), Koji will check this
+                       operation against the draft_promotion hub policy. If hub
+                       policy does not allow the current user to promote the draft build,
+                       then this method will raise an error.
+                       If True, then this method will bypass hub policy settings.
+                       Only admin users can set force to True.
+    :returns: latest build info
+    :rtype: dict
+    """
+    context.session.assertLogin()
+    user = get_user(context.session.user_id)
+
+    binfo = get_build(build, strict=True)
+    err_fmt = f"Cannot promote build {binfo['nvr']}. Reason: {{}}"
+    if not binfo.get('draft'):
+        raise koji.GenericError(err_fmt.format("Not a draft build"))
+    state = koji.BUILD_STATES[binfo['state']]
+    if state != 'COMPLETE':
+        raise koji.GenericError(err_fmt.format(f'state ({state}) is not COMPLETE.'))
+
+    old_release = binfo['release']
+    target_release = koji.parse_target_release(old_release)
+
+    # drop id to get build by NVR
+    target_build = dslice(binfo, ['name', 'version'])
+    target_build['release'] = target_release
+    old_build = get_build(target_build, strict=False)
+    if old_build:
+        raise koji.GenericError(err_fmt.format(
+            f"Target build exists: {old_build['nvr']}(#{old_build['id']})"
+        ))
+
+    # policy checks
+    policy_data = {
+        'build': binfo['id'],
+        'target_release': target_release,
+        'user_id': user['id']
+    }
+    assert_policy('draft_promotion', policy_data, force=force)
+
+    koji.plugin.run_callbacks(
+        'preBuildPromote',
+        draft_release=old_release,
+        target_release=target_release,
+        build=binfo,
+        user=user
+    )
+
+    # temp solution with python generated time, maybe better to be an event?
+    now = datetime.datetime.now()
+
+    extra = binfo.get('extra') or {}
+    draft_info = extra.setdefault('draft', {})
+    draft_info['promoted'] = True
+    draft_info['old_release'] = old_release
+    draft_info['promotion_time'] = encode_datetime(now)
+    draft_info['promotion_ts'] = now.timestamp()
+    draft_info['promoter'] = user['name']
+    extra = json.dumps(extra)
+
+    update = UpdateProcessor('build', clauses=['id=%(id)i'], values=binfo)
+    update.set(draft=False, release=target_release, extra=extra)
+    update.execute()
+
+    new_binfo = get_build(binfo['id'], strict=True)
+    move_and_symlink(koji.pathinfo.build(binfo), koji.pathinfo.build(new_binfo))
+    ensure_volume_symlink(new_binfo)
+
+    # apply volume policy in case it's changed by release update.
+    apply_volume_policy(new_binfo, strict=False)
+
+    # adding DRAFT_PROMOTION for kojira,
+    # as the latest promoted build should be that latest one.
+    for tag in list_tags(build=binfo['id']):
+        set_tag_update(tag['id'], 'DRAFT_PROMOTION')
+
+    koji.plugin.run_callbacks(
+        'postBuildPromote',
+        draft_release=old_release,
+        target_release=target_release,
+        build=new_binfo,
+        user=user
+    )
+    return new_binfo
+
+
 def _delete_event_id():
     """Helper function to bump event"""
     try:
@@ -13680,29 +13778,7 @@ class RootExports(object):
         koji.plugin.run_callbacks('postBuildStateChange',
                                   attribute='completion_ts', old=ts_old, new=ts, info=buildinfo)
 
-    def promoteBuild(self, build, force=False):
-        """Promote a draft build to a regular build.
-
-        - The build type is limited to rpm so far.
-        - The promoting action cannot be revoked.
-        - The release wil be changed to the target one, so build_id isn't changed
-        - buildpath will be changed as well and the old build path will symlink
-          to the new one, so both paths still will be existing until deleted.
-
-        :param build: A build ID (int), a NVR (string), or a dict containing
-                      "name", "version" and "release" of a draft build
-        :type build: int, str, dict
-        :param bool force: If False (default), Koji will check this
-                           operation against the draft_promotion hub policy. If hub
-                           policy does not allow the current user to promote the draft build,
-                           then this method will raise an error
-                           If True, then this method will bypass hub policy settings.
-                           Only admin users can set force to True.
-        :returns: latest build info
-        :rtype: dict
-        """
-        context.session.assertLogin()
-        return _promote_build(build, force=force)
+    promoteBuild = staticmethod(_promote_build)
 
     def count(self, methodName, *args, **kw):
         """Execute the XML-RPC method with the given name and count the results.
@@ -15997,81 +16073,3 @@ def _clean_draft_link(promoted_build):
     # only unlink whe its a symlink.
     if os.path.islink(draft_builddir):
         os.unlink(draft_builddir)
-
-
-def _promote_build(build, user=None, force=False):
-    """promote a draft build to a regular one"""
-    binfo = get_build(build, strict=True)
-    err_fmt = f"Cannot promote build {binfo['nvr']}. Reason: {{}}"
-    if not binfo.get('draft'):
-        raise koji.GenericError(err_fmt.format("Not a draft build"))
-    state = koji.BUILD_STATES[binfo['state']]
-    if state != 'COMPLETE':
-        raise koji.GenericError(err_fmt.format(f'state ({state}) is not COMPLETE.'))
-
-    old_release = binfo['release']
-    target_release = koji.parse_target_release(old_release)
-
-    # drop id to get build by NVR
-    target_build = dslice(binfo, ['name', 'version'])
-    target_build['release'] = target_release
-    old_build = get_build(target_build, strict=False)
-    if old_build:
-        raise koji.GenericError(err_fmt.format(
-            f"Target build exists: {old_build['nvr']}(#{old_build['id']})"
-        ))
-
-    user = get_user(user, strict=True)
-
-    # policy checks
-    policy_data = {
-        'build': binfo['id'],
-        'target_release': target_release,
-        'user_id': user['id']
-    }
-    assert_policy('draft_promotion', policy_data, force=force)
-
-    koji.plugin.run_callbacks(
-        'preBuildPromote',
-        draft_release=old_release,
-        target_release=target_release,
-        build=binfo,
-        user=user
-    )
-
-    # temp solution with python generated time, maybe better to be an event?
-    now = datetime.datetime.now()
-
-    extra = binfo.get('extra') or {}
-    draft_info = extra.setdefault('draft', {})
-    draft_info['promoted'] = True
-    draft_info['old_release'] = old_release
-    draft_info['promotion_time'] = encode_datetime(now)
-    draft_info['promotion_ts'] = now.timestamp()
-    draft_info['promoter'] = user['name']
-    extra = json.dumps(extra)
-
-    update = UpdateProcessor('build', clauses=['id=%(id)i'], values=binfo)
-    update.set(draft=False, release=target_release, extra=extra)
-    update.execute()
-
-    new_binfo = get_build(binfo['id'], strict=True)
-    move_and_symlink(koji.pathinfo.build(binfo), koji.pathinfo.build(new_binfo))
-    ensure_volume_symlink(new_binfo)
-
-    # apply volume policy in case it's changed by release update.
-    apply_volume_policy(new_binfo, strict=False)
-
-    # adding DRAFT_PROMOTION for kojira,
-    # as the latest promoted build should be that latest one.
-    for tag in list_tags(build=binfo['id']):
-        set_tag_update(tag['id'], 'DRAFT_PROMOTION')
-
-    koji.plugin.run_callbacks(
-        'postBuildPromote',
-        draft_release=old_release,
-        target_release=target_release,
-        build=new_binfo,
-        user=user
-    )
-    return new_binfo
