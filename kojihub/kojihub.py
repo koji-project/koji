@@ -6333,7 +6333,8 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
     build['volume_name'] = vol['name']
 
     if build_id is None:
-        # it is always a non-draft build
+        # This should not be possible
+        logger.error('Calling import_build without a build_id is deprecated')
         build_id = new_build(build)
         binfo = get_build(build_id, strict=True)
         new_typed_build(binfo, 'rpm')
