@@ -6369,7 +6369,7 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
     # now to handle the individual rpms
     for relpath in [srpm] + rpms:
         fn = "%s/%s" % (uploadpath, relpath)
-        rpminfo = import_rpm(fn, binfo, brmap.get(relpath), draft=binfo['draft'])
+        rpminfo = import_rpm(fn, binfo, brmap.get(relpath))
         import_rpm_file(fn, binfo, rpminfo)
         add_rpm_sig(rpminfo['id'], koji.rip_rpm_sighdr(fn))
     if logs:
@@ -6387,17 +6387,11 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
     return binfo
 
 
-def import_rpm(fn, buildinfo=None, brootid=None, wrapper=False, fileinfo=None, draft=False):
+def import_rpm(fn, buildinfo=None, brootid=None, wrapper=False, fileinfo=None):
     """Import a single rpm into the database
 
     Designed to be called from import_build.
     """
-    # draft option must be sane
-    if buildinfo and draft != buildinfo.get('draft', False):
-        raise koji.GenericError(
-            f'draft property: {buildinfo["draft"]} of build: {buildinfo["id"]} mismatch,'
-            f' {draft} is expected'
-        )
     if not os.path.exists(fn):
         raise koji.GenericError("No such file: %s" % fn)
 
@@ -6405,6 +6399,7 @@ def import_rpm(fn, buildinfo=None, brootid=None, wrapper=False, fileinfo=None, d
     hdr = koji.get_rpm_header(fn)
     rpminfo = koji.get_header_fields(hdr, ['name', 'version', 'release', 'epoch',
                                            'sourcepackage', 'arch', 'buildtime', 'sourcerpm'])
+    draft = True if buildinfo and buildinfo.get('draft') else False
     rpminfo['draft'] = draft
     if rpminfo['sourcepackage'] == 1:
         rpminfo['arch'] = "src"
@@ -6416,21 +6411,18 @@ def import_rpm(fn, buildinfo=None, brootid=None, wrapper=False, fileinfo=None, d
         raise koji.GenericError("bad filename: %s (expected %s)" % (basename, expected))
 
     if buildinfo is None:
-        # figure it out for ourselves
+        # This only happens when we're called from importRPM
+        if draft:
+            # shouldn't happen with current code
+            raise koji.GenericError('rpm import is not supported for draft builds')
         if rpminfo['sourcepackage'] == 1:
-            if not draft:
-                # we only check if nvr already exists for non-draft
-                buildinfo = get_build(rpminfo, strict=False)
+            buildinfo = get_build(rpminfo, strict=False)
             if not buildinfo:
                 # create a new build
                 build_id = new_build(rpminfo)
                 # we add the rpm build type below
                 buildinfo = get_build(build_id, strict=True)
         else:
-            if draft:
-                raise koji.GenericError(
-                    f'Cannot import draft rpm: {basename} without specifying a build'
-                )
             # figure it out from sourcerpm string
             buildinfo = get_build(koji.parse_NVRA(rpminfo['sourcerpm']))
             if buildinfo is None:
@@ -11194,24 +11186,17 @@ class RootExports(object):
         reject_draft(build)
         new_image_build(build)
 
-    def importRPM(self, path, basename, build=None, draft=False):
+    def importRPM(self, path, basename):
         """Import an RPM into the database.
 
         The file must be uploaded first.
         """
         context.session.assertPerm('admin')
-        if build:
-            # can get unique nvr from rpm header when importing to regular build
-            if not draft:
-                raise koji.ParameterError(
-                    "Only support specifying build when importing a draft rpm"
-                )
-            build = get_build(build, strict=True)
         uploadpath = koji.pathinfo.work()
         fn = "%s/%s/%s" % (uploadpath, path, basename)
         if not os.path.exists(fn):
             raise koji.GenericError("No such file: %s" % fn)
-        rpminfo = import_rpm(fn, buildinfo=build, draft=draft)
+        rpminfo = import_rpm(fn)
         import_rpm_file(fn, rpminfo['build'], rpminfo)
         add_rpm_sig(rpminfo['id'], koji.rip_rpm_sighdr(fn))
         for tag in list_tags(build=rpminfo['build_id']):
