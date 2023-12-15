@@ -6116,12 +6116,10 @@ def new_build(data, strict=False):
     data.setdefault('volume_id', 0)
     data.setdefault('draft', False)
 
-    old_binfo = None
-    if not data.get('draft'):
-        # check for existing build
-        old_binfo = get_build(data)
+    # check for existing build
+    old_binfo = get_build(data)
     if old_binfo:
-        if strict:
+        if strict or data['draft']:
             raise koji.GenericError(f'Existing build found: {old_binfo}')
         recycle_build(old_binfo, data)
         # Raises exception if there is a problem
