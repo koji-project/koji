@@ -31,8 +31,11 @@ class TestPromoteBuild(unittest.TestCase):
         self.assert_policy = mock.patch('kojihub.kojihub.assert_policy').start()
         self.apply_volume_policy = mock.patch('kojihub.kojihub.apply_volume_policy',
                                               return_value=None).start()
-        self.move_and_symlink = mock.patch('kojihub.kojihub.move_and_symlink').start()
+        self.safer_move = mock.patch('kojihub.kojihub.safer_move').start()
         self.ensure_volume_symlink = mock.patch('kojihub.kojihub.ensure_volume_symlink').start()
+        self.lookup_name = mock.patch('kojihub.kojihub.lookup_name',
+                                      return_value={'id': 1, 'name': 'DEFAULT'}).start()
+        self.os_symlink = mock.patch('os.symlink').start()
         self.list_tags = mock.patch('kojihub.kojihub.list_tags',
                                     return_value=[{'id': 101}]).start()
         self.set_tag_update = mock.patch('kojihub.kojihub.set_tag_update').start()
@@ -106,6 +109,14 @@ class TestPromoteBuild(unittest.TestCase):
         self.assertEqual(update.clauses, ['id=%(id)i'])
         self.apply_volume_policy.assert_called_once_with(
             self.new_build, strict=False
+        )
+        self.safer_move.assert_called_once_with(
+            '/mnt/koji/vol/X/packages/foo/bar/tgtrel,draft_1',
+            '/mnt/koji/vol/X/packages/foo/bar/tgtrel'
+        )
+        self.os_symlink.assert_called_once_with(
+            '../../../../../packages/foo/bar/tgtrel',
+            '/mnt/koji/vol/X/packages/foo/bar/tgtrel,draft_1'
         )
 
     def test_promote_build_not_draft(self):

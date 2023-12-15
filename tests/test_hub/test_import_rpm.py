@@ -211,23 +211,6 @@ class TestImportRPM(unittest.TestCase):
         self.assertEqual(insert.data, data)
         self.assertEqual(insert.rawdata, {})
 
-    def test_import_draft_conflict(self):
-        with self.assertRaises(koji.GenericError) as cm:
-            kojihub.import_rpm(self.filename, buildinfo={'id': 1024, 'draft': False}, draft=True)
-        self.assertEqual("draft property: False of build: 1024 mismatch, True is expected",
-                         str(cm.exception))
-        self.assertEqual(len(self.inserts), 0)
-
-    def test_import_draft_rpm_without_buildinfo(self):
-        self.os_path_basename.return_value = 'name-version-release.arch.rpm'
-        self.get_rpm_header.return_value = self.rpm_header_retval
-
-        with self.assertRaises(koji.GenericError) as cm:
-            kojihub.import_rpm(self.filename, draft=True)
-        self.assertEqual(f"Cannot import draft rpm: {self.os_path_basename.return_value}"
-                         " without specifying a build", str(cm.exception))
-        self.assertEqual(len(self.inserts), 0)
-
     def test_import_draft_rpm_invalid_release(self):
         self.os_path_basename.return_value = 'name-version-release.arch.rpm'
         self.get_rpm_header.return_value = self.rpm_header_retval
@@ -242,7 +225,7 @@ class TestImportRPM(unittest.TestCase):
         }
 
         with self.assertRaises(koji.GenericError) as cm:
-            kojihub.import_rpm(self.filename, buildinfo=buildinfo, draft=True)
+            kojihub.import_rpm(self.filename, buildinfo=buildinfo)
         self.assertEqual(
             'draft release: badrelease is not in valid format',
             str(cm.exception)
@@ -267,7 +250,7 @@ class TestImportRPM(unittest.TestCase):
             }
         }
         self.nextval.return_value = 9876
-        kojihub.import_rpm(self.filename, buildinfo=buildinfo, draft=True)
+        kojihub.import_rpm(self.filename, buildinfo=buildinfo)
         data = {
             'build_id': 12345,
             'name': 'name',
@@ -308,7 +291,7 @@ class TestImportRPM(unittest.TestCase):
             'draft': True
         }
         self.nextval.return_value = 9876
-        kojihub.import_rpm(self.src_filename, buildinfo=buildinfo, draft=True)
+        kojihub.import_rpm(self.src_filename, buildinfo=buildinfo)
         data = {
             'build_id': 12345,
             'name': 'name',
@@ -329,52 +312,3 @@ class TestImportRPM(unittest.TestCase):
         self.assertEqual(insert.table, 'rpminfo')
         self.assertEqual(insert.data, data)
         self.assertEqual(insert.rawdata, {})
-
-    def test_import_draft_srpm_without_buildinfo(self):
-        self.os_path_basename.return_value = 'name-version-release.src.rpm'
-        retval = copy.copy(self.rpm_header_retval)
-        retval.update({
-            'filename': 'name-version-release.src.rpm',
-            1044: 'name-version-release.src.rpm.bad',
-            1022: 'src',
-            1106: 1,
-        })
-        self.get_rpm_header.return_value = retval
-        self.get_build.return_value = {
-            'state': koji.BUILD_STATES['COMPLETE'],
-            'name': 'name',
-            'version': 'version',
-            'release': 'release',
-            'id': 5566,
-            'draft': True,
-            'extra': {
-                'draft': {
-                    'target_release': 'release'
-                }
-            }
-        }
-        self.new_build.return_value = 5566
-        self.nextval.return_value = 9876
-        kojihub.import_rpm(self.src_filename, draft=True)
-        data = {
-            'build_id': 5566,
-            'name': 'name',
-            'arch': 'src',
-            'buildtime': 'buildtime',
-            'draft': True,
-            'payloadhash': '7061796c6f61642068617368',
-            'epoch': 'epoch',
-            'version': 'version',
-            'buildroot_id': None,
-            'release': 'release',
-            'external_repo_id': 0,
-            'id': 9876,
-            'size': 0,
-        }
-        self.assertEqual(len(self.inserts), 1)
-        insert = self.inserts[0]
-        self.assertEqual(insert.table, 'rpminfo')
-        self.assertEqual(insert.data, data)
-        self.assertEqual(insert.rawdata, {})
-        self.get_build.assert_called_once_with(5566, strict=True)
-        self.assertEqual(self.get_build.call_count, 1)
