@@ -8815,7 +8815,7 @@ def _delete_build(binfo):
     update = UpdateProcessor('build', values=values, clauses=['id=%(build_id)i'],
                              data={'state': st_deleted})
     update.execute()
-    _clean_draft_link(binfo)
+    _delete_build_symlinks(binfo)
     # now clear the build dir
     builddir = koji.pathinfo.build(binfo)
     if os.path.exists(builddir):
@@ -8823,6 +8823,37 @@ def _delete_build(binfo):
     binfo = get_build(build_id, strict=True)
     koji.plugin.run_callbacks('postBuildStateChange',
                               attribute='state', old=st_old, new=st_deleted, info=binfo)
+
+
+def _delete_build_symlinks(binfo):
+    """Remove symlinks pointing to the build
+
+    These include the symlink created by ensure_volume_symlink and the
+    symlink created when draft builds are promoted.
+    """
+
+    base_vol = lookup_name('volume', 'DEFAULT', strict=True)
+    if binfo['volume_id'] != base_vol['id']:
+        # remove the link created by ensure_volume_symlinks
+        base_binfo = binfo.copy()
+        base_binfo['volume_id'] = base_vol['id']
+        base_binfo['volume_name'] = base_vol['name']
+        basedir = koji.pathinfo.build(base_binfo)
+        if os.path.islink(basedir):
+            os.unlink(basedir)
+
+    if not binfo['draft']:
+        # if the build isn't a draft, it may once have been
+        draft_release = koji.gen_draft_release(binfo['release'], binfo['id'])
+        for check_vol in list_volumes():
+            # the build could have been on any volume when promoted
+            check_binfo = binfo.copy()
+            check_binfo['volume_id'] = check_vol['id']
+            check_binfo['volume_name'] = check_vol['name']
+            check_binfo['release'] = draft_release
+            checkdir = koji.pathinfo.build(check_binfo)
+            if os.path.islink(checkdir):
+                os.unlink(checkdir)
 
 
 def reset_build(build):
@@ -8916,7 +8947,7 @@ def reset_build(build):
                              data={'state': binfo['state'], 'task_id': None, 'volume_id': 0})
     update.execute()
 
-    _clean_draft_link(binfo)
+    _delete_build_symlinks(binfo)
     # now clear the build dir
     builddir = koji.pathinfo.build(binfo)
     if os.path.exists(builddir):
@@ -16040,22 +16071,3 @@ def draft_clause(draft, table=None):
     else:
         # null is included
         return f'{table}draft IS NOT TRUE'
-
-
-def _clean_draft_link(promoted_build):
-    """remove the symlink of old builddir to promoted builddir"""
-    draft_info = (promoted_build.get('extra') or {}).get('draft', {})
-    if not (draft_info and draft_info.get('promoted')):
-        # skipped as it's not a promoted build.
-        return
-    old_release = draft_info.get('old_release')
-    if not old_release:
-        raise koji.GenericError(
-            f"extra.draft.old_release not found in build: {promoted_build['nvr']}"
-        )
-    draft_buildinfo = dslice(promoted_build, ['name', 'version', 'volume_name'])
-    draft_buildinfo['release'] = old_release
-    draft_builddir = koji.pathinfo.build(draft_buildinfo)
-    # only unlink whe its a symlink.
-    if os.path.islink(draft_builddir):
-        os.unlink(draft_builddir)
