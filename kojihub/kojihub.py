@@ -10323,8 +10323,20 @@ def _promote_build(build, force=False):
     update.execute()
 
     new_binfo = get_build(binfo['id'], strict=True)
-    move_and_symlink(koji.pathinfo.build(binfo), koji.pathinfo.build(new_binfo))
+    oldpath = koji.pathinfo.build(binfo)
+    newpath = koji.pathinfo.build(new_binfo)
+    safer_move(oldpath, newpath)
     ensure_volume_symlink(new_binfo)
+
+    # provide a symlink at original draft location
+    # we point to the default volume in case the build moves in the future
+    base_vol = lookup_name('volume', 'DEFAULT', strict=True)
+    base_binfo = new_binfo.copy()
+    base_binfo['volume_id'] = base_vol['id']
+    base_binfo['volume_name'] = base_vol['name']
+    basedir = koji.pathinfo.build(base_binfo)
+    relpath = os.path.relpath(basedir, os.path.dirname(oldpath))
+    os.symlink(relpath, oldpath)
 
     # apply volume policy in case it's changed by release update.
     apply_volume_policy(new_binfo, strict=False)
