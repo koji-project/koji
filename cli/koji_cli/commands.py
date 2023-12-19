@@ -2176,11 +2176,21 @@ def handle_list_permissions(goptions, session, args):
         user = session.getUser(options.user)
         if not user:
             error("No such user: %s" % options.user)
-        for p, groups in session.getUserPermsInheritance(user['id']).items():
-            p = {'name': p}
-            if groups != [None]:
-                p['description'] = 'inherited from: %s' % ', '.join(groups)
-            perms.append(p)
+        try:
+            for p, groups in session.getUserPermsInheritance(user['id']).items():
+                p = {'name': p}
+                if groups != [None]:
+                    p['description'] = 'inherited from: %s' % ', '.join(groups)
+                perms.append(p)
+        except koji.GenericError as e:
+            # backwards compatible
+            # TODO: can be removed in 1.36
+            if "Invalid method" in str(e):
+                warn("Old hub doesn't support Inherited Group Permissions.")
+                for p in session.getUserPerms(user['id']):
+                    perms.append({'name': p})
+            else:
+                raise
     else:
         for p in session.getAllPerms():
             perms.append({'name': p['name'], 'description': p['description']})
