@@ -87,9 +87,8 @@ class TestTagBuild(unittest.TestCase):
         # call it
         kojihub._tag_build('sometag', 'name-version-release')
 
-        self.get_tag.called_once_with('sometag', strict=True)
-        self.get_build.called_once_with('name-version-release', strict=True)
-        self.context.session.assertPerm.called_with('admin')
+        self.get_tag.assert_called_once_with('sometag', strict=True)
+        self.get_build.assert_called_once_with('name-version-release', strict=True)
 
         # check the insert
         self.assertEqual(len(self.inserts), 1)
@@ -117,9 +116,9 @@ class TestTagBuild(unittest.TestCase):
         # call it
         kojihub._tag_build('sometag', 'name-version-release', user_id=self.userinfo['id'])
 
-        self.get_tag.called_once_with('sometag', strict=True)
+        self.get_tag.assert_called_once_with('sometag', strict=True)
         self.get_user.called_one_with(self.userinfo['id'], strict=True)
-        self.get_build.called_once_with('name-version-release', strict=True)
+        self.get_build.assert_called_once_with('name-version-release', strict=True)
         self.context.session.assertPerm.assert_not_called()
 
         # check the insert
@@ -148,9 +147,8 @@ class TestTagBuild(unittest.TestCase):
         # call it
         kojihub._untag_build('sometag', 'name-version-release')
 
-        self.get_tag.called_once_with('sometag', strict=True)
-        self.get_build.called_once_with('name-version-release', strict=True)
-        self.context.session.assertPerm.called_with('admin')
+        self.get_tag.assert_called_once_with('sometag', strict=True)
+        self.get_build.assert_called_once_with('name-version-release', strict=True)
         self.assertEqual(len(self.inserts), 0)
 
         # check the update
@@ -182,9 +180,9 @@ class TestTagBuild(unittest.TestCase):
         # call it
         kojihub._untag_build('sometag', 'name-version-release', user_id=self.userinfo['id'])
 
-        self.get_tag.called_once_with('sometag', strict=True)
-        self.get_user.called_one_with(self.userinfo['id'], strict=True)
-        self.get_build.called_once_with('name-version-release', strict=True)
+        self.get_tag.assert_called_once_with('sometag', strict=True)
+        self.get_user.assert_called_once_with(self.userinfo['id'], strict=True)
+        self.get_build.assert_called_once_with('name-version-release', strict=True)
         self.context.session.assertPerm.assert_not_called()
         self.assertEqual(len(self.inserts), 0)
 

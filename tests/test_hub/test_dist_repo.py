@@ -123,7 +123,7 @@ class TestDistRepo(unittest.TestCase):
 
         ret = exports.distRepo('tag', 'keys')
 
-        session.hasPerm.has_calls(mock.call('dist_repo'), mock.call('admin'))
+        session.hasPerm.assert_has_calls([mock.call('dist-repo'), mock.call('admin')])
         assert_policy.assert_called_once_with('dist_repo', {'tag': 'tag'})
         dist_repo_init.assert_called_once()
         make_task.assert_called_once()
