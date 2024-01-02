@@ -895,31 +895,18 @@ class BuildRoot(object):
 
     def mapInternalRPMs(self, rpmlist):
         """
-        Map each rpm item of rpmlist by attaching rpm_id in repodir's rpmlist.jsonl which
-        is generated while repo initiation.
+        Map each rpm item of rpmlist to a specific koji rpm entry based on repo contents
 
-        Skipped if rpmlist.jsonl doesn't exist for backward compatibility.
+        The rpmList should be a list of dicts containing rpm header values. These entries will be
+        modified in place to include an id field when mapped.
 
-        For now, rpmlist.jsonl is a dict[nvra, rpmdata], where rpmdata contains keys below:
-          - id
-          - build_id
-          - name
-          - version
-          - release
-          - epoch
-          - arch
-          - payloadhash
-          - size
-          - buildtime
+        This mapping relies on the rpmlist.jsonl file for the repo. If this file is missing, the
+        code will fall back to querying the hub.
 
-        Notes:
-          - Because the nvra uniqueness is still being kept, we don't need the check so far.
-          - it must be called after markExternalRPMs, as it use "external_repo" to skip external
-            rpms.
+        This function will raise an error if there is a sigmd5 mismatch for a given rpm.
 
         :param list rpmlist: rpm list fetched from local RPMDB.
-        :return: the same rpmlist as the parameter with build nvrs attached
-        :rtype: list
+        :return: None
         """
 
         opts = dict([(k, getattr(self.options, k)) for k in ('topurl', 'topdir')])
