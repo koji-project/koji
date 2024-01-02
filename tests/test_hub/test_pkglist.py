@@ -323,7 +323,7 @@ class TestPkglist(unittest.TestCase):
 
         self.get_tag.assert_called_once_with(self.tag['name'], strict=True)
         self.assertEqual(self.lookup_package.call_count, 1)
-        self.lookup_package.has_calls(mock.call(self.pkg['name'], strict=False))
+        self.lookup_package.assert_has_calls([mock.call(self.pkg['name'], strict=False)])
         self.get_user.assert_has_calls([
             mock.call(self.users[0]['name'], strict=True),
             mock.call(self.users[1]['id']),
@@ -345,7 +345,7 @@ class TestPkglist(unittest.TestCase):
 
         self.get_tag.assert_called_once_with(self.tag['name'], strict=True)
         self.assertEqual(self.lookup_package.call_count, 1)
-        self.lookup_package.has_calls(mock.call(self.pkg['name'], strict=False))
+        self.lookup_package.assert_has_calls([mock.call(self.pkg['name'], strict=False)])
         self.get_user.assert_not_called()
         self.assert_policy.assert_not_called()
         self.assertEqual(self.run_callbacks.call_count, 0)
@@ -388,9 +388,9 @@ class TestPkglist(unittest.TestCase):
 
         self.get_tag.assert_called_once_with(self.tag['name'], strict=True)
         self.assertEqual(self.lookup_package.call_count, 2)
-        self.lookup_package.has_calls(
-            mock.call(self.pkg['name'], strict=False),
-            mock.call(self.pkg['name'], create=True),
+        self.lookup_package.assert_has_calls(
+            [mock.call(self.pkg['name'], strict=False),
+             mock.call(self.pkg['name'], create=True),]
         )
         self.get_user.assert_has_calls([
             mock.call(self.users[0]['name'], strict=True),
@@ -417,9 +417,9 @@ class TestPkglist(unittest.TestCase):
 
         self.get_tag.assert_called_once_with(self.tag['name'], strict=True)
         self.assertEqual(self.lookup_package.call_count, 2)
-        self.lookup_package.has_calls(
-            mock.call(self.pkg['name'], strict=False),
-            mock.call(self.pkg['name'], create=True),
+        self.lookup_package.assert_has_calls(
+            [mock.call(self.pkg['name'], strict=False),
+             mock.call(self.pkg['name'], create=True),]
         )
         self.get_user.assert_called_once_with(self.users[1]['id'])
         self.assert_policy.assert_not_called()
@@ -446,9 +446,9 @@ class TestPkglist(unittest.TestCase):
 
         self.get_tag.assert_called_once_with(self.tag['name'], strict=True)
         self.assertEqual(self.lookup_package.call_count, 2)
-        self.lookup_package.has_calls(
-            mock.call(self.pkg['name'], strict=False),
-            mock.call(self.pkg['name'], create=True),
+        self.lookup_package.assert_has_calls(
+            [mock.call(self.pkg['name'], strict=False),
+             mock.call(self.pkg['name'], create=True),]
         )
         self.get_user.assert_called_once_with(self.users[1]['id'])
         self.assert_policy.assert_not_called()
@@ -486,9 +486,9 @@ class TestPkglist(unittest.TestCase):
 
         self.get_tag.assert_called_once_with(self.tag['name'], strict=True)
         self.assertEqual(self.lookup_package.call_count, 2)
-        self.lookup_package.has_calls(
-            mock.call(self.pkg['name'], strict=False),
-            mock.call(self.pkg['name'], create=True),
+        self.lookup_package.assert_has_calls(
+            [mock.call(self.pkg['name'], strict=False),
+             mock.call(self.pkg['name'], create=True)],
         )
         self.get_user.assert_called_once_with(self.users[1]['id'])
         self.assert_policy.assert_not_called()
@@ -519,9 +519,9 @@ class TestPkglist(unittest.TestCase):
 
         self.get_tag.assert_called_once_with(self.tag['name'], strict=True)
         self.assertEqual(self.lookup_package.call_count, 2)
-        self.lookup_package.has_calls(
-            mock.call(pkg['name'], strict=False),
-            mock.call(pkg['name'], create=True),
+        self.lookup_package.assert_has_calls(
+            [mock.call(pkg['name'], strict=False),
+             mock.call(pkg['name'], create=True),]
         )
         self.get_user.assert_has_calls([
             mock.call(self.users[0]['name'], strict=True),
@@ -557,9 +557,9 @@ class TestPkglist(unittest.TestCase):
 
         self.get_tag.assert_called_once_with(self.tag['name'], strict=True)
         self.assertEqual(self.lookup_package.call_count, 2)
-        self.lookup_package.has_calls(
-            mock.call(self.pkg['name'], strict=False),
-            mock.call(self.pkg['name'], create=True),
+        self.lookup_package.assert_has_calls(
+            [mock.call(self.pkg['name'], strict=False),
+             mock.call(self.pkg['name'], create=True),]
         )
         self.get_user.assert_has_calls([
             mock.call(self.users[0]['name'], strict=True),

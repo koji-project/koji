@@ -47,9 +47,9 @@ class TestEditBuildTarget(unittest.TestCase):
             self.exports.editBuildTarget(self.target_name, self.name, self.build_tag,
                                          self.dest_tag)
         self.assertEqual(f"No such build target: {self.target_name}", str(cm.exception))
-        self.session.assertPerm.called_once_with('target')
-        self.verify_name_internal.called_once_with(name=self.name)
-        self.lookup_build_target.called_once_with(self.target_name)
+        self.session.assertPerm.assert_called_once_with('target')
+        self.verify_name_internal.assert_called_once_with(self.name)
+        self.lookup_build_target.assert_called_once_with(self.target_name)
 
     def test_target_wrong_format(self):
         name = 'build-target-rename+'
@@ -72,10 +72,10 @@ class TestEditBuildTarget(unittest.TestCase):
             self.exports.editBuildTarget(self.target_name, self.name, self.build_tag,
                                          self.dest_tag)
         self.assertEqual(f"build tag '{self.build_tag}' does not exist", str(cm.exception))
-        self.session.assertPerm.called_once_with('target')
-        self.verify_name_internal.called_once_with(name=self.name)
-        self.lookup_build_target.called_once_with(self.target_name)
-        self.get_tag.called_once_with(self.build_tag)
+        self.session.assertPerm.assert_called_once_with('target')
+        self.verify_name_internal.assert_called_once_with(self.name)
+        self.lookup_build_target.assert_called_once_with(self.target_name)
+        self.get_tag.assert_called_once_with(self.build_tag)
 
     def test_target_non_exist_dest_tag(self):
         self.verify_name_internal.return_value = None
@@ -85,10 +85,10 @@ class TestEditBuildTarget(unittest.TestCase):
             self.exports.editBuildTarget(self.target_name, self.name, self.build_tag,
                                          self.dest_tag)
         self.assertEqual(f"destination tag '{self.dest_tag}' does not exist", str(cm.exception))
-        self.session.assertPerm.called_once_with('target')
-        self.verify_name_internal.called_once_with(name=self.name)
-        self.lookup_build_target.called_once_with(self.target_name)
-        self.get_tag.has_calls([mock.call(self.build_tag), mock.call(self.dest_tag)])
+        self.session.assertPerm.assert_called_once_with('target')
+        self.verify_name_internal.assert_called_once_with(self.name)
+        self.lookup_build_target.assert_called_once_with(self.target_name)
+        self.get_tag.assert_has_calls([mock.call(self.build_tag), mock.call(self.dest_tag)])
 
     def test_target_exists(self):
         self.verify_name_internal.return_value = None
@@ -100,7 +100,7 @@ class TestEditBuildTarget(unittest.TestCase):
                                          self.dest_tag)
         self.assertEqual(f'name "{self.name}" is already taken by build target 2',
                          str(cm.exception))
-        self.session.assertPerm.called_once_with('target')
-        self.verify_name_internal.called_once_with(name=self.name)
-        self.lookup_build_target.called_once_with(self.target_name)
-        self.get_tag.has_calls([mock.call(self.build_tag), mock.call(self.dest_tag)])
+        self.session.assertPerm.assert_called_once_with('target')
+        self.verify_name_internal.assert_called_once_with(self.name)
+        self.lookup_build_target.assert_called_once_with(self.target_name)
+        self.get_tag.assert_has_calls([mock.call(self.build_tag), mock.call(self.dest_tag)])

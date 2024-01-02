@@ -98,7 +98,7 @@ class TestUntagBuild(utils.CliTestCase):
         self.assert_console_message(stdout, expected)
         self.activate_session_mock.assert_called_once_with(self.session, self.options)
         self.session.getTag.assert_called_once_with(self.tag)
-        self.session.multicall.has_calls()
+        self.session.multicall.assert_called()
 
     @mock.patch('sys.stdout', new_callable=StringIO)
     def test_untag_build_all_verbose(self, stdout):
@@ -111,7 +111,7 @@ class TestUntagBuild(utils.CliTestCase):
         self.assert_console_message(stdout, expected)
         self.activate_session_mock.assert_called_once_with(self.session, self.options)
         self.session.getTag.assert_called_once_with(self.tag)
-        self.session.multicall.has_calls()
+        self.session.multicall.assert_called()
 
     @mock.patch('sys.stdout', new_callable=StringIO)
     def test_untag_build_all_non_latest_verbose(self, stdout):
@@ -125,7 +125,7 @@ class TestUntagBuild(utils.CliTestCase):
         self.assert_console_message(stdout, expected)
         self.activate_session_mock.assert_called_once_with(self.session, self.options)
         self.session.getTag.assert_called_once_with(self.tag)
-        self.session.multicall.has_calls()
+        self.session.multicall.assert_called()
 
     @mock.patch('sys.stdout', new_callable=StringIO)
     def test_untag_build_all_non_latest_verbose_only_one_pkg(self, stdout):
@@ -142,7 +142,7 @@ class TestUntagBuild(utils.CliTestCase):
         self.assert_console_message(stdout, expected)
         self.activate_session_mock.assert_called_once_with(self.session, self.options)
         self.session.getTag.assert_called_once_with(self.tag)
-        self.session.multicall.has_calls()
+        self.session.multicall.assert_called()
 
     @mock.patch('sys.stdout', new_callable=StringIO)
     def test_untag_build_all_non_latest_force_test(self, stdout):

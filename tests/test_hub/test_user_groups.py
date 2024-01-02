@@ -62,7 +62,7 @@ class TestGrouplist(unittest.TestCase):
         with self.assertRaises(koji.GenericError):
             kojihub.new_group(name)
         self.context.session.assertPerm.assert_called_with('admin')
-        self.context.session.createUser.not_called()
+        self.context.session.createUser.assert_not_called()
 
         # user already exists
         self.context.session.assertPerm.side_effect = None
@@ -70,14 +70,14 @@ class TestGrouplist(unittest.TestCase):
         with self.assertRaises(koji.GenericError):
             kojihub.new_group(name)
         self.context.session.assertPerm.assert_called_with('admin')
-        self.context.session.createUser.not_called()
+        self.context.session.createUser.assert_not_called()
 
         # valid
         self.context.session.assertPerm.side_effect = None
         self.get_user.return_value = None
         kojihub.new_group(name)
         self.context.session.assertPerm.assert_called_with('admin')
-        self.context.session.createUser.called_with(name, usertype=koji.USERTYPES['GROUP'])
+        self.context.session.createUser.assert_called_with(name, usertype=koji.USERTYPES['GROUP'])
 
         # name is longer as expected
         name = 'new-group+'

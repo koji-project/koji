@@ -37,7 +37,7 @@ class TestDeleteExternalRepo(unittest.TestCase):
         self.context_db.session.user_id = 23
         self.get_external_repo.return_value = {'id': repo_id}
         self.get_tag_external_repos.return_value = [{'id': repo_id, 'tag_id': tag_ids[0]},
-                                                    {'id': repo_id, 'tag_id': tag_ids[0]}]
+                                                    {'id': repo_id, 'tag_id': tag_ids[1]}]
         self.remove_external_repo_from_tag.side_effect = [None, None]
         kojihub.delete_external_repo(repo_id)
 
@@ -50,6 +50,6 @@ class TestDeleteExternalRepo(unittest.TestCase):
 
         self.get_external_repo.assert_called_once_with(123, strict=True)
         self.get_tag_external_repos.assert_called_once_with(repo_info=123)
-        self.remove_external_repo_from_tag.has_calls(
+        self.remove_external_repo_from_tag.assert_has_calls(
             [mock.call(tag_info=tag_ids[0], repo_info=repo_id),
              mock.call(tag_info=tag_ids[1], repo_info=repo_id)])

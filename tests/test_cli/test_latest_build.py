@@ -56,7 +56,7 @@ https://docs.pagure.org/koji/HOWTO/#package-organization
             exit_code=2,
             activate_session=None)
         self.activate_session_mock.assert_not_called()
-        self.ensure_connection.called_once()
+        self.ensure_connection.assert_called_once()
 
     def test_handle_latest_build_all_and_pkg(self):
         expected = "%s: error: A package name may not be combined with --all\n" % self.progname
@@ -68,7 +68,7 @@ https://docs.pagure.org/koji/HOWTO/#package-organization
             exit_code=2,
             activate_session=None)
         self.activate_session_mock.assert_not_called()
-        self.ensure_connection.called_once()
+        self.ensure_connection.assert_called_once()
 
     def test_handle_latest_build_help(self):
         self.assert_help(
