@@ -1395,7 +1395,7 @@ def list_tags(build=None, package=None, perms=True, queryOpts=None, pattern=None
 
 
 def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None, owner=None,
-                     type=None, extra=False, *, draft=None):
+                     type=None, extra=False, draft=None):
     """Returns a list of builds for specified tag
 
     :param int tag: tag ID
@@ -8514,7 +8514,7 @@ def query_history(tables=None, **kwargs):
     return ret
 
 
-def untagged_builds(name=None, queryOpts=None, *, draft=None):
+def untagged_builds(name=None, queryOpts=None, draft=None):
     """Returns the list of untagged builds"""
     st_complete = koji.BUILD_STATES['COMPLETE']
     # following can be achieved with simple query but with
