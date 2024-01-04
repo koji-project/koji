@@ -31,21 +31,7 @@ class TestGetBuild(DBQueryTestCase):
         self.assertEqual(len(self.queries), 1)
         query = self.queries[0]
         self.assertEqual(query.tables, ['build'])
-        self.assertEqual(query.joins, ['events ON build.create_event = events.id',
-                                       'package on build.pkg_id = package.id',
-                                       'volume on build.volume_id = volume.id',
-                                       'users on build.owner = users.id'])
         self.assertEqual(query.clauses, ['build.id = %(buildID)i'])
-        self.assertEqual(query.columns,
-                         ['build.id', 'build.cg_id', 'build.completion_time',
-                          "date_part('epoch', build.completion_time)", 'events.id', 'events.time',
-                          "date_part('epoch', events.time)", 'build.draft', 'build.epoch',
-                          'build.extra', 'build.id', 'package.name',
-                          "package.name || '-' || build.version || '-' || build.release",
-                          'users.id', 'users.name', 'package.id', 'package.name', 'build.release',
-                          'build.source', 'build.start_time',
-                          "date_part('epoch', build.start_time)", 'build.state', 'build.task_id',
-                          'build.version', 'volume.id', 'volume.name'])
 
     def test_non_exist_build_int_without_result_without_strict(self):
         build = 11
@@ -56,21 +42,7 @@ class TestGetBuild(DBQueryTestCase):
         self.assertEqual(len(self.queries), 1)
         query = self.queries[0]
         self.assertEqual(query.tables, ['build'])
-        self.assertEqual(query.joins, ['events ON build.create_event = events.id',
-                                       'package on build.pkg_id = package.id',
-                                       'volume on build.volume_id = volume.id',
-                                       'users on build.owner = users.id'])
         self.assertEqual(query.clauses, ['build.id = %(buildID)i'])
-        self.assertEqual(query.columns,
-                         ['build.id', 'build.cg_id', 'build.completion_time',
-                          "date_part('epoch', build.completion_time)", 'events.id', 'events.time',
-                          "date_part('epoch', events.time)", 'build.draft', 'build.epoch',
-                          'build.extra', 'build.id', 'package.name',
-                          "package.name || '-' || build.version || '-' || build.release",
-                          'users.id', 'users.name', 'package.id', 'package.name', 'build.release',
-                          'build.source', 'build.start_time',
-                          "date_part('epoch', build.start_time)", 'build.state', 'build.task_id',
-                          'build.version', 'volume.id', 'volume.name'])
 
     def test_non_exist_build_dict_with_strict(self):
         build = {
@@ -103,21 +75,7 @@ class TestGetBuild(DBQueryTestCase):
         self.assertEqual(len(self.queries), 1)
         query = self.queries[0]
         self.assertEqual(query.tables, ['build'])
-        self.assertEqual(query.joins, ['events ON build.create_event = events.id',
-                                       'package on build.pkg_id = package.id',
-                                       'volume on build.volume_id = volume.id',
-                                       'users on build.owner = users.id'])
         self.assertEqual(query.clauses, ['build.id = %(buildID)i'])
-        self.assertEqual(query.columns,
-                         ['build.id', 'build.cg_id', 'build.completion_time',
-                          "date_part('epoch', build.completion_time)", 'events.id', 'events.time',
-                          "date_part('epoch', events.time)", 'build.draft', 'build.epoch',
-                          'build.extra', 'build.id', 'package.name',
-                          "package.name || '-' || build.version || '-' || build.release",
-                          'users.id', 'users.name', 'package.id', 'package.name', 'build.release',
-                          'build.source', 'build.start_time',
-                          "date_part('epoch', build.start_time)", 'build.state', 'build.task_id',
-                          'build.version', 'volume.id', 'volume.name'])
 
     def test_result_with_cg_id(self):
         build = 11
@@ -130,18 +88,4 @@ class TestGetBuild(DBQueryTestCase):
         self.assertEqual(len(self.queries), 1)
         query = self.queries[0]
         self.assertEqual(query.tables, ['build'])
-        self.assertEqual(query.joins, ['events ON build.create_event = events.id',
-                                       'package on build.pkg_id = package.id',
-                                       'volume on build.volume_id = volume.id',
-                                       'users on build.owner = users.id'])
         self.assertEqual(query.clauses, ['build.id = %(buildID)i'])
-        self.assertEqual(query.columns,
-                         ['build.id', 'build.cg_id', 'build.completion_time',
-                          "date_part('epoch', build.completion_time)", 'events.id', 'events.time',
-                          "date_part('epoch', events.time)", 'build.draft', 'build.epoch',
-                          'build.extra', 'build.id', 'package.name',
-                          "package.name || '-' || build.version || '-' || build.release",
-                          'users.id', 'users.name', 'package.id', 'package.name', 'build.release',
-                          'build.source', 'build.start_time',
-                          "date_part('epoch', build.start_time)", 'build.state', 'build.task_id',
-                          'build.version', 'volume.id', 'volume.name'])

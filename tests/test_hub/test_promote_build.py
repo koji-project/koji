@@ -39,9 +39,6 @@ class TestPromoteBuild(unittest.TestCase):
         self.list_tags = mock.patch('kojihub.kojihub.list_tags',
                                     return_value=[{'id': 101}]).start()
         self.set_tag_update = mock.patch('kojihub.kojihub.set_tag_update').start()
-        self.encode_datetime = mock.patch(
-            'kojihub.kojihub.encode_datetime', return_value='NOW'
-        ).start()
         self._now = datetime.datetime.now()
         self._datetime = mock.patch('kojihub.kojihub.datetime.datetime').start()
         self.now = self._datetime.now = mock.MagicMock(return_value=self._now)
@@ -52,11 +49,6 @@ class TestPromoteBuild(unittest.TestCase):
             'version': 'bar',
             'release': 'tgtrel,draft_1',
             'nvr': 'testnvr',
-            'extra': {
-                'draft': {
-                    'promoted': False,
-                    'target_release': 'tgtrel'
-                }},
             'state': 1,
             'draft': True,
             'volume_id': 99,
@@ -83,19 +75,6 @@ class TestPromoteBuild(unittest.TestCase):
             self.new_build
         ]
 
-        extra = json.dumps(
-            {
-                'draft': {
-                    'promoted': True,
-                    'target_release': 'tgtrel',
-                    'old_release': 'tgtrel,draft_1',
-                    'promotion_time': 'NOW',
-                    'promotion_ts': self._now.timestamp(),
-                    'promoter': self.user['name']
-                }
-            }
-        )
-
         ret = self.exports.promoteBuild('a-draft-build')
         self.assertEqual(ret, self.new_build)
         self.assertEqual(len(self.updates), 1)
@@ -103,9 +82,9 @@ class TestPromoteBuild(unittest.TestCase):
         self.assertEqual(update.table, 'build')
         self.assertEqual(update.values, self.draft_build)
         self.assertEqual(update.data, {'draft': False,
-                                       'release': 'tgtrel',
-                                       'extra': extra})
-        self.assertEqual(update.rawdata, {})
+                                       'promoter': self.user['id'],
+                                       'release': 'tgtrel'})
+        self.assertEqual(update.rawdata, {'promotion_time': 'now()'})
         self.assertEqual(update.clauses, ['id=%(id)i'])
         self.apply_volume_policy.assert_called_once_with(
             self.new_build, strict=False
@@ -138,12 +117,6 @@ class TestPromoteBuild(unittest.TestCase):
             # bad delimiter
             'release': 'tgtrel@draft_1',
             'nvr': 'testnvr',
-            'extra': {
-                'draft': {
-                    'promoted': False,
-                    # target_release doesn't matter now
-                    'target_release': 'any'
-                }},
             'state': 1,
             'draft': True,
             'volume_id': 99,
@@ -168,11 +141,6 @@ class TestPromoteBuild(unittest.TestCase):
             'version': 'bar',
             'release': 'tgtrel#draft_1',
             'nvr': 'testnvr',
-            'extra': {
-                'draft': {
-                    'promoted': False,
-                    'target_release': 'any'
-                }},
             'draft': True,
             'state': 0,
             'volume_id': 99,

@@ -17,32 +17,48 @@ class TestListBuilds(unittest.TestCase):
         return query
 
     def setUp(self):
-        
         # defaults
         self.tables= ['build']
+        # note: QueryProcessor reports these sorted by alias
         self.columns = [
-            'build.id', 'build.completion_time',
+            'build.id',
+            'build.completion_time',
             "date_part('epoch', build.completion_time)",
-            'events.id', 'events.time',
+            'events.id',
+            'events.time',
             "date_part('epoch', events.time)",
             'build.draft',
             'build.epoch',
-            'build.extra', 'package.name',
-            "package.name || '-' || build.version || '-' || "
-            "build.release", 'users.id', 'users.name', 'package.id',
-            'package.name', 'build.release', 'build.source',
-            'build.start_time', "date_part('epoch', build.start_time)",
-            'build.state', 'build.task_id', 'build.version',
-            'volume.id', 'volume.name'
+            'build.extra',
+            'package.name',
+            "package.name || '-' || build.version || '-' || build.release",
+            'users.id',
+            'users.name',
+            'package.id',
+            'package.name',
+            'promoter.id',
+            'promoter.name',
+            'build.promotion_time',
+            "date_part('epoch', build.promotion_time)",
+            'build.release',
+            'build.source',
+            'build.start_time',
+            "date_part('epoch', build.start_time)",
+            'build.state',
+            'build.task_id',
+            'build.version',
+            'volume.id',
+            'volume.name',
         ]
         self.clauses = ['package.id = %(packageID)i']
         self.joins = [
             'LEFT JOIN events ON build.create_event = events.id',
             'LEFT JOIN package ON build.pkg_id = package.id',
             'LEFT JOIN volume ON build.volume_id = volume.id',
-            'LEFT JOIN users ON build.owner = users.id'
+            'LEFT JOIN users ON build.owner = users.id',
+            'LEFT JOIN users AS promoter ON build.promoter = promoter.id',
         ]
-        
+
         self.maxDiff = None
         self.exports = kojihub.RootExports()
         self.query_executeOne = mock.MagicMock()

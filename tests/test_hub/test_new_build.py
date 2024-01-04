@@ -179,8 +179,8 @@ class TestNewBuild(unittest.TestCase):
         insert_data = {
             "completion_time": "NOW",
             "epoch": "test_epoch",
-            "extra": '{"draft": {"target_release": "test_release", "promoted": false}}',
             "id": 108,
+            "extra": None,
             "owner": 123,
             "pkg_id": 54,
             "release": "test_release,draft_108",
