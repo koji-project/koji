@@ -54,8 +54,12 @@ BEGIN;
     INSERT INTO permissions (name, description) VALUES ('draft-promoter', 'The permission required in the default "draft_promotion" hub policy rule to promote draft build.');
 
     ALTER TABLE build ADD COLUMN draft BOOLEAN NOT NULL DEFAULT 'false';
+    ALTER TABLE build ADD COLUMN promotion_time TIMESTAMPTZ;
+    ALTER TABLE build ADD COLUMN promoter INTEGER;
+    ALTER TABLE build ADD CONSTRAINT build_promoter_fkey FOREIGN KEY (promoter) REFERENCES users(id);
     -- required by constraint rpminfo_build_id_draft_fkey on table rpminfo
     ALTER TABLE build ADD CONSTRAINT draft_for_rpminfo UNIQUE (id, draft);
+    ALTER TABLE build ADD CONSTRAINT promotion_sane CHECK (NOT draft OR (promotion_time IS NULL AND promoter IS NULL));
     ALTER TABLE build ADD CONSTRAINT draft_release_sane CHECK
         ((draft AND release ~ ('^.*,draft_' || id::TEXT || '$'))
         OR NOT draft);

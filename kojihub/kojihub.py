@@ -68,7 +68,6 @@ from koji.util import (
     base64encode,
     decode_bytes,
     dslice,
-    encode_datetime,
     extract_build_task,
     joinpath,
     md5_constructor,
@@ -1435,10 +1434,12 @@ def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None,
               ('build.id', 'build_id'), ('build.version', 'version'), ('build.release', 'release'),
               ('build.epoch', 'epoch'), ('build.state', 'state'),
               ('build.completion_time', 'completion_time'),
+              ('build.promotion_time', 'promotion_time'),
               ('build.start_time', 'start_time'),
               ('build.task_id', 'task_id'),
               ('build.draft', 'draft'),
               ('users.id', 'owner_id'), ('users.name', 'owner_name'),
+              ('promoter.id', 'promoter_id'), ('promoter.name', 'promoter_name'),
               ('events.id', 'creation_event_id'), ('events.time', 'creation_time'),
               ('volume.id', 'volume_id'), ('volume.name', 'volume_name'),
               ('package.id', 'package_id'), ('package.name', 'package_name'),
@@ -1452,6 +1453,7 @@ def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None,
         'package ON package.id = build.pkg_id',
         'volume ON volume.id = build.volume_id',
         'users ON users.id = build.owner',
+        'LEFT JOIN users AS promoter ON promoter.id = build.promoter',
     ]
 
     if type is None:
@@ -4426,6 +4428,7 @@ def get_build(buildInfo, strict=False):
               ('build.draft', 'draft'),
               ('build.state', 'state'),
               ('build.completion_time', 'completion_time'),
+              ('build.promotion_time', 'promotion_time'),
               ('build.start_time', 'start_time'),
               ('build.task_id', 'task_id'),
               ('events.id', 'creation_event_id'), ('events.time', 'creation_time'),
@@ -4436,7 +4439,9 @@ def get_build(buildInfo, strict=False):
               ("date_part('epoch', events.time)", 'creation_ts'),
               ("date_part('epoch', build.start_time)", 'start_ts'),
               ("date_part('epoch', build.completion_time)", 'completion_ts'),
+              ("date_part('epoch', build.promotion_time)", 'promotion_ts'),
               ('users.id', 'owner_id'), ('users.name', 'owner_name'),
+              ('promoter.id', 'promoter_id'), ('promoter.name', 'promoter_name'),
               ('build.cg_id', 'cg_id'),
               ('build.source', 'source'),
               ('build.extra', 'extra'))
@@ -4445,6 +4450,7 @@ def get_build(buildInfo, strict=False):
              'package on build.pkg_id = package.id',
              'volume on build.volume_id = volume.id',
              'users on build.owner = users.id',
+             'LEFT JOIN users AS promoter ON build.promoter = promoter.id',
              ]
     clauses = ['build.id = %(buildID)i']
     query = QueryProcessor(columns=fields, aliases=aliases, values=locals(),
@@ -6149,14 +6155,6 @@ def new_build(data, strict=False):
             raise koji.GenericError(
                 f"The build already exists: {draft_nvr}"
             )
-        # data.extra.draft should not contains anything
-        if extra.get('draft'):
-            raise koji.GenericError('"draft" found in input extra which is reserved already')
-        extra['draft'] = {
-            'target_release': target_release,
-            'promoted': False
-        }
-        insert_data['extra'] = json.dumps(extra) or None
     insert = InsertProcessor('build', data=insert_data)
     insert.execute()
     new_binfo = get_build(data['id'], strict=True)
@@ -10309,20 +10307,9 @@ def _promote_build(build, force=False):
         user=user
     )
 
-    # temp solution with python generated time, maybe better to be an event?
-    now = datetime.datetime.now()
-
-    extra = binfo.get('extra') or {}
-    draft_info = extra.setdefault('draft', {})
-    draft_info['promoted'] = True
-    draft_info['old_release'] = old_release
-    draft_info['promotion_time'] = encode_datetime(now)
-    draft_info['promotion_ts'] = now.timestamp()
-    draft_info['promoter'] = user['name']
-    extra = json.dumps(extra)
-
     update = UpdateProcessor('build', clauses=['id=%(id)i'], values=binfo)
-    update.set(draft=False, release=target_release, extra=extra)
+    update.set(draft=False, release=target_release, promoter=user['id'])
+    update.rawset(promotion_time='now()')
     update.execute()
 
     new_binfo = get_build(binfo['id'], strict=True)
@@ -12184,6 +12171,8 @@ class RootExports(object):
               - nvr (synthesized for sorting purposes)
               - owner_id
               - owner_name
+              - promoter_id
+              - promoter_name
               - volume_id
               - volume_name
               - source
@@ -12194,6 +12183,8 @@ class RootExports(object):
               - start_ts
               - completion_time
               - completion_ts
+              - promotion_time
+              - promotion_ts
               - task_id
               - extra
 
@@ -12215,6 +12206,7 @@ class RootExports(object):
                   ('build.draft', 'draft'),
                   ('build.state', 'state'),
                   ('build.completion_time', 'completion_time'),
+                  ('build.promotion_time', 'promotion_time'),
                   ('build.start_time', 'start_time'),
                   ('build.source', 'source'),
                   ('build.extra', 'extra'),
@@ -12223,17 +12215,22 @@ class RootExports(object):
                   ("date_part('epoch', events.time)", 'creation_ts'),
                   ("date_part('epoch', build.start_time)", 'start_ts'),
                   ("date_part('epoch', build.completion_time)", 'completion_ts'),
+                  ("date_part('epoch', build.promotion_time)", 'promotion_ts'),
                   ('package.id', 'package_id'), ('package.name', 'package_name'),
                   ('package.name', 'name'),
                   ('volume.id', 'volume_id'), ('volume.name', 'volume_name'),
                   ("package.name || '-' || build.version || '-' || build.release", 'nvr'),
-                  ('users.id', 'owner_id'), ('users.name', 'owner_name')]
+                  ('users.id', 'owner_id'), ('users.name', 'owner_name'),
+                  ('promoter.id', 'promoter_id'), ('promoter.name', 'promoter_name'),
+                  ]
 
         tables = ['build']
         joins = ['LEFT JOIN events ON build.create_event = events.id',
                  'LEFT JOIN package ON build.pkg_id = package.id',
                  'LEFT JOIN volume ON build.volume_id = volume.id',
-                 'LEFT JOIN users ON build.owner = users.id']
+                 'LEFT JOIN users ON build.owner = users.id',
+                 'LEFT JOIN users AS promoter ON build.promoter = promoter.id',
+                 ]
         clauses = []
         if packageID is not None:
             packageID = get_package_id(packageID)

@@ -290,9 +290,11 @@ CREATE TABLE build (
 	create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
 	start_time TIMESTAMPTZ,
 	completion_time TIMESTAMPTZ,
+	promotion_time TIMESTAMPTZ,
 	state INTEGER NOT NULL,
 	task_id INTEGER REFERENCES task (id),
 	owner INTEGER NOT NULL REFERENCES users (id),
+	promoter INTEGER REFERENCES users (id),
 	cg_id INTEGER REFERENCES content_generator(id),
 	extra TEXT,
 	CONSTRAINT build_pkg_ver_rel UNIQUE (pkg_id, version, release),
@@ -300,6 +302,7 @@ CREATE TABLE build (
 	CONSTRAINT draft_for_rpminfo UNIQUE (id, draft),
 	CONSTRAINT completion_sane CHECK ((state = 0 AND completion_time IS NULL) OR
                                       (state <> 0 AND completion_time IS NOT NULL)),
+	CONSTRAINT promotion_sane CHECK (NOT draft OR (promotion_time IS NULL AND promoter IS NULL)),
 	CONSTRAINT draft_release_sane CHECK ((draft AND release ~ ('^.*,draft_' || id::TEXT || '$')) OR
                                          NOT draft)
 ) WITHOUT OIDS;
