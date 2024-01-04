@@ -911,14 +911,10 @@ class BuildRoot(object):
 
         opts = dict([(k, getattr(self.options, k)) for k in ('topurl', 'topdir')])
         rpmlist_path = os.path.join(self.get_repo_dir(), self.br_arch, 'rpmlist.jsonl')
-        repo_rpms = {}
         compat_mode = False
         try:
             with koji.openRemoteFile(rpmlist_path, **opts) as fo:
-                for line in fo:
-                    repo_rpm = json.loads(line)
-                    nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" % repo_rpm
-                    repo_rpms[nvra] = repo_rpm
+                repo_rpms = [json.loads(line) for line in fo]
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 404:
                 self.logger.warning("Missing repo content file: %s", rpmlist_path)
@@ -928,6 +924,7 @@ class BuildRoot(object):
             else:
                 raise
         fmt = "%(name)s-%(version)s-%(release)s.%(arch)s"
+        repo_rpms = {fmt % r: r for r in repo_rpms}
         for rpm_info in rpmlist:
             if 'external_repo' in rpm_info:
                 continue
