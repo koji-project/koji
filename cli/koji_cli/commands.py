@@ -3687,6 +3687,9 @@ def anon_handle_buildinfo(goptions, session, args):
         else:
             print("Task: none")
         print("Finished: %s" % koji.formatTimeLong(info['completion_ts']))
+        if info.get('promotion_ts'):
+            print("Promoted by: %(promoter_name)s" % info)
+            print("Promoted at: %s" % koji.formatTimeLong(info['promotion_ts']))
         maven_info = session.getMavenBuild(info['id'])
         if maven_info:
             print("Maven groupId: %s" % maven_info['group_id'])
