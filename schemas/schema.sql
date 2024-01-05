@@ -298,8 +298,8 @@ CREATE TABLE build (
 	cg_id INTEGER REFERENCES content_generator(id),
 	extra TEXT,
 	CONSTRAINT build_pkg_ver_rel UNIQUE (pkg_id, version, release),
-	-- required by constraint rpminfo_build_id_draft_fkey on table rpminfo
 	CONSTRAINT draft_for_rpminfo UNIQUE (id, draft),
+--      ^ required by constraint rpminfo_build_id_draft_fkey on table rpminfo
 	CONSTRAINT completion_sane CHECK ((state = 0 AND completion_time IS NULL) OR
                                       (state <> 0 AND completion_time IS NOT NULL)),
 	CONSTRAINT promotion_sane CHECK (NOT draft OR (promotion_time IS NULL AND promoter IS NULL)),
@@ -725,7 +725,7 @@ CREATE TABLE group_package_listing (
 
 -- rpminfo tracks individual rpms (incl srpms)
 -- buildroot_id can be NULL (for externally built packages)
--- even though we track epoch, we demand that N-V-R.A be unique
+-- even though we track epoch, we demand that N-V-R.A be unique (for non-draft builds)
 -- we don't store filename b/c filename should be N-V-R.A.rpm
 CREATE TABLE rpminfo (
 	id SERIAL NOT NULL PRIMARY KEY,
@@ -744,6 +744,7 @@ CREATE TABLE rpminfo (
 	metadata_only BOOLEAN NOT NULL DEFAULT FALSE,
 	extra TEXT,
 	FOREIGN KEY (build_id, draft) REFERENCES build (id, draft) ON UPDATE CASCADE,
+--      ^ ensures the draft field is consistent with the build entry
 	CONSTRAINT build_id_draft_external_repo_id_sane CHECK (
     (draft IS NULL AND build_id IS NULL AND external_repo_id <> 0)
     OR (draft IS NOT NULL AND build_id IS NOT NULL AND external_repo_id = 0))

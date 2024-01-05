@@ -10311,6 +10311,8 @@ def _promote_build(build, force=False):
     update.set(draft=False, release=target_release, promoter=user['id'])
     update.rawset(promotion_time='now()')
     update.execute()
+    # Note: changing build.draft will implicitly update corresponding rpminfo.draft fields
+    #       due to the ON UPDATE CASCADE foreign key constraint
 
     new_binfo = get_build(binfo['id'], strict=True)
     oldpath = koji.pathinfo.build(binfo)
