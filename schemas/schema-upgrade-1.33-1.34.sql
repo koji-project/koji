@@ -61,8 +61,7 @@ BEGIN;
     ALTER TABLE build ADD CONSTRAINT draft_for_rpminfo UNIQUE (id, draft);
     ALTER TABLE build ADD CONSTRAINT promotion_sane CHECK (NOT draft OR (promotion_time IS NULL AND promoter IS NULL));
     ALTER TABLE build ADD CONSTRAINT draft_release_sane CHECK
-        ((draft AND release ~ ('^.*,draft_' || id::TEXT || '$'))
-        OR NOT draft);
+        (NOT draft OR release ~ ('^.*,draft_' || id::TEXT || '$'));
 
     ALTER TABLE rpminfo ADD COLUMN draft BOOLEAN;
     UPDATE rpminfo SET draft=FALSE WHERE build_id IS NOT NULL;

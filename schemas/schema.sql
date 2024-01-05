@@ -303,8 +303,7 @@ CREATE TABLE build (
 	CONSTRAINT completion_sane CHECK ((state = 0 AND completion_time IS NULL) OR
                                       (state <> 0 AND completion_time IS NOT NULL)),
 	CONSTRAINT promotion_sane CHECK (NOT draft OR (promotion_time IS NULL AND promoter IS NULL)),
-	CONSTRAINT draft_release_sane CHECK ((draft AND release ~ ('^.*,draft_' || id::TEXT || '$')) OR
-                                         NOT draft)
+	CONSTRAINT draft_release_sane CHECK (NOT draft OR release ~ ('^.*,draft_' || id::TEXT || '$'))
 ) WITHOUT OIDS;
 
 CREATE INDEX build_by_pkg_id ON build (pkg_id);
