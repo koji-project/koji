@@ -6099,10 +6099,8 @@ def new_build(data, strict=False):
     for f in ('version', 'release', 'epoch'):
         if f not in data:
             raise koji.GenericError("No %s value for build" % f)
-    extra = {}
     if 'extra' in data:
         try:
-            extra = data['extra']
             # backwards compatible for data in callback
             data['extra'] = json.dumps(data['extra'])
         except Exception:
@@ -6145,7 +6143,6 @@ def new_build(data, strict=False):
     data['id'] = insert_data['id'] = nextval('build_id_seq')
     # handle draft suffix in release
     if data.get('draft'):
-        target_release = data['release']
         data['release'] = insert_data['release'] = koji.gen_draft_release(
             data['release'], data['id']
         )
