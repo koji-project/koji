@@ -12865,6 +12865,15 @@ class RootExports(object):
 
         Note that the returned data includes blocked entries
 
+        In the simple case (no tagID, userID, or pkgID option), the call simply queries
+        the package table. This will show all packages in the system. However, when any
+        of these options are given, the call will query the tag_packages table, showing
+        only packages that are included in some tag.
+
+        This can lead to the confusing situation where a call to listPackages() shows
+        a particular package, but a call to listPackages(pkgID=N) for said package reports
+        no results.
+
         :param int|str tag: filter on tag ID or name
         :param int|str userID: filter on package owner
         :param int|str pkgID: filter on package
