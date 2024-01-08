@@ -568,6 +568,25 @@ def formatLink(url):
     return url
 
 
+def formatRPM(rpminfo, link=True):
+    """Format an rpm dict for display"""
+    rpminfo = rpminfo.copy()
+    if rpminfo.get('epoch'):
+        rpminfo['epoch'] = str(rpminfo['epoch']) + ':'
+    else:
+        rpminfo['epoch'] = ''
+    if rpminfo.get('draft'):
+        rpminfo['suffix'] = f" (draft_{rpminfo.get('build_id', '???')})"
+    else:
+        rpminfo['suffix'] = ''
+    label = escapeHTML("%(name)s-%(epoch)s%(version)s-%(release)s.%(arch)s%(suffix)s" % rpminfo)
+    if link:
+        rpm_id = rpminfo['id']
+        return f'<a href="rpminfo?rpmID={rpm_id}">{label}</a>'
+    else:
+        return label
+
+
 def rowToggle(template):
     """If the value of template._rowNum is even, return 'row-even';
     if it is odd, return 'row-odd'.  Increment the value before checking it.

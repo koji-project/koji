@@ -24,6 +24,11 @@
     <tr>
       <th>Epoch</th><td>$build.epoch</td>
     </tr>
+    #if $build.draft
+      <th>Draft</th><td>True</td>
+    #else
+      <th>Draft</th><td>False</td>
+    #end if
     #if $build.get('source')
     <tr>
       <th>Source</th><td>$build['source']</td>
@@ -90,6 +95,14 @@
     #else
     <tr>
       <th>Completed</th><td>$util.formatTimeLong($build.completion_ts)</td>
+    </tr>
+    #end if
+    #if $build.promotion_ts
+    <tr>
+      <th>Promoted</th><td>$util.formatTimeLong($build.promotion_ts)</td>
+    </tr>
+    <tr>
+      <th>Promoted by</th><td class="user-$build.promoter_name"><a href="userinfo?userID=$build.promoter_id">$util.escapeHTML($build.promoter_name)</a></td>
     </tr>
     #end if
     #if $build.cg_id

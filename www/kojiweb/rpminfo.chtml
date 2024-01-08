@@ -14,6 +14,11 @@
     <tr>
       <th>ID</th><td>$rpm.id</td>
     </tr>
+    #if $build
+    <tr>
+      <th>Build</th><td><a href="buildinfo?buildID=$build.id">$koji.buildLabel($build)</a></td>
+    </tr>
+    #end if
     <tr>
       #if $build
       <th>Name</th><td><a href="packageinfo?packageID=$build.package_id">$util.escapeHTML($rpm.name)</a></td>
@@ -37,6 +42,12 @@
     <tr>
       <th>Arch</th><td>$util.escapeHTML($rpm.arch)</td>
     </tr>
+    <tr>
+    #if $rpm.draft
+      <th>Draft</th><td>True</td>
+      #else
+      <th>Draft</th><td>False</td>
+    #end if
     #if $rpm.external_repo_id == 0
     <tr>
       <th>Summary</th><td class="rpmheader">$util.escapeHTML($summary)</td>

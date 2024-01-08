@@ -16,6 +16,10 @@ class TestGetRPM(DBQueryTestCase):
         self.exports = kojihub.RootExports()
         self.context = mock.patch('kojihub.kojihub.context').start()
         self.get_external_repo_id = mock.patch('kojihub.kojihub.get_external_repo_id').start()
+        self.find_build_id = mock.patch('kojihub.kojihub.find_build_id').start()
+    
+    def tearDown(self):
+        mock.patch.stopall()
 
     def test_wrong_type_rpminfo(self):
         rpminfo = ['test-user']
@@ -25,19 +29,18 @@ class TestGetRPM(DBQueryTestCase):
 
     def test_rpm_info_int(self):
         rpminfo = 123
-        self.qp_execute_one_return_value = {'rpminfo.id': 123}
+        self.qp_execute_return_value = [{'rpminfo.id': 123}]
         result = kojihub.get_rpm(rpminfo)
         self.assertEqual(result, {'rpminfo.id': 123})
 
         self.assertEqual(len(self.queries), 1)
         query = self.queries[0]
-        str(query)
         self.assertEqual(query.tables, ['rpminfo'])
         columns = ['rpminfo.id', 'build_id', 'buildroot_id', 'rpminfo.name', 'version', 'release',
-                   'epoch', 'arch', 'external_repo_id', 'external_repo.name', 'payloadhash',
-                   'size', 'buildtime', 'metadata_only', 'extra']
+                   'epoch', 'arch', 'draft', 'external_repo_id', 'external_repo.name',
+                   'payloadhash', 'size', 'buildtime', 'metadata_only', 'extra']
         self.assertEqual(set(query.columns), set(columns))
-        self.assertEqual(query.clauses, ['external_repo_id = 0', "rpminfo.id=%(id)s"])
+        self.assertEqual(query.clauses, ["rpminfo.id=%(id)s"])
         self.assertEqual(query.joins,
                          ['external_repo ON rpminfo.external_repo_id = external_repo.id'])
         self.assertEqual(query.values, {'id': rpminfo})
@@ -50,11 +53,10 @@ class TestGetRPM(DBQueryTestCase):
 
         self.assertEqual(len(self.queries), 1)
         query = self.queries[0]
-        str(query)
         self.assertEqual(query.tables, ['rpminfo'])
         columns = ['rpminfo.id', 'build_id', 'buildroot_id', 'rpminfo.name', 'version', 'release',
-                   'epoch', 'arch', 'external_repo_id', 'external_repo.name', 'payloadhash',
-                   'size', 'buildtime', 'metadata_only', 'extra']
+                   'epoch', 'arch', 'draft', 'external_repo_id', 'external_repo.name',
+                   'payloadhash', 'size', 'buildtime', 'metadata_only', 'extra']
         self.assertEqual(set(query.columns), set(columns))
         self.assertEqual(query.clauses, ["rpminfo.id=%(id)s"])
         self.assertEqual(query.joins,
@@ -70,11 +72,10 @@ class TestGetRPM(DBQueryTestCase):
 
         self.assertEqual(len(self.queries), 1)
         query = self.queries[0]
-        str(query)
         self.assertEqual(query.tables, ['rpminfo'])
         columns = ['rpminfo.id', 'build_id', 'buildroot_id', 'rpminfo.name', 'version', 'release',
-                   'epoch', 'arch', 'external_repo_id', 'external_repo.name', 'payloadhash',
-                   'size', 'buildtime', 'metadata_only', 'extra']
+                   'epoch', 'arch', 'draft', 'external_repo_id', 'external_repo.name',
+                   'payloadhash', 'size', 'buildtime', 'metadata_only', 'extra']
         self.assertEqual(set(query.columns), set(columns))
         self.assertEqual(query.clauses, ["rpminfo.id=%(id)s"])
         self.assertEqual(query.joins,
@@ -87,11 +88,10 @@ class TestGetRPM(DBQueryTestCase):
 
         self.assertEqual(len(self.queries), 1)
         query = self.queries[0]
-        str(query)
         self.assertEqual(query.tables, ['rpminfo'])
         columns = ['rpminfo.id', 'build_id', 'buildroot_id', 'rpminfo.name', 'version', 'release',
-                   'epoch', 'arch', 'external_repo_id', 'external_repo.name', 'payloadhash',
-                   'size', 'buildtime', 'metadata_only', 'extra']
+                   'epoch', 'arch', 'draft', 'external_repo_id', 'external_repo.name',
+                   'payloadhash', 'size', 'buildtime', 'metadata_only', 'extra']
         self.assertEqual(set(query.columns), set(columns))
         self.assertEqual(query.clauses, ["rpminfo.name=%(name)s AND version=%(version)s "
                                          "AND release=%(release)s AND arch=%(arch)s"])
@@ -110,17 +110,55 @@ class TestGetRPM(DBQueryTestCase):
 
         self.assertEqual(len(self.queries), 1)
         query = self.queries[0]
-        str(query)
         self.assertEqual(query.tables, ['rpminfo'])
         columns = ['rpminfo.id', 'build_id', 'buildroot_id', 'rpminfo.name', 'version', 'release',
-                   'epoch', 'arch', 'external_repo_id', 'external_repo.name', 'payloadhash',
-                   'size', 'buildtime', 'metadata_only', 'extra']
+                   'epoch', 'arch', 'draft', 'external_repo_id', 'external_repo.name',
+                   'payloadhash', 'size', 'buildtime', 'metadata_only', 'extra']
         self.assertEqual(set(query.columns), set(columns))
         self.assertEqual(query.clauses,
-                         ["external_repo_id = %(external_repo_id)i", "rpminfo.id=%(id)s"])
+                         ["external_repo_id = %(external_repo_id)s", "rpminfo.id=%(id)s"])
         self.assertEqual(query.joins,
                          ['external_repo ON rpminfo.external_repo_id = external_repo.id'])
         self.assertEqual(query.values, rpminfo_data)
+
+    @mock.patch('kojihub.kojihub._get_rpms')
+    def test_rpm_info_preferred(self, _get_rpms):
+        rpminfo = 'testrpm-1.23-4.x86_64.rpm'
+        rpm_ext = {'id': 1, 'external_repo_id': 2, 'draft': False}
+        rpm_ext2 = {'id': 2, 'external_repo_id': 2, 'draft': False}
+        rpm_draft = {'id': 3, 'external_repo_id': 0, 'draft': True}
+        rpm_draft2 = {'id': 4, 'external_repo_id': 0, 'draft': True}
+        rpm_nondraft = {'id': 5, 'external_repo_id': 0, 'draft': False}
+
+        # this test checks that the expected preferences are followed for multiple matches
+
+        _get_rpms.return_value = [rpm_ext, rpm_ext2, rpm_draft, rpm_draft2, rpm_nondraft]
+        ret = kojihub.get_rpm(rpminfo, multi=False)
+        self.assertEqual(ret, rpm_nondraft)
+
+        _get_rpms.return_value = [rpm_ext, rpm_ext2, rpm_draft, rpm_draft2]
+        ret = kojihub.get_rpm(rpminfo, multi=False)
+        self.assertEqual(ret, rpm_draft2)
+
+        _get_rpms.return_value = [rpm_ext, rpm_ext2, rpm_draft]
+        ret = kojihub.get_rpm(rpminfo, multi=False)
+        self.assertEqual(ret, rpm_draft)
+
+        _get_rpms.return_value = [rpm_ext, rpm_ext2]
+        ret = kojihub.get_rpm(rpminfo, multi=False)
+        self.assertEqual(ret, rpm_ext2)
+
+        _get_rpms.return_value = [rpm_ext]
+        ret = kojihub.get_rpm(rpminfo, multi=False)
+        self.assertEqual(ret, rpm_ext)
+
+        # multiple nondraft matches should error
+        rpm_bad = {'id': 6, 'external_repo_id': 0, 'draft': False}
+        _get_rpms.return_value = [rpm_nondraft, rpm_bad]
+        with self.assertRaises(koji.GenericError):
+            ret = kojihub.get_rpm(rpminfo, multi=False)
+
+        self.assertEqual(len(self.queries), 0)  # _get_rpm is mocked
 
 
 class TestGetRPMHeaders(unittest.TestCase):

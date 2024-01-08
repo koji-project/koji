@@ -82,6 +82,7 @@ class TestImportBuild(unittest.TestCase):
             'version': 'version',
             'release': 'release',
             'id': 12345,
+            'draft': False
         }
         # get_build called once to check for existing,
         # if it doesn't exist, called another time after creating
@@ -92,6 +93,7 @@ class TestImportBuild(unittest.TestCase):
 
         fields = [
             'completion_time',
+            'draft',
             'epoch',
             'extra',
             'id',
@@ -123,6 +125,7 @@ class TestImportBuild(unittest.TestCase):
             'release': 'release',
             'pkg_id': mock.ANY,
             'id': mock.ANY,
+            'draft': False
         }
         self._dml.assert_called_once_with(statement, values)
 

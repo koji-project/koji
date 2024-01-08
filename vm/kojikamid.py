@@ -377,6 +377,12 @@ class WindowsBuild(object):
             brtype = brinfo.get('type', 'win')
             buildinfo = self.server.getLatestBuild(self.build_tag, buildreq,
                                                    self.task_opts.get('repo_id'))
+            # don't allow draft build in buildrequires
+            # TODO: remove it when ready for win build
+            if buildinfo.get('draft'):
+                raise BuildError(    # noqa: F821
+                    "Draft build: %s is not supported in buildrequires" % buildinfo['nvr']
+                )
             br_dir = os.path.join(self.buildreq_dir, buildreq, brtype)
             ensuredir(br_dir)  # noqa: F821
             brinfo['dir'] = br_dir

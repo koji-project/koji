@@ -80,6 +80,37 @@ Tags:
         self.session.listRPMs.assert_called_once_with(buildID=self.buildinfo['id'])
         self.assertEqual(self.session.listArchives.call_count, 4)
 
+    @mock.patch('sys.stdout', new_callable=StringIO)
+    def test_buildinfo_draft(self, stdout):
+        build = 'test-build-1-1'
+        binfo = copy.deepcopy(self.buildinfo)
+        binfo['draft'] = True
+        self.session.getBuild.return_value = binfo
+        self.session.getTaskInfo.return_value = self.taskinfo
+        self.session.listTags.return_value = []
+        self.session.getMavenBuild.return_value = None
+        self.session.getWinBuild.return_value = None
+        self.session.listArchives.return_value = []
+        self.session.listRPMs.return_value = []
+        expected_stdout = """BUILD: test-build-1-1 [1]
+Draft: YES
+State: COMPLETE
+Built by: kojiadmin
+Volume: DEFAULT
+Task: 8 build (target, src)
+Finished: Thu, 04 Mar 2021 14:45:40 UTC
+Tags: 
+"""
+        anon_handle_buildinfo(self.options, self.session, [build])
+        self.assert_console_message(stdout, expected_stdout)
+        self.session.listTags.assert_called_once_with(build)
+        self.session.getBuild.assert_called_once_with(build)
+        self.session.getTaskInfo.assert_called_once_with(self.buildinfo['task_id'], request=True)
+        self.session.getMavenBuild.assert_called_once_with(self.buildinfo['id'])
+        self.session.getWinBuild.assert_called_once_with(self.buildinfo['id'])
+        self.session.listRPMs.assert_called_once_with(buildID=self.buildinfo['id'])
+        self.assertEqual(self.session.listArchives.call_count, 4)
+
     def test_buildinfo_more_build_with_non_exist_build(self):
         build = 'test-build-1-1'
         non_exist_build = 'test-build-11-12'

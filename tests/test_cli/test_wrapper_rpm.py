@@ -196,7 +196,7 @@ class TestWrapperRpm(utils.CliTestCase):
     @mock.patch('koji_cli.commands.activate_session')
     def test_handle_wrapper_rpm_argument_error(
             self, activate_session_mock, stderr, stdout):
-        """Test  handle_wrapper_rpm help message output"""
+        """Test handle_wrapper_rpm error message output"""
         arguments = []
         options = mock.MagicMock()
 
@@ -219,8 +219,35 @@ class TestWrapperRpm(utils.CliTestCase):
         # Finally, assert that things were called as we expected.
         activate_session_mock.assert_not_called()
 
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    @mock.patch('sys.stderr', new_callable=six.StringIO)
+    @mock.patch('koji_cli.commands.activate_session')
+    def test_handle_wrapper_rpm_argument_conflict_error(
+            self, activate_session_mock, stderr, stdout):
+        """Test handle_wrapper_rpm error message output"""
+        arguments = ['--scratch', '--create-draft', 'foo', 'n-v-r', 'scmurl']
+        options = mock.MagicMock()
+
+        # Mock out the xmlrpc server
+        session = mock.MagicMock()
+
+        # Run it and check immediate output
+        expected = self.format_error_message(
+            "--scratch and --create-draft cannot be both specfied")
+        self.assert_system_exit(
+            handle_wrapper_rpm,
+            options,
+            session,
+            arguments,
+            stdout='Will create a draft build instead\n',
+            stderr=expected,
+            activate_session=None)
+
+        # Finally, assert that things were called as we expected.
+        activate_session_mock.assert_not_called()
+
     def test_handle_wrapper_rpm_help(self):
-        """Test  handle_wrapper_rpm help message output"""
+        """Test handle_wrapper_rpm help message output"""
         self.assert_help(
             handle_wrapper_rpm,
             """Usage: %s wrapper-rpm [options] <target> <build-id|n-v-r> <URL>
@@ -237,6 +264,7 @@ Options:
   --wait                Wait on build, even if running in the background
   --nowait              Don't wait on build
   --background          Run the build at a lower priority
+  --create-draft        Create a new draft build instead
 """ % self.progname)
 
 

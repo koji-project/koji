@@ -610,6 +610,11 @@ _default_policies = {
     'priority': '''
             all :: stay
             ''',
+    'draft_promotion': '''
+            has_perm draft-promoter :: allow
+            is_build_owner :: allow
+            all :: deny Only draft-promoter and build owner can do this via default policy
+            '''
 }
 
 

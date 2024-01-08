@@ -5,6 +5,7 @@ X-Koji-Tag: f23
 X-Koji-Package: sisu
 X-Koji-Builder: user
 X-Koji-Status: complete
+X-Koji-Draft: False
 
 Package: sisu-0.3.0-0.2.M1.fc23
 Tag: f23

@@ -1394,7 +1394,7 @@ def list_tags(build=None, package=None, perms=True, queryOpts=None, pattern=None
 
 
 def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None, owner=None,
-                     type=None, extra=False):
+                     type=None, extra=False, draft=None):
     """Returns a list of builds for specified tag
 
     :param int tag: tag ID
@@ -1406,6 +1406,10 @@ def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None,
     :param str type: restrict the list to builds of the given type.  Currently the supported
                      types are 'maven', 'win', 'image', or any custom content generator btypes.
     :param bool extra: Set to "True" to get the build extra info
+    :param bool draft: bool or None option that indicates the filter based on draft field
+                       - None: no filter (both draft and regular builds)
+                       - True: draft only
+                       - False: regular only
     :returns [dict]: list of buildinfo dicts
     """
     # build - id pkg_id version release epoch
@@ -1430,9 +1434,12 @@ def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None,
               ('build.id', 'build_id'), ('build.version', 'version'), ('build.release', 'release'),
               ('build.epoch', 'epoch'), ('build.state', 'state'),
               ('build.completion_time', 'completion_time'),
+              ('build.promotion_time', 'promotion_time'),
               ('build.start_time', 'start_time'),
               ('build.task_id', 'task_id'),
+              ('build.draft', 'draft'),
               ('users.id', 'owner_id'), ('users.name', 'owner_name'),
+              ('promoter.id', 'promoter_id'), ('promoter.name', 'promoter_name'),
               ('events.id', 'creation_event_id'), ('events.time', 'creation_time'),
               ('volume.id', 'volume_id'), ('volume.name', 'volume_name'),
               ('package.id', 'package_id'), ('package.name', 'package_name'),
@@ -1446,6 +1453,7 @@ def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None,
         'package ON package.id = build.pkg_id',
         'volume ON volume.id = build.volume_id',
         'users ON users.id = build.owner',
+        'LEFT JOIN users AS promoter ON promoter.id = build.promoter',
     ]
 
     if type is None:
@@ -1477,6 +1485,8 @@ def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None,
         clauses.append('package.name = %(package)s')
     if owner:
         clauses.append('users.name = %(owner)s')
+    if draft is not None:
+        clauses.append(draft_clause(draft))
     queryOpts = {'order': '-create_event'}  # latest first
     if extra:
         fields.append(('build.extra', 'extra'))
@@ -1514,7 +1524,7 @@ def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None,
 
 
 def readTaggedRPMS(tag, package=None, arch=None, event=None, inherit=False, latest=True,
-                   rpmsigs=False, owner=None, type=None, extra=True):
+                   rpmsigs=False, owner=None, type=None, extra=True, draft=None):
     """Returns a list of rpms and builds for specified tag
 
     :param int|str tag: The tag name or ID to search
@@ -1534,6 +1544,10 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None, inherit=False, late
     :param str type: Filter by build type. Supported types are 'maven',
                      'win', and 'image'.
     :param bool extra: Set to "False" to skip the rpm extra info
+    :param bool draft: bool or None option that indicates the filter based on draft field
+                             - None: no filter (both draft and regular builds)
+                             - True: draft only
+                             - False: regular only
     :returns: a two-element list. The first element is the list of RPMs, and
               the second element is the list of builds.
     """
@@ -1544,7 +1558,7 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None, inherit=False, late
         taglist += [link['parent_id'] for link in readFullInheritance(tag, event)]
 
     builds = readTaggedBuilds(tag, event=event, inherit=inherit, latest=latest, package=package,
-                              owner=owner, type=type)
+                              owner=owner, type=type, draft=draft)
     # index builds
     build_idx = dict([(b['build_id'], b) for b in builds])
 
@@ -1555,6 +1569,7 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None, inherit=False, late
               ('rpminfo.arch', 'arch'),
               ('rpminfo.id', 'id'),
               ('rpminfo.epoch', 'epoch'),
+              ('rpminfo.draft', 'draft'),
               ('rpminfo.payloadhash', 'payloadhash'),
               ('rpminfo.size', 'size'),
               ('rpminfo.buildtime', 'buildtime'),
@@ -1582,6 +1597,8 @@ def readTaggedRPMS(tag, package=None, arch=None, event=None, inherit=False, late
             clauses.append('rpminfo.arch IN %(arch)s')
         else:
             raise koji.GenericError('Invalid type for arch option: %s' % builtins.type(arch))
+    if draft is not None:
+        clauses.append(draft_clause(draft, table='rpminfo'))
 
     if extra:
         fields.append(('rpminfo.extra', 'extra'))
@@ -2702,6 +2719,7 @@ def repo_init(tag, task_id=None, with_src=False, with_debuginfo=False, event=Non
     # Note: the repo_include_all option is not recommended for common use
     #       see https://pagure.io/koji/issue/588 for background
     rpms, builds = readTaggedRPMS(tag_id, event=event_id, inherit=True, latest=latest)
+
     groups = readTagGroups(tag_id, event=event_id, inherit=True)
     blocks = [pkg for pkg in readPackageList(tag_id, event=event_id, inherit=True,
                                              with_owners=False).values()
@@ -2736,8 +2754,9 @@ def repo_init(tag, task_id=None, with_src=False, with_debuginfo=False, event=Non
     for build in builds:
         relpath = relpathinfo.build(build)
         builddirs[build['id']] = relpath.lstrip('/')
-    # generate pkglist files
+    # generate pkglist and rpmlist files
     pkglist = {}
+    rpmlist = {}
     for repoarch in repo_arches:
         archdir = joinpath(repodir, repoarch)
         koji.ensuredir(archdir)
@@ -2746,31 +2765,43 @@ def repo_init(tag, task_id=None, with_src=False, with_debuginfo=False, event=Non
         top_link = joinpath(archdir, 'toplink')
         os.symlink(top_relpath, top_link)
         pkglist[repoarch] = open(joinpath(archdir, 'pkglist'), 'wt', encoding='utf-8')
-    # NOTE - rpms is now an iterator
+        rpmlist[repoarch] = open(joinpath(archdir, 'rpmlist.jsonl'), 'wt', encoding='utf-8')
+    # NOTE - rpms is a generator
     for rpminfo in rpms:
         if not with_debuginfo and koji.is_debuginfo(rpminfo['name']):
             continue
         relpath = "%s/%s\n" % (builddirs[rpminfo['build_id']], relpathinfo.rpm(rpminfo))
+        rpm_json = json.dumps(rpminfo, indent=None)
+        # must be one line for nl-delimited json
         arch = rpminfo['arch']
         if arch == 'src':
             if with_src:
                 for repoarch in repo_arches:
                     pkglist[repoarch].write(relpath)
+                    rpmlist[repoarch].write(rpm_json)
+                    rpmlist[repoarch].write('\n')
             if with_separate_src:
                 pkglist[arch].write(relpath)
+                rpmlist[arch].write(rpm_json)
+                rpmlist[arch].write('\n')
         elif arch == 'noarch':
             for repoarch in repo_arches:
                 if repoarch == 'src':
                     continue
                 pkglist[repoarch].write(relpath)
+                rpmlist[repoarch].write(rpm_json)
+                rpmlist[repoarch].write('\n')
         else:
             repoarch = koji.canonArch(arch)
             if repoarch not in repo_arches:
                 # Do not create a repo for arches not in the arch list for this tag
                 continue
             pkglist[repoarch].write(relpath)
+            rpmlist[repoarch].write(rpm_json)
+            rpmlist[repoarch].write('\n')
     for repoarch in repo_arches:
         pkglist[repoarch].close()
+        rpmlist[repoarch].close()
 
     # write blocked package lists
     for repoarch in repo_arches:
@@ -4357,6 +4388,7 @@ def get_build(buildInfo, strict=False):
       release
       epoch
       nvr
+      draft: Whether the build is draft or not
       state
       task_id: ID of the task that kicked off the build
       owner_id: ID of the user who kicked off the build
@@ -4392,8 +4424,11 @@ def get_build(buildInfo, strict=False):
 
     fields = (('build.id', 'id'), ('build.version', 'version'), ('build.release', 'release'),
               ('build.id', 'build_id'),
-              ('build.epoch', 'epoch'), ('build.state', 'state'),
+              ('build.epoch', 'epoch'),
+              ('build.draft', 'draft'),
+              ('build.state', 'state'),
               ('build.completion_time', 'completion_time'),
+              ('build.promotion_time', 'promotion_time'),
               ('build.start_time', 'start_time'),
               ('build.task_id', 'task_id'),
               ('events.id', 'creation_event_id'), ('events.time', 'creation_time'),
@@ -4404,7 +4439,9 @@ def get_build(buildInfo, strict=False):
               ("date_part('epoch', events.time)", 'creation_ts'),
               ("date_part('epoch', build.start_time)", 'start_ts'),
               ("date_part('epoch', build.completion_time)", 'completion_ts'),
+              ("date_part('epoch', build.promotion_time)", 'promotion_ts'),
               ('users.id', 'owner_id'), ('users.name', 'owner_name'),
+              ('promoter.id', 'promoter_id'), ('promoter.name', 'promoter_name'),
               ('build.cg_id', 'cg_id'),
               ('build.source', 'source'),
               ('build.extra', 'extra'))
@@ -4413,6 +4450,7 @@ def get_build(buildInfo, strict=False):
              'package on build.pkg_id = package.id',
              'volume on build.volume_id = volume.id',
              'users on build.owner = users.id',
+             'LEFT JOIN users AS promoter ON build.promoter = promoter.id',
              ]
     clauses = ['build.id = %(buildID)i']
     query = QueryProcessor(columns=fields, aliases=aliases, values=locals(),
@@ -4481,6 +4519,8 @@ def get_next_release(build_info, incr=1):
     This method searches the latest building, successful, or deleted build and
     returns the "next" release value for that version.
 
+    Note that draft builds are excluded while getting that latest build.
+
     Examples:
 
       None becomes "1"
@@ -4512,7 +4552,7 @@ def get_next_release(build_info, incr=1):
     query = QueryProcessor(tables=['build'], joins=['package ON build.pkg_id = package.id'],
                            columns=['build.id', 'release'],
                            clauses=['name = %(name)s', 'version = %(version)s',
-                                    'state in %(states)s'],
+                                    'state in %(states)s', 'NOT draft'],
                            values=values,
                            opts={'order': '-build.id', 'limit': 1})
     result = query.executeOne()
@@ -4579,7 +4619,8 @@ def get_rpm(rpminfo, strict=False, multi=False):
     """Get information about the specified RPM
 
     rpminfo may be any one of the following:
-    - a int ID
+    - the rpm id as an int
+    - the rpm id as a string
     - a string N-V-R.A
     - a string N-V-R.A@location
     - a map containing 'name', 'version', 'release', and 'arch'
@@ -4593,6 +4634,7 @@ def get_rpm(rpminfo, strict=False, multi=False):
     - version
     - release
     - arch
+    - draft
     - epoch
     - payloadhash
     - size
@@ -4607,10 +4649,70 @@ def get_rpm(rpminfo, strict=False, multi=False):
     If there is no RPM with the given ID, None is returned, unless strict
     is True in which case an exception is raised
 
-    If more than one RPM matches, and multi is True, then a list of results is
-    returned. If multi is False, a single match is returned (an internal one if
-    possible).
+    This function is normally expected to return a single rpm. However, there
+    are cases where the given rpminfo could refer to multiple rpms. This is
+    because of nvra overlap involving:
+      * draft rpms
+      * external rpms
+
+    If more than one RPM matches, then in the default case (multi=False), this function
+    will choose the best option in order of preference:
+      1. internal non-draft rpms (nvras are unique within this subset)
+      2. internal draft rpms (highest rpm id)
+      3. external rpms (highest rpm id)
+    OTOH if multi is True, then all matching results are returned as a list
     """
+    # we can look up by id or NVRA
+    data = None
+    if isinstance(rpminfo, int):
+        data = {'id': rpminfo}
+    elif isinstance(rpminfo, str):
+        # either nvra or id as a string
+        try:
+            data = {'id': int(rpminfo)}
+        except ValueError:
+            data = koji.parse_NVRA(rpminfo)
+    elif isinstance(rpminfo, dict):
+        data = rpminfo.copy()
+    else:
+        raise koji.GenericError("Invalid type for rpminfo: %r" % type(rpminfo))
+
+    rpms = _get_rpms(data)
+    if multi:
+        return rpms
+
+    # otherwise make sure we have a single rpm
+    if not rpms:
+        if strict:
+            raise koji.GenericError("No such rpm: %r" % data)
+        return None
+    elif len(rpms) == 1:
+        return rpms[0]
+    else:
+        # pick our preferred, as described above
+        nondraft = None
+        draft = None
+        external = None
+        for rinfo in rpms:
+            if rinfo['external_repo_id']:
+                if external is None or rinfo['id'] > external['id']:
+                    external = rinfo
+            elif rinfo['draft']:
+                if draft is None or rinfo['id'] > draft['id']:
+                    draft = rinfo
+            else:
+                # rinfo is internal and nondraft
+                if nondraft:
+                    # should not happen
+                    # none of our selection options should result in more than one nondraft build
+                    raise koji.GenericError("Multiple nondraft rpm matches for: %r" % data)
+                else:
+                    nondraft = rinfo
+        return nondraft or draft or external
+
+
+def _get_rpms(data):
+    """Helper function for get_rpm"""
     fields = (
         ('rpminfo.id', 'id'),
         ('build_id', 'build_id'),
@@ -4620,6 +4722,7 @@ def get_rpm(rpminfo, strict=False, multi=False):
         ('release', 'release'),
         ('epoch', 'epoch'),
         ('arch', 'arch'),
+        ('draft', 'draft'),
         ('external_repo_id', 'external_repo_id'),
         ('external_repo.name', 'external_repo_name'),
         ('payloadhash', 'payloadhash'),
@@ -4628,55 +4731,25 @@ def get_rpm(rpminfo, strict=False, multi=False):
         ('metadata_only', 'metadata_only'),
         ('extra', 'extra'),
     )
-    # we can look up by id or NVRA
-    data = None
-    if isinstance(rpminfo, int):
-        data = {'id': rpminfo}
-    elif isinstance(rpminfo, str):
-        data = koji.parse_NVRA(rpminfo)
-    elif isinstance(rpminfo, dict):
-        data = rpminfo.copy()
-    else:
-        raise koji.GenericError("Invalid type for rpminfo: %r" % type(rpminfo))
     clauses = []
     if 'id' in data:
         clauses.append("rpminfo.id=%(id)s")
     else:
         clauses.append("rpminfo.name=%(name)s AND version=%(version)s "
                        "AND release=%(release)s AND arch=%(arch)s")
-    retry = False
     if 'location' in data:
         data['external_repo_id'] = get_external_repo_id(data['location'], strict=True)
-        clauses.append("""external_repo_id = %(external_repo_id)i""")
-    elif not multi:
-        # try to match internal first, otherwise first matching external
-        retry = True  # if no internal match
-        orig_clauses = list(clauses)  # copy
-        clauses.append("""external_repo_id = 0""")
-
+        clauses.append("""external_repo_id = %(external_repo_id)s""")
     joins = ['external_repo ON rpminfo.external_repo_id = external_repo.id']
 
     query = QueryProcessor(columns=[f[0] for f in fields], aliases=[f[1] for f in fields],
                            tables=['rpminfo'], joins=joins, clauses=clauses,
                            values=data, transform=_fix_rpm_row)
-    if multi:
-        return query.execute()
-    ret = query.executeOne()
-    if ret:
-        return ret
-    if retry:
-        # at this point we have just an NVRA with no internal match. Open it up to externals
-        query.clauses = orig_clauses
-        ret = query.executeOne()
-    if not ret:
-        if strict:
-            raise koji.GenericError("No such rpm: %r" % data)
-        return None
-    return ret
+    return query.execute()
 
 
 def list_rpms(buildID=None, buildrootID=None, imageID=None, componentBuildrootID=None, hostID=None,
-              arches=None, queryOpts=None):
+              arches=None, queryOpts=None, draft=None):
     """List RPMS.  If buildID, imageID and/or buildrootID are specified,
     restrict the list of RPMs to only those RPMs that are part of that
     build, or were built in that buildroot.  If componentBuildrootID is specified,
@@ -4691,6 +4764,7 @@ def list_rpms(buildID=None, buildrootID=None, imageID=None, componentBuildrootID
     - nvr (synthesized for sorting purposes)
     - arch
     - epoch
+    - draft
     - payloadhash
     - size
     - buildtime
@@ -4706,12 +4780,22 @@ def list_rpms(buildID=None, buildrootID=None, imageID=None, componentBuildrootID
     - is_update
 
     If no build has the given ID, or the build generated no RPMs,
-    an empty list is returned."""
+    an empty list is returned.
+
+    The option draft with a bool/None value is to filter rpm by that
+    rpm belongs to a draft build, a regular build or both (default). It stands for:
+    - None: no filter (both draft and regular builds)
+    - True: draft only
+    - False: regular only
+    """
+
     fields = [('rpminfo.id', 'id'), ('rpminfo.name', 'name'), ('rpminfo.version', 'version'),
               ('rpminfo.release', 'release'),
               ("rpminfo.name || '-' || rpminfo.version || '-' || rpminfo.release", 'nvr'),
               ('rpminfo.arch', 'arch'),
-              ('rpminfo.epoch', 'epoch'), ('rpminfo.payloadhash', 'payloadhash'),
+              ('rpminfo.epoch', 'epoch'),
+              ('rpminfo.draft', 'draft'),
+              ('rpminfo.payloadhash', 'payloadhash'),
               ('rpminfo.size', 'size'), ('rpminfo.buildtime', 'buildtime'),
               ('rpminfo.build_id', 'build_id'), ('rpminfo.buildroot_id', 'buildroot_id'),
               ('rpminfo.external_repo_id', 'external_repo_id'),
@@ -4749,6 +4833,8 @@ def list_rpms(buildID=None, buildrootID=None, imageID=None, componentBuildrootID
             clauses.append('rpminfo.arch = %(arches)s')
         else:
             raise koji.GenericError('Invalid type for "arches" parameter: %s' % type(arches))
+    if draft is not None:
+        clauses.append(draft_clause(draft))
 
     fields, aliases = zip(*fields)
     query = QueryProcessor(columns=fields, aliases=aliases,
@@ -5959,7 +6045,7 @@ def check_volume_policy(data, strict=False, default=None):
     return None
 
 
-def apply_volume_policy(build, strict=False):
+def apply_volume_policy(build, strict=False, dry_run=False):
     """Apply volume policy, moving build as needed
 
     build should be the buildinfo returned by get_build()
@@ -5967,12 +6053,16 @@ def apply_volume_policy(build, strict=False):
     The strict options determines what happens in the case of a bad policy.
     If strict is True, an exception will be raised. Otherwise, the existing
     volume we be retained.
+
+    If dry_run is True, return the volume instead of doing the actual moving.
     """
     policy_data = {'build': build}
     task_id = extract_build_task(build)
     if task_id:
         policy_data.update(policy_data_from_task(task_id))
     volume = check_volume_policy(policy_data, strict=strict)
+    if dry_run:
+        return volume
     if volume is None:
         # just leave the build where it is
         return
@@ -5984,6 +6074,10 @@ def apply_volume_policy(build, strict=False):
 
 def new_build(data, strict=False):
     """insert a new build entry
+
+    If the build to create is a draft, the release field is the target release
+    rather than its actual release with draft suffix. The draft suffix will be
+    generated here as ",draft_<buildid>".
 
     If strict is specified, raise an exception, if build already exists.
     """
@@ -6007,11 +6101,14 @@ def new_build(data, strict=False):
             raise koji.GenericError("No %s value for build" % f)
     if 'extra' in data:
         try:
+            # backwards compatible for data in callback
             data['extra'] = json.dumps(data['extra'])
         except Exception:
             raise koji.GenericError("No such build extra data: %(extra)r" % data)
     else:
         data['extra'] = None
+    if 'draft' in data:
+        data['draft'] = bool(data['draft'])
 
     # provide a few default values
     data.setdefault('state', koji.BUILD_STATES['COMPLETE'])
@@ -6021,12 +6118,16 @@ def new_build(data, strict=False):
     data.setdefault('owner', context.session.user_id)
     data.setdefault('task_id', None)
     data.setdefault('volume_id', 0)
+    data.setdefault('draft', False)
 
     # check for existing build
     old_binfo = get_build(data)
     if old_binfo:
-        if strict:
-            raise koji.GenericError(f'Existing build found: {old_binfo}')
+        old_str = '%(nvr)s (id=%(id)s)' % old_binfo
+        if data['draft']:
+            raise koji.GenericError(f'Target build already exists: {old_str}')
+        elif strict:
+            raise koji.GenericError(f'Existing build found: {old_str}')
         recycle_build(old_binfo, data)
         # Raises exception if there is a problem
         return old_binfo['id']
@@ -6034,12 +6135,23 @@ def new_build(data, strict=False):
                               new=data['state'], info=data)
 
     # insert the new data
-    insert_data = dslice(data, ['pkg_id', 'version', 'release', 'epoch', 'state', 'volume_id',
-                                'task_id', 'owner', 'start_time', 'completion_time', 'source',
-                                'extra'])
+    insert_data = dslice(data, ['pkg_id', 'version', 'release', 'epoch', 'draft', 'state',
+                                'volume_id', 'task_id', 'owner', 'start_time', 'completion_time',
+                                'source', 'extra'])
     if 'cg_id' in data:
         insert_data['cg_id'] = data['cg_id']
     data['id'] = insert_data['id'] = nextval('build_id_seq')
+    # handle draft suffix in release
+    if data.get('draft'):
+        data['release'] = insert_data['release'] = koji.gen_draft_release(
+            data['release'], data['id']
+        )
+        # it's still possible to already have a build with the same nvr
+        draft_nvr = dslice(data, ['name', 'version', 'release'])
+        if find_build_id(draft_nvr):
+            raise koji.GenericError(
+                f"The build already exists: {draft_nvr}"
+            )
     insert = InsertProcessor('build', data=insert_data)
     insert.execute()
     new_binfo = get_build(data['id'], strict=True)
@@ -6217,16 +6329,22 @@ def import_build(srpm, rpms, brmap=None, task_id=None, build_id=None, logs=None)
     build['volume_name'] = vol['name']
 
     if build_id is None:
+        # This should not be possible
+        logger.error('Calling import_build without a build_id is deprecated')
         build_id = new_build(build)
         binfo = get_build(build_id, strict=True)
         new_typed_build(binfo, 'rpm')
     else:
         # build_id was passed in - sanity check
+        build['id'] = build_id
         binfo = get_build(build_id, strict=True)
         st_complete = koji.BUILD_STATES['COMPLETE']
         st_old = binfo['state']
+
         koji.plugin.run_callbacks('preBuildStateChange', attribute='state', old=st_old,
                                   new=st_complete, info=binfo)
+        if binfo.get('draft'):
+            build['release'] = koji.gen_draft_release(build['release'], build['id'])
         for key in ('name', 'version', 'release', 'epoch', 'task_id'):
             if build[key] != binfo[key]:
                 raise koji.GenericError(
@@ -6278,6 +6396,8 @@ def import_rpm(fn, buildinfo=None, brootid=None, wrapper=False, fileinfo=None):
     hdr = koji.get_rpm_header(fn)
     rpminfo = koji.get_header_fields(hdr, ['name', 'version', 'release', 'epoch',
                                            'sourcepackage', 'arch', 'buildtime', 'sourcerpm'])
+    draft = True if buildinfo and buildinfo.get('draft') else False
+    rpminfo['draft'] = draft
     if rpminfo['sourcepackage'] == 1:
         rpminfo['arch'] = "src"
 
@@ -6288,7 +6408,12 @@ def import_rpm(fn, buildinfo=None, brootid=None, wrapper=False, fileinfo=None):
         raise koji.GenericError("bad filename: %s (expected %s)" % (basename, expected))
 
     if buildinfo is None:
-        # figure it out for ourselves
+        # This only happens when we're called from importRPM
+        if draft:
+            # shouldn't happen with current code
+            raise koji.GenericError('rpm import is not supported for draft builds')
+        # the existing build got by rpminfo below should never be draft,
+        # because "," is an invalid char for rpm "release"
         if rpminfo['sourcepackage'] == 1:
             buildinfo = get_build(rpminfo, strict=False)
             if not buildinfo:
@@ -6303,13 +6428,13 @@ def import_rpm(fn, buildinfo=None, brootid=None, wrapper=False, fileinfo=None):
                 # XXX - handle case where package is not a source rpm
                 #      and we still need to create a new build
                 raise koji.GenericError('No such build')
-            state = koji.BUILD_STATES[buildinfo['state']]
-            if state in ('FAILED', 'CANCELED', 'DELETED'):
-                nvr = "%(name)s-%(version)s-%(release)s" % buildinfo
-                raise koji.GenericError("Build is %s: %s" % (state, nvr))
     elif not wrapper:
         # only enforce the srpm name matching the build for non-wrapper rpms
-        srpmname = "%(name)s-%(version)s-%(release)s.src.rpm" % buildinfo
+        nvrinfo = buildinfo.copy()
+        if draft:
+            # for draft build, change release to target_release
+            nvrinfo['release'] = koji.parse_target_release(buildinfo['release'])
+        srpmname = "%(name)s-%(version)s-%(release)s.src.rpm" % nvrinfo
         # either the sourcerpm field should match the build, or the filename
         # itself (for the srpm)
         if rpminfo['sourcepackage'] != 1:
@@ -6319,6 +6444,11 @@ def import_rpm(fn, buildinfo=None, brootid=None, wrapper=False, fileinfo=None):
         elif basename != srpmname:
             raise koji.GenericError("srpm mismatch for %s: %s (expected %s)"
                                     % (fn, basename, srpmname))
+
+    state = koji.BUILD_STATES[buildinfo['state']]
+    if state in ('FAILED', 'CANCELED', 'DELETED'):
+        nvr = "%(name)s-%(version)s-%(release)s" % buildinfo
+        raise koji.GenericError("Build is %s: %s" % (state, nvr))
 
     # if we're adding an rpm to it, then this build is of rpm type
     # harmless if build already has this type
@@ -6391,6 +6521,7 @@ def cg_init_build(cg, data):
                       other values will be ignored anyway (owner, state, ...)
     :return: dict with build_id and token
     """
+    reject_draft(data)
     assert_cg(cg)
     cg_id = lookup_name('content_generator', cg, strict=True)['id']
     data['owner'] = context.session.user_id
@@ -6670,6 +6801,10 @@ class CG_Importer(object):
                 if (koji.BUILD_STATES[buildinfo['state']] not in ('CANCELED', 'FAILED')):
                     raise koji.GenericError("Build already exists: %r" % buildinfo)
                 # note: the checks in recycle_build will also apply when we call new_build later
+
+        if buildinfo:
+            reject_draft(buildinfo)
+
         # gather needed data
         buildinfo = dslice(metadata['build'], ['name', 'version', 'release', 'extra', 'source'])
         if 'build_id' in metadata['build']:
@@ -6896,11 +7031,14 @@ class CG_Importer(object):
         if 'id' in comp:
             # not in metadata spec, and will confuse get_rpm
             raise koji.GenericError("Unexpected 'id' field in component")
+        # rpm is no more unique with NVRA as draft build is introduced
         rinfo = get_rpm(comp, strict=False)
         if not rinfo:
             # XXX - this is a temporary workaround until we can better track external refs
             self.log_warning("IGNORING unmatched rpm component: %r" % comp)
             return None
+        # TODO: we should consider how to handle them once draft build is enabled for CG
+        reject_draft(rinfo, is_rpm=True)
         if rinfo['payloadhash'] != comp['sigmd5']:
             # XXX - this is a temporary workaround until we can better track external refs
             self.log_warning("IGNORING rpm component (md5 mismatch): %r" % comp)
@@ -7286,6 +7424,7 @@ def merge_scratch(task_id):
     if not build:
         raise koji.ImportError('no such build: %(name)s-%(version)s-%(release)s' %
                                build_nvr)
+    reject_draft(build, koji.ImportError(f"build to import is a draft build: {build['nvr']}"))
     if build['state'] != koji.BUILD_STATES['COMPLETE']:
         raise koji.ImportError('%s did not complete successfully' % build['nvr'])
     if not build['task_id']:
@@ -7520,7 +7659,6 @@ def new_image_build(build_info):
 
 def new_typed_build(build_info, btype):
     """Mark build as a given btype"""
-
     btype_id = lookup_name('btype', btype, strict=True)['id']
     query = QueryProcessor(tables=['build_types'], columns=['build_id'],
                            clauses=['build_id = %(build_id)i', 'btype_id = %(btype_id)i'],
@@ -7557,6 +7695,7 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
     buildroot_id: the id of the buildroot the archive was built in (may be None)
     fileinfo: content generator metadata for file (may be None)
     """
+    reject_draft(buildinfo)
 
     if fileinfo is None:
         fileinfo = {}
@@ -8370,7 +8509,7 @@ def query_history(tables=None, **kwargs):
     return ret
 
 
-def untagged_builds(name=None, queryOpts=None):
+def untagged_builds(name=None, queryOpts=None, draft=None):
     """Returns the list of untagged builds"""
     st_complete = koji.BUILD_STATES['COMPLETE']
     # following can be achieved with simple query but with
@@ -8386,6 +8525,9 @@ def untagged_builds(name=None, queryOpts=None):
     ]
     if name is not None:
         clauses.append('package.name = %(name)s')
+
+    if draft is not None:
+        clauses.append(draft_clause(draft))
 
     query = QueryProcessor(tables=['build', 'package'],
                            columns=['build.id', 'package.name', 'build.version', 'build.release'],
@@ -8671,6 +8813,7 @@ def _delete_build(binfo):
     update = UpdateProcessor('build', values=values, clauses=['id=%(build_id)i'],
                              data={'state': st_deleted})
     update.execute()
+    _delete_build_symlinks(binfo)
     # now clear the build dir
     builddir = koji.pathinfo.build(binfo)
     if os.path.exists(builddir):
@@ -8680,14 +8823,48 @@ def _delete_build(binfo):
                               attribute='state', old=st_old, new=st_deleted, info=binfo)
 
 
+def _delete_build_symlinks(binfo):
+    """Remove symlinks pointing to the build
+
+    These include the symlink created by ensure_volume_symlink and the
+    symlink created when draft builds are promoted.
+    """
+
+    base_vol = lookup_name('volume', 'DEFAULT', strict=True)
+    if binfo['volume_id'] != base_vol['id']:
+        # remove the link created by ensure_volume_symlinks
+        base_binfo = binfo.copy()
+        base_binfo['volume_id'] = base_vol['id']
+        base_binfo['volume_name'] = base_vol['name']
+        basedir = koji.pathinfo.build(base_binfo)
+        if os.path.islink(basedir):
+            os.unlink(basedir)
+
+    if not binfo['draft']:
+        # if the build isn't a draft, it may once have been
+        draft_release = koji.gen_draft_release(binfo['release'], binfo['id'])
+        for check_vol in list_volumes():
+            # the build could have been on any volume when promoted
+            check_binfo = binfo.copy()
+            check_binfo['volume_id'] = check_vol['id']
+            check_binfo['volume_name'] = check_vol['name']
+            check_binfo['release'] = draft_release
+            checkdir = koji.pathinfo.build(check_binfo)
+            if os.path.islink(checkdir):
+                os.unlink(checkdir)
+
+
 def reset_build(build):
     """Reset a build so that it can be reimported
 
     WARNING: this function is highly destructive. use with care.
     nulls task_id
     sets state to CANCELED
+    sets volume to DEFAULT
     clears all referenced data in other tables, including buildroot and
         archive component tables
+
+    draft and extra are kept
 
     after reset, only the build table entry is left
     """
@@ -8767,6 +8944,8 @@ def reset_build(build):
     update = UpdateProcessor('build', clauses=['id=%(id)s'], values={'id': binfo['id']},
                              data={'state': binfo['state'], 'task_id': None, 'volume_id': 0})
     update.execute()
+
+    _delete_build_symlinks(binfo)
     # now clear the build dir
     builddir = koji.pathinfo.build(binfo)
     if os.path.exists(builddir):
@@ -9649,6 +9828,20 @@ class IsBuildOwnerTest(koji.policy.BaseSimpleTest):
         return False
 
 
+class IsDraftTest(koji.policy.BaseSimpleTest):
+    """Check if the build is a draft build"""
+    name = "is_draft"
+
+    def run(self, data):
+        if 'draft' in data:
+            return data['draft']
+        if 'build' in data:
+            build = get_build(data['build'])
+            return build.get('draft', False)
+        # default...
+        return False
+
+
 class UserInGroupTest(koji.policy.BaseSimpleTest):
     """Check if user is in group(s)
 
@@ -10028,6 +10221,9 @@ def importImageInternal(task_id, build_info, imgdata):
             data = add_external_rpm(an_rpm, location, strict=False)
         else:
             data = get_rpm(an_rpm, strict=True)
+            # unlike buildroot, we simply reject draft rpms as rpm components
+            # because we probably don't want to keep the nvra uniqueness here.
+            reject_draft(data, is_rpm=True)
         rpm_ids.append(data['id'])
     # we sort to try to avoid deadlock issues
     rpm_ids.sort()
@@ -10046,6 +10242,107 @@ def importImageInternal(task_id, build_info, imgdata):
 
     koji.plugin.run_callbacks('postImport', type='image', image=imgdata,
                               build=build_info, fullpath=fullpath)
+
+
+def _promote_build(build, force=False):
+    """Promote a draft build to a regular build.
+
+    - The build type is limited to rpm so far.
+    - The promoting action cannot be revoked.
+    - The release wil be changed to the target one, so build_id isn't changed
+    - buildpath will be changed as well and the old build path will symlink
+      to the new one, so both paths still will be existing until deleted.
+
+    :param build: A build ID (int), a NVR (string), or a dict containing
+                  "name", "version" and "release" of a draft build
+    :type build: int, str, dict
+    :param bool force: If False (default), Koji will check this
+                       operation against the draft_promotion hub policy. If hub
+                       policy does not allow the current user to promote the draft build,
+                       then this method will raise an error.
+                       If True, then this method will bypass hub policy settings.
+                       Only admin users can set force to True.
+    :returns: latest build info
+    :rtype: dict
+    """
+    context.session.assertLogin()
+    user = get_user(context.session.user_id)
+
+    binfo = get_build(build, strict=True)
+    err_fmt = f"Cannot promote build {binfo['nvr']}. Reason: {{}}"
+    if not binfo.get('draft'):
+        raise koji.GenericError(err_fmt.format("Not a draft build"))
+    state = koji.BUILD_STATES[binfo['state']]
+    if state != 'COMPLETE':
+        raise koji.GenericError(err_fmt.format(f'state ({state}) is not COMPLETE.'))
+
+    old_release = binfo['release']
+    target_release = koji.parse_target_release(old_release)
+
+    # drop id to get build by NVR
+    target_build = dslice(binfo, ['name', 'version'])
+    target_build['release'] = target_release
+    old_build = get_build(target_build, strict=False)
+    if old_build:
+        raise koji.GenericError(err_fmt.format(
+            f"Target build exists: {old_build['nvr']}(#{old_build['id']})"
+        ))
+
+    # policy checks
+    policy_data = {
+        'build': binfo['id'],
+        'target_release': target_release,
+        'user_id': user['id']
+    }
+    assert_policy('draft_promotion', policy_data, force=force)
+
+    koji.plugin.run_callbacks(
+        'preBuildPromote',
+        draft_release=old_release,
+        target_release=target_release,
+        build=binfo,
+        user=user
+    )
+
+    update = UpdateProcessor('build', clauses=['id=%(id)i'], values=binfo)
+    update.set(draft=False, release=target_release, promoter=user['id'])
+    update.rawset(promotion_time='now()')
+    update.execute()
+    # Note: changing build.draft will implicitly update corresponding rpminfo.draft fields
+    #       due to the ON UPDATE CASCADE foreign key constraint
+
+    new_binfo = get_build(binfo['id'], strict=True)
+    oldpath = koji.pathinfo.build(binfo)
+    newpath = koji.pathinfo.build(new_binfo)
+    safer_move(oldpath, newpath)
+    ensure_volume_symlink(new_binfo)
+
+    # provide a symlink at original draft location
+    # we point to the default volume in case the build moves in the future
+    base_vol = lookup_name('volume', 'DEFAULT', strict=True)
+    base_binfo = new_binfo.copy()
+    base_binfo['volume_id'] = base_vol['id']
+    base_binfo['volume_name'] = base_vol['name']
+    basedir = koji.pathinfo.build(base_binfo)
+    relpath = os.path.relpath(basedir, os.path.dirname(oldpath))
+    os.symlink(relpath, oldpath)
+
+    # apply volume policy in case it's changed by release update.
+    apply_volume_policy(new_binfo, strict=False)
+
+    # adding DRAFT_PROMOTION for kojira,
+    # as the latest promoted build should be that latest one.
+    for tag in list_tags(build=binfo['id']):
+        set_tag_update(tag['id'], 'DRAFT_PROMOTION')
+
+    koji.plugin.run_callbacks(
+        'postBuildPromote',
+        draft_release=old_release,
+        target_release=target_release,
+        build=new_binfo,
+        user=user
+    )
+    return new_binfo
 
 
 def _delete_event_id():
@@ -10798,23 +11095,24 @@ class RootExports(object):
         build = get_build(build, strict=True)
         return apply_volume_policy(build, strict)
 
-    def createEmptyBuild(self, name, version, release, epoch, owner=None):
+    def createEmptyBuild(self, name, version, release, epoch, owner=None, draft=False):
         """Creates empty build entry
 
         :param str name: build name
         :param str version: build version
         :param str release: release version
         :param str epoch: epoch version
-        :param userInfo: a str (Kerberos principal or name) or an int (user id)
+        :param owner: a str (Kerberos principal or name) or an int (user id)
                          or a dict:
                              - id: User's ID
                              - name: User's name
                              - krb_principal: Kerberos principal
+        :param bool draft: create a draft build or not
         :return: int build ID
         """
         context.session.assertPerm('admin')
         data = {'name': name, 'version': version, 'release': release,
-                'epoch': epoch}
+                'epoch': epoch, 'draft': draft}
         if owner is not None:
             data['owner'] = owner
         return new_build(data)
@@ -10836,7 +11134,9 @@ class RootExports(object):
                                - artifact_id: Artifact's ID
                                - version: version
         :raises: GenericError if type for build_info is not dict, when build isn`t existing.
+        :raises: GenericError if draft: True in buildinfo, when build isn't existing.
         :raises: GenericError if build info doesn't have mandatory keys.
+        :raises: GenericError if build is a draft, when it's existing.
         """
         context.session.assertPerm('maven-import')
         if not context.opts.get('EnableMaven'):
@@ -10845,11 +11145,13 @@ class RootExports(object):
         if not build:
             if not isinstance(build_info, dict):
                 raise koji.GenericError('Invalid type for build_info: %s' % type(build_info))
+            reject_draft(build_info)
             try:
                 build_id = new_build(dslice(build_info, ('name', 'version', 'release', 'epoch')))
             except KeyError as cm:
                 raise koji.GenericError("Build info doesn't have mandatory %s key" % cm)
             build = get_build(build_id, strict=True)
+        reject_draft(build)
         new_maven_build(build, maven_info)
 
     def createWinBuild(self, build_info, win_info):
@@ -10866,7 +11168,9 @@ class RootExports(object):
         :param dict win_info:
                                - platform: build platform
         :raises: GenericError if type for build_info is not dict, when build isn`t existing.
+        :raises: GenericError if draft: True in buildinfo, when build isn't existing.
         :raises: GenericError if build info doesn't have mandatory keys.
+        :raises: GenericError if build is a draft, when it's existing.
         """
         context.session.assertPerm('win-import')
         if not context.opts.get('EnableWin'):
@@ -10875,11 +11179,13 @@ class RootExports(object):
         if not build:
             if not isinstance(build_info, dict):
                 raise koji.GenericError('Invalid type for build_info: %s' % type(build_info))
+            reject_draft(build_info)
             try:
                 build_id = new_build(dslice(build_info, ('name', 'version', 'release', 'epoch')))
             except KeyError as cm:
                 raise koji.GenericError("Build info doesn't have mandatory %s key" % cm)
             build = get_build(build_id, strict=True)
+        reject_draft(build)
         new_win_build(build, win_info)
 
     def createImageBuild(self, build_info):
@@ -10895,18 +11201,22 @@ class RootExports(object):
                                - release: build release
                                - epoch: build epoch
         :raises: GenericError if type for build_info is not dict, when build isn`t existing.
+        :raises: GenericError if draft: True in buildinfo, when build isn't existing.
         :raises: GenericError if build info doesn't have mandatory keys.
+        :raises: GenericError if build is a draft, when it's existing.
         """
         context.session.assertPerm('image-import')
         build = get_build(build_info)
         if not build:
             if not isinstance(build_info, dict):
                 raise koji.GenericError('Invalid type for build_info: %s' % type(build_info))
+            reject_draft(build_info)
             try:
                 build_id = new_build(dslice(build_info, ('name', 'version', 'release', 'epoch')))
             except KeyError as cm:
                 raise koji.GenericError("Build info doesn't have mandatory %s key" % cm)
             build = get_build(build_id, strict=True)
+        reject_draft(build)
         new_image_build(build)
 
     def importRPM(self, path, basename):
@@ -10924,6 +11234,7 @@ class RootExports(object):
         add_rpm_sig(rpminfo['id'], koji.rip_rpm_sighdr(fn))
         for tag in list_tags(build=rpminfo['build_id']):
             set_tag_update(tag['id'], 'IMPORT')
+        return rpminfo
 
     def mergeScratch(self, task_id):
         """Import the rpms generated by a scratch build, and associate
@@ -11710,29 +12021,34 @@ class RootExports(object):
         task.setPriority(priority, recurse=recurse)
 
     def listTagged(self, tag, event=None, inherit=False, prefix=None, latest=False, package=None,
-                   owner=None, type=None, strict=True, extra=False):
+                   owner=None, type=None, strict=True, extra=False, draft=None):
         """List builds tagged with tag.
 
             :param int|str tag: tag name or ID number
             :param int event: event ID
             :param bool inherit: If inherit is True, follow the tag hierarchy and return
-                            a list of tagged builds for all tags in the tree
+                                 a list of tagged builds for all tags in the tree
             :param str prefix: only builds whose package name starts with that prefix
-            :param  bool|int latest:  True for latest build per package,
-                            N to get N latest builds per package.
+            :param bool|int latest: True for latest build per package,
+                                    N to get N latest builds per package.
             :param str package: only builds of the specified package
             :param owner: only builds of the specified owner
             :param str type: only builds of the given btype (such as maven or image)
             :param bool strict: If tag doesn't exist, an exception is raised,
-                            unless strict is False in which case returns an empty list.
+                                unless strict is False in which case returns an empty list.
             :param bool extra: Set to "True" to get the build extra info
+            :param bool draft: bool or None option that indicates the filter based on draft field
+                               - None: no filter (both draft and regular builds)
+                               - True: draft only
+                               - False: regular only
         """
         # lookup tag id
         tag = get_tag(tag, strict=strict, event=event)
         if not tag:
             return []
         results = readTaggedBuilds(tag['id'], event, inherit=inherit, latest=latest,
-                                   package=package, owner=owner, type=type, extra=extra)
+                                   package=package, owner=owner, type=type, extra=extra,
+                                   draft=draft)
         if prefix:
             prefix = prefix.lower()
             results = [build for build in results
@@ -11740,7 +12056,8 @@ class RootExports(object):
         return results
 
     def listTaggedRPMS(self, tag, event=None, inherit=False, latest=False, package=None, arch=None,
-                       rpmsigs=False, owner=None, type=None, strict=True, extra=True):
+                       rpmsigs=False, owner=None, type=None, strict=True, extra=True,
+                       draft=None):
         """List rpms and builds within tag.
 
             :param int|str tag: tag name or ID number
@@ -11759,6 +12076,10 @@ class RootExports(object):
             :param bool strict: If tag doesn't exist, an exception is raised,
                             unless strict is False in which case returns an empty list.
             :param bool extra: Set to "False" to skip the rpms extra info
+            :param bool draft: bool or None option that indicates the filter based on draft field
+                               - None: no filter (both draft and regular builds)
+                               - True: draft only
+                               - False: regular only
         """
         # lookup tag id
         tag = get_tag(tag, strict=strict, event=event)
@@ -11766,7 +12087,7 @@ class RootExports(object):
             return []
         return readTaggedRPMS(tag['id'], event=event, inherit=inherit, latest=latest,
                               package=package, arch=arch, rpmsigs=rpmsigs, owner=owner,
-                              type=type, extra=extra)
+                              type=type, extra=extra, draft=draft)
 
     def listTaggedArchives(self, tag, event=None, inherit=False, latest=False, package=None,
                            type=None, strict=True, extra=True):
@@ -11794,7 +12115,7 @@ class RootExports(object):
     def listBuilds(self, packageID=None, userID=None, taskID=None, prefix=None, state=None,
                    volumeID=None, source=None, createdBefore=None, createdAfter=None,
                    completeBefore=None, completeAfter=None, type=None, typeInfo=None,
-                   queryOpts=None, pattern=None, cgID=None):
+                   queryOpts=None, pattern=None, cgID=None, draft=None):
         """
         Return a list of builds that match the given parameters
 
@@ -11830,6 +12151,10 @@ class RootExports(object):
             fields are matched
 
             For type=win, the provided platform fields are matched
+        :param bool draft: bool or None option that indicates the filter based on draft field
+                           - None: no filter (both draft and regular builds)
+                           - True: draft only
+                           - False: regular only
 
         :returns: Returns a list of maps.  Each map contains the following keys:
 
@@ -11837,6 +12162,7 @@ class RootExports(object):
               - version
               - release
               - epoch
+              - draft
               - state
               - package_id
               - package_name
@@ -11844,6 +12170,8 @@ class RootExports(object):
               - nvr (synthesized for sorting purposes)
               - owner_id
               - owner_name
+              - promoter_id
+              - promoter_name
               - volume_id
               - volume_name
               - source
@@ -11854,6 +12182,8 @@ class RootExports(object):
               - start_ts
               - completion_time
               - completion_ts
+              - promotion_time
+              - promotion_ts
               - task_id
               - extra
 
@@ -11871,8 +12201,11 @@ class RootExports(object):
         """
         fields = [('build.id', 'build_id'), ('build.version', 'version'),
                   ('build.release', 'release'),
-                  ('build.epoch', 'epoch'), ('build.state', 'state'),
+                  ('build.epoch', 'epoch'),
+                  ('build.draft', 'draft'),
+                  ('build.state', 'state'),
                   ('build.completion_time', 'completion_time'),
+                  ('build.promotion_time', 'promotion_time'),
                   ('build.start_time', 'start_time'),
                   ('build.source', 'source'),
                   ('build.extra', 'extra'),
@@ -11881,17 +12214,22 @@ class RootExports(object):
                   ("date_part('epoch', events.time)", 'creation_ts'),
                   ("date_part('epoch', build.start_time)", 'start_ts'),
                   ("date_part('epoch', build.completion_time)", 'completion_ts'),
+                  ("date_part('epoch', build.promotion_time)", 'promotion_ts'),
                   ('package.id', 'package_id'), ('package.name', 'package_name'),
                   ('package.name', 'name'),
                   ('volume.id', 'volume_id'), ('volume.name', 'volume_name'),
                   ("package.name || '-' || build.version || '-' || build.release", 'nvr'),
-                  ('users.id', 'owner_id'), ('users.name', 'owner_name')]
+                  ('users.id', 'owner_id'), ('users.name', 'owner_name'),
+                  ('promoter.id', 'promoter_id'), ('promoter.name', 'promoter_name'),
+                  ]
 
         tables = ['build']
         joins = ['LEFT JOIN events ON build.create_event = events.id',
                  'LEFT JOIN package ON build.pkg_id = package.id',
                  'LEFT JOIN volume ON build.volume_id = volume.id',
-                 'LEFT JOIN users ON build.owner = users.id']
+                 'LEFT JOIN users ON build.owner = users.id',
+                 'LEFT JOIN users AS promoter ON build.promoter = promoter.id',
+                 ]
         clauses = []
         if packageID is not None:
             packageID = get_package_id(packageID)
@@ -11977,6 +12315,8 @@ class RootExports(object):
             btype_id = btype['id']
             joins.append('build_types ON build.id = build_types.build_id '
                          'AND btype_id = %(btype_id)s')
+        if draft is not None:
+            clauses.append(draft_clause(draft))
 
         query = QueryProcessor(columns=[pair[0] for pair in fields],
                                aliases=[pair[1] for pair in fields],
@@ -11986,7 +12326,7 @@ class RootExports(object):
 
         return query.iterate()
 
-    def getLatestBuilds(self, tag, event=None, package=None, type=None):
+    def getLatestBuilds(self, tag, event=None, package=None, type=None, draft=None):
         """List latest builds for tag (inheritance enabled, wrapper of readTaggedBuilds)
 
         :param int tag: tag ID
@@ -11994,15 +12334,21 @@ class RootExports(object):
         :param int package: filter on package name
         :param str type: restrict the list to builds of the given type.  Currently the supported
                          types are 'maven', 'win', 'image', or any custom content generator btypes.
+        :param bool draft: bool or None option that indicates the filter based on draft field
+                           - None: no filter (both draft and regular builds)
+                           - True: draft only
+                           - False: regular only
         :returns [dict]: list of buildinfo dicts
         """
 
         if not isinstance(tag, int):
             # lookup tag id
             tag = get_tag_id(tag, strict=True)
-        return readTaggedBuilds(tag, event, inherit=True, latest=True, package=package, type=type)
+        return readTaggedBuilds(tag, event, inherit=True, latest=True, package=package, type=type,
+                                draft=draft)
 
-    def getLatestRPMS(self, tag, package=None, arch=None, event=None, rpmsigs=False, type=None):
+    def getLatestRPMS(self, tag, package=None, arch=None, event=None, rpmsigs=False, type=None,
+                      draft=None):
         """List latest RPMS for tag (inheritance enabled, wrapper of readTaggedBuilds)
 
         :param int|str tag: The tag name or ID to search
@@ -12015,6 +12361,10 @@ class RootExports(object):
         :param bool rpmsigs: query will return one record per rpm/signature combination
         :param str type: Filter by build type. Supported types are 'maven',
                          'win', and 'image'.
+        :param bool draft: bool or None option that indicates the filter based on draft field
+                           - None: no filter (both draft and regular builds)
+                           - True: draft only
+                           - False: regular only
         :returns: a two-element list. The first element is the list of RPMs, and
                   the second element is the list of builds.
         """
@@ -12023,7 +12373,7 @@ class RootExports(object):
             # lookup tag id
             tag = get_tag_id(tag, strict=True)
         return readTaggedRPMS(tag, package=package, arch=arch, event=event, inherit=True,
-                              latest=True, rpmsigs=rpmsigs, type=type)
+                              latest=True, rpmsigs=rpmsigs, type=type, draft=draft)
 
     def getLatestMavenArchives(self, tag, event=None, inherit=True):
         """Return a list of the latest Maven archives in the tag, as of the given event
@@ -12149,6 +12499,7 @@ class RootExports(object):
         - release
         - arch
         - epoch
+        - draft
         - payloadhash
         - size
         - buildtime
@@ -13455,6 +13806,8 @@ class RootExports(object):
         koji.plugin.run_callbacks('postBuildStateChange',
                                   attribute='completion_ts', old=ts_old, new=ts, info=buildinfo)
 
+    promoteBuild = staticmethod(_promote_build)
+
     def count(self, methodName, *args, **kw):
         """Execute the XML-RPC method with the given name and count the results.
         A method return value of None will return O, a return value of type "list", "tuple", or
@@ -14014,6 +14367,7 @@ class BuildRoot(object):
             ('epoch', 'epoch'),
             ('arch', 'arch'),
             ('build_id', 'build_id'),
+            ('draft', 'draft'),
             ('external_repo_id', 'external_repo_id'),
             ('external_repo.name', 'external_repo_name'),
         )
@@ -15037,6 +15391,7 @@ class HostExports(object):
             importImageInternal(task_id, build_info, sub_results)
             if 'rpmresults' in sub_results:
                 rpm_results = sub_results['rpmresults']
+                # draft will be rejected
                 _import_wrapper(rpm_results['task_id'],
                                 get_build(build_info['id'], strict=True), rpm_results)
 
@@ -15684,3 +16039,46 @@ def create_rpm_checksum(rpm_id, sigkey, chsum_dict):
             insert.add_record(rpm_id=rpm_id, sigkey=sigkey, checksum=chsum,
                               checksum_type=koji.CHECKSUM_TYPES[func])
         insert.execute()
+
+
+def reject_draft(data, is_rpm=False, error=None):
+    """block draft build/rpm
+
+    TODO: remove this once draft build is open for all build types
+
+    :param dict data: buildinfo dict or rpminfo dict if is_rpm is true
+    :param bool is_rpm: indicates data is rpm or build (true/false) in default error msg
+    :param koji.GenericError error: the error raised if not a draft build,
+                                    defaults to None to raise the default "unsupported" error
+    :raises error: default or specified by input error when draft==True in data
+    """
+    if data.get('draft'):
+        if error is None:
+            entry_type = 'rpm' if is_rpm else 'build'
+            error = koji.GenericError(f"Draft {entry_type} not supported")
+        raise error
+
+
+def draft_clause(draft, table=None):
+    """get proper clause in build/rpm query for draft option
+
+    :param bool draft: draft option:
+        True: "draft IS True"
+        False: "draft IS NOT True"
+
+    :param str table: the table(alias) the draft belongs to
+    :return: the generated clause.
+    :rtype: str or None
+    :raises: GenericError if draft is None
+    """
+    if draft is None:
+        raise koji.GenericError('draft cannot be None')
+    if not table:
+        table = ''
+    else:
+        table += '.'
+    if draft:
+        return f'{table}draft IS TRUE'
+    else:
+        # null is included
+        return f'{table}draft IS NOT TRUE'

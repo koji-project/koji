@@ -53,7 +53,18 @@ class TestRpminfo(utils.CliTestCase):
                            'version': '1.1',
                            'payloadhash': 'b2b95550390e5f213fc25f33822425f7',
                            'size': 7030}
-        self.error_format = """Usage: %s rpminfo [options] <n-v-r.a> [<n-v-r.a> ...]
+        self.listrpminfos = [{'arch': 'src',
+                           'build_id': 1,
+                           'buildroot_id': 3,
+                           'buildtime': 1615877809,
+                           'epoch': 7,
+                           'id': 290,
+                           'name': 'test-rpm',
+                           'release': '11',
+                           'version': '1.1',
+                           'payloadhash': 'b2b95550390e5f213fc25f33822425f7',
+                           'size': 7030}]
+        self.error_format = """Usage: %s rpminfo [options] <n-v-r.a|id> [<n-v-r.a|id> ...]
 (Specify the --help global option for a list of other help options)
 
 %s: error: {message}
@@ -74,9 +85,11 @@ class TestRpminfo(utils.CliTestCase):
         self.session.listBuildroots.return_value = [self.buildroot_info]
         self.session.getBuild.return_value = self.buildinfo
         self.session.getRPM.return_value = self.getrpminfo
+        self.session.listRPMs.return_value = self.listrpminfos
         expected_output = """RPM: 7:test-rpm-1.1-11.noarch [294]
+Build: test-rpm-1.1-11 [1]
 RPM Path: /mnt/koji/packages/test-rpm/1.1/11/noarch/test-rpm-1.1-11.noarch.rpm
-SRPM: 7:test-rpm-1.1-11 [1]
+SRPM: 7:test-rpm-1.1-11 [290]
 SRPM Path: /mnt/koji/packages/test-rpm/1.1/11/src/test-rpm-1.1-11.src.rpm
 Built: Tue, 16 Mar 2021 06:56:49 UTC
 SIGMD5: b2b95550390e5f213fc25f33822425f7
@@ -98,6 +111,8 @@ Used in 1 buildroots:
                                                             rpmID=self.getrpminfo['id'])
         self.session.getBuild.assert_called_once_with(self.getrpminfo['build_id'])
         self.session.getRPM.assert_called_once_with(rpm_nvra)
+        self.session.listRPMs.assert_called_once_with(buildID=self.getrpminfo['build_id'],
+                                                      arches='src')
 
     def test_handle_rpminfo_non_exist_nvra(self):
         rpm_nvra = 'test-rpm-nvra.arch'
@@ -119,9 +134,11 @@ Used in 1 buildroots:
         self.session.listBuildroots.return_value = [self.buildroot_info]
         self.session.getBuild.return_value = self.buildinfo
         self.session.getRPM.side_effect = [None, self.getrpminfo]
+        self.session.listRPMs.return_value = self.listrpminfos
         expected_output = """RPM: 7:test-rpm-1.1-11.noarch [294]
+Build: test-rpm-1.1-11 [1]
 RPM Path: /mnt/koji/packages/test-rpm/1.1/11/noarch/test-rpm-1.1-11.noarch.rpm
-SRPM: 7:test-rpm-1.1-11 [1]
+SRPM: 7:test-rpm-1.1-11 [290]
 SRPM Path: /mnt/koji/packages/test-rpm/1.1/11/src/test-rpm-1.1-11.src.rpm
 Built: Tue, 16 Mar 2021 06:56:49 UTC
 SIGMD5: b2b95550390e5f213fc25f33822425f7
@@ -150,6 +167,9 @@ Used in 1 buildroots:
                                                             rpmID=self.getrpminfo['id'])
         self.session.getBuild.assert_called_once_with(self.getrpminfo['build_id'])
         self.assertEqual(self.session.getRPM.call_count, 2)
+        self.session.listRPMs.assert_called_once_with(buildID=self.getrpminfo['build_id'],
+                                                      arches='src')
+
 
     def test_rpminfo_without_option(self):
         arguments = []
@@ -167,7 +187,7 @@ Used in 1 buildroots:
     def test_rpminfo_help(self):
         self.assert_help(
             anon_handle_rpminfo,
-            """Usage: %s rpminfo [options] <n-v-r.a> [<n-v-r.a> ...]
+            """Usage: %s rpminfo [options] <n-v-r.a|id> [<n-v-r.a|id> ...]
 (Specify the --help global option for a list of other help options)
 
 Options:

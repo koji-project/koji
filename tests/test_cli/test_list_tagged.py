@@ -42,12 +42,30 @@ class TestCliListTagged(utils.CliTestCase):
                                                       'release': '1.el6',
                                                       'arch': 'x86_64',
                                                       'sigkey': 'sigkey',
+                                                      'extra': None},
+                                                     {'id': 102,
+                                                      'build_id': 2,
+                                                      'name': 'rpmA',
+                                                      'version': '0.0.1',
+                                                      'release': '2.el6',
+                                                      'arch': 'x86_64',
+                                                      'sigkey': 'sigkey',
+                                                      'draft': True,
                                                       'extra': None}
                                                      ], [{'id': 1,
                                                           'name': 'packagename',
                                                           'version': 'version',
                                                           'release': '1.el6',
                                                           'nvr': 'n-v-r',
+                                                          'tag_name': 'tag',
+                                                          'owner_name': 'owner',
+                                                          'extra': 'extra-value-2'},
+                                                         {'id': 2,
+                                                          'name': 'packagename',
+                                                          'version': 'version',
+                                                          'release': '2.el6,draft_2',
+                                                          'nvr': 'n-v-r',
+                                                          'draft': True,
                                                           'tag_name': 'tag',
                                                           'owner_name': 'owner',
                                                           'extra': 'extra-value-2'}]]
@@ -77,13 +95,15 @@ Build                                     Tag                   Built by
 ----------------------------------------  --------------------  ----------------
 n-v-r                                     tag                   owner
 """
-        args = [self.tag, self.pkg, '--latest', '--inherit', '--event', str(self.event_id)]
+        args = [self.tag, self.pkg, '--no-draft', '--latest', '--inherit',
+                '--event', str(self.event_id)]
 
         anon_handle_list_tagged(self.options, self.session, args)
         self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
         self.session.getTag.assert_called_once_with(self.tag, event=self.event_id)
         self.session.listTagged.assert_called_once_with(
-            self.tag, event=self.event_id, inherit=True, latest=True, package=self.pkg)
+            self.tag, event=self.event_id, inherit=True, latest=True, package=self.pkg,
+            draft=False)
         self.session.listTaggedRPMS.assert_not_called()
         self.assert_console_message(stdout, expected)
 
@@ -94,14 +114,14 @@ n-v-r                                     tag                   owner
 ----------------------------------------  --------------------  ----------------
 /mnt/koji/packages/packagename/version/1.el6  tag                   owner
 """
-        args = [self.tag, self.pkg, '--latest', '--inherit', '--paths']
+        args = [self.tag, self.pkg, '--latest', '--inherit', '--paths', '--draft-only']
 
         anon_handle_list_tagged(self.options, self.session, args)
         self.assert_console_message(stdout, expected)
         self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
         self.session.getTag.assert_called_once_with(self.tag, event=None)
         self.session.listTagged.assert_called_once_with(
-            self.tag, inherit=True, latest=True, package=self.pkg)
+            self.tag, inherit=True, latest=True, package=self.pkg, draft=True)
         self.session.listTaggedRPMS.assert_not_called()
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
@@ -109,6 +129,7 @@ n-v-r                                     tag                   owner
     def test_list_tagged_rpms(self, event_from_opts_mock, stdout):
         expected = """sigkey rpmA-0.0.1-1.el6.noarch
 sigkey rpmA-0.0.1-1.el6.x86_64
+sigkey rpmA-0.0.1-2.el6.x86_64 (,draft_2)
 """
         args = [self.tag, self.pkg, '--latest-n=3', '--rpms', '--sigs',
                 '--arch=x86_64', '--arch=noarch']
@@ -129,6 +150,7 @@ sigkey rpmA-0.0.1-1.el6.x86_64
     def test_list_tagged_rpms_paths(self, event_from_opts_mock, stdout, os_path_exists, isdir):
         expected = """/mnt/koji/packages/packagename/version/1.el6/noarch/rpmA-0.0.1-1.el6.noarch.rpm
 /mnt/koji/packages/packagename/version/1.el6/x86_64/rpmA-0.0.1-1.el6.x86_64.rpm
+/mnt/koji/packages/packagename/version/2.el6,draft_2/x86_64/rpmA-0.0.1-2.el6.x86_64.rpm
 """
         args = [self.tag, self.pkg, '--latest-n=3', '--rpms', '--arch=x86_64', '--paths']
 
@@ -233,6 +255,15 @@ n-v-r                                     tag                   group           
         self.session.listTaggedRPMS.assert_not_called()
         self.session.listTagged.assert_not_called()
 
+    def test_list_tagged_draft_opts_conflict(self):
+        self.assert_system_exit(
+            anon_handle_list_tagged,
+            self.options, self.session, ['--draft-only', '--no-draft', 'tag', 'pkg1'],
+            stderr=self.format_error_message("--draft-only conflicts with --no-draft"),
+            activate_session=None,
+            exit_code=2)
+        self.ensure_connection_mock.assert_not_called()
+
     def test_list_tagged_tag_not_found(self):
         self.session.getTag.return_value = None
         self.assert_system_exit(
@@ -267,4 +298,6 @@ Options:
   --event=EVENT#  query at event
   --ts=TIMESTAMP  query at last event before timestamp
   --repo=REPO#    query at event for a repo
+  --draft-only    Only list draft builds/rpms
+  --no-draft      Only list regular builds/rpms
 """ % self.progname)

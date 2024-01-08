@@ -42,11 +42,12 @@ class TestImportRPM(unittest.TestCase):
             1003: 'epoch',
             1006: 'buildtime',
             1022: 'arch',
-            1044: 'name-version-release.arch',
+            1044: 'name-version-release.src.rpm',
             1106: 'sourcepackage',
             261: 'payload hash',
         }
         self.get_build = mock.patch('kojihub.kojihub.get_build').start()
+        self.new_build = mock.patch('kojihub.kojihub.new_build').start()
         self.get_rpm_header = mock.patch('koji.get_rpm_header').start()
         self.new_typed_build = mock.patch('kojihub.kojihub.new_typed_build').start()
         self.nextval = mock.patch('kojihub.kojihub.nextval').start()
@@ -65,6 +66,7 @@ class TestImportRPM(unittest.TestCase):
             kojihub.import_rpm("this does not exist")
 
     def test_import_rpm_failed_build(self):
+        self.os_path_basename.return_value = 'name-version-release.arch.rpm'
         self.get_rpm_header.return_value = self.rpm_header_retval
         self.get_build.return_value = {
             'state': koji.BUILD_STATES['FAILED'],
@@ -72,8 +74,9 @@ class TestImportRPM(unittest.TestCase):
             'version': 'version',
             'release': 'release',
         }
-        with self.assertRaises(koji.GenericError):
+        with self.assertRaises(koji.GenericError) as cm:
             kojihub.import_rpm(self.filename)
+        self.assertEqual("Build is FAILED: name-version-release", str(cm.exception))
         self.assertEqual(len(self.inserts), 0)
 
     def test_import_rpm_completed_build(self):
@@ -94,6 +97,7 @@ class TestImportRPM(unittest.TestCase):
             'name': 'name',
             'arch': 'arch',
             'buildtime': 'buildtime',
+            'draft': False,
             'payloadhash': '7061796c6f61642068617368',
             'epoch': 'epoch',
             'version': 'version',
@@ -114,7 +118,7 @@ class TestImportRPM(unittest.TestCase):
         retval = copy.copy(self.rpm_header_retval)
         retval.update({
             'filename': 'name-version-release.arch.rpm',
-            1044: 'name-version-release.src',
+            1044: 'name-version-release.src.rpm.bad',
             1022: 'src',
             1106: 1,
         })
@@ -133,6 +137,7 @@ class TestImportRPM(unittest.TestCase):
             'name': 'name',
             'arch': 'src',
             'buildtime': 'buildtime',
+            'draft': False,
             'payloadhash': '7061796c6f61642068617368',
             'epoch': 'epoch',
             'version': 'version',
@@ -149,10 +154,9 @@ class TestImportRPM(unittest.TestCase):
         self.assertEqual(insert.rawdata, {})
 
     def test_non_exist_file(self):
-        basename = 'rpm-1-34'
         self.os_path_exists.return_value = False
         with self.assertRaises(koji.GenericError) as cm:
-            kojihub.import_rpm(self.filename, basename)
+            kojihub.import_rpm(self.filename)
         self.assertEqual(f"No such file: {self.filename}", str(cm.exception))
         self.assertEqual(len(self.inserts), 0)
 
@@ -172,3 +176,139 @@ class TestImportRPM(unittest.TestCase):
             kojihub.import_rpm(self.src_filename)
         self.assertEqual("No such build", str(cm.exception))
         self.assertEqual(len(self.inserts), 0)
+
+    def test_import_draft_rpm_completed_build(self):
+        self.os_path_basename.return_value = 'name-version-release.arch.rpm'
+        self.get_rpm_header.return_value = self.rpm_header_retval
+        self.get_build.return_value = {
+            'state': koji.BUILD_STATES['COMPLETE'],
+            'name': 'name',
+            'version': 'version',
+            'release': 'release',
+            'id': 12345,
+        }
+        self.nextval.return_value = 9876
+        kojihub.import_rpm(self.filename)
+
+        data = {
+            'build_id': 12345,
+            'name': 'name',
+            'arch': 'arch',
+            'buildtime': 'buildtime',
+            'draft': False,
+            'payloadhash': '7061796c6f61642068617368',
+            'epoch': 'epoch',
+            'version': 'version',
+            'buildroot_id': None,
+            'release': 'release',
+            'external_repo_id': 0,
+            'id': 9876,
+            'size': 0,
+        }
+        self.assertEqual(len(self.inserts), 1)
+        insert = self.inserts[0]
+        self.assertEqual(insert.table, 'rpminfo')
+        self.assertEqual(insert.data, data)
+        self.assertEqual(insert.rawdata, {})
+
+    def test_import_draft_rpm_invalid_release(self):
+        self.os_path_basename.return_value = 'name-version-release.arch.rpm'
+        self.get_rpm_header.return_value = self.rpm_header_retval
+
+        buildinfo = {
+            'state': koji.BUILD_STATES['DELETED'],
+            'name': 'name',
+            'version': 'version',
+            'release': 'badrelease',
+            'id': 12345,
+            'draft': True
+        }
+
+        with self.assertRaises(koji.GenericError) as cm:
+            kojihub.import_rpm(self.filename, buildinfo=buildinfo)
+        self.assertEqual(
+            'draft release: badrelease is not in valid format',
+            str(cm.exception)
+        )
+        self.assertEqual(len(self.inserts), 0)
+
+    def test_import_draft_rpm_valid(self):
+        self.os_path_basename.return_value = 'name-version-release.arch.rpm'
+        self.get_rpm_header.return_value = self.rpm_header_retval
+
+        buildinfo = {
+            'state': koji.BUILD_STATES['COMPLETE'],
+            'name': 'name',
+            'version': 'version',
+            'release': 'release,draft_12345',
+            'id': 12345,
+            'draft': True,
+            'extra': {
+                'draft': {
+                    'target_release': 'release'
+                }
+            }
+        }
+        self.nextval.return_value = 9876
+        kojihub.import_rpm(self.filename, buildinfo=buildinfo)
+        data = {
+            'build_id': 12345,
+            'name': 'name',
+            'arch': 'arch',
+            'buildtime': 'buildtime',
+            'draft': True,
+            'payloadhash': '7061796c6f61642068617368',
+            'epoch': 'epoch',
+            'version': 'version',
+            'buildroot_id': None,
+            'release': 'release',
+            'external_repo_id': 0,
+            'id': 9876,
+            'size': 0,
+        }
+        self.assertEqual(len(self.inserts), 1)
+        insert = self.inserts[0]
+        self.assertEqual(insert.table, 'rpminfo')
+        self.assertEqual(insert.data, data)
+        self.assertEqual(insert.rawdata, {})
+
+    def test_import_draft_srpm_with_buildinfo(self):
+        self.os_path_basename.return_value = 'name-version-release.src.rpm'
+        retval = copy.copy(self.rpm_header_retval)
+        retval.update({
+            'filename': 'name-version-release.src.rpm',
+            1044: 'name-version-release.src.rpm.bad',
+            1022: 'src',
+            1106: 1,
+        })
+        self.get_rpm_header.return_value = retval
+        buildinfo = {
+            'state': koji.BUILD_STATES['COMPLETE'],
+            'name': 'name',
+            'version': 'version',
+            'release': 'release,draft_12345',
+            'id': 12345,
+            'draft': True
+        }
+        self.nextval.return_value = 9876
+        kojihub.import_rpm(self.src_filename, buildinfo=buildinfo)
+        data = {
+            'build_id': 12345,
+            'name': 'name',
+            'arch': 'src',
+            'buildtime': 'buildtime',
+            'draft': True,
+            'payloadhash': '7061796c6f61642068617368',
+            'epoch': 'epoch',
+            'version': 'version',
+            'buildroot_id': None,
+            'release': 'release',
+            'external_repo_id': 0,
+            'id': 9876,
+            'size': 0,
+        }
+        self.assertEqual(len(self.inserts), 1)
+        insert = self.inserts[0]
+        self.assertEqual(insert.table, 'rpminfo')
+        self.assertEqual(insert.data, data)
+        self.assertEqual(insert.rawdata, {})

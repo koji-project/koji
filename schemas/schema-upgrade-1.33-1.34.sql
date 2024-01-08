@@ -2,6 +2,7 @@
 -- from version 1.33 to 1.34
 
 BEGIN;
+
     -- scheduler tables
     CREATE TABLE scheduler_task_runs (
             id SERIAL NOT NULL PRIMARY KEY,
@@ -48,4 +49,32 @@ BEGIN;
     ) WITHOUT OIDS;
 
     INSERT INTO locks(name) VALUES('scheduler');
+
+    -- draft builds
+    INSERT INTO permissions (name, description) VALUES ('draft-promoter', 'The permission required in the default "draft_promotion" hub policy rule to promote draft build.');
+
+    ALTER TABLE build ADD COLUMN draft BOOLEAN NOT NULL DEFAULT 'false';
+    ALTER TABLE build ADD COLUMN promotion_time TIMESTAMPTZ;
+    ALTER TABLE build ADD COLUMN promoter INTEGER;
+    ALTER TABLE build ADD CONSTRAINT build_promoter_fkey FOREIGN KEY (promoter) REFERENCES users(id);
+    -- required by constraint rpminfo_build_id_draft_fkey on table rpminfo
+    ALTER TABLE build ADD CONSTRAINT draft_for_rpminfo UNIQUE (id, draft);
+    ALTER TABLE build ADD CONSTRAINT promotion_sane CHECK (NOT draft OR (promotion_time IS NULL AND promoter IS NULL));
+    ALTER TABLE build ADD CONSTRAINT draft_release_sane CHECK
+        (NOT draft OR release ~ ('^.*,draft_' || id::TEXT || '$'));
+
+    ALTER TABLE rpminfo ADD COLUMN draft BOOLEAN;
+    UPDATE rpminfo SET draft=FALSE WHERE build_id IS NOT NULL;
+    ALTER TABLE rpminfo DROP CONSTRAINT rpminfo_build_id_fkey;
+    ALTER TABLE rpminfo ADD CONSTRAINT rpminfo_build_id_draft_fkey
+        FOREIGN KEY (build_id, draft) REFERENCES build(id, draft)
+        ON UPDATE CASCADE;
+    ALTER TABLE rpminfo DROP CONSTRAINT rpminfo_unique_nvra;
+    ALTER TABLE rpminfo ADD CONSTRAINT build_id_draft_external_repo_id_sane
+        CHECK ((draft IS NULL AND build_id IS NULL AND external_repo_id <> 0)
+            OR (draft IS NOT NULL AND build_id IS NOT NULL AND external_repo_id = 0));
+    CREATE UNIQUE INDEX rpminfo_unique_nvra_not_draft
+        ON rpminfo(name,version,release,arch,external_repo_id)
+        WHERE draft IS NOT TRUE;
+
 COMMIT;

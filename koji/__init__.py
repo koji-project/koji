@@ -274,6 +274,7 @@ TAG_UPDATE_TYPES = Enum((
     'VOLUME_CHANGE',
     'IMPORT',
     'MANUAL',
+    'DRAFT_PROMOTION',
 ))
 
 # BEGIN kojikamid dup #
@@ -294,6 +295,10 @@ PRIO_DEFAULT = 20
 # default timeouts
 DEFAULT_REQUEST_TIMEOUT = 60 * 60 * 12
 DEFAULT_AUTH_TIMEOUT = 60
+
+# draft release constants
+DRAFT_RELEASE_DELIMITER = ','
+DRAFT_RELEASE_FORMAT = '{target_release}' + DRAFT_RELEASE_DELIMITER + 'draft_{build_id}'
 
 # BEGIN kojikamid dup #
 
@@ -2023,6 +2028,7 @@ def downloadFile(url, path=None, fo=None):
             fo.write(chunk)
     finally:
         resp.close()
+    resp.raise_for_status()
     if resp.headers.get('Content-Length') and fo.tell() != int(resp.headers['Content-Length']):
         raise GenericError("Downloaded file %s doesn't match expected size (%s vs %s)" %
                            (url, fo.tell(), resp.headers['Content-Length']))
@@ -3922,6 +3928,35 @@ def fixEncodingRecurse(value, fallback='iso8859-15', remove_nonprintable=False):
     kwargs = {'fallback': fallback, 'remove_nonprintable': remove_nonprintable}
     walker = util.DataWalker(value, fix_encoding, kwargs)
     return walker.walk()
+
+
+def gen_draft_release(target_release, build_id):
+    """Generate draft_release based on input build information
+
+    Currently, it's generated as {target_release},draft_{build_id}
+
+    :param str target_release: target "release", which is the release part of rpms' nvra,
+                               and will be the release of the build the draft build is going to be
+                               promoted to.
+    :param int build_id: the build "id" part in draft_release (it's unchanged so it can be used to
+                         keep the uniqueness of build NVR)
+    :return: draft release
+    :rtype: str
+    """
+    return DRAFT_RELEASE_FORMAT.format(**locals())
+
+
+def parse_target_release(draft_release):
+    """Generate target_release from a draft release reversely
+
+    :param str draft_release: release of a draft build
+    :rtype: str
+    :raises GenericError: if cannot get a valid target_release
+    """
+    parts = draft_release.split(DRAFT_RELEASE_DELIMITER, 1)
+    if len(parts) != 2 or not parts[-1].startswith('draft_'):
+        raise GenericError("draft release: %s is not in valid format" % draft_release)
+    return parts[0]
 
 
 def add_file_logger(logger, fn):
