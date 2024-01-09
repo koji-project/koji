@@ -8129,10 +8129,17 @@ def anon_handle_list_users(goptions, session, args):
     parser.add_option("--usertype", help="List users that have a given usertype "
                                          "(e.g. NORMAL, HOST, GROUP)")
     parser.add_option("--prefix", help="List users that have a given prefix")
+    parser.add_option("--perm", help="List users that have a given permission")
+    parser.add_option("--inherited-perm", action='store_true', default=False,
+                      help="List of users that inherited specific perm")
     (options, args) = parser.parse_args(args)
 
     if len(args) > 0:
         parser.error("This command takes no arguments")
+
+    if options.inherited_perm and not options.perm:
+        parser.error("inherited_perm option must be used with perm option")
+
     activate_session(session, goptions)
 
     if options.usertype:
@@ -8140,6 +8147,8 @@ def anon_handle_list_users(goptions, session, args):
             usertype = koji.USERTYPES[options.usertype.upper()]
         else:
             error("Usertype %s doesn't exist" % options.usertype)
+    elif options.perm:
+        usertype = None
     else:
         usertype = koji.USERTYPES['NORMAL']
 
@@ -8148,6 +8157,15 @@ def anon_handle_list_users(goptions, session, args):
     else:
         prefix = None
 
-    users_list = session.listUsers(userType=usertype, prefix=prefix)
+    if options.perm:
+        if options.perm in [p['name'] for p in session.getAllPerms()]:
+            perm = options.perm
+        else:
+            error("Permission %s does not exists" % options.perm)
+    else:
+        perm = None
+
+    users_list = session.listUsers(userType=usertype, prefix=prefix, perm=perm,
+                                   inherited_perm=options.inherited_perm)
     for user in users_list:
         print(user['name'])

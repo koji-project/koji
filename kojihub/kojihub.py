@@ -13117,31 +13117,66 @@ class RootExports(object):
     dropGroupMember = staticmethod(drop_group_member)
     getGroupMembers = staticmethod(get_group_members)
 
-    def listUsers(self, userType=koji.USERTYPES['NORMAL'], prefix=None, queryOpts=None):
+    def listUsers(self, userType=koji.USERTYPES['NORMAL'], prefix=None, queryOpts=None, perm=None,
+                  inherited_perm=False):
         """List all users in the system.
-        userType can be an integer value from koji.USERTYPES (defaults to 0,
-        i.e. normal users).  Returns a list of maps with the following keys:
+        userType can be an integer value from koji.USERTYPES (defaults to 0, i.e. normal users).
+        Returns a list of maps with the following keys:
 
         - id
         - name
         - status
         - usertype
         - krb_principals
+        - permissions
 
-        If no users of the specified
-        type exist, return an empty list."""
-        fields = ('id', 'name', 'status', 'usertype', 'array_agg(krb_principal)')
-        aliases = ('id', 'name', 'status', 'usertype', 'krb_principals')
-        joins = ['LEFT JOIN user_krb_principals ON users.id = user_krb_principals.user_id']
-        clauses = ['usertype = %(userType)i']
+        If no users of the specified type exist, return an empty list."""
+        if inherited_perm and not perm:
+            raise koji.GenericError('inherited_perm option must be used with perm option')
+        joins = []
+        if userType is None:
+            userType = list(koji.USERTYPES.values())
+        elif isinstance(userType, int):
+            userType = [userType]
+        else:
+            raise koji.ParameterError("userType must be integer or None")
+        clauses = ['usertype IN %(userType)s']
+        fields = [
+            ('users.id', 'id'),
+            ('users.name', 'name'),
+            ('status', 'status'),
+            ('usertype', 'usertype'),
+            ('array_agg(krb_principal)', 'krb_principals'),
+        ]
+        if perm:
+            fields.extend([
+                ('permissions.name', 'permission_name'),
+                ('permissions.id', 'permission_id'),
+            ])
+            clauses.extend(['user_perms.active AND permissions.name = %(perm)s'])
+            if inherited_perm:
+                joins.extend(['LEFT JOIN user_groups ON user_id = users.id AND '
+                              'user_groups.active IS TRUE',
+                              'LEFT JOIN user_perms ON users.id = user_perms.user_id AND '
+                              'user_perms.active IS TRUE OR group_id =user_perms.user_id',
+                              'LEFT JOIN permissions ON perm_id = permissions.id'])
+            else:
+                joins.extend(['LEFT JOIN user_perms ON users.id = user_perms.user_id AND '
+                              'user_perms.active IS TRUE',
+                              'LEFT JOIN permissions ON perm_id = permissions.id'])
+        joins.append('LEFT JOIN user_krb_principals ON users.id = user_krb_principals.user_id')
         if prefix:
-            clauses.append("name ilike %(prefix)s || '%%'")
+            clauses.append("users.name ilike %(prefix)s || '%%'")
         if queryOpts is None:
             queryOpts = {}
         if not queryOpts.get('group'):
-            queryOpts['group'] = 'users.id'
+            if perm:
+                queryOpts['group'] = 'users.id,permissions.id'
+            else:
+                queryOpts['group'] = 'users.id'
         else:
             raise koji.GenericError('queryOpts.group is not available for this API')
+        fields, aliases = zip(*fields)
         query = QueryProcessor(columns=fields, aliases=aliases,
                                tables=['users'], joins=joins, clauses=clauses,
                                values=locals(), opts=queryOpts,
