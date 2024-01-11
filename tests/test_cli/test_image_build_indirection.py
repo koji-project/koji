@@ -1,12 +1,19 @@
 from __future__ import absolute_import
-import mock
-import six
+
+import os
 import unittest
 
-import koji
+import mock
+import six
 
+import koji
 from koji_cli.commands import handle_image_build_indirection, _build_image_indirection
 from . import utils
+
+if six.PY2:
+    ConfigParser = six.moves.configparser.SafeConfigParser
+else:
+    ConfigParser = six.moves.configparser.ConfigParser
 
 
 TASK_OPTIONS = {
@@ -66,6 +73,8 @@ class TestBuildImageIndirection(utils.CliTestCase):
         self.session.getTag.return_value = self.dest_tag
         self.session.buildImageIndirection.return_value = self.task_id
         self.unique_path.return_value = '/path/to/cli-image-indirection'
+
+        self.configparser = mock.patch('six.moves.configparser.ConfigParser').start()
 
     def tearDown(self):
         mock.patch.stopall()
@@ -182,6 +191,32 @@ class TestBuildImageIndirection(utils.CliTestCase):
                 self.options, self.task_opts, self.session, [])
         self.assertEqual(str(cm.exception), expected)
         self.activate_session.assert_called_with(self.session, self.options)
+
+    @mock.patch('koji_cli.commands._build_image_indirection')
+    def test_image_build_indirection_configuration(self, build_image_indirection_mock):
+        """Test handle_image_build."""
+        self.configparser.return_value = ConfigParser()
+
+        config_file = os.path.join(
+            os.path.dirname(__file__),
+            'data/image-build-indirection-config.conf'
+        )
+        TASK_OPTIONS['config'] = config_file
+
+        handle_image_build_indirection(
+            self.options,
+            self.session,
+            ['--config', config_file,
+             '--arch', 'x386']
+        )
+
+        args, _ = build_image_indirection_mock.call_args
+        merged_options = args[1].__dict__
+
+        self.assertEqual("x86_64", merged_options["arch"])  # Overrides command line
+        self.assertEqual("fedora-base", merged_options["base_image_build"])
+        self.assertEqual("fedora-indirection.tdl", merged_options["indirection_template"])
+        self.session.activate_session_mock.assert_not_called()
 
 
 class TestImageBuildIndirection(utils.CliTestCase):
