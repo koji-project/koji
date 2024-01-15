@@ -23,7 +23,6 @@ import koji
 from koji import parse_arches
 from koji import _  # noqa: F401
 from koji.util import md5_constructor, to_list
-from koji.xmlrpcplus import xmlrpc_client
 
 
 # for compatibility with plugins based on older version of lib
@@ -208,7 +207,7 @@ class TaskWatcher(object):
         error = None
         try:
             self.session.getTaskResult(self.id)
-        except (six.moves.xmlrpc_client.Fault, koji.GenericError) as e:
+        except (koji.xmlrpcplus.Fault, koji.GenericError) as e:
             error = e
         if error is None:
             # print("%s: complete" % self.str())
@@ -922,6 +921,6 @@ def truncate_string(s, length=47):
 
 class DatetimeJSONEncoder(json.JSONEncoder):
     def default(self, o):
-        if isinstance(o, xmlrpc_client.DateTime):
+        if isinstance(o, koji.xmlrpcplus.DateTime):
             return str(o)
         return json.JSONEncoder.default(self, o)

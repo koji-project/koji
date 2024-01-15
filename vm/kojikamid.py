@@ -38,7 +38,6 @@ import tempfile
 import threading
 import time
 import traceback
-import xmlrpc.client
 # urllib is required by the SCM class which is substituted into this file
 # do not remove the import below
 import urllib  # noqa: F401
@@ -46,12 +45,16 @@ import zipfile
 from configparser import RawConfigParser
 from optparse import OptionParser
 
+from defusedxml import xmlrpc
 import six    # noqa: F401, needed for imported code
 
 
 MANAGER_PORT = 7000
 
 KOJIKAMID = True
+
+# patching xmlrpc to protect against XML related attacks
+xmlrpc.monkey_patch()
 
 # INSERT kojikamid dup #
 
@@ -635,7 +638,9 @@ def get_mgmt_server():
         macaddr, gateway = find_net_info()
     logger.debug('found MAC address %s, connecting to %s:%s',
                  macaddr, gateway, MANAGER_PORT)
-    server = xmlrpc.client.ServerProxy('http://%s:%s/' % (gateway, MANAGER_PORT), allow_none=True)
+    server = xmlrpc.xmlrpc_client.ServerProxy(
+        'http://%s:%s/' % (gateway, MANAGER_PORT), allow_none=True
+    )
     # we would set a timeout on the socket here, but that is apparently not
     # supported by python/cygwin/Windows
     task_port = server.getPort(macaddr)

@@ -26,7 +26,6 @@ import re
 import ssl
 import stat
 import urllib
-import xmlrpc.client
 # a bunch of exception classes that explainError needs
 from socket import error as socket_error
 from xml.parsers.expat import ExpatError
@@ -35,6 +34,7 @@ import Cheetah.Template
 
 import koji
 import koji.tasks
+from koji.xmlrpcplus import xmlrpc_client
 
 
 themeInfo = {}
@@ -726,7 +726,7 @@ a bug or a configuration issue."""
 The web interface is having difficulty communicating with the main \
 server. This most likely indicates a network issue."""
         level = 1
-    elif isinstance(error, (xmlrpc.client.ProtocolError, ExpatError)):
+    elif isinstance(error, (xmlrpc_client.ProtocolError, ExpatError)):
         str = """\
 The main server returned an invalid response. This could be caused by \
 a network issue or load issues on the server."""

@@ -69,7 +69,7 @@ from requests.packages.urllib3.exceptions import MaxRetryError, HostChangedError
 from six.moves import range, zip
 
 from koji.tasks import parse_task_params
-from koji.xmlrpcplus import Fault, dumps, getparser, loads, xmlrpc_client
+from koji.xmlrpcplus import DateTime, Fault, dumps, getparser, loads
 from koji.util import deprecated
 from . import util
 from . import _version
@@ -3661,7 +3661,7 @@ def formatTime(value):
     """Format a timestamp so it looks nicer"""
     if not value and not isinstance(value, (int, float)):
         return ''
-    if isinstance(value, xmlrpc_client.DateTime):
+    if isinstance(value, DateTime):
         value = datetime.datetime.strptime(value.value, "%Y%m%dT%H:%M:%S")
     elif isinstance(value, (int, float)):
         value = datetime.datetime.fromtimestamp(value)
@@ -3684,7 +3684,7 @@ def formatTimeLong(value):
         return ''
     if isinstance(value, six.string_types):
         t = dateutil.parser.parse(value)
-    elif isinstance(value, xmlrpc_client.DateTime):
+    elif isinstance(value, DateTime):
         t = dateutil.parser.parse(value.value)
     elif isinstance(value, (int, float)):
         t = datetime.datetime.fromtimestamp(value)

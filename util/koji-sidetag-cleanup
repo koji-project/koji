@@ -5,7 +5,6 @@ import configparser
 import datetime
 import optparse
 import os
-import xmlrpc
 
 import koji
 
@@ -124,7 +123,7 @@ def get_options():
 def ensure_connection(session):
     try:
         ret = session.getAPIVersion()
-    except xmlrpc.client.ProtocolError:
+    except koji.xmlrpcplus.xmlrpc_client.ProtocolError:
         error("Unable to connect to server")
     if ret != koji.API_VERSION:
         warn("The server is at API version %d and the client is at %d" % (ret, koji.API_VERSION))
