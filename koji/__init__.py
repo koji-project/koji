@@ -1806,7 +1806,7 @@ def genMockConfig(name, arch, managed=False, repoid=None, tag_name=None, **opts)
         'target_arch': opts.get('target_arch', arch),
         'chroothome': '/builddir',
         # Use the group data rather than a generated rpm
-        'chroot_setup_cmd': 'groupinstall %s' % opts.get('install_group', 'build'),
+        'chroot_setup_cmd': 'install @%s' % opts.get('install_group', 'build'),
         # don't encourage network access from the chroot
         'rpmbuild_networking': opts.get('use_host_resolv', False),
         'use_host_resolv': opts.get('use_host_resolv', False),
