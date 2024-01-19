@@ -11972,15 +11972,7 @@ class RootExports(object):
                 raise koji.ActionNotAllowed('Cannot cancel build, not owner')
         return cancel_build(build['id'])
 
-    def assignTask(self, task_id, host, force=False):
-        """Assign a task to a host
-
-        Specify force=True to assign a non-free task
-        """
-        context.session.assertPerm('admin')
-        task = Task(task_id)
-        host = get_host(host, strict=True)
-        return task.assign(host['id'], force)
+    assignTask = staticmethod(scheduler.do_assign)
 
     def freeTask(self, task_id):
         """Free a task"""
