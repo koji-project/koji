@@ -76,6 +76,7 @@ def get_tasks_for_host(hostID, retry=True):
         columns=fields, aliases=aliases, tables=['task'],
         clauses=['host_id = %(hostID)s', 'state=%(assigned)s'],
         values={'hostID': hostID, 'assigned': koji.TASK_STATES['ASSIGNED']},
+        opts={'order': 'priority,create_ts'},
     )
 
     tasks = query.execute()
