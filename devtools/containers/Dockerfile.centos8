@@ -4,25 +4,11 @@ RUN \
   dnf -y update --nodocs --setopt=install_weak_deps=False && \
   dnf install -y --nodocs --setopt=install_weak_deps=False epel-release && \
   dnf install -y --nodocs --setopt=install_weak_deps=False \
-  'dnf-command(download)' \
   gcc \
-  git \
-  glib2-devel \
   glibc-langpack-en \
   krb5-devel \
-  libffi-devel \
-  libxml2-devel \
-  make \
-  openssl-devel \
   python3-devel \
   python3-librepo \
-  python3-pip \
-  python3-pytest \
-  python3-rpm \
   python3-tox \
-  redhat-rpm-config \
-  rpm-build \
-  rpm-devel \
-  sqlite-devel \
-  yum-utils && \
+  rpm-build && \
   dnf clean all
