@@ -1,6 +1,7 @@
 import mock
 import os
 import shutil
+import tempfile
 import unittest
 
 import koji
@@ -12,12 +13,13 @@ UP = kojihub.UpdateProcessor
 
 
 class TestCGImporter(unittest.TestCase):
-    TMP_PATH = os.path.join(os.path.dirname(__file__), 'tmptest')
+
+    DATADIR = os.path.join(os.path.dirname(__file__), 'data', 'cg_importer')
 
     def setUp(self):
-        if not os.path.exists(self.TMP_PATH):
-            os.mkdir(self.TMP_PATH)
-        self.path_work = mock.patch('koji.pathinfo.work').start()
+        self.tempdir = tempfile.mkdtemp()
+        self.pathinfo = koji.PathInfo(self.tempdir)
+        mock.patch('koji.pathinfo', new=self.pathinfo).start()
         self.context_db = mock.patch('kojihub.db.context').start()
         self.context = mock.patch('kojihub.kojihub.context').start()
         self.get_build = mock.patch('kojihub.kojihub.get_build').start()
@@ -25,7 +27,6 @@ class TestCGImporter(unittest.TestCase):
         self.userinfo = {'id': 123}
         self.rmtree = mock.patch('koji.util.rmtree').start()
         self.lexists = mock.patch('os.path.lexists').start()
-        self.path_build = mock.patch('koji.pathinfo.build').start()
         self.new_build = mock.patch('kojihub.kojihub.new_build').start()
         self.buildinfo = {
             'id': 43,
@@ -52,11 +53,14 @@ class TestCGImporter(unittest.TestCase):
             'source': 'https://example.com',
             'extra': {},
         }
+        upload_dir = os.path.join(self.pathinfo.work(), 'cg_importer_json')
+        os.makedirs(upload_dir)
+        shutil.copy("%s/default.json" % self.DATADIR, upload_dir)
 
 
     def tearDown(self):
-        if os.path.exists(self.TMP_PATH):
-            shutil.rmtree(self.TMP_PATH)
+        mock.patch.stopall()
+        shutil.rmtree(self.tempdir)
 
     def test_basic_instantiation(self):
         kojihub.CG_Importer()  # No exception!
@@ -77,27 +81,23 @@ class TestCGImporter(unittest.TestCase):
                          f"expected type <class 'str'>", str(ex.exception))
 
     def test_get_metadata_is_none(self):
-        self.path_work.return_value = os.path.dirname(__file__)
         x = kojihub.CG_Importer()
         with self.assertRaises(GenericError) as ex:
             x.get_metadata(None, '')
         self.assertEqual('No such file: metadata.json', str(ex.exception))
 
     def test_get_metadata_missing_json_file(self):
-        self.path_work.return_value = os.path.dirname(__file__)
         x = kojihub.CG_Importer()
         with self.assertRaises(GenericError):
             x.get_metadata('missing.json', 'cg_importer_json')
 
     def test_get_metadata_is_json_file(self):
-        self.path_work.return_value = os.path.dirname(__file__)
         x = kojihub.CG_Importer()
         x.get_metadata('default.json', 'cg_importer_json')
         assert x.raw_metadata
         assert isinstance(x.raw_metadata, str)
 
     def test_assert_cg_access(self):
-        self.path_work.return_value = os.path.dirname(__file__)
         cursor = mock.MagicMock()
         self.context.session.user_id = 42
         self.context_db.cnx.cursor.return_value = cursor
@@ -109,7 +109,6 @@ class TestCGImporter(unittest.TestCase):
         assert isinstance(x.cg, int)
 
     def test_prep_build(self):
-        self.path_work.return_value = os.path.dirname(__file__)
         cursor = mock.MagicMock()
         self.context_db.cnx.cursor.return_value = cursor
         cursor.fetchall.return_value = [(1, 'foo'), (2, 'bar')]
@@ -123,11 +122,12 @@ class TestCGImporter(unittest.TestCase):
         assert isinstance(x.buildinfo, dict)
 
     def test_check_build_dir(self):
-        path = '/random_path/random_dir'
-        self.path_build.return_value = path
+        # path = '/random_path/random_dir'
 
         x = kojihub.CG_Importer()
         x.log_warning = mock.MagicMock()
+        x.buildinfo = self.buildinfo
+        build_dir = "%s/vol/testvolume/packages/testpkg/1.0.1e/42.el7" % self.tempdir
 
         # directory exists
         self.lexists.return_value = True
@@ -139,8 +139,8 @@ class TestCGImporter(unittest.TestCase):
         # directory exists + delete
         self.lexists.return_value = True
         x.check_build_dir(delete=True)
-        self.rmtree.assert_called_once_with(path)
-        x.log_warning.assert_called_once_with("Deleting build directory: /random_path/random_dir")
+        self.rmtree.assert_called_once_with(build_dir)
+        x.log_warning.assert_called_once_with("Deleting build directory: %s" % build_dir)
         x.log_warning.reset_mock()
 
         # directory doesn't exist
@@ -151,7 +151,6 @@ class TestCGImporter(unittest.TestCase):
         x.log_warning.assert_not_called()
 
     def test_prep_build_exists(self):
-        self.path_work.return_value = os.path.dirname(__file__)
         self.get_build.return_value = self.buildinfo
         x = kojihub.CG_Importer()
         x.get_metadata('default.json', 'cg_importer_json')
@@ -159,7 +158,6 @@ class TestCGImporter(unittest.TestCase):
             x.prep_build()
 
     def test_get_build(self):
-        self.path_work.return_value = os.path.dirname(__file__)
         cursor = mock.MagicMock()
         cursor.fetchall.return_value = [(1, 'foo'), (2, 'bar')]
         self.context_db.cnx.cursor.return_value = cursor
@@ -178,9 +176,8 @@ class TestCGImporter(unittest.TestCase):
         assert isinstance(x.buildinfo, dict)
 
     def test_import_metadata(self):
-        self.path_work.return_value = os.path.dirname(__file__)
-        self.path_build.return_value = self.TMP_PATH
         x = kojihub.CG_Importer()
+        x.buildinfo = self.buildinfo
         x.get_metadata('default.json', 'cg_importer_json')
         x.import_metadata()
 
