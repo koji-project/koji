@@ -111,10 +111,17 @@ def clean_scratch_tasks(cursor, vacuum, test, age):
     if not ids:
         return
 
-    # delete standard buildroots
-    delete = DeleteProcessor(table='standard_buildroot',
-                             clauses=['task_id IN (SELECT task_id FROM temp_scratch_tasks)'])
-    delete.execute()
+    # delete from referring tables
+    ref_tables = (
+        'standard_buildroot',
+        'scheduler_task_runs',
+        'scheduler_task_refusals',
+        'scheduler_log_messages',
+    )
+    for table in ref_tables:
+        delete = DeleteProcessor(table=table,
+                                 clauses=['task_id IN (SELECT task_id FROM temp_scratch_tasks)'])
+        delete.execute()
 
     # delete tasks finally
     delete = DeleteProcessor(table='task',
