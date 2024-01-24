@@ -83,7 +83,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.33.1
+Version: 1.34.0
 Release: %{release}%{?dist}
 License: LGPL-2.1-only and GPL-2.0-or-later
 # the included arch lib from yum's rpmUtils is GPLv2+
@@ -649,6 +649,66 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Wed Jan 10 2024  Tomas Kopecek <tkopecek at redhat.com> - 1.34.0-1
+- PR#3537: Switch to WatchedFileHandler for logger
+- PR#3726: fix docstring getTaskInfo
+- PR#3761: doc: More XMLRPC-related docs
+- PR#3772: Scheduler part 1
+- PR#3794: Unify getSessionInfo output
+- PR#3813: list-history: fix [still active] display for edit entries
+- PR#3817: Remove get_sequence_value in 1.34
+- PR#3818: Remove koji.AUTHTYPE_* in 1.34
+- PR#3828: better handling of deleted tags in kojiweb
+- PR#3830: kojira no_repo_effective_age setting
+- PR#3832: fix release notes version
+- PR#3835: explain _ord() method
+- PR#3838: distrepo will not skip rpm stat by default
+- PR#3841: create initial repo for sidetag
+- PR#3842: Don't spawn createrepo if not needed
+- PR#3843: Package migration scripts to koji-hub
+- PR#3850: Inherit group permissions
+- PR#3851: sidetag: extend is_sidetag_owner for untag ops
+- PR#3855: Extend getUser to get user groups
+- PR#3859: Fix user_in_group policy test
+- PR#3861: tox: Don't install coverage every run
+- PR#3865: fix tests/flake8
+- PR#3873: disable use_bootstrap_image if bot requested
+- PR#3876: fix param in createImageBuild docstring
+- PR#3879: Example of how to enable a module via mock.module_setup_commands
+- PR#3882: Sort image rpm components before inserting
+- PR#3884: short option for watch-logs --follow
+- PR#3886: Raise an error on missing build directory
+- PR#3888: kojid: Fix mock_bootstrap_image parameter name in the default config
+- PR#3889: cli: handle hub w/o getKojiVersion in cancel tasks
+- PR#3893: Clean rpm db directory of broken symlinks
+- PR#3894: Sort channels on hosts page
+- PR#3895: hub: new_build: build in error should be the old one
+- PR#3897: Retrieve task_id for older OSBS builds
+- PR#3898: Update Containerfiles
+- PR#3902: queryOpts for queryHistory
+- PR#3904: Update docstring for listPackages
+- PR#3905: More general CG import logging
+- PR#3911: Display two decimal points for the task load in hosts page
+- PR#3913: draft builds
+- PR#3915: cli: fix wait-repo message when missing builds
+- PR#3917: fix tests
+- PR#3920: Move migration script to new location
+- PR#3924: fix return type
+- PR#3927: more getSessionInfo updates
+- PR#3929: Read config file on image build indirection
+- PR#3935: fix task_id extraction for missing extra
+- PR#3938: Update the CERN koji description
+- PR#3940: Remove six.configparser.SafeConfingParser from tests
+- PR#3946: fix flake8 errors
+- PR#3948: fix arg passing in exclusiveSession
+- PR#3949: docstring typo
+- PR#3957: Fix test
+- PR#3960: cli: [list-permissions] backward compatibility for getUserPermsInheritance call
+- PR#3965: Fix unittests for python-mock-5.x
+- PR#3977: handle new task refs in clean_scratch_tasks
+- PR#3980: task assign overrides
+- PR#3983: test_cg_importer.py: avoid creating temp files in checkout
+
 * Tue Jul 11 2023  Tomas Kopecek <tkopecek at redhat.com> - 1.33.1-1
 - PR#3834: wait with writing timestamps after results dir is created
 - PR#3836: add support for sw_64 and loongarch64
