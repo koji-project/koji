@@ -85,7 +85,7 @@ Additional ``groups`` option to get info about user's group membership.
 
 | PR: https://pagure.io/koji/pull-request/3884
 
-Added `-f` as an alias for `--follow`.
+Added ``-f`` as an alias for ``--follow``.
 
 
 System Changes
@@ -95,6 +95,8 @@ System Changes
 **Scheduler part 1**
 
 | PR: https://pagure.io/koji/pull-request/3772
+| PR: https://pagure.io/koji/pull-request/3977
+| PR: https://pagure.io/koji/pull-request/3980
 
 Biggest change in this release. We're rewriting scheduler to allow better
 utilization of builders and to have better control about what is built where
@@ -177,17 +179,25 @@ Error message was fixed to show correct data.
 
 | PR: https://pagure.io/koji/pull-request/3913
 
-Another big change in this release. Builds (rpm for now) can be run with
-``--draft`` option. It is different from scratch build in the way that it is
-1st class build with modified release (containing "-draft-<id>" suffix).
-Nevertheless, this release change is done only on build level. RPMs are using
-original release, so they are indistunguishible from other draft builds for
-same NVR. Such behaviour violates rules that there are no two rpms with the
-same filename. That is the reason, why they are called "draft builds".
+Another big change in this release. Builds (rpm only for now) can be run with
+``--draft`` option to mark it as a draft.
 
-To bring them back to uniqueness, such build can be "promoted". In such case it
-is renamed to original release and all other draft builds from given NVR are
-forever forbidden to be promoted.
+Draft builds should not be confused with scratch builds. Scratch builds are
+simply stored as files and cannot be tagged in Koji. Draft builds, on the other
+hand, are actual builds with a modified release value and the ``draft`` flag
+set to True. Koji appends a draft suffix of ``,draft{build_id}`` to the release
+for the build entry. This allows building multiple drafts for the same NVR.
+
+This release change is done only on the build level. The RPM components of the
+build are not modified when creating a draft build. The system will now allow
+overlapping rpm NVRA values, but only for draft builds.
+
+Draft builds can be "promoted" to non-draft using the ``promote-build`` cli
+command. The promoted build is renamed to remove the draft suffix. The original
+file path is replaced with a symlink to the new location.
+This is a one-time transition, i.e. builds cannot be "unpromoted".
+Only one draft build for a given NVR can be promoted, and once Koji has a
+non-draft build for a given NVR, further draft builds for that NVR are blocked.
 
 Typical use would be PR/MR workflow. There could be many "candidate" draft
 builds and only one which will pass testing and/or other workflows will be
@@ -195,9 +205,6 @@ promoted in the end as "real" build which can be used for distribution.
 
 Handling of when/where draft builds can be used (e.g. in some buildroots but
 not in the others) is done by ``is_draft`` policy test.
-
-Draft builds could be viewed as "light namespacing" in koji or "more persistent
-scratch builds".
 
 **Retrieve task_id for older OSBS builds**
 
@@ -252,9 +259,9 @@ which hasn't existed yet causing build to fail from unrelated reasons.
 | PR: https://pagure.io/koji/pull-request/3838
 
 Reusing repodata with distrepo is dangerous as rpms could be signed with
-different keys. So, now is the default behaviour to always stat rpms to be sure
+different keys. So, now the default behaviour is to always stat rpms to be sure
 that they don't differ from cached metadata. This behaviour can be overriden by
-``--skip-stat`` CLI option. Note, that you've to be sure what you're doing in
+``--skip-stat`` CLI option. Note that you've to be sure what you're doing in
 such case (typically you don't care about signatures in this repo).
 
 **Clean rpm db directory of broken symlinks**
