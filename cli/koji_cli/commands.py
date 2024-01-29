@@ -5227,7 +5227,7 @@ def handle_add_tag_inheritance(goptions, session, args):
 
 def handle_edit_tag_inheritance(goptions, session, args):
     """[admin] Edit tag inheritance"""
-    usage = "usage: %prog edit-tag-inheritance [options] <tag> <parent> <priority>"
+    usage = "usage: %prog edit-tag-inheritance [options] <tag> <parent> [<priority>]"
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--priority", help="Specify a new priority")
     parser.add_option("--maxdepth", help="Specify max depth")
@@ -5256,13 +5256,13 @@ def handle_edit_tag_inheritance(goptions, session, args):
         if not parent:
             parser.error("No such tag: %s" % args[1])
         if len(args) > 2:
-            priority = args[2]
+            priority = int(args[2])
 
     data = session.getInheritanceData(tag['id'])
     if parent and data:
         data = [datum for datum in data if datum['parent_id'] == parent['id']]
     if priority and data:
-        data = [datum for datum in data if datum['priority'] == priority]
+        data = [datum for datum in data if int(datum['priority']) == priority]
 
     if len(data) == 0:
         error("No inheritance link found to remove.  Please check your arguments")
@@ -5278,10 +5278,12 @@ def handle_edit_tag_inheritance(goptions, session, args):
     data = data[0]
 
     inheritanceData = session.getInheritanceData(tag['id'])
-    samePriority = [datum for datum in inheritanceData if datum['priority'] == options.priority]
-    if samePriority:
-        error("Error: There is already an active inheritance with that priority on %s, "
-              "please specify a different priority with --priority." % tag['name'])
+    if options.priority is not None:
+        samePriority = [datum for datum in inheritanceData
+                        if datum['priority'] == int(options.priority)]
+        if samePriority:
+            error("Error: There is already an active inheritance with that priority on %s, "
+                  "please specify a different priority with --priority." % tag['name'])
 
     new_data = data.copy()
     if options.priority is not None and options.priority.isdigit():
@@ -5308,7 +5310,7 @@ def handle_edit_tag_inheritance(goptions, session, args):
 
 def handle_remove_tag_inheritance(goptions, session, args):
     """[admin] Remove a tag inheritance link"""
-    usage = "usage: %prog remove-tag-inheritance <tag> <parent> <priority>"
+    usage = "usage: %prog remove-tag-inheritance <tag> <parent> [<priority>]"
     parser = OptionParser(usage=get_usage_str(usage))
     (options, args) = parser.parse_args(args)
 
@@ -5332,7 +5334,7 @@ def handle_remove_tag_inheritance(goptions, session, args):
         if not parent:
             parser.error("No such tag: %s" % args[1])
         if len(args) > 2:
-            priority = args[2]
+            priority = int(args[2])
 
     data = session.getInheritanceData(tag['id'])
     if parent and data:
