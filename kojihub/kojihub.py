@@ -10098,7 +10098,6 @@ def policy_data_from_task_args(method, arglist):
             policy_data['source'] = params.get(k)
             break
     # parameters that indicate build target
-    target = None
     hastarget = False
     for k in ('target', 'build_target', 'target_info'):
         if k in params:
@@ -10112,10 +10111,15 @@ def policy_data_from_task_args(method, arglist):
                 target = None
             else:
                 target = target.get('name')
-        if target is None:
-            policy_data['target'] = None
-        else:
-            policy_data['target'] = get_build_target(target, strict=True)['name']
+        if target is not None:
+            tinfo = lookup_build_target(target, strict=False)
+            if tinfo is None:
+                logger.warning("No such build target: %s", target)
+                target = None
+            else:
+                target = tinfo['name']
+        policy_data['target'] = target
+
     t_opts = params.get('opts', {})
     policy_data['scratch'] = t_opts.get('scratch', False)
 
