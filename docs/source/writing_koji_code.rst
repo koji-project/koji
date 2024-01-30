@@ -706,21 +706,47 @@ Unit Tests
 Koji comes with a small test suite, that you should always run when making
 changes to the code. To do so, just run ``make test`` in your terminal.
 
-You will need to install the following packages to actually run the tests.
+You can run the tests from your local and you will need to install the following packages to actually run the tests.
 
+For py3 instances:
+ * ``gcc``
  * ``glibc-langpack-en``
- * ``make``
- * ``python3-cheetah``
- * ``python3-coverage``
- * ``python3-dateutil``
- * ``python3-mock``
- * ``python3-multilib``
- * ``python3-pytest``
- * ``python3-psycopg2``
- * ``python3-qpid-proton``
- * ``python3-requests``
- * ``python3-requests-kerberos``
- * ``python3-requests-mock``
+ * ``krb5-devel``
+ * ``python3-devel``
+ * ``python3-librepo``
+ * ``python3-tox``
+ * ``rpm-build``
+ * ``Other packages are installed by test-requirements.txt.``
+
+For py2 instances:
+ * ``dnf``
+ * ``dnf-plugins-core``
+ * ``gcc``
+ * ``krb5-devel``
+ * ``libffi-devel``
+ * ``python-devel``
+ * ``python-librepo``
+ * ``python-requests``
+ * ``rpm-build``
+ * ``epel-release``
+ * ``python-pip``
+ * ``python-psycopg2``
+ * ``tox``
+ * ``pip==9.0.1``
+ * ``Other packages are installed by test-requirements-py2.txt.``
+
+You can use containers for the tests. Dockerfiles are placed in `devtools/containers` directory.
+Supported Dockerfiles:
+ * ``Dockerfile.centos7``
+ * ``Dockerfile.centos8``
+ * ``Dockerfile.centos9``
+ * ``Dockerfile.f34``
+ * ``Dockerfile.f35``
+ * ``Dockerfile.f36``
+ * ``Dockerfile.f37``
+ * ``Dockerfile.f38``
+ * ``Dockerfile.f39``
+ * ``Dockerfile.rawhide``
 
 Please note that it is currently not supported to use *virtualenv* when hacking
 on Koji.

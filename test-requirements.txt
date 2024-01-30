@@ -5,3 +5,7 @@ mock<=2.0.0
 requests-mock
 coverage
 pytest
+Cheetah3
+psycopg2-binary
+python-multilib
+python-qpid-proton

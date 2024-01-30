@@ -17,7 +17,6 @@ def get_install_requires():
         'requests-gssapi',
         'six',
         # 'libcomps',
-        # 'rpm-py-installer', # it is optional feature
         # 'rpm',
     ]
     return requires
