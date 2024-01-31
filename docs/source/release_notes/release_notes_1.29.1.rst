@@ -81,5 +81,5 @@ before.
 
 Documentation/DevTools Changes
 ------------------------------
- * `Add long description to setup.py <https:/pagure.io/koji/pull-request/3374`_
- * `CGRefundBuild description in CG docs <https://pagure.io/koji/pull-request/3411`_
+ * `Add long description to setup.py <https:/pagure.io/koji/pull-request/3374>`_
+ * `CGRefundBuild description in CG docs <https://pagure.io/koji/pull-request/3411>`_

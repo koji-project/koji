@@ -737,6 +737,7 @@ For py2 instances:
 
 You can use containers for the tests. Dockerfiles are placed in `devtools/containers` directory.
 Supported Dockerfiles:
+
  * ``Dockerfile.centos7``
  * ``Dockerfile.centos8``
  * ``Dockerfile.centos9``
