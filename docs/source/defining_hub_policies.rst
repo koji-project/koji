@@ -291,6 +291,9 @@ Available tests
 ``buildtype``
     * checks the build type(s) against the arguments
 
+``is_draft``
+    * checks whether the build is a draft. See :doc:`draft_builds`
+
 ``skip_tag``
     * checks to see if the --skip-tag option was used
     * only applicable to the build_from_* policies
