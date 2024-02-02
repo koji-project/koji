@@ -13,6 +13,7 @@ RUN \
     rpm-build  && \
   yum install -y epel-release && \
   yum install -y \
+    python-defusedxml \
     python-pip \
     python-psycopg2 && \
   yum clean all && \

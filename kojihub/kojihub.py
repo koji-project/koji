@@ -47,7 +47,6 @@ import time
 import types
 import traceback
 from urllib.parse import parse_qs
-import xmlrpc.client
 import zipfile
 from collections import defaultdict, OrderedDict
 
@@ -513,7 +512,7 @@ class Task(object):
             # handle older base64 encoded data
             xml_request = base64.b64decode(xml_request)
         # note: loads accepts either bytes or string
-        params, method = xmlrpc.client.loads(xml_request)
+        params, method = koji.xmlrpcplus.loads(xml_request)
         return params
 
     def getResult(self, raise_fault=True):
@@ -534,8 +533,8 @@ class Task(object):
         try:
             # If the result is a Fault, then loads will raise it
             # This is normally what we want to happen
-            result, method = xmlrpc.client.loads(xml_result)
-        except xmlrpc.client.Fault as fault:
+            result, method = koji.xmlrpcplus.loads(xml_result)
+        except koji.xmlrpcplus.Fault as fault:
             if raise_fault:
                 raise
             # Note that you can't really return a fault over xmlrpc, except by
@@ -573,7 +572,7 @@ class Task(object):
                     # handle older base64 encoded data
                     task['request'] = base64.b64decode(task['request'])
                 # note: loads accepts either bytes or string
-                task['request'] = xmlrpc.client.loads(task['request'])[0]
+                task['request'] = koji.xmlrpcplus.loads(task['request'])[0]
         return results
 
     def runCallbacks(self, cbtype, old_info, attr, new_val):
@@ -13468,8 +13467,8 @@ class RootExports(object):
                             # handle older base64 encoded data
                             val = base64.b64decode(val)
                         # note: loads accepts either bytes or string
-                        data, method = xmlrpc.client.loads(val)
-                    except xmlrpc.client.Fault as fault:
+                        data, method = koji.xmlrpcplus.loads(val)
+                    except koji.xmlrpcplus.Fault as fault:
                         data = fault
                     task[f] = data
             yield task
@@ -13790,7 +13789,7 @@ class RootExports(object):
             xmlrpc DateTime value"""
         context.session.assertPerm('admin')
         buildinfo = get_build(build, strict=True)
-        if isinstance(ts, xmlrpc.client.DateTime):
+        if isinstance(ts, koji.xmlrpcplus.DateTime):
             # not recommended
             # the xmlrpclib.DateTime class is almost useless
             try:

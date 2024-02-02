@@ -1,12 +1,12 @@
 #!/usr/bin/python3
 
 import os
-import xmlrpc.client
 from optparse import OptionParser
 from koji.context import context
 
 import koji
 import kojihub.db
+import koji.xmlrpcplus
 from kojihub.db import DeleteProcessor, QueryProcessor, BulkInsertProcessor
 
 
@@ -79,7 +79,7 @@ def clean_scratch_tasks(cursor, vacuum, test, age):
         task_id = row['id']
         request = row['request']
         try:
-            params, _ = xmlrpc.client.loads(request)
+            params, _ = koji.xmlrpcplus.xmlrpc_client.loads(request)
             opts = params[2]
             if opts['scratch']:
                 ids.append(task_id)
