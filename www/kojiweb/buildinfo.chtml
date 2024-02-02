@@ -45,6 +45,23 @@
       <th>Maven&nbsp;version</th><td>$typeinfo.maven.version</td>
     </tr>
     #end if
+    #if 'module' in $typeinfo
+    #if $module_id
+    <tr>
+      <th>Module&nbsp;ID</th>
+    #if $mbs_web_url
+      <td><a href="$mbs_web_url/module/$module_id">$module_id</a></td>
+    #else
+      <td>$module_id</td>
+    #end if
+    </tr>
+    #end if
+    #if $module_tag
+    <tr>
+      <th>Module&nbsp;Tag</th><td><a href="taginfo?tagID=$module_tag.id">$module_tag.name</a></td>
+    </tr>
+    #end if
+    #end if
     #if $summary
     <tr>
       <th>Summary</th><td class="rpmheader">$util.escapeHTML($summary)</td>

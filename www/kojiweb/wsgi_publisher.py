@@ -102,6 +102,8 @@ class Dispatcher(object):
         ['ToplevelTasks', 'list', []],
         ['ParentTasks', 'list', []],
 
+        ['MBS_WEB_URL', 'string', None],
+
         ['RLIMIT_AS', 'string', None],
         ['RLIMIT_CORE', 'string', None],
         ['RLIMIT_CPU', 'string', None],
