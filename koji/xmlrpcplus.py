@@ -6,9 +6,16 @@ from __future__ import absolute_import
 
 import types
 
+import defusedxml.xmlrpc as defusedxmlrpc
 import re
 import six
+# importing here for references in koji by defused.xmlrpc.monkey_patch() below
 import six.moves.xmlrpc_client as xmlrpc_client
+import six.moves.xmlrpc_server as xmlrpc_server  # noqa: F401
+
+
+# patching xmlrpc to protect against XML related attacks
+defusedxmlrpc.monkey_patch()
 
 # duplicate a few values that we need
 getparser = xmlrpc_client.getparser

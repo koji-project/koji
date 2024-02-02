@@ -1,4 +1,5 @@
 -e .
+defusedxml
 flake8
 flake8-import-order
 mock<=2.0.0

@@ -15,7 +15,6 @@ import pprint
 import smtplib
 import sys
 import time
-import xmlrpc.client  # for Fault
 from email.mime import text as MIMEText
 from string import Template
 
@@ -1006,7 +1005,7 @@ def handle_prune():
                             session.untagBuildBypass(taginfo['id'], entry['build_id'],
                                                      force=bypass or is_admin)
                             untagged.setdefault(nvr, {})[tagname] = 1
-                        except (xmlrpc.client.Fault, koji.GenericError) as e:
+                        except (koji.xmlrpcplus.Fault, koji.GenericError) as e:
                             print("Warning: untag operation failed: %s" % e)
                             pass
                 # if action == 'keep' do nothing
@@ -1040,7 +1039,7 @@ def handle_prune():
                 print("Deleting untagged build: %s" % nvr)
                 try:
                     session.deleteBuild(build_id, strict=True)
-                except (xmlrpc.client.Fault, koji.GenericError) as e:
+                except (koji.xmlrpcplus.Fault, koji.GenericError) as e:
                     print("Warning: deletion failed: %s" % e)
                     # server issue
                     pass
