@@ -1363,6 +1363,14 @@ def buildinfo(environ, buildID):
     if 'maven' in typeinfo or 'win' in typeinfo:
         if task:
             values['start_ts'] = task['start_ts']
+    if 'module' in typeinfo:
+        module_tag = None
+        module_tag_name = typeinfo['module'].get('content_koji_tag')
+        if module_tag_name:
+            module_tag = server.getTag(module_tag_name, event='auto')
+        values['module_tag'] = module_tag
+        values['module_id'] = typeinfo['module'].get('module_build_service_id')
+        values['mbs_web_url'] = environ['koji.options']['MBS_WEB_URL']
     if build['state'] == koji.BUILD_STATES['BUILDING']:
         avgDuration = server.getAverageBuildDuration(build['package_id'])
         if avgDuration is not None:
