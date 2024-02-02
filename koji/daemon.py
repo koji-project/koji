@@ -1504,6 +1504,9 @@ class TaskManager(object):
         except (SystemExit, koji.tasks.ServerExit, KeyboardInterrupt):
             # we do not trap these
             raise
+        except koji.tasks.RefuseTask as refuse:
+            self.session.host.refuseTask(handler.id, msg=str(refuse))
+            return
         except koji.tasks.ServerRestart:
             # freeing this task will allow the pending restart to take effect
             self.session.host.freeTasks([handler.id])

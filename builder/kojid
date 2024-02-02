@@ -79,7 +79,8 @@ from koji.tasks import (
     BaseTaskHandler,
     MultiPlatformTask,
     ServerExit,
-    ServerRestart
+    ServerRestart,
+    RefuseTask,
 )
 from koji.util import (
     dslice,
@@ -5731,7 +5732,7 @@ class NewRepoTask(BaseTaskHandler):
         if not os.path.isdir(top_repos_dir):
             # missing or incorrect mount?
             # refuse and let another host try
-            self.session.host.refuseTask(self.id, msg="No access to repos dir %s" % top_repos_dir)
+            raise RefuseTask("No access to repos dir %s" % top_repos_dir)
 
         # call repoInit
         kwargs = {}
@@ -5841,7 +5842,7 @@ class CreaterepoTask(BaseTaskHandler):
             if not os.path.isdir(top_repos_dir):
                 # missing or incorrect mount?
                 # refuse and let another host try
-                self.session.host.refuseTask(self.id, msg="No access to repos dir %s" % top_repos_dir)
+                raise RefuseTask("No access to repos dir %s" % top_repos_dir)
             else:
                 # we seem to have fs access, but dir is missing, perhaps a repo_init bug?
                 raise koji.GenericError("Repo directory missing: %s" % self.repodir)
