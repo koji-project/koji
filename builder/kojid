@@ -5827,7 +5827,14 @@ class CreaterepoTask(BaseTaskHandler):
         toprepodir = self.pathinfo.repo(repo_id, rinfo['tag_name'])
         self.repodir = '%s/%s' % (toprepodir, arch)
         if not os.path.isdir(self.repodir):
-            raise koji.GenericError("Repo directory missing: %s" % self.repodir)
+            top_repos_dir = joinpath(self.options.topdir, "repos")
+            if not os.path.isdir(top_repos_dir):
+                # missing or incorrect mount?
+                # refuse and let another host try
+                self.session.refuseTask(self.id, msg="No access to repos dir %s" % top_repos_dir)
+            else:
+                # we seem to have fs access, but dir is missing, perhaps a repo_init bug?
+                raise koji.GenericError("Repo directory missing: %s" % self.repodir)
         groupdata = os.path.join(toprepodir, 'groups', 'comps.xml')
         # set up our output dir
         self.outdir = '%s/repo' % self.workdir
