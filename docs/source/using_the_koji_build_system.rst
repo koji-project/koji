@@ -433,6 +433,7 @@ environment follows:
 * ``mock.module_setup_commands`` - commands for configuring the modules active
   in a buildroot. Available in `mock 2.4
   <https://github.com/rpm-software-management/mock/wiki/Release-Notes-2.4>`__.
+
     - Example of how to enable a module:
     
     ::
