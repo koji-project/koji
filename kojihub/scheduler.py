@@ -91,8 +91,8 @@ def get_tasks_for_host(hostID, retry=True):
 
 def set_refusal(hostID, taskID, soft=True, by_host=False, msg=''):
     data = {
-        'task_id': kojihub.convert_value(hostID, cast=int),
-        'host_id': kojihub.convert_value(taskID, cast=int),
+        'host_id': kojihub.convert_value(hostID, cast=int),
+        'task_id': kojihub.convert_value(taskID, cast=int),
         'soft': kojihub.convert_value(soft, cast=bool),
         'by_host': kojihub.convert_value(by_host, cast=bool),
         'msg': kojihub.convert_value(msg, cast=str),
