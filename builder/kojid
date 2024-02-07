@@ -4101,7 +4101,7 @@ class OzImageTask(BaseTaskHandler):
         template += """</os>
     <description>%s OS</description>
     <disk>
-        <size>%sG</size>
+        <size>%s</size>
     </disk>
 </template>
 """ % (name, self.opts.get('disk_size'))  # noqa: E501
