@@ -25,7 +25,7 @@ import logging
 import six
 
 import koji
-from koji.util import to_list
+from koji.util import to_list, multi_fnmatch
 
 
 class BaseSimpleTest(object):
@@ -138,6 +138,57 @@ class MatchTest(BaseSimpleTest):
         for pattern in args:
             if fnmatch.fnmatch(data[field], pattern):
                 return True
+        return False
+
+
+class MatchAnyTest(BaseSimpleTest):
+    """Matches any item of a list/tuple/set value in the data against glob patterns
+
+    True if any of the expressions matches any item in the list/tuple/set, else False.
+    If the field doesn't exist or isn't a list/tuple/set, the test returns False
+
+    Syntax:
+        find field pattern1 [pattern2 ...]
+
+    """
+    name = 'match_any'
+    field = None
+
+    def run(self, data):
+        args = self.str.split()[1:]
+        self.field = args[0]
+        args = args[1:]
+        tgt = data.get(self.field)
+        if tgt and isinstance(tgt, (list, tuple, set)):
+            for i in tgt:
+                if i is not None and multi_fnmatch(str(i), args):
+                    return True
+        return False
+
+
+class MatchAllTest(BaseSimpleTest):
+    """Matches all items of a list/tuple/set value in the data against glob patterns
+
+    True if any of the expressions matches all items in the list/tuple/set, else False.
+    If the field doesn't exist or isn't a list/tuple/set, the test returns False
+
+    Syntax:
+        match_all field pattern1 [pattern2 ...]
+
+    """
+    name = 'match_all'
+    field = None
+
+    def run(self, data):
+        args = self.str.split()[1:]
+        self.field = args[0]
+        args = args[1:]
+        tgt = data.get(self.field)
+        if tgt and isinstance(tgt, (list, tuple, set)):
+            for i in tgt:
+                if i is None or not multi_fnmatch(str(i), args):
+                    return False
+            return True
         return False
 
 
