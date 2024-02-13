@@ -575,7 +575,6 @@ def _rmtree_nofork(path, logger=None):
     if not stat.S_ISDIR(st.st_mode):
         raise koji.GenericError("Not a directory: %s" % path)
     dev = st.st_dev
-    new_cwd = os.path.abspath(path)
     cwd = os.getcwd()
 
     try:
@@ -583,6 +582,11 @@ def _rmtree_nofork(path, logger=None):
         while True:
             try:
                 os.chdir(path)
+                new_cwd = os.getcwd()
+                # make sure we're where we think we are
+                if not os.path.samefile(new_cwd, path):
+                    raise koji.GenericError('chdir to %s resulted in different cwd %s',
+                                            path, new_cwd)
             except OSError as e:
                 if e.errno in (errno.ENOENT, errno.ESTALE):
                     # likely racing with another rmtree

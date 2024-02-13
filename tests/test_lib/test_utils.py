@@ -1254,6 +1254,7 @@ class TestRmtree(unittest.TestCase):
         self.listdir = mock.patch('os.listdir').start()
         self.getcwd = mock.patch('os.getcwd').start()
         self.isdir = mock.patch('stat.S_ISDIR').start()
+        self.samefile = mock.patch('os.path.samefile').start()
         self._assert_cwd = mock.patch('koji.util._assert_cwd').start()
 
     def tearDown(self):
@@ -1285,19 +1286,36 @@ class TestRmtree(unittest.TestCase):
         stat.st_dev = 'dev'
         self.lstat.return_value = stat
         self.isdir.return_value = True
-        self.getcwd.return_value = 'cwd'
         path = self.dirname
+        self.getcwd.return_value = path
         logger = mock.MagicMock()
 
-        self.assertEqual(koji.util._rmtree_nofork(path, logger), None)
-        self.chdir.assert_called_with('cwd')
+        result = koji.util._rmtree_nofork(path, logger)
+        self.assertEqual(result, None)
+        self.chdir.assert_called_with(path)
         _rmtree.assert_called_once_with('dev', path, logger)
         self.rmdir.assert_called_once_with(path)
 
-    @patch('koji.util._rmtree')
-    def test_rmtree_directory_scrub_failure(self, _rmtree):
+    @patch('koji.util._stripcwd')
+    def test_rmtree_directory_stripcwd_failure(self, stripcwd):
         """ Tests that the koji.util._rmtree_nofork function returns a GeneralException
         when the scrub of the files in the directory fails.
+        """
+        stat = mock.MagicMock()
+        stat.st_dev = 'dev'
+        self.lstat.return_value = stat
+        self.isdir.return_value = True
+        self.getcwd.return_value = 'cwd'
+        stripcwd.side_effect = OSError('xyz')
+        logger = mock.MagicMock()
+
+        with self.assertRaises(OSError):
+            koji.util._rmtree('dev', 'cwd', logger)
+
+    @patch('koji.util._rmtree')
+    def test_rmtree_call_failure(self, _rmtree):
+        """ Tests that the koji.util._rmtree_nofork function returns a GeneralException
+        when the underlying _rmtree call fails
         """
         stat = mock.MagicMock()
         stat.st_dev = 'dev'
@@ -1308,6 +1326,22 @@ class TestRmtree(unittest.TestCase):
         _rmtree.side_effect = OSError('xyz')
 
         with self.assertRaises(OSError):
+            koji.util._rmtree_nofork(path)
+
+    @patch('koji.util._rmtree')
+    def test_rmtree_getcwd_mismatch(self, _rmtree):
+        """ Tests that the koji.util._rmtree_nofork function returns a GeneralException
+        when getcwd disagrees with initial chdir
+        """
+        stat = mock.MagicMock()
+        stat.st_dev = 'dev'
+        self.lstat.return_value = stat
+        self.isdir.return_value = True
+        self.getcwd.return_value = 'cwd'
+        path = self.dirname
+        self.samefile.return_value = False
+
+        with self.assertRaises(koji.GenericError):
             koji.util._rmtree_nofork(path)
 
     @patch('koji.util._stripcwd')
