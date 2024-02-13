@@ -435,11 +435,16 @@ class _RetryRmtree(Exception):
     # We raise this exception only when it makes sense for rmtree to retry from the top
 
 
-def rmtree(path, logger=None):
+def rmtree(path, logger=None, background=False):
     """Delete a directory tree without crossing fs boundaries
 
     :param str path: the directory to remove
     :param Logger logger: Logger object
+    :param bool background: if True, runs in the background returning a cleanup function
+    :return: None or [pid, check_function]
+
+    In the background case, caller is responsible for waiting on pid and should call
+    the returned check function once it finishes.
     """
     # we use the fake logger to avoid issues with logging locks while forking
     fd, logfile = tempfile.mkstemp(suffix='.jsonl')
@@ -463,20 +468,31 @@ def rmtree(path, logger=None):
         # not reached
 
     # parent process
-    _pid, status = os.waitpid(pid, 0)
     logger = logger or logging.getLogger('koji')
-    try:
-        SimpleProxyLogger.send(logfile, logger)
-    except Exception as err:
-        logger.error("Failed to get rmtree logs -- %s" % err)
-    try:
-        os.unlink(logfile)
-    except Exception:
-        pass
-    if not isSuccess(status):
-        raise koji.GenericError(parseStatus(status, "rmtree process"))
-    if os.path.exists(path):
-        raise koji.GenericError("Failed to remove directory: %s" % path)
+
+    def _rmtree_check():
+        if not background:
+            # caller will wait
+            _pid, status = os.waitpid(pid, 0)
+        try:
+            SimpleProxyLogger.send(logfile, logger)
+        except Exception as err:
+            logger.error("Failed to get rmtree logs -- %s" % err)
+        try:
+            os.unlink(logfile)
+        except Exception:
+            pass
+        if not background:
+            # caller should check status
+            if not isSuccess(status):
+                raise koji.GenericError(parseStatus(status, "rmtree process"))
+        if os.path.exists(path):
+            raise koji.GenericError("Failed to remove directory: %s" % path)
+
+    if background:
+        return pid, _rmtree_check
+    else:
+        return _rmtree_check()
 
 
 class SimpleProxyLogger(object):

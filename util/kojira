@@ -285,53 +285,6 @@ class ManagedRepo(object):
         return self.state == koji.REPO_PROBLEM
 
 
-class LoggingLockManager(object):
-    """A context manager that acquires all the logging locks"""
-
-    # This lock business is a workaround for https://pagure.io/koji/issue/2714
-
-    def __enter__(self):
-        self.acquire_locks()
-        return self
-
-    def __exit__(self, exc_type, exc_val, traceback):
-        # we want to free the locks regardless of what happend inside the with statement
-        self.release_locks()
-        return False  # don't eat exceptions
-
-    def acquire_locks(self):
-        # init
-        self.locks = []
-        self.module_lock = False
-        toplogger = logging.getLogger('koji')
-
-        # module level lock
-        if hasattr(logging, '_acquireLock'):
-            logging._acquireLock()
-            self.module_lock = True
-
-        # also each handler can have its own lock
-        # in kojira, the we should only have handlers attached to the koji logger
-        self.locks = [h.lock for h in toplogger.handlers if h.lock]
-        for lock in self.locks:
-            lock.acquire()
-
-    def release_locks(self):
-        # Only parent process should have locked locks in 3.9+, child ones will
-        # be reinitilized to free state
-        # In older pythons, state could be random (and no module_lock)
-        if self.module_lock:
-            try:
-                logging._releaseLock()
-            except RuntimeError:
-                pass
-        for lock in self.locks:
-            try:
-                lock.release()
-            except RuntimeError:
-                pass
-
-
 class RepoManager(object):
 
     def __init__(self, options, session):
@@ -363,8 +316,9 @@ class RepoManager(object):
                           len(self.repos), len(self.delete_pids))
         for tag_id, task_id in self.tasks.items():
             self.logger.debug("Tracking task %s for tag %s", task_id, tag_id)
-        for pid, desc in self.delete_pids.items():
-            self.logger.debug("Delete job %s: %r", pid, desc)
+        for pid in self.delete_pids:
+            path = self.delete_pids[pid][0]
+            self.logger.debug("Delete job %s: %r", pid, path)
 
     def rmtree(self, path):
         """Spawn (or queue) and rmtree job"""
@@ -375,18 +329,23 @@ class RepoManager(object):
     def checkQueue(self):
         finished = [pid for pid in self.delete_pids if self.waitPid(pid)]
         for pid in finished:
-            path = self.delete_pids[pid]
-            self.logger.info("Completed rmtree job for %s", path)
+            path, check_func = self.delete_pids[pid]
             del self.delete_pids[pid]
+            try:
+                check_func()
+            except Exception as e:
+                self.logger.error("Failed rmtree job for %s: %s", path, e)
+                continue
+            self.logger.info("Completed rmtree job for %s", path)
         while self.delete_queue and len(self.delete_pids) <= self.options.max_delete_processes:
             path = self.delete_queue.pop(0)
-            pid = self._rmtree(path)
+            pid, check_func = rmtree(path, background=True)  # koji.util.rmtree
             self.logger.info("Started rmtree (pid %i) for %s", pid, path)
-            self.delete_pids[pid] = path
+            self.delete_pids[pid] = (path, check_func)
 
     def waitPid(self, pid):
         # XXX - can we unify with TaskManager?
-        prefix = "pid %i (%s)" % (pid, self.delete_pids.get(pid))
+        prefix = "pid %i (%s)" % (pid, self.delete_pids.get(pid)[0])
         try:
             (childpid, status) = os.waitpid(pid, os.WNOHANG)
         except OSError as e:
@@ -400,24 +359,6 @@ class RepoManager(object):
             self.logger.info(parseStatus(status, prefix))
             return True
         return False
-
-    def _rmtree(self, path):
-        with LoggingLockManager():
-            pid = os.fork()
-        if pid:
-            return pid
-        # no return
-        try:
-            status = 1
-            self.session._forget()
-            try:
-                rmtree(path)
-                status = 0
-            except BaseException:
-                logger.error(''.join(traceback.format_exception(*sys.exc_info())))
-                logging.shutdown()
-        finally:
-            os._exit(status)
 
     def killChildren(self):
         # XXX - unify with TaskManager?
