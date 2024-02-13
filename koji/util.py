@@ -469,6 +469,10 @@ def rmtree(path, logger=None):
         SimpleProxyLogger.send(logfile, logger)
     except Exception as err:
         logger.error("Failed to get rmtree logs -- %s" % err)
+    try:
+        os.unlink(logfile)
+    except Exception:
+        pass
     if not isSuccess(status):
         raise koji.GenericError(parseStatus(status, "rmtree process"))
     if os.path.exists(path):
@@ -534,6 +538,7 @@ class SimpleProxyLogger(object):
                     level = logging.ERROR
                     msg = "Bad log data: %r"
                     args = (line,)
+                    kwargs = {}
                 logger.log(level, msg, *args, **kwargs)
 
 
@@ -668,7 +673,6 @@ def _assert_cwd(cwd):
         raise
     if cwd != actual:
         raise koji.GenericError('CWD changed unexpectedly: %s -> %s' % (cwd, actual))
-        print('CWD changed unexpectedly: %s -> %s' % (cwd, actual))
 
 
 def _stripcwd(dev, cwd, logger):
