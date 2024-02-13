@@ -3,6 +3,7 @@ from __future__ import absolute_import
 import calendar
 import errno
 import locale
+import logging
 from unittest.case import TestCase
 import mock
 import multiprocessing
@@ -1438,6 +1439,119 @@ class TestRmtree(unittest.TestCase):
         self.unlink.assert_not_called()
         self.isdir.assert_not_called()
 
+    @mock.patch('koji.util._rmtree_nofork')
+    @mock.patch('os.fork')
+    @mock.patch('os._exit')
+    def test_rmtree_child(self, _exit, fork, rmtree_nofork):
+        fork.return_value = 0
+        path = "/SOME_PATH"
+        logger = "LOGGER"
+
+        class Exited(Exception):
+            pass
+
+        _exit.side_effect = Exited
+        # using exception to simulate os._exit in the test
+        with self.assertRaises(Exited):
+            koji.util.rmtree(path, logger)
+        fork.assert_called_once()
+        rmtree_nofork.assert_called_once()
+        self.assertEqual(rmtree_nofork.mock_calls[0].args[0], path)
+        _exit.assert_called_once()
+
+    @mock.patch('koji.util._rmtree_nofork')
+    @mock.patch('os.fork')
+    @mock.patch('os.waitpid')
+    @mock.patch('os._exit')
+    def test_rmtree_child_fails(self, _exit, waitpid, fork, rmtree_nofork):
+        fork.return_value = 0
+        path = "/SOME_PATH"
+        logger = "LOGGER"
+
+        class Failed(Exception):
+            pass
+
+        rmtree_nofork.side_effect = Failed()
+        # the exception should be re-raised
+        with self.assertRaises(Failed):
+            koji.util.rmtree(path, logger)
+        fork.assert_called_once()
+        rmtree_nofork.assert_called_once()
+        self.assertEqual(rmtree_nofork.mock_calls[0].args[0], path)
+        _exit.assert_called_once()
+        waitpid.assert_not_called
+
+    @mock.patch('koji.util._rmtree_nofork')
+    @mock.patch('os.fork')
+    @mock.patch('os.waitpid')
+    @mock.patch('os._exit')
+    def test_rmtree_parent(self, _exit, waitpid, fork, rmtree_nofork):
+        pid = 137
+        fork.return_value = pid
+        waitpid.return_value = pid, 0
+        path = "/SOME_PATH"
+        logger = "LOGGER"
+        koji.util.rmtree(path, logger)
+        fork.assert_called_once()
+        rmtree_nofork.assert_not_called()
+        _exit.assert_not_called()
+
+    @mock.patch('koji.util.SimpleProxyLogger.send')
+    @mock.patch('koji.util._rmtree_nofork')
+    @mock.patch('os.fork')
+    @mock.patch('os.unlink')
+    @mock.patch('os.waitpid')
+    @mock.patch('os._exit')
+    def test_rmtree_parent_logfail(self, _exit, waitpid, unlink, fork, rmtree_nofork, logsend):
+        pid = 137
+        fork.return_value = pid
+        waitpid.return_value = pid, 0
+        path = "/SOME_PATH"
+        logger = mock.MagicMock()
+
+        class Failed(Exception):
+            pass
+
+        logsend.side_effect = Failed('hello')
+        koji.util.rmtree(path, logger)
+        logsend.assert_called_once()
+        logger.error.assert_called_once()
+        if not logger.error.mock_calls[0].args[0].startswith('Failed to get rmtree logs'):
+            raise Exception('Wrong log message')
+        fork.assert_called_once()
+        rmtree_nofork.assert_not_called()
+        _exit.assert_not_called()
+
+
+class TestAssertCWD(unittest.TestCase):
+
+    def setUp(self):
+        self.getcwd = mock.patch('os.getcwd').start()
+
+    def tearDown(self):
+        mock.patch.stopall()
+
+    def test_assert_cwd(self):
+        self.getcwd.return_value = '/mydir'
+        koji.util._assert_cwd('/mydir')
+        with self.assertRaises(koji.GenericError):
+            koji.util._assert_cwd('/wrongdir')
+
+    @mock.patch('os.getcwd')
+    def test_assert_cwd_call_fails(self, getcwd):
+        exc = Exception('hello')
+        getcwd.side_effect = exc
+        with self.assertRaises(Exception) as e:
+            koji.util._assert_cwd('/test')
+            # should re-raise same exception
+            self.assertEqual(e, exc)
+
+        exc = OSError()
+        exc.errno = errno.ENOENT
+        getcwd.side_effect = exc
+        # should ignore
+        koji.util._assert_cwd('/test')
+
 
 class TestRmtree2(unittest.TestCase):
 
@@ -1763,6 +1877,67 @@ class TestRmtree2(unittest.TestCase):
 
         if os.path.exists(dirname):
             raise Exception('test directory not removed')
+
+
+class TestProxyLogger(unittest.TestCase):
+
+    def setUp(self):
+        self.tempdir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.tempdir)
+
+    def test_proxy_logger(self):
+        logfile = self.tempdir + '/log.jsonl'
+        with koji.util.SimpleProxyLogger(logfile) as proxy:
+            proxy.info('hello world')
+            proxy.warning('hmm -- %s', ['data'])
+            proxy.error('We have a problem -- %r', {'a': 1})
+            proxy.debug('yadayadayada')
+
+        logger = mock.MagicMock()
+        koji.util.SimpleProxyLogger.send(logfile, logger)
+        logger.log.assert_has_calls([
+            call(20, 'hello world'),
+            call(30, 'hmm -- %s', ['data']),
+            call(40, 'We have a problem -- %r', {'a': 1}),
+            call(10, 'yadayadayada')])
+
+    def test_proxy_logger_bad_data(self):
+        logfile = self.tempdir + '/log.jsonl'
+        with koji.util.SimpleProxyLogger(logfile) as proxy:
+            # non-json-encodable
+            proxy.info('bad - %s', Exception())
+        logger = mock.MagicMock()
+        koji.util.SimpleProxyLogger.send(logfile, logger)
+        logger.log.assert_called_once()
+        self.assertEqual(logger.log.mock_calls[0].args[0], logging.ERROR)
+        if not logger.log.mock_calls[0].args[1].startswith('Unable to log'):
+            raise Exception('Wrong error message')
+
+    def test_proxy_logger_bad_line(self):
+        logfile = self.tempdir + '/log.jsonl'
+        with open(logfile, 'wt') as fo:
+            fo.write('INVALID_JSON()')
+        logger = mock.MagicMock()
+        koji.util.SimpleProxyLogger.send(logfile, logger)
+        logger.log.assert_called_once()
+        self.assertEqual(logger.log.mock_calls[0].args[0], logging.ERROR)
+        if not logger.log.mock_calls[0].args[1].startswith('Bad log data: '):
+            raise Exception('Wrong error message')
+
+    def test_proxy_logger_repr_fail(self):
+        class BadValue:
+            def __repr__(self):
+                raise ValueError('no')
+        strfail = BadValue()
+
+        logfile = self.tempdir + '/log.jsonl'
+        with koji.util.SimpleProxyLogger(logfile) as proxy:
+            proxy.info('bad - %s', strfail)
+        logger = mock.MagicMock()
+        koji.util.SimpleProxyLogger.send(logfile, logger)
+        logger.log.assert_called_once_with(logging.ERROR, 'Invalid log data')
 
 
 class TestMoveAndSymlink(unittest.TestCase):
