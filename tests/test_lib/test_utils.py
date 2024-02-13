@@ -1640,17 +1640,18 @@ class TestRmtree2(unittest.TestCase):
             raise Exception('test directory not removed')
 
     def test_rmtree_relative(self):
-        dirname = 'some-dir-95628'  # relative
-        os.makedirs('%s/%s/a/b/c/d/e/f/g/h/i/j/k' % (self.tempdir, dirname))
+        relpath = 'some-dir-95628'
+        path = "%s/%s" % (self.tempdir, relpath)
+        os.makedirs('%s/a/b/c/d/e/f/g/h/i/j/k' % path)
 
         oldcwd = os.getcwd()
         os.chdir(self.tempdir)
         try:
-            koji.util._rmtree_nofork(dirname)
+            koji.util._rmtree_nofork(relpath)
         finally:
             os.chdir(oldcwd)
 
-        if not os.path.exists(dirname):
+        if os.path.exists(path):
             raise Exception('test directory not removed')
 
     def test_rmtree_dev_change(self):
