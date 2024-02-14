@@ -1123,6 +1123,7 @@ class BuildTask(BaseTaskHandler):
             'build_tag': build_tag,  # id
             'skip_tag': bool(self.opts.get('skip_tag')),
             'scratch': opts.get('scratch'),
+            'draft': opts.get('draft'),
             'from_scm': SCM.is_scm_url(src),
             'repo_id': opts.get('repo_id'),
         }
