@@ -1436,23 +1436,33 @@ class BuildTask(BaseTaskHandler):
         exclusivearch = koji.get_header_field(h, 'exclusivearch')
         excludearch = koji.get_header_field(h, 'excludearch')
 
-        if exclusivearch or excludearch:
+        buildconfig = self.session.getBuildConfig(build_tag, event=self.event_id)
+        noarch_arches = buildconfig.get('extra', {}).get('noarch_arches')
+
+        if exclusivearch or excludearch or noarch_arches:
             # if one of the tag arches is filtered out, then we can't use a
             # noarch task
-            buildconfig = self.session.getBuildConfig(build_tag, event=self.event_id)
             arches = buildconfig['arches']
             tag_arches = [koji.canonArch(a) for a in arches.split()]
             exclusivearch = [koji.canonArch(a) for a in exclusivearch]
             excludearch = [koji.canonArch(a) for a in excludearch]
-            archlist = list(tag_arches)
+            # tag.extra overrides tag arches for noarch
+            if noarch_arches:
+                archlist = [koji.canonArch(a) for a in noarch_arches.split()]
+                archlist = [a for a in archlist if a in tag_arches]
+            else:
+                archlist = list(tag_arches)
             if exclusivearch:
                 archlist = [a for a in archlist if a in exclusivearch]
             if excludearch:
                 archlist = [a for a in archlist if a not in excludearch]
+            self.logger.info('Filtering arches for noarch subtask. Choices: %r', archlist)
             if not archlist:
-                raise koji.BuildError("No valid arches were found. tag %r, "
-                                      "exclusive %r, exclude %r" % (tag_arches,
+                raise koji.BuildError("No valid arches were found. tag %r, extra %r,"
+                                      "exclusive %r, exclude %r" % (tag_arches, noarch_arches,
                                                                     exclusivearch, excludearch))
+            self.logger.debug('tag: %r, extra: %r, exclusive: %r, exclude: %r',
+                              tag_arches, noarch_arches, exclusivearch, excludearch)
             if set(archlist) != set(tag_arches):
                 return random.choice(archlist)
             else:
