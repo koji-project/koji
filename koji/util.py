@@ -472,7 +472,7 @@ def rmtree(path, logger=None, background=False):
 
     def _rmtree_check():
         if not background:
-            # caller will wait
+            # caller will wait in background case
             _pid, status = os.waitpid(pid, 0)
         try:
             SimpleProxyLogger.send(logfile, logger)
@@ -483,7 +483,7 @@ def rmtree(path, logger=None, background=False):
         except Exception:
             pass
         if not background:
-            # caller should check status
+            # caller should check status in background case
             if not isSuccess(status):
                 raise koji.GenericError(parseStatus(status, "rmtree process"))
         if os.path.exists(path):

@@ -1607,7 +1607,7 @@ class TestRmtree2(unittest.TestCase):
         koji.util.rmtree(dirname)
 
     def test_rmtree_notadir(self):
-        # should not error if already removed
+        # should error if not a directory
         fname = '%s/hello.txt' % self.tempdir
         with open(fname, 'wt') as fo:
             fo.write('hello\n')
