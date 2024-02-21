@@ -57,12 +57,10 @@
       <th>Builder readiness</th>
     </tr>
     #for $channel in $channels
+    #if $channel['enabled_channel']
     <tr>
       <th>
           <a href="channelinfo?channelID=$channel['id']">$util.escapeHTML($channel['name'])</a>
-          #if not $channel['enabled_channel']
-          [disabled]
-          #end if
       </th>
       <td width="$graphWidth" class="graph">
         #if $channel['capacityPerc']
@@ -79,6 +77,7 @@
         </span>
       </td>
     </tr>
+    #end if
     #end for
   </table>
 
