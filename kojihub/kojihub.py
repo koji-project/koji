@@ -30,6 +30,7 @@ import calendar
 import copy
 import datetime
 import fcntl
+import filecmp
 import fnmatch
 import functools
 import hashlib
@@ -7953,63 +7954,92 @@ def delete_rpm_sig(rpminfo, sigkey=None, all_sigs=False):
     elif not sigkey:
         raise koji.GenericError("No signature specified")
     rinfo = get_rpm(rpminfo, strict=True)
+    nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" % rinfo
     if rinfo['external_repo_id']:
         raise koji.GenericError("Not an internal rpm: %s (from %s)"
                                 % (rpminfo, rinfo['external_repo_name']))
 
+    # Determine what signature we have
     rpm_query_result = query_rpm_sigs(rpm_id=rinfo['id'], sigkey=sigkey)
     if not rpm_query_result:
-        nvra = "%(name)s-%(version)s-%(release)s.%(arch)s" % rinfo
         raise koji.GenericError("%s has no matching signatures to delete" % nvra)
+    found_keys = [r['sigkey'] for r in rpm_query_result]
 
-    clauses = ["rpm_id=%(rpm_id)i"]
-    if sigkey is not None:
-        clauses.append("sigkey=%(sigkey)s")
+    # Delete signature entries from db
+    clauses = ["rpm_id=%(rpm_id)s", "sigkey IN %(found_keys)s"]
     rpm_id = rinfo['id']
     delete = DeleteProcessor(table='rpmsigs', clauses=clauses, values=locals())
     delete.execute()
     delete = DeleteProcessor(table='rpm_checksum', clauses=clauses, values=locals())
     delete.execute()
-    binfo = get_build(rinfo['build_id'])
-    builddir = koji.pathinfo.build(binfo)
-    list_sigcaches = []
-    list_sighdrs = []
-    for rpmsig in rpm_query_result:
-        list_sigcaches.append(joinpath(builddir, koji.pathinfo.sighdr(rinfo, rpmsig['sigkey'])))
-        list_sighdrs.append(joinpath(builddir, koji.pathinfo.signed(rinfo, rpmsig['sigkey'])))
-    list_paths = list_sighdrs + list_sigcaches
-    count = 0
-    logged_user = get_user(context.session.user_id)
-    for file_path in list_paths:
-        try:
-            os.remove(file_path)
-            count += 1
-        except FileNotFoundError:
-            logger.warning("User %s has deleted file %s", logged_user['name'], file_path)
-        except Exception:
-            logger.error("An error happens when deleting %s, %s deleting are deleted, "
-                         "%s deleting are skipped, the original request is %s rpm "
-                         "and %s sigkey", file_path,
-                         list_paths[:count], list_paths[count:], rpminfo, sigkey, exc_info=True)
-            raise koji.GenericError("File %s cannot be deleted." % file_path)
 
-    for path in list_paths:
-        basedir = os.path.dirname(path)
-        if os.path.isdir(basedir) and not os.listdir(basedir):
-            try:
-                os.rmdir(basedir)
-            except OSError:
-                logger.warning("An error happens when deleting %s directory",
-                               basedir, exc_info=True)
-        sigdir = os.path.dirname(basedir)
-        if os.path.isdir(sigdir) and not os.listdir(sigdir):
-            try:
-                os.rmdir(sigdir)
-            except OSError:
-                logger.warning("An error happens when deleting %s directory",
-                               sigdir, exc_info=True)
-    logger.warning("Signed RPM %s with sigkey %s is deleted by %s", rinfo['id'], sigkey,
-                   logged_user['name'])
+    # Get the base build dir for our paths
+    binfo = get_build(rinfo['build_id'], strict=True)
+    builddir = koji.pathinfo.build(binfo)
+
+    # Check header files
+    hdr_renames = []
+    hdr_deletes = []
+    for rpmsig in rpm_query_result:
+        hdr_path = joinpath(builddir, koji.pathinfo.sighdr(rinfo, rpmsig['sigkey']))
+        backup_path = hdr_path + f".{rpmsig['sighash']}.save"
+        if not os.path.exists(hdr_path):
+            logger.error(f'Missing signature header file: {hdr_path}')
+            # this doesn't prevent us from deleting the signature
+            # it just means we have nothing to back up
+            continue
+        if not os.path.isfile(hdr_path):
+            # this should not happen and requires human intervention
+            raise koji.GenericError(f"Not a regular file: {hdr_path}")
+        if os.path.exists(backup_path):
+            # Likely residue of previous failed deletion
+            if filecmp.cmp(hdr_path, backup_path, shallow=False):
+                # same file contents, so we're already backed up
+                logger.warning(f"Signature header already backed up: {backup_path}")
+                hdr_deletes.append([rpmsig, hdr_path])
+            else:
+                # this shouldn't happen
+                raise koji.GenericError(f"Stray header backup file: {backup_path}")
+        else:
+            hdr_renames.append([rpmsig, hdr_path, backup_path])
+
+    # Delete signed copies
+    # We do these first since they are the lowest risk
+    for rpmsig in rpm_query_result:
+        signed_path = joinpath(builddir, koji.pathinfo.signed(rinfo, rpmsig['sigkey']))
+        if not os.path.exists(signed_path):
+            # signed copies might not exist
+            continue
+        try:
+            os.remove(signed_path)
+            logger.warning(f"Deleted signed copy {signed_path}")
+        except Exception:
+            logger.error(f"Failed to delete {signed_path}", exc_info=True)
+            raise koji.GenericError(f"Failed to delete {signed_path}")
+
+    # Backup header files
+    for rpmsig, hdr_path, backup_path in hdr_renames:
+        # sanity checked above
+        try:
+            os.rename(hdr_path, backup_path)
+            logger.warning(f"Signature header saved to {backup_path}")
+        except Exception:
+            logger.error(f"Failed to rename {hdr_path} to {backup_path}", exc_info=True)
+
+    # Delete already backed-up headers
+    for rpmsig, hdr_path in hdr_deletes:
+        # verified backup above
+        try:
+            os.remove(hdr_path)
+            logger.warning(f"Deleted signature header {hdr_path}")
+        except Exception:
+            logger.error(f"Failed to delete {hdr_path}", exc_info=True)
+            raise koji.GenericError(f"Failed to delete {hdr_path}")
+
+    # Note: we do not delete any empty parent dirs as the primary use case for deleting these
+    # signatures is to allow the import of new, overlapping ones
+
+    logger.warning("Deleted signatures %s for rpm %s", found_keys, rinfo['id'])
 
 
 def _scan_sighdr(sighdr, fn):
@@ -8184,7 +8214,7 @@ def write_signed_rpm(an_rpm, sigkey, force=False):
     # make sure we have it in the db
     rpm_id = rinfo['id']
     query = QueryProcessor(tables=['rpmsigs'], columns=['sighash'],
-                           clauses=['rpm_id=%(rpm_id)i', 'sigkey=%(sigkey)s'],
+                           clauses=['rpm_id=%(rpm_id)s', 'sigkey=%(sigkey)s'],
                            values={'rpm_id': rpm_id, 'sigkey': sigkey})
     sighash = query.singleValue(strict=False)
     if not sighash:
