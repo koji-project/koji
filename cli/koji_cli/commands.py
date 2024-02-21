@@ -8130,3 +8130,34 @@ def handle_promote_build(goptions, session, args):
         error("Not a draft build: %s" % draft_build)
     rinfo = session.promoteBuild(binfo['id'], force=options.force)
     print("%s has been promoted to %s" % (binfo['nvr'], rinfo['nvr']))
+
+
+def anon_handle_list_users(goptions, session, args):
+    """[admin] List of users"""
+    usage = "usage: %prog list-users [options]"
+    parser = OptionParser(usage=get_usage_str(usage))
+    parser.add_option("--usertype", help="List users that have a given usertype "
+                                         "(e.g. NORMAL, HOST, GROUP)")
+    parser.add_option("--prefix", help="List users that have a given prefix")
+    (options, args) = parser.parse_args(args)
+
+    if len(args) > 0:
+        parser.error("This command takes no arguments")
+    activate_session(session, goptions)
+
+    if options.usertype:
+        if options.usertype.upper() in koji.USERTYPES.keys():
+            usertype = koji.USERTYPES[options.usertype.upper()]
+        else:
+            error("Usertype %s doesn't exist" % options.usertype)
+    else:
+        usertype = koji.USERTYPES['NORMAL']
+
+    if options.prefix:
+        prefix = options.prefix
+    else:
+        prefix = None
+
+    users_list = session.listUsers(userType=usertype, prefix=prefix)
+    for user in users_list:
+        print(user['name'])

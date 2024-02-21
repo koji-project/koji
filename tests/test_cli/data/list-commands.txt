@@ -42,6 +42,7 @@ admin commands:
         import-cg                 Import external builds with rich metadata
         import-sig                Import signatures into the database and write signed RPMs
         list-signed               List signed copies of rpms
+        list-users                List of users
         lock-tag                  Lock a tag
         make-task                 Create an arbitrary task
         prune-signed-copies       Prune signed copies
