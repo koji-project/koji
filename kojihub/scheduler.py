@@ -53,7 +53,7 @@ class LogMessagesQuery(QueryView):
 
 
 def get_log_messages(clauses=None, fields=None):
-    return LogMessagesQuery(clauses, fields).execute()
+    return LogMessagesQuery(clauses, fields, opts={'order': 'id'}).execute()
 
 
 def get_tasks_for_host(hostID, retry=True):
