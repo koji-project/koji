@@ -113,10 +113,12 @@ def get_options():
     for s in args[1:]:
         if '=' in s:
             k, v = s.split('=', 1)
-            v = nice_literal(v)
-            kwargs[k] = v
-        else:
-            callargs.append(nice_literal(s))
+            if k.isidentifier():
+                v = nice_literal(v)
+                kwargs[k] = v
+                continue
+        # else
+        callargs.append(nice_literal(s))
     callargs = koji.encode_args(*callargs, **kwargs)
     opts.request = koji.xmlrpcplus.dumps(callargs, method, allow_none=1)
 
