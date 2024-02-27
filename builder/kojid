@@ -1958,7 +1958,7 @@ class BuildMavenTask(BaseBuildTask):
                                 relPath=relpath)
 
         # Also include the logs already upload by BuildRoot
-        logs.extend(broot.logs)
+        logs.extend(buildroot.logs)
 
         buildroot.expire()
 
