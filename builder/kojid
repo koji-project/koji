@@ -472,7 +472,10 @@ class BuildRoot(object):
         mocklog = 'mock_output.log'
         pid = os.fork()
         if pid:
-            log_patterns = ['%s/*.log' % self.resultdir()]
+            log_patterns = [
+                '%s/*.log' % self.resultdir(),
+                '%s/var/log/dnf*.log' % self.rootdir(),
+            ]
             if workdir:
                 log_patterns.append('%s/%s' % (workdir, mocklog))
             logs = BuildRootLogs(self, log_patterns, with_ts=self.options.log_timestamps)
