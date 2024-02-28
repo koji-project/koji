@@ -950,15 +950,13 @@ class BuildRootLogs(object):
             self.logger.error('No workdir defined -- disabling log timestamps')
             self.with_ts = False
 
-    def match_logs(self):
+    def find_logs(self):
         matches = []
-        seen = set()
         for pattern in self.patterns:
-            self.logger.debug('Looking for logs matching %r', pattern)
             m = glob.glob(pattern)
-            self.logger.debug('Matches: %r', m)
             for path in m:
-                if path not in seen:
+                if path not in self.loginfo:
+                    self.logger.debug('Log matched pattern %r: %s', pattern, path)
                     matches.append(path)
         return matches
 
@@ -1021,11 +1019,10 @@ class BuildRootLogs(object):
             yield info
 
     def sync_logs(self):
-        paths = self.match_logs()
+        paths = self.find_logs()
 
         for fpath in paths:
-            if fpath not in self.loginfo:
-                self.add_log(fpath)
+            self.add_log(fpath)
 
         for info in self.get_logs():
             # note that the ts logs are listed last
