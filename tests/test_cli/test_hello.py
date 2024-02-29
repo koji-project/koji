@@ -50,6 +50,8 @@ class TestHello(utils.CliTestCase):
         # Mock out the xmlrpc server
         session.getLoggedInUser.return_value = None
         session.krb_principal = user['krb_principal']
+        mock_hub_version = '1.35.0'
+        session.hub_version_str = mock_hub_version
         print_unicode_mock.return_value = "Hello"
 
         self.assert_system_exit(
@@ -63,7 +65,7 @@ class TestHello(utils.CliTestCase):
 
         # annonymous user
         message = "Not authenticated\n" + "Hello, anonymous user!"
-        hubinfo = "You are using the hub at %s" % self.huburl
+        hubinfo = "You are using the hub at %s (Koji %s)" % (self.huburl, mock_hub_version)
         handle_moshimoshi(self.options, session, [])
         self.assert_console_message(stdout, "{0}\n\n{1}\n".format(message, hubinfo))
         self.activate_session_mock.assert_called_once_with(session, self.options)
@@ -79,7 +81,7 @@ class TestHello(utils.CliTestCase):
                                         user['krb_principal'],
             koji.AUTHTYPES['SSL']: 'Authenticated via client certificate %s' % cert
         }
-        hubinfo = "You are using the hub at %s" % self.huburl
+        # same hubinfo
         session.getLoggedInUser.return_value = user
         message = "Hello, %s!" % self.progname
         self.options.cert = cert

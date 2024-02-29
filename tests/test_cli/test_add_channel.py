@@ -60,7 +60,7 @@ class TestAddChannel(utils.CliTestCase):
         expected_api = 'Invalid method: addChannel'
         expected = 'addChannel is available on hub from Koji 1.26 version, your version ' \
                    'is 1.25.1\n'
-        self.session.getKojiVersion.return_value = '1.25.1'
+        self.session.hub_version_str = '1.25.1'
 
         self.session.addChannel.side_effect = koji.GenericError(expected_api)
         arguments = ['--description', self.description, self.channel_name]
