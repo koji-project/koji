@@ -752,6 +752,7 @@ CREATE TABLE rpminfo (
 CREATE INDEX rpminfo_build ON rpminfo(build_id);
 CREATE UNIQUE INDEX rpminfo_unique_nvra_not_draft ON rpminfo(name,version,release,arch,external_repo_id)
   WHERE draft IS NOT TRUE;
+CREATE INDEX rpminfo_nvra ON rpminfo(name,version,release,arch,external_repo_id);
 -- index for default search method for rpms, PG11+ can benefit from new include method
 DO $$
    DECLARE version integer;
