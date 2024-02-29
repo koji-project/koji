@@ -110,6 +110,11 @@ class ServerRestart(Exception):
     pass
 
 
+class RefuseTask(Exception):
+    """Raise to task handler to refuse a task"""
+    pass
+
+
 def parse_task_params(method, params):
     """Parse task params into a dictionary
 

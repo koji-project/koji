@@ -79,7 +79,8 @@ from koji.tasks import (
     BaseTaskHandler,
     MultiPlatformTask,
     ServerExit,
-    ServerRestart
+    ServerRestart,
+    RefuseTask,
 )
 from koji.util import (
     dslice,
@@ -5725,6 +5726,15 @@ class NewRepoTask(BaseTaskHandler):
 
     def handler(self, tag, event=None, src=False, debuginfo=False, separate_src=False):
         tinfo = self.session.getTag(tag, strict=True, event=event)
+
+        # check for fs access before we try calling repoInit
+        top_repos_dir = joinpath(self.options.topdir, "repos")
+        if not os.path.isdir(top_repos_dir):
+            # missing or incorrect mount?
+            # refuse and let another host try
+            raise RefuseTask("No access to repos dir %s" % top_repos_dir)
+
+        # call repoInit
         kwargs = {}
         if event is not None:
             kwargs['event'] = event
@@ -5736,6 +5746,7 @@ class NewRepoTask(BaseTaskHandler):
         if debuginfo or tinfo['extra'].get('with_debuginfo'):
             kwargs['with_debuginfo'] = True
         repo_id, event_id = self.session.host.repoInit(tinfo['id'], task_id=self.id, **kwargs)
+
         path = koji.pathinfo.repo(repo_id, tinfo['name'])
         if not os.path.isdir(path):
             raise koji.GenericError("Repo directory missing: %s" % path)
@@ -5827,7 +5838,14 @@ class CreaterepoTask(BaseTaskHandler):
         toprepodir = self.pathinfo.repo(repo_id, rinfo['tag_name'])
         self.repodir = '%s/%s' % (toprepodir, arch)
         if not os.path.isdir(self.repodir):
-            raise koji.GenericError("Repo directory missing: %s" % self.repodir)
+            top_repos_dir = joinpath(self.options.topdir, "repos")
+            if not os.path.isdir(top_repos_dir):
+                # missing or incorrect mount?
+                # refuse and let another host try
+                raise RefuseTask("No access to repos dir %s" % top_repos_dir)
+            else:
+                # we seem to have fs access, but dir is missing, perhaps a repo_init bug?
+                raise koji.GenericError("Repo directory missing: %s" % self.repodir)
         groupdata = os.path.join(toprepodir, 'groups', 'comps.xml')
         # set up our output dir
         self.outdir = '%s/repo' % self.workdir

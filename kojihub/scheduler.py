@@ -99,7 +99,7 @@ def set_refusal(hostID, taskID, soft=True, by_host=False, msg=''):
     }
     upsert = UpsertProcessor('scheduler_task_refusals', data=data, keys=('task_id', 'host_id'))
     upsert.execute()
-    log_both('Host refused task', task_id=taskID, host_id=hostID)
+    log_both(f'Host refused task: {msg}', task_id=taskID, host_id=hostID)
 
 
 class TaskRefusalsQuery(QueryView):
