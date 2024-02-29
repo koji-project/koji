@@ -78,7 +78,7 @@ Options:
         expected_api = 'Invalid method: editChannel'
         expected = 'editChannel is available on hub from Koji 1.26 version, your version ' \
                    'is 1.25.1\n'
-        self.session.getKojiVersion.return_value = '1.25.1'
+        self.session.hub_version_str = '1.25.1'
 
         self.session.editChannel.side_effect = koji.GenericError(expected_api)
         self.assert_system_exit(
@@ -94,7 +94,6 @@ Options:
         self.session.editChannel.assert_called_once_with(self.channel_old, name=self.channel_new,
                                                          description=self.description)
         self.session.getChannel.assert_called_once_with(self.channel_old)
-        self.session.getKojiVersion.assert_called_once_with()
 
     def test_handle_edit_channel_non_exist_channel(self):
         expected = 'No such channel: %s\n' % self.channel_old

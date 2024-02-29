@@ -32,7 +32,8 @@ class TestCancel(utils.CliTestCase):
 
 %s: error: {message}
 """ % (self.progname, self.progname)
-        self.session.getKojiVersion.return_value = '1.33.0'
+        self.session.hub_version = (1, 33, 0)
+        self.session.hub_version_str = '1.33.0'
 
     def test_anon_cancel(self):
         args = ['123']
@@ -154,7 +155,7 @@ No such build: '%s'
         self.session.cancelBuild.assert_called_once_with(args[1], strict=True)
 
     def test_non_exist_build_and_task_older_hub(self):
-        self.session.getKojiVersion.return_value = '1.32.0'
+        self.session.hub_version = (1, 32, 0)
         args = ['11111', 'nvr-1-30.1']
         expected_warn = """No such task: %s
 """ % (args[0])

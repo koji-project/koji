@@ -2625,6 +2625,30 @@ class ClientSession(object):
         self.opts.setdefault('timeout', DEFAULT_REQUEST_TIMEOUT)
         self.exclusive = False
         self.auth_method = auth_method
+        self.__hub_version = None
+
+    @property
+    def hub_version(self):
+        """Return the hub version as a tuple of ints"""
+        return tuple([int(x) for x in self.hub_version_str.split('.')])
+
+    @property
+    def hub_version_str(self):
+        """Return the hub version as string"""
+        # If any call was made before, it should be populated by Koji-Version header
+        # for hub >= 1.35
+        if self.__hub_version is None:
+            # no call was made yet OR hub_version < 1.35
+            try:
+                self.__hub_version = self.getKojiVersion()
+            except GenericError as e:
+                if 'Invalid method' in str(e):
+                    # use latest version without the getKojiVersion handler
+                    self.logger.debug("hub is older than 1.23, assuming 1.22.0")
+                    self.__hub_version = '1.22.0'
+                else:
+                    raise
+        return self.__hub_version
 
     @property
     def multicall(self):
@@ -3056,6 +3080,9 @@ class ClientSession(object):
             warnings.simplefilter("ignore")
             r = self.rsession.post(handler, **callopts)
             r.raise_for_status()
+            hub_version = r.headers.get('Koji-Version')
+            if hub_version:
+                self.__hub_version = hub_version
             try:
                 ret = self._read_xmlrpc_response(r)
             finally:
