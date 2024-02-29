@@ -1037,128 +1037,41 @@ class TaskManager(object):
         return data
 
     def getNextTask(self):
+        """Task the next task
+
+        :returns: True if a task was taken, False otherwise
+        """
         self.ready = self.readyForTask()
         self.session.host.updateHost(self.task_load, self.ready, data=self._get_host_data())
         if not self.ready:
             self.logger.info("Not ready for task")
             return False
-        hosts, tasks = self.session.host.getLoadData()
-        self.logger.debug("Load Data:")
-        self.logger.debug("  hosts: %r" % hosts)
-        self.logger.debug("  tasks: %r" % tasks)
-        # now we organize this data into channel-arch bins
-        bin_hosts = {}  # hosts indexed by bin
-        bins = {}  # bins for this host
-        our_avail = None
-        for host in hosts:
-            host['bins'] = []
-            if host['id'] == self.host_id:
-                # note: task_load reported by server might differ from what we
-                # sent due to precision variation
-                our_avail = host['capacity'] - host['task_load']
-            for chan in host['channels']:
-                for arch in host['arches'].split() + ['noarch']:
-                    bin = "%s:%s" % (chan, arch)
-                    bin_hosts.setdefault(bin, []).append(host)
-                    if host['id'] == self.host_id:
-                        bins[bin] = 1
-        self.logger.debug("bins: %r" % bins)
-        if our_avail is None:
-            self.logger.info("Server did not report this host. Are we disabled?")
-            return False
-        elif not bins:
-            self.logger.info("No bins for this host. Missing channel/arch config?")
-            # Note: we may still take an assigned task below
-        # sort available capacities for each of our bins
-        avail = {}
-        for bin in bins:
-            avail[bin] = [host['capacity'] - host['task_load'] for host in bin_hosts[bin]]
-            avail[bin].sort()
-            avail[bin].reverse()
-        self.cleanDelayTimes()
+
+        # get our assigned tasks
+        tasks = self.session.host.getTasks()
+        self.logger.debug("Got tasks: %r", tasks)
         for task in tasks:
-            # note: tasks are in priority order
             self.logger.debug("task: %r" % task)
-            if task['method'] not in self.handlers:
-                self.logger.warning("Skipping task %(id)i, no handler for method %(method)s", task)
-                continue
             if task['id'] in self.tasks:
                 # we were running this task, but it apparently has been
-                # freed or reassigned. We can't do anything with it until
+                # reassigned. We can't do anything with it until
                 # updateTasks notices this and cleans up.
-                self.logger.debug("Task %(id)s freed or reassigned", task)
+                self.logger.info("Task %(id)s freed or reassigned", task)
                 continue
-            if task['state'] == koji.TASK_STATES['ASSIGNED']:
-                self.logger.debug("task is assigned")
-                if self.host_id == task['host_id']:
-                    # assigned to us, we can take it regardless
-                    if self.takeTask(task):
-                        return True
-            elif task['state'] == koji.TASK_STATES['FREE']:
-                bin = "%(channel_id)s:%(arch)s" % task
-                self.logger.debug("task is free, bin=%r" % bin)
-                if bin not in bins:
-                    continue
-                # see where our available capacity is compared to other hosts for this bin
-                # (note: the hosts in this bin are exactly those that could
-                # accept this task)
-                bin_avail = avail.get(bin, [0])
-                if self.checkAvailDelay(task, bin_avail, our_avail):
-                    # decline for now and give the upper half a chance
-                    continue
-                # otherwise, we attempt to open the task
-                if self.takeTask(task):
-                    return True
-            else:
-                # should not happen
-                raise Exception("Invalid task state reported by server")
+            if task['state'] != koji.TASK_STATES['ASSIGNED']:
+                # shouldn't happen
+                self.logger.error("Recieved task %(id)s is not assigned, state=%(state)s", task)
+                continue
+            if task['host_id'] != self.host_id:
+                # shouldn't happen
+                self.logger.error("Recieved task %(id)s is not ours, host=%(host_id)s", task)
+                continue
+
+            # otherwise attempt to take it
+            if self.takeTask(task):
+                return True
+
         return False
-
-    def checkAvailDelay(self, task, bin_avail, our_avail):
-        """Check to see if we should still delay taking a task
-
-        Returns True if we are still in the delay period and should skip the
-        task. Otherwise False (delay has expired).
-        """
-
-        now = time.time()
-        ts = self.skipped_tasks.get(task['id'])
-        if not ts:
-            ts = self.skipped_tasks[task['id']] = now
-
-        # determine our normalized bin rank
-        for pos, cap in enumerate(bin_avail):
-            if our_avail >= cap:
-                break
-        if len(bin_avail) > 1:
-            rank = float(pos) / (len(bin_avail) - 1)
-        else:
-            rank = 0.0
-        # so, 0.0 for highest available capacity, 1.0 for lowest
-
-        delay = getattr(self.options, 'task_avail_delay', 180)
-        delay *= rank
-
-        # return True if we should delay
-        if now - ts < delay:
-            self.logger.debug("skipping task %i, age=%s rank=%s"
-                              % (task['id'], int(now - ts), rank))
-            return True
-        # otherwise
-        del self.skipped_tasks[task['id']]
-        return False
-
-    def cleanDelayTimes(self):
-        """Remove old entries from skipped_tasks"""
-        now = time.time()
-        delay = getattr(self.options, 'task_avail_delay', 180)
-        cutoff = now - delay * 10
-        # After 10x the delay, we've had plenty of opportunity to take the
-        # task, so either it has already been taken or we can't take it.
-        for task_id in list(self.skipped_tasks):
-            ts = self.skipped_tasks[task_id]
-            if ts < cutoff:
-                del self.skipped_tasks[task_id]
 
     def _waitTask(self, task_id, pid=None):
         """Wait (nohang) on the task, return true if finished"""
@@ -1421,7 +1334,9 @@ class TaskManager(object):
         if method in self.handlers:
             handlerClass = self.handlers[method]
         else:
-            raise koji.GenericError("No handler found for method '%s'" % method)
+            self.logger.warning("Refusing task %(id)s, no handler for %(method)s", task)
+            self.session.host.refuseTask(task['id'], soft=False, msg="no handler for method")
+            return False
         task_info = self.session.getTaskInfo(task['id'], request=True)
         if task_info.get('request') is None:
             self.logger.warning("Task '%s' has no request" % task['id'])
