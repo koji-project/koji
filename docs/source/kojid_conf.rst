@@ -1,8 +1,10 @@
 kojid.conf Options
 ------------------
-kojid.conf is standard .ini-like configuration file. Its main section is
-called ``[kojid]`` and contains following options. They are split by function
-to section but can occur anywhere in ``[kojid]`` section in config file.
+
+``/etc/kojid/kojid.conf`` is standard .ini-like configuration file. Its main
+section is called ``[kojid]`` and contains following options. They are split by
+function to the following sections but can occur anywhere in ``[kojid]`` block
+in config file.
 
 General
 ^^^^^^^
@@ -214,6 +216,23 @@ RPM Builds
       The vendor to use in rpm headers. Value is propagated via macros to
       rpmbuild.
 
+.. _rlimits_kojid:
+
+General RLIMIT options
+^^^^^^^^^^^^^^^^^^^^^^
+.. glossary::
+   RLIMIT_*
+      Same resource limit options as in the :ref:`hub config
+      <hub_resource_limits>`. Note, then when ``mock.new_chroot`` is set, those
+      are not propagated to the chroot and must be set separately in
+      ``/etc/mock/site-defaults.cfg`` as e.g. ``config_opts['nspawn_args'] =
+      ['--rlimit=RLIMIT_NOFILE=16384:16384']``. Note, that in case both old/new
+      chroots are used, this must be set in ``kojid.conf`` and also in
+      ``site-defaults.cfg`` to retain consistent behaviour across the
+      buildroots. For other recommended ``site-defaults.cfg`` settings see
+      :doc:`mock`.
+
+
 Mock
 ^^^^
 .. glossary::
@@ -233,6 +252,10 @@ Mock
 
    yum_proxy=None
       Address of proxy server which will be passed via mock to yum.
+
+   RLIMIT_*
+      These options affect mock's behaviour and are described :ref:`here
+      <rlimits_kojid>`.
 
 Notifications
 ^^^^^^^^^^^^^

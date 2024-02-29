@@ -233,6 +233,8 @@ Notification options
 
 For more on notifications in Koji, see :ref:`notification-basics`
 
+.. _hub_resource_limits:
+
 Resource limits
 ^^^^^^^^^^^^^^^
 If configured, the following resource limits are applied by the hub at startup.

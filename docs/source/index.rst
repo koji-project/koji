@@ -43,6 +43,7 @@ Contents
     database_howto
     kojid_conf
     hub_conf
+    mock_config
     using_the_koji_build_system
     setting_rpm_macros
     profiles
