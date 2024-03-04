@@ -120,6 +120,133 @@ class TestScheduler(BaseTest):
         # TODO
 
 
+class TestDoSchedule(BaseTest):
+
+    def setUp(self):
+        super(TestDoSchedule, self).setUp()
+        self.sched = scheduler.TaskScheduler()
+        self.sched.get_refusals = mock.MagicMock()
+        self.sched._get_hosts = mock.MagicMock()
+        self.assigns = []
+        self.sched.assign = mock.MagicMock(side_effect=self.my_assign)
+
+    def my_assign(self, task, host):
+        self.assigns.append((task,host))
+
+    def test_no_hosts_no_tasks(self):
+        self.sched._get_hosts.return_value = []
+        self.sched.get_hosts()
+        self.sched.do_schedule()
+
+        self.sched.assign.assert_not_called()
+        self.assertEqual(len(self.queries), 0)
+        self.assertEqual(len(self.inserts), 0)
+        self.assertEqual(len(self.updates), 0)
+
+    def mktask(self, **kw):
+        data = kw.copy()
+        data.setdefault('host_id', None)
+        data.setdefault('waiting', False)
+        data.setdefault('weight', 1.0)
+        data.setdefault('channel_id', 1)
+        data.setdefault('arch', 'noarch')
+        data.setdefault('_bin', '%(channel_id)s:%(arch)s' % data)
+        data.setdefault('task_id', mock.MagicMock())  # ??
+        return data
+
+    def mkhost(self, **kw):
+        data = kw.copy()
+        data.setdefault('task_load', 0.0)
+        data.setdefault('ready', True)
+        data.setdefault('data', None)
+        data.setdefault('capacity', 10.0)
+        data.setdefault('channels', [1])
+        data.setdefault('arches', 'x86_64')
+        data.setdefault('id', mock.MagicMock())  # ??
+        data.setdefault('name', f'Host {data["id"]}')  # ??
+        return data
+
+    def test_no_hosts_free_tasks(self):
+        self.sched._get_hosts.return_value = []
+        self.sched.get_hosts()
+        self.sched.free_tasks = [self.mktask(task_id=n) for n in range(5)]
+
+        self.sched.do_schedule()
+
+        self.sched.assign.assert_not_called()
+        self.assertEqual(len(self.queries), 0)
+        self.assertEqual(len(self.inserts), 0)
+        self.assertEqual(len(self.updates), 0)
+
+    def test_no_tasks_avail_hosts(self):
+        self.sched._get_hosts.return_value = [self.mkhost(id=n) for n in range(5)]
+        self.sched.get_hosts()
+        self.sched.free_tasks = []
+
+        self.sched.do_schedule()
+
+        self.sched.assign.assert_not_called()
+        self.assertEqual(len(self.queries), 0)
+        self.assertEqual(len(self.inserts), 0)
+        self.assertEqual(len(self.updates), 0)
+
+    def test_no_tasks_avail_hosts(self):
+        self.sched._get_hosts.return_value = [self.mkhost(id=n) for n in range(5)]
+        self.sched.get_hosts()
+        self.sched.free_tasks = []
+
+        self.sched.do_schedule()
+
+        self.sched.assign.assert_not_called()
+        self.assertEqual(len(self.queries), 0)
+        self.assertEqual(len(self.inserts), 0)
+        self.assertEqual(len(self.updates), 0)
+
+    def test_free_tasks_avail_hosts(self):
+        self.sched._get_hosts.return_value = [self.mkhost(id=n) for n in range(5)]
+        self.sched.get_hosts()
+        self.sched.free_tasks = [self.mktask(task_id=n) for n in range(5)]
+
+        self.sched.do_schedule()
+
+        # in this simple case, tasks should be evenly assigned
+        self.assertEqual(len(self.assigns), 5)
+        t_assigned = []
+        h_used = []
+        for task, host in self.assigns:
+            t_assigned.append(task['task_id'])
+            h_used.append(host['id'])
+        t_assigned.sort()
+        h_used.sort()
+        self.assertEqual(t_assigned, list(range(5)))
+        self.assertEqual(h_used, list(range(5)))
+
+    def test_active_tasks(self):
+        self.context.opts['CapacityOvercommit'] = 1.0
+        hosts = [self.mkhost(id=n, capacity=2.0) for n in range(5)]
+        active = [self.mktask(task_id=n, host_id=n, weight=4.0) for n in range(3)]
+        # so, first three hosts have a task of weight=4, more than capacity+overcommit
+        free = [self.mktask(task_id=n, weight=2.0) for n in range(3,5)]
+        # two free tasks with weight=2
+        self.sched._get_hosts.return_value = hosts
+        self.sched.get_hosts()
+        self.sched.free_tasks = free
+        self.sched.active_tasks = active
+
+        self.sched.do_schedule()
+
+        # we expect that the two free tasks will be assigned evenly to the hosts with free capacity
+        self.assertEqual(len(self.assigns), 2)
+        t_assigned = []
+        h_used = []
+        for task, host in self.assigns:
+            t_assigned.append(task['task_id'])
+            h_used.append(host['id'])
+        t_assigned.sort()
+        h_used.sort()
+        self.assertEqual(t_assigned, list(range(3,5)))
+        self.assertEqual(h_used, list(range(3,5)))
+
 class TestCheckActiveRuns(BaseTest):
 
     def setUp(self):
