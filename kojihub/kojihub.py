@@ -14781,9 +14781,7 @@ class HostExports(object):
         host.verify()
         if isinstance(hostdata, str):
             # for backwards compatibility
-            data = json.loads(hostdata)
-        else:
-            data = hostdata
+            hostdata = json.loads(hostdata)
         scheduler.set_host_data(host.id, hostdata)
 
     def getTasks(self):

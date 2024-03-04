@@ -24,7 +24,6 @@ from __future__ import absolute_import, division
 
 import errno
 import hashlib
-import json
 import logging
 import os
 import re
@@ -1031,9 +1030,9 @@ class TaskManager(object):
             'methods': list(self.handlers.keys()),
             'maxjobs': self.options.maxjobs,
             # TODO: now it would be duplicated by updateHost
-            #'ready': self.ready,
-            #'task_load': self.task_load,
-            #cpu_load, free_mem, free_disk, ...
+            # 'ready': self.ready,
+            # 'task_load': self.task_load,
+            # cpu_load, free_mem, free_disk, ...
         }
         return data
 
