@@ -1039,8 +1039,7 @@ class TaskManager(object):
 
     def getNextTask(self):
         self.ready = self.readyForTask()
-        self.session.host.updateHost(self.task_load, self.ready)
-        self.session.host.setHostData(json.dumps(self._get_host_data()))
+        self.session.host.updateHost(self.task_load, self.ready, data=self._get_host_data())
         if not self.ready:
             self.logger.info("Not ready for task")
             return False

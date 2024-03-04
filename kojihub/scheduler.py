@@ -153,6 +153,17 @@ def get_host_data(hostID=None):
     return query.execute()
 
 
+def set_host_data(hostID, data):
+    if not isinstance(data, dict):
+        raise koji.ParameterError('Host data should be a dictionary')
+    upsert = UpsertProcessor(
+        table='scheduler_host_data',
+        keys=['host_id'],
+        data={'host_id': hostID, 'data': json.dumps(data)},
+    )
+    upsert.execute()
+
+
 class TaskRunsQuery(QueryView):
 
     tables = ['scheduler_task_runs']
