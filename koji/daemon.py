@@ -1025,9 +1025,20 @@ class TaskManager(object):
                 else:
                     self.logger.info("Lingering task %r (pid %r)" % (id, pid))
 
+    def _get_host_data(self):
+        data = {
+            'methods': list(self.handlers.keys()),
+            'maxjobs': self.options.maxjobs,
+            # TODO: now it would be duplicated by updateHost
+            # 'ready': self.ready,
+            # 'task_load': self.task_load,
+            # cpu_load, free_mem, free_disk, ...
+        }
+        return data
+
     def getNextTask(self):
         self.ready = self.readyForTask()
-        self.session.host.updateHost(self.task_load, self.ready)
+        self.session.host.updateHost(self.task_load, self.ready, data=self._get_host_data())
         if not self.ready:
             self.logger.info("Not ready for task")
             return False

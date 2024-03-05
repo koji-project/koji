@@ -153,6 +153,17 @@ def get_host_data(hostID=None):
     return query.execute()
 
 
+def set_host_data(hostID, data):
+    if not isinstance(data, dict):
+        raise koji.ParameterError('Host data should be a dictionary')
+    upsert = UpsertProcessor(
+        table='scheduler_host_data',
+        keys=['host_id'],
+        data={'host_id': hostID, 'data': json.dumps(data)},
+    )
+    upsert.execute()
+
+
 class TaskRunsQuery(QueryView):
 
     tables = ['scheduler_task_runs']
@@ -191,7 +202,6 @@ class TaskScheduler(object):
         self.active_tasks = []
         self.free_tasks = []
 
-        # TODO these things need proper config
         self.maxjobs = context.opts['MaxJobs']
         self.capacity_overcommit = context.opts['CapacityOvercommit']
         self.ready_timeout = context.opts['ReadyTimeout']
@@ -282,6 +292,11 @@ class TaskScheduler(object):
             host.setdefault('_load', 0.0)
             host.setdefault('_ntasks', 0)
             host.setdefault('_demand', 0.0)
+            # host data might be unset
+            hostdata = host['data']
+            if hostdata is None:
+                hostdata = {}
+            host.setdefault('_maxjobs', hostdata.get('maxjobs') or self.maxjobs)
             # temporary test code
             logger.info(f'Host: {host}')
             ldiff = host['task_load'] - host['_load']
@@ -297,7 +312,8 @@ class TaskScheduler(object):
             min_avail = min(0, task['weight'] - self.capacity_overcommit)
             h_refused = refusals.get(task['task_id'], {})
             for host in self.hosts_by_bin.get(task['_bin'], []):
-                if (host['ready'] and host['_ntasks'] < self.maxjobs and
+                if (host['ready'] and
+                        host['_ntasks'] < host['_maxjobs'] and
                         host['capacity'] - host['_load'] > min_avail and
                         host['id'] not in h_refused):
                     task['_hosts'].append(host)
@@ -324,7 +340,7 @@ class TaskScheduler(object):
                          [(h['name'], "%(_rank).2f" % h) for h in task['_hosts']])
             for host in task['_hosts']:
                 if (host['capacity'] - host['_load'] > min_avail and
-                        host['_ntasks'] < self.maxjobs):
+                        host['_ntasks'] < host['_maxjobs']):
                     # add run entry
                     self.assign(task, host)
                     # update our totals and rank
@@ -540,6 +556,7 @@ class TaskScheduler(object):
             ('host.ready', 'ready'),
             ('host_config.arches', 'arches'),
             ('host_config.capacity', 'capacity'),
+            ('scheduler_host_data.data', 'data'),
         )
         fields, aliases = zip(*fields)
 
@@ -552,7 +569,8 @@ class TaskScheduler(object):
                 'host_config.active IS TRUE',
             ],
             joins=[
-                'host_config ON host.id = host_config.host_id'
+                'LEFT JOIN host_config ON host.id = host_config.host_id',
+                'LEFT JOIN scheduler_host_data ON host.id = scheduler_host_data.host_id',
             ]
         )
 

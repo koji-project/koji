@@ -14675,10 +14675,19 @@ class HostExports(object):
         host.verify()
         return host.id
 
-    def updateHost(self, task_load, ready):
+    def updateHost(self, task_load, ready, data=None):
+        """Update host data
+
+        :param float task_load: current task load
+        :param bool ready: whether the host is ready to take a task
+        :param dict data: data for the scheduler
+
+        """
         host = Host()
         host.verify()
         host.updateHost(task_load, ready)
+        if data is not None:
+            scheduler.set_host_data(host.id, data)
 
     def getLoadData(self):
         host = Host()
@@ -14732,21 +14741,19 @@ class HostExports(object):
         return task.setWeight(weight)
 
     def setHostData(self, hostdata):
-        """Builder will update all its resources
+        """Provide host data for the scheduler
 
-        Initial implementation contains:
-          - available task methods
-          - maxjobs
-          - host readiness
+        :param dict hostdata: host data
+
+        For backwards compatibility, we also accept hostdata as a string containing a
+        json-encoded dictionary.
         """
         host = Host()
         host.verify()
-        upsert = UpsertProcessor(
-            table='scheduler_host_data',
-            keys=['host_id'],
-            data={'host_id': host.id, 'data': hostdata},
-        )
-        upsert.execute()
+        if isinstance(hostdata, str):
+            # for backwards compatibility
+            hostdata = json.loads(hostdata)
+        scheduler.set_host_data(host.id, hostdata)
 
     def getTasks(self):
         host = Host()
