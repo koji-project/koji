@@ -7992,6 +7992,8 @@ def anon_handle_scheduler_info(goptions, session, args):
     parser.add_option("--state", action="store", type='choice', default=None,
                       choices=[x for x in koji.TASK_STATES.keys()],
                       help="Limit data to task state")
+    parser.add_option("--limit", action="store", type=int, default=100,
+                      help="Limit data to last N items [default: %default]")
     (options, args) = parser.parse_args(args)
     if len(args) > 0:
         parser.error("This command takes no arguments")
@@ -8013,10 +8015,13 @@ def anon_handle_scheduler_info(goptions, session, args):
         clauses.append(('host_id', options.host))
     if options.state:
         clauses.append(('state', koji.TASK_STATES[options.state]))
+    # reverse order, so we can apply limit if needed
+    opts = {'order': '-id', 'limit': options.limit}
 
     runs = session.scheduler.getTaskRuns(
         clauses=clauses,
-        fields=('task_id', 'host_name', 'state', 'create_ts', 'start_ts', 'completion_ts')
+        fields=('task_id', 'host_name', 'state', 'create_ts', 'start_ts', 'completion_ts'),
+        opts=opts
     )
     mask = '%(task_id)-9s %(host_name)-20s %(state)-7s ' \
            '%(create_ts)-17s %(start_ts)-17s %(completion_ts)-17s'
@@ -8031,7 +8036,7 @@ def anon_handle_scheduler_info(goptions, session, args):
         }
         print(header)
         print('-' * len(header))
-    for run in runs:
+    for run in reversed(runs):
         run['state'] = koji.TASK_STATES[run['state']]
         for ts in ('create_ts', 'start_ts', 'completion_ts'):
             run[ts] = _format_ts(run[ts])
@@ -8058,9 +8063,13 @@ def handle_scheduler_logs(goptions, session, args):
                       help="Logs from given timestamp")
     parser.add_option("--to", type="float", action="store", dest="to_ts",
                       help="Logs until given timestamp (included)")
+    parser.add_option("--limit", action="store", type=int, default=None,
+                      help="Limit data to last N items. [default: %default]")
     (options, args) = parser.parse_args(args)
     if len(args) != 0:
         parser.error("There are no arguments for this command")
+    if options.from_ts and options.to_ts and options.limit:
+        parser.error("If both --from and --to are used, --limit shouldn't be used")
 
     clauses = []
     if options.task:
@@ -8076,12 +8085,18 @@ def handle_scheduler_logs(goptions, session, args):
     if options.to_ts:
         clauses.append(['msg_ts', '<', options.to_ts])
 
-    logs = session.scheduler.getLogMessages(clauses, fields=('task_id', 'host_id', 'host_name',
-                                                             'msg_ts', 'msg'))
+    # reverse order, so we can apply limit if needed
+    opts = {'order': '-id'}
+    if options.limit is not None:
+        opts['limit'] = options.limit
+    logs = session.scheduler.getLogMessages(clauses,
+                                            fields=('task_id', 'host_id', 'host_name',
+                                                    'msg_ts', 'msg'),
+                                            opts=opts)
     for log in logs:
         log['time'] = time.asctime(time.localtime(log['msg_ts']))
 
-    mask = ("%(task_id)s\t%(host_name)s\t%(time)s\t%(msg)s")
+    mask = ("%(task_id)-10s %(host_name)-20s %(time)-25s %(msg)-30s")
     if not goptions.quiet:
         h = mask % {
             'task_id': 'Task',
@@ -8092,7 +8107,7 @@ def handle_scheduler_logs(goptions, session, args):
         print(h)
         print('-' * len(h))
 
-    for log in logs:
+    for log in reversed(logs):
         print(mask % log)
 
 
