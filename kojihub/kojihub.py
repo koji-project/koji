@@ -7012,10 +7012,11 @@ class CG_Importer(object):
 
     def log(self, msg, level=logging.WARNING):
         if self._cg_log_file is None:
-            log_dir = joinpath(koji.pathinfo.work(), 'logs')
+            log_dir = joinpath(koji.pathinfo.work(), 'cg_import_logs')
             koji.ensuredir(log_dir)
-            self._cg_log_path = joinpath(log_dir, 'cg_import.log')
-            self._cg_log_file = open(self._cg_log_path, mode='wt')
+            fd, fpath = tempfile.mkstemp(dir=log_dir, suffix="-cg_import.log", text=True)
+            self._cg_log_path = fpath
+            self._cg_log_file = os.fdopen(fd, 'wt')
         logger.log(level=level, msg=msg)
         self._cg_log_file.write(msg + '\n')
         self._cg_log_file.flush()
