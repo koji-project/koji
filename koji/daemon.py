@@ -1049,14 +1049,13 @@ class TaskManager(object):
 
         # get our assigned tasks
         tasks = self.session.host.getTasks()
-        self.logger.debug("Got tasks: %r", tasks)
         for task in tasks:
             self.logger.debug("task: %r" % task)
             if task['id'] in self.tasks:
                 # we were running this task, but it apparently has been
                 # reassigned. We can't do anything with it until
                 # updateTasks notices this and cleans up.
-                self.logger.info("Task %(id)s freed or reassigned", task)
+                self.logger.info("Task %(id)s reassigned", task)
                 continue
             if task['state'] != koji.TASK_STATES['ASSIGNED']:
                 # shouldn't happen
