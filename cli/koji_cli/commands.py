@@ -8015,14 +8015,28 @@ def anon_handle_scheduler_info(goptions, session, args):
         clauses.append(('host_id', options.host))
     if options.state:
         clauses.append(('state', koji.TASK_STATES[options.state]))
-    # reverse order, so we can apply limit if needed
-    opts = {'order': '-id', 'limit': options.limit}
 
-    runs = session.scheduler.getTaskRuns(
-        clauses=clauses,
-        fields=('task_id', 'host_name', 'state', 'create_ts', 'start_ts', 'completion_ts'),
-        opts=opts
-    )
+
+    runs = None
+    if options.limit is not None:
+        try:
+            runs = session.scheduler.getTaskRuns(
+                clauses=clauses,
+                fields=('task_id', 'host_name', 'state', 'create_ts', 'start_ts', 'completion_ts'),
+                opts={'order': '-id', 'limit': options.limit}
+            )
+        except koji.GenericError:
+            # iterator is sufficient here as we don't modify the list
+            runs = reversed(runs)
+    if runs is None:
+        # hub could be 1.34.0 without opts support or user doesn't use --limit
+        runs = session.scheduler.getTaskRuns(
+            clauses=clauses,
+            fields=('task_id', 'host_name', 'state', 'create_ts', 'start_ts', 'completion_ts')
+        )
+        if options.limit:
+            runs = runs[-options.limit:]
+
     mask = '%(task_id)-9s %(host_name)-20s %(state)-7s ' \
            '%(create_ts)-17s %(start_ts)-17s %(completion_ts)-17s'
     if not goptions.quiet:
@@ -8036,7 +8050,7 @@ def anon_handle_scheduler_info(goptions, session, args):
         }
         print(header)
         print('-' * len(header))
-    for run in reversed(runs):
+    for run in runs:
         run['state'] = koji.TASK_STATES[run['state']]
         for ts in ('create_ts', 'start_ts', 'completion_ts'):
             run[ts] = _format_ts(run[ts])
@@ -8086,13 +8100,25 @@ def handle_scheduler_logs(goptions, session, args):
         clauses.append(['msg_ts', '<', options.to_ts])
 
     # reverse order, so we can apply limit if needed
-    opts = {'order': '-id'}
+    logs = None
     if options.limit is not None:
-        opts['limit'] = options.limit
-    logs = session.scheduler.getLogMessages(clauses,
-                                            fields=('task_id', 'host_id', 'host_name',
-                                                    'msg_ts', 'msg'),
-                                            opts=opts)
+        try:
+            logs = session.scheduler.getLogMessages(clauses,
+                                                    fields=('task_id', 'host_id', 'host_name',
+                                                        'msg_ts', 'msg'),
+                                                    opts={'order': '-id', 'limit': options.limit})
+            # don't use reversed() as it will be exhausted after modification loop later
+            logs.reverse()
+        except koji.GenericError:
+            pass
+    if logs is None:
+        # hub could be 1.34.0 without opts support or user doesn't use --limit
+        logs = session.scheduler.getLogMessages(clauses,
+                                                fields=('task_id', 'host_id', 'host_name',
+                                                    'msg_ts', 'msg'))
+        if options.limit:
+            logs = logs[-options.limit:]
+
     for log in logs:
         log['time'] = time.asctime(time.localtime(log['msg_ts']))
 
@@ -8107,7 +8133,7 @@ def handle_scheduler_logs(goptions, session, args):
         print(h)
         print('-' * len(h))
 
-    for log in reversed(logs):
+    for log in logs:
         print(mask % log)
 
 
