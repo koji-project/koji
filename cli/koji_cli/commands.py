@@ -8025,9 +8025,15 @@ def anon_handle_scheduler_info(goptions, session, args):
                 fields=('task_id', 'host_name', 'state', 'create_ts', 'start_ts', 'completion_ts'),
                 opts={'order': '-id', 'limit': options.limit}
             )
-        except koji.GenericError:
             # iterator is sufficient here as we don't modify the list
             runs = reversed(runs)
+        except koji.ParameterError:
+            # 1.34.0 hub, we will try again with no opts usage
+            pass
+        except koji.GenericError as ex:
+            if 'Invalid method' in str(ex):
+                error("Hub version is %s and doesn't support scheduler methods "
+                      "introduced in 1.34." % session.hub_version_str)
     if runs is None:
         # hub could be 1.34.0 without opts support or user doesn't use --limit
         runs = session.scheduler.getTaskRuns(
@@ -8109,8 +8115,13 @@ def handle_scheduler_logs(goptions, session, args):
                                                     opts={'order': '-id', 'limit': options.limit})
             # don't use reversed() as it will be exhausted after modification loop later
             logs.reverse()
-        except koji.GenericError:
+        except koji.ParameterError:
+            # 1.34.0 hub, we will try again with no opts usage
             pass
+        except koji.GenericError as ex:
+            if 'Invalid method' in str(ex):
+                error("Hub version is %s and doesn't support scheduler methods "
+                      "introduced in 1.34." % session.hub_version_str)
     if logs is None:
         # hub could be 1.34.0 without opts support or user doesn't use --limit
         logs = session.scheduler.getLogMessages(clauses,
