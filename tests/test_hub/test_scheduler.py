@@ -266,6 +266,7 @@ class TestCheckActiveRuns(BaseTest):
         mock.patch('kojihub.Task.assign', new=my_assign).start()
         self.log_db = mock.MagicMock()
         mock.patch('kojihub.scheduler.log_db', new=self.log_db).start()
+        self.set_refusal = mock.patch('kojihub.scheduler.set_refusal').start()
 
     def test_check_no_active(self):
         self.assertEqual(self.sched.active_tasks, [])  # set by init
@@ -311,14 +312,40 @@ class TestCheckActiveRuns(BaseTest):
 
     def test_check_assign_timeout(self):
         # 'Task assignment timeout' case
-        create_ts = 0
+        create_ts = 1000
+        update_ts = 999  # host ts BEFORE assignment
         now = 1000000
         self.sched.active_tasks = [{'task_id': 99, 'host_id': 23, 'state': koji.TASK_STATES['ASSIGNED']}]
-        self.sched.hosts = {23: {'id': 23, 'name': 'test host 23'}}
+        self.sched.hosts = {23: {'id': 23, 'name': 'test host 23', 'update_ts': update_ts}}
         self.sched.get_active_runs.return_value = {99: [{'create_ts': create_ts}]}
+
         with mock.patch('time.time', return_value=now):
             self.sched.check_active_tasks()
+
         self.get_active_runs.assert_called_once()
+        self.set_refusal.assert_not_called()
+        self.log_db.assert_called_once_with('Task assignment timeout', 99, 23)
+        # we should free such tasks
+        self.assertEqual(self.frees, [99])
+        self.assertEqual(self.assigns, [])
+        self.assertEqual(len(self.updates), 1)
+        update = self.updates[0]
+        self.assertEqual(update.table, 'scheduler_task_runs')
+
+    def test_check_implicit_refusal(self):
+        # 'Task assignment timeout' case
+        create_ts = 1000
+        update_ts = 1001  # host ts AFTER assignment
+        now = 1000000
+        self.sched.active_tasks = [{'task_id': 99, 'host_id': 23, 'state': koji.TASK_STATES['ASSIGNED']}]
+        self.sched.hosts = {23: {'id': 23, 'name': 'test host 23', 'update_ts': update_ts}}
+        self.sched.get_active_runs.return_value = {99: [{'create_ts': create_ts}]}
+
+        with mock.patch('time.time', return_value=now):
+            self.sched.check_active_tasks()
+
+        self.get_active_runs.assert_called_once()
+        self.set_refusal.assert_called_once_with(23, 99, msg='assignment timeout')
         self.log_db.assert_called_once_with('Task assignment timeout', 99, 23)
         # we should free such tasks
         self.assertEqual(self.frees, [99])

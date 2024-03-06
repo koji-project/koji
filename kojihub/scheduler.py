@@ -387,12 +387,14 @@ class TaskScheduler(object):
                 # TODO fix
 
             if task['state'] == koji.TASK_STATES['ASSIGNED']:
-                # TODO check time since assigned
-                # if not taken within a timeout
-                #  - if host not checking in, then make sure host marked unavail and free
-                #  - if host *is* checking in, then treat as refusal and free
-                age = time.time() - min([r['create_ts'] for r in taskruns])
+                assign_ts = min([r['create_ts'] for r in taskruns])
+                age = time.time() - assign_ts
                 if age > self.assign_timeout:
+                    # has the host checked in since we assigned?
+                    if host['update_ts'] and host['update_ts'] > assign_ts:
+                        # treat this as an implicit refusal
+                        # possibly an older koji version on builder
+                        set_refusal(host['id'], task['task_id'], msg='assignment timeout')
                     log_both('Task assignment timeout', task_id=task['task_id'],
                              host_id=host['id'])
                     kojihub.Task(task['task_id']).free()
@@ -438,6 +440,9 @@ class TaskScheduler(object):
                 values={'host_ids': [h['id'] for h in hosts_to_mark]},
             )
             update.execute()
+        # also update our data
+        for host in hosts_to_mark:
+            host['ready'] = False
 
     def get_active_runs(self):
         runs = get_task_runs([["active", True]])
