@@ -154,10 +154,11 @@ def main(options, session):
     signal.signal(signal.SIGTERM, shutdown)
     signal.signal(signal.SIGUSR1, restart)
     exit_code = 0
+    taken = False
     while True:
         try:
-            taken = False
-            tm.updateBuildroots()
+            if not taken:
+                tm.updateBuildroots()
             tm.updateTasks()
             taken = tm.getNextTask()
         except (SystemExit, ServerExit, KeyboardInterrupt):
@@ -180,6 +181,7 @@ def main(options, session):
             # XXX - this is a little extreme
             # log the exception and continue
             logger.error(''.join(traceback.format_exception(*sys.exc_info())))
+            taken = False
         try:
             if not taken:
                 # Only sleep if we didn't take a task, otherwise retry immediately.
