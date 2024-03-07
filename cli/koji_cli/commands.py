@@ -8016,32 +8016,26 @@ def anon_handle_scheduler_info(goptions, session, args):
     if options.state:
         clauses.append(('state', koji.TASK_STATES[options.state]))
 
-
-    runs = None
+    fields = ('id', 'task_id', 'host_name', 'state', 'create_ts', 'start_ts', 'completion_ts')
+    kwargs = {'clauses': clauses, 'fields': fields}
+    if session.hub_version < (1, 34, 0):
+        error("Hub version is %s and doesn't support scheduler methods "
+              "introduced in 1.34." % session.hub_version_str)
     if options.limit is not None:
-        try:
-            runs = session.scheduler.getTaskRuns(
-                clauses=clauses,
-                fields=('task_id', 'host_name', 'state', 'create_ts', 'start_ts', 'completion_ts'),
-                opts={'order': '-id', 'limit': options.limit}
-            )
-            # iterator is sufficient here as we don't modify the list
+        if session.hub_version > (1, 34, 1):
+            kwargs['opts'] = {'order': '-id', 'limit': options.limit}
+    runs = session.scheduler.getTaskRuns(**kwargs)
+
+    if options.limit is not None:
+        if session.hub_version > (1, 34, 1):
+            # server did it for us, but we need to reverse
             runs = reversed(runs)
-        except koji.ParameterError:
-            # 1.34.0 hub, we will try again with no opts usage
-            pass
-        except koji.GenericError as ex:
-            if 'Invalid method' in str(ex):
-                error("Hub version is %s and doesn't support scheduler methods "
-                      "introduced in 1.34." % session.hub_version_str)
-    if runs is None:
-        # hub could be 1.34.0 without opts support or user doesn't use --limit
-        runs = session.scheduler.getTaskRuns(
-            clauses=clauses,
-            fields=('task_id', 'host_name', 'state', 'create_ts', 'start_ts', 'completion_ts')
-        )
-        if options.limit:
+        else:
+            # emulate limit
             runs = runs[-options.limit:]
+    if session.hub_version < (1, 34, 1):
+        # emulate order
+        runs.sort(key=lambda r:r['id'])
 
     mask = '%(task_id)-9s %(host_name)-20s %(state)-7s ' \
            '%(create_ts)-17s %(start_ts)-17s %(completion_ts)-17s'
@@ -8088,7 +8082,7 @@ def handle_scheduler_logs(goptions, session, args):
     (options, args) = parser.parse_args(args)
     if len(args) != 0:
         parser.error("There are no arguments for this command")
-    if options.from_ts and options.to_ts and options.limit:
+    if options.from_ts and options.to_ts and options.limit is not None:
         parser.error("If both --from and --to are used, --limit shouldn't be used")
 
     clauses = []
@@ -8105,30 +8099,27 @@ def handle_scheduler_logs(goptions, session, args):
     if options.to_ts:
         clauses.append(['msg_ts', '<', options.to_ts])
 
-    # reverse order, so we can apply limit if needed
-    logs = None
+    fields=('id', 'task_id', 'host_id', 'host_name', 'msg_ts', 'msg')
+    kwargs = {'clauses': clauses, 'fields': fields}
+    if session.hub_version < (1, 34, 0):
+        error("Hub version is %s and doesn't support scheduler methods "
+              "introduced in 1.34." % session.hub_version_str)
     if options.limit is not None:
-        try:
-            logs = session.scheduler.getLogMessages(clauses,
-                                                    fields=('task_id', 'host_id', 'host_name',
-                                                        'msg_ts', 'msg'),
-                                                    opts={'order': '-id', 'limit': options.limit})
+        if session.hub_version > (1, 34, 1):
+            kwargs['opts'] = {'order': '-id', 'limit': options.limit}
+    logs = session.scheduler.getLogMessages(**kwargs)
+
+    if options.limit is not None:
+        if session.hub_version > (1, 34, 1):
+            # server did it for us, but we need to reverse
             # don't use reversed() as it will be exhausted after modification loop later
-            logs.reverse()
-        except koji.ParameterError:
-            # 1.34.0 hub, we will try again with no opts usage
-            pass
-        except koji.GenericError as ex:
-            if 'Invalid method' in str(ex):
-                error("Hub version is %s and doesn't support scheduler methods "
-                      "introduced in 1.34." % session.hub_version_str)
-    if logs is None:
-        # hub could be 1.34.0 without opts support or user doesn't use --limit
-        logs = session.scheduler.getLogMessages(clauses,
-                                                fields=('task_id', 'host_id', 'host_name',
-                                                    'msg_ts', 'msg'))
-        if options.limit:
+            logs = logs.reverse()
+        else:
+            # emulate limit
             logs = logs[-options.limit:]
+    if session.hub_version < (1, 34, 1):
+        # emulate order
+        logs.sort(key=lambda r:r['id'])
 
     for log in logs:
         log['time'] = time.asctime(time.localtime(log['msg_ts']))
