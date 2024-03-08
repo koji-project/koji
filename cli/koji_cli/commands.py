@@ -8022,12 +8022,12 @@ def anon_handle_scheduler_info(goptions, session, args):
         error("Hub version is %s and doesn't support scheduler methods "
               "introduced in 1.34." % session.hub_version_str)
     if options.limit is not None:
-        if session.hub_version > (1, 34, 1):
+        if session.hub_version >= (1, 34, 1):
             kwargs['opts'] = {'order': '-id', 'limit': options.limit}
     runs = session.scheduler.getTaskRuns(**kwargs)
 
     if options.limit is not None:
-        if session.hub_version > (1, 34, 1):
+        if session.hub_version >= (1, 34, 1):
             # server did it for us, but we need to reverse
             runs = reversed(runs)
         else:
@@ -8105,12 +8105,12 @@ def handle_scheduler_logs(goptions, session, args):
         error("Hub version is %s and doesn't support scheduler methods "
               "introduced in 1.34." % session.hub_version_str)
     if options.limit is not None:
-        if session.hub_version > (1, 34, 1):
+        if session.hub_version >= (1, 34, 1):
             kwargs['opts'] = {'order': '-id', 'limit': options.limit}
     logs = session.scheduler.getLogMessages(**kwargs)
 
     if options.limit is not None:
-        if session.hub_version > (1, 34, 1):
+        if session.hub_version >= (1, 34, 1):
             # server did it for us, but we need to reverse
             # don't use reversed() as it will be exhausted after modification loop later
             logs = logs.reverse()
