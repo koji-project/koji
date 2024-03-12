@@ -1,13 +1,15 @@
 kojid.conf Options
 ------------------
 
-``/etc/kojid/kojid.conf`` is standard .ini-like configuration file. Its main
-section is called ``[kojid]`` and contains following options. They are split by
-function to the following sections but can occur anywhere in ``[kojid]`` block
-in config file.
+``/etc/kojid/kojid.conf`` is a standard .ini-like configuration file. Its main
+section is named ``[kojid]`` and can contain the following options.
+For readability, we have broken them into categories in this document,
+but they should all go under the ``[kojid]`` block of the config file.
 
-General
-^^^^^^^
+General Options
+^^^^^^^^^^^^^^^
+These options affect overall kojid behavior:
+
 .. glossary::
    chroot_tmpdir=/chroot_tmpdir
       The temporary directory in buildroot. It is advised to not use ``/tmp``
@@ -33,7 +35,7 @@ General
       buildroot_final_cleanup_delay
 
    buildroot_final_cleanup_delay=86400
-      Time after which buildroot (pre-cleand after
+      Time after which buildroot (pre-cleaned after
       ``buildroot_basic_cleanup_delay``) is deleted completely. (1 day in
       seconds)
 
@@ -98,8 +100,10 @@ General
    workdir=/tmp/koji
       The directory root for temporary storage on builder.
 
-Building
-^^^^^^^^
+Build Options
+^^^^^^^^^^^^^
+The following options affect various build processes in kojid:
+
 .. glossary::
    allowed_scms=scm.example.com:/cvs/example git.example.org:/example svn.example.org:/users/\*:no
       Controls which source control systems the builder will accept. It is a
@@ -194,8 +198,10 @@ Building
       the image. Default value is compromise between speed and resource usage.
       Only one option (not space-separated) is allowed here for now.
 
-RPM Builds
-^^^^^^^^^^
+RPM Build Options
+^^^^^^^^^^^^^^^^^
+The following options affect rpms builds:
+
 .. glossary::
    distribution=Koji
       The distribution to use in rpm headers. Value is propagated via macros
@@ -220,21 +226,23 @@ RPM Builds
 
 General RLIMIT options
 ^^^^^^^^^^^^^^^^^^^^^^
+Kojid accepts the same rlimit options as the hub.
+
 .. glossary::
    RLIMIT_*
       Same resource limit options as in the :ref:`hub config
-      <hub_resource_limits>`. Note, then when ``mock.new_chroot`` is set, those
-      are not propagated to the chroot and must be set separately in
-      ``/etc/mock/site-defaults.cfg`` as e.g. ``config_opts['nspawn_args'] =
-      ['--rlimit=RLIMIT_NOFILE=16384:16384']``. Note, that in case both old/new
-      chroots are used, this must be set in ``kojid.conf`` and also in
-      ``site-defaults.cfg`` to retain consistent behaviour across the
-      buildroots. For other recommended ``site-defaults.cfg`` settings see
-      :doc:`mock`.
+      <hub_resource_limits>`. Note, that when ``mock.new_chroot`` is set, those
+      are not propagated to the mock chroot. To apply rlimits to mock in
+      such cases, you can set them separately in
+      ``/etc/mock/site-defaults.cfg``. See :doc:`mock_config` for more information.
 
 
-Mock
-^^^^
+.. _mock_kojid_conf:
+
+Mock Options
+^^^^^^^^^^^^
+The following options affect how Koji uses Mock:
+
 .. glossary::
    mockdir=/var/lib/mock
       The directory root for mock.
@@ -253,24 +261,26 @@ Mock
    yum_proxy=None
       Address of proxy server which will be passed via mock to yum.
 
-   RLIMIT_*
-      These options affect mock's behaviour and are described :ref:`here
+   rlimits
+      The ``RLIMIT_*`` options can affect mock's behaviour and are described :ref:`here
       <rlimits_kojid>`.
 
-Notifications
-^^^^^^^^^^^^^
+Notification Options
+^^^^^^^^^^^^^^^^^^^^
 .. glossary::
    admin_emails=''
       Space-separated list of addresses for sending logs.
 
-   from_addr=Koji Build System <buildsys@example.com>
+   from_addr=Koji Build System <buildsys\@example.com>
       The From address used when sending email notifications.
 
    smtphost=example.com
       The mail host to use for sending email notifications.
 
-Kerberos Authentication
-^^^^^^^^^^^^^^^^^^^^^^^
+Kerberos Options
+^^^^^^^^^^^^^^^^
+The following options control Kerberos authentication:
+
 .. glossary::
    ccache=/var/tmp/kojid.ccache
       Credentials cache used for krbV login.
@@ -283,8 +293,10 @@ Kerberos Authentication
       Location of the keytab.
 
 
-SSL Authentication
-^^^^^^^^^^^^^^^^^^
+SSL Options
+^^^^^^^^^^^
+The following options control SSL authentication:
+
 .. glossary::
    ca=''
       noop, obsoleted, will be removed soon.

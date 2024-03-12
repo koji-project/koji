@@ -11,7 +11,7 @@ Koji
 ====
 
 Koji is the software that builds `RPM packages for the Fedora project`_. It
-uses `Mock`_ to create chroot environments to perform builds. To download the
+uses :doc:`Mock <mock_config>` to create chroot environments to perform builds. To download the
 source code, report bugs, join the mailing list etc., see the `Koji project
 website`_.
 

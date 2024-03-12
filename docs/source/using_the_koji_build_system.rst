@@ -478,7 +478,7 @@ do:
 
 
 Note, that mock's behaviour is always impacted by builder's default values in
-``/etc/mock/site-defaults.cfg``. Check :doc:`mock` for details.
+``/etc/mock/site-defaults.cfg``. Check :doc:`mock_config` for details.
 
 Using Koji to control tasks
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
