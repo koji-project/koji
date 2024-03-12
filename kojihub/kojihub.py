@@ -13119,28 +13119,37 @@ class RootExports(object):
 
     def listUsers(self, userType=koji.USERTYPES['NORMAL'], prefix=None, queryOpts=None, perm=None,
                   inherited_perm=False):
-        """List all users in the system.
-        userType can be an integer value from koji.USERTYPES (defaults to 0, i.e. normal users).
-        Returns a list of maps with the following keys:
+        """List users in the system
 
+        :param int|list|None userType: filter by type, defaults to normal users
+        :param str prefix: only users whose name starts with prefix. optional
+        :param dict queryOpts: query options. optional
+        :param str perm: only users that have this permission. optional
+        :param bool inherited_perm: consider inherited permissions. default: False
+        :returns: a list of matching user entries
+
+        The userType option can either by a single integer or a list. These integer values
+        correspond to the values from koji.USERTYPES (defaults to 0, i.e. normal users).
+
+        The entries in the returned list have the following keys:
         - id
         - name
         - status
         - usertype
         - krb_principals
-        - permissions
 
-        If no users of the specified type exist, return an empty list."""
+        If no users match, the list will be empty.
+        """
         if inherited_perm and not perm:
             raise koji.GenericError('inherited_perm option must be used with perm option')
         joins = []
-        if userType is None:
-            userType = list(koji.USERTYPES.values())
-        elif isinstance(userType, int):
-            userType = [userType]
-        else:
-            raise koji.ParameterError("userType must be integer or None")
-        clauses = ['usertype IN %(userType)s']
+        clauses = []
+        if userType is not None:
+            if isinstance(userType, int):
+                userType = [userType]
+            else:
+                raise koji.ParameterError("userType must be integer or None")
+            clauses.append('usertype IN %(userType)s')
         fields = [
             ('users.id', 'id'),
             ('users.name', 'name'),
@@ -13149,21 +13158,17 @@ class RootExports(object):
             ('array_agg(krb_principal)', 'krb_principals'),
         ]
         if perm:
-            fields.extend([
-                ('permissions.name', 'permission_name'),
-                ('permissions.id', 'permission_id'),
-            ])
-            clauses.extend(['user_perms.active AND permissions.name = %(perm)s'])
+            perm_id = get_perm_id(perm, strict=True)
+            clauses.extend(['user_perms.active AND user_perms.perm_id = %(perm_id)s'])
             if inherited_perm:
-                joins.extend(['LEFT JOIN user_groups ON user_id = users.id AND '
-                              'user_groups.active IS TRUE',
-                              'LEFT JOIN user_perms ON users.id = user_perms.user_id AND '
-                              'user_perms.active IS TRUE OR group_id =user_perms.user_id',
-                              'LEFT JOIN permissions ON perm_id = permissions.id'])
+                joins.extend([
+                    'LEFT JOIN user_groups ON user_id = users.id AND user_groups.active IS TRUE',
+                    # the active condition for user_groups must be in the join, otherwise we will
+                    # filter out users that never had a group
+                    'LEFT JOIN user_perms ON users.id = user_perms.user_id '
+                    'OR group_id = user_perms.user_id'])
             else:
-                joins.extend(['LEFT JOIN user_perms ON users.id = user_perms.user_id AND '
-                              'user_perms.active IS TRUE',
-                              'LEFT JOIN permissions ON perm_id = permissions.id'])
+                joins.append('LEFT JOIN user_perms ON users.id = user_perms.user_id')
         joins.append('LEFT JOIN user_krb_principals ON users.id = user_krb_principals.user_id')
         if prefix:
             clauses.append("users.name ilike %(prefix)s || '%%'")
@@ -13171,7 +13176,7 @@ class RootExports(object):
             queryOpts = {}
         if not queryOpts.get('group'):
             if perm:
-                queryOpts['group'] = 'users.id,permissions.id'
+                queryOpts['group'] = 'users.id,user_perms.perm_id'
             else:
                 queryOpts['group'] = 'users.id'
         else:
