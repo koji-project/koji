@@ -383,6 +383,7 @@ class KiwiCreateImageTask(BaseBuildTask):
             cmd.extend(['--type', self.opts['type']])
         cmd.extend([
             '--kiwi-file', os.path.basename(desc),  # global option for image/system commands
+            '--debug',
             '--logfile', f'/tmp/image-root.{arch}.log',
             'system', 'build',
             '--description', os.path.join(os.path.basename(scmsrcdir), base_path),
@@ -399,6 +400,7 @@ class KiwiCreateImageTask(BaseBuildTask):
         )
         bundle_dir = '/builddir/result/bundle'
         cmd = ['kiwi-ng',
+               '--debug',
                '--logfile', f'/tmp/kiwi-result-bundle.{arch}.log',
                'result', 'bundle',
                '--target-dir', target_dir,
