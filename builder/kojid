@@ -24,6 +24,7 @@
 from __future__ import absolute_import, division
 
 import copy
+import errno
 import filecmp
 import glob
 import grp
@@ -200,6 +201,7 @@ class BuildRoot(object):
         self.logger = logging.getLogger("koji.build.buildroot")
         self.session = session
         self.options = options
+        self.logs = set()
         if len(args) + len(kwargs) == 1:
             # manage an existing mock buildroot
             self._load(*args, **kwargs)
@@ -347,6 +349,8 @@ class BuildRoot(object):
         with koji._open_text_file(configfile, 'wt') as fo:
             fo.write(output)
 
+        self.single_log(configfile, name='mock_config.log')
+
     def get_repo_dir(self):
         pathinfo = koji.PathInfo(topdir='')
         return pathinfo.repo(self.repoid, self.tag_name)
@@ -468,100 +472,24 @@ class BuildRoot(object):
         mocklog = 'mock_output.log'
         pid = os.fork()
         if pid:
-            resultdir = self.resultdir()
-            uploadpath = self.getUploadPath()
-            logs = {}
+            log_patterns = [
+                '%s/*.log' % self.resultdir(),
+                '%s/var/log/dnf*.log' % self.rootdir(),
+            ]
+            if workdir:
+                log_patterns.append('%s/%s' % (workdir, mocklog))
+            logs = BuildRootLogs(self, log_patterns, with_ts=self.options.log_timestamps)
 
-            ts_offsets = {}
             finished = False
             while not finished:
                 time.sleep(1)
                 status = os.waitpid(pid, os.WNOHANG)
                 if status[0] != 0:
                     finished = True
-
-                try:
-                    results = os.listdir(resultdir)
-                except OSError:
-                    # will happen when mock hasn't created the resultdir yet
-                    results = []
-
-                for fname in results:
-                    if fname.endswith('.log') and fname not in logs:
-                        fpath = os.path.join(resultdir, fname)
-                        logs[fname] = (None, None, 0, fpath)
-                        if self.options.log_timestamps and not fname.endswith('-ts.log'):
-                            ts_name = '%s-ts.log' % fname
-                            fpath = os.path.join(workdir, ts_name)
-                            if os.path.exists(fpath):
-                                with koji._open_text_file(fpath) as ts_file:
-                                    lines = ts_file.readlines()
-                                    if lines:
-                                        last = int(lines[-1].split()[1])
-                                        ts_offsets[fname] = last
-                            else:
-                                with koji._open_text_file(fpath, 'at') as ts_file:
-                                    ts_file.write('%.0f 0\n' % time.time())
-                            logs[ts_name] = (None, None, 0, fpath)
-                if workdir and mocklog not in logs:
-                    fpath = os.path.join(workdir, mocklog)
-                    if os.path.exists(fpath):
-                        logs[mocklog] = (None, None, 0, fpath)
-                        if self.options.log_timestamps:
-                            ts_name = '%s-ts.log' % mocklog
-                            fpath = os.path.join(workdir, ts_name)
-                            if os.path.exists(fpath):
-                                with koji._open_text_file(fpath) as ts_file:
-                                    lines = ts_file.readlines()
-                                    if lines:
-                                        last = int(lines[-1].split()[1])
-                                        ts_offsets[mocklog] = last
-                            else:
-                                with koji._open_text_file(fpath, 'at') as ts_file:
-                                    ts_file.write('%.0f 0\n' % time.time())
-                            logs[ts_name] = (None, None, 0, fpath)
-
-                for (fname, (fd, inode, size, fpath)) in logs.items():
-                    try:
-                        stat_info = os.stat(fpath)
-                        if not fd or stat_info.st_ino != inode or stat_info.st_size < size:
-                            # either a file we haven't opened before, or mock replaced a file we
-                            # had open with a new file and is writing to it, or truncated the file
-                            # we're reading, but our fd is pointing to the previous location in the
-                            # old file
-                            if fd:
-                                self.logger.info('Rereading %s, inode: %s -> %s, size: %s -> %s' %
-                                                 (fpath, inode, stat_info.st_ino, size,
-                                                  stat_info.st_size))
-                                fd.close()
-                            fd = open(fpath, 'rb')
-                        logs[fname] = (fd, stat_info.st_ino, stat_info.st_size or size, fpath)
-                    except Exception:
-                        self.logger.error("Error reading mock log: %s", fpath)
-                        self.logger.error(''.join(traceback.format_exception(*sys.exc_info())))
-                        continue
-
-                    if self.options.log_timestamps and not fname.endswith('-ts.log'):
-                        # race condition against incremental_upload's tell,
-                        # but with enough precision for ts.log purposes
-                        position = fd.tell()
-                        ts_offsets.setdefault(fname, 0)
-                        if ts_offsets[fname] < position:
-                            fpath = os.path.join(workdir, '%s-ts.log' % fname)
-                            with koji._open_text_file(fpath, 'at') as ts_file:
-                                ts_file.write('%.0f %i\n' % (time.time(), position))
-                            ts_offsets[fname] = position
-                    incremental_upload(self.session, fname, fd, uploadpath, logger=self.logger)
+                logs.sync_logs()
 
             # clean up and return exit status of command
-            for (fname, (fd, inode, size, fpath)) in logs.items():
-                if not fd:
-                    continue
-                if fname.endswith('-ts.log'):
-                    # finish upload of ts.log as they could've been missed in
-                    # last iteration
-                    incremental_upload(self.session, fname, fd, uploadpath, logger=self.logger)
-                fd.close()
+            logs.close_logs()
             return status[1]
 
         else:
@@ -591,6 +519,17 @@ class BuildRoot(object):
         """Get the path that should be used when uploading files to
         the hub."""
         return koji.pathinfo.taskrelpath(self.task_id)
+
+    def incremental_log(self, fname, fd):
+        ret = incremental_upload(self.session, fname, fd, self.getUploadPath(), logger=self.logger)
+        self.logs.add(fname)
+        return ret
+
+    def single_log(self, localfile, name=None):
+        if name is None:
+            name = os.path.basename(localfile)
+        self.session.uploadWrapper(localfile, self.getUploadPath(), name=name)
+        self.logs.add(name)
 
     def init(self):
         rv = self.mock(['--init'])
@@ -993,6 +932,160 @@ class BuildRoot(object):
 
     def expire(self):
         self.session.host.setBuildRootState(self.id, 'EXPIRED')
+
+
+class BuildRootLogs(object):
+
+    "Track the logs generated during a mock run"
+
+    def __init__(self, broot, patterns, with_ts=False):
+        self.broot = broot
+        self.patterns = patterns
+        self.with_ts = with_ts
+
+        self.loginfo = {}
+        self.ts_logs = {}
+        self.ignored = set()
+        self.names = {}
+        self.logger = broot.logger
+        self.workdir = getattr(broot, 'workdir', None)
+        if with_ts and self.workdir is None:
+            self.logger.error('No workdir defined -- disabling log timestamps')
+            self.with_ts = False
+
+    def find_logs(self):
+        matches = []
+        for pattern in self.patterns:
+            m = glob.glob(pattern)
+            for path in m:
+                if path not in self.loginfo:
+                    self.logger.debug('Log matched pattern %r: %s', pattern, path)
+                    matches.append(path)
+        return matches
+
+    def add_log(self, path):
+        if path in self.loginfo or path in self.ignored:
+            return
+        if path.endswith('-ts.log'):
+            self.logger.error('ignoring stray ts log: %s', path)
+            self.ignored.add(path)
+            return
+
+        # pick a unique name for upload if there is overlap
+        fname = os.path.basename(path)
+        if fname in self.names:
+            base, ext = os.path.splitext(fname)
+            for n in range(99):
+                fname = '%s.DUP%02i%s' % (base, n, ext)
+                if fname not in self.names:
+                    self.logger.debug('Using log name alias %s for %s', fname, path)
+                    break
+            else:
+                self.logger.error('Unable to find unique log name for %s', path)
+                self.ignored.add(path)
+                return
+
+        info = {'name': fname, 'path': path}
+        self.names[fname] = info
+        self.loginfo[path] = info
+        self.logger.debug('Watching buildroot log: %r', info)
+
+        if self.with_ts:
+            self.add_ts_log(info)
+
+    def add_ts_log(self, info):
+        ts_name = '%(name)s-ts.log' % info
+        ts_path = os.path.join(self.workdir, ts_name)
+
+        offset = 0
+        if os.path.exists(ts_path):
+            # XXX should this even happen?
+            # read last offset from existing ts file
+            with koji._open_text_file(ts_path) as ts_file:
+                lines = ts_file.readlines()
+                if lines:
+                    offset = int(lines[-1].split()[1])
+        else:
+            # initialize ts file at zero
+            with koji._open_text_file(ts_path, 'at') as ts_file:
+                ts_file.write('%.0f 0\n' % time.time())
+
+        info['offset'] = offset
+        info['ts_log'] = ts_path
+        self.ts_logs[ts_path] = {'name': ts_name, 'path': ts_path, 'ts': True}
+        self.logger.debug('Watching timestamp log: %r', info)
+
+    def get_logs(self):
+        for info in self.loginfo.values():
+            yield info
+        for info in self.ts_logs.values():
+            yield info
+
+    def sync_logs(self):
+        paths = self.find_logs()
+
+        for fpath in paths:
+            self.add_log(fpath)
+
+        for info in self.get_logs():
+            # note that the ts logs are listed last
+            try:
+                self.sync_log(info)
+            except OSError:
+                self.logger.error("Error reading mock log: %(path)s", info)
+                self.logger.error(''.join(traceback.format_exception(*sys.exc_info())))
+                continue
+
+    def sync_log(self, info):
+        fpath = info['path']
+        try:
+            st = os.stat(fpath)
+        except OSError as e:
+            if e.errno == errno.ENOENT:
+                if info.get('missing'):
+                    # we've already noted this, don't spam the logs
+                    return
+                self.logger.error('Log disappeared: %(path)s', info)
+                info['missing'] = True
+                return
+            raise
+        if info.get('missing'):
+            self.logger.error('Log re-appeared: %(path)s', info)
+            del info['missing']
+        fd = info.get('fd')
+        if fd is None:
+            # freshly added, we need to open it
+            fd = open(fpath, 'rb')
+            info['fd'] = fd
+        last_st = info.get('st')
+        if last_st:
+            if st.st_ino != last_st.st_ino or st.st_size < last_st.st_size:
+                # file appears to have been rewritten or truncated
+                self.logger.info('Rereading %s, inode: %s -> %s, size: %s -> %s',
+                                 fpath, last_st.st_ino, st.st_ino, last_st.st_size, st.st_size)
+                fd.close()
+                fd = open(fpath, 'rb')
+                info['fd'] = fd
+        info['st'] = st
+
+        self.broot.incremental_log(info['name'], fd)
+
+        ts_log = info.get('ts_log')
+        if ts_log and self.with_ts:
+            # race condition against incremental_upload's tell,
+            # but with enough precision for ts.log purposes
+            position = fd.tell()
+            info.setdefault('offset', 0)
+            if info['offset'] < position:
+                with koji._open_text_file(ts_log, 'at') as ts_log:
+                    ts_log.write('%.0f %i\n' % (time.time(), position))
+                info['offset'] = position
+
+    def close_logs(self):
+        for info in self.get_logs():
+            fd = info.get('fd')
+            if fd:
+                fd.close()
 
 
 class ChainBuildTask(BaseTaskHandler):
@@ -1552,24 +1645,19 @@ class BuildArchTask(BaseBuildTask):
         resultdir = broot.resultdir()
         rpm_files = []
         srpm_files = []
-        log_files = []
+        log_files = list(broot.logs)
         unexpected = []
         for f in os.listdir(resultdir):
             # files here should have one of two extensions: .log and .rpm
-            if f[-4:] == ".log":
-                log_files.append(f)
+            if f[-4:] in (".log"):
+                pass
+                # should already be in log_files
             elif f[-8:] == ".src.rpm":
                 srpm_files.append(f)
             elif f[-4:] == ".rpm":
                 rpm_files.append(f)
             else:
                 unexpected.append(f)
-
-        if broot.workdir:
-            mocklog = 'mock_output.log'
-            f = os.path.join(broot.workdir, mocklog)
-            if os.path.exists(f):
-                log_files.append(os.path.basename(f))
 
         # for noarch rpms compute rpmdiff hash
         rpmdiff_hash = {self.id: {}}
@@ -1582,6 +1670,7 @@ class BuildArchTask(BaseBuildTask):
             log_name = 'noarch_rpmdiff.json'
             noarch_hash_path = os.path.join(broot.workdir, log_name)
             koji.dump_json(noarch_hash_path, rpmdiff_hash, indent=2, sort_keys=True)
+            self.uploadFile(noarch_hash_path)
             log_files.append(log_name)
 
         self.logger.debug("rpms: %r" % rpm_files)
@@ -1615,8 +1704,6 @@ class BuildArchTask(BaseBuildTask):
         else:
             ret['srpms'] = []
         ret['logs'] = ["%s/%s" % (uploadpath, f) for f in log_files]
-        if rpmdiff_hash[self.id]:
-            self.uploadFile(noarch_hash_path)
 
         ret['brootid'] = broot.id
 
@@ -1950,16 +2037,8 @@ class BuildMavenTask(BaseBuildTask):
                 self.uploadFile(os.path.join(outputdir, relpath, filename),
                                 relPath=relpath)
 
-        # Should only find log files in the mock result directory.
-        # Don't upload these log files, they've already been streamed
-        # the hub.
-        for filename in os.listdir(buildroot.resultdir()):
-            root, ext = os.path.splitext(filename)
-            if ext == '.log':
-                filepath = os.path.join(buildroot.resultdir(), filename)
-                if os.path.isfile(filepath) and os.stat(filepath).st_size > 0:
-                    # only files with content get uploaded to the hub
-                    logs.append(filename)
+        # Also include the logs already upload by BuildRoot
+        logs.extend(buildroot.logs)
 
         buildroot.expire()
 
@@ -2276,7 +2355,7 @@ class WrapperRPMTask(BaseBuildTask):
         srpm = None
         rpms = []
         specfile_name = os.path.basename(specfile)
-        logs = ['checkout.log', specfile_name]
+        logs = ['checkout.log', specfile_name] + list(buildroot.logs)
 
         for filename in os.listdir(resultdir):
             if filename.endswith('.src.rpm'):
@@ -2290,7 +2369,8 @@ class WrapperRPMTask(BaseBuildTask):
             elif filename.endswith('.rpm'):
                 rpms.append(filename)
             elif filename.endswith('.log'):
-                logs.append(filename)
+                pass
+                # already included in buildroot.logs
             else:
                 if self.new_build_id:
                     self.session.host.failBuild(self.id, self.new_build_id)
@@ -3427,13 +3507,13 @@ class ApplianceTask(ImageTask):
         self.logger.debug('output: %s' % results)
         if len(results) == 0:
             raise koji.ApplianceError("Could not find image build results!")
+        logs = ['appliance.log', os.path.basename(ksfile), os.path.basename(kskoji)]
+        logs.extend(broot.logs)
         imgdata = {
             'arch': arch,
             'rootdev': self.getRootDevice(),
             'task_id': self.id,
-            'logs': ['build.log', 'mock_output.log', 'root.log', 'state.log',
-                     'appliance.log', os.path.basename(ksfile),
-                     os.path.basename(kskoji)],
+            'logs': logs,
             'name': name,
             'version': version,
             'release': release
@@ -3599,13 +3679,13 @@ class LiveCDTask(ImageTask):
         self.uploadFile(manifest)
         self.uploadFile(isosrc, remoteName=isoname)
 
+        logs = ['livecd.log', os.path.basename(ksfile), os.path.basename(kskoji)]
+        logs.extend(broot.logs)
         imgdata = {'arch': arch,
                    'files': [isoname],
                    'rootdev': None,
                    'task_id': self.id,
-                   'logs': ['build.log', 'mock_output.log', 'root.log', 'state.log',
-                            'livecd.log', os.path.basename(ksfile),
-                            os.path.basename(kskoji)],
+                   'logs': logs,
                    'name': name,
                    'version': version,
                    'release': release
@@ -3854,13 +3934,13 @@ class LiveMediaTask(ImageTask):
         self.logger.debug('uploading image: %s' % isosrc)
         self.uploadFile(isosrc, remoteName=isoname)
 
+        logs = ['livemedia-out.log', os.path.basename(ksfile), os.path.basename(kskoji)]
+        logs.extend(broot.logs)
         imgdata = {'arch': arch,
                    'files': [isoname],
                    'rootdev': None,
                    'task_id': self.id,
-                   'logs': ['build.log', 'mock_output.log', 'root.log', 'state.log',
-                            'livemedia-out.log', os.path.basename(ksfile),
-                            os.path.basename(kskoji)],
+                   'logs': logs,
                    'name': name,
                    'version': version,
                    'release': release
@@ -5131,14 +5211,13 @@ class RebuildSRPM(BaseBuildTask):
         self.uploadFile(srpm)
 
         brootid = broot.id
-        log_files = glob.glob('%s/*.log' % broot.resultdir())
+        log_files = list(broot.logs)
 
         broot.expire()
 
         return {
             'srpm': "%s/%s" % (uploadpath, srpm_name),
-            'logs': ["%s/%s" % (uploadpath, os.path.basename(f))
-                     for f in log_files],
+            'logs': ["%s/%s" % (uploadpath, f) for f in log_files],
             'brootid': brootid,
             'source': {
                 'source': os.path.basename(srpm),
@@ -5301,13 +5380,12 @@ class BuildSRPMFromSCMTask(BaseBuildTask):
         self.uploadFile(srpm)
 
         brootid = broot.id
-        log_files = glob.glob('%s/*.log' % broot.resultdir())
+        log_files = list(broot.logs)
 
         broot.expire()
 
         return {'srpm': "%s/%s" % (uploadpath, srpm_name),
-                'logs': ["%s/%s" % (uploadpath, os.path.basename(f))
-                         for f in log_files],
+                'logs': ["%s/%s" % (uploadpath, f) for f in log_files],
                 'brootid': brootid,
                 'source': source,
                 }
