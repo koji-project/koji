@@ -390,11 +390,17 @@ environment follows:
 
 * ``mock.package_manager`` - If this is set, it will override mock's default
   package manager. Typically used with ``yum`` or ``dnf`` values.
+
 * ``mock.new_chroot`` - 0/1 value. If it is set, ``--new-chroot`` or
-  `--old-chroot` option is appended to any mock call. If it is not set,
-  mock's default behavior is used.
+  `--old-chroot` option is appended to any mock call. If it is not set, mock's
+  default behavior is used. Note, that in the case when new chroot (nspawn) is
+  used, some of the options in ``kojid.conf`` will not be propagated to chroot
+  env properly, typically ``RLIMIT_*``, see :ref:`kojid.conf's options
+  <rlimits_kojid>`.
+
 * ``mock.releasever`` - When doing cross-compiles it may be necessary
   to explicitly set the ``releasever`` to be used.
+
 * ``mock.use_bootstrap`` - 0/1 value. If it is set, ``--bootstrap-chroot``
   is appended to the mock init call.  This tells mock to build in two stages,
   using chroot rpm for creating the build chroot. If it is not set, mock's
@@ -402,6 +408,7 @@ environment follows:
   <https://github.com/rpm-software-management/mock/wiki/Feature-bootstrap>`_.
   Note, that it is not turn on by default by koji, as it is often not needed and
   it consumes additional resources (larger buildroot, downloading more data).
+
 * ``mock.bootstrap_image`` - set to name of image, which can builder's podman
   download (e.g. ``fedora:32``). See mock's `doc
   <https://github.com/rpm-software-management/mock/wiki/Feature-container-for-bootstrap>`_
@@ -469,6 +476,9 @@ do:
 
     koji edit-tag dnf-fedora-tag -x rpm.env.CC=clang
 
+
+Note, that mock's behaviour is always impacted by builder's default values in
+``/etc/mock/site-defaults.cfg``. Check :doc:`mock_config` for details.
 
 Using Koji to control tasks
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
