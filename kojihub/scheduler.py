@@ -114,6 +114,10 @@ def auto_arch_refuse(task_id):
     if info['method'] not in {'buildArch', 'buildMaven', 'wrapperRPM', 'rebuildSRPM',
                               'buildSRPMFromSCM', 'rebuildSRPM'}:
         return
+    if task.isFinished():
+        # shouldn't happen
+        logger.warning('Skipping auto refusal for closed task %i', task_id)
+        return
 
     try:
         task_params = koji.tasks.parse_task_params(info['method'], info['request'])
@@ -141,7 +145,8 @@ def auto_arch_refuse(task_id):
         # from here, we're basically doing checkHostArch() for all hosts in the channel
         tag_arches = set([koji.canonArch(a) for a in taginfo['arches'].split()])
 
-        hosts = context.handlers.call('listHosts', channelID=info['channel_id'], enabled=True)
+        hosts = context.handlers.call('listHosts', channelID=info['channel_id'], enabled=True,
+                                      queryOpts={'order':'id'})
         for host in hosts:
             host_arches = host['arches'].split()
             logger.debug('%r vs %r', tag_arches, host_arches)
