@@ -112,7 +112,7 @@ def auto_arch_refuse(task_id):
     if info['arch'] != 'noarch':
         return
     if info['method'] not in {'buildArch', 'buildMaven', 'wrapperRPM', 'rebuildSRPM',
-                              'buildSRPMFromSCM', 'rebuildSRPM'}:
+                              'buildSRPMFromSCM'}:
         return
     if task.isFinished():
         # shouldn't happen
