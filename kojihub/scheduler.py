@@ -107,6 +107,15 @@ def set_refusal(hostID, taskID, soft=True, by_host=False, msg=''):
 def auto_arch_refuse(task_id):
     """Set refusals for hosts based on task parameters"""
     # HACK
+    try:
+        _auto_arch_refuse(task_id)
+    except Exception:
+        # better to not fail make_task()
+        logger.exception('Error generating auto refusals for task %i', task_id)
+        return
+
+
+def _auto_arch_refuse(task_id):
     task = kojihub.Task(task_id)
     info = task.getInfo(request=True)
     if info['arch'] != 'noarch':
@@ -125,37 +134,32 @@ def auto_arch_refuse(task_id):
         logger.warning('Invalid params for task %i', task_id)
         return
 
-    try:
-        # figure out build tag
-        if info['method'] in {'buildMaven', 'buildSRPMFromSCM', 'rebuildSRPM'}:
-            tag = task_params['build_tag']
-        elif info['method'] == 'buildArch':
-            tag = task_params['root']
-        elif info['method'] == 'wrapperRPM':
-            target = kojihub.get_build_target(task_params['build_target'])
-            if not target:
-                logger.warning('Invalid target for task %i', task_id)
-                return
-            tag = target['build_tag']
-        taginfo = kojihub.get_tag(tag)
-        if not taginfo:
-            logger.warning('Invalid build tag for task %i', task_id)
+    # figure out build tag
+    if info['method'] in {'buildMaven', 'buildSRPMFromSCM', 'rebuildSRPM'}:
+        tag = task_params['build_tag']
+    elif info['method'] == 'buildArch':
+        tag = task_params['root']
+    elif info['method'] == 'wrapperRPM':
+        target = kojihub.get_build_target(task_params['build_target'])
+        if not target:
+            logger.warning('Invalid target for task %i', task_id)
             return
-
-        # from here, we're basically doing checkHostArch() for all hosts in the channel
-        tag_arches = set([koji.canonArch(a) for a in taginfo['arches'].split()])
-
-        hosts = context.handlers.call('listHosts', channelID=info['channel_id'], enabled=True,
-                                      queryOpts={'order':'id'})
-        for host in hosts:
-            host_arches = host['arches'].split()
-            logger.debug('%r vs %r', tag_arches, host_arches)
-            if not tag_arches.intersection(host_arches):
-                set_refusal(host['id'], task_id, soft=False, msg='automatic arch refusal')
-
-    except Exception:
-        logger.exception('Error generating auto refusals for task %i', task_id)
+        tag = target['build_tag']
+    taginfo = kojihub.get_tag(tag)
+    if not taginfo:
+        logger.warning('Invalid build tag for task %i', task_id)
         return
+
+    # from here, we're basically doing checkHostArch() for all hosts in the channel
+    tag_arches = set([koji.canonArch(a) for a in taginfo['arches'].split()])
+
+    hosts = context.handlers.call('listHosts', channelID=info['channel_id'], enabled=True,
+                                  queryOpts={'order': 'id'})
+    for host in hosts:
+        host_arches = host['arches'].split()
+        logger.debug('%r vs %r', tag_arches, host_arches)
+        if not tag_arches.intersection(host_arches):
+            set_refusal(host['id'], task_id, soft=False, msg='automatic arch refusal')
 
 
 class TaskRefusalsQuery(QueryView):
