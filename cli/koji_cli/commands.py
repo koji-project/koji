@@ -8113,7 +8113,7 @@ def handle_scheduler_logs(goptions, session, args):
         if session.hub_version >= (1, 34, 1):
             # server did it for us, but we need to reverse
             # don't use reversed() as it will be exhausted after modification loop later
-            logs = logs.reverse()
+            logs.reverse()
         else:
             # emulate limit
             logs = logs[-options.limit:]
