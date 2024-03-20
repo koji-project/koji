@@ -70,6 +70,22 @@ class AutoRefuseTest(unittest.TestCase):
         self.get_tag.assert_called_once_with('TAG_ID')
         self.set_refusal.assert_called_once()
 
+    def test_mixed_hosts(self):
+        good1 = [{'id': n, 'arches': 'x86_64 i686'} for n in range(0,5)]
+        bad1 = [{'id': n, 'arches': 'ia64'} for n in range(5,10)]
+        good2 = [{'id': n, 'arches': 'aarch64'} for n in range(10,15)]
+        bad2 = [{'id': n, 'arches': 'sparc64'} for n in range(15,20)]
+        hosts = good1 + bad1 + good2 + bad2
+        self.context.handlers.call.return_value = hosts
+        scheduler._auto_arch_refuse(100)
+
+        self.Task.assert_called_once_with(100)
+        self.get_tag.assert_called_once_with('TAG_ID')
+
+        # should only refuse the bad ones
+        expect = [mock.call(h['id'], 100, soft=False, msg='automatic arch refusal') for h in bad1 + bad2]
+        self.assertListEqual(self.set_refusal.mock_calls, expect)
+
     def test_not_noarch(self):
         self.taskinfo['arch'] = 'x86_64'
 
