@@ -351,8 +351,7 @@ class KiwiCreateImageTask(BaseBuildTask):
 
         # user repos
         repos = self.opts.get('repos', [])
-        # buildroot repo if user repos not defined
-        if repos == []:
+        if self.opts.get('use_buildroot_repo', True):
             path_info = koji.PathInfo(topdir=self.options.topurl)
             repopath = path_info.repo(repo_info['id'], target_info['build_tag_name'])
             baseurl = '%s/%s' % (repopath, arch)

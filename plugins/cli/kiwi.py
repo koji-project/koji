@@ -34,6 +34,10 @@ def handle_kiwi_build(goptions, session, args):
     parser.add_option("--result-bundle-name-format", help="Override default bundle name format")
     parser.add_option("--make-prep", action="store_true", default=False,
                       help="Run 'make prep' in checkout before starting the build")
+    parser.add_option("--no-buildroot-repo", action="store_false",
+                      dest="use_buildroot_repo", default=True,
+                      help="Don't add buildroot repo to installation sources, "
+                           "use only those provided by --repo option.")
     parser.add_option("--can-fail", action="store", dest="optional_arches",
                       metavar="ARCH1,ARCH2,...", default="",
                       help="List of archs which are not blocking for build "
@@ -80,6 +84,8 @@ def handle_kiwi_build(goptions, session, args):
         kwargs['arches'] = [canonArch(arch) for arch in options.arches]
     if options.repo:
         kwargs['repos'] = options.repo
+    if not options.use_buildroot_repo:
+        kwargs['use_buildroot_repo'] = False
 
     task_id = session.kiwiBuild(**kwargs)
 
