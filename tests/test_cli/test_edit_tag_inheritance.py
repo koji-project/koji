@@ -15,7 +15,7 @@ class TestEditTagInheritance(utils.CliTestCase):
         self.session = mock.MagicMock()
         self.session.getAPIVersion.return_value = koji.API_VERSION
         self.activate_session_mock = mock.patch('koji_cli.commands.activate_session').start()
-        self.error_format = """Usage: %s edit-tag-inheritance [options] <tag> <parent> <priority>
+        self.error_format = """Usage: %s edit-tag-inheritance [options] <tag> <parent> [<priority>]
 (Specify the --help global option for a list of other help options)
 
 %s: error: {message}
@@ -31,7 +31,7 @@ class TestEditTagInheritance(utils.CliTestCase):
                                 'noconfig': False,
                                 'parent_id': 2,
                                 'pkg_filter': '',
-                                'priority': self.priority}
+                                'priority': int(self.priority)}
         self.child_tag_info = {'arches': 'x86_64',
                                'extra': {},
                                'id': 1,
@@ -50,6 +50,9 @@ class TestEditTagInheritance(utils.CliTestCase):
                                 'name': 'parent-test-tag',
                                 'perm': None,
                                 'perm_id': None}
+
+    def tearDown(self):
+        mock.patch.stopall()
 
     def test_edit_tag_inheritance_without_option(self):
         expected = self.format_error_message(
@@ -271,7 +274,7 @@ class TestEditTagInheritance(utils.CliTestCase):
     def test_edit_tag_inheritance_help(self):
         self.assert_help(
             handle_edit_tag_inheritance,
-            """Usage: %s edit-tag-inheritance [options] <tag> <parent> <priority>
+            """Usage: %s edit-tag-inheritance [options] <tag> <parent> [<priority>]
 (Specify the --help global option for a list of other help options)
 
 Options:

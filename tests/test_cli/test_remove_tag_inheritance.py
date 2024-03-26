@@ -15,7 +15,7 @@ class TestRemoveTagInheritance(utils.CliTestCase):
         self.session = mock.MagicMock()
         self.session.getAPIVersion.return_value = koji.API_VERSION
         self.activate_session_mock = mock.patch('koji_cli.commands.activate_session').start()
-        self.error_format = """Usage: %s remove-tag-inheritance <tag> <parent> <priority>
+        self.error_format = """Usage: %s remove-tag-inheritance <tag> <parent> [<priority>]
 (Specify the --help global option for a list of other help options)
 
 %s: error: {message}
@@ -30,7 +30,7 @@ class TestRemoveTagInheritance(utils.CliTestCase):
                                 'noconfig': False,
                                 'parent_id': 2,
                                 'pkg_filter': '',
-                                'priority': self.priority}
+                                'priority': int(self.priority)}
         self.child_tag_info = {'arches': 'x86_64',
                                'extra': {},
                                'id': 1,
@@ -206,13 +206,13 @@ class TestRemoveTagInheritance(utils.CliTestCase):
         self.session.getInheritanceData.assert_has_calls([call(1), call(1)])
         self.session.setInheritanceData.assert_called_once_with(
             1, [{'child_id': 1, 'intransitive': False, 'maxdepth': None, 'name': self.tag,
-                 'noconfig': False, 'parent_id': 2, 'pkg_filter': '', 'priority': self.priority,
-                 'delete link': True}])
+                 'noconfig': False, 'parent_id': 2, 'pkg_filter': '',
+                 'priority': int(self.priority), 'delete link': True}])
 
     def test_remove_tag_inheritance_help(self):
         self.assert_help(
             handle_remove_tag_inheritance,
-            """Usage: %s remove-tag-inheritance <tag> <parent> <priority>
+            """Usage: %s remove-tag-inheritance <tag> <parent> [<priority>]
 (Specify the --help global option for a list of other help options)
 
 Options:
