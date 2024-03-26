@@ -52,8 +52,10 @@ class LogMessagesQuery(QueryView):
     default_fields = ('id', 'task_id', 'host_id', 'msg', 'msg_ts')
 
 
-def get_log_messages(clauses=None, fields=None):
-    return LogMessagesQuery(clauses, fields, opts={'order': 'id'}).execute()
+def get_log_messages(clauses=None, fields=None, opts=None):
+    if opts is None:
+        opts = {'order': 'id'}
+    return LogMessagesQuery(clauses, fields, opts).execute()
 
 
 def get_tasks_for_host(hostID, retry=True):
@@ -190,8 +192,10 @@ class TaskRunsQuery(QueryView):
     default_fields = ('id', 'task_id', 'host_id', 'active', 'create_ts')
 
 
-def get_task_runs(clauses=None, fields=None):
-    return TaskRunsQuery(clauses, fields).execute()
+def get_task_runs(clauses=None, fields=None, opts=None):
+    if opts is None:
+        opts = {'order': 'id'}
+    return TaskRunsQuery(clauses, fields, opts).execute()
 
 
 class TaskScheduler(object):

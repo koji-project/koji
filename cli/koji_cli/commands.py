@@ -8002,6 +8002,8 @@ def anon_handle_scheduler_info(goptions, session, args):
     parser.add_option("--state", action="store", type='choice', default=None,
                       choices=[x for x in koji.TASK_STATES.keys()],
                       help="Limit data to task state")
+    parser.add_option("--limit", action="store", type=int, default=100,
+                      help="Limit data to last N items [default: %default]")
     (options, args) = parser.parse_args(args)
     if len(args) > 0:
         parser.error("This command takes no arguments")
@@ -8024,10 +8026,27 @@ def anon_handle_scheduler_info(goptions, session, args):
     if options.state:
         clauses.append(('state', koji.TASK_STATES[options.state]))
 
-    runs = session.scheduler.getTaskRuns(
-        clauses=clauses,
-        fields=('task_id', 'host_name', 'state', 'create_ts', 'start_ts', 'completion_ts')
-    )
+    fields = ('id', 'task_id', 'host_name', 'state', 'create_ts', 'start_ts', 'completion_ts')
+    kwargs = {'clauses': clauses, 'fields': fields}
+    if session.hub_version < (1, 34, 0):
+        error("Hub version is %s and doesn't support scheduler methods "
+              "introduced in 1.34." % session.hub_version_str)
+    if options.limit is not None:
+        if session.hub_version >= (1, 34, 1):
+            kwargs['opts'] = {'order': '-id', 'limit': options.limit}
+    runs = session.scheduler.getTaskRuns(**kwargs)
+
+    if options.limit is not None:
+        if session.hub_version >= (1, 34, 1):
+            # server did it for us, but we need to reverse
+            runs = reversed(runs)
+        else:
+            # emulate limit
+            runs = runs[-options.limit:]
+    if session.hub_version < (1, 34, 1):
+        # emulate order
+        runs.sort(key=lambda r: r['id'])
+
     mask = '%(task_id)-9s %(host_name)-20s %(state)-7s ' \
            '%(create_ts)-17s %(start_ts)-17s %(completion_ts)-17s'
     if not goptions.quiet:
@@ -8068,9 +8087,13 @@ def handle_scheduler_logs(goptions, session, args):
                       help="Logs from given timestamp")
     parser.add_option("--to", type="float", action="store", dest="to_ts",
                       help="Logs until given timestamp (included)")
+    parser.add_option("--limit", action="store", type=int, default=None,
+                      help="Limit data to last N items. [default: %default]")
     (options, args) = parser.parse_args(args)
     if len(args) != 0:
         parser.error("There are no arguments for this command")
+    if options.from_ts and options.to_ts and options.limit is not None:
+        parser.error("If both --from and --to are used, --limit shouldn't be used")
 
     clauses = []
     if options.task:
@@ -8086,12 +8109,32 @@ def handle_scheduler_logs(goptions, session, args):
     if options.to_ts:
         clauses.append(['msg_ts', '<', options.to_ts])
 
-    logs = session.scheduler.getLogMessages(clauses, fields=('task_id', 'host_id', 'host_name',
-                                                             'msg_ts', 'msg'))
+    fields = ('id', 'task_id', 'host_id', 'host_name', 'msg_ts', 'msg')
+    kwargs = {'clauses': clauses, 'fields': fields}
+    if session.hub_version < (1, 34, 0):
+        error("Hub version is %s and doesn't support scheduler methods "
+              "introduced in 1.34." % session.hub_version_str)
+    if options.limit is not None:
+        if session.hub_version >= (1, 34, 1):
+            kwargs['opts'] = {'order': '-id', 'limit': options.limit}
+    logs = session.scheduler.getLogMessages(**kwargs)
+
+    if options.limit is not None:
+        if session.hub_version >= (1, 34, 1):
+            # server did it for us, but we need to reverse
+            # don't use reversed() as it will be exhausted after modification loop later
+            logs.reverse()
+        else:
+            # emulate limit
+            logs = logs[-options.limit:]
+    if session.hub_version < (1, 34, 1):
+        # emulate order
+        logs.sort(key=lambda r: r['id'])
+
     for log in logs:
         log['time'] = time.asctime(time.localtime(log['msg_ts']))
 
-    mask = ("%(task_id)s\t%(host_name)s\t%(time)s\t%(msg)s")
+    mask = ("%(task_id)-10s %(host_name)-20s %(time)-25s %(msg)-30s")
     if not goptions.quiet:
         h = mask % {
             'task_id': 'Task',
