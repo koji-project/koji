@@ -8035,7 +8035,7 @@ def anon_handle_scheduler_info(goptions, session, args):
             runs = runs[-options.limit:]
     if session.hub_version < (1, 34, 1):
         # emulate order
-        runs.sort(key=lambda r:r['id'])
+        runs.sort(key=lambda r: r['id'])
 
     mask = '%(task_id)-9s %(host_name)-20s %(state)-7s ' \
            '%(create_ts)-17s %(start_ts)-17s %(completion_ts)-17s'
@@ -8099,7 +8099,7 @@ def handle_scheduler_logs(goptions, session, args):
     if options.to_ts:
         clauses.append(['msg_ts', '<', options.to_ts])
 
-    fields=('id', 'task_id', 'host_id', 'host_name', 'msg_ts', 'msg')
+    fields = ('id', 'task_id', 'host_id', 'host_name', 'msg_ts', 'msg')
     kwargs = {'clauses': clauses, 'fields': fields}
     if session.hub_version < (1, 34, 0):
         error("Hub version is %s and doesn't support scheduler methods "
@@ -8119,7 +8119,7 @@ def handle_scheduler_logs(goptions, session, args):
             logs = logs[-options.limit:]
     if session.hub_version < (1, 34, 1):
         # emulate order
-        logs.sort(key=lambda r:r['id'])
+        logs.sort(key=lambda r: r['id'])
 
     for log in logs:
         log['time'] = time.asctime(time.localtime(log['msg_ts']))
