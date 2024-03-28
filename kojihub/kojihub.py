@@ -10150,7 +10150,8 @@ def policy_data_from_task_args(method, arglist):
                 target = tinfo['name']
         policy_data['target'] = target
 
-    t_opts = params.get('opts', {})
+    # we may have param['opts'] that is explicitly None
+    t_opts = params.get('opts') or {}
     policy_data['scratch'] = t_opts.get('scratch', False)
 
     return policy_data

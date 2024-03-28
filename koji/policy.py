@@ -135,8 +135,12 @@ class MatchTest(BaseSimpleTest):
             field = self.field
         if field not in data:
             return False
+        value = data[field]
+        if value is None:
+            # None does not match any pattern
+            return False
         for pattern in args:
-            if fnmatch.fnmatch(data[field], pattern):
+            if fnmatch.fnmatch(value, pattern):
                 return True
         return False
 
