@@ -91,6 +91,42 @@ testhost
         self.session.listUsers.assert_called_once_with(userType=koji.USERTYPES['HOST'])
         self.session.getAllPerms.assert_not_called()
 
+    @mock.patch('sys.stdout', new_callable=StringIO)
+    def test_list_users_with_all_types(self, stdout):
+        arguments = ['--usertype', 'any']
+        self.session.listUsers.return_value = [{
+            'id': 3, 'krb_principals': [],
+            'name': 'kojihost',
+            'status': 0,
+            'usertype': 1},
+            {'id': 5, 'krb_principals': [],
+             'name': 'testhost',
+             'status': 0,
+             'usertype': 1},
+        ]
+        rv = anon_handle_list_users(self.options, self.session, arguments)
+        actual = stdout.getvalue()
+        expected = """kojihost
+testhost
+"""
+        self.assertMultiLineEqual(actual, expected)
+        self.assertEqual(rv, None)
+        self.session.listUsers.assert_called_once_with(userType=None)
+        self.session.getAllPerms.assert_not_called()
+
+    @mock.patch('sys.stderr', new_callable=StringIO)
+    def test_list_users_with_all_types_old_hub(self, stderr):
+        arguments = ['--usertype', 'any']
+        self.session.listUsers.return_value = []
+        self.session.hub_version = (1, 34, 0)
+        rv = anon_handle_list_users(self.options, self.session, arguments)
+        actual = stderr.getvalue()
+        expected = "This hub does not support querying for all usertypes\n"
+        self.assertMultiLineEqual(actual, expected)
+        self.assertEqual(rv, None)
+        self.session.listUsers.assert_called_once_with(userType=None)
+        self.session.getAllPerms.assert_not_called()
+
     def test_list_users_with_usertype_non_existing(self):
         arguments = ['--usertype', 'test']
         self.assert_system_exit(
