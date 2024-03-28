@@ -46,8 +46,7 @@ testuser
 """
         self.assertMultiLineEqual(actual, expected)
         self.assertEqual(rv, None)
-        self.session.listUsers.assert_called_once_with(
-            inherited_perm=False, perm=None, userType=koji.USERTYPES['NORMAL'], prefix=None)
+        self.session.listUsers.assert_called_once_with(userType=koji.USERTYPES['NORMAL'])
         self.session.getAllPerms.assert_not_called()
 
     @mock.patch('sys.stdout', new_callable=StringIO)
@@ -65,8 +64,8 @@ testuser
 """
         self.assertMultiLineEqual(actual, expected)
         self.assertEqual(rv, None)
-        self.session.listUsers.assert_called_once_with(
-            inherited_perm=False, perm=None, userType=koji.USERTYPES['NORMAL'], prefix='koji')
+        self.session.listUsers.assert_called_once_with(userType=koji.USERTYPES['NORMAL'],
+                                                       prefix='koji')
         self.session.getAllPerms.assert_not_called()
 
     @mock.patch('sys.stdout', new_callable=StringIO)
@@ -89,8 +88,7 @@ testhost
 """
         self.assertMultiLineEqual(actual, expected)
         self.assertEqual(rv, None)
-        self.session.listUsers.assert_called_once_with(
-            inherited_perm=False, perm=None, userType=koji.USERTYPES['HOST'], prefix=None)
+        self.session.listUsers.assert_called_once_with(userType=koji.USERTYPES['HOST'])
         self.session.getAllPerms.assert_not_called()
 
     def test_list_users_with_usertype_non_existing(self):
@@ -99,7 +97,7 @@ testhost
             anon_handle_list_users,
             self.options, self.session, arguments,
             stdout='',
-            stderr="Usertype test doesn't exist\n",
+            stderr="Invalid usertype: test\n",
             activate_session=None,
             exit_code=1)
         self.session.listUsers.assert_not_called()
@@ -120,8 +118,8 @@ testhost
 """
         self.assertMultiLineEqual(actual, expected)
         self.assertEqual(rv, None)
-        self.session.listUsers.assert_called_once_with(
-            inherited_perm=False, perm=None, userType=koji.USERTYPES['HOST'], prefix='test')
+        self.session.listUsers.assert_called_once_with(userType=koji.USERTYPES['HOST'],
+                                                       prefix='test')
         self.session.getAllPerms.assert_not_called()
 
     def test_list_users_with_arg(self):
@@ -143,7 +141,7 @@ testhost
         self.assert_system_exit(
             anon_handle_list_users,
             self.options, self.session, arguments,
-            stderr="Permission test-non-exist-perm does not exists\n",
+            stderr="Invalid permission: test-non-exist-perm\n",
             stdout='',
             activate_session=None,
             exit_code=1)
@@ -157,14 +155,15 @@ testhost
         arguments = ['--perm', perm]
         self.session.getAllPerms.return_value = [{'name': 'test-perm'}, {'name': 'test-perm-2'}]
         self.session.listUsers.return_value = []
+        self.session.hub_version = (1, 34, 1)
         rv = anon_handle_list_users(self.options, self.session, arguments)
         actual = stdout.getvalue()
         expected = """"""
         self.assertMultiLineEqual(actual, expected)
         self.assertEqual(rv, None)
         self.activate_session.assert_called_once_with(self.session, self.options)
-        self.session.listUsers.assert_called_once_with(
-            inherited_perm=False, perm=perm, prefix=None, userType=None)
+        self.session.listUsers.assert_called_once_with(perm=perm,
+                                                       userType=koji.USERTYPES['NORMAL'])
         self.session.getAllPerms.assert_called_once_with()
 
     @mock.patch('sys.stdout', new_callable=StringIO)
@@ -193,7 +192,7 @@ testuser1234
         self.assertMultiLineEqual(actual, expected)
         self.assertEqual(rv, None)
         self.session.listUsers.assert_called_once_with(
-            inherited_perm=True, perm=perm, prefix=None, userType=None)
+            inherited_perm=True, perm=perm, userType=koji.USERTYPES['NORMAL'])
         self.session.getAllPerms.assert_called_once_with()
         self.activate_session.assert_called_once_with(self.session, self.options)
 
@@ -220,8 +219,8 @@ testuser1234
 Options:
   -h, --help           show this help message and exit
   --usertype=USERTYPE  List users that have a given usertype (e.g. NORMAL,
-                       HOST, GROUP)
+                       HOST, GROUP). Use "any" to get all types
   --prefix=PREFIX      List users that have a given prefix
   --perm=PERM          List users that have a given permission
-  --inherited-perm     List of users that inherited specific perm
+  --inherited-perm     Consider inherited permissions
 """ % self.progname)
