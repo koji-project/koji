@@ -8177,7 +8177,7 @@ def anon_handle_list_users(goptions, session, args):
     parser.add_option("--prefix", help="List users that have a given prefix")
     parser.add_option("--perm", help="List users that have a given permission")
     parser.add_option("--inherited-perm", action='store_true', default=False,
-                      help="List of users that inherited specific perm")
+                      help="Consider inherited permissions")
     (options, args) = parser.parse_args(args)
 
     if len(args) > 0:
