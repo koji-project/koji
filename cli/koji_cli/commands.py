@@ -8209,5 +8209,7 @@ def anon_handle_list_users(goptions, session, args):
             kwargs['inherited_perm'] = options.inherited_perm
 
     users_list = session.listUsers(**kwargs)
+    if not users_list and session.hub_version < (1, 34, 1) and usertype is None:
+        warn('This hub does not support querying for all usertypes')
     for user in users_list:
         print(user['name'])
