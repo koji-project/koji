@@ -28,6 +28,9 @@ class TestDeleteBuildTarget(unittest.TestCase):
         # start with "assert"
         self.context_db.session.assertLogin = mock.MagicMock()
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_non_exist_target(self):
         build_target = 'build-target'
         self.lookup_build_target.return_value = None

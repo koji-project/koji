@@ -28,7 +28,6 @@ def get_qp_init(testcase):
 class DBQueryTestCase(unittest.TestCase):
 
     def setUp(self):
-        mock.patch.stopall()
         self.qp_execute_return_value = []
         self.qp_execute_side_effect = None
         self.qp_execute_one_return_value = []
@@ -44,7 +43,6 @@ class DBQueryTestCase(unittest.TestCase):
 
     def tearDown(self):
         mock.patch.stopall()
-        self.reset_query()
 
     def reset_query(self):
         del self.queries[:]

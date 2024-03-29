@@ -32,6 +32,9 @@ class TestGrantPermission(unittest.TestCase):
                          'status': 0, 'usertype': 0}
         self.perm_info = {'id': 1, 'name': self.perms_name}
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_grant_permission_wrong_format(self):
         perms_name = 'test-perms+'
 

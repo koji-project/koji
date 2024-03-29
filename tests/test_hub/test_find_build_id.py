@@ -24,6 +24,9 @@ class TestFindBuildId(unittest.TestCase):
         self.queries = []
         self.query_singleValue = mock.MagicMock()
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_non_exist_build_dict(self):
         build = {
             'name': 'test_name',

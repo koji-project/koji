@@ -14,6 +14,9 @@ class TestRestartHosts(unittest.TestCase):
         self.context.session.assertPerm = mock.MagicMock()
         self.make_task = mock.patch('kojihub.kojihub.make_task').start()
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_options_is_none(self):
         self.make_task.return_value = 13
         rv = self.exports.restartHosts()

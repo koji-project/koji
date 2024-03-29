@@ -11,6 +11,9 @@ class TestGetVolume(unittest.TestCase):
         self.exports = kojihub.RootExports()
         self.lookup_name = mock.patch('kojihub.kojihub.lookup_name').start()
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_non_exist_volume_with_strict(self):
         volume = ['test-volume']
         self.lookup_name.return_value = None

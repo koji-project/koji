@@ -15,6 +15,9 @@ class DummyExports(object):
 
 class TestMulticall(unittest.TestCase):
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_multicall(self):
         self.context_db = mock.patch('kojihub.db.context').start()
         kojixmlrpc.kojihub = mock.MagicMock()

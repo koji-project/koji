@@ -86,6 +86,9 @@ class TestListBuilds(unittest.TestCase):
                             'volume_name': 'DEFAULT',
                             'draft': False},]
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_wrong_package(self):
         package = 'test-package'
         self.get_package_id.return_value = None

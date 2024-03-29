@@ -20,6 +20,9 @@ class TestQueryBuildroots(unittest.TestCase):
         self.queries = []
         self.query_execute = mock.MagicMock()
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_query_buildroots(self):
         self.query_execute.side_effect = [[7], [7], [7], []]
         self.repo_references.return_value = [{'id': 7, 'host_id': 1, 'create_event': 333,

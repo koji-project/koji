@@ -17,6 +17,9 @@ class TestGetChangelogEntries(unittest.TestCase):
         self.cursor = mock.MagicMock()
         self.os_path_exists = mock.patch('os.path.exists').start()
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_non_exist_build(self):
         build_id = 1
         self.cursor.fetchone.return_value = None
