@@ -69,7 +69,8 @@ from requests.packages.urllib3.exceptions import MaxRetryError, HostChangedError
 from six.moves import range, zip
 
 from koji.tasks import parse_task_params
-from koji.xmlrpcplus import DateTime, Fault, dumps, getparser, loads
+from koji.xmlrpcplus import DateTime, Fault, dumps, getparser, loads, xmlrpc_client
+
 from koji.util import deprecated
 from . import util
 from . import _version
