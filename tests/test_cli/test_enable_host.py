@@ -22,6 +22,9 @@ class TestEnableHost(utils.CliTestCase):
 %s: error: {message}
 """ % (self.progname, self.progname)
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_handle_enable_host_no_such_host(self):
         """Test %s function""" % handle_enable_host.__name__
 

@@ -30,6 +30,9 @@ class TestEditTag(utils.CliTestCase):
         self.extra = {'extraA': 'A', 'extraB': True}
         self.remove_extra = ['extraC', 'extraD']
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     def test_handle_edit_tag_1(self, stdout):
         args = [self.tag]

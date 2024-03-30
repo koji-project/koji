@@ -19,6 +19,9 @@ class TestFreeTask(utils.CliTestCase):
 %s: error: {message}
 """ % (self.progname, self.progname)
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_free_task_without_arg(self):
         expected = self.format_error_message('please specify at least one task_id')
         self.assert_system_exit(

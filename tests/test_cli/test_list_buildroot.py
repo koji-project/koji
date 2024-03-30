@@ -22,6 +22,9 @@ class TestListBuilds(utils.CliTestCase):
 %s: error: {message}
 """ % (self.progname, self.progname)
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_list_buildroot_without_args(self):
         self.assert_system_exit(
             anon_handle_list_buildroot,

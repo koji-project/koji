@@ -42,6 +42,9 @@ class TestEditTarget(utils.CliTestCase):
         self.new_dest_tag = 'new-dest-tag'
         self.new_build_tag = 'new-build-tag'
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_edit_target_without_option(self):
         expected = self.format_error_message("Please specify a build target")
         self.assert_system_exit(

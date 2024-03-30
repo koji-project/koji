@@ -18,6 +18,9 @@ class TestRemoveExternalRepo(utils.CliTestCase):
 %s: error: {message}
 """ % (self.progname, self.progname)
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_remove_external_repo_help(self):
         self.assert_help(
             handle_remove_external_repo,

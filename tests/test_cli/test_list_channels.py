@@ -64,6 +64,9 @@ class TestListChannels(utils.CliTestCase):
             ]]
         ]
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     @mock.patch('sys.stdout', new_callable=StringIO)
     def test_list_channels_not_quiet(self, stdout):
         self.session.listChannels.return_value = self.list_channels

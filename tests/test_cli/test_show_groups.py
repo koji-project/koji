@@ -52,6 +52,9 @@ class TestShowGroups(utils.CliTestCase):
              'group_id': 3}
         ]
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_show_groups_incorrect_num_of_args(self):
         arguments = []
         self.assert_system_exit(

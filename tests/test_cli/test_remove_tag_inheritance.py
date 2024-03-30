@@ -50,6 +50,9 @@ class TestRemoveTagInheritance(utils.CliTestCase):
                                 'perm': None,
                                 'perm_id': None}
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_remove_tag_inheritance_without_option(self):
         expected = self.format_error_message(
             "This command takes at least one argument: a tag name or ID")

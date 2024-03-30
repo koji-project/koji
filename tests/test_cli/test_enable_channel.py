@@ -30,6 +30,9 @@ class TestEnableChannel(utils.CliTestCase):
              'name': 'test-channel'}
         ]
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def __vm(self, result):
         m = koji.VirtualCall('mcall_method', [], {})
         if isinstance(result, dict) and result.get('faultCode'):

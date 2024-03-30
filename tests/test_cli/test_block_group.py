@@ -25,6 +25,9 @@ class TestBlockGroup(utils.CliTestCase):
 %s: error: {message}
 """ % (self.progname, self.progname)
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_handle_block_group_nonexistent_tag(self):
         tag = 'nonexistent-tag'
         group = 'group'

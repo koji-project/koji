@@ -24,6 +24,9 @@ class TestRestartHosts(utils.CliTestCase):
         self.watch_tasks_mock = mock.patch('koji_cli.commands.watch_tasks').start()
         self.task_id = 101
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_handle_restart_hosts_force_options(self):
         """Test %s function with --force option""" % handle_restart_hosts.__name__
         arguments = ['--force']

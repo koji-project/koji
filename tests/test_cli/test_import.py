@@ -84,6 +84,9 @@ class TestImport(utils.CliTestCase):
 %s: error: {message}
 """ % (self.progname, self.progname)
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def __do_import_test(self, options, session, arguments, **kwargs):
         expected = kwargs.get('expected', None)
         rpm_header = kwargs.get('rpm_header', {})

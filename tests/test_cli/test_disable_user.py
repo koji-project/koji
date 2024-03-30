@@ -24,6 +24,9 @@ class TestDisableUser(utils.CliTestCase):
 %s: error: {message}
 """ % (self.progname, self.progname)
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_handle_disable_user_no_argument(self):
         """Test handle_disable_user function"""
         expected = self.format_error_message(

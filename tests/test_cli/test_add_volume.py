@@ -24,6 +24,9 @@ class TestAddVolume(utils.CliTestCase):
 %s: error: {message}
 """ % (self.progname, self.progname)
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     def test_handle_add_volume(self, stdout):
         """Test handle_add_volume function"""

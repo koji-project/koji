@@ -26,6 +26,9 @@ class TestAddChannel(utils.CliTestCase):
 %s: error: {message}
 """ % (self.progname, self.progname)
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     def test_handle_add_channel(self, stdout):
         self.session.addChannel.return_value = self.channel_id

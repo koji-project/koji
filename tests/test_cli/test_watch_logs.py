@@ -21,6 +21,9 @@ class TestWatchLogs(utils.CliTestCase):
 %s: error: {message}
 """ % (self.progname, self.progname)
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_handle_watch_logs_help(self):
         self.assert_help(
             anon_handle_watch_logs,

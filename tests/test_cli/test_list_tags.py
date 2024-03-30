@@ -38,6 +38,9 @@ class TestListTags(utils.CliTestCase):
 %s: error: {message}
 """ % (self.progname, self.progname)
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_list_tags_non_exist_package(self):
         pkg = 'test-pkg'
         self.session.getPackage.return_value = None

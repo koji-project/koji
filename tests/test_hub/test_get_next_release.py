@@ -12,9 +12,6 @@ class TestGetNextRelease(DBQueryTestCase):
         self.get_build = mock.patch('kojihub.kojihub.get_build').start()
         self.binfo = {'name': 'name', 'version': 'version'}
 
-    def tearDown(self):
-        mock.patch.stopall()
-
     def test_get_next_release_new(self):
         # no previous build
         self.qp_execute_one_return_value = None

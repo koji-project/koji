@@ -39,6 +39,9 @@ class TestWinBuild(utils.CliTestCase):
 %s: error: {message}
 """ % (self.progname, self.progname)
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_win_build_without_option(self):
         self.assert_system_exit(
             handle_win_build,

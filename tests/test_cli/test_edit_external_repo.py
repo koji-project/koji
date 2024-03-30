@@ -24,6 +24,9 @@ class TestEditExternalRepo(utils.CliTestCase):
 %s: error: {message}
 """ % (self.progname, self.progname)
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_handle_edit_external_repo_error(self):
         """Test handle_edit_external_repo function"""
         # [(expected, args),...]

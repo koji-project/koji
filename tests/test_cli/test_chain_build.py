@@ -31,6 +31,9 @@ class TestChainBuild(utils.CliTestCase):
 %s: error: {message}
 """ % (self.progname, self.progname)
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     def test_handle_chain_build(self, stdout):
         target = 'target'

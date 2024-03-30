@@ -26,6 +26,9 @@ class TestGrantPermission(utils.CliTestCase):
         self.perm = 'createuser'
         self.user = 'user'
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_handle_grant_permission_argument_error(self):
         expected = self.format_error_message(
             "Please specify a permission and at least one user")
