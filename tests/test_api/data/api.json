@@ -13,19 +13,49 @@
                 "type": "<class 'koji.Enum'>"
             },
             "ActionNotAllowed": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "faultCode": {
+                        "type": "<class 'int'>"
+                    }
+                }
             },
             "ApplianceError": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "faultCode": {
+                        "type": "<class 'int'>"
+                    }
+                }
             },
             "AuthError": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "faultCode": {
+                        "type": "<class 'int'>"
+                    }
+                }
             },
             "AuthExpired": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "faultCode": {
+                        "type": "<class 'int'>"
+                    }
+                }
             },
             "AuthLockError": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "faultCode": {
+                        "type": "<class 'int'>"
+                    }
+                }
             },
             "BASEDIR": {
                 "type": "<class 'str'>"
@@ -40,10 +70,22 @@
                 "type": "<class 'koji.Enum'>"
             },
             "BuildError": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "faultCode": {
+                        "type": "<class 'int'>"
+                    }
+                }
             },
             "BuildrootError": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "faultCode": {
+                        "type": "<class 'int'>"
+                    }
+                }
             },
             "CHECKSUM_TYPES": {
                 "type": "<class 'koji.Enum'>"
@@ -52,16 +94,374 @@
                 "type": "<class 'list'>"
             },
             "CallbackError": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "faultCode": {
+                        "type": "<class 'int'>"
+                    }
+                }
             },
             "ClientSession": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "callMethod": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, name, *args, **opts)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "name"
+                            },
+                            {
+                                "name": "args"
+                            },
+                            {
+                                "name": "opts"
+                            }
+                        ],
+                        "varargs": "args",
+                        "varkw": "opts"
+                    },
+                    "downloadTaskOutput": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, taskID, fileName, offset=0, size=-1, volume=None)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "taskID"
+                            },
+                            {
+                                "name": "fileName"
+                            },
+                            {
+                                "name": "offset",
+                                "default": "0"
+                            },
+                            {
+                                "name": "size",
+                                "default": "-1"
+                            },
+                            {
+                                "name": "volume",
+                                "default": "None"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "exclusiveSession": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, force=False)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "force",
+                                "default": "False"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "fastUpload": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, localfile, path, name=None, callback=None, blocksize=None, overwrite=False, volume=None)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "localfile"
+                            },
+                            {
+                                "name": "path"
+                            },
+                            {
+                                "name": "name",
+                                "default": "None"
+                            },
+                            {
+                                "name": "callback",
+                                "default": "None"
+                            },
+                            {
+                                "name": "blocksize",
+                                "default": "None"
+                            },
+                            {
+                                "name": "overwrite",
+                                "default": "False"
+                            },
+                            {
+                                "name": "volume",
+                                "default": "None"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "gssapi_login": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, principal=None, keytab=None, ccache=None, proxyuser=None, proxyauthtype=None, renew=False)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "principal",
+                                "default": "None"
+                            },
+                            {
+                                "name": "keytab",
+                                "default": "None"
+                            },
+                            {
+                                "name": "ccache",
+                                "default": "None"
+                            },
+                            {
+                                "name": "proxyuser",
+                                "default": "None"
+                            },
+                            {
+                                "name": "proxyauthtype",
+                                "default": "None"
+                            },
+                            {
+                                "name": "renew",
+                                "default": "False"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "login": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, opts=None, renew=False)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "opts",
+                                "default": "None"
+                            },
+                            {
+                                "name": "renew",
+                                "default": "False"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "logout": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, session_id=None)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "session_id",
+                                "default": "None"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "multiCall": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, strict=False, batch=None)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "strict",
+                                "default": "False"
+                            },
+                            {
+                                "name": "batch",
+                                "default": "None"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "multicall": {
+                        "type": "<class 'property'>"
+                    },
+                    "new_session": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self)",
+                        "args": [
+                            {
+                                "name": "self"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "renew_expired_session": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(func)",
+                        "args": [
+                            {
+                                "name": "func"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "setSession": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, sinfo)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "sinfo"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "ssl_login": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, cert=None, ca=None, serverca=None, proxyuser=None, proxyauthtype=None, renew=False)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "cert",
+                                "default": "None"
+                            },
+                            {
+                                "name": "ca",
+                                "default": "None"
+                            },
+                            {
+                                "name": "serverca",
+                                "default": "None"
+                            },
+                            {
+                                "name": "proxyuser",
+                                "default": "None"
+                            },
+                            {
+                                "name": "proxyauthtype",
+                                "default": "None"
+                            },
+                            {
+                                "name": "renew",
+                                "default": "False"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "subsession": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self)",
+                        "args": [
+                            {
+                                "name": "self"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "uploadWrapper": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, localfile, path, name=None, callback=None, blocksize=None, overwrite=True, volume=None)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "localfile"
+                            },
+                            {
+                                "name": "path"
+                            },
+                            {
+                                "name": "name",
+                                "default": "None"
+                            },
+                            {
+                                "name": "callback",
+                                "default": "None"
+                            },
+                            {
+                                "name": "blocksize",
+                                "default": "None"
+                            },
+                            {
+                                "name": "overwrite",
+                                "default": "True"
+                            },
+                            {
+                                "name": "volume",
+                                "default": "None"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    }
+                }
             },
             "ConfigurationError": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "faultCode": {
+                        "type": "<class 'int'>"
+                    }
+                }
             },
             "DBHandler": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "emit": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, record)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "record"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    }
+                }
             },
             "DEFAULT_AUTH_TIMEOUT": {
                 "type": "<class 'int'>"
@@ -103,52 +503,323 @@
                 "type": "<class 're.Pattern'>"
             },
             "Enum": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "clear": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, *args, **opts)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "args"
+                            },
+                            {
+                                "name": "opts"
+                            }
+                        ],
+                        "varargs": "args",
+                        "varkw": "opts"
+                    },
+                    "get": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, key, default=None)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "key"
+                            },
+                            {
+                                "name": "default",
+                                "default": "None"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "getnum": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, key, default=None)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "key"
+                            },
+                            {
+                                "name": "default",
+                                "default": "None"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "getvalue": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, *args, **opts)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "args"
+                            },
+                            {
+                                "name": "opts"
+                            }
+                        ],
+                        "varargs": "args",
+                        "varkw": "opts"
+                    },
+                    "pop": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, *args, **opts)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "args"
+                            },
+                            {
+                                "name": "opts"
+                            }
+                        ],
+                        "varargs": "args",
+                        "varkw": "opts"
+                    },
+                    "popitem": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, *args, **opts)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "args"
+                            },
+                            {
+                                "name": "opts"
+                            }
+                        ],
+                        "varargs": "args",
+                        "varkw": "opts"
+                    },
+                    "setdefault": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, *args, **opts)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "args"
+                            },
+                            {
+                                "name": "opts"
+                            }
+                        ],
+                        "varargs": "args",
+                        "varkw": "opts"
+                    },
+                    "update": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, *args, **opts)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "args"
+                            },
+                            {
+                                "name": "opts"
+                            }
+                        ],
+                        "varargs": "args",
+                        "varkw": "opts"
+                    }
+                }
             },
             "Fault": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_external": true
             },
             "FunctionDeprecated": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "faultCode": {
+                        "type": "<class 'int'>"
+                    }
+                }
             },
             "GSSAPIAuthError": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "faultCode": {
+                        "type": "<class 'int'>"
+                    }
+                }
             },
             "GenericError": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "faultCode": {
+                        "type": "<class 'int'>"
+                    },
+                    "fromFault": {
+                        "type": "<class 'bool'>"
+                    }
+                }
             },
             "HTTPAdapter": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_external": true
             },
             "HostChangedError": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_external": true
             },
             "ImportError": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "faultCode": {
+                        "type": "<class 'int'>"
+                    }
+                }
             },
             "LiveCDError": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "faultCode": {
+                        "type": "<class 'int'>"
+                    }
+                }
             },
             "LiveMediaError": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "faultCode": {
+                        "type": "<class 'int'>"
+                    }
+                }
             },
             "LockError": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "faultCode": {
+                        "type": "<class 'int'>"
+                    }
+                }
             },
             "MaxRetryError": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_external": true
             },
             "MultiCallHack": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {}
             },
             "MultiCallInProgress": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {}
             },
             "MultiCallNotReady": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {}
             },
             "MultiCallSession": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "callMethod": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, name, *args, **opts)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "name"
+                            },
+                            {
+                                "name": "args"
+                            },
+                            {
+                                "name": "opts"
+                            }
+                        ],
+                        "varargs": "args",
+                        "varkw": "opts"
+                    },
+                    "call_all": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, strict=None, batch=None)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "strict",
+                                "default": "None"
+                            },
+                            {
+                                "name": "batch",
+                                "default": "None"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "multiCall": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, strict=None, batch=None)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "strict",
+                                "default": "None"
+                            },
+                            {
+                                "name": "batch",
+                                "default": "None"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "multicall": {
+                        "type": "<class 'property'>"
+                    }
+                }
             },
             "NONPRINTABLE_CHARS": {
                 "type": "<class 'str'>"
@@ -157,10 +828,79 @@
                 "type": "<class 'dict'>"
             },
             "NameValidationError": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "faultCode": {
+                        "type": "<class 'int'>"
+                    }
+                }
             },
             "POMHandler": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "characters": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, content)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "content"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "endElement": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, name)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "name"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "reset": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self)",
+                        "args": [
+                            {
+                                "name": "self"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "startElement": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, name, attrs)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "name"
+                            },
+                            {
+                                "name": "attrs"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    }
+                }
             },
             "PRIO_DEFAULT": {
                 "type": "<class 'int'>"
@@ -169,22 +909,404 @@
                 "type": "<class 'dict'>"
             },
             "ParameterError": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "faultCode": {
+                        "type": "<class 'int'>"
+                    }
+                }
             },
             "PathInfo": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "ASCII_CHARS": {
+                        "type": "<class 'list'>"
+                    },
+                    "build": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, build)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "build"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "build_logs": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, build)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "build"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "distrepo": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, repo_id, tag, volume=None)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "repo_id"
+                            },
+                            {
+                                "name": "tag"
+                            },
+                            {
+                                "name": "volume",
+                                "default": "None"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "imagebuild": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, build)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "build"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "mavenbuild": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, build)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "build"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "mavenfile": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, maveninfo)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "maveninfo"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "mavenrepo": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, maveninfo)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "maveninfo"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "repo": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, repo_id, tag_str)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "repo_id"
+                            },
+                            {
+                                "name": "tag_str"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "repocache": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, tag_str)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "tag_str"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "rpm": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, rpminfo)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "rpminfo"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "scratch": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self)",
+                        "args": [
+                            {
+                                "name": "self"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "sighdr": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, rpminfo, sigkey)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "rpminfo"
+                            },
+                            {
+                                "name": "sigkey"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "signed": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, rpminfo, sigkey)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "rpminfo"
+                            },
+                            {
+                                "name": "sigkey"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "task": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, task_id, volume=None)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "task_id"
+                            },
+                            {
+                                "name": "volume",
+                                "default": "None"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "taskrelpath": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, task_id)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "task_id"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "tmpdir": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, volume=None)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "volume",
+                                "default": "None"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "topdir": {
+                        "type": "<class 'property'>"
+                    },
+                    "typedir": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, build, btype)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "build"
+                            },
+                            {
+                                "name": "btype"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "volumedir": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, volume)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "volume"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "winbuild": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, build)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "build"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "winfile": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, wininfo)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "wininfo"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "work": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, volume=None)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "volume",
+                                "default": "None"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    }
+                }
             },
             "PluginError": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "faultCode": {
+                        "type": "<class 'int'>"
+                    }
+                }
             },
             "PostBuildError": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "faultCode": {
+                        "type": "<class 'int'>"
+                    }
+                }
             },
             "PreBuildError": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "faultCode": {
+                        "type": "<class 'int'>"
+                    }
+                }
             },
             "PythonImportError": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "msg": {
+                        "type": "<class 'member_descriptor'>"
+                    },
+                    "name": {
+                        "type": "<class 'member_descriptor'>"
+                    },
+                    "path": {
+                        "type": "<class 'member_descriptor'>"
+                    }
+                }
             },
             "REPO_DELETED": {
                 "type": "<class 'int'>"
@@ -244,25 +1366,160 @@
                 "type": "<class 'int'>"
             },
             "RawHeader": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "decode_bytes": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, value)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "value"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "dump": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, sig=None)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "sig",
+                                "default": "None"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "get": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, key, default=None, decode=None, single=False)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "key"
+                            },
+                            {
+                                "name": "default",
+                                "default": "None"
+                            },
+                            {
+                                "name": "decode",
+                                "default": "None"
+                            },
+                            {
+                                "name": "single",
+                                "default": "False"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "version": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self)",
+                        "args": [
+                            {
+                                "name": "self"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    }
+                }
             },
             "Retry": {
-                "type": "<class 'urllib3.util.retry._RetryMeta'>"
+                "type": "<class 'urllib3.util.retry._RetryMeta'>",
+                "is_external": true
             },
             "RetryError": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "faultCode": {
+                        "type": "<class 'int'>"
+                    }
+                }
             },
             "SUPPORTED_OPT_DEP_HDRS": {
                 "type": "<class 'dict'>"
             },
             "SequenceError": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "faultCode": {
+                        "type": "<class 'int'>"
+                    }
+                }
             },
             "ServerOffline": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "faultCode": {
+                        "type": "<class 'int'>"
+                    }
+                }
             },
             "SplicedSigStreamReader": {
-                "type": "<class 'abc.ABCMeta'>"
+                "type": "<class 'abc.ABCMeta'>",
+                "is_class": true,
+                "members": {
+                    "generator": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "is_generator_function": true,
+                        "desc": "(self)",
+                        "args": [
+                            {
+                                "name": "self"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "readable": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self)",
+                        "args": [
+                            {
+                                "name": "self"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "readinto": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, b)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "b"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    }
+                }
             },
             "TAG_UPDATE_TYPES": {
                 "type": "<class 'koji.Enum'>"
@@ -271,7 +1528,13 @@
                 "type": "<class 'koji.Enum'>"
             },
             "TagError": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "faultCode": {
+                        "type": "<class 'int'>"
+                    }
+                }
             },
             "USERTYPES": {
                 "type": "<class 'koji.Enum'>"
@@ -280,13 +1543,34 @@
                 "type": "<class 'koji.Enum'>"
             },
             "VirtualCall": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "format": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self)",
+                        "args": [
+                            {
+                                "name": "self"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "result": {
+                        "type": "<class 'property'>"
+                    }
+                }
             },
             "VirtualMethod": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {}
             },
             "add_file_logger": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(logger, fn)",
                 "args": [
                     {
@@ -301,6 +1585,7 @@
             },
             "add_mail_logger": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(logger, addr)",
                 "args": [
                     {
@@ -315,6 +1600,7 @@
             },
             "add_stderr_logger": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(logger)",
                 "args": [
                     {
@@ -326,6 +1612,7 @@
             },
             "add_sys_logger": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(logger)",
                 "args": [
                     {
@@ -336,13 +1623,16 @@
                 "varkw": null
             },
             "arch": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "base64": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "buildLabel": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(buildInfo, showEpoch=False)",
                 "args": [
                     {
@@ -358,6 +1648,7 @@
             },
             "canonArch": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(arch)",
                 "args": [
                     {
@@ -369,6 +1660,7 @@
             },
             "check_NVR": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(nvr, strict=False)",
                 "args": [
                     {
@@ -384,6 +1676,7 @@
             },
             "check_NVRA": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(nvra, strict=False)",
                 "args": [
                     {
@@ -399,6 +1692,7 @@
             },
             "check_rpm_file": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(rpmfile)",
                 "args": [
                     {
@@ -410,6 +1704,7 @@
             },
             "config_directory_contents": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(dir_name, strict=False)",
                 "args": [
                     {
@@ -424,10 +1719,12 @@
                 "varkw": null
             },
             "context": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "convertFault": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(fault)",
                 "args": [
                     {
@@ -438,23 +1735,28 @@
                 "varkw": null
             },
             "daemon": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "daemonize": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "()",
                 "args": [],
                 "varargs": null,
                 "varkw": null
             },
             "datetime": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "dateutil": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "decode_args": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(*args)",
                 "args": [
                     {
@@ -466,6 +1768,7 @@
             },
             "decode_args2": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(args, names, strict=True)",
                 "args": [
                     {
@@ -484,6 +1787,7 @@
             },
             "decode_int": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(n)",
                 "args": [
                     {
@@ -495,17 +1799,11 @@
             },
             "deprecated": {
                 "type": "<class 'function'>",
-                "desc": "(message)",
-                "args": [
-                    {
-                        "name": "message"
-                    }
-                ],
-                "varargs": null,
-                "varkw": null
+                "is_external": true
             },
             "downloadFile": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(url, path=None, fo=None)",
                 "args": [
                     {
@@ -525,6 +1823,7 @@
             },
             "dump_json": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(filepath, data, indent=4, sort_keys=False)",
                 "args": [
                     {
@@ -547,37 +1846,11 @@
             },
             "dumps": {
                 "type": "<class 'function'>",
-                "desc": "(params, methodname=None, methodresponse=None, encoding=None, allow_none=1, marshaller=None)",
-                "args": [
-                    {
-                        "name": "params"
-                    },
-                    {
-                        "name": "methodname",
-                        "default": "None"
-                    },
-                    {
-                        "name": "methodresponse",
-                        "default": "None"
-                    },
-                    {
-                        "name": "encoding",
-                        "default": "None"
-                    },
-                    {
-                        "name": "allow_none",
-                        "default": "1"
-                    },
-                    {
-                        "name": "marshaller",
-                        "default": "None"
-                    }
-                ],
-                "varargs": null,
-                "varkw": null
+                "is_external": true
             },
             "encode_args": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(*args, **opts)",
                 "args": [
                     {
@@ -592,6 +1865,7 @@
             },
             "ensuredir": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(directory)",
                 "args": [
                     {
@@ -602,10 +1876,12 @@
                 "varkw": null
             },
             "errno": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_module": true
             },
             "find_rpm_sighdr": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(path)",
                 "args": [
                     {
@@ -617,6 +1893,7 @@
             },
             "fixEncoding": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(value, fallback='iso8859-15', remove_nonprintable=False)",
                 "args": [
                     {
@@ -636,6 +1913,7 @@
             },
             "fixEncodingRecurse": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(value, fallback='iso8859-15', remove_nonprintable=False)",
                 "args": [
                     {
@@ -655,6 +1933,7 @@
             },
             "fix_encoding": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(value, fallback='iso8859-15', remove_nonprintable=False)",
                 "args": [
                     {
@@ -674,20 +1953,11 @@
             },
             "fnmatch": {
                 "type": "<class 'function'>",
-                "desc": "(name, pat)",
-                "args": [
-                    {
-                        "name": "name"
-                    },
-                    {
-                        "name": "pat"
-                    }
-                ],
-                "varargs": null,
-                "varkw": null
+                "is_external": true
             },
             "formatTime": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(value)",
                 "args": [
                     {
@@ -699,6 +1969,7 @@
             },
             "formatTimeLong": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(value)",
                 "args": [
                     {
@@ -710,6 +1981,7 @@
             },
             "format_exc_plus": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "()",
                 "args": [],
                 "varargs": null,
@@ -717,6 +1989,7 @@
             },
             "genMockConfig": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(name, arch, managed=False, repoid=None, tag_name=None, **opts)",
                 "args": [
                     {
@@ -746,6 +2019,7 @@
             },
             "gen_draft_release": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(target_release, build_id)",
                 "args": [
                     {
@@ -760,6 +2034,7 @@
             },
             "generate_comps": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(groups, expand_groups=False)",
                 "args": [
                     {
@@ -775,6 +2050,7 @@
             },
             "get_header_field": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(hdr, name, src_arch=False)",
                 "args": [
                     {
@@ -793,6 +2069,7 @@
             },
             "get_header_fields": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(X, fields=None, src_arch=False)",
                 "args": [
                     {
@@ -812,6 +2089,7 @@
             },
             "get_profile_module": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(profile_name, config=None)",
                 "args": [
                     {
@@ -827,6 +2105,7 @@
             },
             "get_rpm_header": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(f, ts=None)",
                 "args": [
                     {
@@ -842,6 +2121,7 @@
             },
             "get_sighdr_key": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(sighdr)",
                 "args": [
                     {
@@ -853,6 +2133,7 @@
             },
             "get_sigpacket_key_id": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(sigpacket)",
                 "args": [
                     {
@@ -864,22 +2145,11 @@
             },
             "getparser": {
                 "type": "<class 'function'>",
-                "desc": "(use_datetime=False, use_builtin_types=False)",
-                "args": [
-                    {
-                        "name": "use_datetime",
-                        "default": "False"
-                    },
-                    {
-                        "name": "use_builtin_types",
-                        "default": "False"
-                    }
-                ],
-                "varargs": null,
-                "varkw": null
+                "is_external": true
             },
             "grab_session_options": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(options)",
                 "args": [
                     {
@@ -893,10 +2163,12 @@
                 "type": "<class 'str'>"
             },
             "hashlib": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "hex_string": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(s)",
                 "args": [
                     {
@@ -907,13 +2179,16 @@
                 "varkw": null
             },
             "importlib": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "io": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "is_conn_error": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(e)",
                 "args": [
                     {
@@ -925,6 +2200,7 @@
             },
             "is_debuginfo": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(name)",
                 "args": [
                     {
@@ -936,6 +2212,7 @@
             },
             "is_requests_cert_error": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(e)",
                 "args": [
                     {
@@ -946,10 +2223,12 @@
                 "varkw": null
             },
             "json": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "load_json": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(filepath)",
                 "args": [
                     {
@@ -961,28 +2240,15 @@
             },
             "loads": {
                 "type": "<class 'function'>",
-                "desc": "(data, use_datetime=False, use_builtin_types=False)",
-                "args": [
-                    {
-                        "name": "data"
-                    },
-                    {
-                        "name": "use_datetime",
-                        "default": "False"
-                    },
-                    {
-                        "name": "use_builtin_types",
-                        "default": "False"
-                    }
-                ],
-                "varargs": null,
-                "varkw": null
+                "is_external": true
             },
             "logging": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "make_groups_spec": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(grplist, name='buildsys-build', buildgroup=None)",
                 "args": [
                     {
@@ -1002,6 +2268,7 @@
             },
             "mavenLabel": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(maveninfo)",
                 "args": [
                     {
@@ -1013,6 +2280,7 @@
             },
             "maven_info_to_nvr": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(maveninfo)",
                 "args": [
                     {
@@ -1024,6 +2292,7 @@
             },
             "multibyte": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(data)",
                 "args": [
                     {
@@ -1035,6 +2304,7 @@
             },
             "openRemoteFile": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(relpath, topurl=None, topdir=None, tempdir=None)",
                 "args": [
                     {
@@ -1057,13 +2327,16 @@
                 "varkw": null
             },
             "optparse": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "os": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "parse_NVR": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(nvr)",
                 "args": [
                     {
@@ -1075,6 +2348,7 @@
             },
             "parse_NVRA": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(nvra)",
                 "args": [
                     {
@@ -1086,6 +2360,7 @@
             },
             "parse_arches": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(arches, to_list=False, strict=False, allow_none=False)",
                 "args": [
                     {
@@ -1109,6 +2384,7 @@
             },
             "parse_pom": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(path=None, contents=None)",
                 "args": [
                     {
@@ -1125,6 +2401,7 @@
             },
             "parse_target_release": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(draft_release)",
                 "args": [
                     {
@@ -1136,29 +2413,22 @@
             },
             "parse_task_params": {
                 "type": "<class 'function'>",
-                "desc": "(method, params)",
-                "args": [
-                    {
-                        "name": "method"
-                    },
-                    {
-                        "name": "params"
-                    }
-                ],
-                "varargs": null,
-                "varkw": null
+                "is_external": true
             },
             "pathinfo": {
                 "type": "<class 'koji.PathInfo'>"
             },
             "plugin": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "policy": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "pom_to_maven_info": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(pominfo)",
                 "args": [
                     {
@@ -1169,19 +2439,41 @@
                 "varkw": null
             },
             "pwd": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_module": true
             },
             "random": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "range": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "count": {
+                        "type": "<class 'method_descriptor'>"
+                    },
+                    "index": {
+                        "type": "<class 'method_descriptor'>"
+                    },
+                    "start": {
+                        "type": "<class 'member_descriptor'>"
+                    },
+                    "step": {
+                        "type": "<class 'member_descriptor'>"
+                    },
+                    "stop": {
+                        "type": "<class 'member_descriptor'>"
+                    }
+                }
             },
             "re": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "read_config": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(profile_name, user_config=None)",
                 "args": [
                     {
@@ -1197,6 +2489,7 @@
             },
             "read_config_files": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(config_files, raw=False)",
                 "args": [
                     {
@@ -1212,6 +2505,7 @@
             },
             "removeNonprintable": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(value)",
                 "args": [
                     {
@@ -1223,6 +2517,7 @@
             },
             "remove_log_handler": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(logger, handler)",
                 "args": [
                     {
@@ -1236,10 +2531,12 @@
                 "varkw": null
             },
             "reqgssapi": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "request_with_retry": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(retries=3, backoff_factor=0.3, status_forcelist=(500, 502, 504, 408, 429), session=None)",
                 "args": [
                     {
@@ -1263,10 +2560,12 @@
                 "varkw": null
             },
             "requests": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "rip_rpm_hdr": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(src)",
                 "args": [
                     {
@@ -1278,6 +2577,7 @@
             },
             "rip_rpm_sighdr": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(src)",
                 "args": [
                     {
@@ -1288,10 +2588,12 @@
                 "varkw": null
             },
             "rpm": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "rpm_hdr_size": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(f, ofs=None, pad=False)",
                 "args": [
                     {
@@ -1310,10 +2612,12 @@
                 "varkw": null
             },
             "rpmdiff": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "safe_xmlrpc_loads": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(s)",
                 "args": [
                     {
@@ -1324,16 +2628,20 @@
                 "varkw": null
             },
             "server": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "six": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "socket": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "splice_rpm_sighdr": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(sighdr, src, dst=None, bufsize=8192, callback=None)",
                 "args": [
                     {
@@ -1360,6 +2668,7 @@
             },
             "spliced_sig_reader": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(path, sighdr, bufsize=8192)",
                 "args": [
                     {
@@ -1377,13 +2686,16 @@
                 "varkw": null
             },
             "struct": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "sys": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_module": true
             },
             "taskLabel": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(taskInfo)",
                 "args": [
                     {
@@ -1394,45 +2706,130 @@
                 "varkw": null
             },
             "tasks": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "tempfile": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "time": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_module": true
             },
             "traceback": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "util": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "warnings": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "weakref": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "xml": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "xmlrpc_client": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "xmlrpcplus": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "zip": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {}
             }
         },
         "koji.arch": {
             "ArchStorage": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "get_arch_list": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, arch)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "arch"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "get_best_arch_from_list": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, archlist, fromarch=None)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "archlist"
+                            },
+                            {
+                                "name": "fromarch",
+                                "default": "None"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "score": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, arch)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "arch"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "setup_arch": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, arch=None, archlist_includes_compat_arch=True)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "arch",
+                                "default": "None"
+                            },
+                            {
+                                "name": "archlist_includes_compat_arch",
+                                "default": "True"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    }
+                }
             },
             "archDifference": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(myarch, targetarch)",
                 "args": [
                     {
@@ -1450,6 +2847,7 @@
             },
             "canCoinstall": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(arch1, arch2)",
                 "args": [
                     {
@@ -1466,10 +2864,12 @@
                 "type": "<class 'str'>"
             },
             "ctypes": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "getArchList": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(thisarch=None)",
                 "args": [
                     {
@@ -1482,6 +2882,7 @@
             },
             "getBaseArch": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(myarch=None)",
                 "args": [
                     {
@@ -1494,6 +2895,7 @@
             },
             "getBestArch": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(myarch=None)",
                 "args": [
                     {
@@ -1506,6 +2908,7 @@
             },
             "getBestArchFromList": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(archlist, myarch=None)",
                 "args": [
                     {
@@ -1521,6 +2924,7 @@
             },
             "getCanonARMArch": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(arch)",
                 "args": [
                     {
@@ -1532,6 +2936,7 @@
             },
             "getCanonArch": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(skipRpmPlatform=0)",
                 "args": [
                     {
@@ -1544,6 +2949,7 @@
             },
             "getCanonPPCArch": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(arch)",
                 "args": [
                     {
@@ -1555,6 +2961,7 @@
             },
             "getCanonSPARCArch": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(arch)",
                 "args": [
                     {
@@ -1566,6 +2973,7 @@
             },
             "getCanonX86Arch": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(arch)",
                 "args": [
                     {
@@ -1577,6 +2985,7 @@
             },
             "getCanonX86_64Arch": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(arch)",
                 "args": [
                     {
@@ -1588,6 +2997,7 @@
             },
             "getMultiArchInfo": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(arch='ia32e')",
                 "args": [
                     {
@@ -1600,6 +3010,7 @@
             },
             "isMultiLibArch": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(arch=None)",
                 "args": [
                     {
@@ -1612,6 +3023,7 @@
             },
             "legitMultiArchesInSameLib": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(arch=None)",
                 "args": [
                     {
@@ -1626,13 +3038,16 @@
                 "type": "<class 'dict'>"
             },
             "os": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "rpm": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "score": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(arch)",
                 "args": [
                     {
@@ -1643,7 +3058,8 @@
                 "varkw": null
             },
             "struct": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             }
         },
         "koji.util": {
@@ -1651,28 +3067,219 @@
                 "type": "<class 're.Pattern'>"
             },
             "DataWalker": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "walk": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self)",
+                        "args": [
+                            {
+                                "name": "self"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    }
+                }
             },
             "DateTime": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_external": true
             },
             "HiddenValue": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {}
             },
             "LazyDict": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "copy": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self)",
+                        "args": [
+                            {
+                                "name": "self"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "get": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, *args, **kwargs)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "args"
+                            },
+                            {
+                                "name": "kwargs"
+                            }
+                        ],
+                        "varargs": "args",
+                        "varkw": "kwargs"
+                    },
+                    "items": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self)",
+                        "args": [
+                            {
+                                "name": "self"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "iteritems": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "is_generator_function": true,
+                        "desc": "(self)",
+                        "args": [
+                            {
+                                "name": "self"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "itervalues": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "is_generator_function": true,
+                        "desc": "(self)",
+                        "args": [
+                            {
+                                "name": "self"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "lazyset": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, key, func, args, kwargs=None, cache=False)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "key"
+                            },
+                            {
+                                "name": "func"
+                            },
+                            {
+                                "name": "args"
+                            },
+                            {
+                                "name": "kwargs",
+                                "default": "None"
+                            },
+                            {
+                                "name": "cache",
+                                "default": "False"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "pop": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, key, *args, **kwargs)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "key"
+                            },
+                            {
+                                "name": "args"
+                            },
+                            {
+                                "name": "kwargs"
+                            }
+                        ],
+                        "varargs": "args",
+                        "varkw": "kwargs"
+                    },
+                    "popitem": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self)",
+                        "args": [
+                            {
+                                "name": "self"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "values": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self)",
+                        "args": [
+                            {
+                                "name": "self"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    }
+                }
             },
             "LazyRecord": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {}
             },
             "LazyString": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {}
             },
             "LazyValue": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "get": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self)",
+                        "args": [
+                            {
+                                "name": "self"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    }
+                }
             },
             "MavenConfigOptAdapter": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "MULTILINE": {
+                        "type": "<class 'list'>"
+                    },
+                    "MULTIVALUE": {
+                        "type": "<class 'list'>"
+                    }
+                }
             },
             "TIME_RE": {
                 "type": "<class 're.Pattern'>"
@@ -1681,10 +3288,71 @@
                 "type": "<class 'builtin_function_or_method'>"
             },
             "adler32_constructor": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "block_size": {
+                        "type": "<class 'int'>"
+                    },
+                    "copy": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self)",
+                        "args": [
+                            {
+                                "name": "self"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "digest": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self)",
+                        "args": [
+                            {
+                                "name": "self"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "digest_size": {
+                        "type": "<class 'int'>"
+                    },
+                    "hexdigest": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self)",
+                        "args": [
+                            {
+                                "name": "self"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "update": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, arg)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "arg"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    }
+                }
             },
             "apply_argspec": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(argspec, args, kwargs=None)",
                 "args": [
                     {
@@ -1702,29 +3370,16 @@
                 "varkw": null
             },
             "base64": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "base64decode": {
                 "type": "<class 'function'>",
-                "desc": "(s, altchars=None, validate=False)",
-                "args": [
-                    {
-                        "name": "s"
-                    },
-                    {
-                        "name": "altchars",
-                        "default": "None"
-                    },
-                    {
-                        "name": "validate",
-                        "default": "False"
-                    }
-                ],
-                "varargs": null,
-                "varkw": null
+                "is_external": true
             },
             "base64encode": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(s, as_bytes=False)",
                 "args": [
                     {
@@ -1739,10 +3394,12 @@
                 "varkw": null
             },
             "calendar": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "call_with_argcheck": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(func, args, kwargs=None)",
                 "args": [
                     {
@@ -1761,6 +3418,7 @@
             },
             "checkForBuilds": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(session, tag, builds, event, latest=False)",
                 "args": [
                     {
@@ -1785,6 +3443,7 @@
             },
             "check_sigmd5": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(filename)",
                 "args": [
                     {
@@ -1795,10 +3454,12 @@
                 "varkw": null
             },
             "datetime": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "decode_bytes": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(data, fallback='iso8859-15')",
                 "args": [
                     {
@@ -1814,6 +3475,7 @@
             },
             "deprecated": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(message)",
                 "args": [
                     {
@@ -1825,6 +3487,7 @@
             },
             "dslice": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(dict_, keys, strict=True)",
                 "args": [
                     {
@@ -1843,6 +3506,7 @@
             },
             "dslice_ex": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(dict_, keys, strict=True)",
                 "args": [
                     {
@@ -1861,6 +3525,7 @@
             },
             "duration": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(start)",
                 "args": [
                     {
@@ -1872,6 +3537,7 @@
             },
             "encode_datetime": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(value)",
                 "args": [
                     {
@@ -1883,6 +3549,7 @@
             },
             "encode_datetime_recurse": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(value)",
                 "args": [
                     {
@@ -1893,10 +3560,12 @@
                 "varkw": null
             },
             "errno": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_module": true
             },
             "eventFromOpts": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(session, opts)",
                 "args": [
                     {
@@ -1911,6 +3580,7 @@
             },
             "extract_build_task": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(binfo)",
                 "args": [
                     {
@@ -1922,6 +3592,7 @@
             },
             "filedigestAlgo": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(hdr)",
                 "args": [
                     {
@@ -1933,20 +3604,11 @@
             },
             "fnmatch": {
                 "type": "<class 'function'>",
-                "desc": "(name, pat)",
-                "args": [
-                    {
-                        "name": "name"
-                    },
-                    {
-                        "name": "pat"
-                    }
-                ],
-                "varargs": null,
-                "varkw": null
+                "is_external": true
             },
             "formatChangelog": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(entries)",
                 "args": [
                     {
@@ -1958,6 +3620,7 @@
             },
             "format_shell_cmd": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(cmd, text_width=80)",
                 "args": [
                     {
@@ -1972,10 +3635,12 @@
                 "varkw": null
             },
             "hashlib": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "isSuccess": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(rv)",
                 "args": [
                     {
@@ -1987,6 +3652,7 @@
             },
             "joinpath": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(path, *paths)",
                 "args": [
                     {
@@ -2000,10 +3666,12 @@
                 "varkw": null
             },
             "koji": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "lazy_eval": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(value)",
                 "args": [
                     {
@@ -2015,6 +3683,7 @@
             },
             "lazysetattr": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(object, name, func, args, kwargs=None, cache=False)",
                 "args": [
                     {
@@ -2042,10 +3711,12 @@
                 "varkw": null
             },
             "logging": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "maven_opts": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(values, chain=False, scratch=False)",
                 "args": [
                     {
@@ -2065,6 +3736,7 @@
             },
             "maven_params": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(config, package, chain=False, scratch=False)",
                 "args": [
                     {
@@ -2087,6 +3759,7 @@
             },
             "md5_constructor": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(*args, **kwargs)",
                 "args": [
                     {
@@ -2101,6 +3774,7 @@
             },
             "move_and_symlink": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(src, dst, relative=True, create_dir=False)",
                 "args": [
                     {
@@ -2123,6 +3797,7 @@
             },
             "multi_fnmatch": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(s, patterns)",
                 "args": [
                     {
@@ -2136,10 +3811,12 @@
                 "varkw": null
             },
             "os": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "parseStatus": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(rv, prefix)",
                 "args": [
                     {
@@ -2154,6 +3831,7 @@
             },
             "parseTime": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(val)",
                 "args": [
                     {
@@ -2165,6 +3843,7 @@
             },
             "parse_maven_chain": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(confs, scratch=False)",
                 "args": [
                     {
@@ -2180,6 +3859,7 @@
             },
             "parse_maven_param": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(confs, chain=False, scratch=False, section=None)",
                 "args": [
                     {
@@ -2203,6 +3883,7 @@
             },
             "parse_maven_params": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(confs, chain=False, scratch=False)",
                 "args": [
                     {
@@ -2222,6 +3903,7 @@
             },
             "printList": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(lst)",
                 "args": [
                     {
@@ -2232,16 +3914,37 @@
                 "varkw": null
             },
             "range": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "count": {
+                        "type": "<class 'method_descriptor'>"
+                    },
+                    "index": {
+                        "type": "<class 'method_descriptor'>"
+                    },
+                    "start": {
+                        "type": "<class 'member_descriptor'>"
+                    },
+                    "step": {
+                        "type": "<class 'member_descriptor'>"
+                    },
+                    "stop": {
+                        "type": "<class 'member_descriptor'>"
+                    }
+                }
             },
             "re": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "resource": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "rmtree": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(path, logger=None)",
                 "args": [
                     {
@@ -2257,6 +3960,7 @@
             },
             "safer_move": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(src, dst)",
                 "args": [
                     {
@@ -2271,6 +3975,7 @@
             },
             "setup_rlimits": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(opts, logger=None)",
                 "args": [
                     {
@@ -2285,25 +3990,32 @@
                 "varkw": null
             },
             "shutil": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "six": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "stat": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "struct": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "sys": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_module": true
             },
             "time": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_module": true
             },
             "to_list": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(lst)",
                 "args": [
                     {
@@ -2315,6 +4027,7 @@
             },
             "tsort": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(parts)",
                 "args": [
                     {
@@ -2325,10 +4038,12 @@
                 "varkw": null
             },
             "warnings": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "wrapper_params": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(config, package, chain=False, scratch=False)",
                 "args": [
                     {
@@ -2350,72 +4065,741 @@
                 "varkw": null
             },
             "zip": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {}
             }
         },
         "koji.tasks": {
             "BaseTaskHandler": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "Foreground": {
+                        "type": "<class 'bool'>"
+                    },
+                    "Methods": {
+                        "type": "<class 'list'>"
+                    },
+                    "chownTree": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, dirpath, uid, gid)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "dirpath"
+                            },
+                            {
+                                "name": "uid"
+                            },
+                            {
+                                "name": "gid"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "createWorkdir": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self)",
+                        "args": [
+                            {
+                                "name": "self"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "find_arch": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, arch, host, tag, preferred_arch=None)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "arch"
+                            },
+                            {
+                                "name": "host"
+                            },
+                            {
+                                "name": "tag"
+                            },
+                            {
+                                "name": "preferred_arch",
+                                "default": "None"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "getRepo": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, tag, builds=None, wait=False)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "tag"
+                            },
+                            {
+                                "name": "builds",
+                                "default": "None"
+                            },
+                            {
+                                "name": "wait",
+                                "default": "False"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "getUploadDir": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self)",
+                        "args": [
+                            {
+                                "name": "self"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "handler": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self)",
+                        "args": [
+                            {
+                                "name": "self"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "localPath": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, relpath)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "relpath"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "removeWorkdir": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self)",
+                        "args": [
+                            {
+                                "name": "self"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "run": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self)",
+                        "args": [
+                            {
+                                "name": "self"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "run_callbacks": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, plugin, *args, **kwargs)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "plugin"
+                            },
+                            {
+                                "name": "args"
+                            },
+                            {
+                                "name": "kwargs"
+                            }
+                        ],
+                        "varargs": "args",
+                        "varkw": "kwargs"
+                    },
+                    "setManager": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, manager)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "manager"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "subtask": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, method, arglist, **opts)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "method"
+                            },
+                            {
+                                "name": "arglist"
+                            },
+                            {
+                                "name": "opts"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": "opts"
+                    },
+                    "subtask2": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, _BaseTaskHandler__taskopts, _BaseTaskHandler__method, *args, **kwargs)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "_BaseTaskHandler__taskopts"
+                            },
+                            {
+                                "name": "_BaseTaskHandler__method"
+                            },
+                            {
+                                "name": "args"
+                            },
+                            {
+                                "name": "kwargs"
+                            }
+                        ],
+                        "varargs": "args",
+                        "varkw": "kwargs"
+                    },
+                    "taskinfo": {
+                        "type": "<class 'property'>"
+                    },
+                    "uploadFile": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, filename, relPath=None, remoteName=None, volume=None)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "filename"
+                            },
+                            {
+                                "name": "relPath",
+                                "default": "None"
+                            },
+                            {
+                                "name": "remoteName",
+                                "default": "None"
+                            },
+                            {
+                                "name": "volume",
+                                "default": "None"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "uploadTree": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, dirpath, flatten=False, volume=None)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "dirpath"
+                            },
+                            {
+                                "name": "flatten",
+                                "default": "False"
+                            },
+                            {
+                                "name": "volume",
+                                "default": "None"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "wait": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, subtasks=None, all=False, failany=False, canfail=None, timeout=None)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "subtasks",
+                                "default": "None"
+                            },
+                            {
+                                "name": "all",
+                                "default": "False"
+                            },
+                            {
+                                "name": "failany",
+                                "default": "False"
+                            },
+                            {
+                                "name": "canfail",
+                                "default": "None"
+                            },
+                            {
+                                "name": "timeout",
+                                "default": "None"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "weight": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self)",
+                        "args": [
+                            {
+                                "name": "self"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    }
+                }
             },
             "DefaultTask": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "Methods": {
+                        "type": "<class 'list'>"
+                    },
+                    "handler": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, *args, **opts)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "args"
+                            },
+                            {
+                                "name": "opts"
+                            }
+                        ],
+                        "varargs": "args",
+                        "varkw": "opts"
+                    }
+                }
             },
             "DependantTask": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "Methods": {
+                        "type": "<class 'list'>"
+                    },
+                    "handler": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, wait_list, task_list)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "wait_list"
+                            },
+                            {
+                                "name": "task_list"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    }
+                }
             },
             "FakeTask": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "Foreground": {
+                        "type": "<class 'bool'>"
+                    },
+                    "Methods": {
+                        "type": "<class 'list'>"
+                    },
+                    "handler": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, *args)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "args"
+                            }
+                        ],
+                        "varargs": "args",
+                        "varkw": null
+                    }
+                }
             },
             "ForkTask": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "Methods": {
+                        "type": "<class 'list'>"
+                    },
+                    "handler": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, n=5, m=37)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "n",
+                                "default": "5"
+                            },
+                            {
+                                "name": "m",
+                                "default": "37"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    }
+                }
             },
             "LEGACY_SIGNATURES": {
                 "type": "<class 'dict'>"
             },
             "MultiPlatformTask": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "buildWrapperRPM": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, spec_url, build_task_id, build_target, build, repo_id, **opts)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "spec_url"
+                            },
+                            {
+                                "name": "build_task_id"
+                            },
+                            {
+                                "name": "build_target"
+                            },
+                            {
+                                "name": "build"
+                            },
+                            {
+                                "name": "repo_id"
+                            },
+                            {
+                                "name": "opts"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": "opts"
+                    }
+                }
             },
             "RestartHostsTask": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "Methods": {
+                        "type": "<class 'list'>"
+                    },
+                    "handler": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, options=None)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "options",
+                                "default": "None"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    }
+                }
             },
             "RestartTask": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "Foreground": {
+                        "type": "<class 'bool'>"
+                    },
+                    "Methods": {
+                        "type": "<class 'list'>"
+                    },
+                    "handler": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, host)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "host"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    }
+                }
             },
             "RestartVerifyTask": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "Foreground": {
+                        "type": "<class 'bool'>"
+                    },
+                    "Methods": {
+                        "type": "<class 'list'>"
+                    },
+                    "handler": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, task_id, host)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "task_id"
+                            },
+                            {
+                                "name": "host"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    }
+                }
             },
             "ServerExit": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {}
             },
             "ServerRestart": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {}
             },
             "ShutdownTask": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "Foreground": {
+                        "type": "<class 'bool'>"
+                    },
+                    "Methods": {
+                        "type": "<class 'list'>"
+                    },
+                    "handler": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self)",
+                        "args": [
+                            {
+                                "name": "self"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    }
+                }
             },
             "SleepTask": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "Methods": {
+                        "type": "<class 'list'>"
+                    },
+                    "handler": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, n)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "n"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    }
+                }
             },
             "SubtaskTask": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "Methods": {
+                        "type": "<class 'list'>"
+                    },
+                    "handler": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, n=4)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "n",
+                                "default": "4"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    }
+                }
             },
             "WaitTestTask": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "Methods": {
+                        "type": "<class 'list'>"
+                    },
+                    "handler": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, count, seconds=10)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "count"
+                            },
+                            {
+                                "name": "seconds",
+                                "default": "10"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    }
+                }
             },
             "WaitrepoTask": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "Methods": {
+                        "type": "<class 'list'>"
+                    },
+                    "PAUSE": {
+                        "type": "<class 'int'>"
+                    },
+                    "TIMEOUT": {
+                        "type": "<class 'int'>"
+                    },
+                    "handler": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, tag, newer_than=None, nvrs=None)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "tag"
+                            },
+                            {
+                                "name": "newer_than",
+                                "default": "None"
+                            },
+                            {
+                                "name": "nvrs",
+                                "default": "None"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    }
+                }
             },
             "koji": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "logging": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "os": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "parse_task_params": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(method, params)",
                 "args": [
                     {
@@ -2429,16 +4813,37 @@
                 "varkw": null
             },
             "pprint": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "random": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "range": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "count": {
+                        "type": "<class 'method_descriptor'>"
+                    },
+                    "index": {
+                        "type": "<class 'method_descriptor'>"
+                    },
+                    "start": {
+                        "type": "<class 'member_descriptor'>"
+                    },
+                    "step": {
+                        "type": "<class 'member_descriptor'>"
+                    },
+                    "stop": {
+                        "type": "<class 'member_descriptor'>"
+                    }
+                }
             },
             "safe_rmtree": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(path, unmount=False, strict=True)",
                 "args": [
                     {
@@ -2458,6 +4863,7 @@
             },
             "scan_mounts": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(topdir)",
                 "args": [
                     {
@@ -2468,16 +4874,20 @@
                 "varkw": null
             },
             "signal": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "six": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "time": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_module": true
             },
             "umount_all": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(topdir)",
                 "args": [
                     {
@@ -2490,16 +4900,85 @@
         },
         "koji.xmlrpcplus": {
             "DateTime": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_external": true
             },
             "ExtendedMarshaller": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "MAXI8": {
+                        "type": "<class 'int'>"
+                    },
+                    "MINI8": {
+                        "type": "<class 'int'>"
+                    },
+                    "dispatch": {
+                        "type": "<class 'dict'>"
+                    },
+                    "dump_generator": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, value, write)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "value"
+                            },
+                            {
+                                "name": "write"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "dump_int": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, value, write)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "value"
+                            },
+                            {
+                                "name": "write"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "dump_re": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, value, write)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "value"
+                            },
+                            {
+                                "name": "write"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    }
+                }
             },
             "Fault": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_external": true
             },
             "dumps": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(params, methodname=None, methodresponse=None, encoding=None, allow_none=1, marshaller=None)",
                 "args": [
                     {
@@ -2531,58 +5010,92 @@
             },
             "getparser": {
                 "type": "<class 'function'>",
-                "desc": "(use_datetime=False, use_builtin_types=False)",
-                "args": [
-                    {
-                        "name": "use_datetime",
-                        "default": "False"
-                    },
-                    {
-                        "name": "use_builtin_types",
-                        "default": "False"
-                    }
-                ],
-                "varargs": null,
-                "varkw": null
+                "is_external": true
             },
             "loads": {
                 "type": "<class 'function'>",
-                "desc": "(data, use_datetime=False, use_builtin_types=False)",
-                "args": [
-                    {
-                        "name": "data"
-                    },
-                    {
-                        "name": "use_datetime",
-                        "default": "False"
-                    },
-                    {
-                        "name": "use_builtin_types",
-                        "default": "False"
-                    }
-                ],
-                "varargs": null,
-                "varkw": null
+                "is_external": true
             },
             "re": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "six": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "types": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "xmlrpc_client": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             }
         },
         "koji.plugin": {
             "PluginTracker": {
-                "type": "<class 'type'>"
+                "type": "<class 'type'>",
+                "is_class": true,
+                "members": {
+                    "get": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, name)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "name"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "load": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, name, path=None, reload=False)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "name"
+                            },
+                            {
+                                "name": "path",
+                                "default": "None"
+                            },
+                            {
+                                "name": "reload",
+                                "default": "False"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    },
+                    "pathlist": {
+                        "type": "<class 'function'>",
+                        "is_function": true,
+                        "desc": "(self, path)",
+                        "args": [
+                            {
+                                "name": "self"
+                            },
+                            {
+                                "name": "path"
+                            }
+                        ],
+                        "varargs": null,
+                        "varkw": null
+                    }
+                }
             },
             "callback": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(*cbtypes)",
                 "args": [
                     {
@@ -2597,6 +5110,7 @@
             },
             "convert_datetime": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(f)",
                 "args": [
                     {
@@ -2608,17 +5122,11 @@
             },
             "encode_datetime_recurse": {
                 "type": "<class 'function'>",
-                "desc": "(value)",
-                "args": [
-                    {
-                        "name": "value"
-                    }
-                ],
-                "varargs": null,
-                "varkw": null
+                "is_external": true
             },
             "export": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(f)",
                 "args": [
                     {
@@ -2630,6 +5138,7 @@
             },
             "export_as": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(alias)",
                 "args": [
                     {
@@ -2641,6 +5150,7 @@
             },
             "export_cli": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(f)",
                 "args": [
                     {
@@ -2652,6 +5162,7 @@
             },
             "export_in": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(module, alias=None)",
                 "args": [
                     {
@@ -2667,6 +5178,7 @@
             },
             "ignore_error": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(f)",
                 "args": [
                     {
@@ -2677,16 +5189,20 @@
                 "varkw": null
             },
             "importlib": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "koji": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "logging": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "register_callback": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(cbtype, func)",
                 "args": [
                     {
@@ -2701,6 +5217,7 @@
             },
             "run_callbacks": {
                 "type": "<class 'function'>",
+                "is_function": true,
                 "desc": "(cbtype, *args, **kws)",
                 "args": [
                     {
@@ -2717,13 +5234,16 @@
                 "varkw": "kws"
             },
             "six": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             },
             "sys": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_module": true
             },
             "traceback": {
-                "type": "<class 'module'>"
+                "type": "<class 'module'>",
+                "is_external": true
             }
         }
     },
