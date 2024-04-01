@@ -78,8 +78,14 @@ def read_api():
             if '__future__' in _type:
                 continue
             vinfo['type'] = str(type(value))
-            if isinstance(value, types.FunctionType):
+            if inspect.isclass(value):
+                vinfo['is_class'] = True
+                vinfo.update(dump_class(value))
+            elif inspect.isfunction(value):
+                vinfo['is_function'] = True
                 vinfo.update(dump_func(value))
+            elif inspect.ismodule(value):
+                vinfo['is_module'] = True
             info[name] = vinfo
 
     # hub rpc calls (no plugins)
@@ -94,6 +100,10 @@ def read_api():
 
 def dump_func(func):
     info = OrderedDict()
+    if inspect.isbuiltin(func):
+        info['is_builtin'] = True
+    if inspect.isgeneratorfunction(func):
+        info['is_generator_function'] = True
     sig = inspect.signature(func)
     info['desc'] = '(%s)' % ', '.join([str(x) for x in sig.parameters.values()])
     args = []
@@ -114,6 +124,22 @@ def dump_func(func):
     info['varargs'] = spec.varargs
     info['varkw'] = spec.varkw
     return info
+
+
+def dump_class(cls):
+    members = OrderedDict()
+    names = [n for n in vars(cls) if not n.startswith('_')]
+    names.sort()
+    for name in names:
+        value = getattr(cls, name)
+        vinfo = OrderedDict()
+        _type = str(type(value))
+        vinfo['type'] = str(type(value))
+        if inspect.isfunction(value):
+            vinfo['is_function'] = True
+            vinfo.update(dump_func(value))
+        members[name] = vinfo
+    return {'members': members}
 
 
 def compare(old, new):
@@ -178,7 +204,35 @@ def compare_mod_global(mod, name, old, new):
         # this prevents further comparison
         return
     desc = f'{mod}.{name}'
-    if 'args' in old:
+    if old.get('is_function'):
+        compare_function(desc, old, new)
+    elif old.get('is_class'):
+        compare_class(desc, old, new)
+
+
+def compare_class(cls, old, new):
+    names1 = set(old['members'])
+    names2 = set(new['members'])
+    added = names2 - names1
+    dropped = names1 - names2
+    both = names1.intersection(names2)
+
+    for name in sorted(added):
+        warn(f'Added class variable: {cls}.{name}')
+    for name in sorted(dropped):
+        # TODO figure out a way to distinguish deprecations
+        error(f'Dropped class variable: {cls}.{name}')
+    for name in sorted(both):
+        compare_class_var(cls, name, old['members'][name], new['members'][name])
+
+
+def compare_class_var(cls, name, old, new):
+    if old['type'] != new['type']:
+        error(f'{cls}.{name} changed type: {old["type"]} -> {new["type"]}')
+        # this prevents further comparison
+        return
+    desc = f'{cls}.{name}'
+    if old.get('is_function'):
         compare_function(desc, old, new)
 
 
