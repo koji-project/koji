@@ -12,6 +12,7 @@ def get_install_requires():
     #               openssl-devel libffi-devel
 
     requires = [
+        'defusedxml',
         'python-dateutil',
         'requests',
         'requests-gssapi',
