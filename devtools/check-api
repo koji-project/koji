@@ -2,6 +2,7 @@
 import inspect
 import json
 import os
+import os.path
 import subprocess
 import sys
 import types
@@ -9,7 +10,11 @@ import types
 from collections import OrderedDict
 
 # import koji code from our checkout
-kojitop = os.path.dirname(os.path.dirname(__file__))
+if os.path.exists(__file__):
+    kojitop = os.path.dirname(os.path.dirname(__file__))
+else:
+    # e.g. <stdin>
+    kojitop = os.getcwd()
 sys.path.insert(0, kojitop)
 
 setup = kojitop + '/setup.py'
@@ -108,6 +113,9 @@ def dump_module(mod):
             continue
         vinfo['type'] = str(type(value))
         info[name] = vinfo
+        if inspect.ismodule(value):
+            vinfo['is_module'] = True
+            continue
         try:
             if inspect.getsourcefile(value) != file:
                 # don't dig any deeper if it isn't defined in the module
@@ -122,8 +130,6 @@ def dump_module(mod):
         elif inspect.isfunction(value):
             vinfo['is_function'] = True
             vinfo.update(dump_func(value))
-        elif inspect.ismodule(value):
-            vinfo['is_module'] = True
     return info
 
 
@@ -223,8 +229,13 @@ def compare_mod(mod, old, new):
     for name in sorted(added):
         warn(f'Added module global: {mod}.{name}')
     for name in sorted(dropped):
-        # TODO figure out a way to distinguish deprecations
-        error(f'Dropped module global: {mod}.{name}')
+        if old[name].get('is_module'):
+            error(f'Dropped module import {mod}.{name}')
+        elif old[name].get('is_external'):
+            error(f'Dropped imported global {mod}.{name}')
+        else:
+            # TODO figure out a way to distinguish deprecations
+            error(f'Dropped module global: {mod}.{name}')
     for name in sorted(both):
         compare_mod_global(mod, name, old[name], new[name])
 
