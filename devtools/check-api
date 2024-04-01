@@ -68,25 +68,7 @@ def read_api():
     lib_modules = (koji, koji.arch, koji.util, koji.tasks, koji.xmlrpcplus, koji.plugin)
     data['lib'] = OrderedDict()
     for mod in lib_modules:
-        info = data['lib'][mod.__name__] = OrderedDict()
-        names = [n for n in vars(mod) if not n.startswith('_')]
-        names.sort()
-        for name in names:
-            value = getattr(mod, name)
-            vinfo = OrderedDict()
-            _type = str(type(value))
-            if '__future__' in _type:
-                continue
-            vinfo['type'] = str(type(value))
-            if inspect.isclass(value):
-                vinfo['is_class'] = True
-                vinfo.update(dump_class(value))
-            elif inspect.isfunction(value):
-                vinfo['is_function'] = True
-                vinfo.update(dump_func(value))
-            elif inspect.ismodule(value):
-                vinfo['is_module'] = True
-            info[name] = vinfo
+        data['lib'][mod.__name__] = dump_module(mod)
 
     # hub rpc calls (no plugins)
     registry = kojixmlrpc.get_registry(opts={}, plugins=None)
@@ -98,10 +80,45 @@ def read_api():
     return data
 
 
+def dump_module(mod):
+    info = OrderedDict()
+    file = inspect.getsourcefile(mod)
+    names = [n for n in vars(mod) if not n.startswith('_')]
+    # TODO defer filtering _ to check code
+    names.sort()
+    for name in names:
+        value = getattr(mod, name)
+        vinfo = OrderedDict()
+        _type = str(type(value))
+        if '__future__' in _type:
+            continue
+        vinfo['type'] = str(type(value))
+        info[name] = vinfo
+        try:
+            if inspect.getsourcefile(value) != file:
+                # don't dig any deeper if it isn't defined in the module
+                vinfo['is_external'] = True
+                continue
+        except TypeError:
+            # getsourcefile fails for numerous types
+            pass
+        if inspect.isclass(value):
+            vinfo['is_class'] = True
+            vinfo.update(dump_class(value))
+        elif inspect.isfunction(value):
+            vinfo['is_function'] = True
+            vinfo.update(dump_func(value))
+        elif inspect.ismodule(value):
+            vinfo['is_module'] = True
+    return info
+
+
 def dump_func(func):
     info = OrderedDict()
     if inspect.isbuiltin(func):
         info['is_builtin'] = True
+        # no need to dig deeper
+        return info
     if inspect.isgeneratorfunction(func):
         info['is_generator_function'] = True
     sig = inspect.signature(func)
