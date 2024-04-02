@@ -106,7 +106,7 @@ def set_refusal(hostID, taskID, soft=True, by_host=False, msg=''):
 
 def auto_arch_refuse(task_id):
     """Set refusals for hosts based on task parameters"""
-    # HACK
+    # This is a temporary workaround
     try:
         _auto_arch_refuse(task_id)
     except Exception:

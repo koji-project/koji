@@ -748,7 +748,7 @@ def make_task(method, arglist, **opts):
     opts['id'] = task_id
     koji.plugin.run_callbacks(
         'postTaskStateChange', attribute='state', old=None, new='FREE', info=opts)
-    scheduler.auto_arch_refuse(task_id)  # temporary hack
+    scheduler.auto_arch_refuse(task_id)  # temporary workaround
     return task_id
 
 
