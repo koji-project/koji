@@ -14,7 +14,7 @@ from urllib.parse import quote
 
 sys.path.insert(0, os.getcwd())
 import koji
-from kojihub import auth, kojixmlrpc, kojihub
+from kojihub import auth, kojixmlrpc, kojihub, db
 from koji.context import context
 import koji.xmlrpcplus
 
@@ -104,6 +104,8 @@ def get_options():
     parser.add_option('--user', '-u', help='execute as user')
     parser.add_option('--exclusive', '-x', action='store_true',
                       help='emulate an exclusive session')
+    parser.add_option('-n', '--no-commit', action='store_true',
+                      help='skip commit')
     opts, args = parser.parse_args()
 
     # parse request from args
@@ -149,10 +151,16 @@ def set_config(environ):
         environ['koji.hub.ConfigDir'] = lconfigd
 
 
+def skip_commit(cnx):
+    print('Skipping commit')
+
+
 def main():
     options = get_options()
     if options.pdb:
         kojixmlrpc.ModXMLRPCRequestHandler.handle_rpc = handle_rpc
+    if options.no_commit:
+        db.DBWrapper.commit = skip_commit
 
     environ = {}
     environ['SCRIPT_FILENAME'] = kojixmlrpc.__file__
