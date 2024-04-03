@@ -16117,7 +16117,7 @@ def create_rpm_checksum(rpm_id, sigkey, chsum_dict):
                         f"checksum type {koji.CHECKSUM_TYPES[r['checksum_type']]}.")
     if chsum_dict:
         insert = BulkInsertProcessor(table='rpm_checksum')
-        for func, chsum in chsum_dict.items():
+        for func, chsum in sorted(chsum_dict.items()):
             insert.add_record(rpm_id=rpm_id, sigkey=sigkey, checksum=chsum,
                               checksum_type=koji.CHECKSUM_TYPES[func])
         insert.execute()
