@@ -1288,6 +1288,8 @@ class TaskManager(object):
         #               network (netstat?)
         if self.restart_pending:
             if self.tasks:
+                self.status = "Pending restart"
+                self.logger.info(self.status)
                 return False
             else:
                 raise koji.tasks.ServerRestart
