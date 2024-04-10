@@ -3,8 +3,10 @@ from __future__ import absolute_import
 import calendar
 import errno
 import locale
+import logging
 from unittest.case import TestCase
 import mock
+import multiprocessing
 import optparse
 import os
 import resource
@@ -12,6 +14,7 @@ import time
 import six
 import shutil
 import tempfile
+import threading
 import unittest
 
 import requests_mock
@@ -1235,227 +1238,384 @@ class MavenUtilTestCase(unittest.TestCase):
 
 
 class TestRmtree(unittest.TestCase):
+
+    def setUp(self):
+        # none of these tests should actually do anything with the fs
+        # however, just in case, we set up a tempdir and restore cwd
+        self.tempdir = tempfile.mkdtemp()
+        self.dirname = '%s/some-dir' % self.tempdir
+        os.mkdir(self.dirname)
+        self.savecwd = os.getcwd()
+
+        self.chdir = mock.patch('os.chdir').start()
+        self.rmdir = mock.patch('os.rmdir').start()
+        self.unlink = mock.patch('os.unlink').start()
+        self.lstat = mock.patch('os.lstat').start()
+        self.listdir = mock.patch('os.listdir').start()
+        self.getcwd = mock.patch('os.getcwd').start()
+        self.isdir = mock.patch('stat.S_ISDIR').start()
+        self.samefile = mock.patch('os.path.samefile').start()
+        self._assert_cwd = mock.patch('koji.util._assert_cwd').start()
+
+    def tearDown(self):
+        mock.patch.stopall()
+        os.chdir(self.savecwd)
+        shutil.rmtree(self.tempdir)
+
     @patch('koji.util._rmtree')
-    @patch('os.rmdir')
-    @patch('os.chdir')
-    @patch('os.getcwd')
-    @patch('stat.S_ISDIR')
-    @patch('os.lstat')
-    def test_rmtree_file(self, lstat, isdir, getcwd, chdir, rmdir, _rmtree):
-        """ Tests that the koji.util.rmtree function raises error when the
+    def test_rmtree_file(self, _rmtree):
+        """ Tests that the koji.util._rmtree_nofork function raises error when the
         path parameter is not a directory.
         """
         stat = mock.MagicMock()
         stat.st_dev = 'dev'
-        lstat.return_value = stat
-        isdir.return_value = False
-        getcwd.return_value = 'cwd'
+        self.lstat.return_value = stat
+        self.isdir.return_value = False
+        self.getcwd.return_value = 'cwd'
 
         with self.assertRaises(koji.GenericError):
-            koji.util.rmtree('/mnt/folder/some_file')
+            koji.util._rmtree_nofork(self.dirname)
         _rmtree.assert_not_called()
-        rmdir.assert_not_called()
+        self.rmdir.assert_not_called()
 
     @patch('koji.util._rmtree')
-    @patch('os.rmdir')
-    @patch('os.chdir')
-    @patch('os.getcwd')
-    @patch('stat.S_ISDIR')
-    @patch('os.lstat')
-    def test_rmtree_directory(self, lstat, isdir, getcwd, chdir, rmdir, _rmtree):
-        """ Tests that the koji.util.rmtree function returns nothing when the path is a directory.
+    def test_rmtree_directory(self, _rmtree):
+        """ Tests that the koji.util._rmtree_nofork function returns nothing when the path is a directory.
         """
         stat = mock.MagicMock()
         stat.st_dev = 'dev'
-        lstat.return_value = stat
-        isdir.return_value = True
-        getcwd.return_value = 'cwd'
-        path = '/mnt/folder'
+        self.lstat.return_value = stat
+        self.isdir.return_value = True
+        path = self.dirname
+        self.getcwd.return_value = path
         logger = mock.MagicMock()
 
-        self.assertEqual(koji.util.rmtree(path, logger), None)
-        chdir.assert_called_with('cwd')
-        _rmtree.assert_called_once_with('dev', logger)
-        rmdir.assert_called_once_with(path)
+        result = koji.util._rmtree_nofork(path, logger)
+        self.assertEqual(result, None)
+        self.chdir.assert_called_with(path)
+        _rmtree.assert_called_once_with('dev', path, logger)
+        self.rmdir.assert_called_once_with(path)
 
-    @patch('koji.util._rmtree')
-    @patch('os.rmdir')
-    @patch('os.chdir')
-    @patch('os.getcwd')
-    @patch('stat.S_ISDIR')
-    @patch('os.lstat')
-    def test_rmtree_directory_scrub_failure(self, lstat, isdir, getcwd, chdir, rmdir, _rmtree):
-        """ Tests that the koji.util.rmtree function returns a GeneralException
+    @patch('koji.util._stripcwd')
+    def test_rmtree_directory_stripcwd_failure(self, stripcwd):
+        """ Tests that the koji.util._rmtree_nofork function returns a GeneralException
         when the scrub of the files in the directory fails.
         """
         stat = mock.MagicMock()
         stat.st_dev = 'dev'
-        lstat.return_value = stat
-        isdir.return_value = True
-        getcwd.return_value = 'cwd'
-        path = '/mnt/folder'
+        self.lstat.return_value = stat
+        self.isdir.return_value = True
+        self.getcwd.return_value = 'cwd'
+        stripcwd.side_effect = OSError('xyz')
+        logger = mock.MagicMock()
+
+        with self.assertRaises(OSError):
+            koji.util._rmtree('dev', 'cwd', logger)
+
+    @patch('koji.util._rmtree')
+    def test_rmtree_call_failure(self, _rmtree):
+        """ Tests that the koji.util._rmtree_nofork function returns a GeneralException
+        when the underlying _rmtree call fails
+        """
+        stat = mock.MagicMock()
+        stat.st_dev = 'dev'
+        self.lstat.return_value = stat
+        self.isdir.return_value = True
+        self.getcwd.return_value = 'cwd'
+        path = self.dirname
         _rmtree.side_effect = OSError('xyz')
 
         with self.assertRaises(OSError):
-            koji.util.rmtree(path)
+            koji.util._rmtree_nofork(path)
 
-    @patch('os.chdir')
-    @patch('os.rmdir')
+    @patch('koji.util._rmtree')
+    def test_rmtree_getcwd_mismatch(self, _rmtree):
+        """ Tests that the koji.util._rmtree_nofork function returns a GeneralException
+        when getcwd disagrees with initial chdir
+        """
+        stat = mock.MagicMock()
+        stat.st_dev = 'dev'
+        self.lstat.return_value = stat
+        self.isdir.return_value = True
+        self.getcwd.return_value = 'cwd'
+        path = self.dirname
+        self.samefile.return_value = False
+
+        with self.assertRaises(koji.GenericError):
+            koji.util._rmtree_nofork(path)
+
     @patch('koji.util._stripcwd')
-    def test_rmtree_internal_empty(self, stripcwd, rmdir, chdir):
+    def test_rmtree_internal_empty(self, stripcwd):
         dev = 'dev'
         stripcwd.return_value = []
         logger = mock.MagicMock()
 
-        koji.util._rmtree(dev, logger)
+        koji.util._rmtree(dev, self.dirname, logger)
 
-        stripcwd.assert_called_once_with(dev, logger)
-        rmdir.assert_not_called()
-        chdir.assert_not_called()
+        stripcwd.assert_called_once_with(dev, self.dirname, logger)
+        self.rmdir.assert_not_called()
+        self.chdir.assert_not_called()
 
-    @patch('os.chdir')
-    @patch('os.rmdir')
     @patch('koji.util._stripcwd')
-    def test_rmtree_internal_dirs(self, stripcwd, rmdir, chdir):
+    def test_rmtree_internal_dirs(self, stripcwd):
         dev = 'dev'
         stripcwd.side_effect = (['a', 'b'], [], [])
         logger = mock.MagicMock()
+        path = self.dirname
 
-        koji.util._rmtree(dev, logger)
+        koji.util._rmtree(dev, path, logger)
 
-        stripcwd.assert_has_calls([call(dev, logger), call(dev, logger), call(dev, logger)])
-        rmdir.assert_has_calls([call('b'), call('a')])
-        chdir.assert_has_calls([call('b'), call('..'), call('a'), call('..')])
+        stripcwd.assert_has_calls([call(dev, path, logger),
+                                   call(dev, path + '/b', logger),
+                                   call(dev, path + '/a', logger)])
+        self.rmdir.assert_has_calls([call('b'), call('a')])
+        self.chdir.assert_has_calls([call('b'), call('..'), call('a'), call('..')])
 
-    @patch('os.chdir')
-    @patch('os.rmdir')
     @patch('koji.util._stripcwd')
-    def test_rmtree_internal_fail(self, stripcwd, rmdir, chdir):
+    def test_rmtree_internal_fail(self, stripcwd):
         dev = 'dev'
         stripcwd.side_effect = (['a', 'b'], [], [])
-        rmdir.side_effect = OSError()
+        self.rmdir.side_effect = OSError()
         logger = mock.MagicMock()
+        path = self.dirname
 
         # don't fail on anything
-        koji.util._rmtree(dev, logger)
+        koji.util._rmtree(dev, path, logger)
 
-        stripcwd.assert_has_calls([call(dev, logger), call(dev, logger), call(dev, logger)])
-        rmdir.assert_has_calls([call('b'), call('a')])
-        chdir.assert_has_calls([call('b'), call('..'), call('a'), call('..')])
+        stripcwd.assert_has_calls([call(dev, path, logger),
+                                   call(dev, path + '/b', logger),
+                                   call(dev, path + '/a', logger)])
+        self.rmdir.assert_has_calls([call('b'), call('a')])
+        self.chdir.assert_has_calls([call('b'), call('..'), call('a'), call('..')])
 
-    @patch('os.listdir')
-    @patch('os.lstat')
-    @patch('stat.S_ISDIR')
-    @patch('os.unlink')
-    def test_stripcwd_empty(self, unlink, isdir, lstat, listdir):
+    def test_stripcwd_empty(self):
         # simple empty directory
         dev = 'dev'
-        listdir.return_value = []
+        self.listdir.return_value = []
         logger = mock.MagicMock()
 
-        koji.util._stripcwd(dev, logger)
+        koji.util._stripcwd(dev, self.dirname, logger)
 
-        listdir.assert_called_once_with('.')
-        unlink.assert_not_called()
-        isdir.assert_not_called()
-        lstat.assert_not_called()
+        self.listdir.assert_called_once_with('.')
+        self.unlink.assert_not_called()
+        self.isdir.assert_not_called()
+        self.lstat.assert_not_called()
 
-    @patch('os.listdir')
-    @patch('os.lstat')
-    @patch('stat.S_ISDIR')
-    @patch('os.unlink')
-    def test_stripcwd_all(self, unlink, isdir, lstat, listdir):
+    def test_stripcwd_all(self):
         # test valid file + dir
         dev = 'dev'
-        listdir.return_value = ['a', 'b']
+        self.listdir.return_value = ['a', 'b']
         st = mock.MagicMock()
         st.st_dev = dev
         st.st_mode = 'mode'
-        lstat.return_value = st
-        isdir.side_effect = [True, False]
+        self.lstat.return_value = st
+        self.isdir.side_effect = [True, False]
         logger = mock.MagicMock()
 
-        koji.util._stripcwd(dev, logger)
+        koji.util._stripcwd(dev, self.dirname, logger)
 
-        listdir.assert_called_once_with('.')
-        unlink.assert_called_once_with('b')
-        isdir.assert_has_calls([call('mode'), call('mode')])
-        lstat.assert_has_calls([call('a'), call('b')])
+        self.listdir.assert_called_once_with('.')
+        self.unlink.assert_called_once_with('b')
+        self.isdir.assert_has_calls([call('mode'), call('mode')])
+        self.lstat.assert_has_calls([call('a'), call('b')])
 
-    @patch('os.listdir')
-    @patch('os.lstat')
-    @patch('stat.S_ISDIR')
-    @patch('os.unlink')
-    def test_stripcwd_diffdev(self, unlink, isdir, lstat, listdir):
+    def test_stripcwd_diffdev(self):
         # ignore files on different devices
         dev = 'dev'
-        listdir.return_value = ['a', 'b']
+        self.listdir.return_value = ['a', 'b']
         st1 = mock.MagicMock()
         st1.st_dev = dev
         st1.st_mode = 'mode'
         st2 = mock.MagicMock()
         st2.st_dev = 'other_dev'
         st2.st_mode = 'mode'
-        lstat.side_effect = [st1, st2]
-        isdir.side_effect = [True, False]
+        self.lstat.side_effect = [st1, st2]
+        self.isdir.side_effect = [True, False]
         logger = mock.MagicMock()
 
-        koji.util._stripcwd(dev, logger)
+        koji.util._stripcwd(dev, self.dirname, logger)
 
-        listdir.assert_called_once_with('.')
-        unlink.assert_not_called()
-        isdir.assert_called_once_with('mode')
-        lstat.assert_has_calls([call('a'), call('b')])
+        self.listdir.assert_called_once_with('.')
+        self.unlink.assert_not_called()
+        self.isdir.assert_called_once_with('mode')
+        self.lstat.assert_has_calls([call('a'), call('b')])
 
-    @patch('os.listdir')
-    @patch('os.lstat')
-    @patch('stat.S_ISDIR')
-    @patch('os.unlink')
-    def test_stripcwd_fails(self, unlink, isdir, lstat, listdir):
+    def test_stripcwd_fails(self):
         # ignore all unlink errors
         dev = 'dev'
-        listdir.return_value = ['a', 'b']
+        self.listdir.return_value = ['a', 'b']
         st = mock.MagicMock()
         st.st_dev = dev
         st.st_mode = 'mode'
-        lstat.return_value = st
-        isdir.side_effect = [True, False]
-        unlink.side_effect = OSError()
+        self.lstat.return_value = st
+        self.isdir.side_effect = [True, False]
+        self.unlink.side_effect = OSError()
         logger = mock.MagicMock()
 
-        koji.util._stripcwd(dev, logger)
+        koji.util._stripcwd(dev, self.dirname, logger)
 
-        listdir.assert_called_once_with('.')
-        unlink.assert_called_once_with('b')
-        isdir.assert_has_calls([call('mode'), call('mode')])
-        lstat.assert_has_calls([call('a'), call('b')])
+        self.listdir.assert_called_once_with('.')
+        self.unlink.assert_called_once_with('b')
+        self.isdir.assert_has_calls([call('mode'), call('mode')])
+        self.lstat.assert_has_calls([call('a'), call('b')])
 
-    @patch('os.listdir')
-    @patch('os.lstat')
-    @patch('stat.S_ISDIR')
-    @patch('os.unlink')
-    def test_stripcwd_stat_fail(self, unlink, isdir, lstat, listdir):
+    def test_stripcwd_stat_fail(self):
         # something else deletes a file in the middle of _stripcwd()
         dev = 'dev'
-        listdir.return_value = ['will-not-exist.txt']
-        lstat.side_effect = OSError(errno.ENOENT, 'No such file or directory')
+        self.listdir.return_value = ['will-not-exist.txt']
+        self.lstat.side_effect = OSError(errno.ENOENT, 'No such file or directory')
         logger = mock.MagicMock()
 
-        koji.util._stripcwd(dev, logger)
+        koji.util._stripcwd(dev, self.dirname, logger)
 
-        listdir.assert_called_once_with('.')
-        lstat.assert_called_once_with('will-not-exist.txt')
-        unlink.assert_not_called()
-        isdir.assert_not_called()
+        self.listdir.assert_called_once_with('.')
+        self.lstat.assert_called_once_with('will-not-exist.txt')
+        self.unlink.assert_not_called()
+        self.isdir.assert_not_called()
+
+    @mock.patch('koji.util._rmtree_nofork')
+    @mock.patch('os.fork')
+    @mock.patch('os._exit')
+    def test_rmtree_child(self, _exit, fork, rmtree_nofork):
+        fork.return_value = 0
+        path = "/SOME_PATH"
+        logger = "LOGGER"
+
+        class Exited(Exception):
+            pass
+
+        _exit.side_effect = Exited
+        # using exception to simulate os._exit in the test
+        with self.assertRaises(Exited):
+            koji.util.rmtree(path, logger)
+        fork.assert_called_once()
+        rmtree_nofork.assert_called_once()
+        self.assertEqual(rmtree_nofork.mock_calls[0].args[0], path)
+        _exit.assert_called_once()
+
+    @mock.patch('koji.util._rmtree_nofork')
+    @mock.patch('os.fork')
+    @mock.patch('os.waitpid')
+    @mock.patch('os._exit')
+    def test_rmtree_child_fails(self, _exit, waitpid, fork, rmtree_nofork):
+        fork.return_value = 0
+        path = "/SOME_PATH"
+        logger = "LOGGER"
+
+        class Failed(Exception):
+            pass
+
+        rmtree_nofork.side_effect = Failed()
+        # the exception should be re-raised
+        with self.assertRaises(Failed):
+            koji.util.rmtree(path, logger)
+        fork.assert_called_once()
+        rmtree_nofork.assert_called_once()
+        self.assertEqual(rmtree_nofork.mock_calls[0].args[0], path)
+        _exit.assert_called_once()
+        waitpid.assert_not_called
+
+    @mock.patch('koji.util._rmtree_nofork')
+    @mock.patch('os.fork')
+    @mock.patch('os.waitpid')
+    @mock.patch('os._exit')
+    def test_rmtree_parent(self, _exit, waitpid, fork, rmtree_nofork):
+        pid = 137
+        fork.return_value = pid
+        waitpid.return_value = pid, 0
+        path = "/SOME_PATH"
+        logger = "LOGGER"
+        koji.util.rmtree(path, logger)
+        fork.assert_called_once()
+        rmtree_nofork.assert_not_called()
+        _exit.assert_not_called()
+
+    @mock.patch('koji.util.SimpleProxyLogger.send')
+    @mock.patch('koji.util._rmtree_nofork')
+    @mock.patch('os.fork')
+    @mock.patch('os.unlink')
+    @mock.patch('os.waitpid')
+    @mock.patch('os._exit')
+    def test_rmtree_parent_logfail(self, _exit, waitpid, unlink, fork, rmtree_nofork, logsend):
+        pid = 137
+        fork.return_value = pid
+        waitpid.return_value = pid, 0
+        path = "/SOME_PATH"
+        logger = mock.MagicMock()
+
+        class Failed(Exception):
+            pass
+
+        logsend.side_effect = Failed('hello')
+        koji.util.rmtree(path, logger)
+        logsend.assert_called_once()
+        logger.error.assert_called_once()
+        if not logger.error.mock_calls[0].args[0].startswith('Failed to get rmtree logs'):
+            raise Exception('Wrong log message')
+        fork.assert_called_once()
+        rmtree_nofork.assert_not_called()
+        _exit.assert_not_called()
+
+
+class TestAssertCWD(unittest.TestCase):
+
+    def setUp(self):
+        self.getcwd = mock.patch('os.getcwd').start()
+
+    def tearDown(self):
+        mock.patch.stopall()
+
+    def test_assert_cwd(self):
+        self.getcwd.return_value = '/mydir'
+        koji.util._assert_cwd('/mydir')
+        with self.assertRaises(koji.GenericError):
+            koji.util._assert_cwd('/wrongdir')
+
+    @mock.patch('os.getcwd')
+    def test_assert_cwd_call_fails(self, getcwd):
+        exc = Exception('hello')
+        getcwd.side_effect = exc
+        with self.assertRaises(Exception) as e:
+            koji.util._assert_cwd('/test')
+            # should re-raise same exception
+            self.assertEqual(e, exc)
+
+        exc = OSError()
+        exc.errno = errno.ENOENT
+        getcwd.side_effect = exc
+        # should ignore
+        koji.util._assert_cwd('/test')
 
 
 class TestRmtree2(unittest.TestCase):
 
     def setUp(self):
         self.tempdir = tempfile.mkdtemp()
+        self.savecwd = os.getcwd()
+        # rmtree calls chdir, so save and restore cwd in case of a bug
 
     def tearDown(self):
         shutil.rmtree(self.tempdir)
+        os.chdir(self.savecwd)
+
+    def test_rmtree_missing(self):
+        # should not error if already removed
+        dirname = '%s/NOSUCHDIR' % self.tempdir
+        koji.util.rmtree(dirname)
+
+        dirname = '%s/NOSUCHDIR/NOSUCHDIR' % self.tempdir
+        koji.util.rmtree(dirname)
+
+    def test_rmtree_notadir(self):
+        # should error if not a directory
+        fname = '%s/hello.txt' % self.tempdir
+        with open(fname, 'wt') as fo:
+            fo.write('hello\n')
+        with self.assertRaises(koji.GenericError):
+            koji.util.rmtree(fname)
+
+        if not os.path.exists(fname):
+            raise Exception('deleted: %s', fname)
 
     def test_rmtree_parallel_chdir_down_failure(self):
         dirname = '%s/some-dir/' % self.tempdir
@@ -1473,9 +1633,82 @@ class TestRmtree2(unittest.TestCase):
                 mock_data['removed'] = True
             return os_chdir(*a, **kw)
         with mock.patch('os.chdir', new=my_chdir):
-            koji.util.rmtree(dirname)
+            koji.util._rmtree_nofork(dirname)
         if not mock_data['removed']:
             raise Exception('mocked call not working')
+        if os.path.exists(dirname):
+            raise Exception('test directory not removed')
+
+    def test_rmtree_relative(self):
+        relpath = 'some-dir-95628'
+        path = "%s/%s" % (self.tempdir, relpath)
+        os.makedirs('%s/a/b/c/d/e/f/g/h/i/j/k' % path)
+
+        oldcwd = os.getcwd()
+        os.chdir(self.tempdir)
+        try:
+            koji.util._rmtree_nofork(relpath)
+        finally:
+            os.chdir(oldcwd)
+
+        if os.path.exists(path):
+            raise Exception('test directory not removed')
+
+    def test_rmtree_dev_change(self):
+        dirname = '%s/some-dir/' % self.tempdir
+        os.makedirs('%s/a/b/c/d/e/f/g/h/i/j/k' % dirname)
+        doomed = [
+            '%s/a/b/c/d/e/f/DOOMED' % dirname,
+            '%s/a/b/c/d/e/DOOMED' % dirname,
+            '%s/a/b/DOOMED' % dirname,
+        ]
+        safe = [
+            '%s/a/b/c/d/e/f/g/SAFE' % dirname,
+            '%s/a/b/c/d/e/f/g/h/SAFE' % dirname,
+            '%s/a/b/c/d/e/f/g/h/i/SAFE' % dirname,
+            '%s/a/b/c/d/e/f/g/h/i/j/SAFE' % dirname,
+        ]
+        for fn in doomed + safe:
+            with open(fn, 'wt') as fo:
+                fo.write('hello')
+
+        os_lstat = os.lstat
+        pingfile = self.tempdir + '/ping'
+
+        def my_lstat(path, **kw):
+            # report different dev mid-tree
+            ret = os_lstat(path, **kw)
+            if path.endswith('g'):
+                # path might be absolute or relative
+                with open(pingfile, 'wt') as fo:
+                    fo.write('ping')
+                ret = mock.MagicMock(wraps=ret)
+                ret.st_dev = "NEWDEV"
+            return ret
+
+        with mock.patch('os.lstat', new=my_lstat):
+            with self.assertRaises(koji.GenericError):
+                koji.util.rmtree(dirname)
+        if not os.path.exists(pingfile):
+            raise Exception('mocked call not working')
+        for fn in doomed:
+            if os.path.exists(fn):
+                raise Exception('not deleted: %s', fn)
+        for fn in safe:
+            if not os.path.exists(fn):
+                raise Exception('deleted: %s', fn)
+        if not os.path.exists(dirname):
+            raise Exception('deleted: %s', dirname)
+
+    def test_rmtree_complex(self):
+        dirname = '%s/some-dir/' % self.tempdir
+        # For this test, we make a complex tree to remove
+        for i in range(8):
+            for j in range(8):
+                for k in range(8):
+                    os.makedirs('%s/a/%s/c/d/%s/e/f/%s/g/h' % (dirname, i, j, k))
+
+        koji.util.rmtree(dirname)
         if os.path.exists(dirname):
             raise Exception('test directory not removed')
 
@@ -1499,7 +1732,7 @@ class TestRmtree2(unittest.TestCase):
                 mock_data['removed'] = True
             return os_chdir(path)
         with mock.patch('os.chdir', new=my_chdir):
-            koji.util.rmtree(dirname)
+            koji.util._rmtree_nofork(dirname)
         if not mock_data['removed']:
             raise Exception('mocked call not working')
         if os.path.exists(dirname):
@@ -1525,7 +1758,7 @@ class TestRmtree2(unittest.TestCase):
                 raise e
             return os_chdir(path)
         with mock.patch('os.chdir', new=my_chdir):
-            koji.util.rmtree(dirname)
+            koji.util._rmtree_nofork(dirname)
         if not mock_data['removed']:
             raise Exception('mocked call not working')
         if os.path.exists(dirname):
@@ -1551,7 +1784,7 @@ class TestRmtree2(unittest.TestCase):
                 raise e
             return os_listdir(*a, **kw)
         with mock.patch('os.listdir', new=my_listdir):
-            koji.util.rmtree(dirname)
+            koji.util._rmtree_nofork(dirname)
         if not mock_data['removed']:
             raise Exception('mocked call not working')
         if os.path.exists(dirname):
@@ -1576,9 +1809,170 @@ class TestRmtree2(unittest.TestCase):
             return ret  # does not contain extra_file
         with mock.patch('os.listdir', new=my_listdir):
             with self.assertRaises(OSError):
-                koji.util.rmtree(dirname)
+                koji.util._rmtree_nofork(dirname)
         if not mock_data.get('ping'):
             raise Exception('mocked call not working')
+
+    def test_rmtree_threading(self):
+        # multiple complex trees to be deleted in parallel threads
+        dirs = []
+        for n in range(10):
+            dirname = '%s/some-dir-%s/' % (self.tempdir, n)
+            dirs.append(dirname)
+            for i in range(8):
+                for j in range(8):
+                    for k in range(8):
+                        os.makedirs('%s/a/%s/c/d/%s/e/f/%s/g/h' % (dirname, i, j, k))
+
+        sync = threading.Event()
+        def do_rmtree(dirname):
+            sync.wait()
+            koji.util.rmtree(dirname)
+
+        threads = []
+        for d in dirs:
+            thread = threading.Thread(target=do_rmtree, args=(d,))
+            thread.start()
+            threads.append(thread)
+        sync.set()
+        for thread in threads:
+            thread.join()
+
+        for dirname in dirs:
+            if os.path.exists(dirname):
+                raise Exception('test directory not removed')
+
+    def test_rmtree_race_thread(self):
+        # parallel threads deleting the same complex tree
+        dirname = '%s/some-dir/' % (self.tempdir)
+        for i in range(8):
+            for j in range(8):
+                for k in range(8):
+                    os.makedirs('%s/a/%s/c/d/%s/e/f/%s/g/h' % (dirname, i, j, k))
+
+        sync = threading.Event()
+        def do_rmtree(dirname):
+            sync.wait()
+            koji.util.rmtree(dirname)
+
+        threads = []
+        for n in range(3):
+            thread = threading.Thread(target=do_rmtree, args=(dirname,))
+            thread.start()
+            threads.append(thread)
+        sync.set()
+        for thread in threads:
+            thread.join()
+
+        if os.path.exists(dirname):
+            raise Exception('test directory not removed')
+
+    def test_rmtree_race_process(self):
+        # parallel threads deleting the same complex tree
+        dirname = '%s/some-dir/' % (self.tempdir)
+        for i in range(8):
+            for j in range(8):
+                for k in range(8):
+                    os.makedirs('%s/a/%s/c/d/%s/e/f/%s/g/h' % (dirname, i, j, k))
+
+        sync = multiprocessing.Event()
+        def do_rmtree(dirname):
+            sync.wait()
+            koji.util.rmtree(dirname)
+
+        procs = []
+        for n in range(3):
+            proc = multiprocessing.Process(target=do_rmtree, args=(dirname,))
+            proc.start()
+            procs.append(proc)
+        sync.set()
+        for proc in procs:
+            proc.join()
+
+        if os.path.exists(dirname):
+            raise Exception('test directory not removed')
+
+    def test_rmtree_deep_subdir(self):
+        # create a deep subdir
+        dirname = '%s/some-dir/' % (self.tempdir)
+        MAX_PATH = os.pathconf(dirname, 'PC_PATH_MAX')
+        subname = "deep_path_directory_%05i_______________________________________________________"
+        limit = MAX_PATH // (len(subname % 123) + 1)
+        # two segments each 2/3 of the limit, so each below, but together above
+        seglen = limit * 2 // 3
+        segment = '/'.join([subname % n for n in range(seglen)])
+        path1 = os.path.join(dirname, segment)
+        os.makedirs(path1)
+        cwd = os.getcwd()
+        os.chdir(path1)
+        os.makedirs(segment)
+        os.chdir(cwd)
+
+        koji.util.rmtree(dirname)
+
+        if os.path.exists(dirname):
+            raise Exception('test directory not removed')
+
+
+class TestProxyLogger(unittest.TestCase):
+
+    def setUp(self):
+        self.tempdir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.tempdir)
+
+    def test_proxy_logger(self):
+        logfile = self.tempdir + '/log.jsonl'
+        with koji.util.SimpleProxyLogger(logfile) as proxy:
+            proxy.info('hello world')
+            proxy.warning('hmm -- %s', ['data'])
+            proxy.error('We have a problem -- %r', {'a': 1})
+            proxy.debug('yadayadayada')
+
+        logger = mock.MagicMock()
+        koji.util.SimpleProxyLogger.send(logfile, logger)
+        logger.log.assert_has_calls([
+            call(20, 'hello world'),
+            call(30, 'hmm -- %s', ['data']),
+            call(40, 'We have a problem -- %r', {'a': 1}),
+            call(10, 'yadayadayada')])
+
+    def test_proxy_logger_bad_data(self):
+        logfile = self.tempdir + '/log.jsonl'
+        with koji.util.SimpleProxyLogger(logfile) as proxy:
+            # non-json-encodable
+            proxy.info('bad - %s', Exception())
+        logger = mock.MagicMock()
+        koji.util.SimpleProxyLogger.send(logfile, logger)
+        logger.log.assert_called_once()
+        self.assertEqual(logger.log.mock_calls[0].args[0], logging.ERROR)
+        if not logger.log.mock_calls[0].args[1].startswith('Unable to log'):
+            raise Exception('Wrong error message')
+
+    def test_proxy_logger_bad_line(self):
+        logfile = self.tempdir + '/log.jsonl'
+        with open(logfile, 'wt') as fo:
+            fo.write('INVALID_JSON()')
+        logger = mock.MagicMock()
+        koji.util.SimpleProxyLogger.send(logfile, logger)
+        logger.log.assert_called_once()
+        self.assertEqual(logger.log.mock_calls[0].args[0], logging.ERROR)
+        if not logger.log.mock_calls[0].args[1].startswith('Bad log data: '):
+            raise Exception('Wrong error message')
+
+    def test_proxy_logger_repr_fail(self):
+        class BadValue:
+            def __repr__(self):
+                raise ValueError('no')
+        strfail = BadValue()
+
+        logfile = self.tempdir + '/log.jsonl'
+        with koji.util.SimpleProxyLogger(logfile) as proxy:
+            proxy.info('bad - %s', strfail)
+        logger = mock.MagicMock()
+        koji.util.SimpleProxyLogger.send(logfile, logger)
+        logger.log.assert_called_once_with(logging.ERROR, 'Invalid log data')
 
 
 class TestMoveAndSymlink(unittest.TestCase):
