@@ -269,6 +269,9 @@ $value
            #end if
         <br/>
         #end for
+        #if not $output
+            <div title="Not all tasks produce outputs, and task outputs are not retained indefinitely.">No outputs reported</div>
+        #end if
         #if $task.state not in ($koji.TASK_STATES.CLOSED, $koji.TASK_STATES.CANCELED, $koji.TASK_STATES.FAILED) and \
             $task.method in ('buildSRPMFromSCM', 'buildArch', 'createLiveMedia', 'buildMaven', 'wrapperRPM', 'vmExec', 'createrepo', 'runroot', 'createAppliance', 'createLiveCD')
         <br/>

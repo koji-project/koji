@@ -4845,14 +4845,21 @@ def _printTaskInfo(session, task_id, topdir, level=0, recurse=True, verbose=True
         for root in buildroot_infos:
             print("%s  %s/%s-%d-%d/" %
                   (indent, BUILDDIR, root['tag_name'], root['id'], root['repo_id']))
+    print("%sLog Files:" % indent)
     if logs:
-        print("%sLog Files:" % indent)
         for log_path in logs:
             print("%s  %s" % (indent, log_path))
+    else:
+        print("%s  No outputs reported [1]" % indent)
+    print("%sOutput:" % indent)
     if output:
-        print("%sOutput:" % indent)
         for file_path in output:
             print("%s  %s" % (indent, file_path))
+    else:
+        print("%s  No outputs reported [1]" % indent)
+    if not logs or not output:
+        print("%s[1] Not all tasks produce outputs, and task outputs are not retained "
+              "indefinitely." % indent)
 
     # white space
     print('')
