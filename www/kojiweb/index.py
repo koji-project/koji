@@ -739,10 +739,10 @@ def taskinfo(environ, taskID):
         params['task_list'] = tmp
     if 'wait_list' in params:
         params['wait_list'] = [server.getTaskInfo(t) for t in params['wait_list']]
-    if 'target' in params:
-        params['build_target'] = server.getBuildTarget(params.pop('target'))
-    if 'build_target' in params:
-        params['build_target'] = server.getBuildTarget(params.pop('build_target'))
+    for key in ('target', 'build_target', 'target_info'):
+        if key in params:
+            params['build_target'] = server.getBuildTarget(params.pop(key))
+            break
     if 'build_tag' in params:
         params['build_tag'] = _get_tag(params.pop('build_tag'))
     if 'task_id' in params:
