@@ -48,6 +48,9 @@ https://docs.pagure.org/koji/HOWTO/#package-organization
 %s: error: {message}
 """ % (self.progname, self.progname, self.progname)
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     def test_handle_build_from_srpm(self, stdout):
         args = [self.target, self.source_srpm]

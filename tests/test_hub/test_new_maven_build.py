@@ -26,6 +26,9 @@ class TestNewMavenBuild(unittest.TestCase):
             'build_id': 2,
         }
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def getInsert(self, *args, **kwargs):
         insert = IP(*args, **kwargs)
         insert.execute = self.insert_execute

@@ -26,6 +26,9 @@ class TestEditPermission(utils.CliTestCase):
         self.perm = 'test-perm'
         self.description = 'test-description'
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_handle_edit_permission_argument_error(self):
         expected = self.format_error_message("Please specify a permission and a description")
         for args in [[], [self.perm]]:

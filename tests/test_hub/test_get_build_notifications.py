@@ -10,6 +10,9 @@ class TestGetBuildNotifications(unittest.TestCase):
         self.get_user = mock.patch('kojihub.kojihub.get_user').start()
         self.get_build_notifications = mock.patch('kojihub.kojihub.get_build_notifications').start()
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_loggedin_user(self):
         self.get_user.return_value = {'id': 1}
         kojihub.RootExports().getBuildNotifications(None)

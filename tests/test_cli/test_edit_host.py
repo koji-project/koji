@@ -28,6 +28,9 @@ class TestEditHost(utils.CliTestCase):
         self.description = 'description'
         self.comment = 'comment'
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     def test_handle_edit_host(self, stdout):
         host_info = mock.ANY

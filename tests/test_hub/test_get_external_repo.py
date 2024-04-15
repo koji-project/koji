@@ -12,6 +12,9 @@ class TestGetExternalRepo(unittest.TestCase):
         self.get_external_repos = mock.patch('kojihub.kojihub.get_external_repos').start()
         self.exports = kojihub.RootExports()
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_non_exist_repo_with_strict(self):
         repo = 'test-repo'
         self.get_external_repos.return_value = []

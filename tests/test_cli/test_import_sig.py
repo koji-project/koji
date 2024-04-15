@@ -76,6 +76,9 @@ class TestImportSIG(utils.CliTestCase):
 %s: error: {message}
 """ % (self.progname, self.progname)
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji.rip_rpm_sighdr')

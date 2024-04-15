@@ -18,6 +18,9 @@ class TestCreateImageBuild(unittest.TestCase):
         self.inserts = []
         self.insert_execute = mock.MagicMock()
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def getInsert(self, *args, **kwargs):
         insert = IP(*args, **kwargs)
         insert.execute = self.insert_execute

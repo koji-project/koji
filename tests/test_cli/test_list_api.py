@@ -19,6 +19,9 @@ class TestListApi(utils.CliTestCase):
         self.options = mock.MagicMock()
         self.ensure_connection = mock.patch('koji_cli.commands.ensure_connection').start()
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     def test_anon_handle_list_api_all_method(self, stdout):
         """Test anon_handle_list_api function"""

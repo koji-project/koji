@@ -25,6 +25,9 @@ class TestAddExternalRepo(utils.CliTestCase):
         self.tag = 'test-tag'
         self.priority = 10
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_add_external_repo_invalid_mode(self):
         mode = 'test-mode'
         arguments = ['--mode', mode]

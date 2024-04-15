@@ -34,6 +34,9 @@ class TestUntagBuild(utils.CliTestCase):
                               'name': 'test-package', 'release': '1.f35', 'tag.name': 'test-tag',
                               'tag_id': 460, 'version': '1.1'}]}
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def __vm(self, result):
         m = koji.VirtualCall('mcall_method', [], {})
         if isinstance(result, dict) and result.get('faultCode'):

@@ -15,6 +15,9 @@ class TestVerifyNameInternal(unittest.TestCase):
         self.context.opts = {'MaxNameLengthInternal': 15,
                              'RegexNameInternal.compiled': re.compile('^[A-Za-z0-9/_.+-]+$')}
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_verify_name_internal_integer_type(self):
         expected_error = "Name should be string"
         with self.assertRaises(koji.GenericError) as cm:
@@ -42,6 +45,9 @@ class TestVerifyUser(unittest.TestCase):
         self.context.session.assertPerm = mock.MagicMock()
         self.context.opts = {'MaxNameLengthInternal': 15,
                              'RegexUserName.compiled': re.compile('^[A-Za-z0-9/_.@-]+$')}
+
+    def tearDown(self):
+        mock.patch.stopall()
 
     def test_verify_user_type_name(self):
         expected_error = "Name should be string"

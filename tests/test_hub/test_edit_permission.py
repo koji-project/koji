@@ -24,6 +24,9 @@ class TestEditPermission(unittest.TestCase):
         self.perm_info = {'id': 1, 'name': self.perm_name}
         self.description = 'test-description'
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_edit_permission_non_exist_permission(self):
         self.lookup_perm.side_effect = koji.GenericError
         with self.assertRaises(koji.GenericError):

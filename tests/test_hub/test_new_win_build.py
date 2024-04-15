@@ -31,6 +31,9 @@ class TestNewWinBuild(unittest.TestCase):
             'extra': {'extra_key': 'extra_value'},
         }
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def getInsert(self, *args, **kwargs):
         insert = IP(*args, **kwargs)
         insert.execute = self.insert_execute

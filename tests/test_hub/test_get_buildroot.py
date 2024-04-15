@@ -10,6 +10,9 @@ class TestGetBuildroot(unittest.TestCase):
         self.query_buildroots = mock.patch('kojihub.kojihub.query_buildroots').start()
         self.buildroot_id = 1
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_empty_buildroots_without_strict(self):
         self.query_buildroots.return_value = []
         rv = kojihub.get_buildroot(self.buildroot_id, strict=False)

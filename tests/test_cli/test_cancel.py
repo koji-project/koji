@@ -35,6 +35,9 @@ class TestCancel(utils.CliTestCase):
         self.session.hub_version = (1, 33, 0)
         self.session.hub_version_str = '1.33.0'
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_anon_cancel(self):
         args = ['123']
         self.activate_session_mock.side_effect = koji.GenericError

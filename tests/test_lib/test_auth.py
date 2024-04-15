@@ -44,6 +44,9 @@ class TestAuthSession(unittest.TestCase):
         # start with "assert"
         self.context.session.assertLogin = mock.MagicMock()
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_instance(self):
         """Simple kojihub.auth.Session instance"""
         self.context.opts = {

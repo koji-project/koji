@@ -21,6 +21,9 @@ class TestDisableHost(utils.CliTestCase):
 %s: error: {message}
 """ % (self.progname, self.progname)
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_handle_disable_host_no_such_host(self):
         """Test %s function""" % handle_disable_host.__name__
         self.session.getHost.return_value = None

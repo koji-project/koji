@@ -34,6 +34,9 @@ class TestImportCG(utils.CliTestCase):
 %s: error: {message}
 """ % (self.progname, self.progname)
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands._progress_callback')
     @mock.patch('koji.json')

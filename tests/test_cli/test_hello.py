@@ -39,6 +39,9 @@ class TestHello(utils.CliTestCase):
 """ % (self.progname, self.progname)
         self.huburl = "https://%s.local/%shub" % (self.progname, self.progname)
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands._printable_unicode')
     def test_handle_moshimoshi(self, print_unicode_mock, stdout):

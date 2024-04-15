@@ -26,6 +26,9 @@ class TestEditUser(utils.CliTestCase):
         self.user = 'user'
         self.rename = 'user2'
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     def test_handle_edit_user(self, stdout):
         args = [self.user]

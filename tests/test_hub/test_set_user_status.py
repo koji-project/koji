@@ -23,6 +23,9 @@ class TestSetUserStatus(unittest.TestCase):
         self.context.session.assertPerm = mock.MagicMock()
         self.update_execute = mock.MagicMock()
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_wrong_status(self):
         status = 111
         with self.assertRaises(koji.GenericError) as cm:

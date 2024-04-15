@@ -21,6 +21,9 @@ class TestBlockNotification(utils.CliTestCase):
 %s: error: {message}
 """ % (self.progname, self.progname)
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_handle_block_notification_non_exist_tag(self):
         tag = 'test-tag'
         arguments = ['--tag', tag]

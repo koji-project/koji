@@ -19,6 +19,9 @@ class TestAddHostToChannel(utils.CliTestCase):
 %s: error: {message}
 """ % (self.progname, self.progname)
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     def test_handle_add_host_to_channel(self, stdout):
         host = 'host'

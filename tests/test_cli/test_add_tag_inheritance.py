@@ -56,6 +56,9 @@ class TestAddTagInheritance(utils.CliTestCase):
                       'perm': None,
                       'perm_id': None}
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_add_tag_inheritance_without_option(self):
         arguments = []
         expected = self.format_error_message(

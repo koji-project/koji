@@ -36,6 +36,9 @@ class TestListPermissions(utils.CliTestCase):
         self.user = 'tester'
         self.userinfo = {'id': 101, 'name': self.user}
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_handle_list_permissions_arg_error(self):
         """Test handle_list_permissions argument error (no argument is required)"""
         expected = self.format_error_message("This command takes no arguments")

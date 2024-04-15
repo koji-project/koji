@@ -24,6 +24,9 @@ class TestCreateUser(unittest.TestCase):
         self.user_info_krb = {'id': 1, 'krb_principals': ['test_user@fedora.org'],
                               'name': self.user_name, 'status': 0, 'usertype': 0}
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_create_user_wrong_format(self):
         user_name = 'test-user+'
 

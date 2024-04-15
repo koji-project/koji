@@ -21,6 +21,9 @@ class TestAddTag(utils.CliTestCase):
 %s: error: {message}
 """ % (self.progname, self.progname)
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_handle_add_tag(self):
         """Test handle_add_tag function"""
         # Case 1. no argument error

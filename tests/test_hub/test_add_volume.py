@@ -19,6 +19,9 @@ class TestAddVolume(unittest.TestCase):
         self.context.session.assertPerm = mock.MagicMock()
         self.context.session.assertLogin = mock.MagicMock()
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_add_volume_wrong_format(self):
         volume_name = 'volume-name+'
 

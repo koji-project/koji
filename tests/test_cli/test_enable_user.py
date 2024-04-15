@@ -21,6 +21,9 @@ class TestEnableUser(utils.CliTestCase):
 """ % (self.progname, self.progname)
         self.username = 'user'
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_handle_enable_user_no_argument(self):
         """Test handle_enable_user function"""
         expected = self.format_error_message("You must specify the username of the user to enable")

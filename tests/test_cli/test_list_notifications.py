@@ -23,6 +23,9 @@ class TestListNotifications(utils.CliTestCase):
 %s: error: {message}
 """ % (self.progname, self.progname)
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     @mock.patch('sys.stdout', new_callable=StringIO)
     def test_list_notifications(self, stdout):
         self.session.getBuildNotifications.return_value = [

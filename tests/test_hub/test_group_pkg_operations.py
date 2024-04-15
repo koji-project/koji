@@ -61,6 +61,9 @@ class TestGroupPkglist(unittest.TestCase):
         self.context_db.event_id = 42
         self.context_db.session.user_id = 24
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_grp_pkg_add_previous_changed(self):
         self.lookup_tag.return_value = self.taginfo
         self.lookup_group.return_value = self.groupinfo

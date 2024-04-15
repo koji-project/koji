@@ -22,6 +22,7 @@ class TestImportImageInternal(unittest.TestCase):
 
     def tearDown(self):
         shutil.rmtree(self.tempdir)
+        mock.patch.stopall()
 
     def test_basic(self):
         task = mock.MagicMock()

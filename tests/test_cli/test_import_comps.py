@@ -38,6 +38,9 @@ class TestImportComps(utils.CliTestCase):
 %s: error: {message}
 """ % (self.progname, self.progname)
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji_cli.commands.libcomps')
     @mock.patch('koji_cli.commands._import_comps')

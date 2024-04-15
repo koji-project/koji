@@ -27,6 +27,9 @@ class TestListTagged(unittest.TestCase):
              'release': '1.fc35', 'state': 1, 'tag_id': 1, 'tag_name': 'test-tag',
              'task_id': None, 'version': '2.52', 'volume_id': 0, 'volume_name': 'DEFAULT'}]
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def getQuery(self, *args, **kwargs):
         query = QP(*args, **kwargs)
         query.execute = mock.MagicMock()

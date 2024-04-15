@@ -29,6 +29,9 @@ Note, that you can use global option --noauth for anonymous calls here
 %s: error: {message}
 """ % (self.progname, self.progname)
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     def test_handle_call(self, stdout):
         """Test handle_call function"""

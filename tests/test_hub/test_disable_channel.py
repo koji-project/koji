@@ -24,6 +24,9 @@ class TestDisableChannel(unittest.TestCase):
         self.updates = []
         self.channelname = 'test-channel'
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_non_exist_channel(self):
         self.get_channel.return_value = None
         with self.assertRaises(koji.GenericError) as cm:

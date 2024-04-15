@@ -28,6 +28,9 @@ class TestRemovePkg(utils.CliTestCase):
 %s: error: {message}
 """ % (self.progname, self.progname)
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     def test_handle_remove_pkg(self, stderr):
         tag = 'tag'

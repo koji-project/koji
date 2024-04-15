@@ -20,6 +20,9 @@ class TestAddTarget(utils.CliTestCase):
 %s: error: {message}
 """ % (self.progname, self.progname)
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_add_target_without_option(self,):
         expected = self.format_error_message(
             "Please specify a target name, a build tag, and destination tag")

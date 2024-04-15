@@ -35,6 +35,9 @@ class TestQueryRPMSigs(unittest.TestCase):
                       'size': 25644,
                       'version': '3.3'}
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_rpm_dict(self):
         rinfo_dict = {
             'arch': 'x86_64',

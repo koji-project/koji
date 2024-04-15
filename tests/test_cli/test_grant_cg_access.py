@@ -22,6 +22,9 @@ class TestGrantCGAccess(utils.CliTestCase):
         self.cg = 'cg'
         self.user = 'user'
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_handle_grant_cg_access_arg_error(self):
         """Test handle_grant_cg_access function"""
         expected = self.format_error_message("Please specify a user and content generator")

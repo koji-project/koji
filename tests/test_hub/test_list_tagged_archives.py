@@ -48,6 +48,9 @@ class TestListTaggedArchives(unittest.TestCase):
               'volume_name': 'DEFAULT'}]
         ]
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def getQuery(self, *args, **kwargs):
         query = QP(*args, **kwargs)
         query.execute = mock.MagicMock()

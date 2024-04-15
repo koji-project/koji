@@ -65,6 +65,9 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
 %s: error: {message}
 """ % (self.progname, self.progname)
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     def test_handle_mock_config_buildroot_option(self, stdout):
         """Test anon_handle_mock_config buildroot options"""

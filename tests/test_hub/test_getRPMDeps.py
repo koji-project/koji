@@ -11,6 +11,9 @@ class TestGetRPMDeps(unittest.TestCase):
         self.get_rpm = mock.patch('kojihub.kojihub.get_rpm').start()
         self.get_build = mock.patch('kojihub.kojihub.get_build').start()
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_getRPMDeps_no_rpminfo(self):
         def mock_get_rpm(rpmID, strict=False):
             if strict:

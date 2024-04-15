@@ -32,6 +32,9 @@ class TestHost(unittest.TestCase):
         self.queries = []
         self.query_execute = mock.MagicMock()
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     @mock.patch('kojihub.kojihub.context')
     def test_instantiation_not_a_host(self, context):
         context.session.getHostId.return_value = None

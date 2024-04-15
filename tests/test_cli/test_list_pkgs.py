@@ -52,6 +52,9 @@ class TestListPkgs(utils.CliTestCase):
                         'perm': None,
                         'perm_id': None}
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_list_pkgs_non_exist_tag(self):
         self.session.getTag.return_value = None
         self.assert_system_exit(

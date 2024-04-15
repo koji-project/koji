@@ -21,6 +21,9 @@ class TestAddNotification(utils.CliTestCase):
 %s: error: {message}
 """ % (self.progname, self.progname)
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_handle_add_notification(self):
         self.session.getPackageID.return_value = 1234
         self.session.getTagID.return_value = 4321
