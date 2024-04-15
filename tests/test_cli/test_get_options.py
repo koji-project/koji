@@ -36,6 +36,7 @@ class TestGetOptions(unittest.TestCase):
         koji.BASEDIR = self.orig_basedir
         koji.pathinfo.topdir = self.orig_pathinfo_topdir
         cli.load_plugins = self.orig_load_plugins
+        mock.patch.stopall()
 
     def test_get_options(self):
         self.read_config.return_value = self.config_dict

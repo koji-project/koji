@@ -12,6 +12,9 @@ class TestGetBuild(DBQueryTestCase):
         self.find_build_id = mock.patch('kojihub.kojihub.find_build_id').start()
         self.lookup_name = mock.patch('kojihub.kojihub.lookup_name').start()
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_non_exist_build_string_with_strict(self):
         build = 'build-1-23'
         self.find_build_id.side_effect = koji.GenericError('No such build: %s' % build)

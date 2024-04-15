@@ -42,6 +42,8 @@ extra_limit = 2048
         if hasattr(context, 'protonmsg_msgs'):
             del context.protonmsg_msgs
         del self.conf
+        mock.patch.stopall()
+
 
     def assertMsg(self, topic, body=None, **kws):
         self.assertTrue(hasattr(context, 'protonmsg_msgs'))

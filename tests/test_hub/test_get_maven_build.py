@@ -11,6 +11,9 @@ class TestGetMavenBuild(DBQueryTestCase):
         self.maxDiff = None
         self.find_build_id = mock.patch('kojihub.kojihub.find_build_id').start()
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_build_id_not_found(self):
         self.find_build_id.return_value = None
         result = kojihub.get_maven_build('test-build.1-23.1')

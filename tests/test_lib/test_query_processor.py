@@ -33,6 +33,7 @@ class TestQueryProcessor(unittest.TestCase):
 
     def tearDown(self):
         kojihub.QueryProcessor.iterchunksize = self.original_chunksize
+        mock.patch.stopall()
 
     def test_basic_instantiation(self):
         kojihub.QueryProcessor()  # No exception!

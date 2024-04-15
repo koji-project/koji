@@ -85,6 +85,7 @@ class TestCliListTagged(utils.CliTestCase):
         else:
             os.environ['TZ'] = self.original_timezone
         time.tzset()
+        mock.patch.stopall()
 
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('koji.util.eventFromOpts', return_value={'id': 1000,

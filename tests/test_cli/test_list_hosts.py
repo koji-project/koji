@@ -46,6 +46,7 @@ class TestListHosts(utils.CliTestCase):
         else:
             os.environ['TZ'] = self.original_timezone
             time.tzset()
+        mock.patch.stopall()
 
     def __vm(self, result):
         m = koji.VirtualCall('mcall_method', [], {})

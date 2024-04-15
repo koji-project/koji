@@ -12,6 +12,9 @@ class TestGetGroupMembers(DBQueryTestCase):
         self.get_user = mock.patch('kojihub.kojihub.get_user').start()
         self.exports = kojihub.RootExports()
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_non_exist_group(self):
         group = 'test-group'
         self.get_user.return_value = []

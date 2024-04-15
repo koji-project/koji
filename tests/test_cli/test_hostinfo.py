@@ -50,6 +50,7 @@ class TestHostinfo(utils.CliTestCase):
         else:
             os.environ['TZ'] = self.original_timezone
             time.tzset()
+        mock.patch.stopall()
 
     def test_hostinfo_without_option(self):
         self.session.getChannel.return_value = None

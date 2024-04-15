@@ -12,6 +12,9 @@ class TestGetChannel(DBQueryTestCase):
         self.context = mock.patch('kojihub.kojihub.context').start()
         self.exports = kojihub.RootExports()
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_wrong_type_channelInfo(self):
         # dict
         channel_info = {'channel': 'val'}
