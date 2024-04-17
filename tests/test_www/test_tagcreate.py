@@ -10,6 +10,7 @@ from koji.server import ServerRedirect
 class TestTagCreate(unittest.TestCase):
     def setUp(self):
         self.get_server = mock.patch.object(webidx, "_getServer").start()
+        self.gen_html = mock.patch.object(webidx, '_genHTML').start()
         self.assert_login = mock.patch.object(webidx, "_assertLogin").start()
         self.server = mock.MagicMock()
         self.environ = {
@@ -50,10 +51,12 @@ class TestTagCreate(unittest.TestCase):
 
         with self.assertRaises(ServerRedirect):
             webidx.tagcreate(self.environ)
+        self.assertEqual(self.environ['koji.redirect'], 'taginfo?tagID=1')
+        self.server.mavenEnabled.assert_called_once_with()
         self.server.createTag.assert_called_with('testname', arches='x86_64', locked=True,
                                                  perm=1, maven_support=True,
                                                  maven_include_all=True)
-        self.assertEqual(self.environ['koji.redirect'], 'taginfo?tagID=1')
+        self.server.getAllPerms.assert_not_called()
 
     def test_tagcreate_cancel_case_valid(self):
         """Test tagcreate function valid cases (cancel)."""
@@ -69,5 +72,28 @@ class TestTagCreate(unittest.TestCase):
 
         with self.assertRaises(ServerRedirect):
             webidx.tagcreate(self.environ)
-        self.server.createTag.assert_not_called()
         self.assertEqual(self.environ['koji.redirect'], 'tags')
+        self.server.mavenEnabled.assert_called_once_with()
+        self.server.createTag.assert_not_called()
+        self.server.getAllPerms.assert_not_called()
+
+    def test_tagedit_another_case_valid(self):
+        """Test tagedit function valid case (another)."""
+        urlencode_data = b"another=True"
+        fs = self.get_fs(urlencode_data)
+
+        def __get_server(env):
+            env['koji.session'] = self.server
+            env['koji.form'] = fs
+            return self.server
+
+        self.get_server.side_effect = __get_server
+        self.server.mavenEnabled.return_value = True
+        self.server.getAllPerms.return_value = [{'id': 1, 'name': 'test-perm-1'},
+                                                {'id': 2, 'name': 'test-perm-2'},
+                                                {'id': 3, 'name': 'test-perm-3'}]
+
+        webidx.tagcreate(self.environ)
+        self.server.mavenEnabled.assert_called_once_with()
+        self.server.createTag.assert_not_called()
+        self.server.getAllPerms.assert_called_once_with()

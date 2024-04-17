@@ -12,6 +12,7 @@ class TestBuildTargetCreate(unittest.TestCase):
     def setUp(self):
         self.get_server = mock.patch.object(webidx, "_getServer").start()
         self.assert_login = mock.patch.object(webidx, "_assertLogin").start()
+        self.gen_html = mock.patch.object(webidx, '_genHTML').start()
         self.server = mock.MagicMock()
         self.buildtarget_id = '1'
         self.buildtag_id = '11'
@@ -54,6 +55,10 @@ class TestBuildTargetCreate(unittest.TestCase):
 
         with self.assertRaises(koji.GenericError) as cm:
             webidx.buildtargetcreate(self.environ)
+        self.server.createBuildTarget.assert_called_with('testname', int(self.buildtag_id),
+                                                         int(self.desttag_id))
+        self.server.getBuildTarget.assert_called_with('testname')
+        self.server.listTags.assert_not_called()
         self.assertEqual(str(cm.exception), 'error creating build target "testname"')
 
     def test_buildtargetcreate_add_case_valid(self):
@@ -74,6 +79,8 @@ class TestBuildTargetCreate(unittest.TestCase):
             webidx.buildtargetcreate(self.environ)
         self.server.createBuildTarget.assert_called_with('testname', int(self.buildtag_id),
                                                          int(self.desttag_id))
+        self.server.getBuildTarget.assert_called_with('testname')
+        self.server.listTags.assert_not_called()
         self.assertEqual(self.environ['koji.redirect'], 'buildtargetinfo?targetID=1')
 
     def test_buildtargetcreate_cancel_case(self):
@@ -87,9 +94,28 @@ class TestBuildTargetCreate(unittest.TestCase):
             return self.server
 
         self.get_server.side_effect = __get_server
-        self.server.getBuildTarget.return_value = {'id': self.buildtarget_id}
 
         with self.assertRaises(ServerRedirect):
             webidx.buildtargetcreate(self.environ)
         self.server.createBuildTarget.assert_not_called()
+        self.server.getBuildTarget.assert_not_called()
+        self.server.listTags.assert_not_called()
         self.assertEqual(self.environ['koji.redirect'], 'buildtargets')
+
+    def test_buildtargetcreate_another_case(self):
+        """Test buildtargetcreate function valid case (another)."""
+        urlencode_data = b"another=True"
+        fs = self.get_fs(urlencode_data)
+
+        def __get_server(env):
+            env['koji.session'] = self.server
+            env['koji.form'] = fs
+            return self.server
+
+        self.get_server.side_effect = __get_server
+        self.server.listTags.return_value = [{'id': 1, 'name': 'test-tag-1'},
+                                             {'id': 2, 'name': 'test-tag-2'}]
+        webidx.buildtargetcreate(self.environ)
+        self.server.createBuildTarget.assert_not_called()
+        self.server.getBuildTarget.assert_not_called()
+        self.server.listTags.assert_called_with()
