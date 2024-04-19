@@ -2753,7 +2753,7 @@ class BuildBaseImageTask(BuildImageTask):
             self.logger.error(
                 "ImageFactory features require the following dependencies: pykickstart, "
                 "imagefactory, oz and possibly python-hashlib")
-            raise koji.ApplianceError('ImageFactory functions not available')
+            raise RefuseTask('ImageFactory functions not available')
 
         # Policy check
         task_info = self.session.getTaskInfo(self.id)
@@ -2912,7 +2912,7 @@ class BuildApplianceTask(BuildImageTask):
             self.logger.error(
                 "Appliance features require the following dependencies: "
                 "pykickstart, and possibly python-hashlib")
-            raise koji.ApplianceError('Appliance functions not available')
+            raise RefuseTask('Appliance functions not available')
 
         # build image
         bld_info = None
@@ -2999,7 +2999,7 @@ class BuildLiveCDTask(BuildImageTask):
         if not image_enabled:
             self.logger.error("LiveCD features require the following dependencies: "
                               "pykickstart, pycdio, and possibly python-hashlib")
-            raise koji.LiveCDError('LiveCD functions not available')
+            raise RefuseTask('LiveCD functions not available')
 
         # build the image
         bld_info = None
@@ -3094,7 +3094,7 @@ class BuildLiveMediaTask(BuildImageTask):
             # XXX - are these still required here?
             self.logger.error("Missing the following dependencies: "
                               "pykickstart, pycdio, and possibly python-hashlib")
-            raise koji.PreBuildError('Live Media functions not available')
+            raise RefuseTask('Live Media functions not available')
 
         # build the image
         bld_info = None
@@ -4695,7 +4695,7 @@ class BaseImageTask(OzImageTask):
             self.logger.error(
                 "ImageFactory features require the following dependencies: "
                 "pykickstart, imagefactory, oz and possibly python-hashlib")
-            raise koji.ApplianceError('ImageFactory functions not available')
+            raise RefuseTask('ImageFactory functions not available')
 
         if opts is None:
             opts = {}
