@@ -1731,17 +1731,8 @@ def hosts(environ, state='enabled', start=None, order='name', ready='all', chann
 
     values['channels'] = sorted(server.listChannels(), key=lambda x: x['name'])
 
-    if hosts and 'update_ts' not in hosts[0]:
-        # be nice with older hub
-        # TODO remove this compat workaround after a release
-        with server.multicall() as m:
-            updates = [m.getLastHostUpdate(host['id'], ts=True) for host in hosts]
-
-        for host, lastUpdate in zip(hosts, updates):
-            host['last_update'] = lastUpdate.result
-    else:
-        for host in hosts:
-            host['last_update'] = koji.formatTimeLong(host['update_ts'])
+    for host in hosts:
+        host['last_update'] = koji.formatTimeLong(host['update_ts'])
 
     # Paginate after retrieving last update info so we can sort on it
     kojiweb.util.paginateList(values, hosts, start, 'hosts', 'host', order)
@@ -1786,12 +1777,7 @@ def hostinfo(environ, hostID=None, userID=None):
     values['host'] = host
     values['channels'] = channels
     values['buildroots'] = buildroots
-    if 'update_ts' not in host:
-        # be nice with older hub
-        # TODO remove this compat workaround after a release
-        values['lastUpdate'] = server.getLastHostUpdate(host['id'], ts=True)
-    else:
-        values['lastUpdate'] = koji.formatTimeLong(host['update_ts'])
+    values['lastUpdate'] = koji.formatTimeLong(host['update_ts'])
     if environ['koji.currentUser']:
         values['perms'] = server.getUserPerms(environ['koji.currentUser']['id'])
     else:
