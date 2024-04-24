@@ -8171,12 +8171,13 @@ def anon_handle_list_users(goptions, session, args):
     """[admin] List of users"""
     usage = "usage: %prog list-users [options]"
     parser = OptionParser(usage=get_usage_str(usage))
-    parser.add_option("--usertype", help="List users that have a given usertype "
-                                         "(e.g. NORMAL, HOST, GROUP)")
+    parser.add_option("--usertype", default="NORMAL",
+                      help='List users that have a given usertype (e.g. NORMAL, HOST, GROUP). '
+                      'Use "any" to get all types')
     parser.add_option("--prefix", help="List users that have a given prefix")
     parser.add_option("--perm", help="List users that have a given permission")
     parser.add_option("--inherited-perm", action='store_true', default=False,
-                      help="List of users that inherited specific perm")
+                      help="Consider inherited permissions")
     (options, args) = parser.parse_args(args)
 
     if len(args) > 0:
@@ -8187,30 +8188,28 @@ def anon_handle_list_users(goptions, session, args):
 
     activate_session(session, goptions)
 
-    if options.usertype:
-        if options.usertype.upper() in koji.USERTYPES.keys():
-            usertype = koji.USERTYPES[options.usertype.upper()]
-        else:
-            error("Usertype %s doesn't exist" % options.usertype)
-    elif options.perm:
+    utype = options.usertype.upper()
+    if utype in koji.USERTYPES.keys():
+        usertype = koji.USERTYPES[utype]
+    elif utype in ("ANY", "ALL"):
         usertype = None
     else:
-        usertype = koji.USERTYPES['NORMAL']
+        error("Invalid usertype: %s" % options.usertype)
+
+    kwargs = {'userType': usertype}
 
     if options.prefix:
-        prefix = options.prefix
-    else:
-        prefix = None
+        kwargs['prefix'] = options.prefix
 
     if options.perm:
-        if options.perm in [p['name'] for p in session.getAllPerms()]:
-            perm = options.perm
-        else:
-            error("Permission %s does not exists" % options.perm)
-    else:
-        perm = None
+        if options.perm not in [p['name'] for p in session.getAllPerms()]:
+            error("Invalid permission: %s" % options.perm)
+        kwargs['perm'] = options.perm
+        if options.inherited_perm:
+            kwargs['inherited_perm'] = options.inherited_perm
 
-    users_list = session.listUsers(userType=usertype, prefix=prefix, perm=perm,
-                                   inherited_perm=options.inherited_perm)
+    users_list = session.listUsers(**kwargs)
+    if not users_list and session.hub_version < (1, 34, 1) and usertype is None:
+        warn('This hub does not support querying for all usertypes')
     for user in users_list:
         print(user['name'])

@@ -16,6 +16,7 @@ class TestListUsers(unittest.TestCase):
         self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
                                          side_effect=self.getQuery).start()
         self.queries = []
+        self.get_perm_id = mock.patch('kojihub.kojihub.get_perm_id').start()
 
     def tearDown(self):
         mock.patch.stopall()
@@ -44,13 +45,11 @@ class TestListUsers(unittest.TestCase):
         query = self.queries[0]
         self.assertEqual(query.tables, ['users'])
         self.assertEqual(query.joins, [
-            'LEFT JOIN user_perms ON users.id = user_perms.user_id AND user_perms.active IS TRUE',
-            'LEFT JOIN permissions ON perm_id = permissions.id',
+            'LEFT JOIN user_perms ON users.id = user_perms.user_id',
             'LEFT JOIN user_krb_principals ON users.id = user_krb_principals.user_id'])
         self.assertEqual(query.clauses, [
-            'user_perms.active AND permissions.name = %(perm)s',
+            'user_perms.active AND user_perms.perm_id = %(perm_id)s',
             "users.name ilike %(prefix)s || '%%'",
-            'usertype IN %(userType)s',
         ])
 
     def test_valid_userType_none_with_perm_inherited_perm_and_prefix(self):
@@ -61,14 +60,12 @@ class TestListUsers(unittest.TestCase):
         self.assertEqual(query.tables, ['users'])
         self.assertEqual(query.joins, [
             'LEFT JOIN user_groups ON user_id = users.id AND user_groups.active IS TRUE',
-            'LEFT JOIN user_perms ON users.id = user_perms.user_id AND '
-            'user_perms.active IS TRUE OR group_id =user_perms.user_id',
-            'LEFT JOIN permissions ON perm_id = permissions.id',
+            'LEFT JOIN user_perms ON users.id = user_perms.user_id '
+                'OR group_id = user_perms.user_id',
             'LEFT JOIN user_krb_principals ON users.id = user_krb_principals.user_id'])
         self.assertEqual(query.clauses, [
-            'user_perms.active AND permissions.name = %(perm)s',
+            'user_perms.active AND user_perms.perm_id = %(perm_id)s',
             "users.name ilike %(prefix)s || '%%'",
-            'usertype IN %(userType)s',
         ])
 
     def test_inherited_perm_without_perm(self):
