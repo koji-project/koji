@@ -1490,7 +1490,7 @@ class TestRmtree(unittest.TestCase):
             koji.util.rmtree(path, logger)
         fork.assert_called_once()
         rmtree_nofork.assert_called_once()
-        self.assertEqual(rmtree_nofork.mock_calls[0].args[0], path)
+        self.assertEqual(rmtree_nofork.call_args[0][0], path)
         _exit.assert_called_once()
 
     @mock.patch('koji.util._rmtree_nofork')
@@ -1511,7 +1511,7 @@ class TestRmtree(unittest.TestCase):
             koji.util.rmtree(path, logger)
         fork.assert_called_once()
         rmtree_nofork.assert_called_once()
-        self.assertEqual(rmtree_nofork.mock_calls[0].args[0], path)
+        self.assertEqual(rmtree_nofork.call_args[0][0], path)
         _exit.assert_called_once()
         waitpid.assert_not_called
 
@@ -1550,7 +1550,7 @@ class TestRmtree(unittest.TestCase):
         koji.util.rmtree(path, logger)
         logsend.assert_called_once()
         logger.error.assert_called_once()
-        if not logger.error.mock_calls[0].args[0].startswith('Failed to get rmtree logs'):
+        if not logger.error.call_args[0][0].startswith('Failed to get rmtree logs'):
             raise Exception('Wrong log message')
         fork.assert_called_once()
         rmtree_nofork.assert_not_called()
@@ -1946,8 +1946,8 @@ class TestProxyLogger(unittest.TestCase):
         logger = mock.MagicMock()
         koji.util.SimpleProxyLogger.send(logfile, logger)
         logger.log.assert_called_once()
-        self.assertEqual(logger.log.mock_calls[0].args[0], logging.ERROR)
-        if not logger.log.mock_calls[0].args[1].startswith('Unable to log'):
+        self.assertEqual(logger.log.call_args[0][0], logging.ERROR)
+        if not logger.log.call_args[0][1].startswith('Unable to log'):
             raise Exception('Wrong error message')
 
     def test_proxy_logger_bad_line(self):
@@ -1957,8 +1957,8 @@ class TestProxyLogger(unittest.TestCase):
         logger = mock.MagicMock()
         koji.util.SimpleProxyLogger.send(logfile, logger)
         logger.log.assert_called_once()
-        self.assertEqual(logger.log.mock_calls[0].args[0], logging.ERROR)
-        if not logger.log.mock_calls[0].args[1].startswith('Bad log data: '):
+        self.assertEqual(logger.log.call_args[0][0], logging.ERROR)
+        if not logger.log.call_args[0][1].startswith('Bad log data: '):
             raise Exception('Wrong error message')
 
     def test_proxy_logger_repr_fail(self):
