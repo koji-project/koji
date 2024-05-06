@@ -83,7 +83,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.34.0
+Version: 1.34.1
 Release: %{release}%{?dist}
 License: LGPL-2.1-only and GPL-2.0-or-later
 # the included arch lib from yum's rpmUtils is GPLv2+
@@ -651,6 +651,28 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Mon May  6 2024  Tomas Kopecek <tkopecek at redhat.com> - 1.34.1-1
+- PR#3931: web: add some handy links for module builds
+- PR#3942: policy_data_from_task_args: set target to None when it doesn't exist
+- PR#3975: Bandit [B411]: use defusedxml to prevent remote XML attacks
+- PR#3989: Oz: don't hardcode the image size unit as 'G'
+- PR#3992: Remove rpm-py-installer, update test docs and update Dockerfiles
+- PR#3996: Document draft builds
+- PR#3998: typo in set_refusal
+- PR#3999: Have builders refuse repo tasks if they can't access /mnt/koji
+- PR#4005: Fix bandit "nosec" comments
+- PR#4012: rmtree: use fork
+- PR#4015: provide draft flag to build policy
+- PR#4018: Fix scheduler log ordering
+- PR#4032: implicit task refusals
+- PR#4037: Fix temporary cg_import.log file path
+- PR#4041: Use host maxtasks if available
+- PR#4043: --limit from scheduler-logs/info
+- PR#4052: fix formatting of rpm in title
+- PR#4056: avoid explicit rowlock in taskWaitCheck
+- PR#4069: add requirement: defusedxml in setup.py
+- PR#4088: tests: py3 versions compatibility fixes
+
 * Wed Jan 10 2024  Tomas Kopecek <tkopecek at redhat.com> - 1.34.0-1
 - PR#3537: Switch to WatchedFileHandler for logger
 - PR#3726: fix docstring getTaskInfo
