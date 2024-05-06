@@ -51,6 +51,7 @@ class TestAuthSession(unittest.TestCase):
             'DisableURLSessions': False,
             'SessionRenewalTimeout': 0,
         }
+        self.context.environ = {'QUERY_STRING': 'non_session_key=1'}
         with self.assertRaises(koji.GenericError) as cm:
             kojihub.auth.Session()
         # no args in request/environment
