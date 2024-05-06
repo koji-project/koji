@@ -14558,8 +14558,7 @@ class Host(object):
         # check to see if any of the tasks have finished
         query = QueryProcessor(tables=['task'], columns=['id', 'state'],
                                clauses=['parent=%(parent)s', 'awaited IS TRUE'],
-                               values={'parent': parent},
-                               opts={'rowlock': True})
+                               values={'parent': parent})
         result = query.execute()
         canceled = koji.TASK_STATES['CANCELED']
         closed = koji.TASK_STATES['CLOSED']
@@ -14578,10 +14577,10 @@ class Host(object):
         finished, unfinished = self.taskWaitCheck(parent)
         # un-await finished tasks
         if finished:
-            context.commit_pending = True
-            for id in finished:
+            finished.sort()  # update in predictable order
+            for task_id in finished:
                 update = UpdateProcessor('task', clauses=['id=%(id)s'],
-                                         values={'id': id}, data={'awaited': False})
+                                         values={'id': task_id}, data={'awaited': False})
                 update.execute()
         return [finished, unfinished]
 
