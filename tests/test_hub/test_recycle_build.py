@@ -20,12 +20,16 @@ class TestRecycleBuild(unittest.TestCase):
                                           side_effect=self.getUpdate).start()
         self.run_callbacks = mock.patch('koji.plugin.run_callbacks').start()
         self.rmtree = mock.patch('koji.util.rmtree').start()
-        self.exists = mock.patch('os.path.exists').start()
+        self.unlink = mock.patch('os.unlink').start()
+        self.islink = mock.patch('os.path.islink', return_value=False).start()
+        self.exists = mock.patch('os.path.exists', return_value=False).start()
         self.updates = []
         self.DeleteProcessor = mock.patch('kojihub.kojihub.DeleteProcessor',
                                           side_effect=self.getDelete).start()
         self.deletes = []
         self.get_build = mock.patch('kojihub.kojihub.get_build').start()
+        self.list_volumes = mock.patch('kojihub.kojihub.list_volumes').start()
+        self.list_volumes.return_value = [{'id': 0, 'name': 'DEFAULT'}]
 
     def tearDown(self):
         mock.patch.stopall()
@@ -276,3 +280,36 @@ class TestRecycleBuild(unittest.TestCase):
 
         self.get_build.assert_called_once_with(new['id'], strict=True)
         self.assertEqual(self.run_callbacks.call_count, 2)
+
+        # our default data does not include stray files
+        self.rmtree.assert_not_called()
+        self.unlink.assert_not_called()
+
+    def test_stray_link(self):
+        old = self.old.copy()
+        new = self.new.copy()
+        old['task_id'] = new['task_id'] = 137
+        self.query_execute.side_effect = [[], [], []]
+        self.get_build.return_value = {'build_id': 2, 'name': 'GConf2', 'version': '3.2.6',
+                                       'release': '15.fc23'}
+
+        self.islink.return_value = True
+        kojihub.recycle_build(old, new)
+        self.rmtree.assert_not_called()
+        self.unlink.assert_called_once_with('/mnt/koji/packages/GConf2/3.2.6/15.fc23')
+
+    def test_stray_dir(self):
+        old = self.old.copy()
+        new = self.new.copy()
+        old['task_id'] = new['task_id'] = 137
+        self.query_execute.side_effect = [[], [], []]
+        self.get_build.return_value = {'build_id': 2, 'name': 'GConf2', 'version': '3.2.6',
+                                       'release': '15.fc23'}
+
+        self.exists.return_value = True
+        kojihub.recycle_build(old, new)
+        self.unlink.assert_not_called()
+        self.rmtree.assert_called_once_with('/mnt/koji/packages/GConf2/3.2.6/15.fc23')
+
+
+# the end
