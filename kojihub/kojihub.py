@@ -6481,9 +6481,20 @@ def recycle_build(old, data):
         update.set(cg_id=data['cg_id'])
     update.rawset(create_event='get_event()')
     update.execute()
-    builddir = koji.pathinfo.build(data)
-    if os.path.exists(builddir):
-        koji.util.rmtree(builddir)
+
+    # delete stray files
+    for check_vol in list_volumes():
+        check_binfo = data.copy()
+        check_binfo['volume_id'] = check_vol['id']
+        check_binfo['volume_name'] = check_vol['name']
+        checkdir = koji.pathinfo.build(check_binfo)
+        if os.path.islink(checkdir):
+            logger.warning(f'Removing stray build symlink: {checkdir}')
+            os.unlink(checkdir)
+        elif os.path.exists(checkdir):
+            logger.warning(f'Removing stray build directory: {checkdir}')
+            koji.util.rmtree(checkdir)
+
     buildinfo = get_build(data['id'], strict=True)
     koji.plugin.run_callbacks('postBuildStateChange', attribute='state',
                               old=old['state'], new=data['state'], info=buildinfo)
