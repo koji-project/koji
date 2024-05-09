@@ -62,8 +62,8 @@ def kiwiBuild(target, arches, desc_url, desc_path, optional_arches=None, profile
         opts['make_prep'] = True
     if type:
         opts['type'] = type
-    if not use_buildroot_repo:
-        opts['use_buildroot_repo'] = False
+    if use_buildroot_repo:
+        opts['use_buildroot_repo'] = True
     if type_attr:
         opts['type_attr'] = type_attr
     if result_bundle_name_format:
