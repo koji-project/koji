@@ -3629,63 +3629,6 @@ class MultiCallSession(object):
         return False
 
 
-class DBHandler(logging.Handler):
-    """
-    A handler class which writes logging records, appropriately formatted,
-    to a database.
-    """
-
-    def __init__(self, cnx, table, mapping=None):
-        """
-        Initialize the handler.
-
-        A database connection and table name are required.
-        """
-        logging.Handler.__init__(self)
-        self.cnx = cnx
-        self.table = table
-        if mapping is None:
-            self.mapping = {'message': '%(message)s'}
-        else:
-            self.mapping = mapping
-
-    def emit(self, record):
-        """
-        Emit a record.
-
-        If a formatter is specified, it is used to format the record.
-        """
-        try:
-            cursor = self.cnx.cursor()
-            columns = []
-            values = []
-            data = {}
-            record.message = record.getMessage()
-            for key, value in six.iteritems(self.mapping):
-                value = str(value)
-                if value.find("%(asctime)") >= 0:
-                    if self.formatter:
-                        fmt = self.formatter
-                    else:
-                        fmt = logging._defaultFormatter
-                    record.asctime = fmt.formatTime(record, fmt.datefmt)
-                columns.append(key)
-                values.append("%%(%s)s" % key)
-                data[key] = value % record.__dict__
-                # values.append(_quote(value % record.__dict__))
-            columns = ",".join(columns)
-            values = ",".join(values)
-            command = "INSERT INTO %s (%s) VALUES (%s)" % (self.table, columns, values)
-            # note we're letting cursor.execute do the escaping
-            cursor.execute(command, data)
-            cursor.close()
-            # self.cnx.commit()
-            # XXX - committing here is most likely wrong, but we need to set commit_pending or
-            #       something...and this is really the wrong place for that
-        except Exception:
-            self.handleError(record)
-
-
 def formatTime(value):
     """Format a timestamp so it looks nicer"""
     if not value and not isinstance(value, (int, float)):
