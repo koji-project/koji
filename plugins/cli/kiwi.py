@@ -7,6 +7,7 @@ from koji_cli.lib import (
     _running_in_bg,
     activate_session,
     watch_tasks,
+    warn,
 )
 
 
@@ -34,10 +35,10 @@ def handle_kiwi_build(goptions, session, args):
     parser.add_option("--result-bundle-name-format", help="Override default bundle name format")
     parser.add_option("--make-prep", action="store_true", default=False,
                       help="Run 'make prep' in checkout before starting the build")
-    parser.add_option("--buildroot-repo", action="store_false",
+    parser.add_option("--buildroot-repo", action="store_true",
                       dest="use_buildroot_repo", default=False,
                       help="Add buildroot repo to installation sources. This is off by default, "
-                           "but uf there is no --repo used, it will be turned on automatically.")
+                           "but if there is no --repo used, it will be turned on automatically.")
     parser.add_option("--can-fail", action="store", dest="optional_arches",
                       metavar="ARCH1,ARCH2,...", default="",
                       help="List of archs which are not blocking for build "
@@ -85,7 +86,14 @@ def handle_kiwi_build(goptions, session, args):
     if options.repo:
         kwargs['repos'] = options.repo
     if options.use_buildroot_repo or not options.repo:
-        kwargs['use_buildroot_repo'] = True
+        if not options.repo:
+            warn("no repos given, using buildroot repo")
+        if session.hub_version >= (1, 35, 0):
+            # for older plugin versions it is the default behaviour
+            # and option doesn't exist
+            kwargs['use_buildroot_repo'] = True
+    if session.hub_version < (1, 35, 0):
+        warn("hub version is < 1.35, buildroot repo is always used in addition to specified repos")
 
     task_id = session.kiwiBuild(**kwargs)
 
