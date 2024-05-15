@@ -85,15 +85,14 @@ def handle_kiwi_build(goptions, session, args):
         kwargs['arches'] = [canonArch(arch) for arch in options.arches]
     if options.repo:
         kwargs['repos'] = options.repo
-    if options.use_buildroot_repo or not options.repo:
-        if not options.repo:
-            warn("no repos given, using buildroot repo")
-        if session.hub_version >= (1, 35, 0):
-            # for older plugin versions it is the default behaviour
-            # and option doesn't exist
-            kwargs['use_buildroot_repo'] = True
+
     if session.hub_version < (1, 35, 0):
         warn("hub version is < 1.35, buildroot repo is always used in addition to specified repos")
+    elif options.use_buildroot_repo:
+        kwargs['use_buildroot_repo'] = True
+    elif not options.repo:
+        warn("no repos given, using buildroot repo")
+        kwargs['use_buildroot_repo'] = True
 
     task_id = session.kiwiBuild(**kwargs)
 
