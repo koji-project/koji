@@ -13281,10 +13281,10 @@ class RootExports(object):
 
     def newRepo(self, tag, event=None, src=False, debuginfo=False, separate_src=False):
         """Create a newRepo task. returns task id"""
-        if context.session.hasPerm('regen-repo'):
+        if context.session.hasPerm('repo'):
             pass
         else:
-            context.session.assertPerm('repo')
+            context.session.assertPerm('regen-repo')
         # raise error when tag does not exist
         get_tag(tag, strict=True, event=event)
         opts = {}
