@@ -625,6 +625,22 @@ kojira is a daemon that keeps the build root repodata updated. It is
 responsible for removing redundant build roots and cleaning up after a
 build request is completed.
 
+Development Environment
+=======================
+
+Best development environment would be to install koji as expected via
+:doc:`server_howto`. This would leave you with fully functional environment
+able to build everything koji can. Also, it is a good exercise to understand
+how all the parts interact. Of course, it is time consuming, so various people
+created following environments:
+
+ * Vagrant environment with ansible provisioning:
+   https://github.com/ktdreyer/koji-playbooks/tree/master/vagrant
+ * Light container-based environment (e.g. can't build images):
+   https://github.com/tkopecek/koji-container-dev
+ * Vagrant-based: https://pagure.io/koji-vagrant
+ * Vagrant-based: https://pagure.io/koji/pull-request/420
+
 Building and Deploying Changes
 ==============================
 
