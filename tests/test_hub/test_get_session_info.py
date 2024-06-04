@@ -14,6 +14,9 @@ class TestGetSessionInfo(DBQueryTestCase):
         self.userinfo = {'id': 123, 'name': 'testuser'}
         self.exports.getLoggedInUser = mock.MagicMock()
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_get_session_info_not_logged(self):
         self.context.session.logged_in = False
         result = self.exports.getSessionInfo()

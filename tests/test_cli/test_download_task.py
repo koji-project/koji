@@ -339,7 +339,7 @@ Default behavior without --all option downloads .rpm files only for build and bu
         self.download_file.assert_not_called()
 
     def test_handle_download_parent_not_finished(self):
-        args = [str(self.parent_task_id)]
+        args = [str(self.parent_task_id), '--nowait']
         self.session.getTaskInfo.return_value = {
             'id': self.parent_task_id,
             'method': 'buildArch',

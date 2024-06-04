@@ -20,6 +20,9 @@ class TestGetBuildTargets(DBQueryTestCase):
         self.build_tag_id = 1
         self.dest_tag_id = 2
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_get_build_targets_strings(self):
         self.name_or_id_clause.return_value = '(build_target.name = %(build_target_name)s)', \
                                               {'build_target_name': 'build-target-url'}

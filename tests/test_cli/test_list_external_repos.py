@@ -42,6 +42,7 @@ class TestListExternalRepo(utils.CliTestCase):
         else:
             os.environ['TZ'] = self.original_timezone
         time.tzset()
+        mock.patch.stopall()
 
     def test_list_external_repos_with_args(self):
         arguments = ['arg']

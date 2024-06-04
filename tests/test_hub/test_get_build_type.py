@@ -14,6 +14,9 @@ class TestGetBuildType(DBQueryTestCase):
         self.get_win_build = mock.patch('kojihub.kojihub.get_win_build').start()
         self.get_image_build = mock.patch('kojihub.kojihub.get_image_build').start()
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_no_build(self):
         self.get_build.return_value = None
 

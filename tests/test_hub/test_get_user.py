@@ -15,6 +15,9 @@ class TestGetUser(DBQueryTestCase):
         self.list_user_krb_principals = mock.patch(
             'kojihub.kojihub.list_user_krb_principals').start()
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_wrong_format_user_info(self):
         userinfo = ['test-user']
         with self.assertRaises(koji.GenericError) as cm:
