@@ -39,7 +39,7 @@ class TestBuildTargetDelete(unittest.TestCase):
         with self.assertRaises(koji.GenericError) as cm:
             webidx.buildtargetdelete(self.environ, self.buildtarget_id)
         self.session.deleteBuildTarget.assert_not_called()
-        self.assertEqual(str(cm.exception), 'No such build target: %s' % self.buildtarget_id)
+        self.assertEqual(str(cm.exception), f'No such build target: {self.buildtarget_id}')
 
     def test_buildtargetdelete_normal_case(self):
         """Test taskinfo function"""

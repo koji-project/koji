@@ -14,6 +14,7 @@ class TestTaskInfo(unittest.TestCase):
         self.get_server = mock.patch.object(webidx, "_getServer").start()
         self.task_label = mock.patch('koji.taskLabel').start()
         self.gen_html = mock.patch.object(webidx, '_genHTML').start()
+        self.server = mock.MagicMock()
 
         self.environ = {
             'koji.options': {
@@ -50,31 +51,30 @@ class TestTaskInfo(unittest.TestCase):
         self.parent_task['parent'] = None
 
     def __get_server(self, task=None):
-        server = mock.MagicMock()
-        server.getTaskInfo.side_effect = [
+        self.server.getTaskInfo.side_effect = [
             task if task else self.task,
             self.parent_task
         ]
 
-        server.getTaskDescendents.return_value = {
+        self.server.getTaskDescendents.return_value = {
             str(self.task_id): []
         }
 
-        server.getChannel.return_value = {
+        self.server.getChannel.return_value = {
             'name': 'TestChannel'
         }
 
-        server.getHost.return_value = {
+        self.server.getHost.return_value = {
             'name': 'TestHost'
         }
 
-        server.getUser.return_value = {
+        self.server.getUser.return_value = {
             'name': 'Tester'
         }
 
-        server.getUserPerms.return_value = ['admin']
+        self.server.getUserPerms.return_value = ['admin']
 
-        server.listBuilds.return_value = [
+        self.server.listBuilds.return_value = [
             {
                 "package_name": "less",
                 "extra": "None",
@@ -95,14 +95,14 @@ class TestTaskInfo(unittest.TestCase):
             },
         ]
 
-        server.listBuildroots.return_value = {
+        self.server.listBuildroots.return_value = {
             "arch": "x86_64",
             "host_name": "builder",
             "task_id": self.task_id,
             "id": 1
         }
 
-        server.getTag.return_value = {
+        self.server.getTag.return_value = {
             "id": 2,
             "arches": "x86_64",
             "name": "fedora-build",
@@ -110,7 +110,7 @@ class TestTaskInfo(unittest.TestCase):
             "perm": None
         }
 
-        server.getTaskResult.return_value = {
+        self.server.getTaskResult.return_value = {
             "brootid": 1,
             "srpms": [
                 "tasks/8/8/less-487-3.fc26.src.rpm"
@@ -129,7 +129,7 @@ class TestTaskInfo(unittest.TestCase):
             ]
         }
 
-        server.listTaskOutput.return_value = {
+        self.server.listTaskOutput.return_value = {
             "root.log": ["DEFAULT"],
             "hw_info.log": ["DEFAULT"],
             "less-debuginfo-487-3.fc26.x86_64.rpm": ["DEFAULT"],
@@ -140,22 +140,20 @@ class TestTaskInfo(unittest.TestCase):
             "less-487-3.fc26.x86_64.rpm": ["DEFAULT"],
             "installed_pkgs.log": ["DEFAULT"]
         }
-        return server
+        return self.server
 
     def tearDown(self):
         mock.patch.stopall()
 
     def test_taskinfo_exception(self):
         """Test taskinfo function raises exception"""
-        server = mock.MagicMock()
-        server.getTaskInfo.return_value = None
+        self.server.getTaskInfo.return_value = None
 
-        self.get_server.return_value = server
+        self.get_server.return_value = self.server
 
         with self.assertRaises(koji.GenericError) as cm:
             webidx.taskinfo(self.environ, self.task_id)
-        self.assertEqual(
-            str(cm.exception), 'No such task ID: %s' % self.task_id)
+        self.assertEqual(str(cm.exception), f'No such task ID: {self.task_id}')
 
     def test_taskinfo_getTaskResult_exception(self):
         """Test taskinfo function with exception raised from getTaskResult"""
@@ -322,7 +320,7 @@ class TestTaskInfo(unittest.TestCase):
         self.get_server.return_value = server
         server.getBuildTarget.return_value = 'tgt'
         webidx.taskinfo(self.environ, self.task_id)
-        self.assertEqual(self.environ['koji.values']['params'], 
+        self.assertEqual(self.environ['koji.values']['params'],
                          {'build': '', 'build_target': 'tgt', 'spec_url': '', 'task': {'id': 999}})
 
         # case 7. restartVerify

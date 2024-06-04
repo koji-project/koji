@@ -12,6 +12,7 @@ class TestHostEdit(unittest.TestCase):
     def setUp(self):
         self.get_server = mock.patch.object(webidx, "_getServer").start()
         self.assert_login = mock.patch.object(webidx, "_assertLogin").start()
+        self.gen_html = mock.patch.object(webidx, '_genHTML').start()
         self.server = mock.MagicMock()
         self.environ = {
             'koji.options': {
@@ -45,6 +46,12 @@ class TestHostEdit(unittest.TestCase):
         with self.assertRaises(koji.GenericError) as cm:
             webidx.hostedit(self.environ, self.host_id)
         self.assertEqual(str(cm.exception), f'no host with ID: {self.host_id}')
+        self.server.getHost.assert_called_with(int(self.host_id))
+        self.server.editHost.assert_not_called()
+        self.server.listChannels.assert_not_called()
+        self.server.removeHostFromChannel.assert_not_called()
+        self.server.addHostToChannel.assert_not_called()
+        self.server.listChannels.assert_not_called()
 
     def test_hostedit_save_case_valid(self):
         """Test hostedit function valid case (save)."""
@@ -66,6 +73,7 @@ class TestHostEdit(unittest.TestCase):
 
         with self.assertRaises(ServerRedirect):
             webidx.hostedit(self.environ, self.host_id)
+        self.assertEqual(self.environ['koji.redirect'], f'hostinfo?hostID={self.host_id}')
         self.server.getHost.assert_called_with(int(self.host_id))
         self.server.editHost.assert_called_with(int(self.host_id), arches='x86_64', capacity=1.0,
                                                 description='test-desc', comment='test-comment')
@@ -73,7 +81,6 @@ class TestHostEdit(unittest.TestCase):
         self.server.removeHostFromChannel.assert_called_with(
             self.host_info['name'], 'test-channel')
         self.server.addHostToChannel.assert_called_with(self.host_info['name'], 'default')
-        self.assertEqual(self.environ['koji.redirect'], f'hostinfo?hostID={self.host_id}')
 
     def test_hostedit_cancel_case_valid(self):
         """Test hostedit function valid case (cancel)."""
@@ -90,9 +97,38 @@ class TestHostEdit(unittest.TestCase):
 
         with self.assertRaises(ServerRedirect):
             webidx.hostedit(self.environ, self.host_id)
+        self.assertEqual(self.environ['koji.redirect'], f'hostinfo?hostID={self.host_id}')
         self.server.getHost.assert_called_with(int(self.host_id))
         self.server.editHost.assert_not_called()
         self.server.listChannels.assert_not_called()
         self.server.removeHostFromChannel.assert_not_called()
         self.server.addHostToChannel.assert_not_called()
-        self.assertEqual(self.environ['koji.redirect'], f'hostinfo?hostID={self.host_id}')
+        self.server.listChannels.assert_not_called()
+
+    def test_hostedit_another_case(self):
+        """Test hostedit function valid case (another)."""
+        urlencode_data = b"another=True"
+        fs = self.get_fs(urlencode_data)
+
+        def __get_server(env):
+            env['koji.session'] = self.server
+            env['koji.form'] = fs
+            return self.server
+
+        self.get_server.side_effect = __get_server
+        self.server.getHost.return_value = self.host_info
+        self.server.listChannels.side_effect = [
+            [{'id': 1, 'name': 'test-channel-1'},
+             {'id': 2, 'name': 'test-channel-2'},
+             {'id': 3, 'name': 'test-channel-3'}],
+            [{'id': 1, 'name': 'test-channel-1'},
+             {'id': 3, 'name': 'test-channel-3'}]
+        ]
+
+        webidx.hostedit(self.environ, self.host_id)
+        self.server.getHost.assert_called_with(int(self.host_id))
+        self.server.editHost.assert_not_called()
+        self.server.removeHostFromChannel.assert_not_called()
+        self.server.addHostToChannel.assert_not_called()
+        self.server.listChannels.assert_has_calls(([mock.call(),
+                                                    mock.call(hostID=int(self.host_id))]))
