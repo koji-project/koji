@@ -1332,11 +1332,13 @@ class BuildTask(BaseTaskHandler):
 
     def getSRPMFromSRPM(self, src, build_tag, repo_id):
         # rebuild srpm in mock, so it gets correct disttag, rpm version, etc.
+        taskarch = self.choose_taskarch('noarch', None, build_tag)
         task_id = self.session.host.subtask(method='rebuildSRPM',
                                             arglist=[src, build_tag, {
                                                 'repo_id': repo_id,
                                                 'scratch': self.opts.get('scratch')}],
                                             label='srpm',
+                                            arch=taskarch,
                                             parent=self.id)
         # wait for subtask to finish
         result = self.wait(task_id)[task_id]
@@ -1349,11 +1351,13 @@ class BuildTask(BaseTaskHandler):
 
     def getSRPMFromSCM(self, url, build_tag, repo_id):
         # TODO - allow different ways to get the srpm
+        taskarch = self.choose_taskarch('noarch', None, build_tag)
         task_id = self.session.host.subtask(method='buildSRPMFromSCM',
                                             arglist=[url, build_tag, {
                                                 'repo_id': repo_id,
                                                 'scratch': self.opts.get('scratch')}],
                                             label='srpm',
+                                            arch=taskarch,
                                             parent=self.id)
         # wait for subtask to finish
         result = self.wait(task_id)[task_id]
@@ -1432,9 +1436,13 @@ class BuildTask(BaseTaskHandler):
         # For noarch, attempt to honor ExcludeArch/ExclusiveArch
         # see https://pagure.io/koji/issue/19
 
-        h = self.readSRPMHeader(srpm)
-        exclusivearch = koji.get_header_field(h, 'exclusivearch')
-        excludearch = koji.get_header_field(h, 'excludearch')
+        if srpm is None:
+            exclusivearch = []
+            excludearch = []
+        else:
+            h = self.readSRPMHeader(srpm)
+            exclusivearch = koji.get_header_field(h, 'exclusivearch')
+            excludearch = koji.get_header_field(h, 'excludearch')
 
         buildconfig = self.session.getBuildConfig(build_tag, event=self.event_id)
         noarch_arches = buildconfig.get('extra', {}).get('noarch_arches')
