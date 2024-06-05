@@ -10432,9 +10432,30 @@ def policy_data_from_task_args(method, arglist):
                 target = tinfo['name']
         policy_data['target'] = target
 
+    # parameters that indicate a tag
+    hastag = False
+    for k in ('tag', 'tag_id', 'tag_info'):
+        if k in params:
+            tag = params.get(k)
+            hastag = True
+            break
+    if hastag:
+        try:
+            policy_data['tag'] = lookup_tag(tag, strict=True)['name']
+        except Exception:
+            logger.warning("Bad tag parameter: %r", tag)
+
+    if 'build_tag' in params:
+        try:
+            policy_data['build_tag'] = lookup_tag(params['build_tag'], strict=True)['name']
+        except Exception:
+            logger.warning("Bad tag parameter: %(build_tag)r", params)
+
+    # provide scratch opt if given
     # we may have param['opts'] that is explicitly None
     t_opts = params.get('opts') or {}
-    policy_data['scratch'] = t_opts.get('scratch', False)
+    if 'scratch' in t_opts:
+        policy_data['scratch'] = t_opts['scratch']
 
     return policy_data
 

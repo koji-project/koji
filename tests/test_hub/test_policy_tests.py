@@ -761,3 +761,95 @@ class IsBuildOwnerTest(unittest.TestCase):
         self.get_user.assert_called_once_with(3)
         self.policy_get_user.assert_called_once_with(data)
         self.get_user_groups.assert_not_called()
+
+
+class TestPolicyDataFromTask(unittest.TestCase):
+
+    def setUp(self):
+        self.lookup_build_target = mock.patch('kojihub.kojihub.lookup_build_target').start()
+        self.lookup_build_target.return_value = {'id': 100, 'name': 'MYTARGET'}
+        self.lookup_tag = mock.patch('kojihub.kojihub.lookup_tag').start()
+        self.lookup_tag.return_value = {'id': 100, 'name': 'MYTAG'}
+
+    def tearDown(self):
+        mock.patch.stopall()
+
+    GOOD = [
+        # method, kwargs, expect
+        ['build',
+            {'src': 'git://foo', 'target': 100, 'opts': {}},
+            {'source': 'git://foo', 'target': 'MYTARGET'}],
+        ['build',
+            {'src': 'git://foo', 'target': 100, 'opts': {'scratch': True}},
+            {'source': 'git://foo', 'target': 'MYTARGET', 'scratch': True}],
+        ['build', 
+            {'src': 'git://foo', 'target': {'name': 'MYTARGET'}, 'opts': {}},
+            {'source': 'git://foo', 'target': 'MYTARGET'}],
+        ['newRepo',
+            {'tag': 100},
+            {'tag': 'MYTAG'}],
+        ['newRepo',
+            {'tag': 'MYTAG', 'src': 'should be ignored'},
+            {'tag': 'MYTAG'}],
+        ['rebuildSRPM',
+            {'srpm': 'SRPM', 'build_tag': 100},
+            {'build_tag': 'MYTAG'}],
+        ['indirectionimage',
+            {'opts': {'scratch': True, 'target': 100}},
+            {'target': 'MYTARGET', 'scratch': True}],
+    ]
+
+    BAD = [
+        # method, arglist
+        ['nosuchmethod', []],
+        ['build', [1,2,3,4,5,6,7,8]],  # too many args
+        ['build', True],  # not a list
+    ]
+
+    def test_good(self):
+        for method, kwargs, expect in self.GOOD:
+            arglist = koji.encode_args(**kwargs)
+            data = kojihub.policy_data_from_task_args(method, arglist)
+            self.assertEqual(data, expect)
+
+    def test_bad(self):
+        # this function should be tolerant of bad parameters
+        for method, arglist in self.BAD:
+            data = kojihub.policy_data_from_task_args(method, arglist)
+            self.assertEqual(data, {})
+
+    def test_unexpected_exception(self):
+        arglist = mock.MagicMock()
+        arglist.__len__.side_effect = Exception('highly unlikely scenario')
+        data = kojihub.policy_data_from_task_args('build', arglist)
+        self.assertEqual(data, {})
+
+    def test_bad_target(self):
+        kwargs = {'src': 'git://foo', 'target': {}}
+        arglist = koji.encode_args(**kwargs)
+        data = kojihub.policy_data_from_task_args('build', arglist)
+        self.assertEqual(data, {'source': 'git://foo', 'target': None})
+
+    def test_bad_target2(self):
+        kwargs = {'src': 'git://foo', 'target': 100}
+        arglist = koji.encode_args(**kwargs)
+        self.lookup_build_target.return_value = None
+        data = kojihub.policy_data_from_task_args('build', arglist)
+        self.assertEqual(data, {'source': 'git://foo', 'target': None})
+
+    def test_bad_tag(self):
+        kwargs = {'tag': 100}
+        arglist = koji.encode_args(**kwargs)
+        self.lookup_tag.side_effect = koji.GenericError('...')
+        data = kojihub.policy_data_from_task_args('newRepo', arglist)
+        self.assertEqual(data, {})
+
+    def test_bad_build_tag(self):
+        kwargs = {'srpm': 'SRPM', 'build_tag': 100}
+        arglist = koji.encode_args(**kwargs)
+        self.lookup_tag.side_effect = koji.GenericError('...')
+        data = kojihub.policy_data_from_task_args('rebuildSRPM', arglist)
+        self.assertEqual(data, {})
+
+
+# the end
