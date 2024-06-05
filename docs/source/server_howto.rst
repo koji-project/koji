@@ -791,8 +791,6 @@ services configurations.
 
 ::
 
-    AuthPrincipal = host/kojihub@EXAMPLE.COM
-    AuthKeytab = /etc/koji.keytab
     ProxyPrincipals = koji/kojiweb@EXAMPLE.COM
     HostPrincipalFormat = compile/%s@EXAMPLE.COM
 
