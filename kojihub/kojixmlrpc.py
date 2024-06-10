@@ -447,8 +447,6 @@ def load_config(environ):
         ['DBConnectionString', 'string', None],
         ['KojiDir', 'string', None],
 
-        ['AuthPrincipal', 'string', None],
-        ['AuthKeytab', 'string', None],
         ['ProxyPrincipals', 'string', ''],
         ['HostPrincipalFormat', 'string', None],
         ['AllowedKrbRealms', 'string', '*'],
