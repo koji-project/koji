@@ -442,27 +442,6 @@
                     }
                 }
             },
-            "DBHandler": {
-                "type": "<class 'type'>",
-                "is_class": true,
-                "members": {
-                    "emit": {
-                        "type": "<class 'function'>",
-                        "is_function": true,
-                        "desc": "(self, record)",
-                        "args": [
-                            {
-                                "name": "self"
-                            },
-                            {
-                                "name": "record"
-                            }
-                        ],
-                        "varargs": null,
-                        "varkw": null
-                    }
-                }
-            },
             "DEFAULT_AUTH_TIMEOUT": {
                 "type": "<class 'int'>"
             },
