@@ -7397,6 +7397,8 @@ class CG_Importer(object):
             if fileinfo['type'] not in ['rpm', 'log']:
                 self.prep_archive(fileinfo)
             if fileinfo['type'] == 'rpm':
+                if fileinfo.get('subdir'):
+                    raise koji.GenericError("subdir field not allowed for rpm outputs")
                 koji.check_NVRA(fileinfo['filename'], strict=True)
             outputs.append(fileinfo)
         self.prepped_outputs = outputs
@@ -7430,6 +7432,8 @@ class CG_Importer(object):
                                         "%(filename)s" % fileinfo)
             btype = key
             type_info = extra[key]
+            if fileinfo.get('subdir'):
+                raise koji.GenericError("subdir field not allowed for legacy btypes")
         for key in extra.get('typeinfo', {}):
             if btype == key:
                 raise koji.GenericError("Duplicate typeinfo for: %r" % btype)
@@ -7473,9 +7477,9 @@ class CG_Importer(object):
         if fileinfo.get('metadata_only', False):
             # logs are not currently tracked, so this is a no op
             return
-        # TODO: determine subdir
+        subdir = fileinfo.get('subdir')
         fn = fileinfo['hub.path']
-        import_build_log(fn, buildinfo, subdir=None)
+        import_build_log(fn, buildinfo, subdir=subdir)
 
     def import_archive(self, buildinfo, brinfo, fileinfo):
         fn = fileinfo['hub.path']
@@ -7585,9 +7589,9 @@ def import_build_log(fn, buildinfo, subdir=None):
     """Move a logfile related to a build to the right place"""
     logdir = koji.pathinfo.build_logs(buildinfo)
     if subdir:
-        logdir = "%s/%s" % (logdir, subdir)
+        logdir = joinpath(logdir, subdir)
     koji.ensuredir(logdir)
-    final_path = "%s/%s" % (logdir, os.path.basename(fn))
+    final_path = joinpath(logdir, os.path.basename(fn))
     if os.path.exists(final_path):
         raise koji.GenericError("Error importing build log. %s already exists." % final_path)
     if os.path.islink(fn) or not os.path.isfile(fn):
@@ -8088,6 +8092,9 @@ def import_archive_internal(filepath, buildinfo, type, typeInfo, buildroot_id=No
         # new style type, no supplementary table
         if not metadata_only:
             destdir = koji.pathinfo.typedir(buildinfo, btype['name'])
+            subdir = fileinfo.get('subdir')
+            if subdir:
+                destdir = joinpath(destdir, subdir)
             _import_archive_file(filepath, destdir)
 
     archiveinfo = get_archive(archive_id, strict=True)

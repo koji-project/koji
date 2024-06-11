@@ -138,6 +138,9 @@ Each map in the output list contains the following entries:
 -  buildroot\_id: The id of the buildroot used to create this file. Must
    match an entry in the buildroots list.
 -  filename: The name of the file.
+-  relpath: relative path for the uploaded file. I.e. the file was uploaded to
+   $upload_dir/$relpath/$filename
+-  subdir: subdir for final location. Only valid for logs and non-legacy btypes
 -  filesize: The size of the file.
 -  arch: The architecture of the file (if applicable).
 -  checksum: The checksum of the file.
