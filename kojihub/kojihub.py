@@ -6977,6 +6977,9 @@ class CG_Importer(object):
     def assert_policy(self):
         policy_data = {
             'package': self.buildinfo['name'],
+            'version': self.buildinfo['version'],
+            'release': self.buildinfo['release'],
+            'btypes': list(self.typeinfo),
             'source': self.buildinfo.get('source'),
             'metadata_only': self.metadata_only,
             'cg_list': [self.cg],
