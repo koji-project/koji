@@ -408,7 +408,7 @@ class TasksTestCase(unittest.TestCase):
         obj = TaskTest(123, 'some_method', ['random_arg'], None, None, temp_path)
         obj.session = Mock()
         self.assertEqual(obj.uploadFile(temp_file), None)
-        self.assertEqual(obj.session.uploadWrapper.called, False)
+        obj.session.uploadWrapper.assert_called_once()
 
     def test_BaseTaskHandler_uploadTree(self):
         """ Tests that the uploadTree function calls the uploadFile function
