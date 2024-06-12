@@ -476,9 +476,7 @@ class BaseTaskHandler(object):
         if relPath:
             relPath = relPath.strip('/')
             uploadPath += '/' + relPath
-        # Only upload files with content
-        if os.path.isfile(filename) and os.stat(filename).st_size > 0:
-            self.session.uploadWrapper(filename, uploadPath, remoteName, volume=volume)
+        self.session.uploadWrapper(filename, uploadPath, remoteName, volume=volume)
 
     def uploadTree(self, dirpath, flatten=False, volume=None):
         """Upload the directory tree at dirpath to the task directory on the
@@ -489,8 +487,15 @@ class BaseTaskHandler(object):
                 relpath = None
             else:
                 relpath = path[len(dirpath) + 1:]
-            for filename in files:
-                self.uploadFile(os.path.join(path, filename), relpath, volume=volume)
+            for f in files:
+                filename = os.path.join(path, f)
+                if not os.path.isfile(filename):
+                    self.logger.warning('Skipping upload for non-file: %s', filename)
+                    continue
+                if os.stat(filename).st_size == 0:
+                    self.logger.warning('Skipping upload for empty file: %s', filename)
+                    continue
+                self.uploadFile(filename, relpath, volume=volume)
 
     def chownTree(self, dirpath, uid, gid):
         """chown the given path and all files and directories under
