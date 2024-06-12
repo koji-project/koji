@@ -259,7 +259,7 @@ class TestQueryHistory(DBQueryTestCase):
                           "LEFT OUTER JOIN users AS revoker ON revoker.id = revoker_id",
                           'LEFT OUTER JOIN users ON user_id = users.id',
                           'LEFT OUTER JOIN content_generator ON cg_id = content_generator.id'])
-        self.assertEqual(query.values, {'affected_user_id': 159, 'before': '2023-04-19 17:23:40'})
+        self.assertEqual(query.values, {'affected_user_id': 159, 'before': '2023-04-19 17:23:40+00:00'})
 
         query = self.queries[1]
         self.assertEqual(query.tables, ['tag_package_owners'])
@@ -284,7 +284,7 @@ class TestQueryHistory(DBQueryTestCase):
                           'LEFT OUTER JOIN package ON package_id = package.id',
                           'LEFT OUTER JOIN tag ON tag_id = tag.id',
                           'LEFT OUTER JOIN users AS owner ON owner = owner.id'])
-        self.assertEqual(query.values, {'affected_user_id': 159, 'before': '2023-04-19 17:23:40'})
+        self.assertEqual(query.values, {'affected_user_id': 159, 'before': '2023-04-19 17:23:40+00:00'})
 
         query = self.queries[2]
         self.assertEqual(query.tables, ['user_groups'])
@@ -306,7 +306,7 @@ class TestQueryHistory(DBQueryTestCase):
                           "LEFT OUTER JOIN users AS revoker ON revoker.id = revoker_id",
                           'LEFT OUTER JOIN users ON user_id = users.id',
                           'users AS usergroup ON group_id = usergroup.id'])
-        self.assertEqual(query.values, {'affected_user_id': 159, 'before': '2023-04-19 17:23:40'})
+        self.assertEqual(query.values, {'affected_user_id': 159, 'before': '2023-04-19 17:23:40+00:00'})
 
         query = self.queries[3]
         self.assertEqual(query.tables, ['user_perms'])
@@ -328,7 +328,7 @@ class TestQueryHistory(DBQueryTestCase):
                           "LEFT OUTER JOIN users AS revoker ON revoker.id = revoker_id",
                           'LEFT OUTER JOIN users ON user_id = users.id',
                           'LEFT OUTER JOIN permissions AS permission ON perm_id = permission.id'])
-        self.assertEqual(query.values, {'affected_user_id': 159, 'before': '2023-04-19 17:23:40'})
+        self.assertEqual(query.values, {'affected_user_id': 159, 'before': '2023-04-19 17:23:40+00:00'})
 
     def test_permission_and_after_key(self):
         self.get_perm_id.return_value = 66
@@ -356,7 +356,7 @@ class TestQueryHistory(DBQueryTestCase):
                           "LEFT OUTER JOIN users AS revoker ON revoker.id = revoker_id",
                           'LEFT OUTER JOIN tag ON tag_id = tag.id',
                           'LEFT OUTER JOIN permissions AS permission ON perm_id = permission.id'])
-        self.assertEqual(query.values, {'after': '2023-04-19 17:23:40', 'perm_id': 66})
+        self.assertEqual(query.values, {'after': '2023-04-19 17:23:40+00:00', 'perm_id': 66})
 
         query = self.queries[1]
         self.assertEqual(query.tables, ['user_perms'])
@@ -378,7 +378,7 @@ class TestQueryHistory(DBQueryTestCase):
                           "LEFT OUTER JOIN users AS revoker ON revoker.id = revoker_id",
                           'LEFT OUTER JOIN users ON user_id = users.id',
                           'LEFT OUTER JOIN permissions AS permission ON perm_id = permission.id'])
-        self.assertEqual(query.values, {'after': '2023-04-19 17:23:40', 'perm_id': 66})
+        self.assertEqual(query.values, {'after': '2023-04-19 17:23:40+00:00', 'perm_id': 66})
 
     def test_cg_key(self):
         self.lookup_name.return_value = {'id': 147}
