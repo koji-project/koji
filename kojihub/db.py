@@ -40,6 +40,7 @@ import time
 import traceback
 
 import psycopg2
+from dateutil.tz import tzutc
 
 import koji.context
 context = koji.context.context
@@ -302,7 +303,7 @@ def _singleRow(query, values, fields, strict=False):
 
 def convert_timestamp(ts):
     """Convert a numeric timestamp to a string suitable for a datetimetz field"""
-    return datetime.datetime.fromtimestamp(ts, datetime.timezone.utc).isoformat(' ')
+    return datetime.datetime.fromtimestamp(ts, tzutc()).isoformat(' ')
 
 
 def get_event():
