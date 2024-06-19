@@ -266,11 +266,11 @@ def main(options, session):
         except ServerRestart:
             logger.warning("Restarting")
             os.execv(sys.argv[0], sys.argv)
+        except koji.RetryError:
+            raise
         except koji.AuthExpired:
             logger.error('Session expired')
             break
-        except koji.RetryError:
-            raise
         except Exception:
             # XXX - this is a little extreme
             # log the exception and continue
