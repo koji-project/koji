@@ -171,12 +171,12 @@ def main(options, session):
             logger.error('Session expired')
             exit_code = 1
             break
+        except koji.RetryError:
+            raise
         except koji.AuthError:
             logger.error('Authentication error')
             exit_code = 1
             break
-        except koji.RetryError:
-            raise
         except Exception:
             # XXX - this is a little extreme
             # log the exception and continue
@@ -187,6 +187,7 @@ def main(options, session):
                 # Only sleep if we didn't take a task, otherwise retry immediately.
                 # The load-balancing code in getNextTask() will prevent a single builder
                 # from getting overloaded.
+                logger.debug('Sleeping for %s', options.sleeptime)
                 time.sleep(options.sleeptime)
         except (SystemExit, KeyboardInterrupt):
             logger.warning("Exiting")
