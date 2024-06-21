@@ -1190,7 +1190,7 @@ class BulkUpdateProcessor(object):
 
         utable = f'__kojibulk_{self.table}'
         utable.replace('.', '_')  # in case schema qualified
-        assigns = [f'{key} = {utable}.{key}' for key in all_keys]
+        assigns = [f'{key} = {utable}.{key}' for key in set_keys]
         values = {}  # values for lookup
         fdata = []  # data for VALUES clause
         for n, row in enumerate(self.data):

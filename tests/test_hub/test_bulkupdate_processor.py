@@ -26,7 +26,7 @@ class TestUpdateProcessor(unittest.TestCase):
 
         # check sql
         actual = str(proc)
-        expected_sql = ('UPDATE sometable SET field = __kojibulk_sometable.field, id = __kojibulk_sometable.id\n'
+        expected_sql = ('UPDATE sometable SET field = __kojibulk_sometable.field\n'
                     'FROM (VALUES (%(val_field_0)s, %(val_id_0)s), (%(val_field_1)s, %(val_id_1)s))\n'
                     'AS __kojibulk_sometable (field, id)\n'
                     'WHERE (sometable.id = __kojibulk_sometable.id)')
