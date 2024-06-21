@@ -3,22 +3,25 @@ import mock
 import unittest
 import datetime
 
+from koji.context import context
+
 import koji
-import kojihub
+import kojihub.repos
 
 
 QP = kojihub.QueryProcessor
 IP = kojihub.InsertProcessor
 UP = kojihub.UpdateProcessor
+RQ = kojihub.repos.RepoQuery
 
 
 class TestRepoFunctions(unittest.TestCase):
 
     def setUp(self):
-        self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
-                                         side_effect=self.getQuery).start()
+        self.RepoQuery = mock.patch('kojihub.repos.RepoQuery',
+                                    side_effect=self.getQuery).start()
         self.queries = []
-        self.InsertProcessor = mock.patch('kojihub.kojihub.InsertProcessor',
+        self.InsertProcessor = mock.patch('kojihub.InsertProcessor',
                                           side_effect=self.getInsert).start()
         self.inserts = []
         self.UpdateProcessor = mock.patch('kojihub.kojihub.UpdateProcessor',
@@ -27,15 +30,16 @@ class TestRepoFunctions(unittest.TestCase):
         self._dml = mock.patch('kojihub.kojihub._dml').start()
         self.exports = kojihub.RootExports()
         self.get_tag = mock.patch('kojihub.kojihub.get_tag').start()
+        self.get_tag_id = mock.patch('kojihub.kojihub.get_tag_id').start()
         self.query_executeOne = mock.MagicMock()
+        self.context = mock.patch('kojihub.db.context').start()
 
     def tearDown(self):
         mock.patch.stopall()
 
     def getQuery(self, *args, **kwargs):
-        query = QP(*args, **kwargs)
-        query.execute = mock.MagicMock()
-        query.executeOne = self.query_executeOne
+        query = RQ(*args, **kwargs)
+        #query.execute = mock.MagicMock()
         self.queries.append(query)
         return query
 
@@ -81,44 +85,46 @@ class TestRepoFunctions(unittest.TestCase):
                 raise Exception('Missing dist condition')
 
     def test_repo_info(self):
-        repo_row = {'id': 10,
-                    'state': 0,
-                    'task_id': 15,
-                    'create_event': 32,
-                    'creation_time': datetime.datetime(2021, 3, 30, 12, 34, 5, 204023,
-                                                       tzinfo=datetime.timezone.utc),
-                    'create_ts': 1617107645.204023,
-                    'tag_id': 3,
-                    'tag_name': 'test-tag',
-                    'dist': False}
-        self.query_executeOne.return_value = repo_row
         rv = kojihub.repo_info(3)
-        self.assertEqual(rv, repo_row)
+        self.RepoQuery.assert_called_once()
 
     def test_get_repo_default(self):
-        self.exports.getRepo(2)
+        self.get_tag_id.return_value = 100
+
+        self.exports.getRepo('TAG')
+
+        self.RepoQuery.assert_called_once()
+        qv = self.queries[0]
         self.assertEqual(len(self.queries), 1)
-        query = self.queries[0]
-        # make sure the following does not error
-        str(query)
-        self.assertEqual(query.tables, ['repo'])
-        columns = ['repo.id', 'repo.state', 'repo.task_id', 'repo.create_event',
-                   "date_part('epoch', events.time)", 'repo.dist', 'events.time']
-        self.assertEqual(set(query.columns), set(columns))
-        self.assertEqual(query.joins, ['events ON repo.create_event = events.id'])
-        self.assertEqual(query.clauses, ['repo.dist is false', 'repo.state = %(state)s',
-                                         'repo.tag_id = %(id)i'])
+        self.assertEqual(qv.clauses,
+                         [['tag_id', '=', 100], ['dist', 'IS', False], ['state', '=', 1]])
 
     def test_get_repo_with_dist_and_event(self):
-        self.exports.getRepo(2, event=111, dist=True)
+        self.get_tag_id.return_value = 100
+
+        self.exports.getRepo('TAG', event=111, dist=True)
+
+        self.RepoQuery.assert_called_once()
+        qv = self.queries[0]
         self.assertEqual(len(self.queries), 1)
-        query = self.queries[0]
-        # make sure the following does not error
-        str(query)
-        self.assertEqual(query.tables, ['repo'])
-        columns = ['repo.id', 'repo.state', 'repo.task_id', 'repo.create_event',
-                   "date_part('epoch', events.time)", 'repo.dist', 'events.time']
-        self.assertEqual(set(query.columns), set(columns))
-        self.assertEqual(query.joins, ['events ON repo.create_event = events.id'])
-        self.assertEqual(query.clauses, ['create_event <= %(event)i', 'repo.dist is true',
-                                         'repo.tag_id = %(id)i'])
+        self.assertEqual(qv.clauses,
+                         [['tag_id', '=', 100],
+                          ['dist', 'IS', True],
+                          ['create_event', '<=', 111]])
+
+    def test_get_repo_with_min_event(self):
+        self.get_tag_id.return_value = 100
+
+        self.exports.getRepo('TAG', min_event=101010)
+
+        self.RepoQuery.assert_called_once()
+        qv = self.queries[0]
+        self.assertEqual(len(self.queries), 1)
+        self.assertEqual(qv.clauses,
+                         [['tag_id', '=', 100],
+                          ['dist', 'IS', False],
+                          ['state', '=', 1],
+                          ['create_event', '>=', 101010]])
+
+
+# the end

@@ -46,7 +46,7 @@ admin commands:
         lock-tag                  Lock a tag
         make-task                 Create an arbitrary task
         prune-signed-copies       Prune signed copies
-        regen-repo                Force a repo to be regenerated
+        regen-repo                Generate a current repo if there is not one
         remove-external-repo      Remove an external repo from a tag or tags, or remove entirely
         remove-group              Remove group from tag
         remove-host-from-channel  Remove a host from a channel

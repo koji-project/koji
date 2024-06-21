@@ -154,7 +154,8 @@ LEGACY_SIGNATURES = {
         [['srcs', 'target', 'opts'], None, None, (None,)],
     ],
     'waitrepo': [
-        [['tag', 'newer_than', 'nvrs'], None, None, (None, None)],
+        [['tag', 'newer_than', 'nvrs', 'min_event'], None, None, (None, None, None)],
+        # [['tag', 'newer_than', 'nvrs'], None, None, (None, None)],
     ],
     'createLiveMedia': [
         [['name', 'version', 'release', 'arch', 'target_info', 'build_tag', 'repo_info', 'ksfile',
@@ -217,6 +218,8 @@ LEGACY_SIGNATURES = {
     'newRepo': [
         [['tag', 'event', 'src', 'debuginfo', 'separate_src'],
          None, None, (None, False, False, False)],
+        [['tag', 'event', 'src', 'debuginfo', 'separate_src', 'opts'],
+         None, None, (None, None, None, None, None)],
     ],
     'createImage': [
         [['name', 'version', 'release', 'arch', 'target_info', 'build_tag', 'repo_info',
@@ -581,35 +584,34 @@ class BaseTaskHandler(object):
 
     def getRepo(self, tag, builds=None, wait=False):
         """
-        Get the active repo for the given tag.  If there is no repo available,
-        wait for a repo to be created.
+        Get a repo that satisfies the given conditions. If there is no matching
+        repo available, wait for one (via a waitrepo subtask).
 
-        if wait is True - always wait for new repo
-        if builds are present, wait until repo doesn't contain these
+        :param int|str tag: the tag for the requested repo
+        :param list builds: require that the repo contain these builds
+        :param bool wait: (misnamed) get a repo that is current as of our start time
         """
-        if wait:
-            create_ts = time.time()
-        else:
-            create_ts = None
-            repo_info = self.session.getRepo(tag)
-            taginfo = self.session.getTag(tag, strict=True)
-            if not repo_info:
-                # make sure there is a target
-                targets = self.session.getBuildTargets(buildTagID=taginfo['id'])
-                if not targets:
-                    raise koji.BuildError('no repo (and no target) for tag %s' % taginfo['name'])
-                wait = True
-            elif builds:
-                build_infos = [koji.parse_NVR(build) for build in builds]
-                if not koji.util.checkForBuilds(self.session, taginfo['id'],
-                                                build_infos, repo_info['create_event']):
-                    wait = True
 
         if wait:
-            task_id = self.session.host.subtask(method='waitrepo',
-                                                arglist=[tag, create_ts, builds],
-                                                parent=self.id)
-            repo_info = self.wait(task_id)[task_id]
+            # This option is now misnamed. Previously we would always wait to ensure a
+            # current repo, but we have better options now
+            min_event = "last"
+        else:
+            min_event = None
+
+        watcher = koji.util.RepoWatcher(self.session, tag, nvrs=builds, min_event=min_event,
+                                        logger=self.logger)
+        repoinfo = watcher.getRepo()
+
+        # Did we get a repo?
+        if repoinfo:
+            return repoinfo
+
+        # otherwise, we create a subtask to continue waiting for us
+        # this makes the process more visible to the user
+        args = watcher.task_args()
+        task_id = self.session.host.subtask(method='waitrepo', arglist=args, parent=self.id)
+        repo_info = self.wait(task_id)[task_id]
         return repo_info
 
     def run_callbacks(self, plugin, *args, **kwargs):
@@ -865,75 +867,40 @@ class WaitrepoTask(BaseTaskHandler):
     # time in minutes before we fail this task
     TIMEOUT = 120
 
-    def handler(self, tag, newer_than=None, nvrs=None):
+    def handler(self, tag, newer_than=None, nvrs=None, min_event=None):
         """Wait for a repo for the tag, subject to given conditions
 
-        newer_than: create_event timestamp should be newer than this
-        nvr: repo should contain this nvr (which may not exist at first)
+        tag: the tag for the repo
+        newer_than: (legacy) create_event timestamp should be newer than this
+        nvrs: repo should contain these nvrs (which may not exist at first)
+        min_event: minimum event for the repo
 
-        Only one of the options may be specified. If neither is, then
-        the call will wait for the first ready repo.
+        The newer_than arg is provided for backward compatibility. The min_event arg is preferred.
 
-        Returns the repo info (from getRepo) of the chosen repo
+        Returns the repo info of the chosen repo
         """
 
-        start = time.time()
+        # handle legacy newer_than arg
+        if newer_than is not None:
+            if min_event is not None:
+                raise koji.GenericError('newer_than and min_event args confict')
+            if isinstance(newer_than, six.string_types) and newer_than.lower() == "now":
+                min_event = "last"
+            elif isinstance(newer_than, six.integer_types + (float,)):
+                # here, we look for the first event where the tag changed after this time
+                # or, if the tag has not changed since that time, we use its last change event
+                base = self.session.getLastEvent(before=newer_than)
+                min_event = self.session.tagFirstChangeEvent(tag, after=base) or "last"
+            else:
+                raise koji.GenericError("Invalid value for newer_than: %s" % newer_than)
 
-        taginfo = self.session.getTag(tag, strict=True)
-        targets = self.session.getBuildTargets(buildTagID=taginfo['id'])
-        if not targets:
-            raise koji.GenericError("No build target for tag: %s" % taginfo['name'])
+        watcher = koji.util.RepoWatcher(self.session, tag, nvrs=nvrs, min_event=min_event,
+                                        logger=self.logger)
+        watcher.PAUSE = self.PAUSE
+        watcher.TIMEOUT = self.TIMEOUT
+        # TODO config?
+        repoinfo = watcher.waitrepo()
+        return repoinfo
 
-        if isinstance(newer_than, six.string_types) and newer_than.lower() == "now":
-            newer_than = start
-        if not isinstance(newer_than, six.integer_types + (type(None), float)):
-            raise koji.GenericError("Invalid value for newer_than: %s" % newer_than)
 
-        if newer_than and nvrs:
-            raise koji.GenericError("only one of (newer_than, nvrs) may be specified")
-
-        if not nvrs:
-            nvrs = []
-        builds = [koji.parse_NVR(nvr) for nvr in nvrs]
-
-        last_repo = None
-
-        while True:
-            try:
-                taginfo = self.session.getTag(tag, strict=True)
-            except koji.GenericError:
-                self.logger.debug("Tag %s got lost while waiting for newrepo", tag)
-                raise koji.GenericError("Unsuccessfully waited %s for %s repo. "
-                                        "Tag was probably deleted meanwhile." %
-                                        (koji.util.duration(start), tag))
-            repo = self.session.getRepo(taginfo['id'])
-            if repo and repo != last_repo:
-                if builds:
-                    if koji.util.checkForBuilds(
-                            self.session, taginfo['id'], builds, repo['create_event']):
-                        self.logger.debug("Successfully waited %s for %s to appear "
-                                          "in the %s repo" %
-                                          (koji.util.duration(start), koji.util.printList(nvrs),
-                                           taginfo['name']))
-                        return repo
-                elif newer_than:
-                    if repo['create_ts'] > newer_than:
-                        self.logger.debug("Successfully waited %s for a new %s repo" %
-                                          (koji.util.duration(start), taginfo['name']))
-                        return repo
-                else:
-                    # no check requested -- return first ready repo
-                    return repo
-
-            if (time.time() - start) > (self.TIMEOUT * 60.0):
-                if builds:
-                    raise koji.GenericError("Unsuccessfully waited %s for %s to appear "
-                                            "in the %s repo" %
-                                            (koji.util.duration(start), koji.util.printList(nvrs),
-                                             taginfo['name']))
-                else:
-                    raise koji.GenericError("Unsuccessfully waited %s for a new %s repo" %
-                                            (koji.util.duration(start), taginfo['name']))
-
-            time.sleep(self.PAUSE)
-            last_repo = repo
+# the end

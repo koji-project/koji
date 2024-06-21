@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+import mock
 import random
 import shutil
 import six
@@ -575,10 +576,9 @@ class TasksTestCase(unittest.TestCase):
                              ('host test.domain.local (i386) does not support any arches '
                               'of tag some_package-1.2-build (aarch64, x86_64)'))
 
-    def test_getRepo_tied_to_session(self):
-        """ Tests that the getRepo function calls session.getRepo(), and returns the result
-        when successful.
-        """
+    @patch('koji.util.RepoWatcher')
+    def test_getRepo_no_wait_task(self, RepoWatcher):
+        """ Tests that the getRepo method does not wait if repo is available"""
         temp_path = get_tmp_dir_path('TaskTest')
         makedirs(temp_path)
 
@@ -590,89 +590,75 @@ class TasksTestCase(unittest.TestCase):
             'state': 1
         }
 
-        obj = TaskTest(123, 'some_method', ['random_arg'], None, None, temp_path)
-        obj.session = Mock()
-        obj.session.getRepo.return_value = repo_dict
+        handler = TaskTest(123, 'some_method', ['random_arg'], None, None, temp_path)
+        handler.session = mock.MagicMock()
+        handler.wait = mock.MagicMock()
+        watcher = mock.MagicMock()
+        watcher.getRepo.return_value = repo_dict
+        RepoWatcher.return_value = watcher
 
-        self.assertEqual(obj.getRepo(8472), repo_dict)
+        result = handler.getRepo(8472)
 
-    @patch('{0}.TaskTest.wait'.format(__name__))
-    def test_getRepo_not_tied_to_session(self, mock_wait):
-        """ Tests that the getRepo function waits until the results are available
-        for session.getRepo, when it is not available at the start of the function call.
-        """
+        handler.session.host.subtask.assert_not_called()
+        handler.wait.assert_not_called()
+        self.assertEqual(result, repo_dict)
+
+    @patch('koji.util.RepoWatcher')
+    def test_getRepo_last_event(self, RepoWatcher):
+        """ Tests that the getRepo method uses min_event='last' when requested"""
         temp_path = get_tmp_dir_path('TaskTest')
         makedirs(temp_path)
 
         repo_dict = {
-            'create_event': 13413120,
-            'create_ts': 1466140834.9119599,
-            'creation_time': '2016-06-17 05:20:34.911962',
-            'id': 1592850,
+            'create_event': 13635166,
+            'create_ts': 1469039671.5743899,
+            'creation_time': '2016-07-20 18:34:31.574386',
+            'id': 1630631,
             'state': 1
         }
 
-        obj = TaskTest(123, 'some_method', ['random_arg'], None, None, temp_path)
-        obj.session = Mock()
-        obj.session.getRepo.return_value = None
-        obj.session.getTag.return_value = {
-            'arches': 'i386 ia64 x86_64 ppc s390 s390x ppc64',
-            'extra': {},
-            'id': 851,
-            'locked': True,
-            'maven_include_all': False,
-            'maven_support': False,
-            'name': 'dist-3.0E-build',
-            'perm': None,
-            'perm_id': None
-        }
-        obj.session.getBuildTargets.return_value = [{
-            'build_tag': 3093,
-            'build_tag_name': 'dist-6E-dsrv-9-build',
-            'dest_tag': 3092,
-            'dest_tag_name': 'dist-6E-dsrv-9-qu-candidate',
-            'id': 851,
-            'name': 'dist-6E-dsrv-9-qu-candidate'
-        }
-        ]
+        handler = TaskTest(123, 'some_method', ['random_arg'], None, None, temp_path)
+        handler.session = mock.MagicMock()
+        handler.wait = mock.MagicMock()
+        watcher = mock.MagicMock()
+        watcher.getRepo.return_value = repo_dict
+        RepoWatcher.return_value = watcher
 
-        obj.session.host.subtask.return_value = 123
-        mock_wait.return_value = {123: repo_dict}
+        result = handler.getRepo(8472, wait=True)
 
-        self.assertEqual(obj.getRepo(851), repo_dict)
-        obj.session.getRepo.assert_called_once_with(851)
-        obj.session.getTag.assert_called_once_with(851, strict=True)
+        RepoWatcher.assert_called_once_with(handler.session, 8472, nvrs=None, min_event='last', logger=handler.logger)
+        handler.session.host.subtask.assert_not_called()
+        handler.wait.assert_not_called()
+        self.assertEqual(result, repo_dict)
 
-    @patch('{0}.TaskTest.wait'.format(__name__))
-    def test_getRepo_not_tied_to_session_no_build_targets(self, mock_wait):
-        """ Tests that the getRepo function raises an exception
-        when session.getBuildTargets returns an empty list
-        """
+    @patch('koji.util.RepoWatcher')
+    def test_getRepo_wait_task(self, RepoWatcher):
+        """ Tests that the getRepo function waits for subtask if repo not immediately available"""
         temp_path = get_tmp_dir_path('TaskTest')
         makedirs(temp_path)
 
-        obj = TaskTest(123, 'some_method', ['random_arg'], None, None, temp_path)
-        obj.session = Mock()
-        obj.session.getRepo.return_value = None
-        obj.session.getTag.return_value = {
-            'arches': 'i686 x86_64 ppc ppc64 ppc64le s390 s390x aarch64',
-            'extra': {},
-            'id': 8472,
-            'locked': False,
-            'maven_include_all': False,
-            'maven_support': False,
-            'name': 'rhel-7.3-build',
-            'perm': 'admin',
-            'perm_id': 1
+        repo_dict = {
+            'create_event': 13635166,
+            'create_ts': 1469039671.5743899,
+            'creation_time': '2016-07-20 18:34:31.574386',
+            'id': 1630631,
+            'state': 1
         }
-        obj.session.getBuildTargets.return_value = []
 
-        try:
-            obj.getRepo(8472)
-            raise Exception('The BuildError Exception was not raised')
-        except koji.BuildError as e:
-            obj.session.getRepo.assert_called_once_with(8472)
-            self.assertEqual(e.args[0], 'no repo (and no target) for tag rhel-7.3-build')
+        handler = TaskTest(123, 'some_method', ['random_arg'], None, None, temp_path)
+        handler.session = mock.MagicMock()
+        handler.session.host.subtask.return_value = 'TASKID'
+        handler.wait = mock.MagicMock()
+        handler.wait.return_value = {'TASKID': repo_dict}
+        watcher = mock.MagicMock()
+        watcher.getRepo.return_value = None
+        RepoWatcher.return_value = watcher
+
+        result = handler.getRepo(8472)
+
+        handler.session.host.subtask.assert_called_once()
+        handler.wait.assert_called_once_with('TASKID')
+        self.assertEqual(result, repo_dict)
 
     def test_FakeTask_handler(self):
         """ Tests that the FakeTest handler can be instantiated and returns 42 when run.

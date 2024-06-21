@@ -62,5 +62,5 @@ class TestQueryView(unittest.TestCase):
         self.assertEqual(set(view.query.aliases), set(self.viewclass.default_fields))
 
     def test_all_fields(self):
-        view = self.viewclass(fields='*')
+        view = self.viewclass(fields='**')
         self.assertEqual(set(view.query.aliases), set(self.viewclass.fieldmap.keys()))

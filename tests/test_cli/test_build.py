@@ -165,7 +165,7 @@ Options:
   --no-rebuild-srpm     Force not to rebuild srpm for scratch build only
   --wait                Wait on the build, even if running in the background
   --nowait              Don't wait on build
-  --wait-repo           Wait for the actual buildroot repo of given target
+  --wait-repo           Wait for a current repo for the build tag
   --wait-build=NVR      Wait for the given nvr to appear in buildroot repo
   --quiet               Do not print the task information
   --arch-override=ARCH_OVERRIDE

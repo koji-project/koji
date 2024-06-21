@@ -5824,8 +5824,23 @@ class NewRepoTask(BaseTaskHandler):
         self.logger.debug('Arch repo test passed %s' % arch)
         return True
 
-    def handler(self, tag, event=None, src=False, debuginfo=False, separate_src=False):
+    def handler(self, tag, event=None, src=None, debuginfo=None, separate_src=None, opts=None):
         tinfo = self.session.getTag(tag, strict=True, event=event)
+
+        # handle deprecated opts
+        _opts = {}
+        if src is not None:
+            _opts['src'] = bool(src)
+        if debuginfo is not None:
+            _opts['debuginfo'] = bool(debuginfo)
+        if separate_src is not None:
+            _opts['separate_src'] = bool(separate_src)
+        if _opts:
+            if opts is not None:
+                raise koji.ParameterError('opts parameter cannot be combined with legacy options')
+            self.logger.warning('The src, debuginfo, and separate_src parameters for newRepo '
+                                'tasks are deprecated. Use the opts parameter.')
+            opts = _opts
 
         # check for fs access before we try calling repoInit
         top_repos_dir = joinpath(self.options.topdir, "repos")
@@ -5835,17 +5850,10 @@ class NewRepoTask(BaseTaskHandler):
             raise RefuseTask("No access to repos dir %s" % top_repos_dir)
 
         # call repoInit
-        kwargs = {}
+        kwargs = {'opts': opts, 'task_id': self.id}
         if event is not None:
             kwargs['event'] = event
-        if src:
-            kwargs['with_src'] = True
-        if separate_src:
-            kwargs['with_separate_src'] = True
-        # generate debuginfo repo if requested or if specified in sidetag's extra
-        if debuginfo or tinfo['extra'].get('with_debuginfo'):
-            kwargs['with_debuginfo'] = True
-        repo_id, event_id = self.session.host.repoInit(tinfo['id'], task_id=self.id, **kwargs)
+        repo_id, event_id = self.session.host.repoInit(tinfo['id'], **kwargs)
 
         path = koji.pathinfo.repo(repo_id, tinfo['name'])
         if not os.path.isdir(path):
@@ -5912,8 +5920,6 @@ class NewRepoTask(BaseTaskHandler):
 
         # finalize
         kwargs = {}
-        if event is not None:
-            kwargs['expire'] = True
         if cloned_archs:
             kwargs['repo_json_updates'] = {
                 'cloned_from_repo_id': oldrepo['id'],
@@ -6167,7 +6173,7 @@ class NewDistRepoTask(BaseTaskHandler):
                 continue
             upload_dir = koji.pathinfo.taskrelpath(subtasks[arch])
             self.session.host.distRepoMove(repo_id, upload_dir, arch)
-        self.session.host.repoDone(repo_id, {}, expire=False)
+        self.session.host.repoDone(repo_id, {})
         return 'Dist repository #%s successfully generated' % repo_id
 
 

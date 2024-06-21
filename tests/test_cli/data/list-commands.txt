@@ -46,7 +46,7 @@ admin commands:
         lock-tag                  Lock a tag
         make-task                 Create an arbitrary task
         prune-signed-copies       Prune signed copies
-        regen-repo                Force a repo to be regenerated
+        regen-repo                Generate a current repo if there is not one
         remove-external-repo      Remove an external repo from a tag or tags, or remove entirely
         remove-group              Remove group from tag
         remove-host-from-channel  Remove a host from a channel
@@ -130,6 +130,7 @@ miscellaneous commands:
         import-comps              Import group/package information from a comps file
         moshimoshi                Introduce yourself
         promote-build             Promote a draft build
+        request-repo              Request a repo for a tag
         version                   Report client and hub versions
 
 monitor commands:
@@ -142,6 +143,7 @@ monitor commands:
         scheduler-logs            Query scheduler logs
         unblock-notification      Unblock user's notification
         wait-repo                 Wait for a repo to be regenerated
+        wait-repo-request         Wait for an existing repo request
         watch-logs                Watch logs in realtime
         watch-task                Track progress of particular tasks
 

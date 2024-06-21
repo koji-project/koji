@@ -42,6 +42,7 @@ from koji.xmlrpcplus import ExtendedMarshaller, Fault, dumps, getparser
 from . import auth
 from . import db
 from . import scheduler
+from . import repos
 
 
 # HTTP headers included in every request
@@ -516,6 +517,20 @@ def load_config(environ):
         ['SoftRefusalTimeout', 'integer', 900],
         ['HostTimeout', 'integer', 900],
         ['RunInterval', 'integer', 60],
+
+        # repo options
+        ['MaxRepoTasks', 'integer', 10],
+        ['MaxRepoTasksMaven', 'integer', 2],
+        ['RepoRetries', 'integer', 3],
+        ['RequestCleanTime', 'integer', 60 * 24],  # in minutes
+        ['AllowNewRepo', 'bool', True],
+        ['RepoLag', 'int', 3600],
+        ['RepoAutoLag', 'int', 7200],
+        ['RepoLagWindow', 'int', 600],
+        ['RepoQueueUser', 'str', 'kojira'],
+        ['DebuginfoTags', 'str', ''],
+        ['SourceTags', 'str', ''],
+        ['SeparateSourceTags', 'str', ''],
     ]
     opts = {}
     for name, dtype, default in cfgmap:
@@ -864,9 +879,11 @@ def get_registry(opts, plugins):
     functions = kojihub.RootExports()
     hostFunctions = kojihub.HostExports()
     schedulerFunctions = scheduler.SchedulerExports()
+    repoFunctions = repos.RepoExports()
     registry.register_instance(functions)
     registry.register_module(hostFunctions, "host")
     registry.register_module(schedulerFunctions, "scheduler")
+    registry.register_module(repoFunctions, "repo")
     registry.register_function(auth.login)
     registry.register_function(auth.sslLogin)
     registry.register_function(auth.logout)

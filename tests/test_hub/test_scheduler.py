@@ -52,6 +52,7 @@ class BaseTest(unittest.TestCase):
 
         self.get_task_refusals = mock.patch('kojihub.scheduler.get_task_refusals').start()
         self.get_task_runs = mock.patch('kojihub.scheduler.get_task_runs').start()
+        self.check_repo_queue = mock.patch('kojihub.repos.check_repo_queue').start()
 
     def tearDown(self):
         mock.patch.stopall()
