@@ -2681,7 +2681,7 @@ def maven_tag_archives(tag_id, event_id=None, inherit=True):
 
 
 def repo_init(tag, task_id=None, event=None, opts=None):
-    """Create a new repo entry in the INIT state, return full repo data
+    """Create a new repo entry in the INIT state
 
     :param int|None task_id: (optional) the task that is creating the repo
     :param int|None event: (optional) specify the event to create the repo from
