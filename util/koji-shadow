@@ -1043,28 +1043,31 @@ class BuildTracker(object):
         results = session.multiCall(strict=True)
         event_id = results[-1][0]['id']
         # TODO - verify / check results ?
-        task_id = session.newRepo(our_tag, event=event_id)
         # TODO - upload src
         #       [?] use remote SCM url (if avail)?
         src = build.getSource()
         if not src:
             log("Couldn't get source for %s" % build.nvr)
             return None
-        # wait for repo task
-        log("Waiting on newRepo task %i" % task_id)
+        # request our repo
+        check = session.repo.request(our_tag, at_event=event_id)
+        log("Waiting on repo")
         while True:
-            tinfo = session.getTaskInfo(task_id)
-            tstate = koji.TASK_STATES[tinfo['state']]
-            if tstate == 'CLOSED':
+            # TODO use Repowatcher instead
+            repo = check.get('repo')
+            if repo:
+                # done waiting
                 break
-            elif tstate in ('CANCELED', 'FAILED'):
+            req = check['request']
+            if not req or not req['active']:
                 log("Error: failed to generate repo")
                 return None
+            time.sleep(1)
+            check = session.repo.checkRequest(req['id'])
             # add a timeout?
-        # TODO       ...and verify repo
-        repo_id, event_id = session.getTaskResult(task_id)
+
         # kick off build
-        task_id = session.build(src, None, opts={'repo_id': repo_id}, priority=options.priority)
+        task_id = session.build(src, None, opts={'repo_id': repo['id']}, priority=options.priority)
         return task_id
 
     def report(self):
