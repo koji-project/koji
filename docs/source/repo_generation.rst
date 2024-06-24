@@ -22,11 +22,25 @@ without a build if configured. They can also be triggered manually.
 
 ::
 
-    repo.request(tag, min_event=None, at_event=None, opts=None)
-      description: Request a repo for a tag
+    repo.request(tag, min_event=None, at_event=None, opts=None, priority=None, force=False)
+    description: Request a repo for a tag
+
+        :param int|str taginfo: tag id or name
+        :param int|str min_event: minimum event for the repo (optional)
+        :param int at_event: specific event for the repo (optional)
+        :param dict opts: custom repo options (optional)
+        :param bool force: force request creation, even if a matching repo exists
+
+        The special value min_event="last" uses the most recent event for the tag
+        Otherwise min_event should be an integer
+
+        use opts=None (the default) to get default options for the tag.
+        If opts is given, it should be a dictionary of repo options. These will override
+        the defaults.
+
 
 Each repo request is for a single tag. The optional ``min_event`` parameter specifies how recent the
-repo needs to be. If not given, Koji chooses a suitably recent event. The optional ``opt`` specifies
+repo needs to be. If not given, Koji chooses a suitably recent event. The optional ``opts`` specifies
 options for creating the repo. If not given, Koji uses the default options based on the tag.
 
 When the hub responds to this call, it first checks to see if an existing repo satisfies the
@@ -138,15 +152,19 @@ One common way is the ``repoInfo`` call, which returns data about a single repos
      'create_ts': 1710216388.543129,
      'creation_time': '2024-03-12 00:06:28.541893-04:00',
      'creation_ts': 1710216388.541893,
+     'custom_opts': None,
      'dist': False,
      'end_event': None,
      'end_ts': None,
      'id': 2398,
      'opts': {'debuginfo': False, 'separate_src': False, 'src': False},
-     'state': 1,
+     'state': 3,
+     'state_time': '2024-03-17 17:03:49.820435-04:00',
+     'state_ts': 1710709429.820435,
      'tag_id': 2,
      'tag_name': 'f24-build',
-     'task_id': 13611}
+     'task_id': 13611,
+     'task_state': 2}
 
 Key fields
 
@@ -175,6 +193,9 @@ Key fields
         of the repo's create_event. The ``creation_ts`` field is the numeric value and
         ``creation_time`` is a string representation of that.
 
+    state_ts / state_time
+        This is the time that the repo last changed state.
+
     begin_event / end_event
         These events define the *range of validity* for the repo. Individual events do not
         necessarily affect a given tag, so for each repo there is actually a range of events
@@ -189,6 +210,9 @@ Key fields
 
     opts
         This is dictionary of repo creation options
+
+    custom_opts
+        This dictionary indicates which options were overridden by the request
 
     task_id
         The numeric id of the task that created the repo
