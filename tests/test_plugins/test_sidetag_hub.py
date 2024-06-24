@@ -51,7 +51,7 @@ class TestCreateSideTagHub(unittest.TestCase):
         self._create_tag.return_value = 12346
 
         ret = sidetag_hub.createSideTag('base_tag')
-        self.assertEqual(ret, {'name': sidetag_name, 'id': 12346, 'task_id': None})
+        self.assertEqual(ret, {'name': sidetag_name, 'id': 12346, 'task_id': None, 'request': None})
 
         self.get_user.assert_called_once_with(23, strict=True)
         self.get_tag.assert_called_once_with(self.basetag['name'], strict=True)
@@ -83,7 +83,7 @@ class TestCreateSideTagHub(unittest.TestCase):
         sidetag_hub.NAME_TEMPLATE = '{basetag}-sidetag-{tag_id}'
 
         ret = sidetag_hub.createSideTag('base_tag', debuginfo=True, suffix='suffix')
-        self.assertEqual(ret, {'name': sidetag_name, 'id': 12346, 'task_id': None})
+        self.assertEqual(ret, {'name': sidetag_name, 'id': 12346, 'task_id': None, 'request': None})
 
     def test_createsidetag_template_forbidden_suffix(self):
         sidetag_hub.ALLOWED_SUFFIXES = ['suffix', 'another']

@@ -23,6 +23,7 @@ from kojihub import (
     readInheritanceData,
 )
 from kojihub.db import QueryProcessor, nextval
+from kojihub.repos import request_repo
 
 CONFIG_FILE = "/etc/koji-hub/plugins/sidetag.conf"
 CONFIG = None
@@ -156,13 +157,14 @@ def createSideTag(basetag, debuginfo=False, suffix=None):
     _create_build_target(sidetag_name, sidetag_id, sidetag_id)
 
     if TRIGGER_NEW_REPO:
-        # little higher priority than other newRepo tasks
-        args = koji.encode_args(sidetag_name, debuginfo=debuginfo)
-        task_id = make_task('newRepo', args, priority=14, channel='createrepo')
+        check = request_repo(sidetag_id)
+        request = check['request']
     else:
-        task_id = None
+        request = None
+    # in our case, the request will not have a task yet
+    task_id = None
 
-    return {"name": sidetag_name, "id": sidetag_id, 'task_id': task_id}
+    return {"name": sidetag_name, "id": sidetag_id, 'task_id': task_id, 'request': request}
 
 
 @export
