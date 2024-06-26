@@ -51,7 +51,7 @@ class TestRepoWatcher(unittest.TestCase):
     def test_waitrepo_request_wait(self):
         repoinfo = {'id': 123, 'tag_id': self.TAG['id']}
         req = {'id': 999, 'min_event': 10001, 'task_id': 'TASK', 'task_state': 0, 'repo_id': None,
-               'score': None, 'active': True, 'tries': 1}
+               'active': True, 'tries': 1}
         self.session.repo.get.return_value = None
         check = {'repo': None, 'request': req}
         req2 = req.copy()
@@ -74,7 +74,7 @@ class TestRepoWatcher(unittest.TestCase):
 
     def test_waitrepo_request_timeout(self):
         req = {'id': 999, 'min_event': 10001, 'task_id': 'TASK', 'task_state': 0, 'repo_id': None,
-               'score': None, 'active': True, 'tries': 1}
+               'active': True, 'tries': 1}
         self.session.repo.get.return_value = None
         check = {'repo': None, 'request': req}
         self.session.repo.request.return_value = check
@@ -107,7 +107,7 @@ class TestRepoWatcher(unittest.TestCase):
         # once we report the build, checkForBuilds should be called just once more to verify the repo
 
         req = {'id': 999, 'min_event': 10000, 'task_id': 'TASK', 'task_state': 0, 'repo_id': None,
-               'score': None, 'active': True, 'tries': 1}
+               'active': True, 'tries': 1}
         check = {'repo': None, 'request': req}
         self.session.repo.request.return_value = check
 
@@ -156,8 +156,7 @@ class TestRepoWatcher(unittest.TestCase):
 
         self.checkForBuilds.side_effect = my_check
 
-        req1 = {'id': 999, 'min_event': 10000, 'task_id': 'TASK', 'task_state': 0, 'repo_id': None,
-                'score': None}
+        req1 = {'id': 999, 'min_event': 10000, 'task_id': 'TASK', 'task_state': 0, 'repo_id': None}
         req2 = req1.copy()
         req2['min_event'] = 10002
         repo1 = {'id': 123, 'tag_id': self.TAG['id'], 'create_event': 10000}
