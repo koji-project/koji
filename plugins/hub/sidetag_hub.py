@@ -18,7 +18,6 @@ from kojihub import (
     get_build_target,
     get_tag,
     get_user,
-    make_task,
     policy_get_user,
     readInheritanceData,
 )
