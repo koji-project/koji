@@ -1474,15 +1474,25 @@ def handle_import_cg(goptions, session, args):
                       help="Attempt to hardlink instead of uploading")
     parser.add_option("--test", action="store_true", help="Don't actually import")
     parser.add_option("--token", action="store", default=None, help="Build reservation token")
+    parser.add_option("--draft", action="store_true", default=False, help="Import as a draft")
+    parser.add_option("--build-id", action="store", type="int", default=None,
+                      help="Reserved build id")
     (options, args) = parser.parse_args(args)
     if len(args) < 2:
         parser.error("Please specify metadata files directory")
     activate_session(session, goptions)
+
+    # get the metadata
     metadata = koji.load_json(args[0])
+    if options.build_id:
+        metadata['build']['build_id'] = options.build_id
+    if options.draft:
+        metadata['build']['draft'] = True
+
+    # prepare output list for upload
     if 'output' not in metadata:
         error("Metadata contains no output")
     localdir = args[1]
-
     to_upload = []
     for info in metadata['output']:
         if info.get('metadata_only', False):
@@ -1495,10 +1505,9 @@ def handle_import_cg(goptions, session, args):
     if options.test:
         return
 
-    # get upload path
-    # XXX - need a better way
+    # upload our outputs
+    # TODO - need a better way to select upload path
     serverdir = unique_path('cli-import')
-
     for localpath, info in to_upload:
         relpath = os.path.join(serverdir, info.get('relpath', ''))
         if _running_in_bg() or options.noprogress:
@@ -1514,6 +1523,53 @@ def handle_import_cg(goptions, session, args):
                 print('')
 
     session.CGImport(metadata, serverdir, options.token)
+
+
+def handle_reserve_cg(goptions, session, args):
+    "[admin] Reserve a build entry for later import"
+    usage = "usage: %prog reserve-cg [options] <cg> <nvr>|<metadata_file>"
+    parser = OptionParser(usage=get_usage_str(usage))
+    parser.add_option("--draft", action="store_true", default=False, help="Reserve a draft entry")
+    parser.add_option("--metadata", action="store_true", default=False,
+                      help="Treat argument as a metadata file")
+    (options, args) = parser.parse_args(args)
+    if len(args) != 2:
+        parser.error("The command takes exactly two arguments")
+    activate_session(session, goptions)
+
+    cg = args[0]
+
+    def read_nvr():
+        try:
+            data = koji.parse_NVR(args[1])
+        except Exception:
+            return None
+        # fix epoch
+        if data['epoch'] == '':
+            data['epoch'] = None
+        else:
+            data['epoch'] = int(data['epoch'])
+        return data
+
+    def read_metadata():
+        metadata = koji.load_json(args[1])
+        data = metadata['build']
+        fields = ('name', 'version', 'release', 'epoch', 'draft')
+        data = koji.util.dslice(data, fields, strict=False)
+        return data
+
+    if options.metadata:
+        data = read_metadata()
+    else:
+        data = read_nvr()
+        if not data:
+            data = read_metadata()
+
+    if options.draft:
+        data['draft'] = True
+
+    result = session.CGInitBuild(cg, data)
+    print('Reserved build %(build_id)s with token %(token)r' % result)
 
 
 def handle_import_comps(goptions, session, args):

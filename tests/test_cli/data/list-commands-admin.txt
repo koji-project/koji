@@ -55,6 +55,7 @@ admin commands:
         remove-tag                Remove a tag
         remove-tag-inheritance    Remove a tag inheritance link
         remove-target             Remove a build target
+        reserve-cg                Reserve a build entry for later import
         restart-hosts             Restart enabled hosts
         revoke-cg-access          Remove a user from a content generator
         revoke-permission         Revoke a permission from a user

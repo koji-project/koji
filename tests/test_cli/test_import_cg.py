@@ -185,11 +185,13 @@ class TestImportCG(utils.CliTestCase):
 (Specify the --help global option for a list of other help options)
 
 Options:
-  -h, --help     show this help message and exit
-  --noprogress   Do not display progress of the upload
-  --link         Attempt to hardlink instead of uploading
-  --test         Don't actually import
-  --token=TOKEN  Build reservation token
+  -h, --help           show this help message and exit
+  --noprogress         Do not display progress of the upload
+  --link               Attempt to hardlink instead of uploading
+  --test               Don't actually import
+  --token=TOKEN        Build reservation token
+  --draft              Import as a draft
+  --build-id=BUILD_ID  Reserved build id
 """ % self.progname)
 
 
