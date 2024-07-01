@@ -7107,25 +7107,25 @@ def anon_handle_download_logs(options, session, args):
                 save_logs(child_task['id'], match, task_log_dir, recurse)
 
     ensure_connection(session, options)
-    task_id = None
-    build_id = None
     for arg in args:
+        task_id = None
+        build_id = None
         if suboptions.nvr:
             suboptions.recurse = True
             binfo = session.getBuild(arg)
             if binfo is None:
                 error("There is no build with n-v-r: %s" % arg)
-            if binfo.get('task_id'):
-                task_id = binfo['task_id']
-                sys.stdout.write("Using task ID: %s\n" % task_id)
-            elif binfo.get('build_id'):
+            if binfo.get('build_id'):
                 build_id = binfo['build_id']
                 sys.stdout.write("Using build ID: %s\n" % build_id)
+            elif binfo.get('task_id'):
+                task_id = binfo['task_id']
+                sys.stdout.write("Using task ID: %s\n" % task_id)
         else:
             try:
                 task_id = int(arg)
             except ValueError:
-                error("Task id must be number: %r" % arg)
+                error("Task id must be a number: %r" % arg)
         if task_id:
             save_logs(task_id, suboptions.match, suboptions.dir, suboptions.recurse)
         elif build_id:

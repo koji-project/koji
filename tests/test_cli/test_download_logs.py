@@ -59,7 +59,7 @@ Note this command only downloads task logs, not build logs.
             anon_handle_download_logs,
             self.options, self.session, [task_id],
             stdout='',
-            stderr='Task id must be number: %r\n' % task_id,
+            stderr='Task id must be a number: %r\n' % task_id,
             activate_session=None,
             exit_code=1
         )
