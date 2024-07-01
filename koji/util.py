@@ -130,6 +130,240 @@ def checkForBuilds(session, tag, builds, event, latest=False):
     return True
 
 
+class RepoWatcher(object):
+
+    # timing defaults
+    PAUSE = 6
+    TIMEOUT = 120
+
+    def __init__(self, session, tag, nvrs=None, min_event=None, at_event=None, opts=None,
+                 logger=None):
+        self.session = session
+        self.taginfo = session.getTag(tag, strict=True)
+        self.start = None
+        if nvrs is None:
+            nvrs = []
+        self.nvrs = nvrs
+        self.builds = [koji.parse_NVR(nvr) for nvr in nvrs]
+        # note that we don't assume the nvrs exist yet
+        self.at_event = at_event
+        if min_event is None:
+            self.min_event = None
+        elif at_event is not None:
+            raise koji.ParameterError('Cannot specify both min_event and at_event')
+        elif min_event == "last":
+            # TODO pass through?
+            self.min_event = session.tagLastChangeEvent(self.taginfo['id'])
+        else:
+            self.min_event = int(min_event)
+        # if opts is None we'll get the default opts
+        self.opts = opts
+        self.logger = logger or logging.getLogger('koji')
+
+    def get_start(self):
+        # we don't want necessarily want to start the clock in init
+        if not self.start:
+            self.start = time.time()
+        return self.start
+
+    def getRepo(self):
+        """Return repo if available now, without waiting
+
+        Returns repoinfo or None
+        """
+
+        self.logger.info('Need a repo for %s', self.taginfo['name'])
+
+        # check builds first
+        if self.builds:
+            # there is no point in requesting a repo if the builds aren't even tagged
+            if not koji.util.checkForBuilds(self.session, self.taginfo['id'], self.builds,
+                                            event=None):
+                self.logger.debug('Builds %s not present in tag %s', self.nvrs,
+                                  self.taginfo['name'])
+                return None
+
+        check = self.request()
+        repoinfo = check.get('repo')
+        if repoinfo:
+            # "he says they've already got one"
+            self.logger.info('Request yielded repo: %r', check)
+            if self.check_repo(repoinfo):
+                return repoinfo
+
+        # TODO save our request to avoid duplication later
+        # otherwise
+        return None
+
+    def task_args(self):
+        """Return args for a waitrepo task matching our data"""
+        tag = self.taginfo['name']
+        newer_than = None  # this legacy arg doesn't make sense for us
+        if self.at_event:
+            raise koji.GenericError('at_event not supported by waitrepo task')
+        if self.opts:
+            # TODO?
+            raise koji.GenericError('opts not supported by waitrepo task')
+        return [tag, newer_than, self.nvrs, self.min_event]
+
+    def waitrepo(self, anon=False):
+        self.logger.info('Waiting on repo for %s', self.taginfo['name'])
+        self.get_start()
+        min_event = self.min_event
+        self.logger.debug('min_event = %r, nvrs = %r', min_event, self.nvrs)
+        repoinfo = None
+        req = None
+        while True:
+            # wait on existing request if we have one
+            if req:
+                repoinfo = self.wait_request(req)
+                if self.check_repo(repoinfo):
+                    break
+                elif self.at_event is not None:
+                    # shouldn't happen
+                    raise koji.GenericError('Failed at_event request')
+                else:
+                    min_event = self.session.tagLastChangeEvent(self.taginfo['id'])
+                    # we should have waited for builds before creating the request
+                    # this could indicate further tagging/untagging, or a bug
+                    self.logger.error('Repo request did not satisfy conditions')
+            else:
+                # check for repo directly
+                # either first pass or anon mode
+                repoinfo = self.session.repo.get(self.taginfo['id'], min_event=min_event,
+                                                 at_event=self.at_event, opts=self.opts)
+                if repoinfo and self.check_repo(repoinfo):
+                    break
+            # Otherwise, we'll need a new request
+            if self.builds:
+                # No point in requesting a repo if the builds aren't tagged yet
+                self.wait_builds(self.builds)
+                min_event = self.session.tagLastChangeEvent(self.taginfo['id'])
+                self.logger.debug('Updated min_event to last change: %s', min_event)
+            if not anon:
+                # Request a repo
+                check = self.request(min_event)
+                repoinfo = check.get('repo')
+                if repoinfo:
+                    self.logger.debug('Request yielded repo: %r', check)
+                    if self.check_repo(repoinfo):
+                        break
+                    # otherwise we'll loop and try again
+                else:
+                    req = check['request']
+                    self.logger.info('Got request: %(id)s', req)
+                    self.logger.debug('Request data: %s', req)
+                    if min_event in ('last', None):
+                        min_event = req['min_event']
+                        self.logger.info('Updated min_event from hub: %s', min_event)
+            self.pause()
+
+        self.logger.debug('Got repo: %r', repoinfo)
+        return repoinfo
+
+    def request(self, min_event=None):
+        if min_event is None:
+            min_event = self.min_event
+        self.logger.info('Requesting a repo')
+        self.logger.debug('self.session.repo.request(%s, min_event=%s, at_event=%s, opts=%r)',
+                          self.taginfo['id'], min_event, self.at_event, self.opts)
+        check = self.session.repo.request(self.taginfo['id'], min_event=min_event,
+                                          at_event=self.at_event, opts=self.opts)
+        return check
+
+    def wait_request(self, req):
+        watch_fields = ('task_id', 'task_state', 'repo_id', 'active', 'tries')
+        self.get_start()
+        watch_data = dict([(f, req.get(f)) for f in watch_fields])
+        while True:
+            check = self.session.repo.checkRequest(req['id'])
+            self.logger.debug('Request check: %r', check)
+            repo = check.get('repo')
+            if repo:
+                return repo
+            for f in watch_fields:
+                val1 = watch_data[f]
+                val2 = check['request'][f]
+                if val1 != val2:
+                    watch_data[f] = val2
+                    if f == 'task_state':
+                        # convert if we can
+                        val1 = koji.TASK_STATES[val1] if val1 is not None else val1
+                        val2 = koji.TASK_STATES[val2] if val2 is not None else val2
+                    self.logger.info('Request updated: %s: %s -> %s', f, val1, val2)
+            if self.check_timeout():
+                raise koji.GenericError("Unsuccessfully waited %s for a new %s repo" %
+                                        (koji.util.duration(self.start), self.taginfo['name']))
+            if not check['request']['active']:
+                raise koji.GenericError("Repo request no longer active")
+            self.pause()
+
+    def wait_builds(self, builds):
+        self.get_start()
+        self.logger.info('Waiting for nvrs %s in tag %s', self.nvrs, self.taginfo['name'])
+        while True:
+            if koji.util.checkForBuilds(self.session, self.taginfo['id'], builds, event=None):
+                self.logger.debug('Successfully waited for nvrs %s in tag %s', self.nvrs,
+                                  self.taginfo['name'])
+                return
+            if self.check_timeout():
+                raise koji.GenericError("Unsuccessfully waited %s for %s to appear in the %s repo"
+                                        % (koji.util.duration(self.start),
+                                           koji.util.printList(self.nvrs),
+                                           self.taginfo['name']))
+            self.logger.debug('Waiting for nvrs %s in tag %s', self.nvrs, self.taginfo['name'])
+            self.pause()
+
+    def check_repo(self, repoinfo):
+        """See if the repo satifies our conditions"""
+
+        # Correct tag?
+        if repoinfo['tag_id'] != self.taginfo['id']:
+            # should not happen
+            self.logger.error('Got repo for wrong tag, expected %s, got %s',
+                              self.taginfo['id'], repoinfo['tag_id'])
+            return False
+
+        # Matching event?
+        if self.at_event is not None:
+            if repoinfo['create_event'] != self.at_event:
+                self.logger.info('Got repo with wrong event. %s != %s',
+                                 repoinfo['create_event'], self.at_event)
+                return False
+        elif self.min_event is not None:
+            if repoinfo['create_event'] < self.min_event:
+                self.logger.info('Got repo before min event. %s < %s',
+                                 repoinfo['create_event'], self.min_event)
+                return False
+
+        # Matching opts
+        if self.opts is not None:
+            if repoinfo['opts'] != self.opts:
+                self.logger.info('Got repo with wrong opts. %s != %s',
+                                 repoinfo['opts'], self.opts)
+                return False
+
+        # Needed builds?
+        if self.builds:
+            if not koji.util.checkForBuilds(self.session, self.taginfo['id'], self.builds,
+                                            event=repoinfo['create_event']):
+                self.logger.info('Got repo without needed builds')
+                return False
+
+        self.logger.debug('Repo satisfies our conditions')
+        return True
+
+    def pause(self):
+        self.logger.debug('Pausing')
+        time.sleep(self.PAUSE)
+
+    def check_timeout(self):
+        if (time.time() - self.start) > (self.TIMEOUT * 60.0):
+            return True
+        # else
+        return False
+
+
 def duration(start):
     """Return the duration between start and now in MM:SS format"""
     elapsed = time.time() - start
@@ -780,13 +1014,13 @@ def eventFromOpts(session, opts):
         ts: an event timestamp (int)
         repo: pull event from given repo
     """
-    event_id = getattr(opts, 'event')
+    event_id = getattr(opts, 'event', None)
     if event_id:
         return session.getEvent(event_id)
-    ts = getattr(opts, 'ts')
+    ts = getattr(opts, 'ts', None)
     if ts is not None:
         return session.getLastEvent(before=ts)
-    repo = getattr(opts, 'repo')
+    repo = getattr(opts, 'repo', None)
     if repo is not None:
         rinfo = session.repoInfo(repo, strict=True)
         return {'id': rinfo['create_event'],

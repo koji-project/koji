@@ -30,6 +30,7 @@ Contents
     image_build
     winbuild
     draft_builds
+    repo_generation
     exporting_repositories
     tag_inheritance
     misc

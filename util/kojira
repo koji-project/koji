@@ -31,63 +31,28 @@ import sys
 import threading
 import time
 import traceback
-from optparse import OptionParser
+from optparse import OptionParser, SUPPRESS_HELP
 from xml.etree import ElementTree
+
+from collections import OrderedDict
 
 import requests
 
 import koji
-from koji.util import deprecated, parseStatus, rmtree, to_list
-
-tag_cache = {}
-
-
-def prefillTagCache(session):
-    tags = session.listTags()
-    now = time.time()
-    for tag in tags:
-        tag_cache[(tag['id'], None)] = (now, tag)
-        tag_cache[(tag['name'], None)] = (now, tag)
-
-
-def getTag(session, tag, event=None):
-    """A caching version of the hub call"""
-    cache = tag_cache
-    now = time.time()
-    if (tag, event) in cache:
-        ts, info = cache[(tag, event)]
-        if now - ts < 600:
-            # use the cache
-            return info
-    info = session.getTag(tag, event=event)
-    if info:
-        cache[(info['id'], event)] = (now, info)
-        cache[(info['name'], event)] = (now, info)
-    return info
+from koji.util import deprecated, parseStatus, rmtree, to_list, dslice
 
 
 class ManagedRepo(object):
 
-    def __init__(self, manager, data, repodata=None):
+    def __init__(self, manager, data):
         self.manager = manager
         self.options = manager.options
         self.logger = logging.getLogger("koji.repo")
-        self.current = True
-        self.repo_id = data['id']
-        self.event_id = data['create_event']
-        self.event_ts = data['create_ts']
+        self.data = data
+        self.id = self.repo_id = data['id']
         self.tag_id = data['tag_id']
-        self.state = data['state']
-        if 'dist' in data:
-            self._dist = data['dist']
-        self.tag_name = data['tag_name']
-        self.expire_ts = None
-        if koji.REPO_STATES[self.state] in ['EXPIRED', 'DELETED', 'PROBLEM']:
-            self.current = False
-            self._find_expire_time(repodata)
-            # TODO use hub data to find the actual expiration time
+        self.dist = data['dist']
         self.first_seen = time.time()
-        self._taglist = None
 
     @property
     def session(self):
@@ -95,42 +60,16 @@ class ManagedRepo(object):
         return self.manager.session
 
     @property
-    def taglist(self):
-        if not self._taglist:
-            order = self.session.getFullInheritance(self.tag_id, event=self.event_id)
-            # order may contain same tag more than once
-            tags = {self.tag_id: 1}
-            for x in order:
-                tags[x['parent_id']] = 1
-            self._taglist = to_list(tags.keys())
-        return self._taglist
+    def state(self):
+        return self.data['state']
 
-    def _find_expire_time(self, repodata):
-        # find all newer repos for same tag and set oldest as expire_ts for our repo
-        if repodata:
-            repos = [r for r in repodata if
-                     r['tag_id'] == self.tag_id and r['create_event'] > self.event_id]
-            if repos:
-                invalidated_by = sorted(repos, key=lambda x: x['create_event'])
-                self.expire_ts = invalidated_by[0]['create_ts']
-        if not self.expire_ts:
-            self.expire_ts = time.time()
-
-    @property
-    def dist(self):
-        # TODO: remove this indirection once we can rely on the hub to return
-        # dist field in getActiveRepos
-        if hasattr(self, '_dist'):
-            return self._dist
-        rinfo = self.session.repoInfo(self.repo_id)
-        self._dist = rinfo['dist']
+    @state.setter
+    def state(self, value):
+        self.data['state'] = value
 
     def get_info(self):
         "Fetch data from repo.json"
         path = self.get_path()
-        if not path:
-            # can this be an error yet?
-            return None
         fn = '%s/repo.json' % path
         if not os.path.exists(fn):
             self.logger.warning('Repo info file missing: %s', fn)
@@ -139,14 +78,7 @@ class ManagedRepo(object):
 
     def get_path(self, volume=None):
         """Return the path to the repo directory"""
-        tag_info = getTag(self.session, self.tag_id)
-        if not tag_info:
-            tag_info = getTag(self.session, self.tag_id, self.event_id)
-        if not tag_info:
-            self.logger.warning('Could not get info for tag %i, referenced by repo %i' %
-                                (self.tag_id, self.repo_id))
-            return None
-        tag_name = tag_info['name']
+        tag_name = self.data['tag_name']
         if self.dist:
             path = pathinfo.distrepo(self.repo_id, tag_name, volume=volume)
         else:
@@ -158,131 +90,163 @@ class ManagedRepo(object):
         """Mark the repo expired"""
         if self.state == koji.REPO_EXPIRED:
             return
+        elif self.state == koji.REPO_PROBLEM:
+            # should not happen
+            raise koji.GenericError("Can't expire problem repo %s" % self.id)
         elif self.state == koji.REPO_DELETED:
-            raise koji.GenericError("Repo already deleted")
-        self.logger.info("Expiring repo %s.." % self.repo_id)
+            # should not happen
+            raise koji.GenericError("Repo %s already deleted" % self.id)
+        if self.dist:
+            self.logger.info("Expiring dist repo %(id)s for tag %(tag_name)s", self.data)
+        else:
+            self.logger.info("Expiring repo %(id)s for tag %(tag_name)s", self.data)
         self.session.repoExpire(self.repo_id)
         self.state = koji.REPO_EXPIRED
 
-    def expired(self):
-        return self.state == koji.REPO_EXPIRED
+    def mark_problem(self):
+        """Flag a problem repo"""
+        if self.state == koji.REPO_DELETED:
+            # should not happen
+            raise koji.GenericError("Repo is deleted")
+        self.logger.error("Problem repo %s.." % self.repo_id)
+        self.session.repoProblem(self.repo_id)
+        self.state = koji.REPO_PROBLEM
 
-    def pending(self, timeout=180):
-        """Determine if repo generation appears to be in progress and not already obsolete"""
+    def check_init(self):
+        """Check on repos in init state"""
         if self.state != koji.REPO_INIT:
-            return False
-        age = time.time() - self.event_ts
-        return self.current and age < timeout
+            return
 
-    def stale(self):
-        """Determine if repo seems stale
+        if not self.data.get('creation_ts'):
+            self.logger.warning('Repo in init state lacks timestamp: %r', self.data)
+            self.mark_problem()
+            return
 
-        By stale, we mean:
-            - state=INIT
-            - timestamp really, really old
-        """
-        timeout = 36000
-        # XXX - config
-        if self.state != koji.REPO_INIT:
-            return False
-        times = [self.event_ts]
-        # the mtime is also factored in because a repo can be
-        # created from an older event and should not be expired based solely on
-        # that event's timestamp.
+        age = time.time() - self.data['creation_ts']
+        if age > self.options.init_timeout:
+            self.logger.warning("Stale repo: %r", self.data)
+            self.mark_problem()
+        elif self.data['task_state'] in [koji.TASK_STATES[n] for n in ('CANCELED', 'FAILED')]:
+            self.logger.warning("Repo task failed: %(task_id)s", self.data)
+            self.mark_problem()
+
+    def get_age(self):
+        if self.data.get('state_ts'):
+            return time.time() - self.data['state_ts']
+
+        # otherwise repo predates 1.35, fall back to mtime
+        self.logger.warning("Missing timestamps for repo %(id)s (tag %(tag_name)s)", self.data)
         path = self.get_path()
-        if os.path.exists(path):
-            try:
-                times.append(os.stat(path).st_mtime)
-            except Exception:
-                self.logger.error("Can't read mtime for %s" % path)
-                return False
-        else:
-            times.append(self.first_seen)
-            self.logger.warning("Repo %d is in INIT state, "
-                                "but doesn't have directory %s yet?" % (self.repo_id, path))
-        age = time.time() - max(times)
-        return age > timeout
-
-    def tryDelete(self, logger):
-        """Remove the repo from disk, if possible"""
-        path = self.get_path()
-        if not path:
-            # get_path already warned
-            return False
-        if self.dist:
-            lifetime = self.options.dist_repo_lifetime
-        else:
-            lifetime = self.options.deleted_repo_lifetime
-            # (should really be called expired_repo_lifetime)
         try:
-            # also check dir age. We do this because a repo can be created from an older event
-            # and should not be removed based solely on that event's timestamp.
-            mtime = os.stat(path).st_mtime
+            return time.time() - os.stat(path).st_mtime
         except OSError as e:
-            if e.errno == 2:
-                # No such file or directory, so the repo either never existed,
-                # or has already been deleted, so allow it to be marked deleted.
-                logger.info("Repo directory does not exist: %s" % path)
-                pass
-            else:
-                logger.error("Can't stat repo directory: %s, %s" % (path, e.strerror))
-                return False
-        else:
-            times = [self.event_ts, mtime, self.expire_ts]
-            times = [ts for ts in times if ts is not None]
-            age = time.time() - max(times)
-            logger.debug("Repo %s (%s) age: %i sec", self.repo_id, path, age)
-            if age < lifetime:
-                return False
-        logger.debug("Attempting to delete repo %s.." % self.repo_id)
-        if self.state != koji.REPO_EXPIRED:
-            raise koji.GenericError("Repo not expired")
-        if self.session.repoDelete(self.repo_id) > 0:
-            # cannot delete, we are referenced by a buildroot
-            logger.debug("Cannot delete repo %s, still referenced" % self.repo_id)
-            return False
-        logger.info("Deleted repo %s" % self.repo_id)
+            self.logger.error("Can't read mtime for %s - %s", path, e)
+            return time.time() - self.first_seen
+
+    def expire_check(self):
+        if self.state != koji.REPO_READY or self.dist:
+            return
+
+        if self.data['end_event'] is None and not self.data['custom_opts']:
+            # repo is current and has default options. keep it
+            return
+        # otherwise repo is either obsolete or custom
+        if self.get_age() > self.options.repo_lifetime:
+            self.expire()
+
+    def dist_expire_check(self):
+        """Check to see if a dist repo should be expired"""
+        if not self.dist or self.state != koji.REPO_READY:
+            return
+
+        if self.get_age() > self.options.dist_repo_lifetime:
+            self.logger.info("Expiring dist repo %(id)s for tag %(tag_name)s", self.data)
+            self.expire()
+
+    def delete_check(self):
+        """Delete the repo if appropriate"""
+
+        # correct state?
+        if self.state not in (koji.REPO_EXPIRED, koji.REPO_PROBLEM):
+            # shouldn't happen
+            self.logger.error('Repo %(id)s cannot be deleted, state=%(state)s', self.data)
+            return
+
+        if self.get_age() < self.options.expired_repo_lifetime:
+            return
+
+        # reference check
+        last_check = getattr(self, 'reference_ts', None)
+        if last_check and time.time() - last_check < self.options.reference_recheck_period:
+            # we don't need to recheck every cycle
+            return
+        refs = self.session.repo.references(self.repo_id)
+        if refs:
+            # this shouldn't happen normally, may indicate a stale build task
+            self.logger.warning('Repo %s still has %i references' % (self.repo_id, len(refs)))
+            if self.logger.isEnabledFor(logging.DEBUG):
+                for ref in refs:
+                    self.logger.debug('Ref: %r', ref)
+            self.reference_ts = time.time()
+            return
+
+        # ok, safe to delete
+        self.delete()
+
+    def delete(self):
+        """Mark repo deleted and initiate file removal
+
+        * remove volume symlinks immediately
+        * queue rmtree job for rest of files
+        """
+
+        if self.state not in (koji.REPO_EXPIRED, koji.REPO_PROBLEM):
+            # should not happen
+            raise koji.GenericError("Repo cannot be deleted, state=%s", self.state)
+
+        # mark deleted in the db
+        self.session.repo.setState(self.repo_id, koji.REPO_DELETED)
+        self.logger.info("Set repo %s state to deleted" % self.repo_id)
         self.state = koji.REPO_DELETED
+
+        # deal with volume symlinks
+        path = self.get_path()
         if os.path.islink(path):
             # expected for repos on other volumes
             info = self.get_info()
             if not os.path.exists(path):
-                logger.error('Repo volume link broken: %s', path)
+                self.logger.error('Repo volume link broken: %s', path)
                 return False
             if not info or 'volume' not in info:
-                logger.error('Missing repo.json in %s', path)
+                self.logger.error('Missing or invalid repo.json in %s', path)
                 return False
             realpath = self.get_path(volume=info['volume'])
             if not os.path.exists(realpath):
-                logger.error('Repo real path missing: %s', realpath)
+                self.logger.error('Repo real path missing: %s', realpath)
                 return False
             if self.options.ignore_other_volumes:
                 # don't delete from other volumes
-                logger.error('Repo on non-default volume %s', realpath)
+                self.logger.error('Repo on non-default volume %s', realpath)
                 return False
             if not os.path.samefile(path, realpath):
-                logger.error('Incorrect volume link: %s', path)
+                self.logger.error('Incorrect volume link: %s', path)
                 return False
             # ok, try to remove the symlink
             try:
                 os.unlink(path)
             except OSError:
-                logger.error('Unable to remove volume link: %s', path)
+                self.logger.error('Unable to remove volume link: %s', path)
         else:
             realpath = path
 
+        # queue the rmtree job
         self.manager.rmtree(realpath)
 
-        return True
+    def handle_problem(self):
+        self.delete_check()
 
-    def ready(self):
-        return self.state == koji.REPO_READY
-
-    def deleted(self):
-        return self.state == koji.REPO_DELETED
-
-    def problem(self):
-        return self.state == koji.REPO_PROBLEM
+    def is_expired(self):
+        return self.state == koji.REPO_EXPIRED
 
 
 class RepoManager(object):
@@ -292,15 +256,9 @@ class RepoManager(object):
         self._local = threading.local()
         self._local.session = session
         self.repos = {}
-        self.external_repo_ts = {}
-        self.tasks = {}
-        self.other_tasks = {}
-        self.needed_tags = {}
-        self.tag_use_stats = {}
         self.delete_pids = {}
-        self.delete_queue = []
+        self.delete_queue = OrderedDict()
         self.logger = logging.getLogger("koji.repo.manager")
-        prefillTagCache(session)
 
     @property
     def session(self):
@@ -314,8 +272,6 @@ class RepoManager(object):
     def printState(self):
         self.logger.debug('Tracking %i repos, %i child processes',
                           len(self.repos), len(self.delete_pids))
-        for tag_id, task_id in self.tasks.items():
-            self.logger.debug("Tracking task %s for tag %s", task_id, tag_id)
         for pid in self.delete_pids:
             path = self.delete_pids[pid][0]
             self.logger.debug("Delete job %s: %r", pid, path)
@@ -324,7 +280,7 @@ class RepoManager(object):
         """Spawn (or queue) and rmtree job"""
         self.logger.info("Queuing rmtree job for %s", path)
         if path not in self.delete_queue:
-            self.delete_queue.append(path)
+            self.delete_queue[path] = 1
 
     def checkQueue(self):
         finished = [pid for pid in self.delete_pids if self.waitPid(pid)]
@@ -337,8 +293,8 @@ class RepoManager(object):
                 self.logger.error("Failed rmtree job for %s: %s", path, e)
                 continue
             self.logger.info("Completed rmtree job for %s", path)
-        while self.delete_queue and len(self.delete_pids) <= self.options.max_delete_processes:
-            path = self.delete_queue.pop(0)
+        while self.delete_queue and len(self.delete_pids) < self.options.max_delete_processes:
+            path, _ = self.delete_queue.popitem(last=False)
             pid, check_func = rmtree(path, background=True)  # koji.util.rmtree
             self.logger.info("Started rmtree (pid %i) for %s", pid, path)
             self.delete_pids[pid] = (path, check_func)
@@ -372,9 +328,11 @@ class RepoManager(object):
 
     def readCurrentRepos(self):
         self.logger.debug("Reading current repo data")
-        repodata = self.session.getActiveRepos()
+        clauses = [['state', '!=', koji.REPO_DELETED]]
+        fields = ('id', 'tag_id', 'create_event', 'state', 'dist', 'task_id', 'tag_name',
+                  'creation_ts', 'state_ts', 'end_event', 'opts', 'custom_opts', 'task_state')
+        repodata = self.session.repo.query(clauses, fields)
         self.logger.debug("Repo data: %r" % repodata)
-        self.logger.debug("Preloaded %d tags" % len(tag_cache.keys()))
 
         for data in repodata:
             repo_id = data['id']
@@ -385,124 +343,104 @@ class RepoManager(object):
                     self.logger.info(
                         'State changed for repo %s: %s -> %s',
                         repo_id, koji.REPO_STATES[repo.state], koji.REPO_STATES[data['state']])
-                    repo.state = data['state']
+                repo.data = data
             else:
                 self.logger.info('Found repo %s, state=%s'
                                  % (repo_id, koji.REPO_STATES[data['state']]))
-                repo = ManagedRepo(self, data, repodata)
+                repo = ManagedRepo(self, data)
                 self.repos[repo_id] = repo
-            if not getTag(self.session, repo.tag_id) and not repo.expired():
-                self.logger.info('Tag %d for repo %d disappeared, expiring.', repo.tag_id, repo_id)
-                repo.expire()
+
         if len(self.repos) > len(repodata):
-            # This shouldn't normally happen, but might if someone else calls
-            # repoDelete or similar
             active = set([r['id'] for r in repodata])
-            for repo_id in to_list(self.repos.keys()):
+            for repo_id in list(self.repos):  # copy because we modify keys
+                repo = self.repos[repo_id]
                 if repo_id not in active:
-                    self.logger.info('Dropping entry for inactive repo: %s', repo_id)
+                    if repo.state != koji.REPO_DELETED:
+                        # we only expect this for deleted repos
+                        self.logger.warning('Repo entry disappeared from hub: %r', repo.data)
+                    else:
+                        self.logger.info('Dropping entry for deleted repo: %s', repo_id)
                     del self.repos[repo_id]
 
-    def checkExternalRepo(self, ts, repodata, tag):
-        """Determine which external repos are current, return True if remote repo is newer"""
+    def checkExternalRepo(self, repodata, arches, ts_cache):
+        """Update tracking data for external repo"""
         url = repodata['url']
 
         # expand the arch urls if needed
         expanded_urls = [url]
         if '$arch' in url:
-            taginfo = getTag(self.session, tag)
-            if not taginfo:
-                self.logger.error('Invalid tag for external repo: %s', tag)
-                return False
-            arches = (taginfo.get('arches', '') or '').split()
             if not arches:
-                self.logger.warning('Tag with external repo lacks arches: %(name)s', taginfo)
-                return False
+                # caller should already have warned
+                return
             expanded_urls = [url.replace('$arch', a) for a in arches]
 
+        # get previously recorded timestamp, if any
+        data = self.session.repo.getExternalRepoData(repodata['id']) or {}
+        orig = data.get('max_ts', 0)
+
         # find latest timestamp across expanded urls
-        max_ts = 0
+        new_ts = 0
         for arch_url in expanded_urls:
             arch_url = os.path.join(arch_url, 'repodata/repomd.xml')
-            if arch_url in self.external_repo_ts:
+            if arch_url in ts_cache:
                 # just use the cache
-                max_ts = max(max_ts, self.external_repo_ts[arch_url])
+                new_ts = max(new_ts, ts_cache[arch_url])
                 continue
             self.logger.debug('Checking external url: %s' % arch_url)
             try:
                 r = requests.get(arch_url, timeout=5)
+                r.raise_for_status()
                 root = ElementTree.fromstring(r.text)  # nosec
                 ts_elements = root.iter('{http://linux.duke.edu/metadata/repo}timestamp')
                 arch_ts = max([round(float(child.text)) for child in ts_elements])
-                self.external_repo_ts[arch_url] = arch_ts
-                max_ts = max(max_ts, arch_ts)
+                ts_cache[arch_url] = arch_ts
+                new_ts = max(new_ts, arch_ts)
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == 404:
+                    # we check all hub arches, so this can happen pretty easily
+                    # we'll warn below if _no_ arches give us a timestamp
+                    self.logger.debug("External repo url not found: %s", arch_url)
+                else:
+                    self.logger.warning("Error reading external repo url %s: %s", arch_url, e)
+                ts_cache[arch_url] = 0
             except Exception:
                 # inaccessible or without timestamps
                 # treat repo as unchanged (ts = 0)
                 self.logger.warning('Unable to read timestamp for external repo: %s', arch_url)
-                self.external_repo_ts[arch_url] = 0
-                pass
+                ts_cache[arch_url] = 0
 
-        return ts < max_ts
-
-    def reposToCheck(self):
-        to_check = []
-        repo_ids = to_list(self.repos.keys())
-        for repo_id in repo_ids:
-            repo = self.repos.get(repo_id)
-            if repo is None:
-                # removed by main thread
-                continue
-            if not repo.current:
-                # no point in checking again
-                continue
-            if repo.state not in (koji.REPO_READY, koji.REPO_INIT):
-                repo.current = False
-                if repo.expire_ts is None:
-                    repo.expire_ts = time.time()
-                # also no point in further checking
-                continue
-            to_check.append(repo)
-        if self.logger.isEnabledFor(logging.DEBUG):
-            skipped = set(repo_ids).difference([r.repo_id for r in to_check])
-            self.logger.debug("Skipped check for repos: %r", skipped)
-        return to_check
+        if new_ts == 0:
+            self.logger.warning('Unable to determine timestamp for external repo: %s', url)
+        elif new_ts > orig:
+            self.logger.info('Updating timestamp for external repo %s: %s', repodata['id'], new_ts)
+            self.session.repo.setExternalRepoData(repodata['id'], {'max_ts': new_ts})
 
     def checkExternalRepos(self):
         """Determine which external repos changed"""
-        # clean external repo cache
-        self.external_repo_ts = {}
-        for repo in self.reposToCheck():
-            changed = False
-            for tag in repo.taglist:
-                try:
-                    external_repos = self.session.getExternalRepoList(tag)
-                except koji.GenericError:
-                    # in case tag was deleted, checkCurrentRepos is
-                    # responsible for cleanup, ignore it here
-                    external_repos = []
-                for external_repo in external_repos:
-                    changed = self.checkExternalRepo(repo.event_ts, external_repo, tag)
-                    self.logger.debug("Check external repo %s [%s] for tag %s: %s" % (
-                        external_repo['external_repo_id'], external_repo['url'],
-                        tag, changed))
-                    if changed:
-                        break
-                if changed:
-                    break
-            if changed:
-                self.logger.info("Repo %i no longer current due to external repo change" %
-                                 repo.repo_id)
-                repo.current = False
-                repo.expire_ts = time.time()
+        # get active external repos
+        # we only bother checking those that are actually used in some tag
+        used = self.session.getTagExternalRepos()
+        external_repos = {}
+        # fields specific to the external repo entry
+        fields = ('external_repo_id', 'external_repo_name', 'url')
+        for tag_repo in used:
+            key = tag_repo['external_repo_id']
+            if key not in external_repos:
+                external_repos[key] = dslice(tag_repo, fields)
 
-    def checkCurrentRepos(self):
-        """Determine which repos are current"""
-        for repo in self.reposToCheck():
-            if self.session.tagChangedSinceEvent(repo.event_id, repo.taglist):
-                self.logger.info("Repo %i no longer current", repo.repo_id)
-                repo.current = False
-                repo.expire_ts = time.time()
+        # get arches to check
+        arches = self.session.getAllArches()
+        # this is all _host_ arches, canonicalized, which should be fine for our purposes
+        # getting the list of all tag arches for all tags that might use the repo is
+        # way more expensive
+        if not arches:
+            self.logger.warning('No arches reported. Unable to check external repos with $arch')
+
+        ts_cache = {}
+        for erepo_id in sorted(external_repos):
+            data = external_repos[erepo_id]
+            data['id'] = erepo_id
+            self.checkExternalRepo(data, arches, ts_cache)
 
     def currencyChecker(self, session):
         """Continually checks repos for currency. Runs as a separate thread"""
@@ -511,7 +449,8 @@ class RepoManager(object):
         self.logger.info('currencyChecker starting')
         try:
             while True:
-                self.checkCurrentRepos()
+                self.session.repo.updateEndEvents()
+                # TODO does this still need to be its own thread?
                 time.sleep(self.options.sleeptime)
         except Exception:
             self.logger.exception('Error in currency checker thread')
@@ -549,21 +488,6 @@ class RepoManager(object):
         finally:
             session.logout()
 
-    def deleteLoop(self, session):
-        """Triggers regens as needed/possible. Runs in a separate thread"""
-        self.session = session
-        self.delete_logger = logging.getLogger("koji.repo.delete")
-        self.delete_logger.info('deleteLoop starting')
-        try:
-            while True:
-                self.deleteRepos()
-                time.sleep(self.options.sleeptime)
-        except Exception:
-            self.delete_logger.exception('Error in delete thread')
-            raise
-        finally:
-            session.logout()
-
     def rmtreeLoop(self, session):
         self.session = session
         logger = logging.getLogger("koji.repo.rmtree")
@@ -573,16 +497,17 @@ class RepoManager(object):
                 self.checkQueue()
                 time.sleep(self.options.sleeptime)
         except Exception:
-            logger.exception('Error in delete thread')
+            logger.exception('Error in rmtree thread')
             raise
         finally:
             session.logout()
 
     def pruneLocalRepos(self):
+        # non-dist repos are always on the default volume
         volname = 'DEFAULT'
         volumedir = pathinfo.volumedir(volname)
         repodir = "%s/repos" % volumedir
-        self._pruneLocalRepos(repodir, self.options.deleted_repo_lifetime)
+        self._pruneLocalRepos(repodir)
 
         for volinfo in self.session.listVolumes():
             volname = volinfo['name']
@@ -593,12 +518,25 @@ class RepoManager(object):
                 continue
             volumedir = pathinfo.volumedir(volname)
             distrepodir = "%s/repos-dist" % volumedir
-            self._pruneLocalRepos(distrepodir, self.options.dist_repo_lifetime)
+            self._pruneLocalRepos(distrepodir)
 
-    def _pruneLocalRepos(self, topdir, max_age):
-        """Scan filesystem for repos and remove any deleted ones
+    def _pruneLocalRepos(self, topdir):
+        """Scan filesystem for repos and remove any deleted or stray ones
 
-        Also, warn about any oddities"""
+        Specifically, we remove:
+        - repo dirs the hub does not know about (unless ignore_stray_repos is true)
+        - repos the hub think are already deleted
+
+        We ignore:
+        - any repos with age < expired_repo_lifetime
+        - any repos we're already tracking
+        - any repos already in the delete queue
+
+        Also, we warn about unexpected content, but do not remove it
+        """
+
+        max_age = self.options.expired_repo_lifetime
+        # TODO - do we need a different lifetime option here?
         if self.delete_pids:
             # skip
             return
@@ -626,7 +564,6 @@ class RepoManager(object):
             for repo_id in os.listdir(tagdir):
                 if repo_id == 'latest' or repo_id == repo_latest_id:
                     # ignore latest symlinks or repo where one points to
-                    self.logger.debug("%s is latest symlink or repo, skipping", tagdir)
                     continue
                 try:
                     repo_id = int(repo_id)
@@ -637,6 +574,9 @@ class RepoManager(object):
                     # we're already managing it, no need to deal with it here
                     continue
                 repodir = "%s/%s" % (tagdir, repo_id)
+                if repodir in self.delete_queue:
+                    # no need to queue again
+                    continue
                 try:
                     # lstat because it could be link to another volume
                     dirstat = os.lstat(repodir)
@@ -678,8 +618,9 @@ class RepoManager(object):
                         self.logger.warning(
                             "Tag name mismatch (rename?): %s vs %s", tag, rinfo['tag_name'])
                         continue
-                if rinfo['state'] in (koji.REPO_DELETED, koji.REPO_PROBLEM):
-                    age = time.time() - max(rinfo['create_ts'], dir_ts)
+                if rinfo['state'] == koji.REPO_DELETED:
+                    # Note that we already checked delete_queue above
+                    age = time.time() - max(rinfo.get('state_ts', 0), dir_ts)
                     self.logger.debug("potential removal candidate: %s; age: %s" % (repodir, age))
                     if age > max_age:
                         logger.info("Removing stray repo (state=%s): %s",
@@ -689,358 +630,28 @@ class RepoManager(object):
                         else:
                             self.rmtree(repodir)
 
-    def tagUseStats(self, tag_id):
-        stats = self.tag_use_stats.get(tag_id)
-        now = time.time()
-        if stats and now - stats['ts'] < 3600:
-            # use the cache
-            return stats
-        data = self.session.listBuildroots(tagID=tag_id,
-                                           queryOpts={'order': '-create_event_id', 'limit': 100})
-        # XXX magic number (limit)
-        if data:
-            tag_name = data[0]['tag_name']
-        else:
-            tag_name = "#%i" % tag_id
-        stats = {'data': data, 'ts': now, 'tag_name': tag_name}
-        recent = [x for x in data if now - x['create_ts'] < 3600 * 24]
-        # XXX magic number
-        stats['n_recent'] = len(recent)
-        self.tag_use_stats[tag_id] = stats
-        self.logger.debug("tag %s recent use count: %i" % (tag_name, len(recent)))
-        return stats
-
-    def setTagScore(self, entry):
-        """Set score for needed_tag entry
-
-        We score the tags by two factors
-            - age of current repo
-            - last use in a buildroot
-
-        Having an older repo or a higher use count gives the tag a higher
-        priority for regen. The formula attempts to keep the last use factor
-        from overpowering, so that tags with very old repos still get priority
-        """
-
-        stats = self.tagUseStats(entry['taginfo']['id'])
-        # normalize use count
-        max_n = max([t.get('n_recent', 0) for t in self.needed_tags.values()] or [1])
-        if max_n == 0:
-            # no recent use or missing data
-            max_n = 1
-        adj = stats['n_recent'] * 9.0 // max_n + 1   # 1.0 to 10.0
-        ts = entry['expire_ts']
-        age = time.time() - ts
-        # XXX - need to make sure our times aren't far off, otherwise this
-        # scoring could have the opposite of the desired effect
-        if age < 0:
-            self.logger.warning("Needed tag has future expire_ts: %r", entry)
-            age = 0
-        entry['score'] = age * adj * entry.get('score_adjust', 1)
-        self.logger.debug("Needed tag %s got score %.2f",
-                          entry['taginfo']['name'], entry['score'])
-        # so a day old unused repo gets about the regen same score as a
-        # 2.4-hour-old, very popular repo
-
-    def updateTagScores(self):
-        # call listTasks waitrepo
-        tasks = self.session.listTasks(opts={'method': ['waitrepo'],
-                                             'decode': True,
-                                             'state': [koji.TASK_STATES['FREE'],
-                                                       koji.TASK_STATES['ASSIGNED'],
-                                                       koji.TASK_STATES['OPEN']]})
-        awaited = set()
-        if tasks:
-            logger.debug("Checking %s active waitrepo tasks", len(tasks))
-        for task in tasks:
-            try:
-                tag_param = koji.parse_task_params('waitrepo', task['request'])['tag']
-                taginfo = getTag(self.session, tag_param)
-            except Exception:
-                # ignore malformed tasks
-                self.logger.debug(f"Malformed task: {task}")
-                continue
-            if taginfo:
-                awaited.add(taginfo['id'])
-            else:
-                self.logger.debug("Found waitrepo task %i with bad tag arg: %r",
-                                  task['id'], tag_param)
-
-        for tag_id, entry in self.needed_tags.items():
-            if tag_id in awaited:
-                # score multiplication factor, prioritize tags which are being awaited for
-                # not needed on every setTagScore call (initial point will not account it for)
-                entry['score_adjust'] = 2
-            self.setTagScore(entry)
-
-    def _delete_needed_tag(self, tag_id):
-        try:
-            del self.needed_tags[tag_id]
-        except KeyError:
-            pass
-
     def updateRepos(self):
         self.logger.debug("Updating repos")
 
         self.readCurrentRepos()
 
-        # check for stale repos
         for repo in to_list(self.repos.values()):
-            if repo.stale():
-                repo.expire()
-
-        # find out which tags require repos
-        self.checkNeeded()
-
-        self.updateTagScores()
-
-        if self.options.queue_file:
-            with open(self.options.queue_file, "wt", encoding='utf-8') as f:
-                fmt = "%-40s %7s %5s\n"
-                f.write(fmt % ("Tag", "Expired", "Score"))
-                for tag in sorted(self.needed_tags.values(), key=lambda t: t['score'],
-                                  reverse=True):
-                    time_expired = time.time() - tag['expire_ts']
-                    f.write(fmt % (tag['taginfo']['name'], int(time_expired), int(tag['score'])))
-
-    def checkTasks(self):
-        """Check on newRepo tasks
-
-        - update taskinfo
-        - remove finished tasks
-        - check for other newRepo tasks (not generated by us)
-        """
-
-        # check on current tasks
-        task_ids = list(self.tasks)
-        self.session.multicall = True
-        for task_id in task_ids:
-            self.session.getTaskInfo(task_id)
-        for task_id, [tinfo] in zip(task_ids, self.session.multiCall(strict=True)):
-            tstate = koji.TASK_STATES[tinfo['state']]
-            tag_id = self.tasks[task_id]['tag_id']
-            if tstate == 'CLOSED':
-                self.logger.info("Finished: newRepo task %s for tag %s", task_id, tag_id)
-                del self.tasks[task_id]
-                self._delete_needed_tag(tag_id)
-            elif tstate in ('CANCELED', 'FAILED'):
-                self.logger.info(
-                    "Problem: newRepo task %s for tag %s is %s", task_id, tag_id, tstate)
-                del self.tasks[task_id]
-            else:
-                self.tasks[task_id]['taskinfo'] = tinfo
-            # TODO: implement a timeout
-
-        # also check other newRepo tasks
-        repo_tasks = self.session.listTasks(opts={'method': 'newRepo',
-                                                  'state': ([koji.TASK_STATES[s]
-                                                             for s in ('FREE', 'OPEN')])})
-        others = [t for t in repo_tasks if t['id'] not in self.tasks]
-        for tinfo in others:
-            if tinfo['id'] not in self.other_tasks:
-                self.logger.info("Untracked newRepo task: %(id)i", tinfo)
-                # note: possible race here, but only a log message
-            # TODO - determine tag and maven support
-        self.other_tasks = dict([(t['id'], t) for t in others])
-
-    def checkNeeded(self):
-        """Determine which tags currently need regeneration"""
-
-        n_need = len(self.needed_tags)
-        ignore = self.options.ignore_tags.split()
-        build_tags = set()
-        ignored_build_tags = set()
-        for t in self.session.getBuildTargets():
-            if koji.util.multi_fnmatch(t['build_tag_name'], ignore):
-                ignored_build_tags.add(t['build_tag'])
-            else:
-                build_tags.add(t['build_tag'])
-
-        # index repos by tag
-        tag_repos = {}
-        for repo in to_list(self.repos.values()):
-            tag_repos.setdefault(repo.tag_id, []).append(repo)
-
-        for tag_id in build_tags:
-            covered = False
-            for repo in tag_repos.get(tag_id, []):
-                if repo.current:
-                    covered = True
-                    break
-                elif repo.pending():
-                    # one on the way
-                    covered = True
-                    break
-            if tag_id in self.needed_tags:
-                entry = self.needed_tags[tag_id]
-                if covered:
-                    # no longer needed
-                    self.logger.info("Tag %(name)s has a current or in "
-                                     "progress repo", entry['taginfo'])
-                    self._delete_needed_tag(tag_id)
-                # if not covered, we already know
-                continue
-            if covered:
-                continue
-
-            # we haven't noted this need yet
-            taginfo = self.session.getTag(tag_id)
-            # (not using the caching version since we only call upon discovery)
-            if not taginfo:
-                self.logger.warning('Tag disappeared: %i', tag_id)
-                continue
-            self.logger.info('Tag needs regen: %(name)s', taginfo)
-
-            # how expired are we?
-            ts = 0
-            for repo in tag_repos.get(tag_id, []):
-                if repo.problem():
-                    continue
-                if repo.expire_ts:
-                    if repo.expire_ts > ts:
-                        ts = repo.expire_ts
+            if repo.state == koji.REPO_INIT:
+                repo.check_init()
+            elif repo.state == koji.REPO_READY:
+                if repo.dist:
+                    repo.dist_expire_check()
                 else:
-                    self.logger.warning("No expire timestamp for repo: %s", repo.repo_id)
-            if ts == 0:
-                ts = time.time() - self.options.no_repo_effective_age
-
-            entry = {
-                'taginfo': taginfo,
-                'expire_ts': ts,
-                'needed_since': time.time(),
-            }
-            self.setTagScore(entry)
-            self.needed_tags[tag_id] = entry
-
-        # some cleanup
-        for tag_id in list(self.needed_tags):
-            entry = self.needed_tags.get(tag_id)
-            if tag_id not in build_tags:
-                self.logger.info("Tag %(name)s is no longer a build tag",
-                                 entry['taginfo'])
-                self._delete_needed_tag(tag_id)
-        for tag_id, repolist in tag_repos.items():
-            if tag_id not in build_tags and tag_id not in ignored_build_tags:
-                # repos for these tags are no longer required
-                for repo in repolist:
-                    if repo.dist:
-                        # Dist repos should expire only basd on the time
-                        continue
-                    if repo.ready():
-                        repo.expire()
-
-        if n_need != len(self.needed_tags):
-            self.logger.info('Needed tags count went from %i to %i', n_need,
-                             len(self.needed_tags))
+                    repo.expire_check()
+            elif repo.state == koji.REPO_EXPIRED:
+                repo.delete_check()
+            elif repo.state == koji.REPO_PROBLEM:
+                repo.handle_problem()
 
     def regenRepos(self):
-        """Trigger newRepo tasks for needed tags"""
-
-        self.checkTasks()
-        self.logger.debug("Current tasks: %r" % self.tasks)
-        if self.other_tasks:
-            self.logger.debug("Found %i untracked newRepo tasks",
-                              len(self.other_tasks))
-
-        # first note currently running tasks
-        running_tasks = 0
-        running_tasks_maven = 0
-        for task in self.tasks.values():
-            if task['taskinfo']['waiting']:
-                self.logger.debug("Task %(id)i is waiting", task)
-            else:
-                # The largest hub impact is from the first part of the newRepo
-                # task. Once it is waiting on subtasks, that part is over
-                running_tasks += 1
-                if task['maven']:
-                    running_tasks_maven += 1
-
-        debuginfo_pat = self.options.debuginfo_tags.split()
-        src_pat = self.options.source_tags.split()
-        separate_src_pat = self.options.separate_source_tags.split()
-        order = sorted(self.needed_tags.values(), key=lambda t: t['score'], reverse=True)
-        for tag in order:
-            if running_tasks >= self.options.max_repo_tasks:
-                self.logger.debug("Running tasks (%s): %s" % (running_tasks, list(self.tasks)))
-                self.logger.info("Maximum number of repo tasks reached")
-                return
-            elif len(self.tasks) + len(self.other_tasks) >= self.options.repo_tasks_limit:
-                self.logger.debug("Tracked tasks (%s): %s" % (len(self.tasks), list(self.tasks)))
-                self.logger.debug("Untracked tasks (%s): %s" % (len(self.other_tasks),
-                                                                list(self.other_tasks)))
-                self.logger.info("Repo task limit reached")
-                return
-            tagname = tag['taginfo']['name']
-            task_id = tag.get('task_id')
-            if task_id:
-                if task_id in self.tasks:
-                    # we already have a task
-                    continue
-                else:
-                    # should not happen
-                    logger.warning('Needed tag refers to unknown task. '
-                                   '%s -> %i', tagname, task_id)
-                    # we'll advance and create a new task
-            taskopts = {}
-            if koji.util.multi_fnmatch(tagname, debuginfo_pat):
-                taskopts['debuginfo'] = True
-            if koji.util.multi_fnmatch(tagname, src_pat):
-                taskopts['src'] = True
-            if koji.util.multi_fnmatch(tagname, separate_src_pat):
-                taskopts['separate_src'] = True
-            maven = tag['taginfo']['maven_support']
-            if maven:
-                if running_tasks_maven >= self.options.max_repo_tasks_maven:
-                    continue
-            try:
-                task_id = self.session.newRepo(tagname, **taskopts)
-            except koji.GenericError:
-                # potentially deleted tag
-                if not self.session.getTag(tagname):
-                    self._delete_needed_tag(tag['taginfo']['id'])
-                    logger.debug('Needed tag %s (%d) was deleted meanwhile',
-                                 tagname, tag['taginfo']['id'])
-                    continue
-                else:
-                    raise
-            running_tasks += 1
-            if maven:
-                running_tasks_maven += 1
-            expire_ts = tag['expire_ts']
-            if expire_ts == 0:  # can this still happen?
-                time_expired = '???'
-            else:
-                time_expired = "%.1f" % (time.time() - expire_ts)
-            self.logger.info("Created newRepo task %s for tag %s (%s), "
-                             "expired for %s sec", task_id, tag['taginfo']['id'],
-                             tag['taginfo']['name'], time_expired)
-            self.tasks[task_id] = {
-                'id': task_id,
-                'taskinfo': self.session.getTaskInfo(task_id),
-                'tag_id': tag['taginfo']['id'],
-                'maven': maven,
-            }
-            tag['task_id'] = task_id
-        if running_tasks_maven >= self.options.max_repo_tasks_maven:
-            self.logger.info("Maximum number of maven repo tasks reached")
-
-    def deleteRepos(self):
-        # trigger deletes
-        self.delete_logger.debug("Starting delete repos")
-        n = 0
-        for repo in to_list(self.repos.values()):
-            if repo.expired():
-                # try to delete
-                if repo.tryDelete(self.delete_logger):
-                    try:
-                        del self.repos[repo.repo_id]
-                    except KeyError:
-                        # during tryDelete repo record is deleted on hub
-                        # if readCurrentRepos is called meanwhile, it could have
-                        # cleaned self.repos already
-                        pass
-                    n += 1
-        self.delete_logger.debug("Ending delete repos (queued for deletion: %s)" % n)
+        """Trigger repo requests as needed"""
+        self.session.repo.autoRequests()
+        self.session.repo.checkQueue()
 
 
 def start_currency_checker(session, repomgr):
@@ -1070,15 +681,6 @@ def start_regen_loop(session, repomgr):
     return thread
 
 
-def start_delete_loop(session, repomgr):
-    subsession = session.subsession()
-    thread = threading.Thread(name='deleteLoop',
-                              target=repomgr.deleteLoop, args=(subsession,))
-    thread.daemon = True
-    thread.start()
-    return thread
-
-
 def start_rmtree_loop(session, repomgr):
     subsession = session.subsession()
     thread = threading.Thread(name='rmtreeLoop',
@@ -1099,9 +701,7 @@ def main(options, session):
     if options.check_external_repos:
         curr_ext_chk_thread = start_external_currency_checker(session, repomgr)
     regen_thread = start_regen_loop(session, repomgr)
-    delete_thread = start_delete_loop(session, repomgr)
     rmtree_thread = start_rmtree_loop(session, repomgr)
-    # TODO also move rmtree jobs to threads
     logger.info("Entering main loop")
     while True:
         try:
@@ -1117,9 +717,6 @@ def main(options, session):
             if not regen_thread.is_alive():
                 logger.error("Regeneration thread died. Restarting it.")
                 regen_thread = start_regen_loop(session, repomgr)
-            if not delete_thread.is_alive():
-                logger.error("Delete thread died. Restarting it.")
-                delete_thread = start_delete_loop(session, repomgr)
             if not rmtree_thread.is_alive():
                 logger.error("rmtree thread died. Restarting it.")
                 rmtree_thread = start_rmtree_loop(session, repomgr)
@@ -1182,8 +779,7 @@ def get_options():
     parser.add_option("-s", "--server", help="URL of XMLRPC server")
     parser.add_option("--topdir", help="Specify topdir")
     parser.add_option("--logfile", help="Specify logfile")
-    parser.add_option("--queue-file",
-                      help="If specified, queue is dumped to separate status file each cycle")
+    parser.add_option("--queue-file", help=SUPPRESS_HELP)
     (options, args) = parser.parse_args()
 
     config = koji.read_config_files(options.configFile)
@@ -1213,11 +809,14 @@ def get_options():
                 'max_repo_tasks': 4,
                 'max_repo_tasks_maven': 2,
                 'repo_tasks_limit': 10,
-                'deleted_repo_lifetime': 7 * 24 * 3600,
-                # XXX should really be called expired_repo_lifetime
+                'repo_lifetime': 7 * 24 * 3600,
                 'dist_repo_lifetime': 7 * 24 * 3600,
+                'expired_repo_lifetime': None,  # default handled below
+                'deleted_repo_lifetime': None,  # compat alias for expired_repo_lifetime
+                'init_timeout': 7200,
+                'reference_recheck_period': 3600,
                 'no_repo_effective_age': 2 * 24 * 3600,
-                'check_external_repos': False,
+                'check_external_repos': True,
                 'sleeptime': 15,
                 'cert': None,
                 'serverca': None,
@@ -1225,16 +824,27 @@ def get_options():
                 'ignore_other_volumes': False,
                 }
     if config.has_section(section):
-        int_opts = ('deleted_repo_lifetime', 'max_repo_tasks', 'repo_tasks_limit',
+        int_opts = ('deleted_repo_lifetime',
                     'retry_interval', 'max_retries', 'offline_retry_interval',
-                    'max_delete_processes', 'max_repo_tasks_maven', 'dist_repo_lifetime',
-                    'sleeptime', 'no_repo_effective_age')
+                    'max_delete_processes', 'dist_repo_lifetime',
+                    'sleeptime', 'expired_repo_lifetime',
+                    'repo_lifetime', 'reference_recheck_period')
         str_opts = ('topdir', 'server', 'user', 'password', 'logfile', 'principal', 'keytab',
-                    'cert', 'serverca', 'debuginfo_tags', 'queue_file',
-                    'source_tags', 'separate_source_tags', 'ignore_tags')
+                    'cert', 'serverca')
         bool_opts = ('verbose', 'debug', 'ignore_stray_repos', 'offline_retry',
                      'no_ssl_verify', 'check_external_repos', 'ignore_other_volumes')
-        legacy_opts = ('with_src', 'delete_batch_size', 'recent_tasks_lifetime')
+        legacy_opts = ('delete_batch_size',
+                       'debuginfo_tags',
+                       'ignore_tags',
+                       'max_repo_tasks',
+                       'max_repo_tasks_maven',
+                       'no_repo_effective_age',
+                       'queue_file',
+                       'recent_tasks_lifetime',
+                       'repo_tasks_limit',
+                       'source_tags',
+                       'separate_source_tags',
+                       'with_src')
         for name in config.options(section):
             if name in int_opts:
                 defaults[name] = config.getint(section, name)
@@ -1249,6 +859,15 @@ def get_options():
     for name, value in defaults.items():
         if getattr(options, name, None) is None:
             setattr(options, name, value)
+    if options.deleted_repo_lifetime is not None:
+        deprecated('The deleted_repo_lifetime option is deprecated. Use expired_repo_lifetime.\n')
+        if options.expired_repo_lifetime is not None:
+            sys.stderr.write('Ignoring deleted_repo_lifetime because expired_repo_lifetime was '
+                             'specified\n')
+        else:
+            options.expired_repo_lifetime = options.deleted_repo_lifetime
+    elif options.expired_repo_lifetime is None:
+        options.expired_repo_lifetime = 7 * 24 * 3600
     if options.logfile in ('', 'None', 'none'):
         options.logfile = None
     # special handling for cert defaults

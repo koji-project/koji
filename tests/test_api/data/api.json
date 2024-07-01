@@ -8291,7 +8291,7 @@
             "varkw": null
         },
         "host.repoInit": {
-            "desc": "(tag, task_id=None, with_src=False, with_debuginfo=False, event=None, with_separate_src=False)",
+            "desc": "(tag, task_id=None, event=None, opts=None)",
             "args": [
                 {
                     "name": "tag"
@@ -8301,20 +8301,12 @@
                     "default": "None"
                 },
                 {
-                    "name": "with_src",
-                    "default": "False"
-                },
-                {
-                    "name": "with_debuginfo",
-                    "default": "False"
-                },
-                {
                     "name": "event",
                     "default": "None"
                 },
                 {
-                    "name": "with_separate_src",
-                    "default": "False"
+                    "name": "opts",
+                    "default": "None"
                 }
             ],
             "varargs": null,

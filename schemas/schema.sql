@@ -464,13 +464,50 @@ CREATE TABLE build_target_config (
 
 -- track repos
 CREATE TABLE repo (
-	id SERIAL NOT NULL PRIMARY KEY,
-	create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
-	tag_id INTEGER NOT NULL REFERENCES tag(id),
-	state INTEGER,
-	dist BOOLEAN DEFAULT 'false',
-	task_id INTEGER NULL REFERENCES task(id)
+        id SERIAL NOT NULL PRIMARY KEY,
+        creation_time TIMESTAMPTZ DEFAULT NOW(),
+        create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
+        -- creation_time is the time that the repo entry was created
+        -- create_event is the event that the repo was created *from*
+        -- because a repo can be created from an old event, the two can refer to quite different
+        -- points in time.
+        state_time TIMESTAMPTZ DEFAULT NOW(),
+        -- state_time is changed when the repo changes state
+        begin_event INTEGER REFERENCES events(id),
+        end_event INTEGER REFERENCES events(id),
+        -- begin_event records the "tag last changed" event for the tag at creation
+        -- end_event records the first event where the tag changes after creation
+        -- i.e. these are the event boundaries where the repo matches its tag
+        tag_id INTEGER NOT NULL REFERENCES tag(id),
+        state INTEGER,
+        dist BOOLEAN DEFAULT 'false',
+        opts JSONB,
+        custom_opts JSONB,
+        task_id INTEGER REFERENCES task(id)
 ) WITHOUT OIDS;
+
+
+-- repo requests
+CREATE TABLE repo_queue (
+        id SERIAL NOT NULL PRIMARY KEY,
+        create_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        owner INTEGER REFERENCES users(id) NOT NULL,
+        priority INTEGER NOT NULL,
+        tag_id INTEGER NOT NULL REFERENCES tag(id),
+        at_event INTEGER REFERENCES events(id),
+        min_event INTEGER REFERENCES events(id),
+        opts JSONB NOT NULL,
+        CONSTRAINT only_one_event CHECK (at_event IS NULL OR min_event IS NULL),
+        -- the above should be constant for the life the entry
+        update_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        active BOOLEAN NOT NULL DEFAULT TRUE,
+        task_id INTEGER REFERENCES task(id),
+        tries INTEGER NOT NULL DEFAULT 0,
+        repo_id INTEGER REFERENCES repo(id),
+        CONSTRAINT active_sane CHECK (NOT active OR repo_id IS NULL)
+        -- active requests shouldn't already have a repo_id
+) WITHOUT OIDS;
+
 
 -- external yum repos
 create table external_repo (
@@ -479,6 +516,7 @@ create table external_repo (
 );
 -- fake repo id for internal stuff (needed for unique index)
 INSERT INTO external_repo (id, name) VALUES (0, 'INTERNAL');
+
 
 CREATE TABLE external_repo_config (
 	external_repo_id INTEGER NOT NULL REFERENCES external_repo(id),
@@ -495,6 +533,25 @@ CREATE TABLE external_repo_config (
 	PRIMARY KEY (create_event, external_repo_id),
 	UNIQUE (external_repo_id, active)
 ) WITHOUT OIDS;
+
+
+-- kojira uses the table to record info about external repos
+CREATE TABLE external_repo_data (
+        external_repo_id INTEGER NOT NULL REFERENCES external_repo(id),
+        data JSONB,
+-- versioned - see earlier description of versioning
+        create_event INTEGER NOT NULL REFERENCES events(id) DEFAULT get_event(),
+        revoke_event INTEGER REFERENCES events(id),
+        creator_id INTEGER NOT NULL REFERENCES users(id),
+        revoker_id INTEGER REFERENCES users(id),
+        active BOOLEAN DEFAULT 'true' CHECK (active),
+        CONSTRAINT active_revoke_sane CHECK (
+                (active IS NULL AND revoke_event IS NOT NULL AND revoker_id IS NOT NULL)
+                OR (active IS NOT NULL AND revoke_event IS NULL AND revoker_id IS NULL)),
+        PRIMARY KEY (create_event, external_repo_id),
+        UNIQUE (external_repo_id, active)
+) WITHOUT OIDS;
+
 
 CREATE TABLE tag_external_repos (
 	tag_id INTEGER NOT NULL REFERENCES tag(id),
@@ -1052,5 +1109,6 @@ CREATE TABLE locks (
 ) WITHOUT OIDS;
 INSERT INTO locks(name) VALUES('protonmsg-plugin');
 INSERT INTO locks(name) VALUES('scheduler');
+INSERT INTO locks(name) VALUES('repo-queue');
 
 COMMIT WORK;

@@ -46,8 +46,8 @@ from koji_cli.lib import (
     print_task_headers,
     print_task_recurse,
     unique_path,
-    warn,
     wait_repo,
+    warn,
     watch_logs,
     watch_tasks,
     truncate_string
@@ -562,7 +562,7 @@ def handle_build(options, session, args):
                       help="Wait on the build, even if running in the background")
     parser.add_option("--nowait", action="store_false", dest="wait", help="Don't wait on build")
     parser.add_option("--wait-repo", action="store_true",
-                      help="Wait for the actual buildroot repo of given target")
+                      help="Wait for a current repo for the build tag")
     parser.add_option("--wait-build", metavar="NVR", action="append", dest="wait_builds",
                       default=[], help="Wait for the given nvr to appear in buildroot repo")
     parser.add_option("--quiet", action="store_true",
@@ -4347,6 +4347,13 @@ def _print_histline(entry, **kwargs):
             fmt = "new external repo: %(external_repo.name)s"
         else:
             fmt = "external repo deleted: %(external_repo.name)s"
+    elif table == 'external_repo_data':
+        if edit:
+            fmt = "tracking data for external repo %(external_repo.name)s altered"
+        elif create:
+            fmt = "new tracking data for external repo %(external_repo.name)s"
+        else:
+            fmt = "deleted tracking data for external repo %(external_repo.name)s"
     elif table == 'tag_external_repos':
         if edit:
             fmt = "external repo entry for %(external_repo.name)s in tag %(tag.name)s updated"
@@ -4450,6 +4457,7 @@ _table_keys = {
     'tag_extra': ['tag_id', 'key'],
     'build_target_config': ['build_target_id'],
     'external_repo_config': ['external_repo_id'],
+    'external_repo_data': ['external_repo_id'],
     'host_config': ['host_id'],
     'host_channels': ['host_id', 'channel_id'],
     'tag_external_repos': ['tag_id', 'external_repo_id'],
@@ -4934,13 +4942,16 @@ def anon_handle_taginfo(goptions, session, args):
         build_targets = session.getBuildTargets(buildTagID=info['id'], **event_opts)
         repos = {}
         if not event:
-            for target in dest_targets + build_targets:
-                if target['build_tag'] not in repos:
-                    repo = session.getRepo(target['build_tag'])
+            # find related repos
+            repo_tags = [tg['build_tag'] for tg in dest_targets + build_targets]
+            repo_tags.append(info['id'])
+            for repo_tag_id in repo_tags:
+                if repo_tag_id not in repos:
+                    repo = session.getRepo(repo_tag_id)
                     if repo is None:
-                        repos[target['build_tag']] = "no active repo"
+                        repos[repo_tag_id] = "no active repo"
                     else:
-                        repos[target['build_tag']] = "repo#%(id)i: %(creation_time)s" % repo
+                        repos[repo_tag_id] = "repo#%(id)i: %(creation_time)s" % repo
         if dest_targets:
             print("Targets that build into this tag:")
             for target in dest_targets:
@@ -4956,6 +4967,8 @@ def anon_handle_taginfo(goptions, session, args):
             print("Targets that build from this tag:")
             for target in build_targets:
                 print("  %s" % target['name'])
+        elif info['id'] in repos:
+            print("Current repo: %s" % repos[info['id']])
         external_repos = session.getTagExternalRepos(tag_info=info['id'], **event_opts)
         if external_repos:
             print("External repos:")
@@ -7254,9 +7267,14 @@ def anon_handle_wait_repo(options, session, args):
                            "(may be used multiple times)")
     parser.add_option("--target", action="store_true",
                       help="Interpret the argument as a build target name")
+    parser.add_option("--request", action="store_true",
+                      help="Create a repo request (requires auth)")
+    parser.add_option("--no-request", action="store_false", dest="request",
+                      help="Do not create a repo request (the default)")
     parser.add_option("--timeout", type="int", default=120,
                       help="Amount of time to wait (in minutes) before giving up "
                            "(default: 120)")
+    parser.add_option("-v", "--verbose", action="store_true", help="Be verbose")
     parser.add_option("--quiet", action="store_true", default=options.quiet,
                       help="Suppress output, success or failure will be indicated by the return "
                            "value only")
@@ -7268,52 +7286,164 @@ def anon_handle_wait_repo(options, session, args):
     elif len(args) > 1:
         parser.error("Only one tag may be specified")
 
-    tag = args[0]
+    tag_arg = args[0]
+
+    compat = False
+    if session.hub_version < (1, 35, 0):
+        compat = True
+
+    anon = True
+    if suboptions.request:
+        if compat:
+            error('Hub does not support repo requests')
+        # requires auth
+        options.noauth = False
+        activate_session(session, options)
+        anon = False
+    elif suboptions.request is None and not compat:
+        warn('The --request option is recommended for faster results')
 
     ensure_connection(session, options)
+
+    # get tag
     if suboptions.target:
-        target_info = session.getBuildTarget(tag)
+        # treat as a target
+        target_info = session.getBuildTarget(tag_arg)
         if not target_info:
-            parser.error("No such build target: %s" % tag)
-        tag = target_info['build_tag_name']
-        tag_id = target_info['build_tag']
+            parser.error("No such build target: %s" % tag_arg)
+        tag = session.getTag(target_info['build_tag'], strict=True)
     else:
-        tag_info = session.getTag(tag)
-        if not tag_info:
-            parser.error("No such tag: %s" % tag)
-        targets = session.getBuildTargets(buildTagID=tag_info['id'])
+        tag = session.getTag(tag_arg)
+        if not tag:
+            parser.error("No such tag: %s" % tag_arg)
+        # warn if not a build target
+        targets = session.getBuildTargets(buildTagID=tag['id'])
         if not targets:
-            warn("%(name)s is not a build tag for any target" % tag_info)
-            targets = session.getBuildTargets(destTagID=tag_info['id'])
+            warn("%(name)s is not a build tag for any target" % tag)
+            targets = session.getBuildTargets(destTagID=tag['id'])
             if targets:
                 maybe = {}.fromkeys([t['build_tag_name'] for t in targets])
                 maybe = sorted(maybe.keys())
                 warn("Suggested tags: %s" % ', '.join(maybe))
-            error()
-        tag_id = tag_info['id']
+
+    if not suboptions.request:
+        # do we expect automatic regen?
+        if not tag['extra'].get('repo.auto') and not compat:
+            warn("This tag is not configured for automatic regeneration")
 
     for nvr in builds:
-        data = session.getLatestBuilds(tag_id, package=nvr["name"])
+        data = session.getLatestBuilds(tag['id'], package=nvr["name"])
         if len(data) == 0:
-            warn("No %s builds in tag %s" % (nvr["name"], tag))
+            warn("No %s builds in tag %s" % (nvr["name"], tag['name']))
         else:
             present_nvr = [x["nvr"] for x in data][0]
             expected_nvr = '%(name)s-%(version)s-%(release)s' % nvr
             if present_nvr != expected_nvr:
-                warn("nvr %s is not current in tag %s\n  latest build in %s is %s" %
-                     (expected_nvr, tag, tag, present_nvr))
+                warn("nvr %s is not current in tag %s\n  latest build is %s" %
+                     (expected_nvr, tag['name'], present_nvr))
 
-    success, msg = wait_repo(session, tag_id, builds,
-                             poll_interval=options.poll_interval, timeout=suboptions.timeout)
-    if success:
-        if not suboptions.quiet:
-            print(msg)
-    else:
+    if compat:
+        # compat for 1.34 and below
+        success, msg = wait_repo(session, tag['id'], builds, poll_interval=options.poll_interval,
+                                 timeout=suboptions.timeout)
+        if success:
+            if not suboptions.quiet:
+                print(msg)
+        else:
+            error('' if suboptions.quiet else msg)
+        return
+
+    watcher = _get_watcher(options, suboptions, session, tag['id'], nvrs=suboptions.builds,
+                           min_event=None)
+
+    try:
+        repoinfo = watcher.waitrepo(anon=anon)
+    except koji.GenericError as err:
+        msg = 'Failed to get repo -- %s' % err
         error('' if suboptions.quiet else msg)
 
+    if not suboptions.quiet:
+        print('Got repo %(id)i' % repoinfo)
+        print("Repo info: %s/repoinfo?repoID=%s" % (options.weburl, repoinfo['id']))
 
-def handle_regen_repo(options, session, args):
-    "[admin] Force a repo to be regenerated"
+
+def handle_wait_repo_request(goptions, session, args):
+    """[monitor] Wait for an existing repo request"""
+    usage = "usage: %prog wait-repo-request [options] <request-id>"
+    parser = OptionParser(usage=get_usage_str(usage))
+    parser.add_option("--timeout", type="int", default=120,
+                      help="Wait timeout (default: 120)")
+    parser.add_option("-v", "--verbose", action="store_true", help="More verbose output")
+    parser.add_option("--quiet", action="store_true", default=goptions.quiet,
+                      help="Reduced output")
+    (options, args) = parser.parse_args(args)
+
+    if len(args) == 0:
+        parser.error("A request id must be specified")
+    elif len(args) > 1:
+        parser.error("This command only accepts one argument")
+
+    activate_session(session, goptions)
+
+    req_id = args[0]
+
+    # first check the request
+    check = session.repo.checkRequest(req_id)
+
+    repo = check['repo']
+    if repo:
+        print('Got repo %(id)i' % repo)
+        print("Repo info: %s/repoinfo?repoID=%s" % (goptions.weburl, repo['id']))
+        return
+
+    # otherwise
+    req = check['request']
+    tag_id = req['tag_id']
+
+    watcher = _get_watcher(goptions, options, session, tag_id)
+
+    try:
+        repo = watcher.wait_request(req)
+    except koji.GenericError as err:
+        msg = 'Failed to get repo -- %s' % err
+        error('' if options.quiet else msg)
+
+
+def _get_watcher(goptions, options, *a, **kw):
+    """Get RepoWatcher instance"""
+
+    def check_opt(key):
+        for opts in options, goptions:
+            val = getattr(opts, key, None)
+            if val is not None:
+                return val
+        return None
+
+    logger = logging.getLogger("waitrepo")  # not under koji.*
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(logging.Formatter('%(message)s'))
+    handler.setLevel(logging.DEBUG)
+    logger.addHandler(handler)
+    if check_opt('debug'):
+        logger.setLevel(logging.DEBUG)
+    elif check_opt('quiet'):
+        logger.setLevel(logging.ERROR)
+    elif check_opt('verbose'):
+        logger.setLevel(logging.INFO)
+    else:
+        logger.setLevel(logging.WARNING)
+
+    watcher = koji.util.RepoWatcher(*a, logger=logger, **kw)
+    watcher.PAUSE = goptions.poll_interval
+    timeout = check_opt('timeout')
+    if timeout is not None:
+        watcher.TIMEOUT = timeout
+
+    return watcher
+
+
+def handle_regen_repo(goptions, session, args):
+    "[admin] Generate a current repo if there is not one"
     usage = "usage: %prog regen-repo [options] <tag>"
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--target", action="store_true",
@@ -7322,23 +7452,44 @@ def handle_regen_repo(options, session, args):
                       help="Wait on for regen to finish, even if running in the background")
     parser.add_option("--nowait", action="store_false", dest="wait",
                       help="Don't wait on for regen to finish")
+    parser.add_option("--make-task", action="store_true", help="Directly create a newRepo task")
     parser.add_option("--debuginfo", action="store_true", help="Include debuginfo rpms in repo")
     parser.add_option("--source", "--src", action="store_true",
                       help="Include source rpms in each of repos")
     parser.add_option("--separate-source", "--separate-src", action="store_true",
                       help="Include source rpms in separate src repo")
-    (suboptions, args) = parser.parse_args(args)
+    parser.add_option("--timeout", type="int", default=120,
+                      help="Wait timeout (default: 120)")
+    parser.add_option("-v", "--verbose", action="store_true", help="More verbose output")
+    parser.add_option("--quiet", action="store_true", default=goptions.quiet,
+                      help="Reduced output")
+    (options, args) = parser.parse_args(args)
+
+    if not options.make_task:
+        if session.hub_version >= (1, 35, 0):
+            # alias for request-repo --current
+            options.at_event = None
+            options.min_event = None
+            options.current = True
+            return _request_repo(goptions, session, parser, options, args)
+        else:
+            warn('Hub does not support repo requests, attempting to create a task directly.')
+
+    # otherwise we still have the old way
+
     if len(args) == 0:
         parser.error("A tag name must be specified")
     elif len(args) > 1:
-        if suboptions.target:
+        if options.target:
             parser.error("Only a single target may be specified")
         else:
             parser.error("Only a single tag name may be specified")
-    activate_session(session, options)
+
+    activate_session(session, goptions)
+
     tag = args[0]
     repo_opts = {}
-    if suboptions.target:
+    if options.target:
         info = session.getBuildTarget(tag)
         if not info:
             parser.error("No such build target: %s" % tag)
@@ -7354,20 +7505,127 @@ def handle_regen_repo(options, session, args):
             warn("%s is not a build tag" % tag)
     if not info['arches']:
         warn("Tag %s has an empty arch list" % info['name'])
-    if suboptions.debuginfo:
+    if options.debuginfo:
         repo_opts['debuginfo'] = True
-    if suboptions.source:
+    if options.source:
         repo_opts['src'] = True
-    if suboptions.separate_source:
+    if options.separate_source:
         repo_opts['separate_src'] = True
+
     task_id = session.newRepo(tag, **repo_opts)
     print("Regenerating repo for tag: %s" % tag)
     print("Created task: %d" % task_id)
-    print("Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id))
-    if suboptions.wait or (suboptions.wait is None and not _running_in_bg()):
+    print("Task info: %s/taskinfo?taskID=%s" % (goptions.weburl, task_id))
+    if options.wait or (options.wait is None and not _running_in_bg()):
         session.logout()
-        return watch_tasks(session, [task_id], quiet=options.quiet,
-                           poll_interval=options.poll_interval, topurl=options.topurl)
+        return watch_tasks(session, [task_id], quiet=goptions.quiet,
+                           poll_interval=goptions.poll_interval, topurl=goptions.topurl)
+
+
+def handle_request_repo(goptions, session, args):
+    """Request a repo for a tag"""
+    usage = "usage: %prog request-repo [options] <tag>"
+    parser = OptionParser(usage=get_usage_str(usage))
+    parser.add_option("--target", action="store_true",
+                      help="Interpret the argument as a build target name")
+    parser.add_option("--wait", action="store_true",
+                      help="Wait on for regen to finish, even if running in the background")
+    parser.add_option("--nowait", action="store_false", dest="wait",
+                      help="Don't wait on for regen to finish")
+    parser.add_option("--min-event", type="int", help="Minimum event id for repo")
+    parser.add_option("--at-event", type="int", help="Specific event id for repo")
+    parser.add_option("--current", "--last", action="store_true", help="Use current event for tag")
+    parser.add_option("--debuginfo", action="store_true", help="Include debuginfo rpms in repo")
+    parser.add_option("--source", "--src", action="store_true",
+                      help="Include source rpms in each of repos")
+    parser.add_option("--separate-source", "--separate-src", action="store_true",
+                      help="Include source rpms in separate src repo")
+    parser.add_option("--timeout", type="int", default=120,
+                      help="Wait timeout (default: 120)")
+    parser.add_option("-v", "--verbose", action="store_true", help="More verbose output")
+    parser.add_option("--quiet", action="store_true", default=goptions.quiet,
+                      help="Reduced output")
+    (options, args) = parser.parse_args(args)
+
+    _request_repo(goptions, session, parser, options, args)
+
+
+def _request_repo(goptions, session, parser, options, args):
+    """Handle the request-repo command"""
+    if len(args) == 0:
+        parser.error("A tag name must be specified")
+    elif len(args) > 1:
+        if options.target:
+            parser.error("Only a single target may be specified")
+        else:
+            parser.error("Only a single tag name may be specified")
+
+    # get the request parameters
+    params = {}
+    if options.at_event:
+        if options.min_event or options.current:
+            parser.error('Cannot specify both min-event and at-event')
+        params['at_event'] = options.at_event
+    elif options.current:
+        if options.min_event:
+            parser.error('Cannot specify both min-event and current')
+        params['min_event'] = "last"
+    elif options.min_event:
+        params['min_event'] = options.min_event
+    repo_opts = {}
+    if options.debuginfo:
+        repo_opts['debuginfo'] = True
+    if options.source:
+        repo_opts['src'] = True
+    if options.separate_source:
+        repo_opts['separate_src'] = True
+    if repo_opts:
+        params['opts'] = repo_opts
+
+    activate_session(session, goptions)
+
+    # get the tag
+    if options.target:
+        # treat first arg as a target
+        target = session.getBuildTarget(args[0])
+        if not target:
+            parser.error("No such build target: %s" % args[0])
+        tag = session.getTag(target['build_tag'], strict=True)
+    else:
+        tag = session.getTag(args[0])
+        if not tag:
+            parser.error("No such tag: %s" % args[0])
+    if not tag['arches']:
+        warn("Tag %s has an empty arch list" % tag['name'])
+
+    watcher = _get_watcher(goptions, options, session, tag['id'], **params)
+
+    # first make the request
+    check = watcher.request()
+
+    repo = check['repo']
+    if repo:
+        print('Got repo %(id)i' % repo)
+        print("Repo info: %s/repoinfo?repoID=%s" % (goptions.weburl, repo['id']))
+        return
+
+    # otherwise we should have a request
+    req = check['request']
+    if not options.wait:
+        print('Got request: %(id)s' % req)
+        if req.get('task_id'):
+            print('Got task: %(task_id)s' % req)
+            print('Task info: %s/taskinfo?taskID=%s' % (goptions.weburl, req['task_id']))
+        return
+    else:
+        try:
+            repo = watcher.wait_request(req)
+        except koji.GenericError as err:
+            msg = 'Failed to get repo -- %s' % err
+            error('' if options.quiet else msg)
+
+    print('Got repo %(id)i' % repo)
+    print("Repo info: %s/repoinfo?repoID=%s" % (goptions.weburl, repo['id']))
 
 
 def handle_dist_repo(options, session, args):

@@ -6,13 +6,18 @@ import unittest
 import copy
 
 import mock
+import pytest
 import six
 
+import koji
 from koji_cli.commands import anon_handle_wait_repo
 from . import utils
 
-
 class TestWaitRepo(utils.CliTestCase):
+
+    """
+    These older tests cover the non-request code path for the cli handler
+    """
 
     # Show long diffs in error output...
     maxDiff = None
@@ -22,7 +27,7 @@ class TestWaitRepo(utils.CliTestCase):
         'maven_support': False,
         'locked': False,
         'name': 'fedora26-build',
-        'extra': {},
+        'extra': {'repo.auto': True},
         'perm': None,
         'id': 2,
         'arches': 'x86_64',
@@ -40,6 +45,7 @@ class TestWaitRepo(utils.CliTestCase):
         self.options.weburl = 'https://localhost.local'
 
         self.session = mock.MagicMock()
+        self.session.hub_version = (1, 35, 0)
         self.session.getTag.return_value = copy.deepcopy(self.TAG)
         self.session.newRepo.return_value = self.task_id
         self.session.getBuildTarget.return_value = {'build_tag_name': self.tag_name}
@@ -55,18 +61,19 @@ class TestWaitRepo(utils.CliTestCase):
     def setUpMocks(self):
         self.activate_session = mock.patch('koji_cli.commands.activate_session').start()
         self.ensure_connection = mock.patch('koji_cli.commands.ensure_connection').start()
-        self.checkForBuilds = mock.patch('koji.util.checkForBuilds').start()
+        self.watcher = mock.MagicMock()
+        self.RepoWatcher = mock.patch('koji.util.RepoWatcher', return_value=self.watcher).start()
+        self.wait_logger = mock.MagicMock()
+        self.getLogger = mock.patch('logging.getLogger', return_value=self.wait_logger).start()
 
     def tearDown(self):
         mock.patch.stopall()
 
-    @mock.patch('time.time')
     @mock.patch('sys.stdout', new_callable=six.StringIO)
     @mock.patch('sys.stderr', new_callable=six.StringIO)
-    def __test_wait_repo(self, args, expected, stderr, stdout, time_mock, ret_code=0,
+    def __test_wait_repo(self, args, expected, stderr, stdout, ret_code=0,
                          expected_warn=''):
         self.options.quiet = False
-        time_mock.side_effect = [0, 1, 2, 3]
         if ret_code:
             with self.assertRaises(SystemExit) as ex:
                 anon_handle_wait_repo(self.options, self.session, args)
@@ -79,59 +86,46 @@ class TestWaitRepo(utils.CliTestCase):
             self.assert_console_message(stderr, expected_warn)
             self.assertIn(rv, [0, None])
 
-    @mock.patch('time.time')
-    @mock.patch('sys.stdout', new_callable=six.StringIO)
-    @mock.patch('sys.stderr', new_callable=six.StringIO)
-    def __test_wait_repo_timeout(self, args, expected, stderr, stdout, time_mock, ret_code=0):
-        self.options.quiet = False
-        time_mock.side_effect = [0, 61, 62]
-        if ret_code:
-            with self.assertRaises(SystemExit) as ex:
-                anon_handle_wait_repo(self.options, self.session, args + ['--timeout', '1'])
-            self.assertExitCode(ex, ret_code)
-            self.assert_console_message(stderr, expected)
-            self.assert_console_message(stdout, '')
-        else:
-            rv = anon_handle_wait_repo(self.options, self.session, args + ['--timeout', '1'])
-            self.assert_console_message(stdout, expected)
-            self.assert_console_message(stderr, '')
-            self.assertIn(rv, [0, None])
-
     def test_anon_handle_wait_repo(self):
         """Test anon_handle_wait_repo function"""
-        arguments = [self.tag_name]
+        arguments = [self.tag_name, '--no-request']
 
         self.options.quiet = False
-        self.session.getRepo.side_effect = [{}, {}, {'id': 1, 'name': 'DEFAULT'}]
-        expected = 'Successfully waited 0:03 for a new %s repo' % self.tag_name + '\n'
+        self.watcher.waitrepo.return_value = {'id': 1, 'name': 'DEFAULT'}
+        expected = (
+            'Got repo 1\n'
+            'Repo info: https://localhost.local/repoinfo?repoID=1\n'
+        )
         self.__test_wait_repo(arguments, expected)
 
     def test_anon_handle_wait_repo_with_target_opt(self):
         """Test anon_handle_wait_repo function with --target option"""
-        arguments = [self.tag_name, '--target']
+        arguments = [self.tag_name, '--target', '--no-request']
 
         self.options.quiet = False
         self.session.getBuildTarget.return_value = {'build_tag_name': self.tag_name,
                                                     'build_tag': 1}
-        self.session.getRepo.side_effect = [{}, {}, {'id': 1, 'name': 'DEFAULT'}]
-        expected = 'Successfully waited 0:03 for a new %s repo' % self.tag_name + '\n'
+        self.watcher.waitrepo.return_value = {'id': 1, 'name': 'DEFAULT'}
+        expected = (
+            'Got repo 1\n'
+            'Repo info: https://localhost.local/repoinfo?repoID=1\n'
+        )
         self.__test_wait_repo(arguments, expected)
 
     def test_anon_handle_wait_repo_timeout(self):
         """Test anon_handle_wait_repo function on timeout case"""
-        arguments = [self.tag_name]
+        arguments = [self.tag_name, '--no-request']
 
         self.options.quiet = False
-        self.session.getRepo.return_value = {}
-        self.checkForBuilds.return_value = True
-        expected = 'Unsuccessfully waited 1:02 for a new %s repo' % self.tag_name + '\n'
-        self.__test_wait_repo_timeout(arguments, expected, ret_code=1)
+        self.watcher.waitrepo.side_effect = koji.GenericError('timeout')
+        expected = 'Failed to get repo -- timeout\n'
+        self.__test_wait_repo(arguments, expected, ret_code=1)
 
     def test_anon_handle_wait_repo_with_build(self):
         """Test anon_handle_wait_repo function with --build options"""
         builds = ['bash-4.4.12-5.fc26', 'sed-4.4-1.fc26']
         new_ver = 'bash-4.4.12-7.fc26'
-        arguments = [self.tag_name]
+        arguments = [self.tag_name, '--no-request']
         pkgs = ''
         for b in builds:
             arguments += ['--build', b]
@@ -142,21 +136,22 @@ class TestWaitRepo(utils.CliTestCase):
         self.session.getLatestBuilds.side_effect = [
             [{'nvr': new_ver}], []
         ]
-        self.checkForBuilds.return_value = True
-        self.session.getRepo.side_effect = [
-            {}, {}, {'id': 1, 'name': 'DEFAULT', 'create_event': 1}
-        ]
-        expected_warn = 'nvr %s is not current in tag %s\n  latest build in %s is %s' % \
-                   (builds[0], self.tag_name, self.tag_name, new_ver) + "\n"
+        self.watcher.waitrepo.return_value = {'id': 1, 'name': 'DEFAULT', 'create_event': 1}
+
+        expected_warn = 'nvr %s is not current in tag %s\n  latest build is %s' % \
+                   (builds[0], self.tag_name, new_ver) + "\n"
         expected_warn += 'No sed builds in tag %s' % self.tag_name + '\n'
-        expected = 'Successfully waited 0:03 for %s to appear in the ' \
-                    '%s repo\n' % (pkgs, self.tag_name)
+        expected = (
+            'Got repo 1\n'
+            'Repo info: https://localhost.local/repoinfo?repoID=1\n'
+        )
         self.__test_wait_repo(arguments, expected, expected_warn=expected_warn)
+        self.RepoWatcher.assert_called_with(self.session, self.TAG['id'], nvrs=builds, min_event=None, logger=self.wait_logger)
 
     def test_anon_handle_wait_repo_with_build_timeout(self):
         """Test anon_handle_wait_repo function with --build options on timeout cases"""
         builds = ['bash-4.4.12-5.fc26', 'sed-4.4-1.fc26']
-        arguments = [self.tag_name]
+        arguments = [self.tag_name, '--no-request']
         pkgs = ''
         for b in builds:
             arguments += ['--build', b]
@@ -168,20 +163,18 @@ class TestWaitRepo(utils.CliTestCase):
             [{'nvr': builds[0]}],
             [{'nvr': builds[1]}],
         ]
-        self.checkForBuilds.return_value = True
-        self.session.getRepo.return_value = {}
-        expected = 'Unsuccessfully waited 1:02 for %s to appear in the %s ' \
-                   'repo\n' % (pkgs, self.tag_name)
-        self.__test_wait_repo_timeout(arguments, expected, ret_code=1)
+        self.watcher.waitrepo.side_effect = koji.GenericError('timeout')
+        expected = 'Failed to get repo -- timeout\n'
+        self.__test_wait_repo(arguments, expected, ret_code=1)
 
     def test_anon_handle_wait_repo_errors(self):
         """Test anon_handle_wait_repo function errors and exceptions"""
         tests = [
             # [ arguments, error_string ]
-            [[], "Please specify a tag name"],
-            [['tag1', 'tag2'], "Only one tag may be specified"],
-            [[self.tag_name], "No such tag: %s" % self.tag_name],
-            [[self.tag_name, '--target'], "No such build target: %s" % self.tag_name],
+            [['--no-request'], "Please specify a tag name"],
+            [['tag1', 'tag2', '--no-request'], "Only one tag may be specified"],
+            [[self.tag_name, '--no-request'], "No such tag: %s" % self.tag_name],
+            [[self.tag_name, '--target', '--no-request'], "No such build target: %s" % self.tag_name],
         ]
 
         self.session.getBuildTarget.return_value = {}
@@ -200,17 +193,20 @@ class TestWaitRepo(utils.CliTestCase):
     @mock.patch('sys.stderr', new_callable=six.StringIO)
     def test_anon_handle_wait_repo_target_not_found(self, stderr):
         """Test anon_handle_wait_repo function on target not found cases"""
+        # Should warn, but continue to watch
 
         # Case 1. both build and dest targets are not found
         self.session.getTag.return_value = self.TAG.copy()
         self.session.getBuildTargets.return_value = []
-        with self.assertRaises(SystemExit) as ex:
-            anon_handle_wait_repo(self.options, self.session, [self.tag_name])
-        self.assertExitCode(ex, 1)
+
+        anon_handle_wait_repo(self.options, self.session, [self.tag_name, '--no-request'])
+
         expected = "%(name)s is not a build tag for any target" % self.TAG + "\n"
         self.assert_console_message(stderr, expected)
+        self.RepoWatcher.assert_called_with(self.session, self.TAG['id'], nvrs=[], min_event=None, logger=self.wait_logger)
 
         # Cas 2. dest is matched, show suggestion
+        self.RepoWatcher.reset_mock()
         self.session.getBuildTargets.side_effect = [
             [],
             [
@@ -219,12 +215,11 @@ class TestWaitRepo(utils.CliTestCase):
                 {'build_tag_name': 'build-tag-3'},
             ],
         ]
-        with self.assertRaises(SystemExit) as ex:
-            anon_handle_wait_repo(self.options, self.session, [self.tag_name])
-        self.assertExitCode(ex, 1)
+        anon_handle_wait_repo(self.options, self.session, [self.tag_name, '--no-request'])
         expected = "%(name)s is not a build tag for any target" % self.TAG + "\n"
         expected += "Suggested tags: build-tag-1, build-tag-2, build-tag-3\n"
         self.assert_console_message(stderr, expected)
+        self.RepoWatcher.assert_called_with(self.session, self.TAG['id'], nvrs=[], min_event=None, logger=self.wait_logger)
 
     def test_anon_handle_wait_repo_help(self):
         """Test anon_handle_wait_repo help message"""
@@ -238,8 +233,11 @@ Options:
   --build=NVR        Check that the given build is in the newly-generated repo
                      (may be used multiple times)
   --target           Interpret the argument as a build target name
+  --request          Create a repo request (requires auth)
+  --no-request       Do not create a repo request (the default)
   --timeout=TIMEOUT  Amount of time to wait (in minutes) before giving up
                      (default: 120)
+  -v, --verbose      Be verbose
   --quiet            Suppress output, success or failure will be indicated by
                      the return value only
 """ % self.progname)

@@ -63,7 +63,8 @@ class TestParseTaskParams(unittest.TestCase):
             # match
             self.assertIn(list(spec), koji.tasks.LEGACY_SIGNATURES[method])
 
-        if len(missing) > 0.1 * len(koji.tasks.LEGACY_SIGNATURES):
-            # we should hit most of the legacy entries this way
-            raise Exception('Unable to test enough legacy signatures. Missing: '
+        external = ['runroot', 'saveFailedTree', 'vmExec', 'winbuild']
+        missing = [m for m in missing if m not in external]
+        if missing:
+            raise Exception('Unable to test legacy signatures. Missing: '
                             '%r' % missing)

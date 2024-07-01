@@ -407,7 +407,7 @@ class TestQueryHistory(DBQueryTestCase):
     def test_external_repo_key(self):
         self.get_external_repo_id.return_value = 49
         kojihub.query_history(external_repo='test-ext-repo')
-        self.assertEqual(len(self.queries), 2)
+        self.assertEqual(len(self.queries), 3)
         query = self.queries[0]
         self.assertEqual(query.tables, ['external_repo_config'])
         self.assertEqual(query.clauses, ['external_repo.id = %(external_repo_id)i'])
@@ -430,6 +430,28 @@ class TestQueryHistory(DBQueryTestCase):
         self.assertEqual(query.values, {'external_repo_id': 49})
 
         query = self.queries[1]
+        self.assertEqual(query.tables, ['external_repo_data'])
+        self.assertEqual(query.clauses, ['external_repo.id = %(external_repo_id)i'])
+        self.assertEqual(query.columns, ['external_repo_data.active',
+                                         'external_repo_data.create_event',
+                                         "date_part('epoch', ev1.time) AS create_ts",
+                                         'external_repo_data.creator_id', 'creator.name',
+                                         'external_repo_data.data',
+                                         'external_repo.name',
+                                         'external_repo_data.external_repo_id',
+                                         'external_repo_data.revoke_event',
+                                         "date_part('epoch', ev2.time) AS revoke_ts",
+                                         'external_repo_data.revoker_id', 'revoker.name',
+                                         ])
+        self.assertEqual(query.joins,
+                         ["events AS ev1 ON ev1.id = create_event",
+                          "LEFT OUTER JOIN events AS ev2 ON ev2.id = revoke_event",
+                          "users AS creator ON creator.id = creator_id",
+                          "LEFT OUTER JOIN users AS revoker ON revoker.id = revoker_id",
+                          'LEFT OUTER JOIN external_repo ON external_repo_id = external_repo.id'])
+        self.assertEqual(query.values, {'external_repo_id': 49})
+
+        query = self.queries[2]
         self.assertEqual(query.tables, ['tag_external_repos'])
         self.assertEqual(query.clauses, ['external_repo.id = %(external_repo_id)i'])
         self.assertEqual(query.columns, ['tag_external_repos.active',
