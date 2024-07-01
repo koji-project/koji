@@ -46,6 +46,7 @@ The build map contains the following entries:
    is optional.
 -  build_id: Reserved build ID. This field is optional.
 -  task_id: In case there is a corresponding task in koji (int/None)
+-  draft: True if the build should be imported as a draft. Optional.
 -  extra: A map of extra metadata associated with the build, which
    must include at least one of:
 
