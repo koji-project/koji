@@ -151,7 +151,13 @@ def _auto_arch_refuse(task_id):
         return
 
     # from here, we're basically doing checkHostArch() for all hosts in the channel
-    tag_arches = set([koji.canonArch(a) for a in taginfo['arches'].split()])
+    buildconfig = context.handlers.call('getBuildConfig', taginfo['id'])
+    # getBuildConfig traverses inheritance to find arches if tag does not have them
+    tag_arches = set([koji.canonArch(a) for a in buildconfig['arches'].split()])
+    if not tag_arches:
+        logger.warning("No arches for tag %(name)s [%(id)s]", taginfo)
+        # we don't error here, allowing the task itself to fail
+        return
 
     hosts = context.handlers.call('listHosts', channelID=info['channel_id'], enabled=True,
                                   queryOpts={'order': 'id'})

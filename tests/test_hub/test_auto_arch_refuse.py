@@ -29,6 +29,11 @@ class AutoRefuseTest(unittest.TestCase):
         self.get_tag = mock.patch('kojihub.kojihub.get_tag').start()
         self.context = mock.patch('kojihub.scheduler.context').start()
         self.set_refusal = mock.patch('kojihub.scheduler.set_refusal').start()
+        self.handlers = {
+            'getBuildConfig': mock.MagicMock(),
+            'listHosts': mock.MagicMock(),
+        }
+        self.context.handlers.call.side_effect = self._my_handler_call
         self.set_base_data()
 
     def tearDown(self):
@@ -51,8 +56,13 @@ class AutoRefuseTest(unittest.TestCase):
         }
         self.task.getInfo.return_value = self.taskinfo
         self.task.isFinished.return_value = False
-        self.get_tag.return_value = {'arches': 'x86_64 s390x ppc64le aarch64'}
-        self.context.handlers.call.return_value = [{'id': 'HOST', 'arches': 'x86_64 i686'}]
+        self.get_tag.return_value = {'id': 'TAGID', 'name': 'MYTAG'}
+        self.handlers['listHosts'].return_value = [{'id': 'HOST', 'arches': 'x86_64 i686'}]
+        self.handlers['getBuildConfig'].return_value = {'arches': 'x86_64 s390x ppc64le aarch64'}
+
+    def _my_handler_call(self, method, *a, **kw):
+        handler = self.handlers[method]
+        return handler(*a, **kw)
 
     def test_arch_overlap(self):
         # we mostly test the underlying function to avoid masking errors
@@ -63,12 +73,21 @@ class AutoRefuseTest(unittest.TestCase):
         self.set_refusal.assert_not_called()
 
     def test_arch_disjoint(self):
-        self.context.handlers.call.return_value = [{'id': 'HOST', 'arches': 'riscv128'}]
+        self.handlers['listHosts'].return_value = [{'id': 'HOST', 'arches': 'riscv128'}]
         scheduler._auto_arch_refuse(100)
 
         self.Task.assert_called_once_with(100)
         self.get_tag.assert_called_once_with('TAG_ID')
         self.set_refusal.assert_called_once()
+
+    def test_no_tag_arches(self):
+        self.handlers['getBuildConfig'].return_value = {'arches': ''}
+        scheduler._auto_arch_refuse(100)
+
+        self.Task.assert_called_once_with(100)
+        self.get_tag.assert_called_once_with('TAG_ID')
+        self.handlers['listHosts'].assert_not_called()
+        self.set_refusal.assert_not_called()
 
     def test_mixed_hosts(self):
         good1 = [{'id': n, 'arches': 'x86_64 i686'} for n in range(0,5)]
@@ -76,7 +95,7 @@ class AutoRefuseTest(unittest.TestCase):
         good2 = [{'id': n, 'arches': 'aarch64'} for n in range(10,15)]
         bad2 = [{'id': n, 'arches': 'sparc64'} for n in range(15,20)]
         hosts = good1 + bad1 + good2 + bad2
-        self.context.handlers.call.return_value = hosts
+        self.handlers['listHosts'].return_value = hosts
         scheduler._auto_arch_refuse(100)
 
         self.Task.assert_called_once_with(100)
