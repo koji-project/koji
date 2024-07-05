@@ -498,7 +498,13 @@ def do_auto_requests():
         lag = lags.get(tag_id, default_lag)
         base_ts = time.time() - lag
         base_ts = (base_ts // window) * window
-        base = context.handlers.get('getLastEvent')(before=base_ts)['id']
+        base_ev = context.handlers.get('getLastEvent')(before=base_ts, strict=False)
+        if base_ev:
+            base = base_ev['id']
+        else:
+            # this will only happen with a brand new instance
+            base = kojihub.tag_first_change_event(tag_id)
+            logger.debug(f'No event older than {base_ts}, using first tag event {base}')
         check = request_repo(tag_id, min_event=min(base, last), priority=5)
         # lower priority so they don't block on-demand
         if check['duplicate']:
@@ -814,7 +820,13 @@ def default_min_event(taginfo):
     # We round base_ts to nearest window so that duplicate requests will get same event if they
     # are close in time.
     base_ts = (base_ts // window) * window
-    base = context.handlers.get('getLastEvent')(before=base_ts)['id']
+    base_ev = context.handlers.get('getLastEvent')(before=base_ts, strict=False)
+    if base_ev:
+        base = base_ev['id']
+    else:
+        # this will only happen with a brand new instance
+        base = kojihub.tag_first_change_event(taginfo['id'])
+        logger.debug(f'No event older than {base_ts}, using first tag event {base}')
     # If the tag has changed recently, we allow a bit of lag.
     # Otherwise, we use the most recent event for the tag.
     return min(base, last)

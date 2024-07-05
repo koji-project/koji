@@ -66,6 +66,7 @@ class BaseTest(unittest.TestCase):
         self.get_id = mock.patch('kojihub.kojihub.get_id').start()
         self.make_task = mock.patch('kojihub.kojihub.make_task').start()
         self.tag_last_change_event = mock.patch('kojihub.kojihub.tag_last_change_event').start()
+        self.tag_first_change_event = mock.patch('kojihub.kojihub.tag_first_change_event').start()
         self.query_execute = mock.MagicMock()
         self.query_executeOne = mock.MagicMock()
         self.query_singleValue = mock.MagicMock()
@@ -603,8 +604,6 @@ class TestUpdateEndEvents(BaseTest):
     def setUp(self):
         super(TestUpdateEndEvents, self).setUp()
         self.BulkUpdateProcessor = mock.patch('kojihub.repos.BulkUpdateProcessor').start()
-        self.tag_first_change_event = mock.patch('kojihub.kojihub.tag_first_change_event').start()
-        self.tag_last_change_event = mock.patch('kojihub.kojihub.tag_last_change_event').start()
 
     def test_no_update(self):
         repo = {'id': 1, 'tag_id': 99, 'create_event': 1000}
@@ -767,7 +766,7 @@ class TestAutoRequests(BaseTest):
 
         self.request_repo.called_once_with(99, min_event=1000, priority=5)
         # with zero lag, getLastEvent should be called with current time
-        self.getLastEvent.assert_called_once_with(before=now)
+        self.getLastEvent.assert_called_once_with(before=now, strict=False)
 
     def test_auto_lag_window(self):
         self.context.opts['RepoLagWindow'] = 600
@@ -792,7 +791,7 @@ class TestAutoRequests(BaseTest):
         if before > now or before < now - 600:
             raise Exception('Invalid lag calculation')
 
-    def test_no_last_event(self):
+    def test_no_last_tag_event(self):
         # corner case that should not happen
         autokeys = [
             {'tag_id': 99, 'key': 'repo.auto', 'value': 'true'},
@@ -804,6 +803,26 @@ class TestAutoRequests(BaseTest):
 
         self.request_repo.assert_not_called()
         self.tag_last_change_event.assert_called_once()
+
+    def test_no_last_event(self):
+        # corner case that can happen with very new instances
+        autokeys = [
+            {'tag_id': 99, 'key': 'repo.auto', 'value': 'true'},
+        ]
+        self.getLastEvent.return_value = None
+        self.query_execute.return_value = autokeys
+        self.tag_last_change_event.return_value = 1000
+        self.tag_first_change_event.return_value = 990
+        self.request_repo.return_value = {'repo': None, 'request': 'REQ', 'duplicate': False}
+
+        repos.do_auto_requests()
+
+        self.request_repo.called_once_with(99, min_event=990, priority=5)
+        self.tag_last_change_event.assert_called_once()
+        self.tag_first_change_event.assert_called_once()
+
+        repos.do_auto_requests()
+
 
 
 class TestGetRepo(BaseTest):
@@ -1302,6 +1321,22 @@ class TestDefaultMinEvent(BaseTest):
         self.getLastEvent.assert_called_once()
         base_ts = self.getLastEvent.call_args.kwargs['before']
         self.assertEqual(base_ts, now - 3600)
+
+    def test_no_last_event(self):
+        # corner case that can happen with very new instances
+        now = 1717171717
+        self.time.return_value = now
+        taginfo = {'id': 55, 'name': 'MYTAG', 'extra': {}}
+        self.tag_last_change_event.return_value = 10000
+        self.getLastEvent.return_value = None
+        self.tag_first_change_event.return_value = 9990
+
+        ev = repos.default_min_event(taginfo)
+
+        # in this corner case we should use the first event for the tag
+        self.assertEqual(ev, 9990)
+        self.getLastEvent.assert_called_once()
+        self.tag_first_change_event.assert_called_once_with(55)
 
 
 class TestCheckRequest(BaseTest):

@@ -889,7 +889,7 @@ class WaitrepoTask(BaseTaskHandler):
             elif isinstance(newer_than, six.integer_types + (float,)):
                 # here, we look for the first event where the tag changed after this time
                 # or, if the tag has not changed since that time, we use its last change event
-                base = self.session.getLastEvent(before=newer_than)
+                base = self.session.getLastEvent(before=newer_than, strict=False)
                 min_event = self.session.tagFirstChangeEvent(tag, after=base) or "last"
             else:
                 raise koji.GenericError("Invalid value for newer_than: %s" % newer_than)

@@ -11084,7 +11084,7 @@ class RootExports(object):
                                clauses=['id = %(id)s'], values={'id': event_id})
         return query.executeOne(strict=strict)
 
-    def getLastEvent(self, before=None):
+    def getLastEvent(self, before=None, strict=True):
         """
         Get the id and timestamp of the last event recorded in the system.
         Events are usually created as the result of a configuration change
@@ -11101,6 +11101,7 @@ class RootExports(object):
         When trying to find information about a specific event, the getEvent() method
         should be used.
         """
+        strict = convert_value(strict, cast=bool)
         fields = [
             ('id', 'id'),
             ("date_part('epoch', time)", 'ts')
@@ -11118,7 +11119,7 @@ class RootExports(object):
         opts = {'order': '-id', 'limit': 1}
         query = QueryProcessor(tables=['events'], columns=columns, aliases=aliases,
                                clauses=clauses, values=values, opts=opts)
-        return query.executeOne(strict=True)
+        return query.executeOne(strict=strict)
 
     evalPolicy = staticmethod(eval_policy)
 
