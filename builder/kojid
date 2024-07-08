@@ -5837,8 +5837,7 @@ class NewRepoTask(BaseTaskHandler):
             return None, None
 
         # see if we can find a previous repo to update from
-        oldrepo_state = koji.REPO_READY
-        oldrepo = self.session.getRepo(tinfo['id'], state=oldrepo_state)
+        oldrepo = self.session.getRepo(tinfo['id'])
         oldrepo_path = None
         if oldrepo:
             oldrepo_path = koji.pathinfo.repo(oldrepo['id'], tinfo['name'])
