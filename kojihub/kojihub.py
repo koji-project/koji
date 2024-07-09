@@ -9552,7 +9552,7 @@ def drop_group_member(group, user):
 
 def get_group_members(group):
     """Get the members of a group"""
-    context.session.assertPerm('admin')
+
     ginfo = get_user(group)
     if not ginfo or ginfo['usertype'] != koji.USERTYPES['GROUP']:
         raise koji.GenericError("No such group: %s" % group)
@@ -13408,6 +13408,24 @@ class RootExports(object):
     addGroupMember = staticmethod(add_group_member)
     dropGroupMember = staticmethod(drop_group_member)
     getGroupMembers = staticmethod(get_group_members)
+
+    def getUserGroups(self, user):
+        """
+        The groups associated with the given user
+
+        :param user: a str (Kerberos principal or name) or an int (user id)
+                     or a dict:
+                         - id: User's ID
+                         - name: User's name
+                         - krb_principal: Kerberos principal
+
+        :returns: a dict mapping member's group IDs to group names
+
+        :raises: GenericError if the specified user is not found
+        """
+
+        uinfo = get_user(user, strict=True)
+        return get_user_groups(uinfo["id"])
 
     def listUsers(self, userType=koji.USERTYPES['NORMAL'], prefix=None, queryOpts=None, perm=None,
                   inherited_perm=False):
