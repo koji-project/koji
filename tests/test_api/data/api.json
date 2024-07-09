@@ -2,7 +2,7 @@
     "version": [
         1,
         34,
-        0
+        1
     ],
     "lib": {
         "koji": {
@@ -1421,7 +1421,7 @@
                 }
             },
             "Retry": {
-                "type": "<class 'urllib3.util.retry._RetryMeta'>",
+                "type": "<class 'type'>",
                 "is_external": true
             },
             "RetryError": {
@@ -7452,6 +7452,16 @@
                 {
                     "name": "groups",
                     "default": "False"
+                }
+            ],
+            "varargs": null,
+            "varkw": null
+        },
+        "getUserGroups": {
+            "desc": "(user)",
+            "args": [
+                {
+                    "name": "user"
                 }
             ],
             "varargs": null,
