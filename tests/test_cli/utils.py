@@ -43,6 +43,8 @@ class CliTestCase(unittest.TestCase):
     STDOUT = sys.stdout
     STDERR = sys.stderr
 
+    def tearDown(self):
+        mock.patch.stopall()
     #
     # private methods
     #
@@ -129,7 +131,7 @@ class CliTestCase(unittest.TestCase):
         # check callableObj callable
         self.__assert_callable(callableObj)
 
-        # these arguments are reseverd and used in assert_system_exit
+        # these arguments are reserved and used in assert_system_exit
         reserved = [
             'activate_session', 'stdout', 'stderr',
             'assert_func', 'exit_code'

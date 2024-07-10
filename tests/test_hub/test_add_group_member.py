@@ -10,6 +10,10 @@ class TestAddGroupMember(unittest.TestCase):
 
     def setUp(self):
         self.exports = kojihub.RootExports()
+        self.context = mock.patch('kojihub.kojihub.context').start()
+        # It seems MagicMock will not automatically handle attributes that
+        # start with "assert"
+        self.context.session.assertPerm = mock.MagicMock()
         self.get_user = mock.patch('kojihub.kojihub.get_user').start()
 
     def tearDown(self):

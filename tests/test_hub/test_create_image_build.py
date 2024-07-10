@@ -13,6 +13,10 @@ class TestCreateImageBuild(unittest.TestCase):
     def setUp(self):
         self.get_build = mock.patch('kojihub.kojihub.get_build').start()
         self.exports = kojihub.RootExports()
+        self.context = mock.patch('kojihub.kojihub.context').start()
+        # It seems MagicMock will not automatically handle attributes that
+        # start with "assert"
+        self.context.session.assertPerm = mock.MagicMock()
         self.InsertProcessor = mock.patch('kojihub.kojihub.InsertProcessor',
                                           side_effect=self.getInsert).start()
         self.inserts = []

@@ -132,7 +132,8 @@ class TestHost(unittest.TestCase):
         )
         self.assertEqual(processor.call_args_list[2], update3)
 
-    def test_task_wait_check(self):
+    @mock.patch('kojihub.kojihub.context')
+    def test_task_wait_check(self, context):
         self.query_execute.return_value = [{'id': 1, 'state': 1},
                                            {'id': 2, 'state': 2},
                                            {'id': 3, 'state': 3},

@@ -18,6 +18,10 @@ class TestDisableChannel(unittest.TestCase):
 
     def setUp(self):
         self.exports = kojihub.RootExports()
+        self.context = mock.patch('kojihub.kojihub.context').start()
+        # It seems MagicMock will not automatically handle attributes that
+        # start with "assert"
+        self.context.session.assertPerm = mock.MagicMock()
         self.get_channel = mock.patch('kojihub.kojihub.get_channel').start()
         self.UpdateProcessor = mock.patch('kojihub.kojihub.UpdateProcessor',
                                           side_effect=self.getUpdate).start()
