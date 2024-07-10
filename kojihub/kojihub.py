@@ -13419,13 +13419,15 @@ class RootExports(object):
                          - name: User's name
                          - krb_principal: Kerberos principal
 
-        :returns: a dict mapping member's group IDs to group names
+        :returns: a list of dicts, each containing the id and name of
+                  a group
 
         :raises: GenericError if the specified user is not found
         """
 
         uinfo = get_user(user, strict=True)
-        return get_user_groups(uinfo["id"])
+        return [{'id': key, 'name': val} for key, val in
+                get_user_groups(uinfo["id"]).items()]
 
     def listUsers(self, userType=koji.USERTYPES['NORMAL'], prefix=None, queryOpts=None, perm=None,
                   inherited_perm=False):

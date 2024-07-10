@@ -48,5 +48,5 @@ class TestGetUserGroups(DBQueryTestCase):
                                         'user_id': 23})
         self.assertEqual(query.columns, ['group_id', 'name'])
 
-        self.assertEqual(grps, {123: 'grp_123',
-                                456: 'grp_456'})
+        self.assertEqual(grps, [{'id': 123, 'name': 'grp_123'},
+                                {'id': 456, 'name': 'grp_456'}])
