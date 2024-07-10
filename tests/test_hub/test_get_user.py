@@ -101,8 +101,12 @@ class TestGetUser(DBQueryTestCase):
 
 
 class TestGetUserByKrbPrincipal(unittest.TestCase):
+
     def setUp(self):
         self.get_user = mock.patch('kojihub.kojihub.get_user').start()
+
+    def tearDown(self):
+        mock.patch.stopall()
 
     def test_wrong_type_krb_principal(self):
         krb_principal = ['test-user']

@@ -157,6 +157,9 @@ class TestWatchLogsCLI(utils.CliTestCase):
 %s: error: {message}
 """ % (self.progname, self.progname)
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_handle_watch_task_help(self):
         self.assert_help(
             anon_handle_watch_task,

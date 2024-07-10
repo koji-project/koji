@@ -221,6 +221,9 @@ class TestGetTag(unittest.TestCase):
         self.queries = []
         self.tagname = 'test-tag'
 
+    def tearDown(self):
+        mock.patch.stopall()
+
     def test_get_tag_invalid_taginfo(self):
         taginfo = {'test-tag': 'value'}
         with self.assertRaises(koji.GenericError) as ex:
