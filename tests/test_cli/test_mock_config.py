@@ -84,7 +84,7 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
         self.gen_config_mock.return_value = self.mock_output
 
         # buildroot check
-        arguments = ['--buildroot', 'root', self.progname]
+        arguments = ['--buildroot', 'root', 'ROOTNAME']
         expected = self.format_error_message("Buildroot id must be an integer")
         self.assert_system_exit(
             anon_handle_mock_config,
@@ -95,7 +95,7 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
         self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
         self.ensure_connection_mock.reset_mock()
 
-        arguments = self.common_args + ['--buildroot', '1', '--name', self.progname]
+        arguments = self.common_args + ['--buildroot', '1', '--name', 'ROOTNAME']
         opts = self.common_opts.copy()
         opts.update({
             'repoid': buildroot_info['repo_id'],
@@ -106,17 +106,17 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
         del opts['topurl']
         anon_handle_mock_config(self.options, self.session, arguments)
         self.assert_console_message(stdout, "%s\n" % self.gen_config_mock.return_value)
-        self.gen_config_mock.assert_called_with(self.progname, buildroot_info['arch'], **opts)
+        self.gen_config_mock.assert_called_with('ROOTNAME', buildroot_info['arch'], **opts)
         self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
         self.ensure_connection_mock.reset_mock()
 
         arguments = self.common_args + ['--buildroot', '1',
-                                        '--name', self.progname,
+                                        '--name', 'ROOTNAME',
                                         '--latest']
         opts['repoid'] = 'latest'
         anon_handle_mock_config(self.options, self.session, arguments)
         self.assert_console_message(stdout, "%s\n" % self.gen_config_mock.return_value)
-        self.gen_config_mock.assert_called_with(self.progname, buildroot_info['arch'], **opts)
+        self.gen_config_mock.assert_called_with('ROOTNAME', buildroot_info['arch'], **opts)
         self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
         self.ensure_connection_mock.reset_mock()
 
@@ -186,13 +186,13 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
         })
         del opts['topurl']
         arguments = self.common_args + ['--task', str(task_id),
-                                        '--name', self.progname,
+                                        '--name', 'ROOTNAME',
                                         '--latest']
         self.session.listBuildroots.return_value = [multi_broots[0]]
         self.gen_config_mock.return_value = self.mock_output
         anon_handle_mock_config(self.options, self.session, arguments)
         self.assert_console_message(stdout, "%s\n" % self.gen_config_mock.return_value)
-        self.gen_config_mock.assert_called_with(self.progname, multi_broots[0]['arch'], **opts)
+        self.gen_config_mock.assert_called_with('ROOTNAME', multi_broots[0]['arch'], **opts)
         self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
         self.ensure_connection_mock.reset_mock()
 
@@ -276,7 +276,7 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
 
         arguments = self.common_args + ['--tag', tag['name'],
                                         '--arch', tag['arch'],
-                                        '--name', self.progname,
+                                        '--name', 'ROOTNAME',
                                         '--latest']
         opts = self.common_opts.copy()
         opts.update({
@@ -300,7 +300,7 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
         del opts['topurl']
         anon_handle_mock_config(self.options, self.session, arguments)
         self.assert_console_message(stdout, "%s\n" % self.gen_config_mock.return_value)
-        self.gen_config_mock.assert_called_with(self.progname, tag['arch'], **opts)
+        self.gen_config_mock.assert_called_with('ROOTNAME', tag['arch'], **opts)
         self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
         self.ensure_connection_mock.reset_mock()
 
@@ -309,7 +309,7 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
         warn_msg = '%s is not in the list of tag arches' % arch
         self.gen_config_mock.return_value = self.mock_output
         arguments = self.common_args + ['--tag', tag['name'], '--arch', arch,
-                                        '--name', self.progname, '--latest']
+                                        '--name', 'ROOTNAME', '--latest']
         anon_handle_mock_config(self.options, self.session, arguments)
         self.assert_console_message(stdout, "%s\n" % self.gen_config_mock.return_value)
         self.assert_console_message(stderr, "%s\n" % warn_msg)
@@ -331,7 +331,7 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
         warn_msg = 'Tag %s has an empty arch list' % tag['name']
         self.gen_config_mock.return_value = self.mock_output
         arguments = self.common_args + ['--tag', tag['name'], '--arch', arch,
-                                        '--name', self.progname, '--latest']
+                                        '--name', 'ROOTNAME', '--latest']
         anon_handle_mock_config(self.options, self.session, arguments)
         self.assert_console_message(stdout, "%s\n" % self.gen_config_mock.return_value)
         self.assert_console_message(stderr, "%s\n" % warn_msg)
@@ -390,7 +390,7 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
 
         arguments = ['--distribution', 'fedora', '--topurl', '/top-url',
                      '--yum-proxy', '/yum-proxy', '--target', target['name'], '--arch', arch,
-                     '--name', self.progname]
+                     '--name', 'ROOTNAME']
         opts = self.common_opts.copy()
         opts.update({
             'repoid': 101,
@@ -403,7 +403,7 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
         self.gen_config_mock.return_value = self.mock_output
         anon_handle_mock_config(self.options, self.session, arguments)
         self.assert_console_message(stdout, "%s\n" % self.gen_config_mock.return_value)
-        self.gen_config_mock.assert_called_with(self.progname, arch, **opts)
+        self.gen_config_mock.assert_called_with('ROOTNAME', arch, **opts)
         self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
         self.ensure_connection_mock.reset_mock()
 
@@ -415,7 +415,7 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
         anon_handle_mock_config(self.options, self.session, arguments)
         openf.assert_called_once()
         fobj.write.assert_called_once_with(self.mock_output)
-        self.gen_config_mock.assert_called_with(self.progname, arch, **opts)
+        self.gen_config_mock.assert_called_with('ROOTNAME', arch, **opts)
         self.ensure_connection_mock.assert_called_once_with(self.session, self.options)
         self.ensure_connection_mock.reset_mock()
 
@@ -423,7 +423,7 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
         arch = 'test'
         arguments = self.common_args + ['--target', target['name'],
                                         '--arch', arch,
-                                        '--name', self.progname]
+                                        '--name', 'ROOTNAME']
         warn_msg = '%s is not in the list of tag arches' % arch
         self.gen_config_mock.return_value = self.mock_output
         anon_handle_mock_config(self.options, self.session, arguments)
@@ -449,7 +449,7 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
         self.ensure_connection_mock.reset_mock()
 
         # name is specified twice case
-        arguments = [self.progname, '--name', 'name']
+        arguments = ['duplicate_buildroot_name', '--name', 'name']
         expected = self.format_error_message("Name already specified via option")
         self.assert_system_exit(
             anon_handle_mock_config,
