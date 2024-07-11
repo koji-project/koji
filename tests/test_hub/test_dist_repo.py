@@ -105,18 +105,21 @@ class TestDistRepoInit(unittest.TestCase):
 
 class TestDistRepo(unittest.TestCase):
 
-    @mock.patch('kojihub.kojihub.assert_policy')
-    @mock.patch('kojihub.kojihub.dist_repo_init')
-    @mock.patch('kojihub.kojihub.make_task')
-    def test_DistRepo(self, make_task, dist_repo_init, assert_policy):
-        session = kojihub.context.session = mock.MagicMock()
+    def setUp(self):
+        self.assert_policy = mock.patch('kojihub.kojihub.assert_policy').start()
+        self.dist_repo_init = mock.patch('kojihub.kojihub.dist_repo_init').start()
+        self.make_task = mock.patch('kojihub.kojihub.make_task').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
+
+    def tearDown(self):
+        mock.patch.stopall()
+
+    def test_DistRepo(self):
+        session = self.context.session
         session.user_id = 123
-        # It seems MagicMock will not automatically handle attributes that
-        # start with "assert"
-        session.hasPerm = mock.MagicMock()
         session.hasPerm.return_value = False
-        dist_repo_init.return_value = ('repo_id', 'event_id')
-        make_task.return_value = 'task_id'
+        self.dist_repo_init.return_value = ('repo_id', 'event_id')
+        self.make_task.return_value = 'task_id'
         exports = kojihub.RootExports()
         exports.getBuildConfig = mock.MagicMock()
         exports.getBuildConfig.return_value = {'extra': {}}
@@ -124,10 +127,10 @@ class TestDistRepo(unittest.TestCase):
         ret = exports.distRepo('tag', 'keys')
 
         session.hasPerm.assert_has_calls([mock.call('dist-repo'), mock.call('admin')])
-        assert_policy.assert_called_once_with('dist_repo', {'tag': 'tag'})
-        dist_repo_init.assert_called_once()
-        make_task.assert_called_once()
-        self.assertEqual(ret, make_task.return_value)
+        self.assert_policy.assert_called_once_with('dist_repo', {'tag': 'tag'})
+        self.dist_repo_init.assert_called_once()
+        self.make_task.assert_called_once()
+        self.assertEqual(ret, self.make_task.return_value)
         exports.getBuildConfig.assert_called_once_with('tag')
 
 
@@ -216,6 +219,7 @@ class TestDistRepoMove(unittest.TestCase):
         self.get_build = mock.patch('kojihub.kojihub.get_build').start()
         self.get_rpm.side_effect = self.our_get_rpm
         self.get_build.side_effect = self.our_get_build
+        self.context = mock.patch('kojihub.kojihub.context').start()
 
     def tearDown(self):
         mock.patch.stopall()
@@ -228,7 +232,7 @@ class TestDistRepoMove(unittest.TestCase):
         return self.builds[buildInfo]
 
     def test_distRepoMove(self):
-        session = kojihub.context.session = mock.MagicMock()
+        session = self.context.session
         session.user_id = 123
         exports = kojihub.HostExports()
         exports.distRepoMove(self.rinfo['id'], self.uploadpath, self.arch)

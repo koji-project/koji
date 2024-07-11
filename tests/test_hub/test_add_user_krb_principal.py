@@ -15,6 +15,8 @@ class TestAddUserKrbPrincipal(unittest.TestCase):
         self.get_user = mock.patch('kojihub.kojihub.get_user').start()
         self.verify_name_user = mock.patch('kojihub.kojihub.verify_name_user').start()
         self.get_user_by_krb_principal = mock.patch('kojihub.kojihub.get_user_by_krb_principal').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
+        self.context.session.assertPerm = mock.MagicMock()
         self.username = 'testuser'
         self.krbprincipal = '%s@TEST.COM' % self.username
         self.userinfo = {'id': 1, 'name': self.username}

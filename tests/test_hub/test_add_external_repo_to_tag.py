@@ -17,6 +17,8 @@ class TestAddExternalRepoToTag(unittest.TestCase):
         self.get_external_repo = mock.patch('kojihub.kojihub.get_external_repo').start()
         self.get_tag_external_repos = mock.patch('kojihub.kojihub.get_tag_external_repos').start()
         self.parse_arches = mock.patch('koji.parse_arches').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
+        self.context.session.assertPerm = mock.MagicMock()
         self.tag_info = {'id': 1, 'name': self.tag_name}
         self.external_repo_info = {'id': 123, 'name': 'test-repo'}
         self.priority = 11

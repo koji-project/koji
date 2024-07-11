@@ -15,6 +15,8 @@ class TestAddGroupMember(unittest.TestCase):
         # start with "assert"
         self.context.session.assertPerm = mock.MagicMock()
         self.get_user = mock.patch('kojihub.kojihub.get_user').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
+        self.context.session.assertPerm = mock.MagicMock()
 
     def tearDown(self):
         mock.patch.stopall()

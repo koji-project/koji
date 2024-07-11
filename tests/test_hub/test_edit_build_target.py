@@ -30,7 +30,8 @@ class TestEditBuildTarget(unittest.TestCase):
         self.target_info = {'id': 123, 'name': self.target_name}
         self.build_tag_info = {'id': 111, 'name': self.build_tag}
         self.dest_tag_info = {'id': 112, 'name': self.dest_tag}
-        self.session = kojihub.context.session = mock.MagicMock()
+        self.context = mock.patch('kojihub.kojihub.context').start()
+        self.session = self.context.session
         self.session.assertPerm = mock.MagicMock()
         self.QueryProcessor = mock.patch('kojihub.kojihub.QueryProcessor',
                                          side_effect=self.getQuery).start()

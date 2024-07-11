@@ -15,17 +15,19 @@ class DummyExports(object):
 
 class TestMulticall(unittest.TestCase):
 
+    def setUp(self):
+        self.context = mock.patch('kojihub.kojixmlrpc.context').start()
+        self.context_db = mock.patch('kojihub.db.context').start()
+        self.kojihub = mock.patch('kojihub.kojixmlrpc.kojihub').start()
+        self.registry = HandlerRegistry()
+        self.exports = DummyExports()
+        self.registry.register_instance(self.exports)
+
     def tearDown(self):
         mock.patch.stopall()
 
     def test_multicall(self):
-        self.context_db = mock.patch('kojihub.db.context').start()
         kojixmlrpc.kojihub = mock.MagicMock()
-        kojixmlrpc.context.opts = mock.MagicMock()
-        kojixmlrpc.context.session = mock.MagicMock()
-        self.registry = HandlerRegistry()
-        self.exports = DummyExports()
-        self.registry.register_instance(self.exports)
         calls = [{'methodName': 'foo', 'params': [1]},
                  {'methodName': 'non', 'params': [mock.ANY]},
                  {'methodName': 'foo', 'params': [2, Exception('with int arg', 1)]},

@@ -23,6 +23,8 @@ class TestDisableChannel(unittest.TestCase):
         # start with "assert"
         self.context.session.assertPerm = mock.MagicMock()
         self.get_channel = mock.patch('kojihub.kojihub.get_channel').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
+        self.context.session.assertPerm = mock.MagicMock()
         self.UpdateProcessor = mock.patch('kojihub.kojihub.UpdateProcessor',
                                           side_effect=self.getUpdate).start()
         self.updates = []

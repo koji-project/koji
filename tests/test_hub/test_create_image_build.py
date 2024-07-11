@@ -12,6 +12,8 @@ class TestCreateImageBuild(unittest.TestCase):
 
     def setUp(self):
         self.get_build = mock.patch('kojihub.kojihub.get_build').start()
+        self.context = mock.patch('kojihub.kojihub.context').start()
+        self.context.session.assertPerm = mock.MagicMock()
         self.exports = kojihub.RootExports()
         self.context = mock.patch('kojihub.kojihub.context').start()
         # It seems MagicMock will not automatically handle attributes that

@@ -27,6 +27,8 @@ class TestDeleteBuildTarget(unittest.TestCase):
         self.UpdateProcessor = mock.patch('kojihub.kojihub.UpdateProcessor',
                                           side_effect=self.getUpdate).start()
         self.updates = []
+        self.context = mock.patch('kojihub.kojihub.context').start()
+        self.context.session.assertPerm = mock.MagicMock()
         self.context_db = mock.patch('kojihub.db.context').start()
         # It seems MagicMock will not automatically handle attributes that
         # start with "assert"
