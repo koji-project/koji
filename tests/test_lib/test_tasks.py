@@ -1,13 +1,14 @@
 from __future__ import absolute_import
 import mock
+import os
 import random
 import shutil
 import six
 from six.moves import range
+import tempfile
 import unittest
 
 from os import path, makedirs
-from tempfile import gettempdir
 from mock import patch, MagicMock, Mock, call
 import requests_mock
 
@@ -44,15 +45,6 @@ def get_fake_mounts_file():
     )))
 
 
-def get_temp_dir_root():
-    return path.join(gettempdir(), 'koji_tests')
-
-
-def get_tmp_dir_path(folder_starts_with):
-    return path.join(get_temp_dir_root(), (
-        '{0}{1}'.format(folder_starts_with, random.randint(1, 999999999999))))
-
-
 class TaskTest(BaseTaskHandler):
     Methods = ['some_method']
     _taskWeight = 5.2
@@ -74,11 +66,14 @@ class BadTask(BaseTaskHandler):
 
 class TasksTestCase(unittest.TestCase):
 
-    def tearDown(self):
-        temp_dir_root = get_temp_dir_root()
+    def setUp(self):
+        self.tempdir = tempfile.mkdtemp()
 
-        if path.isdir(temp_dir_root):
-            shutil.rmtree(get_temp_dir_root())
+    def tearDown(self):
+        shutil.rmtree(self.tempdir)
+
+    def get_tmp_dir_path(self, name):
+        return os.path.join(self.tempdir, name)
 
     def test_scan_mounts_results(self):
         """ Tests the scan_mounts function with a mocked /proc/mounts file.
@@ -143,7 +138,7 @@ class TasksTestCase(unittest.TestCase):
         by the child class.
         """
         obj = BadTask(123, 'some_method', ['random_arg'], None, None,
-                      (get_tmp_dir_path('BadTask')))
+                      (self.get_tmp_dir_path('BadTask')))
         try:
             obj.handler()
             raise Exception('The NotImplementedError exception was not raised')
@@ -155,7 +150,7 @@ class TasksTestCase(unittest.TestCase):
         class' definition.
         """
         obj = TaskNoWeightTest(123, 'some_method', ['random_arg'], None, None,
-                               (get_tmp_dir_path('TaskNoWeightTest')))
+                               (self.get_tmp_dir_path('TaskNoWeightTest')))
         self.assertEqual(obj.weight(), 1.0)
 
     def test_BaseTaskHandler_weight_set(self):
@@ -163,14 +158,14 @@ class TasksTestCase(unittest.TestCase):
         child class' definition.
         """
         obj = TaskTest(123, 'some_method', ['random_arg'], None, None,
-                       (get_tmp_dir_path('TaskTest')))
+                       (self.get_tmp_dir_path('TaskTest')))
         self.assertEqual(obj.weight(), 5.2)
 
     def test_BaseTaskHandler_createWorkdir_workdir_not_defined(self):
         """ Tests that the createWorkdir function does nothing when the workdir member
         variable is set to None.
         """
-        temp_path = get_tmp_dir_path('TaskTest')
+        temp_path = self.get_tmp_dir_path('TaskTest')
         obj = TaskTest(123, 'some_method', ['random_arg'], None, None, temp_path)
         obj.workdir = None
         obj.createWorkdir()
@@ -182,17 +177,16 @@ class TasksTestCase(unittest.TestCase):
         """ Tests that the createWorkdir function creates a folder based on the path given to the
         workdir member variable.
         """
-        temp_path = get_tmp_dir_path('TaskTest')
+        temp_path = self.get_tmp_dir_path('TaskTest')
         obj = TaskTest(123, 'some_method', ['random_arg'], None, None, temp_path)
         obj.createWorkdir()
         self.assertEqual(path.isdir(temp_path), True)
-        shutil.rmtree(get_temp_dir_root())
 
     def test_BaseTaskHandler_removeWorkdir(self):
         """ Tests that the removeWOrkdir function deletes a folder based on the path given to the
         workdir member variable.
         """
-        temp_path = get_tmp_dir_path('TaskTest')
+        temp_path = self.get_tmp_dir_path('TaskTest')
         obj = TaskTest(123, 'some_method', ['random_arg'], None, None, temp_path)
         makedirs(temp_path)
         self.assertEqual(path.isdir(temp_path), True)
@@ -203,7 +197,7 @@ class TasksTestCase(unittest.TestCase):
         """ Tests that the wait function returns the subtask results of when
         the taskWait function returns only two finished tasks.
         """
-        temp_path = get_tmp_dir_path('TaskTest')
+        temp_path = self.get_tmp_dir_path('TaskTest')
         obj = TaskTest(12345678, 'some_method', ['random_arg'], None, None, temp_path)
         makedirs(temp_path)
         obj.session = Mock()
@@ -238,7 +232,7 @@ class TasksTestCase(unittest.TestCase):
         """ Tests that the wait function returns the one finished subtask results of
         when the taskWait function returns one finished task and one unfinished
         """
-        temp_path = get_tmp_dir_path('TaskTest')
+        temp_path = self.get_tmp_dir_path('TaskTest')
         obj = TaskTest(12345678, 'some_method', ['random_arg'], None, None, temp_path)
         makedirs(temp_path)
         obj.session = Mock()
@@ -266,7 +260,7 @@ class TasksTestCase(unittest.TestCase):
         The taskWait function should first return one finished and one unfinished task,
         then the second time it should return two finished tasks.
         """
-        temp_path = get_tmp_dir_path('TaskTest')
+        temp_path = self.get_tmp_dir_path('TaskTest')
         obj = TaskTest(12345678, 'some_method', ['random_arg'], None, None, temp_path)
         makedirs(temp_path)
         obj.session = Mock()
@@ -305,7 +299,7 @@ class TasksTestCase(unittest.TestCase):
         """ Tests that the wait function raises an exception when one of the subtask fails
         when the failany flag is set to True.
         """
-        temp_path = get_tmp_dir_path('TaskTest')
+        temp_path = self.get_tmp_dir_path('TaskTest')
         obj = TaskTest(12345678, 'some_method', ['random_arg'], None, None, temp_path)
         makedirs(temp_path)
         obj.session = Mock()
@@ -326,7 +320,7 @@ class TasksTestCase(unittest.TestCase):
     @patch('signal.pause')
     def test_BaseTaskHandler_wait_timeout(self, pause, sigtimedwait, sleep, time):
         """Tests timeout behavior in the wait function"""
-        temp_path = get_tmp_dir_path('TaskTest')
+        temp_path = self.get_tmp_dir_path('TaskTest')
         obj = TaskTest(95, 'some_method', ['random_arg'], None, None, temp_path)
         makedirs(temp_path)
         obj.session = MagicMock()
@@ -348,7 +342,7 @@ class TasksTestCase(unittest.TestCase):
     @patch('signal.pause')
     def test_BaseTaskHandler_wait_avoid_timeout(self, pause, sigtimedwait, sleep, time):
         """Tests that timeout does not happen if tasks finish in time"""
-        temp_path = get_tmp_dir_path('TaskTest')
+        temp_path = self.get_tmp_dir_path('TaskTest')
         obj = TaskTest(95, 'some_method', ['random_arg'], None, None, temp_path)
         makedirs(temp_path)
         obj.session = MagicMock()
@@ -371,7 +365,7 @@ class TasksTestCase(unittest.TestCase):
         """ Tests that the getUploadDir function returns the appropriate path based
         on the id of the handler.
         """
-        temp_path = get_tmp_dir_path('TaskTest')
+        temp_path = self.get_tmp_dir_path('TaskTest')
         obj = TaskTest(123, 'some_method', ['random_arg'], None, None, temp_path)
         self.assertEqual(obj.getUploadDir(), 'tasks/123/123')
 
@@ -381,7 +375,7 @@ class TasksTestCase(unittest.TestCase):
         """ Tests that the uploadFile function calls the uploadWrapper function
         on the session member variable with the correct input.
         """
-        temp_path = get_tmp_dir_path('TaskTest')
+        temp_path = self.get_tmp_dir_path('TaskTest')
         makedirs(temp_path)
         temp_file = path.join(temp_path, 'test.txt')
         with open(temp_file, 'wt') as temp_file_handler:
@@ -399,7 +393,7 @@ class TasksTestCase(unittest.TestCase):
         """ Tests that the uploadFile function calls the uploadWrapper function
         on the session member variable without including empty files.
         """
-        temp_path = get_tmp_dir_path('TaskTest')
+        temp_path = self.get_tmp_dir_path('TaskTest')
         makedirs(temp_path)
 
         temp_file = path.join(temp_path, 'test.txt')
@@ -415,7 +409,7 @@ class TasksTestCase(unittest.TestCase):
         """ Tests that the uploadTree function calls the uploadFile function
         with the correct parameters.
         """
-        temp_path = get_tmp_dir_path('TaskTest')
+        temp_path = self.get_tmp_dir_path('TaskTest')
         makedirs(temp_path)
 
         dummy_dir = path.join(temp_path, 'some_directory')
@@ -441,7 +435,7 @@ class TasksTestCase(unittest.TestCase):
         """ Tests that the chownTree functions as expected on dummy files created
         in a temp directory
         """
-        temp_path = get_tmp_dir_path('TaskTest')
+        temp_path = self.get_tmp_dir_path('TaskTest')
         makedirs(temp_path)
 
         dummy_file = path.join(temp_path, 'test.txt')
@@ -461,7 +455,7 @@ class TasksTestCase(unittest.TestCase):
         """ Tests the localPath function to ensure that when a file exists,
         it returns that path without trying to download it.
         """
-        temp_path = get_tmp_dir_path('TaskTest')
+        temp_path = self.get_tmp_dir_path('TaskTest')
         makedirs(temp_path)
 
         local_folder = path.join(temp_path, 'local')
@@ -479,7 +473,7 @@ class TasksTestCase(unittest.TestCase):
     def test_BaseTaskHandler_localPath_no_file(self, m_requests):
         """
         """
-        temp_path = get_tmp_dir_path('TaskTest')
+        temp_path = self.get_tmp_dir_path('TaskTest')
         makedirs(temp_path)
 
         local_folder = path.join(temp_path, 'local')
@@ -500,21 +494,21 @@ class TasksTestCase(unittest.TestCase):
     def test_BaseTaskHandler_localPath_no_topurl(self):
         """ Tests that the localPath function returns a path when options.topurl is not defined.
         """
-        temp_path = get_tmp_dir_path('TaskTest')
+        temp_path = self.get_tmp_dir_path('TaskTest')
         makedirs(temp_path)
 
         options = Mock()
         options.topurl = None
-        options.topdir = get_temp_dir_root()
+        options.topdir = self.tempdir
         obj = TaskTest(123, 'some_method', ['random_arg'], None, options, temp_path)
 
-        self.assertEqual(obj.localPath('test.txt'), path.join(get_temp_dir_root(), 'test.txt'))
+        self.assertEqual(obj.localPath('test.txt'), path.join(self.tempdir, 'test.txt'))
 
     def test_BaseTaskHandler_find_arch(self):
         """ Tests that the find_arch function returns the input for arch when
         the input is not "noarch".
         """
-        temp_path = get_tmp_dir_path('TaskTest')
+        temp_path = self.get_tmp_dir_path('TaskTest')
         makedirs(temp_path)
         obj = TaskTest(123, 'some_method', ['random_arg'], None, None, temp_path)
         self.assertEqual(obj.find_arch('x86_64', None, None), 'x86_64')
@@ -523,7 +517,7 @@ class TasksTestCase(unittest.TestCase):
         """ Tests that the find_arch function raises an exception when
         the host parameter doesn't contain a value for the arches key.
         """
-        temp_path = get_tmp_dir_path('TaskTest')
+        temp_path = self.get_tmp_dir_path('TaskTest')
         makedirs(temp_path)
         host = {'arches': None, 'name': 'test.domain.local'}
         obj = TaskTest(123, 'some_method', ['random_arg'], None, None, temp_path)
@@ -537,7 +531,7 @@ class TasksTestCase(unittest.TestCase):
         """ Tests that the find_arch function raises an exception when the tag parameter
         doesn't contain a value for the arches key.
         """
-        temp_path = get_tmp_dir_path('TaskTest')
+        temp_path = self.get_tmp_dir_path('TaskTest')
         makedirs(temp_path)
         host = {'arches': 'x86_64', 'name': 'test.domain.local'}
         tag = {'arches': None, 'name': 'some_package-1.2-build'}
@@ -552,7 +546,7 @@ class TasksTestCase(unittest.TestCase):
         """ Tests that the find_arch function finds a match of x86_64 when the host
         only supports x86_64 and the tag supports x86_64 and aarch64.
         """
-        temp_path = get_tmp_dir_path('TaskTest')
+        temp_path = self.get_tmp_dir_path('TaskTest')
         makedirs(temp_path)
         host = {'arches': 'x86_64', 'name': 'test.domain.local'}
         tag = {'arches': 'x86_64 aarch64', 'name': 'some_package-1.2-build'}
@@ -563,7 +557,7 @@ class TasksTestCase(unittest.TestCase):
         """ Tests that the find_arch function raises an exception when there isn't
         a common arch supported between the host and the tag.
         """
-        temp_path = get_tmp_dir_path('TaskTest')
+        temp_path = self.get_tmp_dir_path('TaskTest')
         makedirs(temp_path)
         host = {'arches': 'i386', 'name': 'test.domain.local'}
         tag = {'arches': 'x86_64 aarch64', 'name': 'some_package-1.2-build'}
@@ -579,7 +573,7 @@ class TasksTestCase(unittest.TestCase):
     @patch('koji.util.RepoWatcher')
     def test_getRepo_no_wait_task(self, RepoWatcher):
         """ Tests that the getRepo method does not wait if repo is available"""
-        temp_path = get_tmp_dir_path('TaskTest')
+        temp_path = self.get_tmp_dir_path('TaskTest')
         makedirs(temp_path)
 
         repo_dict = {
@@ -606,7 +600,7 @@ class TasksTestCase(unittest.TestCase):
     @patch('koji.util.RepoWatcher')
     def test_getRepo_last_event(self, RepoWatcher):
         """ Tests that the getRepo method uses min_event='last' when requested"""
-        temp_path = get_tmp_dir_path('TaskTest')
+        temp_path = self.get_tmp_dir_path('TaskTest')
         makedirs(temp_path)
 
         repo_dict = {
@@ -634,7 +628,7 @@ class TasksTestCase(unittest.TestCase):
     @patch('koji.util.RepoWatcher')
     def test_getRepo_wait_task(self, RepoWatcher):
         """ Tests that the getRepo function waits for subtask if repo not immediately available"""
-        temp_path = get_tmp_dir_path('TaskTest')
+        temp_path = self.get_tmp_dir_path('TaskTest')
         makedirs(temp_path)
 
         repo_dict = {
@@ -664,7 +658,7 @@ class TasksTestCase(unittest.TestCase):
         """ Tests that the FakeTest handler can be instantiated and returns 42 when run.
         """
         obj = FakeTask(123, 'someMethod', ['random_arg'], None, None,
-                       (get_tmp_dir_path('FakeTask')))
+                       (self.get_tmp_dir_path('FakeTask')))
         self.assertEqual(obj.run(), 42)
 
     @patch('time.sleep')
@@ -672,7 +666,7 @@ class TasksTestCase(unittest.TestCase):
         """ Tests that the SleepTask handler can be instantiated and runs appropriately
         based on the input.
         """
-        obj = SleepTask(123, 'sleep', [5], None, None, (get_tmp_dir_path('SleepTask')))
+        obj = SleepTask(123, 'sleep', [5], None, None, (self.get_tmp_dir_path('SleepTask')))
         obj.run()
         mock_sleep.assert_called_once_with(5)
 
@@ -681,7 +675,7 @@ class TasksTestCase(unittest.TestCase):
         """ Tests that the ForkTask handler can be instantiated and runs appropriately
         based on the input.
         """
-        obj = ForkTask(123, 'fork', [1, 20], None, None, (get_tmp_dir_path('ForkTask')))
+        obj = ForkTask(123, 'fork', [1, 20], None, None, (self.get_tmp_dir_path('ForkTask')))
         obj.run()
         mock_spawnvp.assert_called_once_with(1, 'sleep', ['sleep', '20'])
 
@@ -698,7 +692,7 @@ class TasksTestCase(unittest.TestCase):
             self.assertEqual(method, 'sleep')
             task_id = self.mock_subtask_id
             self.mock_subtask_id += 1
-            obj = SleepTask(task_id, 'sleep', arglist, None, None, (get_tmp_dir_path('SleepTask')))
+            obj = SleepTask(task_id, 'sleep', arglist, None, None, (self.get_tmp_dir_path('SleepTask')))
             obj.run()
             return task_id
 
@@ -712,7 +706,7 @@ class TasksTestCase(unittest.TestCase):
             if task_id == 4:
                 raise koji.GenericError()
 
-        obj = WaitTestTask(123, 'waittest', [3], None, None, (get_tmp_dir_path('WaitTestTask')))
+        obj = WaitTestTask(123, 'waittest', [3], None, None, (self.get_tmp_dir_path('WaitTestTask')))
         obj.session = Mock()
         obj.session.host.subtask.side_effect = mock_subtask
         obj.session.getTaskResult.side_effect = mock_getTaskResult

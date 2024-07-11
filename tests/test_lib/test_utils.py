@@ -1473,10 +1473,14 @@ class TestRmtree(unittest.TestCase):
         self.unlink.assert_not_called()
         self.isdir.assert_not_called()
 
+    @mock.patch('tempfile.mkstemp')  # avoid stray temp file
     @mock.patch('koji.util._rmtree_nofork')
     @mock.patch('os.fork')
     @mock.patch('os._exit')
-    def test_rmtree_child(self, _exit, fork, rmtree_nofork):
+    def test_rmtree_child(self, _exit, fork, rmtree_nofork, mkstemp):
+        log = self.tempdir + '/rmtree-log.jsonl'
+        fd = os.open(log, os.O_RDWR | os.O_CREAT)
+        mkstemp.return_value = fd, log
         fork.return_value = 0
         path = "/SOME_PATH"
         logger = "LOGGER"
@@ -1492,12 +1496,17 @@ class TestRmtree(unittest.TestCase):
         rmtree_nofork.assert_called_once()
         self.assertEqual(rmtree_nofork.call_args[0][0], path)
         _exit.assert_called_once()
+        logger = rmtree_nofork.call_args.kwargs['logger']
 
+    @mock.patch('tempfile.mkstemp')  # avoid stray temp file
     @mock.patch('koji.util._rmtree_nofork')
     @mock.patch('os.fork')
     @mock.patch('os.waitpid')
     @mock.patch('os._exit')
-    def test_rmtree_child_fails(self, _exit, waitpid, fork, rmtree_nofork):
+    def test_rmtree_child_fails(self, _exit, waitpid, fork, rmtree_nofork, mkstemp):
+        log = self.tempdir + '/rmtree-log.jsonl'
+        fd = os.open(log, os.O_RDWR | os.O_CREAT)
+        mkstemp.return_value = fd, log
         fork.return_value = 0
         path = "/SOME_PATH"
         logger = "LOGGER"
@@ -1515,11 +1524,15 @@ class TestRmtree(unittest.TestCase):
         _exit.assert_called_once()
         waitpid.assert_not_called
 
+    @mock.patch('tempfile.mkstemp')  # avoid stray temp file
     @mock.patch('koji.util._rmtree_nofork')
     @mock.patch('os.fork')
     @mock.patch('os.waitpid')
     @mock.patch('os._exit')
-    def test_rmtree_parent(self, _exit, waitpid, fork, rmtree_nofork):
+    def test_rmtree_parent(self, _exit, waitpid, fork, rmtree_nofork, mkstemp):
+        log = self.tempdir + '/rmtree-log.jsonl'
+        fd = os.open(log, os.O_RDWR | os.O_CREAT)
+        mkstemp.return_value = fd, log
         pid = 137
         fork.return_value = pid
         waitpid.return_value = pid, 0
@@ -1530,13 +1543,17 @@ class TestRmtree(unittest.TestCase):
         rmtree_nofork.assert_not_called()
         _exit.assert_not_called()
 
+    @mock.patch('tempfile.mkstemp')  # avoid stray temp file
     @mock.patch('koji.util.SimpleProxyLogger.send')
     @mock.patch('koji.util._rmtree_nofork')
     @mock.patch('os.fork')
     @mock.patch('os.unlink')
     @mock.patch('os.waitpid')
     @mock.patch('os._exit')
-    def test_rmtree_parent_logfail(self, _exit, waitpid, unlink, fork, rmtree_nofork, logsend):
+    def test_rmtree_parent_logfail(self, _exit, waitpid, unlink, fork, rmtree_nofork, logsend, mkstemp):
+        log = self.tempdir + '/rmtree-log.jsonl'
+        fd = os.open(log, os.O_RDWR | os.O_CREAT)
+        mkstemp.return_value = fd, log
         pid = 137
         fork.return_value = pid
         waitpid.return_value = pid, 0

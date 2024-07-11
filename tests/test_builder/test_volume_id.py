@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 import mock
+import shutil
 import tempfile
 import unittest
 from .loadkojid import kojid
@@ -75,9 +76,12 @@ class TestVolumeID(unittest.TestCase):
         self.session = mock.MagicMock()
         self.options = mock.MagicMock()
         self.options.literal_task_arches = ''
-        workdir = tempfile.mkdtemp()
+        self.workdir = tempfile.mkdtemp()
         self.handler = kojid.LiveCDTask(task_id, method, params, self.session,
-                                        self.options, workdir)
+                                        self.options, self.workdir)
+
+    def tearDown(self):
+        shutil.rmtree(self.workdir)
 
     def test_volume_id_substitutions(self):
         """Check that volume ID is shorten corect by shortenVolID method."""

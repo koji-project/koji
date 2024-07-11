@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 import mock
 import signal
-import tempfile
 import unittest
 from six.moves import range
 
@@ -23,7 +22,6 @@ class TestMain(unittest.TestCase):
         self.options.plugin = []
         self.options.sleeptime = 1
         self.options.pluginpath = ''
-        workdir = tempfile.mkdtemp()
         self.setup_rlimits = mock.patch('koji.util.setup_rlimits').start()
         self.TaskManager = mock.MagicMock()
         # the kojid import is weird, so we use patch.object

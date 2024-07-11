@@ -39,6 +39,7 @@ class TestDistRepoInit(unittest.TestCase):
 
     def tearDown(self):
         mock.patch.stopall()
+        shutil.rmtree(self.tempdir)
 
     def test_simple_dist_repo_init(self):
 
