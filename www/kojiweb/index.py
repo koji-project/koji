@@ -1534,7 +1534,7 @@ def rpminfo(environ, rpmID, fileOrder='name', fileStart=None, buildrootOrder='-i
     except koji.GenericError:
         raise koji.GenericError('No such RPM ID: %i' % rpmID)
 
-    values['title'] = formatRPM(rpm) + SafeValue(' | RPM Info')
+    values['title'] = formatRPM(rpm, link=False) + SafeValue(' | RPM Info')
 
     build = None
     if rpm['build_id'] is not None:
