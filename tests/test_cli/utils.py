@@ -43,8 +43,6 @@ class CliTestCase(unittest.TestCase):
     STDOUT = sys.stdout
     STDERR = sys.stderr
 
-    def tearDown(self):
-        mock.patch.stopall()
     #
     # private methods
     #
