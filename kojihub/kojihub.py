@@ -96,6 +96,7 @@ from .db import (  # noqa: F401
     get_event,
     nextval,
     currval,
+    convert_timestamp,
 )
 
 
@@ -7085,10 +7086,8 @@ class CG_Importer(object):
             buildinfo['build_id'] = metadata['build']['build_id']
         # epoch is not in the metadata spec, but we allow it to be specified
         buildinfo['epoch'] = metadata['build'].get('epoch', None)
-        buildinfo['start_time'] = \
-            datetime.datetime.fromtimestamp(float(metadata['build']['start_time'])).isoformat(' ')
-        buildinfo['completion_time'] = \
-            datetime.datetime.fromtimestamp(float(metadata['build']['end_time'])).isoformat(' ')
+        buildinfo['start_time'] = convert_timestamp(float(metadata['build']['start_time']))
+        buildinfo['completion_time'] = convert_timestamp(float(metadata['build']['end_time']))
         owner = metadata['build'].get('owner', None)
         # get task id from OSBS or from standard place
         buildinfo['task_id'] = self.get_task_id_from_metadata(metadata)
@@ -8775,7 +8774,7 @@ def query_history(tables=None, **kwargs):
                 fields['revoker.id = %(editor)i'] = '_revoked_by'
             elif arg == 'after':
                 if not isinstance(value, str):
-                    value = datetime.datetime.fromtimestamp(value).isoformat(' ')
+                    value = convert_timestamp(value)
                 data['after'] = value
                 clauses.append('ev1.time > %(after)s OR ev2.time > %(after)s')
                 fields['ev1.time > %(after)s'] = '_created_after'
@@ -8791,7 +8790,7 @@ def query_history(tables=None, **kwargs):
                 fields[r_test] = '_revoked_after_event'
             elif arg == 'before':
                 if not isinstance(value, str):
-                    value = datetime.datetime.fromtimestamp(value).isoformat(' ')
+                    value = convert_timestamp(value)
                 data['before'] = value
                 clauses.append('ev1.time < %(before)s OR ev2.time < %(before)s')
                 # clauses.append("date_part('epoch', ev1.time) < %(before)s OR "
@@ -12581,19 +12580,19 @@ class RootExports(object):
             clauses.append('build.state = %(state)i')
         if createdBefore:
             if not isinstance(createdBefore, str):
-                createdBefore = datetime.datetime.fromtimestamp(createdBefore).isoformat(' ')
+                createdBefore = convert_timestamp(createdBefore)
             clauses.append('events.time < %(createdBefore)s')
         if createdAfter:
             if not isinstance(createdAfter, str):
-                createdAfter = datetime.datetime.fromtimestamp(createdAfter).isoformat(' ')
+                createdAfter = convert_timestamp(createdAfter)
             clauses.append('events.time > %(createdAfter)s')
         if completeBefore:
             if not isinstance(completeBefore, str):
-                completeBefore = datetime.datetime.fromtimestamp(completeBefore).isoformat(' ')
+                completeBefore = convert_timestamp(completeBefore)
             clauses.append('build.completion_time < %(completeBefore)s')
         if completeAfter:
             if not isinstance(completeAfter, str):
-                completeAfter = datetime.datetime.fromtimestamp(completeAfter).isoformat(' ')
+                completeAfter = convert_timestamp(completeAfter)
             clauses.append('build.completion_time > %(completeAfter)s')
         if cgID:
             cgID = lookup_name('content_generator', cgID, strict=False)
@@ -13762,7 +13761,7 @@ class RootExports(object):
             if opts.get(key) is not None:
                 value = opts[key]
                 if not isinstance(value, str):
-                    opts[key] = datetime.datetime.fromtimestamp(value).isoformat(' ')
+                    opts[key] = convert_timestamp(value)
                 conditions.append('%(field)s %(cmp)s %%(%(key)s)s' % locals())
 
         query = QueryProcessor(columns=fields, aliases=aliases, tables=tables, joins=joins,
