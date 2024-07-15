@@ -6,6 +6,8 @@ mock<=2.0.0
 requests-mock
 coverage
 pytest
+pytest-cov
+pytest-xdist
 Cheetah3
 psycopg2-binary
 python-multilib
