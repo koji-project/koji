@@ -8,6 +8,7 @@ import time
 import unittest
 
 import mock
+import shutil
 import six
 
 import koji
@@ -71,6 +72,7 @@ class TestBuildNotification(unittest.TestCase):
             os.environ['TZ'] = self.original_timezone
         time.tzset()
         mock.patch.stopall()
+        shutil.rmtree(self.tempdir)
 
     def test_build_notification(self):
         # force locale to compare 'message' value

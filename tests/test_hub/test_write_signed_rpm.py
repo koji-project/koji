@@ -7,6 +7,7 @@ import kojihub
 
 class TestWriteSignedRPM(unittest.TestCase):
     def setUp(self):
+        self.context = mock.patch('kojihub.kojihub.context').start()
         self.get_rpm = mock.patch('kojihub.kojihub.get_rpm').start()
 
     def tearDown(self):

@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 import mock
 import rpm
+import shutil
 import tempfile
 import unittest
 import koji
@@ -27,9 +28,9 @@ class TestChooseTaskarch(unittest.TestCase):
         self.session = mock.MagicMock()
         self.options = mock.MagicMock()
         self.options.literal_task_arches = ''
-        workdir = tempfile.mkdtemp()
+        self.workdir = tempfile.mkdtemp()
         self.handler = kojid.BuildTask(task_id, method, params, self.session,
-                self.options, workdir)
+                self.options, self.workdir)
 
         # mock some more things
         self.handler.event_id = 42
@@ -38,6 +39,9 @@ class TestChooseTaskarch(unittest.TestCase):
         self.getBuildConfig = mock.MagicMock()
         self.session.getBuildConfig = self.getBuildConfig
         self.getBuildConfig.return_value = {'arches': 'armv7hl i686 x86_64 ppc64'}
+
+    def tearDown(self):
+        shutil.rmtree(self.workdir)
 
     def test_binary_arches(self):
         for arch in ['i386', 'i686', 'x86_64', 'ppc', 'ppc64le', 's390',

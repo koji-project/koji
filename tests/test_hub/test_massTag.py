@@ -7,7 +7,7 @@ import kojihub
 class TestDeleteEventId(unittest.TestCase):
     @mock.patch('kojihub.kojihub.context')
     def test_delete_event_id(self, context):
-        kojihub.context.event_id = 123
+        context.event_id = 123
         kojihub._delete_event_id()
         self.assertFalse(hasattr(context, 'event_id'))
 

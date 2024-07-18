@@ -3,6 +3,7 @@ from __future__ import absolute_import
 import unittest
 
 import mock
+import shutil
 import six
 import tempfile
 
@@ -45,6 +46,7 @@ class TestRepoinfo(utils.CliTestCase):
 
     def tearDown(self):
         mock.patch.stopall()
+        shutil.rmtree(self.tempdir)
 
     @mock.patch('koji.formatTimeLong', return_value='Thu, 01 Jan 2000')
     @mock.patch('sys.stderr', new_callable=six.StringIO)

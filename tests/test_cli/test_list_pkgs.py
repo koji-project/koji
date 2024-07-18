@@ -2,6 +2,8 @@ from __future__ import absolute_import
 
 import mock
 import copy
+import os
+import time
 from six.moves import StringIO
 
 import koji
@@ -16,6 +18,9 @@ class TestListPkgs(utils.CliTestCase):
         self.session = mock.MagicMock()
         self.session.getAPIVersion.return_value = koji.API_VERSION
         self.ensure_connection_mock = mock.patch('koji_cli.commands.ensure_connection').start()
+        self.original_timezone = os.environ.get('TZ')
+        os.environ['TZ'] = 'UTC'
+        time.tzset()
         self.error_format = """Usage: %s list-pkgs [options]
 (Specify the --help global option for a list of other help options)
 
@@ -54,6 +59,11 @@ class TestListPkgs(utils.CliTestCase):
 
     def tearDown(self):
         mock.patch.stopall()
+        if self.original_timezone is None:
+            del os.environ['TZ']
+        else:
+            os.environ['TZ'] = self.original_timezone
+        time.tzset()
 
     def test_list_pkgs_non_exist_tag(self):
         self.session.getTag.return_value = None
