@@ -830,7 +830,7 @@ def get_options():
                     'sleeptime', 'expired_repo_lifetime',
                     'repo_lifetime', 'reference_recheck_period')
         str_opts = ('topdir', 'server', 'user', 'password', 'logfile', 'principal', 'keytab',
-                    'cert', 'serverca')
+                    'cert', 'serverca', 'ccache')
         bool_opts = ('verbose', 'debug', 'ignore_stray_repos', 'offline_retry',
                      'no_ssl_verify', 'check_external_repos', 'ignore_other_volumes')
         legacy_opts = ('delete_batch_size',
