@@ -407,6 +407,11 @@ State: closed
 Created: Thu Jan  1 00:16:40 1970
 Started: Thu Jan  1 00:33:20 1970
 Finished: Thu Jan  1 00:50:00 1970
+Log Files:
+  No outputs reported [1]
+Output:
+  No outputs reported [1]
+[1] Not all tasks produce outputs, and task outputs are not retained indefinitely.
 
   Task: 2
   Type: createrepo
@@ -421,6 +426,9 @@ Finished: Thu Jan  1 00:50:00 1970
   Log Files:
     %s
     %s
+  Output:
+    No outputs reported [1]
+  [1] Not all tasks produce outputs, and task outputs are not retained indefinitely.
 
 """ % tuple('/mnt/koji/work/tasks/2/2/' + k for k in task_output.keys())
 
@@ -520,6 +528,11 @@ Started: Thu Jan  1 00:33:20 1970
 Finished: Thu Jan  1 00:50:00 1970
 Host: kojibuilder
 Build: bash-4.4.12-5.fc26 (1)
+Log Files:
+  No outputs reported [1]
+Output:
+  No outputs reported [1]
+[1] Not all tasks produce outputs, and task outputs are not retained indefinitely.
 
   Task: 2
   Type: buildArch
@@ -562,6 +575,11 @@ Build: bash-4.4.12-5.fc26 (1)
   Started: Thu Jan  1 00:33:20 1970
   Finished: Thu Jan  1 00:50:00 1970
   Host: kojibuilder
+  Log Files:
+    No outputs reported [1]
+  Output:
+    No outputs reported [1]
+  [1] Not all tasks produce outputs, and task outputs are not retained indefinitely.
 
 """
         with mock.patch('sys.stdout', new_callable=six.StringIO) as stdout:
