@@ -46,8 +46,9 @@ CREATE TABLE external_repo_data (
 
 INSERT INTO locks(name) VALUES('repo-queue');
 
-COMMIT;
 
--- this must be outside the transaction block
-CREATE INDEX CONCURRENTLY IF NOT EXISTS rpminfo_nvra
+-- new rpminfo index needed because of draft build changes
+CREATE INDEX IF NOT EXISTS rpminfo_nvra
     ON rpminfo(name,version,release,arch,external_repo_id);
+
+COMMIT;
