@@ -1491,7 +1491,9 @@ def readTaggedBuilds(tag, event=None, inherit=False, latest=False, package=None,
         clauses.append('users.name = %(owner)s')
     if draft is not None:
         clauses.append(draft_clause(draft))
-    queryOpts = {'order': '-create_event'}  # latest first
+    queryOpts = {'order': '-create_event,-id'}
+    # most recently tagged first
+    # in a tie (e.g. two builds tagged at same event), newest build first
     if extra:
         fields.append(('build.extra', 'extra'))
         query = QueryProcessor(columns=[x[0] for x in fields], aliases=[x[1] for x in fields],
