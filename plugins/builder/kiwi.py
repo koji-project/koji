@@ -408,6 +408,8 @@ class KiwiCreateImageTask(BaseBuildTask):
                '--target-dir', target_dir,
                '--bundle-dir', bundle_dir,
                '--id', release]
+        if self.opts.get('result_bundle_name_format'):
+            cmd.extend(['--bundle-format', self.opts['result_bundle_name_format']])
         rv = broot.mock(['--cwd', broot.tmpdir(within=True), '--chroot', '--'] + cmd)
         if rv:
             raise koji.GenericError("Kiwi failed")
