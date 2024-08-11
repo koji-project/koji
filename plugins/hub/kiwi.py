@@ -17,13 +17,15 @@ koji.tasks.LEGACY_SIGNATURES['createKiwiImage'] = [
 @export
 def kiwiBuild(target, arches, desc_url, desc_path, optional_arches=None, profile=None,
               scratch=False, priority=None, make_prep=False, repos=None, release=None,
-              type=None):
+              type=None, type_attr=None):
     context.session.assertPerm('image')
     for i in [desc_url, desc_path, profile, release]:
         if i is not None:
             kojihub.convert_value(i, cast=str, check_only=True)
     if repos:
         kojihub.convert_value(repos, cast=list, check_only=True)
+    if type_attr:
+        kojihub.convert_value(type_attr, cast=list, check_only=True)
     kojihub.get_build_target(target, strict=True)
     if isinstance(arches, list):
         arches = " ".join(arches)
@@ -58,6 +60,8 @@ def kiwiBuild(target, arches, desc_url, desc_path, optional_arches=None, profile
         opts['make_prep'] = True
     if type:
         opts['type'] = type
+    if type_attr:
+        opts['type_attr'] = type_attr
     return kojihub.make_task('kiwiBuild',
                              [target, arches, desc_url, desc_path, opts],
                              **taskOpts)
