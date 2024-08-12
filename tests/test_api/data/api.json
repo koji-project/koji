@@ -2977,11 +2977,11 @@
             "getMultiArchInfo": {
                 "type": "<class 'function'>",
                 "is_function": true,
-                "desc": "(arch='ia32e')",
+                "desc": "(arch=None)",
                 "args": [
                     {
                         "name": "arch",
-                        "default": "'ia32e'"
+                        "default": "None"
                     }
                 ],
                 "varargs": null,

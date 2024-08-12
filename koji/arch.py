@@ -414,7 +414,9 @@ canonArch = getCanonArch()
 # this gets you the "compat" arch of a biarch pair
 
 
-def getMultiArchInfo(arch=canonArch):
+def getMultiArchInfo(arch=None):
+    if arch is None:
+        arch = canonArch
     if arch in multilibArches:
         return multilibArches[arch]
     if arch in arches and arches[arch] != "noarch":
