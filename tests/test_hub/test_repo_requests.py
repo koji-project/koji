@@ -1,9 +1,9 @@
-import datetime
 import json
-import mock
 import shutil
 import tempfile
 import unittest
+
+import mock
 
 import koji
 import kojihub
@@ -110,7 +110,6 @@ class TestRepoQueue(BaseTest):
         self.db_lock = mock.patch('kojihub.repos.db_lock').start()
         self.db_lock.return_value = True
 
-
     def test_nolock(self):
         self.db_lock.return_value = False
         repos.check_repo_queue()
@@ -138,7 +137,8 @@ class TestRepoQueue(BaseTest):
         # 2 maven reqs with free tasks
         reqs = [dict({'id': n, 'task_id': 100 + n}, **basereq) for n in range(2)]
         # plus two more, one maven, one not
-        req_a = {'id': 98, 'task_id': None, 'task_state': None, 'opts': {'maven': True}, 'tries': 1}
+        req_a = {'id': 98, 'task_id': None, 'task_state': None, 'opts': {'maven': True},
+                 'tries': 1}
         req_b = {'id': 99, 'task_id': None, 'task_state': None, 'opts': {}, 'tries': 1}
         reqs.extend([req_a, req_b])
         self.RepoQueueQuery.return_value.execute.return_value = reqs
@@ -180,8 +180,10 @@ class TestRepoQueue(BaseTest):
         # 1 maven req with free tasks
         reqs.append(dict({'id': 7, 'task_id': 107}, **base2))
         # plus 4 more, two maven, two not
-        req_a = {'id': 96, 'task_id': None, 'task_state': None, 'opts': {'maven': True}, 'tries': 1}
-        req_b = {'id': 97, 'task_id': None, 'task_state': None, 'opts': {'maven': True}, 'tries': 1}
+        req_a = {'id': 96, 'task_id': None, 'task_state': None, 'opts': {'maven': True},
+                 'tries': 1}
+        req_b = {'id': 97, 'task_id': None, 'task_state': None, 'opts': {'maven': True},
+                 'tries': 1}
         req_c = {'id': 98, 'task_id': None, 'task_state': None, 'opts': {}, 'tries': 1}
         req_d = {'id': 99, 'task_id': None, 'task_state': None, 'opts': {}, 'tries': 1}
         reqs.extend([req_a, req_b, req_c, req_d])
@@ -226,7 +228,7 @@ class TestRepoQueue(BaseTest):
 
     def test_check_queue_badrepo1(self):
         req = {'id': 100, 'task_id': 200, 'task_state': koji.TASK_STATES['CLOSED'], 'opts': {},
-                'tries': 1}
+               'tries': 1}
         self.RepoQueueQuery.return_value.execute.return_value = [req]
         self.get_repo_from_task.return_value = None
         # should retry
@@ -239,7 +241,7 @@ class TestRepoQueue(BaseTest):
 
     def test_check_queue_badrepo2(self):
         req = {'id': 100, 'task_id': 200, 'task_state': koji.TASK_STATES['CLOSED'], 'opts': {},
-                'tries': 1}
+               'tries': 1}
         self.RepoQueueQuery.return_value.execute.return_value = [req]
         self.get_repo_from_task.return_value = 'REPO'
         self.valid_repo.return_value = False
@@ -253,7 +255,7 @@ class TestRepoQueue(BaseTest):
 
     def test_check_queue_goodrepo(self):
         req = {'id': 100, 'task_id': 200, 'task_state': koji.TASK_STATES['CLOSED'], 'opts': {},
-                'tries': 1}
+               'tries': 1}
         self.RepoQueueQuery.return_value.execute.return_value = [req]
         repo = {'id': 123, 'sentinel': 'hello 123dfs'}
         self.get_repo_from_task.return_value = repo
@@ -366,7 +368,7 @@ class TestRepoRequests(BaseTest):
 
         # missing opt value
         req2 = req.copy()
-        req2.update(opts={'debuginfo':True})
+        req2.update(opts={'debuginfo': True})
         bad = repo.copy()
         bad['opts'] = {'separate_src': False, 'src': False}
         bad['custom_opts'] = {'debuginfo': True}
@@ -375,7 +377,7 @@ class TestRepoRequests(BaseTest):
 
         # wrong custom opts
         req2 = req.copy()
-        req2.update(opts={'src':True})
+        req2.update(opts={'src': True})
         bad = repo.copy()
         bad['opts'] = {'debuginfo': True, 'separate_src': False, 'src': False}
         bad['custom_opts'] = {'debuginfo': True}
@@ -384,7 +386,7 @@ class TestRepoRequests(BaseTest):
 
         # invalid opts
         req2 = req.copy()
-        req2.update(opts={'src':True})
+        req2.update(opts={'src': True})
         bad = repo.copy()
         bad['opts'] = {}
         # opts field should never be blank
@@ -429,7 +431,8 @@ class TestDoneHook(BaseTest):
 
     def test_invalid_repo(self):
         # hook should not process invalid repos
-        self.RepoQuery.return_value.executeOne.return_value = {'dist': False, 'opts': None, 'custom_opts': {}}
+        self.RepoQuery.return_value.executeOne.return_value = {'dist': False, 'opts': None,
+                                                               'custom_opts': {}}
 
         repos.repo_done_hook(100)
 
@@ -440,7 +443,8 @@ class TestDoneHook(BaseTest):
         self.Savepoint.return_value.rollback.assert_not_called()
 
     def test_no_match(self):
-        repo = {'dist': False, 'opts': {}, 'custom_opts': {}, 'tag_id': 'TAGID', 'create_event': 101010}
+        repo = {'dist': False, 'opts': {}, 'custom_opts': {}, 'tag_id': 'TAGID',
+                'create_event': 101010}
         self.RepoQuery.return_value.executeOne.return_value = repo
         self.RepoQueueQuery.return_value.execute.return_value = []
 
@@ -456,7 +460,7 @@ class TestDoneHook(BaseTest):
         repo = {'id': 55, 'dist': False, 'opts': {}, 'custom_opts': {}, 'tag_id': 'TAGID',
                 'create_event': 101010}
         self.RepoQuery.return_value.executeOne.return_value = repo
-        req= {'id': 'REQ_ID'}
+        req = {'id': 'REQ_ID'}
         self.RepoQueueQuery.return_value.execute.side_effect = [[req], []]
 
         repos.repo_done_hook(100)
@@ -526,8 +530,8 @@ class TestSymlink(BaseTest):
         self.symlink.assert_not_called()
 
     def test_symlink(self):
-        repo = {'id': 99, 'dist': False, 'custom_opts': {}, 'tag_id': 'TAGID', 'create_event': 101010,
-                'tag_name': 'MYTAG'}
+        repo = {'id': 99, 'dist': False, 'custom_opts': {}, 'tag_id': 'TAGID',
+                'create_event': 101010, 'tag_name': 'MYTAG'}
         self.RepoQuery.return_value.execute.return_value = []
         self.lexists.return_value = False
 
@@ -539,8 +543,8 @@ class TestSymlink(BaseTest):
         self.unlink.assert_not_called()
 
     def test_symlink_dist(self):
-        repo = {'id': 99, 'dist': True, 'custom_opts': {}, 'tag_id': 'TAGID', 'create_event': 101010,
-                'tag_name': 'MYTAG'}
+        repo = {'id': 99, 'dist': True, 'custom_opts': {}, 'tag_id': 'TAGID',
+                'create_event': 101010, 'tag_name': 'MYTAG'}
         self.RepoQuery.return_value.execute.return_value = []
 
         result = repos.symlink_if_latest(repo)
@@ -550,8 +554,8 @@ class TestSymlink(BaseTest):
         self.symlink.assert_called_with('99', expect)
 
     def test_symlink_replace(self):
-        repo = {'id': 99, 'dist': False, 'custom_opts': {}, 'tag_id': 'TAGID', 'create_event': 101010,
-                'tag_name': 'MYTAG'}
+        repo = {'id': 99, 'dist': False, 'custom_opts': {}, 'tag_id': 'TAGID',
+                'create_event': 101010, 'tag_name': 'MYTAG'}
         self.RepoQuery.return_value.execute.return_value = []
         self.lexists.return_value = True
 
@@ -563,8 +567,8 @@ class TestSymlink(BaseTest):
         self.symlink.assert_called_with('99', expect)
 
     def test_symlink_fail(self):
-        repo = {'id': 99, 'dist': False, 'custom_opts': {}, 'tag_id': 'TAGID', 'create_event': 101010,
-                'tag_name': 'MYTAG'}
+        repo = {'id': 99, 'dist': False, 'custom_opts': {}, 'tag_id': 'TAGID',
+                'create_event': 101010, 'tag_name': 'MYTAG'}
         self.RepoQuery.return_value.execute.return_value = []
         self.symlink.side_effect = OSError('failed')
 
@@ -709,7 +713,7 @@ class TestAutoRequests(BaseTest):
 
         repos.do_auto_requests()
 
-        self.request_repo.called_once_with(99, min_event=1000, priority=5)
+        self.request_repo.assert_called_once_with(99, min_event=1000, priority=5)
 
     def test_no_tags(self):
         autokeys = []
@@ -731,7 +735,7 @@ class TestAutoRequests(BaseTest):
 
         repos.do_auto_requests()
 
-        self.request_repo.called_once_with(99, min_event=1000, priority=5)
+        self.request_repo.assert_called_once_with(99, min_event=1000, priority=5)
 
     def test_blocked_row(self):
         autokeys = [
@@ -746,7 +750,7 @@ class TestAutoRequests(BaseTest):
 
         repos.do_auto_requests()
 
-        self.request_repo.called_once_with(99, min_event=1000, priority=5)
+        self.request_repo.assert_called_once_with(99, min_event=1000, priority=5)
 
     def test_auto_lag(self):
         # use a trivial window to simplify the lag calculation
@@ -764,7 +768,7 @@ class TestAutoRequests(BaseTest):
 
         repos.do_auto_requests()
 
-        self.request_repo.called_once_with(99, min_event=1000, priority=5)
+        self.request_repo.assert_called_once_with(99, min_event=1000, priority=5)
         # with zero lag, getLastEvent should be called with current time
         self.getLastEvent.assert_called_once_with(before=now, strict=False)
 
@@ -783,7 +787,7 @@ class TestAutoRequests(BaseTest):
 
         repos.do_auto_requests()
 
-        self.request_repo.called_once_with(99, min_event=1000, priority=5)
+        self.request_repo.assert_called_once_with(99, min_event=1000, priority=5)
         # with zero lag, getLastEvent should be called with current time
         self.getLastEvent.assert_called_once()
         before = self.getLastEvent.call_args.kwargs['before']
@@ -817,12 +821,11 @@ class TestAutoRequests(BaseTest):
 
         repos.do_auto_requests()
 
-        self.request_repo.called_once_with(99, min_event=990, priority=5)
+        self.request_repo.assert_called_once_with(99, min_event=990, priority=5)
         self.tag_last_change_event.assert_called_once()
         self.tag_first_change_event.assert_called_once()
 
         repos.do_auto_requests()
-
 
 
 class TestGetRepo(BaseTest):
@@ -1000,7 +1003,7 @@ class TestConvertRepoOpts(BaseTest):
     def test_bad_key(self):
         bad = {'XYZ': True, 'src': True}
         opts = repos.convert_repo_opts(bad)
-        self.assertEqual(opts, {'src':True})
+        self.assertEqual(opts, {'src': True})
 
         with self.assertRaises(koji.ParameterError):
             repos.convert_repo_opts(bad, strict=True)
@@ -1008,7 +1011,7 @@ class TestConvertRepoOpts(BaseTest):
     def test_null_value(self):
         value = {'debuginfo': None, 'src': True}
         opts = repos.convert_repo_opts(value)
-        self.assertEqual(opts, {'src':True})
+        self.assertEqual(opts, {'src': True})
 
 
 class TestRequestRepo(BaseTest):
@@ -1058,28 +1061,11 @@ class TestRequestRepo(BaseTest):
         self.assertEqual(data['min_event'], ev)
         self.assertEqual(data['priority'], 25)  # default + 5
 
-    def test_request_priority_lower_than_existing(self):
-        self.get_tag.return_value = {'id': 100, 'name': 'TAG', 'extra': {}}
-        ev = 100001
-        self.get_repo.return_value = None
-        oldreq = {'priority': 20, 'id': 424242}  # default
-        self.RepoQueueQuery.return_value.execute.return_value = [oldreq]
-
-        ret = repos.request_repo('TAGID', min_event=ev, priority=5)
-
-        # we should return the existing entry
-        # we should not update the priority since it is higher
-        self.assertEqual(ret['request']['id'], 424242)
-        self.assertEqual(ret['request']['priority'], 20)
-        self.assertEqual(ret['duplicate'], True)
-        self.InsertProcessor.assert_not_called()
-        self.set_request_priority.assert_not_called()
-
     def test_request_priority_higher_not_allowed(self):
         self.context.session.hasPerm.return_value = False
 
         with self.assertRaises(koji.ActionNotAllowed):
-            ret = repos.request_repo('TAGID', min_event=101010, priority=-5)
+            repos.request_repo('TAGID', min_event=101010, priority=-5)
 
         self.get_repo.assert_not_called()
         self.InsertProcessor.assert_not_called()
