@@ -1061,6 +1061,23 @@ class TestRequestRepo(BaseTest):
         self.assertEqual(data['min_event'], ev)
         self.assertEqual(data['priority'], 25)  # default + 5
 
+    def test_request_priority_lower_than_existing(self):
+        self.get_tag.return_value = {'id': 100, 'name': 'TAG', 'extra': {}}
+        ev = 100001
+        self.get_repo.return_value = None
+        oldreq = {'priority': 20, 'id': 424242}  # default
+        self.RepoQueueQuery.return_value.execute.return_value = [oldreq]
+
+        ret = repos.request_repo('TAGID', min_event=ev, priority=5)
+
+        # we should return the existing entry
+        # we should not update the priority since it is higher
+        self.assertEqual(ret['request']['id'], 424242)
+        self.assertEqual(ret['request']['priority'], 20)
+        self.assertEqual(ret['duplicate'], True)
+        self.InsertProcessor.assert_not_called()
+        self.set_request_priority.assert_not_called()
+
     def test_request_priority_higher_not_allowed(self):
         self.context.session.hasPerm.return_value = False
 
