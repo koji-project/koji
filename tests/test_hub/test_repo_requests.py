@@ -1071,7 +1071,7 @@ class TestRequestRepo(BaseTest):
         self.InsertProcessor.assert_not_called()
         self.set_request_priority.assert_not_called()
 
-    def test_request_priority_lower_than_existing(self):
+    def test_request_priority_higher_than_existing(self):
         self.get_tag.return_value = {'id': 100, 'name': 'TAG', 'extra': {}}
         ev = 100001
         self.get_repo.return_value = None
