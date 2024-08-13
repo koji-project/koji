@@ -262,11 +262,11 @@ class TestGrouplist(unittest.TestCase):
     def test_get_group_members(self):
         group, gid = 'test_group', 1
 
-        # no permission
-        self.context.session.assertPerm.side_effect = koji.ActionNotAllowed
-        with self.assertRaises(koji.ActionNotAllowed):
+        # no permission needed, verify that it's not being checked
+        self.context.session.assertPerm.side_effect = Exception
+        with self.assertRaises(koji.GenericError):
             kojihub.get_group_members(group)
-        self.context.session.assertPerm.assert_called_with('admin')
+        self.context.session.assertPerm.assert_not_called()
         self.assertEqual(len(self.inserts), 0)
         self.assertEqual(len(self.updates), 0)
 
