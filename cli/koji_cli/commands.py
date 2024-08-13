@@ -7115,12 +7115,18 @@ def anon_handle_download_logs(options, session, args):
             binfo = session.getBuild(arg)
             if binfo is None:
                 error("There is no build with n-v-r: %s" % arg)
-            if binfo.get('build_id'):
+            b_state = koji.BUILD_STATES[binfo['state']]
+            # getBuildLogs will only work for complete builds
+            if b_state == 'COMPLETE':
                 build_id = binfo['build_id']
                 sys.stdout.write("Using build ID: %s\n" % build_id)
             elif binfo.get('task_id'):
+                # try falling back to the task logs
                 task_id = binfo['task_id']
+                sys.stdout.write("Build %s is %s\n" % (arg, b_state))
                 sys.stdout.write("Using task ID: %s\n" % task_id)
+            else:
+                sys.stdout.write("Unable to download build %s (state=%s)\n" % (arg, b_state))
         else:
             try:
                 task_id = int(arg)
