@@ -247,6 +247,69 @@ class RepoManagerTest(unittest.TestCase):
         get.return_value.text = repomd
 
         self.mgr.checkExternalRepos()
+
+        self.session.repo.getExternalRepoData.assert_has_calls([
+            mock.call(1),
+            mock.call(2),
+        ])
+        self.session.repo.setExternalRepoData.assert_has_calls([
+            mock.call(1, {'max_ts': 1711390493}),
+            mock.call(2, {'max_ts': 1711390493}),
+        ])
+
+    @mock.patch('requests.get')
+    def test_check_external_no_arches(self, get):
+        # a new system with no hosts could report no arches
+        self.session.getAllArches.return_value = []
+        # fake ext repo data
+        repo1 = {'external_repo_id': 1, 'external_repo_name': 'myrepo',
+                 'url': 'https://localhost/NOSUCHPATH'}
+        repo2 = {'external_repo_id': 2, 'external_repo_name': 'myotherrepo',
+                 'url': 'https://localhost/FAKEPATH/$arch'}
+        self.session.getTagExternalRepos.return_value = [repo1, repo2]
+        data1 = {}
+        data2 = {}
+        self.session.repo.getExternalRepoData.side_effect = [data1, data2]
+        repomd_fn = os.path.dirname(__file__) + '/data/external-repomd.xml'
+        with open(repomd_fn, 'rt') as fo:
+            repomd = fo.read()
+        get.return_value.text = repomd
+
+        self.mgr.checkExternalRepos()
+
+        self.session.repo.getExternalRepoData.assert_has_calls([
+            mock.call(1),
+            # no call for repo2 since it has $arch in the url
+        ])
+        self.session.repo.setExternalRepoData.assert_has_calls([
+            mock.call(1, {'max_ts': 1711390493}),
+            # no call for repo2 since it has $arch in the url
+        ])
+
+    @mock.patch('requests.get')
+    def test_check_external_cache(self, get):
+        # fake ext repo data
+        repo1 = {'external_repo_id': 1, 'external_repo_name': 'myrepo',
+                 'url': 'https://localhost/NOSUCHPATH'}
+        repo2 = {'external_repo_id': 2, 'external_repo_name': 'myotherrepo',
+                 'url': 'https://localhost/NOSUCHPATH'}  # same url
+        self.session.getTagExternalRepos.return_value = [repo1, repo2]
+        data1 = {}
+        data2 = {}
+        self.session.repo.getExternalRepoData.side_effect = [data1, data2]
+        self.session.getAllArches.return_value = ['i386', 'x86_64', 'riscv']
+        repomd_fn = os.path.dirname(__file__) + '/data/external-repomd.xml'
+        with open(repomd_fn, 'rt') as fo:
+            repomd = fo.read()
+        get.return_value.text = repomd
+
+        self.mgr.checkExternalRepos()
+
+        get.assert_called_once()
+        self.session.repo.getExternalRepoData.assert_has_calls([
+            mock.call(1),
+            mock.call(2),
+        ])
         self.session.repo.setExternalRepoData.assert_has_calls([
             mock.call(1, {'max_ts': 1711390493}),
             mock.call(2, {'max_ts': 1711390493}),
