@@ -241,7 +241,11 @@ def compare_mod(mod, old, new):
 
 def compare_mod_global(mod, name, old, new):
     if old['type'] != new['type']:
-        error(f'{mod}.{name} changed type: {old["type"]} -> {new["type"]}')
+        if old.get('is_external'):
+            # not from our code, so just warn
+            warn(f'{mod}.{name} (external) changed type: {old["type"]} -> {new["type"]}')
+        else:
+            error(f'{mod}.{name} changed type: {old["type"]} -> {new["type"]}')
         # this prevents further comparison
         return
     desc = f'{mod}.{name}'
