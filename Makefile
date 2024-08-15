@@ -71,6 +71,9 @@ clean:
 	rm -rf __pycache__
 	rm -rf devtools/fakehubc devtools/fakewebc devtools/__pycache__
 	rm -rf koji-$(VERSION)
+	rm -rf build dist koji.egg-info
+	find -name '*.pyi' -delete
+	find -name py.typed -delete
 	for d in $(SUBDIRS); do make -s -C $$d clean; done
 	find ./tests -name "__pycache__" -exec rm -rf {} \; ||:
 	find ./tests -name "*.pyc" -exec rm -f {} \;
