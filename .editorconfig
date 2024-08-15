@@ -1,0 +1,22 @@
+# Topmost editorconfig for project, don't ascend
+# to parent directories when scanning configs
+root = true
+
+# All files: UTF-8 with Unix-style newlines,
+# no trailing whitespace, and a final newline
+[*]
+charset = utf-8
+end_of_line = lf
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+# JavaScript, CSS, Python, shell: 4-space indents
+[{**/*.{js,css,py,sh},runtests,cli/koji,vm/kojivmd}]
+indent_style = space
+indent_size = 4
+
+# Makefile: tab indents
+[**/Makefile]
+indent_style = tab
+tab_width = 8
+
