@@ -26,7 +26,8 @@ def assert_scm_policy(clb_type, *args, **kwargs):
         'build_tag': build_tag,
         'method': method,
         'scratch': scratch,
-        'branches': get_branches(srcdir)
+        'branches': get_branches(srcdir),
+        'user_id': taskinfo['owner'],
     }
 
     # Merge scminfo into data with "scm_" prefix. And "scm*" are changed to "scm_*".
