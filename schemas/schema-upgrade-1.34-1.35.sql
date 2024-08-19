@@ -1,5 +1,5 @@
 -- upgrade script to migrate the Koji database schema
--- from version 1.33 to 1.34
+-- from version 1.34 to 1.35
 
 BEGIN;
 
