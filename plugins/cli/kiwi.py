@@ -31,6 +31,7 @@ def handle_kiwi_build(goptions, session, args):
     parser.add_option("--type-attr", action="append", default=[],
                       help="Override default attributes for the build type from description. "
                            "May be used multiple times.")
+    parser.add_option("--result-bundle-name-format", help="Override default bundle name format")
     parser.add_option("--make-prep", action="store_true", default=False,
                       help="Run 'make prep' in checkout before starting the build")
     parser.add_option("--can-fail", action="store", dest="optional_arches",
@@ -73,6 +74,8 @@ def handle_kiwi_build(goptions, session, args):
         kwargs['type'] = options.type
     if options.type_attr:
         kwargs['type_attr'] = options.type_attr
+    if options.result_bundle_name_format:
+        kwargs['result_bundle_name_format'] = options.result_bundle_name_format
     if options.arches:
         kwargs['arches'] = [canonArch(arch) for arch in options.arches]
     if options.repo:
