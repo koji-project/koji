@@ -389,7 +389,7 @@ class KiwiCreateImageTask(BaseBuildTask):
             '--description', os.path.join(os.path.basename(scmsrcdir), base_path),
             '--target-dir', target_dir,
         ])
-        for typeattr in self.opts.get('type_attr', [])::
+        for typeattr in self.opts.get('type_attr', []):
             cmd.extend(['--set-type-attr', typeattr])
         rv = broot.mock(['--cwd', broot.tmpdir(within=True), '--chroot', '--'] + cmd)
         if rv:
