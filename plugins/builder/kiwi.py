@@ -103,6 +103,8 @@ class KiwiBuildTask(BuildImageTask):
             name = "%s-%s" % (name, opts.get('profile', default_profile))
 
         bld_info = {}
+        if opts.get('version'):
+            version = opts['version']
         if opts.get('release'):
             release = opts['release']
         else:
@@ -188,7 +190,7 @@ class KiwiCreateImageTask(BaseBuildTask):
     Methods = ['createKiwiImage']
     _taskWeight = 2.0
 
-    def prepareDescription(self, desc_path, name, version, repos, arch):
+    def prepareDescription(self, desc_path, name, version, repos, repo_releasever, arch):
         # XML errors should have already been caught by parent task
         newxml = xml.dom.minidom.parse(desc_path)  # nosec
         image = newxml.getElementsByTagName('image')[0]
@@ -229,11 +231,15 @@ class KiwiCreateImageTask(BaseBuildTask):
 
         image.setAttribute('name', name)
         preferences = image.getElementsByTagName('preferences')[0]
+
+        # Handle version and release-version
+        preferences.getElementsByTagName('version')[0].childNodes[0].data = version
         try:
-            preferences.getElementsByTagName('release-version')[0].childNodes[0].data = version
+            preferences.getElementsByTagName('release-version')[0].childNodes[0].data \
+                = repo_releasever
         except IndexError:
             releasever_node = newxml.createElement('release-version')
-            text = newxml.createTextNode(version)
+            text = newxml.createTextNode(repo_releasever)
             releasever_node.appendChild(text)
             preferences.appendChild(releasever_node)
 
@@ -357,6 +363,7 @@ class KiwiCreateImageTask(BaseBuildTask):
             baseurl = '%s/%s' % (repopath, arch)
             self.logger.debug('BASEURL: %s' % baseurl)
             repos.append(baseurl)
+        repo_releasever = self.opts.get('repo_releasever', version)
 
         base_path = os.path.dirname(desc_path)
         if opts.get('make_prep'):
@@ -368,7 +375,7 @@ class KiwiCreateImageTask(BaseBuildTask):
                 raise koji.GenericError("Preparation step failed")
 
         path = os.path.join(scmsrcdir, desc_path)
-        desc, types = self.prepareDescription(path, name, version, repos, arch)
+        desc, types = self.prepareDescription(path, name, version, repos, repo_releasever, arch)
         self.uploadFile(desc)
 
         target_dir = '/builddir/result/image'
