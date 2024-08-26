@@ -19,11 +19,13 @@ def handle_kiwi_build(goptions, session, args):
     parser = OptionParser(usage=usage)
     parser.add_option("--scratch", action="store_true", default=False,
                       help="Perform a scratch build")
+    parser.add_option("--version", help="Override default version of the output image")
     parser.add_option("--release", help="Release of the output image")
     parser.add_option("--repo", action="append",
                       help="Specify a repo that will override the repo used to install "
                            "RPMs in the image. May be used multiple times. The "
                            "build tag repo associated with the target is the default.")
+    parser.add_option("--repo-releasever", help="Override default releasever of the output image")
     parser.add_option("--noprogress", action="store_true",
                       help="Do not display progress of the upload")
     parser.add_option("--kiwi-profile", action="store", default=None,
@@ -71,6 +73,8 @@ def handle_kiwi_build(goptions, session, args):
             if arch]
     if options.kiwi_profile:
         kwargs['profile'] = options.kiwi_profile
+    if options.version:
+        kwargs['version'] = options.version
     if options.release:
         kwargs['release'] = options.release
     if options.make_prep:
@@ -85,6 +89,8 @@ def handle_kiwi_build(goptions, session, args):
         kwargs['arches'] = [canonArch(arch) for arch in options.arches]
     if options.repo:
         kwargs['repos'] = options.repo
+    if options.repo_releasever:
+        kwargs['repo_releasever'] = options.repo_releasever
 
     if session.hub_version < (1, 35, 0):
         warn("hub version is < 1.35, buildroot repo is always used in addition to specified repos")
