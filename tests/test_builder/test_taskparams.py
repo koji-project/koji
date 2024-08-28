@@ -63,7 +63,8 @@ class TestParseTaskParams(unittest.TestCase):
             # match
             self.assertIn(list(spec), koji.tasks.LEGACY_SIGNATURES[method])
 
-        external = ['runroot', 'saveFailedTree', 'vmExec', 'winbuild']
+        external = ['runroot', 'saveFailedTree', 'vmExec', 'winbuild',
+                    'kiwiBuild', 'createKiwiImage']
         missing = [m for m in missing if m not in external]
         if missing:
             raise Exception('Unable to test legacy signatures. Missing: '
