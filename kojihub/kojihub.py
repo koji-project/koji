@@ -3021,7 +3021,7 @@ def repo_info(repo_id, strict=False):
     :returns: dict (id, state, create_event, creation_time, tag_id, tag_name,
               dist)
     """
-    repo_id = convert_value(repo_id, cast=int)
+    repo_id = convert_value(repo_id, cast=int, none_allowed=True)
     clauses = [['id', '=', repo_id]]
     return repos.RepoQuery(clauses, fields='**').executeOne(strict=strict)
 
