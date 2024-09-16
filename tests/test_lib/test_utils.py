@@ -272,7 +272,6 @@ class ConfigFileTestCase(unittest.TestCase):
         mock.patch.stopall()
 
     def test_read_config_files(self):
-
         # bad config_files
         for files in [0,
                       False,
@@ -298,7 +297,7 @@ class ConfigFileTestCase(unittest.TestCase):
             self.assertTrue(isinstance(conf,
                                        six.moves.configparser.ConfigParser.__class__))
         self.real_parser_clz.assert_called_once()
-        self.real_parser_clz.return_value.read.assert_called_once_with([files])
+        self.real_parser_clz.return_value.read.assert_called_once_with([files], encoding='utf8')
 
         # list as config_files
         self.reset_mock()
@@ -306,7 +305,7 @@ class ConfigFileTestCase(unittest.TestCase):
         koji.read_config_files(files)
 
         self.real_parser_clz.assert_called_once()
-        self.real_parser_clz.return_value.read.assert_called_once_with(files)
+        self.real_parser_clz.return_value.read.assert_called_once_with(files, encoding='utf8')
 
         # tuple as config_files
         self.reset_mock()
@@ -369,7 +368,8 @@ class ConfigFileTestCase(unittest.TestCase):
             ['test1.conf',
              'gooddir/test1-1.conf',
              'gooddir/test1-2.conf',
-             'test2.conf'])
+             'test2.conf'],
+            encoding='utf8')
         self.assertEqual(self.manager.isdir.call_count, 5)
         self.assertEqual(self.manager.isfile.call_count, 6)
         self.assertEqual(self.manager.access.call_count, 4)
@@ -1282,7 +1282,8 @@ class TestRmtree(unittest.TestCase):
 
     @patch('koji.util._rmtree')
     def test_rmtree_directory(self, _rmtree):
-        """ Tests that the koji.util._rmtree_nofork function returns nothing when the path is a directory.
+        """ Tests that the koji.util._rmtree_nofork function returns nothing
+        when the path is a directory.
         """
         stat = mock.MagicMock()
         stat.st_dev = 'dev'
@@ -1552,7 +1553,8 @@ class TestRmtree(unittest.TestCase):
     @mock.patch('os.unlink')
     @mock.patch('os.waitpid')
     @mock.patch('os._exit')
-    def test_rmtree_parent_logfail(self, _exit, waitpid, unlink, fork, rmtree_nofork, logsend, mkstemp):
+    def test_rmtree_parent_logfail(self, _exit, waitpid, unlink, fork, rmtree_nofork, logsend,
+                                   mkstemp):
         log = self.tempdir + '/rmtree-log.jsonl'
         fd = os.open(log, os.O_RDWR | os.O_CREAT)
         mkstemp.return_value = fd, log
@@ -1844,6 +1846,7 @@ class TestRmtree2(unittest.TestCase):
                         os.makedirs('%s/a/%s/c/d/%s/e/f/%s/g/h' % (dirname, i, j, k))
 
         sync = threading.Event()
+
         def do_rmtree(dirname):
             sync.wait()
             koji.util.rmtree(dirname)
@@ -1870,6 +1873,7 @@ class TestRmtree2(unittest.TestCase):
                     os.makedirs('%s/a/%s/c/d/%s/e/f/%s/g/h' % (dirname, i, j, k))
 
         sync = threading.Event()
+
         def do_rmtree(dirname):
             sync.wait()
             koji.util.rmtree(dirname)
@@ -1895,6 +1899,7 @@ class TestRmtree2(unittest.TestCase):
                     os.makedirs('%s/a/%s/c/d/%s/e/f/%s/g/h' % (dirname, i, j, k))
 
         sync = multiprocessing.Event()
+
         def do_rmtree(dirname):
             sync.wait()
             koji.util.rmtree(dirname)
@@ -2047,6 +2052,7 @@ class TestFormatShellCmd(unittest.TestCase):
         )
         for inp, out in cases:
             self.assertEqual(koji.util.format_shell_cmd(inp, text_width=40), out)
+
 
 class TestExtractBuildTask(unittest.TestCase):
     def test_valid_binfos(self):
