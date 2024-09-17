@@ -83,7 +83,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.34.1
+Version: 1.35.0
 Release: %{release}%{?dist}
 License: LGPL-2.1-only and GPL-2.0-or-later
 # the included arch lib from yum's rpmUtils is GPLv2+
@@ -651,6 +651,63 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Fri Aug 16 2024  Tomas Kopecek <tkopecek at redhat.com> - 1.35.0-1
+- PR#3891: Don't try to resolve server version for old hubs
+- PR#3912: anonymous getGroupMembers and getUserGroups
+- PR#3944: Backup signature headers in delete_rpm_sig
+- PR#3953: Stop lowercasing the policy failure reason
+- PR#3969: New scmpolicy plugin
+- PR#3970: Add CLI with users with given permission
+- PR#3974: Use dnf5-compatible "group install" command
+- PR#4000: Fix remove-tag-inheritance with priority
+- PR#4008: CLI list-users with filters from listUsers
+- PR#4011: Show only active channels at clusterhealth
+- PR#4013: let tag.extra override tag arches for noarch
+- PR#4023: split out buildroot log watching logic
+- PR#4025: docs: mock's configuration
+- PR#4026: Better index for rpm lookup
+- PR#4033: kojira on demand
+- PR#4044: Update getNextTask for scheduler
+- PR#4046: kiwi: Generate full logs with debug information
+- PR#4051: fixes for list-users
+- PR#4060: auto arch refusal for noarch tasks
+- PR#4063: kiwi: Only add buildroot repo if user repositories are not defined
+- PR#4066: fix errors in channel policy
+- PR#4068: Rework mocking of QueryProcessor in DBQueryTestCase
+- PR#4073: sort checksums before inserting
+- PR#4075: taskinfo CLI and webUI info message why output is not in the list
+- PR#4076: log if a restart is pending
+- PR#4082: More mocking cleanup
+- PR#4083: refuse image tasks when required deps are missing
+- PR#4086: Drop part of code related to host without update_ts
+- PR#4087: Increase index.py unit tests
+- PR#4090: Koji 1.34.1 release notes
+- PR#4092: handle volumes when clearing stray build dirs
+- PR#4093: don't ignore files in uploadFile
+- PR#4095: drop unused DBHandler class
+- PR#4097: stop suggesting that users need repo permission
+- PR#4100: setup.py: Fix version retrieval on Python 3.13+
+- PR#4103: make clean - more files
+- PR#4104: Add external koji dev environments' links
+- PR#4107: Drop unused auth options
+- PR#4110: DBHandler class dropped from API test
+- PR#4111: fix flake8
+- PR#4113: cg import updates
+- PR#4115: fix tz mismatch issues with various queries
+- PR#4117: RetryError is subclass of AuthError
+- PR#4118: basic unit test for kojid main
+- PR#4121: Provide tag data in policy_data_from_task_args
+- PR#4127: handle cases where there is no event before our ts
+- PR#4132: check-api: only warn for external type changes
+- PR#4133: more missing tearDowns
+- PR#4141: Keep schema upgrade transactional
+- PR#4158: Fix asserts in unit tests
+- PR#4164: better default handling for getMultiArchInfo
+- PR#4181: Fix a typo in the kiwi image type attribute override patch
+- PR#4184: kiwi: Add support for overriding version and releasever
+- PR#4186: Basic tests for kiwi plugin 
+- PR#4192: allow None in repoInfo for backwards compat
+
 * Mon May  6 2024  Tomas Kopecek <tkopecek at redhat.com> - 1.34.1-1
 - PR#3931: web: add some handy links for module builds
 - PR#3942: policy_data_from_task_args: set target to None when it doesn't exist
