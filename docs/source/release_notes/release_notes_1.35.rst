@@ -298,8 +298,7 @@ CLI option ``--set-type-attr`` for kiwi. For possible values look at `kiwi docs
 
 | PR: https://pagure.io/koji/pull-request/4157
 
-CLI option ``--bundle-format`` for kiwi. For possible values look at `kiwi docs
-<https://osinside.github.io/kiwi/commands/result_bundle.html>`_.
+CLI option ``--bundle-format`` for kiwi. For possible values look at `kiwi docs`_.
 
 
 **Add support for overriding version and releasever**
