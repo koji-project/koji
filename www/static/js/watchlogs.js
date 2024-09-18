@@ -39,62 +39,62 @@ function maybeScroll(origHeight) {
 function handleStatus(event) {
     req = event.target;
     if (req.readyState != 4) {
-	return;
+        return;
     }
     if (req.status == 200) {
-	if (req.responseText.length > 0) {
-	    var lines = req.responseText.split("\n");
-	    var line = lines[0];
-	    var data = line.split(":");
-	    // var taskID = parseInt(data[0]);
-	    var state = data[1];
-	    var logs = {};
-	    for (var i = 1; i < lines.length; i++) {
-		data = lines[i].split(":");
-		var filename = data[0] + ":" + data[1];
-		var filesize = parseInt(data[2]);
-		if (filename.indexOf(".log") != -1) {
-		    logs[filename] = filesize;
-		}
-	    }
-	} else {
-	    // task may not have started yet
-	    var state = "UNKNOWN";
-	    var logs = {};
-	}
-	currentInfo = {state: state, logs: logs};
-	if (!(state == "FREE" || state == "OPEN" ||
-	      state == "ASSIGNED" || state == "UNKNOWN")) {
-	    // remove tasks from the task list that are no longer running
-	    for (var i = 0; i < tasks.length; i++) {
-		if (tasks[i] == currentTaskID) {
-		    tasks.splice(i, 1);
-		    break;
-		}
-	    }
-	}
+        if (req.responseText.length > 0) {
+            var lines = req.responseText.split("\n");
+            var line = lines[0];
+            var data = line.split(":");
+            // var taskID = parseInt(data[0]);
+            var state = data[1];
+            var logs = {};
+            for (var i = 1; i < lines.length; i++) {
+                data = lines[i].split(":");
+                var filename = data[0] + ":" + data[1];
+                var filesize = parseInt(data[2]);
+                if (filename.indexOf(".log") != -1) {
+                    logs[filename] = filesize;
+                }
+            }
+        } else {
+            // task may not have started yet
+            var state = "UNKNOWN";
+            var logs = {};
+        }
+        currentInfo = {state: state, logs: logs};
+        if (!(state == "FREE" || state == "OPEN" ||
+              state == "ASSIGNED" || state == "UNKNOWN")) {
+            // remove tasks from the task list that are no longer running
+            for (var i = 0; i < tasks.length; i++) {
+                if (tasks[i] == currentTaskID) {
+                    tasks.splice(i, 1);
+                    break;
+                }
+            }
+        }
     } else {
-	currentInfo = {state: "UNKNOWN", logs: {}};
-	popupError("Error checking status of task " + currentTaskID + ": " + req.statusText);
+        currentInfo = {state: "UNKNOWN", logs: {}};
+        popupError("Error checking status of task " + currentTaskID + ": " + req.statusText);
     }
     currentLogs = [];
     for (var logname in currentInfo.logs) {
-	currentLogs.push(logname);
+        currentLogs.push(logname);
     }
     processLog();
 }
 
 function getStatus() {
     if (tasksToProcess.length == 0) {
-	if (errorCount > MAX_ERRORS) {
-	    return;
-	} else {
-	    if (headerElement != null) {
-		headerElement.appendChild(document.createTextNode("."));
-	    }
-	    setTimeout(checkTasks, 5000);
-	    return;
-	}
+        if (errorCount > MAX_ERRORS) {
+            return;
+        } else {
+            if (headerElement != null) {
+                headerElement.appendChild(document.createTextNode("."));
+            }
+            setTimeout(checkTasks, 5000);
+            return;
+        }
     }
 
     currentTaskID = tasksToProcess.shift();
@@ -106,27 +106,27 @@ function getStatus() {
 
 function checkTasks() {
     if (tasks.length == 0) {
-	docHeight = document.body.clientHeight;
+        docHeight = document.body.clientHeight;
         logElement.appendChild(document.createTextNode("\n==> Task has completed <==\n"));
         maybeScroll(docHeight);
     } else {
-	tasksToProcess = [];
-	for (var i = 0; i < tasks.length; i++) {
-	    tasksToProcess.push(tasks[i]);
-	}
-	getStatus();
+        tasksToProcess = [];
+        for (var i = 0; i < tasks.length; i++) {
+            tasksToProcess.push(tasks[i]);
+        }
+        getStatus();
     }
 }
 
 function processLog() {
     if (currentLogs.length == 0) {
-	getStatus();
-	return;
+        getStatus();
+        return;
     }
     currentLog = currentLogs.shift();
     var taskOffsets = offsets[currentTaskID];
     if (!(currentLog in taskOffsets)) {
-	taskOffsets[currentLog] = 0;
+        taskOffsets[currentLog] = 0;
     }
     outputLog();
 }
@@ -135,47 +135,47 @@ function outputLog() {
     var currentOffset = offsets[currentTaskID][currentLog];
     var currentSize = currentInfo.logs[currentLog];
     if (currentSize > currentOffset) {
-	var chunkSize = CHUNK_SIZE;
-	if ((currentSize - currentOffset) < chunkSize) {
-	    chunkSize = currentSize - currentOffset;
-	}
-	var req = new XMLHttpRequest();
-	var data = currentLog.split(':');
-	var volume = data[0];
-	var filename = data[1];
-	req.open("GET", baseURL + "/getfile?taskID=" + currentTaskID + "&name=" + filename +
+        var chunkSize = CHUNK_SIZE;
+        if ((currentSize - currentOffset) < chunkSize) {
+            chunkSize = currentSize - currentOffset;
+        }
+        var req = new XMLHttpRequest();
+        var data = currentLog.split(':');
+        var volume = data[0];
+        var filename = data[1];
+        req.open("GET", baseURL + "/getfile?taskID=" + currentTaskID + "&name=" + filename +
                  "&volume=" + volume + "&offset=" + currentOffset + "&size=" + chunkSize, true);
-	req.onreadystatechange = handleLog;
-	req.send(null);
-	if (headerElement != null) {
-	    logElement.removeChild(headerElement);
-	    headerElement = null;
-	}
+        req.onreadystatechange = handleLog;
+        req.send(null);
+        if (headerElement != null) {
+            logElement.removeChild(headerElement);
+            headerElement = null;
+        }
     } else {
-	processLog();
+        processLog();
     }
 }
 
 function handleLog(event) {
     req = event.target;
     if (req.readyState != 4) {
-	return;
+        return;
     }
     if (req.status == 200) {
-	content = req.responseText;
-	offsets[currentTaskID][currentLog] += content.length;
-	if (content.length > 0) {
-	    docHeight = document.body.clientHeight;
-	    currlog = currentTaskID + ":" + currentLog;
-	    if (currlog != lastlog) {
-		logElement.appendChild(document.createTextNode("\n==> " + currlog + " <==\n"));
-		lastlog = currlog;
-	    }
-	    logElement.appendChild(document.createTextNode(content));
-	    maybeScroll(docHeight);
-	}
+        content = req.responseText;
+        offsets[currentTaskID][currentLog] += content.length;
+        if (content.length > 0) {
+            docHeight = document.body.clientHeight;
+            currlog = currentTaskID + ":" + currentLog;
+            if (currlog != lastlog) {
+                logElement.appendChild(document.createTextNode("\n==> " + currlog + " <==\n"));
+                lastlog = currlog;
+            }
+            logElement.appendChild(document.createTextNode(content));
+            maybeScroll(docHeight);
+        }
     } else {
-	popupError("Error retrieving " + currentLog + " for task " + currentTaskID + ": " + req.statusText);
+        popupError("Error retrieving " + currentLog + " for task " + currentTaskID + ": " + req.statusText);
     }
     outputLog();
 }

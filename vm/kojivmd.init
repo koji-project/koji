@@ -86,7 +86,7 @@ case "$1" in
         graceful
         ;;
   *)
-	echo $"Usage: $0 {start|stop|status|restart|condrestart|try-restart|reload|force-reload|graceful}"
+        echo $"Usage: $0 {start|stop|status|restart|condrestart|try-restart|reload|force-reload|graceful}"
         exit 1
 esac
 

@@ -17,13 +17,13 @@
     <tr>
       <th>Tags using this external repo</th>
       <td>
-	#if $len($repoTags)
-	#for $tag in $repoTags
-	<a href="taginfo?tagID=$tag.tag_id">$util.escapeHTML($tag.tag_name)</a><br/>
-	#end for
-	#else
-	No tags
-	#end if
+        #if $len($repoTags)
+        #for $tag in $repoTags
+        <a href="taginfo?tagID=$tag.tag_id">$util.escapeHTML($tag.tag_name)</a><br/>
+        #end for
+        #else
+        No tags
+        #end if
       </td>
     </tr>
   </table>
