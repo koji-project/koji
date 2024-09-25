@@ -2,17 +2,17 @@
 
 #include "includes/header.chtml"
 
-  <h4>Information for channel <a href="channelinfo?channelID=$channel.id">$util.escapeHTML($channel.name)</a></h4>
+  <h4>Information for channel <a href="channelinfo?channelID=$channel.id">$channel.name</a></h4>
 
   <table>
     <tr>
-      <th>Name</th><td>$util.escapeHTML($channel.name)</td>
+      <th>Name</th><td>$channel.name</td>
     </tr>
     <tr>
       <th>ID</th><td>$channel.id</td>
     </tr>
     <tr>
-      <th>Description</th><td>$util.escapeHTML($channel.description)</td>
+      <th>Description</th><td>$channel.description</td>
     </tr>
     <tr>
       #set $enabled = $channel.enabled and 'yes' or 'no'
@@ -22,7 +22,7 @@
       </td>
     </tr>
     <tr>
-      <th>Comment</th><td>$util.escapeHTML($channel.comment)</td>
+      <th>Comment</th><td>$channel.comment</td>
     </tr>
     <tr>
       <th>Active Tasks</th><td><a href="tasks?view=flat&channelID=$channel.id">$taskCount</a></td>
@@ -39,7 +39,7 @@
         </tr>
       #for $host in $hosts
         <tr class="$util.rowToggle($self)">
-          <td><a href="hostinfo?hostID=$host.id">$util.escapeHTML($host.name)</a></td>
+          <td><a href="hostinfo?hostID=$host.id">$host.name</a></td>
           <td class="$str($bool($host.enabled)).lower()">#if $host.enabled then $util.imageTag('yes') else $util.imageTag('no')#</td>
           <td class="$str($bool($host.ready)).lower()">#if $host.ready then $util.imageTag('yes') else $util.imageTag('no')#</td>
         </tr>

@@ -15,14 +15,14 @@
       <tr>
         <th>Tag Name</th>
         <td>
-          $util.escapeHTML($tag.name)
+          $tag.name
           <input type="hidden" name="tagID" value="$tag.id"/>
         </td>
       </tr>
       <tr>
         <th>Parent Tag Name</th>
         <td>
-          $util.escapeHTML($parent.name)
+          $parent.name
           <input type="hidden" name="parentID" value="$parent.id"/>
         </td>
       </tr>

@@ -18,9 +18,9 @@
         <th>Package</th>
         <td>
           <select name="package">
-            <option value="all"#if $notif and not $notif.package_id then ' selected="selected"' else ''#>all</option>
+            <option value="all"#if $notif and not $notif.package_id then ' selected' else ''#>all</option>
             #for $package in $packages
-            <option value="$package.package_id"#if $notif and $notif.package_id == $package.package_id then ' selected="selected"' else ''#>$util.escapeHTML($package.package_name)</option>
+            <option value="$package.package_id"#if $notif and $notif.package_id == $package.package_id then ' selected' else ''#>$package.package_name</option>
             #end for
           </select>
         </td>
@@ -29,9 +29,9 @@
         <th>Tag</th>
         <td>
           <select name="tag">
-            <option value="all"#if $notif and not $notif.tag_id then ' selected="selected"' else ''#>all</option>
+            <option value="all"#if $notif and not $notif.tag_id then ' selected' else ''#>all</option>
             #for $tag in $tags
-            <option value="$tag.id"#if $notif and $notif.tag_id == $tag.id then ' selected="selected"' else ''#>$util.escapeHTML($tag.name)</option>
+            <option value="$tag.id"#if $notif and $notif.tag_id == $tag.id then ' selected' else ''#>$tag.name</option>
             #end for
           </select>
         </td>
