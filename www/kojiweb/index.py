@@ -36,7 +36,7 @@ import koji
 from koji.tasks import parse_task_params
 import kojiweb.util
 from koji.server import ServerRedirect
-from kojiweb.util import _genHTML, _getValidTokens, _initValues, formatRPM
+from kojiweb.util import _genHTML, _getValidTokens, _initValues, formatRPM, SafeValue
 from koji.util import extract_build_task
 
 
@@ -1534,7 +1534,7 @@ def rpminfo(environ, rpmID, fileOrder='name', fileStart=None, buildrootOrder='-i
     except koji.GenericError:
         raise koji.GenericError('No such RPM ID: %i' % rpmID)
 
-    values['title'] = formatRPM(rpm) + ' | RPM Info'
+    values['title'] = formatRPM(rpm) + SafeValue(' | RPM Info')
 
     build = None
     if rpm['build_id'] is not None:

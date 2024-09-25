@@ -2,11 +2,11 @@
 
 #include "includes/header.chtml"
 
-  <h4>Information for user <a href="userinfo?userID=$user.id">$util.escapeHTML($user.name)</a></h4>
+  <h4>Information for user <a href="userinfo?userID=$user.id">$user.name</a></h4>
 
   <table>
     <tr>
-      <th>Name</th><td>$util.escapeHTML($user.name)</td>
+      <th>Name</th><td>$user.name</td>
     </tr>
     <tr>
       <th>ID</th><td>$user.id</td>
@@ -26,7 +26,7 @@
                 Page:
                 <select onchange="javascript: window.location = 'userinfo?packageStart=' + this.value * $packageRange + '$util.passthrough($self, 'userID', 'packageOrder', 'buildOrder', 'buildStart')#packagelist';">
                   #for $pageNum in $packagePages
-                  <option value="$pageNum"#if $pageNum == $packageCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
+                  <option value="$pageNum"#if $pageNum == $packageCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
                   #end for
                 </select>
               </form>
@@ -47,8 +47,8 @@
           </tr>
           #for $package in $packages
           <tr class="$util.rowToggle($self)">
-            <td><a href="packageinfo?packageID=$package.package_id">$util.escapeHTML($package.package_name)</a></td>
-            <td><a href="taginfo?tagID=$package.tag_id">$util.escapeHTML($package.tag_name)</a></td>
+            <td><a href="packageinfo?packageID=$package.package_id">$package.package_name</a></td>
+            <td><a href="taginfo?tagID=$package.tag_id">$package.tag_name</a></td>
             <td class="$str(not $package.blocked).lower()">#if $package.blocked then $util.imageTag('no') else $util.imageTag('yes')#</td>
           </tr>
           #end for
@@ -70,7 +70,7 @@
                 Page:
                 <select onchange="javascript: window.location = 'userinfo?buildStart=' + this.value * $buildRange + '$util.passthrough($self, 'userID', 'buildOrder', 'packageOrder', 'packageStart')#buildlist';">
                   #for $pageNum in $buildPages
-                  <option value="$pageNum"#if $pageNum == $buildCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
+                  <option value="$pageNum"#if $pageNum == $buildCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
                   #end for
                 </select>
               </form>
@@ -92,7 +92,7 @@
           #for $build in $builds
           <tr class="$util.rowToggle($self)">
             #set $stateName = $util.stateName($build.state)
-            <td><a href="buildinfo?buildID=$build.build_id">$util.escapeHTML($build.nvr)</a></td>
+            <td><a href="buildinfo?buildID=$build.build_id">$build.nvr</a></td>
             <td>$util.formatTime($build.completion_ts)</td>
             <td class="$stateName">$util.stateImage($build.state)</td>
           </tr>

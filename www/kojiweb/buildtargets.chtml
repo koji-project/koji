@@ -11,7 +11,7 @@
           Page:
           <select onchange="javascript: window.location = 'buildtargets?start=' + this.value * $targetRange + '$util.passthrough($self, 'order')';">
             #for $pageNum in $targetPages
-            <option value="$pageNum"#if $pageNum == $targetCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
+            <option value="$pageNum"#if $pageNum == $targetCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
             #end for
           </select>
         </form>
@@ -35,7 +35,7 @@
     #for $target in $targets
     <tr class="$util.rowToggle($self)">
       <td>$target.id</td>
-      <td><a href="buildtargetinfo?targetID=$target.id">$util.escapeHTML($target.name)</a></td>
+      <td><a href="buildtargetinfo?targetID=$target.id">$target.name</a></td>
     </tr>
     #end for
     #else
@@ -50,7 +50,7 @@
           Page:
           <select onchange="javascript: window.location = 'buildtargets?start=' + this.value * $targetRange + '$util.passthrough($self, 'order')';">
             #for $pageNum in $targetPages
-            <option value="$pageNum"#if $pageNum == $targetCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
+            <option value="$pageNum"#if $pageNum == $targetCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
             #end for
           </select>
         </form>

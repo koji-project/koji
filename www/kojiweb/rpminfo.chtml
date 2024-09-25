@@ -8,7 +8,7 @@
 
 #include "includes/header.chtml"
   #set $epoch = ($rpm.epoch != None and $str($rpm.epoch) + ':' or '')
-  <h4>Information for RPM <a href="rpminfo?rpmID=$rpm.id">$util.escapeHTML($rpm.name)-$epoch$rpm.version-$rpm.release.${rpm.arch}.rpm</a></h4>
+  <h4>Information for RPM <a href="rpminfo?rpmID=$rpm.id">$rpm.name-$epoch$rpm.version-$rpm.release.${rpm.arch}.rpm</a></h4>
 
   <table>
     <tr>
@@ -21,9 +21,9 @@
     #end if
     <tr>
       #if $build
-      <th>Name</th><td><a href="packageinfo?packageID=$build.package_id">$util.escapeHTML($rpm.name)</a></td>
+      <th>Name</th><td><a href="packageinfo?packageID=$build.package_id">$rpm.name</a></td>
       #else
-      <th>Name</th><td>$util.escapeHTML($rpm.name)</td>
+      <th>Name</th><td>$rpm.name</td>
       #end if
     </tr>
     <tr>
@@ -40,7 +40,7 @@
       <th>Epoch</th><td>$rpm.epoch</td>
     </tr>
     <tr>
-      <th>Arch</th><td>$util.escapeHTML($rpm.arch)</td>
+      <th>Arch</th><td>$rpm.arch</td>
     </tr>
     <tr>
     #if $rpm.draft
@@ -50,10 +50,10 @@
     #end if
     #if $rpm.external_repo_id == 0
     <tr>
-      <th>Summary</th><td class="rpmheader">$util.escapeHTML($summary)</td>
+      <th>Summary</th><td class="rpmheader">$summary</td>
     </tr>
     <tr>
-      <th>Description</th><td class="rpmheader">$util.escapeHTML($description)</td>
+      <th>Description</th><td class="rpmheader">$description</td>
     </tr>
     #end if
     <tr>
@@ -66,7 +66,7 @@
     #end if
     #if $rpm.external_repo_id
     <tr>
-      <th>External Repository</th><td><a href="externalrepoinfo?extrepoID=$rpm.external_repo_id">$util.escapeHTML($rpm.external_repo_name)</a></td>
+      <th>External Repository</th><td><a href="externalrepoinfo?extrepoID=$rpm.external_repo_id">$rpm.external_repo_name</a></td>
     </tr>
     #end if
     <tr>
@@ -77,7 +77,7 @@
     </tr>
     #if $rpm.external_repo_id == 0
     <tr>
-      <th>License</th><td>$util.escapeHTML($license)</td>
+      <th>License</th><td>$license</td>
     </tr>
     #if $vcs
     <tr>
@@ -97,7 +97,7 @@
     #end if
     #if $rpm.get('extra')
     <tr>
-      <th>Extra</th><td class="usertext">$util.escapeHTML($pformat($rpm.extra))</td>
+      <th>Extra</th><td class="usertext">$pformat($rpm.extra)</td>
     </tr>
     #end if
     #if $rpm.external_repo_id == 0
@@ -108,7 +108,7 @@
         <table class="nested">
           #for $dep in $provides
           <tr>
-            <td>$util.escapeHTML($util.formatDep($dep.name, $dep.version, $dep.flags))</td>
+            <td>$util.formatDep($dep.name, $dep.version, $dep.flags)</td>
           </tr>
           #end for
         </table>
@@ -124,7 +124,7 @@
         <table class="nested">
           #for $dep in $obsoletes
           <tr>
-            <td>$util.escapeHTML($util.formatDep($dep.name, $dep.version, $dep.flags))</td>
+            <td>$util.formatDep($dep.name, $dep.version, $dep.flags)</td>
           </tr>
           #end for
         </table>
@@ -140,7 +140,7 @@
         <table class="nested">
           #for $dep in $conflicts
           <tr>
-            <td>$util.escapeHTML($util.formatDep($dep.name, $dep.version, $dep.flags))</td>
+            <td>$util.formatDep($dep.name, $dep.version, $dep.flags)</td>
           </tr>
           #end for
         </table>
@@ -156,7 +156,7 @@
         <table class="nested">
           #for $dep in $requires
           <tr>
-            <td>$util.escapeHTML($util.formatDep($dep.name, $dep.version, $dep.flags))</td>
+            <td>$util.formatDep($dep.name, $dep.version, $dep.flags)</td>
           </tr>
           #end for
         </table>
@@ -172,7 +172,7 @@
         <table class="nested">
           #for $dep in $recommends
           <tr>
-            <td>$util.escapeHTML($util.formatDep($dep.name, $dep.version, $dep.flags))</td>
+            <td>$util.formatDep($dep.name, $dep.version, $dep.flags)</td>
           </tr>
           #end for
         </table>
@@ -188,7 +188,7 @@
         <table class="nested">
           #for $dep in $suggests
           <tr>
-            <td>$util.escapeHTML($util.formatDep($dep.name, $dep.version, $dep.flags))</td>
+            <td>$util.formatDep($dep.name, $dep.version, $dep.flags)</td>
           </tr>
           #end for
         </table>
@@ -204,7 +204,7 @@
         <table class="nested">
           #for $dep in $supplements
           <tr>
-            <td>$util.escapeHTML($util.formatDep($dep.name, $dep.version, $dep.flags))</td>
+            <td>$util.formatDep($dep.name, $dep.version, $dep.flags)</td>
           </tr>
           #end for
         </table>
@@ -220,7 +220,7 @@
         <table class="nested">
           #for $dep in $enhances
           <tr>
-            <td>$util.escapeHTML($util.formatDep($dep.name, $dep.version, $dep.flags))</td>
+            <td>$util.formatDep($dep.name, $dep.version, $dep.flags)</td>
           </tr>
           #end for
         </table>
@@ -241,7 +241,7 @@
                 Page:
                 <select onchange="javascript: window.location = 'rpminfo?fileStart=' + this.value * $fileRange + '$util.passthrough_except($self, 'fileStart')#filelist';">
                   #for $pageNum in $filePages
-                  <option value="$pageNum"#if $pageNum == $fileCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
+                  <option value="$pageNum"#if $pageNum == $fileCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
                   #end for
                 </select>
               </form>
@@ -261,7 +261,7 @@
           </tr>
           #for $file in $files
           <tr class="$util.rowToggle($self)">
-            <td><a href="fileinfo?rpmID=$rpm.id&amp;filename=$quote($file.name.encode('utf-8'))">$util.escapeHTML($file.name)</a></td><td align="right"><span title="$util.formatThousands($file.size)">$util.formatNatural($file.size)</span></td>
+            <td><a href="fileinfo?rpmID=$rpm.id&amp;filename=$quote($file.name.encode('utf-8'))">$file.name</a></td><td align="right"><span title="$util.formatThousands($file.size)">$util.formatNatural($file.size)</span></td>
           </tr>
           #end for
         </table>
@@ -283,7 +283,7 @@
                 Page:
                 <select onchange="javascript: window.location = 'rpminfo?buildrootStart=' + this.value * $buildrootRange + '$util.passthrough_except($self, 'buildrootStart')#buildrootlist';">
                   #for $pageNum in $buildrootPages
-                  <option value="$pageNum"#if $pageNum == $buildrootCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
+                  <option value="$pageNum"#if $pageNum == $buildrootCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
                   #end for
                 </select>
               </form>

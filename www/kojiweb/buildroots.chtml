@@ -17,7 +17,7 @@
         <select name="state" class="filterlist" onchange="javascript: window.location = 'buildroots?state=' + this.value + '$util.passthrough_except($self, 'state')';">
           <option value="all">all</option>
           #for $stateOpt in ['INIT', 'WAITING', 'BUILDING', 'EXPIRED']
-          <option value="$koji.BR_STATES[$stateOpt]" #if $state == $koji.BR_STATES[$stateOpt] then 'selected="selected"' else ''#>$stateOpt.lower()</option>
+          <option value="$koji.BR_STATES[$stateOpt]" #if $state == $koji.BR_STATES[$stateOpt] then 'selected' else ''#>$stateOpt.lower()</option>
           #end for
         </select>
         </table>
@@ -30,7 +30,7 @@
           Page:
           <select onchange="javascript: window.location = 'builds?start=' + this.value * $buildrootRange + '$util.passthrough_except($self)';">
             #for $pageNum in $buildrootPages
-            <option value="$pageNum"#if $pageNum == $buildrootCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
+            <option value="$pageNum"#if $pageNum == $buildrootCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
             #end for
           </select>
         </form>
@@ -59,7 +59,7 @@
           <td><a href="buildrootinfo?buildrootID=$buildroot.id">$buildroot.id</a></td>
           <td><a href="repoinfo?repoID=$buildroot.repo_id">$buildroot.repo_id</a></td>
           <td><a href="taskinfo?taskID=$buildroot.task_id">$buildroot.task_id</a></td>
-          <td><a href="taginfo?tagID=$buildroot.tag_id">$util.escapeHTML($buildroot.tag_name)</a></td>
+          <td><a href="taginfo?tagID=$buildroot.tag_id">$buildroot.tag_name</a></td>
           #set $stateName = $util.brStateName($buildroot.state)
           <td class="$stateName">$util.brStateImage($buildroot.state)</td>
         </tr>
@@ -76,7 +76,7 @@
           Page:
           <select onchange="javascript: window.location = 'builds?start=' + this.value * $buildrootRange + '$util.passthrough_except($self)';">
             #for $pageNum in $buildrootPages
-            <option value="$pageNum"#if $pageNum == $buildrootCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
+            <option value="$pageNum"#if $pageNum == $buildrootCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
             #end for
           </select>
         </form>

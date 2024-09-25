@@ -5,7 +5,7 @@
   <h4>Error</h4>
 
 <div>
-$util.escapeHTML($explanation)
+$explanation
 </div>
 
 #if $debug_level >= 1
@@ -13,7 +13,7 @@ $util.escapeHTML($explanation)
 #else
 <div style="visibility: hidden">
 #end if
-$util.escapeHTML($tb_short)
+$tb_short
 </div>
 
 #if $debug_level >= 2
@@ -22,7 +22,7 @@ $util.escapeHTML($tb_short)
 <div style="visibility: hidden">
 #end if
 <pre>
-#echo $util.escapeHTML($tb_long)
+#echo $tb_long
 </pre>
 </div>
 

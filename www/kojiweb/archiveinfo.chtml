@@ -6,7 +6,7 @@
 #attr _PASSTHROUGH = ['archiveID', 'fileOrder', 'fileStart', 'buildrootOrder', 'buildrootStart']
 
 #include "includes/header.chtml"
-  <h4>Information for archive <a href="archiveinfo?archiveID=$archive.id">$util.escapeHTML($archive.filename)</a></h4>
+  <h4>Information for archive <a href="archiveinfo?archiveID=$archive.id">$archive.filename</a></h4>
 
   <table>
     <tr>
@@ -16,7 +16,7 @@
     #if $wininfo
       <th>File Name</th><td>$koji.pathinfo.winfile($archive)</td>
     #else
-      <th>File Name</th><td>$util.escapeHTML($archive.filename)</td>
+      <th>File Name</th><td>$archive.filename</td>
     #end if
     </tr>
     #if $archive.metadata_only
@@ -25,7 +25,7 @@
     </tr>
     #end if
     <tr>
-      <th>File Type</th><td>$util.escapeHTML($archive_type.description)</td>
+      <th>File Type</th><td>$archive_type.description</td>
     </tr>
     <tr>
       <th>Build</th><td><a href="buildinfo?buildID=$build.id">$koji.buildLabel($build)</a></td>
@@ -62,7 +62,7 @@
     #end if
     #if $archive.get('extra')
     <tr>
-      <th>Extra</th><td class="usertext">$util.escapeHTML($pformat($archive.extra))</td>
+      <th>Extra</th><td class="usertext">$pformat($archive.extra)</td>
     </tr>
     #end if
     #if $files
@@ -97,7 +97,7 @@
           </tr>
           #for $file in $files
           <tr class="$util.rowToggle($self)">
-            <td><a href="fileinfo?archiveID=$archive.id&filename=$quote($file.name)">$util.escapeHTML($file.name)</a></td><td><span title="$util.formatThousands($file.size)">$util.formatNatural($file.size)</span></td>
+            <td><a href="fileinfo?archiveID=$archive.id&filename=$quote($file.name)">$file.name</a></td><td><span title="$util.formatThousands($file.size)">$util.formatNatural($file.size)</span></td>
           </tr>
           #end for
         </table>
@@ -116,7 +116,7 @@
                 Page:
                 <select onchange="javascript: window.location = 'archiveinfo?buildrootStart=' + this.value * $buildrootRange + '$util.passthrough_except($self, 'buildrootStart')#buildrootlist';">
                   #for $pageNum in $buildrootPages
-                  <option value="$pageNum"#if $pageNum == $buildrootCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
+                  <option value="$pageNum"#if $pageNum == $buildrootCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
                   #end for
                 </select>
               </form>

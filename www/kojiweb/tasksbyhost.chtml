@@ -14,7 +14,7 @@
         #end if
         #end for
         #if $hostArch
-        <a href="tasksbyhost?${util.passthrough($self, 'order')[1:]}">all</a>
+        <a href="tasksbyhost?${util.passthrough($self, 'order', prefix='')}">all</a>
         #else
         <strong>all</strong>
         #end if
@@ -27,7 +27,7 @@
           Page:
           <select onchange="javascript: window.location = 'tasksbyhost?start=' + this.value * $hostRange + '$util.passthrough($self, 'order', 'hostArch')';">
             #for $pageNum in $hostPages
-            <option value="$pageNum"#if $pageNum == $hostCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
+            <option value="$pageNum"#if $pageNum == $hostCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
             #end for
           </select>
         </form>
@@ -51,7 +51,7 @@
     #if $len($hosts) > 0
     #for $host in $hosts
     <tr class="$util.rowToggle($self)">
-      <td><a href="hostinfo?hostID=$host.id">$util.escapeHTML($host.name)</a></td>
+      <td><a href="hostinfo?hostID=$host.id">$host.name</a></td>
       <td width="#echo $graphWidth + 5#"><img src="$util.themePath('images/1px.gif')" width="#echo $increment * $host.tasks#" height="15" class="graphrow" alt="graph row"/></td>
       <td>$host.tasks</td>
     </tr>
@@ -68,7 +68,7 @@
           Page:
           <select onchange="javascript: window.location = 'tasksbyhost?start=' + this.value * $hostRange + '$util.passthrough($self, 'order', 'hostArch')';">
             #for $pageNum in $hostPages
-            <option value="$pageNum"#if $pageNum == $hostCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
+            <option value="$pageNum"#if $pageNum == $hostCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
             #end for
           </select>
         </form>

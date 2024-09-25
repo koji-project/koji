@@ -4,11 +4,11 @@
 
 #include "includes/header.chtml"
 
-  <h4>Information for deleted tag <a href="taginfo?tagID=$tag.id">$util.escapeHTML($tag.name)</a></h4>
+  <h4>Information for deleted tag <a href="taginfo?tagID=$tag.id">$tag.name</a></h4>
 
   <table>
     <tr>
-      <th>Name</th><td>$util.escapeHTML($tag.name)</td>
+      <th>Name</th><td>$tag.name</td>
     </tr>
     <tr>
       <th>ID</th><td>$tag.id</td>

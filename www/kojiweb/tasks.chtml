@@ -1,6 +1,8 @@
 #import koji
 #from kojiweb import util
+#from kojiweb.util import SafeValue as S
 
+#@util.safe_return
 #def printChildren($taskID, $childMap)
   #set $iter = 0
   #set $children = $childMap[$str($taskID)]
@@ -16,7 +18,7 @@
       #set $childState = $util.taskState($child.state)
       <span class="treeBranch">
         <span class="treeLabel">
-          <a href="taskinfo?taskID=$child.id" class="task$childState" title="$childState">$util.escapeHTML($koji.taskLabel($child))</a>
+          <a href="taskinfo?taskID=$child.id" class="task$childState" title="$childState">$koji.taskLabel($child)</a>
         </span>
       </span>
     $printChildren($child.id, $childMap)
@@ -26,6 +28,7 @@
   #end if
 #end def
 
+#@util.safe_return
 #def headerPrefix($state)
   #if $state == 'active'
 Active
@@ -40,7 +43,7 @@ All
 
 #include "includes/header.chtml"
 
-  <h4>$headerPrefix($state) #if $view == 'toplevel' then 'toplevel' else ''# #if $method != 'all' then $method else ''# Tasks#if $ownerObj then ' owned by <a href="userinfo?userID=%i">%s</a>' % ($ownerObj.id, $util.escapeHTML($ownerObj.name)) else ''##if $host then ' on host <a href="hostinfo?hostID=%i">%s</a>' % ($host.id, $util.escapeHTML($host.name)) else ''# #if $channel then ' in channel <a href="channelinfo?channelID=%i">%s</a>' % ($channel.id, $util.escapeHTML($channel.name)) else ''#</h4>
+  <h4>$headerPrefix($state) #if $view == 'toplevel' then 'toplevel' else ''# #if $method != 'all' then $method else ''# Tasks#if $ownerObj then S(' owned by <a href="userinfo?userID=%i">%s</a>' % ($ownerObj.id, $ownerObj.name)) else ''##if $host then ' on host <a href="hostinfo?hostID=%i">%s</a>' % ($host.id, $host.name) else ''# #if $channel then ' in channel <a href="channelinfo?channelID=%i">%s</a>' % ($channel.id, $channel.name) else ''#</h4>
 
   <table class="data-list">
     <tr>
@@ -53,23 +56,23 @@ All
         <select name="state" class="filterlist" onchange="javascript: window.location = 'tasks?state=' + this.value + '$util.passthrough_except($self, 'state')';">
           <option value="active" $util.toggleSelected($self, $state, 'active')>active</option>
           <option value="all" $util.toggleSelected($self, $state, 'all')>all</option>
-          <option value="free" #if $state == 'free' then 'selected="selected"' else ''#>free</option>
-          <option value="open" #if $state == 'open' then 'selected="selected"' else ''#>open</option>
-          <option value="closed" #if $state == 'closed' then 'selected="selected"' else ''#>closed</option>
-          <option value="failed" #if $state == 'failed' then 'selected="selected"' else ''#>failed</option>
-          <option value="canceled" #if $state == 'canceled' then 'selected="selected"' else ''#>canceled</option>
-          <option value="assigned" #if $state == 'assigned' then 'selected="selected"' else ''#>assigned</option> 
+          <option value="free" #if $state == 'free' then 'selected' else ''#>free</option>
+          <option value="open" #if $state == 'open' then 'selected' else ''#>open</option>
+          <option value="closed" #if $state == 'closed' then 'selected' else ''#>closed</option>
+          <option value="failed" #if $state == 'failed' then 'selected' else ''#>failed</option>
+          <option value="canceled" #if $state == 'canceled' then 'selected' else ''#>canceled</option>
+          <option value="assigned" #if $state == 'assigned' then 'selected' else ''#>assigned</option> 
         </select>
         </td><td>
         <strong>Owner</strong>:
         </td><td>
         <select name="owner" class="filterlist" onchange="javascript: window.location = 'tasks?owner=' + this.value + '$util.passthrough_except($self, 'owner')';">
-          <option value="" #if not $owner then 'selected="selected"' else ''#>everyone</option>
+          <option value="" #if not $owner then 'selected' else ''#>everyone</option>
           #if $loggedInUser
           <option value="$loggedInUser.name">me</option>
           #end if
           #for $user in $users
-          <option value="$user.name" #if $user.name == $owner then 'selected="selected"' else ''#>$util.escapeHTML($user.name)</option>
+          <option value="$user.name" #if $user.name == $owner then 'selected' else ''#>$user.name</option>
           #end for
         </select>
         </td></tr>
@@ -86,7 +89,7 @@ All
           #elif $task_type == 'wrapperRPM' and not ($mavenEnabled or $winEnabled)
           #continue
           #else
-          <option value="$task_type" #if $method == $task_type then 'selected="selected"' else ''#>$task_type</option>
+          <option value="$task_type" #if $method == $task_type then 'selected' else ''#>$task_type</option>
           #end if
           #end for
         </select>
@@ -111,7 +114,7 @@ All
           Page:
           <select onchange="javascript: window.location = 'tasks?start=' + this.value * $taskRange + '$util.passthrough_except($self)';">
             #for $pageNum in $taskPages
-            <option value="$pageNum"#if $pageNum == $taskCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
+            <option value="$pageNum"#if $pageNum == $taskCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
             #end for
           </select>
         </form>
@@ -129,8 +132,8 @@ All
         <form class="pageJump" action="">
           Page:
           <select onchange="javascript: window.location = 'tasks?start=' + this.value * $taskRange + '$util.passthrough_except($self)';">
-            <option value="0"#if 0 == $taskCurrentPage then ' selected="selected"' else ''#>#echo 1#</option>
-            <option value="1"#if 1 == $taskCurrentPage then ' selected="selected"' else ''#>#echo "load more"#</option>
+            <option value="0"#if 0 == $taskCurrentPage then ' selected' else ''#>#echo 1#</option>
+            <option value="1"#if 1 == $taskCurrentPage then ' selected' else ''#>#echo "load more"#</option>
           </select>
         </form>
         <strong>Tasks #echo $taskStart + 1 # through #echo $taskStart + $taskCount# of ???</strong>
@@ -151,17 +154,17 @@ All
         <tr class="$util.rowToggle($self)">
           #set $taskState = $util.taskState($task.state)
           <td>$task.id</td>
-          <td#if $treeDisplay then ' class="tree"' else ''#>
-            #if $treeDisplay then '&nbsp;' else ''#<a href="taskinfo?taskID=$task.id" class="task$taskState" title="$taskState">$util.escapeHTML($koji.taskLabel($task))</a>
+          <td#if $treeDisplay then S(' class="tree"') else ''#>
+            #if $treeDisplay then '&nbsp;' else ''#<a href="taskinfo?taskID=$task.id" class="task$taskState" title="$taskState">$koji.taskLabel($task)</a>
             #if $treeDisplay
             $printChildren($task.id, $task.descendents)
             #end if
           </td>
           <td class="user-$task.owner_name">
             #if $task.owner_type == $koji.USERTYPES['HOST']
-            <a href="hostinfo?userID=$task.owner">$util.escapeHTML($task.owner_name)</a>
+            <a href="hostinfo?userID=$task.owner">$task.owner_name</a>
             #else
-            <a href="userinfo?userID=$task.owner">$util.escapeHTML($task.owner_name)</a>
+            <a href="userinfo?userID=$task.owner">$task.owner_name</a>
             #end if
           </td>
           <td>$task.arch</td>
@@ -182,7 +185,7 @@ All
           Page:
           <select onchange="javascript: window.location = 'tasks?start=' + this.value * $taskRange + '$util.passthrough_except($self)';">
             #for $pageNum in $taskPages
-            <option value="$pageNum"#if $pageNum == $taskCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
+            <option value="$pageNum"#if $pageNum == $taskCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
             #end for
           </select>
         </form>
@@ -200,8 +203,8 @@ All
         <form class="pageJump" action="">
           Page:
           <select onchange="javascript: window.location = 'tasks?start=' + this.value * $taskRange + '$util.passthrough_except($self)';">
-            <option value="0"#if 0 == $taskCurrentPage then ' selected="selected"' else ''#>#echo 1#</option>
-            <option value="1"#if 1 == $taskCurrentPage then ' selected="selected"' else ''#>#echo "load more"#</option>
+            <option value="0"#if 0 == $taskCurrentPage then ' selected' else ''#>#echo 1#</option>
+            <option value="1"#if 1 == $taskCurrentPage then ' selected' else ''#>#echo "load more"#</option>
           </select>
         </form>
         <strong>Tasks #echo $taskStart + 1 # through #echo $taskStart + $taskCount# of ???</strong>
