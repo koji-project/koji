@@ -1,5 +1,6 @@
 #from kojiweb import util
 
+#@util.safe_return
 #def headerState($state)
   #if $state == 'enabled'
 Enabled hosts
@@ -10,6 +11,7 @@ Hosts
   #end if
 #end def
 
+#@util.safe_return
 #def headerReady($ready)
   #if $ready == 'ready'
 which are ready
@@ -18,6 +20,7 @@ which are not ready
   #end if
 #end def
 
+#@util.safe_return
 #def headerArch($arch)
   #if $arch == 'all'
 on all arches
@@ -26,6 +29,7 @@ on $arch arch
   #end if
 #end def
 
+#@util.safe_return
 #def headerChannel($channel)
   #if $channel == 'all'
 in all channels
@@ -47,18 +51,18 @@ in $channel channel
               <strong>State</strong>:
           </td><td>
               <select name="state" class="filterlist" onchange="javascript: window.location = 'hosts?state=' + this.value + '$util.passthrough_except($self, 'state')';">
-                <option value="enabled" #if $state == 'enabled' then 'selected="selected"' else ''#>enabled</option>
-                <option value="disabled" #if $state == 'disabled' then 'selected="selected"' else ''#>disabled</option>
-                <option value="all" #if $state == 'all' then 'selected="selected"' else ''#>all</option>
+                <option value="enabled" #if $state == 'enabled' then 'selected' else ''#>enabled</option>
+                <option value="disabled" #if $state == 'disabled' then 'selected' else ''#>disabled</option>
+                <option value="all" #if $state == 'all' then 'selected' else ''#>all</option>
               </select>
           </td>
           <td>
               <strong>Channels</strong>:
           </td><td>
               <select name="channel" class="filterlist" onchange="javascript: window.location = 'hosts?channel=' + this.value + '$util.passthrough_except($self, 'channel')';">
-                <option value="all" #if not $channel then 'selected="selected"' else ''#>all</option>
+                <option value="all" #if not $channel then 'selected' else ''#>all</option>
                 #for $chan in $channels
-                <option value="$chan.name" #if $chan.name == $channel then 'selected="selected"' else ''#>$util.escapeHTML($chan.name)</option>
+                <option value="$chan.name" #if $chan.name == $channel then 'selected' else ''#>$chan.name</option>
                 #end for
               </select>
           </td>
@@ -67,17 +71,17 @@ in $channel channel
               <strong>Ready</strong>:
           </td><td>
               <select name="ready" class="filterlist" onchange="javascript: window.location = 'hosts?ready=' + this.value + '$util.passthrough_except($self, 'ready')';">
-                <option value="yes" #if $ready == 'yes' then 'selected="selected"' else ''#>yes</option>
-                <option value="no" #if $ready == 'no' then 'selected="selected"' else ''#>no</option>
-                <option value="all" #if $ready== 'all' then 'selected="selected"' else ''#>all</option>
+                <option value="yes" #if $ready == 'yes' then 'selected' else ''#>yes</option>
+                <option value="no" #if $ready == 'no' then 'selected' else ''#>no</option>
+                <option value="all" #if $ready== 'all' then 'selected' else ''#>all</option>
               </select>
           </td><td>
               <strong>Arches</strong>:
           </td><td>
               <select name="arch" class="filterlist" onchange="javascript: window.location = 'hosts?arch=' + this.value + '$util.passthrough_except($self, 'arch')';">
-                <option value="all" #if not $arch then 'selected="selected"' else ''#>all</option>
+                <option value="all" #if not $arch then 'selected' else ''#>all</option>
                 #for $arch_item in $arches
-                <option value="$arch_item" #if $arch_item == $arch then 'selected="selected"' else ''#>$arch_item</option>
+                <option value="$arch_item" #if $arch_item == $arch then 'selected' else ''#>$arch_item</option>
                 #end for
               </select>
           </td></tr>
@@ -91,7 +95,7 @@ in $channel channel
           Page:
           <select onchange="javascript: window.location = 'hosts?start=' + this.value * $hostRange + '$util.passthrough_except($self)';">
             #for $pageNum in $hostPages
-            <option value="$pageNum"#if $pageNum == $hostCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
+            <option value="$pageNum"#if $pageNum == $hostCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
             #end for
           </select>
         </form>
@@ -122,11 +126,11 @@ in $channel channel
       #for $host in $hosts
         <tr class="$util.rowToggle($self)">
           <td>$host.id</td>
-          <td><a href="hostinfo?hostID=$host.id">$util.escapeHTML($host.name)</a></td>
+          <td><a href="hostinfo?hostID=$host.id">$host.name</a></td>
           <td>$host.arches</td>
           <td>
               #for $channame, $chan_id, $chan_enabled in zip($host.channels, $host.channels_id, $host.channels_enabled)
-                <a href="channelinfo?channelID=$chan_id" class="$chan_enabled">$util.escapeHTML($channame)</a>
+                <a href="channelinfo?channelID=$chan_id" class="$chan_enabled">$channame</a>
               #end for
           </td>
           <td class="$str($bool($host.enabled)).lower()">#if $host.enabled then $util.imageTag('yes') else $util.imageTag('no')#</td>
@@ -148,7 +152,7 @@ in $channel channel
           Page:
           <select onchange="javascript: window.location = 'hosts?start=' + this.value * $hostRange + '$util.passthrough_except($self)';">
             #for $pageNum in $hostPages
-            <option value="$pageNum"#if $pageNum == $hostCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
+            <option value="$pageNum"#if $pageNum == $hostCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
             #end for
           </select>
         </form>

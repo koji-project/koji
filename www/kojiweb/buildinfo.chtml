@@ -13,7 +13,7 @@
       <th>ID</th><td>$build.id</td>
     </tr>
     <tr>
-      <th>Package Name</th><td><a href="packageinfo?packageID=$build.package_id">$util.escapeHTML($build.package_name)</a></td>
+      <th>Package Name</th><td><a href="packageinfo?packageID=$build.package_id">$build.package_name</a></td>
     </tr>
     <tr>
       <th>Version</th><td>$build.version</td>
@@ -64,12 +64,12 @@
     #end if
     #if $summary
     <tr>
-      <th>Summary</th><td class="rpmheader">$util.escapeHTML($summary)</td>
+      <th>Summary</th><td class="rpmheader">$summary</td>
     </tr>
     #end if
     #if $description
     <tr>
-      <th>Description</th><td class="rpmheader">$util.escapeHTML($description)</td>
+      <th>Description</th><td class="rpmheader">$description</td>
     </tr>
     #end if
     #if $vcs
@@ -83,7 +83,7 @@
     </tr>
     #end if
     <tr>
-      <th>Built by</th><td class="user-$build.owner_name"><a href="userinfo?userID=$build.owner_id">$util.escapeHTML($build.owner_name)</a></td>
+      <th>Built by</th><td><a href="userinfo?userID=$build.owner_id">$build.owner_name</a></td>
     </tr>
     <tr>
       #set $stateName = $util.stateName($build.state)
@@ -98,7 +98,7 @@
     </tr>
     <tr>
       <th>Volume</th>
-      <td>$util.escapeHTML($build.volume_name)</td>
+      <td>$build.volume_name</td>
     </tr>
     <tr>
       <th>Started</th><td>$util.formatTimeLong($start_ts)</td>
@@ -119,12 +119,12 @@
       <th>Promoted</th><td>$util.formatTimeLong($build.promotion_ts)</td>
     </tr>
     <tr>
-      <th>Promoted by</th><td class="user-$build.promoter_name"><a href="userinfo?userID=$build.promoter_id">$util.escapeHTML($build.promoter_name)</a></td>
+      <th>Promoted by</th><td><a href="userinfo?userID=$build.promoter_id">$build.promoter_name</a></td>
     </tr>
     #end if
     #if $build.cg_id
     <tr>
-      <th>Content generator</th><td>$util.escapeHTML($build.cg_name)</td>
+      <th>Content generator</th><td>$build.cg_name</td>
     </tr>
     #end if
     #if $task
@@ -134,7 +134,7 @@
     #end if
     #if $build.get('extra')
     <tr>
-      <th>Extra</th><td class="usertext">$util.escapeHTML($pformat($build.extra))</td>
+      <th>Extra</th><td class="usertext">$pformat($build.extra)</td>
     </tr>
     #end if
     <tr>
@@ -144,7 +144,7 @@
         <table class="nested">
           #for $tag in $tags
           <tr>
-            <td><a href="taginfo?tagID=$tag.id">$util.escapeHTML($tag.name)</a></td>
+            <td><a href="taginfo?tagID=$tag.id">$tag.name</a></td>
           </tr>
           #end for
         </table>
@@ -249,7 +249,7 @@
           <tr>
             <td/>
             <td>
-            <a href="$loginfo.dl_url">$util.escapeHTML($loginfo.name)</a>
+            <a href="$loginfo.dl_url">$loginfo.name</a>
             </td>
           </tr>
           #end for
@@ -261,7 +261,7 @@
     #if $changelog
     <tr>
       <th>Changelog</th>
-      <td class="changelog">$util.escapeHTML($koji.util.formatChangelog($changelog))</td>
+      <td class="changelog">$koji.util.formatChangelog($changelog)</td>
     </tr>
     #end if
   </table>

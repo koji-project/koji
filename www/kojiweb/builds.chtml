@@ -5,7 +5,32 @@
 
 #include "includes/header.chtml"
 
-  <h4>#if $latest then 'Latest ' else ''##if $state != None then $util.stateName($state).capitalize() + ' ' else ''##if $type then $type.capitalize() + ' ' else ''#Builds#if $package then ' of <a href="packageinfo?packageID=%i">%s</a>' % ($package.id, $util.escapeHTML($package.name)) else ''##if $prefix then ' starting with "%s"' % $prefix else ''##if $user then ' by <a href="userinfo?userID=%i">%s</a>' % ($user.id, $util.escapeHTML($user.name)) else ''##if $tag then ' in tag <a href="taginfo?tagID=%i">%s</a>' % ($tag.id, $util.escapeHTML($tag.name)) else ''#</h4>
+#@util.safe_return
+#def getDescription()
+#if $latest
+Latest
+#elif $state != None
+$util.stateName($state).capitalize()
+#end if
+#if $type
+$type.capitalize()
+#end if
+Builds
+#if $package
+of <a href="packageinfo?packageID=$package.id">$package.name</a>
+#end if
+#if $user
+by <a href="userinfo?userID=$user.id">$user.name</a>
+#end if
+#if $prefix
+starting with &quot;$prefix&quot;
+#end if
+#if $tag
+in tag <a href="taginfo?tagID=$tag.id">$tag.name</a>
+#end if
+#end def
+
+  <h4>$getDescription()</h4>
 
   <table class="data-list">
     <tr>
@@ -16,8 +41,8 @@
         <strong>Latest</strong>:
         </td><td>
         <select name="latest" class="filterlist" onchange="javascript: window.location = 'builds?latest=' + this.value + '$util.passthrough_except($self, 'latest')';">
-          <option value="1" #if $latest then 'selected="selected"' else ''#>yes</option>
-          <option value="0" #if not $latest then 'selected="selected"' else ''#>no</option>
+          <option value="1" #if $latest then 'selected' else ''#>yes</option>
+          <option value="0" #if not $latest then 'selected' else ''#>no</option>
         </select>
         #else
         <strong>State</strong>:
@@ -25,7 +50,7 @@
         <select name="state" class="filterlist" onchange="javascript: window.location = 'builds?state=' + this.value + '$util.passthrough_except($self, 'state')';">
           <option value="all">all</option>
           #for $stateOpt in ['BUILDING', 'COMPLETE', 'FAILED', 'CANCELED']
-          <option value="$koji.BUILD_STATES[$stateOpt]" #if $state == $koji.BUILD_STATES[$stateOpt] then 'selected="selected"' else ''#>$stateOpt.lower()</option>
+          <option value="$koji.BUILD_STATES[$stateOpt]" #if $state == $koji.BUILD_STATES[$stateOpt] then 'selected' else ''#>$stateOpt.lower()</option>
           #end for
         </select>
         #end if
@@ -33,12 +58,12 @@
         <strong>Built by</strong>:
         </td><td>
         <select name="userID" class="filterlist" onchange="javascript: window.location = 'builds?userID=' + this.value + '$util.passthrough_except($self, 'userID')';">
-          <option value="" #if not $user then 'selected="selected"' else ''#>everyone</option>
+          <option value="" #if not $user then 'selected' else ''#>everyone</option>
           #if $loggedInUser
           <option value="$loggedInUser.name">me</option>
           #end if
           #for $userOption in $users
-          <option value="$userOption.name" #if $userOption.name == ($user and $user.name or None) then 'selected="selected"' else ''#>$util.escapeHTML($userOption.name)</option>
+          <option value="$userOption.name" #if $userOption.name == ($user and $user.name or None) then 'selected' else ''#>$userOption.name</option>
           #end for
         </select>
         </td></tr>
@@ -48,9 +73,9 @@
         </td>
         <td>
         <select name="type" class="filterlist" onchange="javascript: window.location='builds?type=' + this.value + '$util.passthrough_except($self, 'type')';">
-          <option value="all" #if not $type then 'selected="selected"' else ''#>all</option>
+          <option value="all" #if not $type then 'selected' else ''#>all</option>
           #for $btype in $btypes
-          <option value="$btype" #if $type == $btype then 'selected="selected"' else ''#>$btype</option>
+          <option value="$btype" #if $type == $btype then 'selected' else ''#>$btype</option>
           #end for
         </select>
         </td>
@@ -59,8 +84,8 @@
         <strong>Inherited</strong>:
         </td><td>
         <select name="inherited" class="filterlist" onchange="javascript: window.location = 'builds?inherited=' + this.value + '$util.passthrough_except($self, 'inherited')';">
-          <option value="1" #if $inherited then 'selected="selected"' else ''#>yes</option>
-          <option value="0" #if not $inherited then 'selected="selected"' else ''#>no</option>
+          <option value="1" #if $inherited then 'selected' else ''#>yes</option>
+          <option value="0" #if not $inherited then 'selected' else ''#>no</option>
         </select>
         </td>
         #end if
@@ -79,7 +104,7 @@
         | 
         #end for
         #if $prefix
-        <a href="builds?${util.passthrough_except($self, 'prefix')[1:]}">all</a>
+        <a href="builds?${util.passthrough_except($self, 'prefix', prefix='')}">all</a>
         #else
         <strong>all</strong>
         #end if
@@ -92,7 +117,7 @@
           Page:
           <select onchange="javascript: window.location = 'builds?start=' + this.value * $buildRange + '$util.passthrough_except($self)';">
             #for $pageNum in $buildPages
-            <option value="$pageNum"#if $pageNum == $buildCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
+            <option value="$pageNum"#if $pageNum == $buildCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
             #end for
           </select>
         </form>
@@ -122,11 +147,11 @@
       #for $build in $builds
         <tr class="$util.rowToggle($self)">
           <td>$build.build_id</td>
-          <td><a href="buildinfo?buildID=$build.build_id">$util.escapeHTML($koji.buildLabel($build))</a></td>
+          <td><a href="buildinfo?buildID=$build.build_id">$koji.buildLabel($build)</a></td>
           #if $tag
-          <td><a href="taginfo?tagID=$build.tag_id">$util.escapeHTML($build.tag_name)</a></td>
+          <td><a href="taginfo?tagID=$build.tag_id">$build.tag_name</a></td>
           #end if
-          <td class="user-$build.owner_name"><a href="userinfo?userID=$build.owner_id">$util.escapeHTML($build.owner_name)</a></td>
+          <td class="user-$build.owner_name"><a href="userinfo?userID=$build.owner_id">$build.owner_name</a></td>
           <td>$util.formatTime($build.completion_time)</td>
           #set $stateName = $util.stateName($build.state)
           <td class="$stateName">$util.stateImage($build.state)</td>
@@ -144,7 +169,7 @@
           Page:
           <select onchange="javascript: window.location = 'builds?start=' + this.value * $buildRange + '$util.passthrough_except($self)';">
             #for $pageNum in $buildPages
-            <option value="$pageNum"#if $pageNum == $buildCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
+            <option value="$pageNum"#if $pageNum == $buildCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
             #end for
           </select>
         </form>

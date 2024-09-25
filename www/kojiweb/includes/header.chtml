@@ -49,12 +49,7 @@ $localnav
               <option $util.toggleSelected($self, $type, "win") value="win">Windows Artifacts</option>
               #end if
             </select>
-            #try
-                #set $old_terms = util.escapeHTML($terms)
-            #except
-                #set $old_terms = ""
-            #end try
-            <input type="text" name="terms" title="You can use glob expressions here (e.g. 'bash-*')" value="$old_terms"/>
+            <input type="text" name="terms" title="You can use glob expressions here (e.g. 'bash-*')" value="$terms"/>
             <input type="submit" value="Search"/>
           </form>
         </div><!-- end header -->

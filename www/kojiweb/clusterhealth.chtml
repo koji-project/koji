@@ -1,10 +1,11 @@
 #from kojiweb import util
 
+#@util.safe_return
 #def printOption(value, label=None)
 #if not $label
 #set $label = $value
 #end if
-<option value="$value"#if $value == $arch then ' selected="selected"' else ''#>$label</option>
+<option value="$value"#if $value == $arch then ' selected' else ''#>$label</option>
 #end def
 
 #include "includes/header.chtml"
@@ -60,7 +61,7 @@
     #if $channel['enabled_channel']
     <tr>
       <th>
-          <a href="channelinfo?channelID=$channel['id']">$util.escapeHTML($channel['name'])</a>
+          <a href="channelinfo?channelID=$channel['id']">$channel['name']</a>
       </th>
       <td width="$graphWidth" class="graph">
         #if $channel['capacityPerc']
