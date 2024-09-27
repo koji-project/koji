@@ -33,7 +33,7 @@ class TestFormatMode(unittest.TestCase):
         )
 
         for input, output in formats:
-            self.assertEqual(formatLink(input), output)
+            self.assertEqual(str(formatLink(input)), output)
 
     def test_escape_html(self):
         tests = (
