@@ -688,10 +688,10 @@ class RawHeader(object):
         data = [_ord(x) for x in self.header[8:12]]
         il = multibyte(data[:4])
         dl = multibyte(data[4:8])
-        self._store = 16 + il * 16
 
         # read the index (starts at offset 16)
-        index = {}
+        index = []
+        tag_index = {}
         for i in range(il):
             entry = []
             for j in range(4):
@@ -700,9 +700,14 @@ class RawHeader(object):
                 entry.append(multibyte(data))
 
             # print("Tag: %d, Type: %d, Offset: %x, Count: %d" % tuple(entry))
-            index[entry[0]] = entry
+            index.append(entry)
+            tag_index[entry[0]] = entry
+            # in case of duplicate tags, last one wins
+
         self.datalen = dl
-        self.index = index
+        self._store = 16 + il * 16
+        self._index = index  # list
+        self.index = tag_index  # dict
 
     def dump(self, sig=None):
         print("HEADER DUMP:")
@@ -710,7 +715,7 @@ class RawHeader(object):
         print("Store at offset %d (0x%0x)" % (store, store))
         # sort entries by offset, dtype
         # also rearrange: tag, dtype, offset, count -> offset, dtype, tag, count
-        order = sorted([(x[2], x[1], x[0], x[3]) for x in six.itervalues(self.index)])
+        order = sorted([(x[2], x[1], x[0], x[3]) for x in self._index])
         # map some rpmtag codes
         tags = {}
         if rpm:
