@@ -688,6 +688,7 @@ class RawHeader(object):
         data = [_ord(x) for x in self.header[8:12]]
         il = multibyte(data[:4])
         dl = multibyte(data[4:8])
+        self._store = 16 + il * 16
 
         # read the index (starts at offset 16)
         index = {}
@@ -705,12 +706,8 @@ class RawHeader(object):
 
     def dump(self, sig=None):
         print("HEADER DUMP:")
-        # calculate start of store
-        il = len(self.index)
-        store = 16 + il * 16
-        # print("start is: %d" % start)
-        # print("index length: %d" % il)
-        print("Store at offset %d (%0x)" % (store, store))
+        store = self._store
+        print("Store at offset %d (0x%0x)" % (store, store))
         # sort entries by offset, dtype
         # also rearrange: tag, dtype, offset, count -> offset, dtype, tag, count
         order = sorted([(x[2], x[1], x[0], x[3]) for x in six.itervalues(self.index)])
@@ -869,9 +866,7 @@ class RawHeader(object):
     def _getitem(self, dtype, offset, count, decode=None):
         if decode is None:
             decode = self.decode
-        # calculate start of store
-        il = len(self.index)
-        store = 16 + il * 16
+        store = self._store
         pos = store + offset
         if dtype >= 2 and dtype <= 5:
             values = []
