@@ -878,7 +878,7 @@ def _parse_value(key, value, sep=', '):
     if key in ('brootid', 'buildroot_id'):
         # do the escaping ourselves since we include html
         need_escape = False
-        brid = urllib.parse.quote(value)
+        brid = urllib.parse.quote(str(value))
         _str = escapeHTML(value)
         begin_tag = '<a href="buildrootinfo?buildrootID=%s">' % brid
         end_tag = '</a>'
