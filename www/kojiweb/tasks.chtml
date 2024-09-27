@@ -43,7 +43,27 @@ All
 
 #include "includes/header.chtml"
 
-  <h4>$headerPrefix($state) #if $view == 'toplevel' then 'toplevel' else ''# #if $method != 'all' then $method else ''# Tasks#if $ownerObj then S(' owned by <a href="userinfo?userID=%i">%s</a>' % ($ownerObj.id, $ownerObj.name)) else ''##if $host then ' on host <a href="hostinfo?hostID=%i">%s</a>' % ($host.id, $host.name) else ''# #if $channel then ' in channel <a href="channelinfo?channelID=%i">%s</a>' % ($channel.id, $channel.name) else ''#</h4>
+#@util.safe_return
+#def getDescription()
+$headerPrefix($state)
+#if $view == 'toplevel'
+toplevel
+#end if
+#if $method != 'all'
+$method Tasks
+#end if
+#if $ownerObj
+owned by <a href="userinfo?userID=$ownerObj.id">$ownerObj.name</a>
+#end if
+#if $host
+on host <a href="hostinfo?hostID=$host.id">$host.name</a>
+#end if
+#if $channel
+in channel <a href="channelinfo?channelID=$channel.id">$channel.name</a>
+#end if
+#end def
+
+  <h4>$getDescription()</h4>
 
   <table class="data-list">
     <tr>
