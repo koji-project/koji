@@ -8185,12 +8185,7 @@ def add_rpm_sig(an_rpm, sighdr):
         if not sigkey:
             sigkey = rawhdr.get(koji.RPM_SIGTAG_RSA)
     else:
-        # In older rpms, this field in the signature header does not actually match
-        # sigmd5 (I think rpmlib pulls it from SIGTAG_GPG). Anyway, this
-        # sanity check fails incorrectly for those rpms, so we fall back to
-        # a somewhat more expensive check.
-        # ALSO, for these older rpms, the layout of SIGTAG_GPG is different too, so
-        # we need to pull that differently as well
+        # Double check using rpm in case we have somehow misread
         rpm_path = "%s/%s" % (builddir, koji.pathinfo.rpm(rinfo))
         sigmd5, sigkey = _scan_sighdr(sighdr, rpm_path)
         sigmd5 = koji.hex_string(sigmd5)
