@@ -624,7 +624,7 @@ def formatRPM(rpminfo, link=True):
         rpminfo['suffix'] = ''
     label = escapeHTML("%(name)s-%(epoch)s%(version)s-%(release)s.%(arch)s%(suffix)s" % rpminfo)
     if link:
-        rpm_id = escapeHTML(rpminfo['id'])
+        rpm_id = urllib.parse.quote(str(rpminfo['id']))
         return f'<a href="rpminfo?rpmID={rpm_id}">{label}</a>'
     else:
         return label
