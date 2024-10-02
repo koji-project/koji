@@ -333,7 +333,7 @@ def symlink_if_latest(repo):
     clauses = [
         ['tag_id', '=', repo['tag_id']],
         ['state', '=', koji.REPO_READY],
-        ['create_event', '>=', repo['create_event']]]
+        ['create_event', '>', repo['create_event']]]
     if repo['dist']:
         clauses.append(['dist', 'IS', True])
     else:
