@@ -581,7 +581,8 @@ class TestSymlink(BaseTest):
 class TestQueueTask(BaseTest):
 
     def test_queue_task(self):
-        req = {'id': 100, 'tag_id': 42, 'min_event': None, 'at_event': None, 'opts': None}
+        req = {'id': 100, 'tag_id': 42, 'tag_name': 'tag 100',
+               'min_event': None, 'at_event': None, 'opts': None}
         req['opts'] = {}
 
         repos.repo_queue_task(req)
@@ -589,7 +590,8 @@ class TestQueueTask(BaseTest):
         self.make_task.assert_called_once()
 
     def test_queue_task_event(self):
-        req = {'id': 100, 'tag_id': 42, 'min_event': None, 'at_event': 101010, 'opts': None}
+        req = {'id': 100, 'tag_id': 42, 'tag_name': 'tag 100',
+               'min_event': None, 'at_event': 101010, 'opts': None}
         req['opts'] = {}
 
         repos.repo_queue_task(req)
