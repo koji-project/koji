@@ -83,7 +83,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.35.0
+Version: 1.35.1
 Release: %{release}%{?dist}
 License: LGPL-2.1-only and GPL-2.0-or-later
 # the included arch lib from yum's rpmUtils is GPLv2+
@@ -651,6 +651,11 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Mon Oct  7 2024 Mike McLean <mikem at redhat.com> - 1.35.1-1
+- Fix CVE-2024-9427: New XSS attack on kojiweb
+- PR#4154: Reformat watchlogs.js indentation for consistency
+- PR#4197: migration notes for repo generation
+
 * Fri Aug 16 2024  Tomas Kopecek <tkopecek at redhat.com> - 1.35.0-1
 - PR#3891: Don't try to resolve server version for old hubs
 - PR#3912: anonymous getGroupMembers and getUserGroups
