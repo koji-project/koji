@@ -83,7 +83,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.34.1
+Version: 1.34.3
 Release: %{release}%{?dist}
 License: LGPL-2.1-only and GPL-2.0-or-later
 # the included arch lib from yum's rpmUtils is GPLv2+
@@ -651,6 +651,9 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Mon Oct  7 2024  Mike McLean <mikem at redhat.com> - 1.34.3-1
+- Fix CVE-2024-9427: New XSS attack on kojiweb
+
 * Mon May  6 2024  Tomas Kopecek <tkopecek at redhat.com> - 1.34.1-1
 - PR#3931: web: add some handy links for module builds
 - PR#3942: policy_data_from_task_args: set target to None when it doesn't exist
