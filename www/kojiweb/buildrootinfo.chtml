@@ -8,10 +8,10 @@
 
   <table>
     <tr>
-      <th>Host</th><td><a href="hostinfo?hostID=$buildroot.host_id">$util.escapeHTML($buildroot.host_name)</a></td>
+      <th>Host</th><td><a href="hostinfo?hostID=$buildroot.host_id">$buildroot.host_name</a></td>
     </tr>
     <tr>
-      <th>Arch</th><td>$util.escapeHTML($buildroot.arch)</td>
+      <th>Arch</th><td>$buildroot.arch</td>
     </tr>
     <tr>
       <th>ID</th><td>$buildroot.id</td>
@@ -32,7 +32,7 @@
       <th>Repo ID</th><td><a href="repoinfo?repoID=$buildroot.repo_id">$buildroot.repo_id</a></td>
     </tr>
     <tr>
-      <th>Repo Tag</th><td><a href="taginfo?tagID=$buildroot.tag_id">$util.escapeHTML($buildroot.tag_name)</a></td>
+      <th>Repo Tag</th><td><a href="taginfo?tagID=$buildroot.tag_id">$buildroot.tag_name</a></td>
     </tr>
     <tr>
       <th>Repo State</th><td>$util.imageTag($util.repoStateName($buildroot.repo_state))</td>
@@ -42,7 +42,7 @@
     </tr>
     #if $buildroot.get('extra')
     <tr>
-      <th>Extra</th><td class="usertext">$util.escapeHTML($pformat($buildroot.extra))</td>
+      <th>Extra</th><td class="usertext">$pformat($buildroot.extra)</td>
     </tr>
     #end if
     <tr>

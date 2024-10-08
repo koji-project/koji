@@ -29,7 +29,7 @@
           <img src="$util.themePath('images/koji.png')" alt="Koji Logo" id="kojiLogo"/>
 #set $localnavpath=$util.themePath("extra-nav.html", local=True)
 #if os.path.exists($localnavpath)
-#set $localnav="".join(open($localnavpath, 'rt', encoding='utf-8').readlines())
+#set $localnav=$util.SafeValue("".join(open($localnavpath, 'rt', encoding='utf-8').readlines()))
 $localnav
 #end if
           <form action="search" id="headerSearch">
@@ -49,12 +49,7 @@ $localnav
               <option $util.toggleSelected($self, $type, "win") value="win">Windows Artifacts</option>
               #end if
             </select>
-            #try
-                #set $old_terms = util.escapeHTML($terms)
-            #except
-                #set $old_terms = ""
-            #end try
-            <input type="text" name="terms" title="You can use glob expressions here (e.g. 'bash-*')" value="$old_terms"/>
+            <input type="text" name="terms" title="You can use glob expressions here (e.g. 'bash-*')" value="$terms"/>
             <input type="submit" value="Search"/>
           </form>
         </div><!-- end header -->
