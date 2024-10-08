@@ -12,12 +12,7 @@
         <tr><td colspan="5" class="error">$error</td></tr>
         #end if
         <th>Search</th>
-        #try
-            #set $old_terms = util.escapeHTML($terms)
-        #except
-            #set $old_terms = ""
-        #end try
-        <td><input type="text" name="terms" value="$old_terms"/></td>
+        <td><input type="text" name="terms" value="$terms"/></td>
         <td>
           <select name="type">
             <option $util.toggleSelected($self, $type, "package") value="package">Packages</option>
@@ -62,7 +57,7 @@
           Page:
           <select onchange="javascript: window.location = 'search?start=' + this.value * $resultRange + '$util.passthrough($self, 'order', 'terms', 'type', 'match')';">
             #for $pageNum in $resultPages
-            <option value="$pageNum"#if $pageNum == $resultCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
+            <option value="$pageNum"#if $pageNum == $resultCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
             #end for
           </select>
         </form>
@@ -86,7 +81,7 @@
     #for $result in $results
     <tr class="$util.rowToggle($self)">
       <td>$result.id</td>
-      <td><a href="${infoURL % $result}">$util.escapeHTML($result.name)</a></td>
+      <td><a href="${infoURL % $result}">$result.name</a></td>
     </tr>
     #end for
     #else
@@ -101,7 +96,7 @@
           Page:
           <select onchange="javascript: window.location = 'search?start=' + this.value * $resultRange + '$util.passthrough($self, 'order', 'terms', 'type', 'match')';">
             #for $pageNum in $resultPages
-            <option value="$pageNum"#if $pageNum == $resultCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
+            <option value="$pageNum"#if $pageNum == $resultCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
             #end for
           </select>
         </form>

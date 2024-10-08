@@ -1,11 +1,12 @@
 #from kojiweb import util
 #from urllib.parse import quote
 
+#@util.safe_return
 #def printOption(value, label=None)
 #if not $label
 #set $label = $value
 #end if
-<option value="$value"#if $value == $days then ' selected="selected"' else ''#>$label</option>
+<option value="$value"#if $value == $days then ' selected' else ''#>$label</option>
 #end def
 
 #include "includes/header.chtml"
@@ -38,7 +39,7 @@
           Page:
           <select onchange="javascript: window.location = 'buildsbytarget?start=' + this.value * $targetRange + '$util.passthrough($self, 'days', 'order')';">
             #for $pageNum in $targetPages
-            <option value="$pageNum"#if $pageNum == $targetCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
+            <option value="$pageNum"#if $pageNum == $targetCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
             #end for
           </select>
         </form>
@@ -62,7 +63,7 @@
     #if $len($targets) > 0
     #for $target in $targets
     <tr class="$util.rowToggle($self)">
-      <td><a href="buildtargetinfo?name=$quote($target.name)">$util.escapeHTML($target.name)</a></td>
+      <td><a href="buildtargetinfo?name=$quote($target.name)">$target.name</a></td>
       <td width="#echo $graphWidth + 5#"><img src=$util.themePath('images/1px.gif') width="#echo $increment * $target.builds#" height="15" class="graphrow" alt="graph row"/></td>
       <td>$target.builds</td>
     </tr>
@@ -79,7 +80,7 @@
           Page:
           <select onchange="javascript: window.location = 'buildsbytarget?start=' + this.value * $targetRange + '$util.passthrough($self, 'days', 'order')';">
             #for $pageNum in $targetPages
-            <option value="$pageNum"#if $pageNum == $targetCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
+            <option value="$pageNum"#if $pageNum == $targetCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
             #end for
           </select>
         </form>

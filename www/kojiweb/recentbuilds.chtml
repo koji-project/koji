@@ -2,6 +2,7 @@
 #import koji.util
 #from kojiweb import util
 
+#@util.safe_return
 #def linkURL()
   #set $query = []
   #if $tag
@@ -22,18 +23,18 @@
 
 <rss version="2.0">
   <channel>
-    <title>$siteName: recent builds#if $package then ' of package ' + $util.escapeHTML($package.name) else ''##if $tag then ' into tag ' + $util.escapeHTML($tag.name) else ''##if $user then ' by user ' + $util.escapeHTML($user.name) else ''#</title>
+    <title>$siteName: recent builds#if $package then ' of package ' + $package.name else ''##if $tag then ' into tag ' + $tag.name else ''##if $user then ' by user ' + $user.name else ''#</title>
     <link>$linkURL()</link>
     <description>
       A list of the most recent builds
       #if $package
-      of package $util.escapeHTML($package.name)
+      of package $package.name
       #end if
       #if $tag
-      into tag $util.escapeHTML($tag.name)
+      into tag $tag.name
       #end if
       #if $user
-      by user $util.escapeHTML($user.name)
+      by user $user.name
       #end if
       in the $siteName Build System.  The list is sorted in reverse chronological order by build completion time.
     </description>
@@ -46,7 +47,7 @@
       <pubDate>$util.formatTimeRSS($build.completion_ts)</pubDate>
       #end if
       #if $build.state == $koji.BUILD_STATES['COMPLETE'] and $build.changelog
-      <description>&lt;pre&gt;$util.escapeHTML($koji.util.formatChangelog($build.changelog))&lt;/pre&gt;</description>
+      <description>&lt;pre&gt;$koji.util.formatChangelog($build.changelog)&lt;/pre&gt;</description>
       #end if
     </item>
     #end for

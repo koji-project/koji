@@ -1,10 +1,25 @@
 #from kojiweb import util
+#from kojiweb.util import safe_return
 
 #attr _PASSTHROUGH = ['userID', 'tagID', 'order', 'prefix', 'inherited', 'blocked']
 
 #include "includes/header.chtml"
 
-  <h4>Packages#if $prefix then ' starting with "%s"' % $prefix else ''##if $tag then ' in tag <a href="taginfo?tagID=%i">%s</a>' % ($tag.id, $util.escapeHTML($tag.name)) else ''##if $user then ' owned by <a href="userinfo?userID=%i">%s</a>' % ($user.id, $util.escapeHTML($user.name)) else ''#</h4>
+#@safe_return
+#def getDescription()
+Packages
+#if $prefix
+starting with $prefix
+#end if
+#if $tag
+in tag <a href="taginfo?tagID=$tag.id">$tag.name</a>
+#end if
+#if $user
+owned by <a href="userinfo?userID=$user.id">$user.name</a>
+#end if
+#end def
+
+  <h4>$getDescription()</h4>
 
   <table class="data-list">
     #if $tag
@@ -15,16 +30,16 @@
           <strong>Inherited</strong>:
           </td><td>
           <select name="inherited" class="filterlist" onchange="javascript: window.location = 'packages?inherited=' + this.value + '$util.passthrough_except($self, 'inherited')';">
-            <option value="1" #if $inherited then 'selected="selected"' else ''#>yes</option>
-            <option value="0" #if not $inherited then 'selected="selected"' else ''#>no</option>
+            <option value="1" #if $inherited then 'selected' else ''#>yes</option>
+            <option value="0" #if not $inherited then 'selected' else ''#>no</option>
           </select>
           </td></tr>
           <tr><td>
           <strong>With blocked</strong>:
           </td><td>
           <select name="blocked" class="filterlist" onchange="javascript: window.location = 'packages?blocked=' + this.value + '$util.passthrough_except($self, 'blocked')';">
-            <option value="1" #if $blocked then 'selected="selected"' else ''#>yes</option>
-            <option value="0" #if not $blocked then 'selected="selected"' else ''#>no</option>
+            <option value="1" #if $blocked then 'selected' else ''#>yes</option>
+            <option value="0" #if not $blocked then 'selected' else ''#>no</option>
           </select>
           </td></tr>
         </table>
@@ -41,7 +56,7 @@
         |
         #end for
         #if $prefix
-        <a href="packages?${util.passthrough($self, 'userID', 'tagID', 'order', 'inherited', 'blocked')[1:]}">all</a>
+        <a href="packages?${util.passthrough($self, 'userID', 'tagID', 'order', 'inherited', 'blocked', prefix='')}">all</a>
         #else
         <strong>all</strong>
         #end if
@@ -54,7 +69,7 @@
           Page:
           <select onchange="javascript: window.location = 'packages?start=' + this.value * $packageRange + '$util.passthrough($self, 'userID', 'tagID', 'order', 'prefix', 'inherited', 'blocked')';">
             #for $pageNum in $packagePages
-            <option value="$pageNum"#if $pageNum == $packageCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
+            <option value="$pageNum"#if $pageNum == $packageCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
             #end for
           </select>
         </form>
@@ -83,10 +98,10 @@
       #for $package in $packages
         <tr class="$util.rowToggle($self)">
           <td>$package.package_id</td>
-          <td><a href="packageinfo?packageID=$package.package_id">$util.escapeHTML($package.package_name)</a></td>
+          <td><a href="packageinfo?packageID=$package.package_id">$package.package_name</a></td>
           #if $tag or $user
-          <td><a href="taginfo?tagID=$package.tag_id">$util.escapeHTML($package.tag_name)</a></td>
-          <td class="user-$package.owner_name"><a href="userinfo?userID=$package.owner_id">$util.escapeHTML($package.owner_name)</a></td>
+          <td><a href="taginfo?tagID=$package.tag_id">$package.tag_name</a></td>
+          <td class="user-$package.owner_name"><a href="userinfo?userID=$package.owner_id">$package.owner_name</a></td>
           <td class="$str(not $package.blocked).lower()">#if $package.blocked then $util.imageTag('no') else $util.imageTag('yes')#</td>
           #end if
         </tr>
@@ -103,7 +118,7 @@
           Page:
           <select onchange="javascript: window.location = 'packages?start=' + this.value * $packageRange + '$util.passthrough($self, 'userID', 'tagID', 'order', 'prefix', 'inherited', 'blocked')';">
             #for $pageNum in $packagePages
-            <option value="$pageNum"#if $pageNum == $packageCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
+            <option value="$pageNum"#if $pageNum == $packageCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
             #end for
           </select>
         </form>

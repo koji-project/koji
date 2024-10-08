@@ -4,6 +4,7 @@
 #from urllib.parse import quote
 #import datetime
 
+#@util.safe_return
 #def printChildren($taskID, $childMap)
   #set $iter = 0
   #set $children = $childMap[$str($taskID)]
@@ -20,7 +21,7 @@
       <span class="treeBranch">
         <span class="treeLabel">
           <span class="task$childState">$util.imageTag($childState)</span>
-          <a href="taskinfo?taskID=$child.id" class="task$childState" title="$childState">$util.escapeHTML($koji.taskLabel($child))</a>
+          <a href="taskinfo?taskID=$child.id" class="task$childState" title="$childState">$koji.taskLabel($child)</a>
         </span>
       </span>
     $printChildren($child.id, $childMap)
@@ -30,6 +31,7 @@
   #end if
 #end def
 
+#@util.safe_return
 #def printMap($vals, $prefix='')
   #for $key, $value in $vals.items()
   #if $key == 'properties'
@@ -40,6 +42,7 @@
   #end for
 #end def
 
+#@util.safe_return
 #def printOpts($opts)
   #if $opts
   <strong>Options:</strong><br/>
@@ -47,6 +50,7 @@
   #end if
 #end def
 
+#@util.safe_return
 #def printValue($key, $value, $sep=', ')
   #if $value is None
 None
@@ -84,6 +88,7 @@ $value
   #end if
 #end def
 
+#@util.safe_return
 #def printProperties($props)
   #echo ', '.join([$v is not None and '%s=%s' % ($n, $v) or $str($n) for $n, $v in $props.items()])
 #end def
@@ -91,7 +96,7 @@ $value
 
 #include "includes/header.chtml"
 
-  <h4>Information for task <a href="taskinfo?taskID=$task.id">$util.escapeHTML($koji.taskLabel($task))</a></h4>
+  <h4>Information for task <a href="taskinfo?taskID=$task.id">$koji.taskLabel($task)</a></h4>
 
   <table>
     <tr>
@@ -130,7 +135,7 @@ $value
     #if $taskBuilds
     #for $build in $taskBuilds
     <tr>
-      <th>Build</th><td><a href="buildinfo?buildID=$build.build_id">$util.escapeHTML($koji.buildLabel($build))</a></td>
+      <th>Build</th><td><a href="buildinfo?buildID=$build.build_id">$koji.buildLabel($build)</a></td>
     </tr>
     #end for
     #end if
@@ -173,9 +178,9 @@ $value
       <td>
         #if $owner
           #if $owner.usertype == $koji.USERTYPES['HOST']
-          <a href="hostinfo?userID=$owner.id">$util.escapeHTML($owner.name)</a>
+          <a href="hostinfo?userID=$owner.id">$owner.name</a>
           #else
-          <a href="userinfo?userID=$owner.id">$util.escapeHTML($owner.name)</a>
+          <a href="userinfo?userID=$owner.id">$owner.name</a>
           #end if
         #end if
       </td>
@@ -184,7 +189,7 @@ $value
       <th>Channel</th>
       <td>
         #if $task.channel_id
-        <a href="channelinfo?channelID=$task.channel_id">$util.escapeHTML($channelName)</a>
+        <a href="channelinfo?channelID=$task.channel_id">$channelName</a>
         #end if
       </td>
     </tr>
@@ -192,12 +197,12 @@ $value
       <th>Host</th>
       <td>
         #if $task.host_id
-        <a href="hostinfo?hostID=$task.host_id">$util.escapeHTML($hostName)</a>
+        <a href="hostinfo?hostID=$task.host_id">$hostName</a>
         #end if
       </td>
     </tr>
     <tr>
-      <th>Arch</th><td>$util.escapeHTML($task.arch)</td>
+      <th>Arch</th><td>$task.arch</td>
     </tr>
     #if $buildroots
     <tr>
@@ -213,7 +218,7 @@ $value
       <th>Parent</th>
         <td>
         #if $parent
-        <a href="taskinfo?taskID=$parent.id" class="task$util.taskState($parent.state)">$util.escapeHTML($koji.taskLabel($parent))</a>
+        <a href="taskinfo?taskID=$parent.id" class="task$util.taskState($parent.state)">$koji.taskLabel($parent)</a>
         #end if
       </td>
     </tr>

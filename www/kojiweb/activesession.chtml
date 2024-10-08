@@ -18,7 +18,7 @@
     #for $act in $activesess
     <tr class="$util.rowToggle($self)">
       <td>$act.id</td>
-      <td>$util.escapeHTML($act.hostip)</td>
+      <td>$act.hostip</td>
       <td>$act.authtype</td>
       <td>$util.formatTimeLong($act.start_time)</td>
       <td>$act.lengthSession days</td>

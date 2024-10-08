@@ -11,7 +11,7 @@
           Page:
           <select onchange="javascript: window.location = 'tags?start=' + this.value * $tagRange + '$util.passthrough($self, 'userID', 'tagID', 'order', 'childID')';">
             #for $pageNum in $tagPages
-            <option value="$pageNum"#if $pageNum == $tagCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
+            <option value="$pageNum"#if $pageNum == $tagCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
             #end for
           </select>
         </form>
@@ -35,7 +35,7 @@
       #for $tag in $tags
         <tr class="$util.rowToggle($self)">
           <td>$tag.id</td>
-          <td><a href="taginfo?tagID=$tag.id$util.passthrough($self, 'childID')">$util.escapeHTML($tag.name)</a></td>
+          <td><a href="taginfo?tagID=$tag.id$util.passthrough($self, 'childID')">$tag.name</a></td>
         </tr>
       #end for
     #else
@@ -50,7 +50,7 @@
           Page:
           <select onchange="javascript: window.location = 'tags?start=' + this.value * $tagRange + '$util.passthrough($self, 'userID', 'tagID', 'order', 'childID')';">
             #for $pageNum in $tagPages
-            <option value="$pageNum"#if $pageNum == $tagCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
+            <option value="$pageNum"#if $pageNum == $tagCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
             #end for
           </select>
         </form>

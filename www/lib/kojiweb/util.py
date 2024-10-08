@@ -29,6 +29,7 @@ import urllib
 # a bunch of exception classes that explainError needs
 from socket import error as socket_error
 from xml.parsers.expat import ExpatError
+from functools import wraps
 
 import Cheetah.Template
 
@@ -53,6 +54,7 @@ def _initValues(environ, title='Build System Info', pageID='summary'):
     values['pageID'] = pageID
     values['currentDate'] = str(datetime.datetime.now())
     values['literalFooter'] = environ['koji.options'].get('LiteralFooter', True)
+    values['terms'] = ''
     themeCache.clear()
     themeInfo.clear()
     themeInfo['name'] = environ['koji.options'].get('KojiTheme', None)
@@ -91,23 +93,51 @@ def themePath(path, local=False):
     return ret
 
 
-class DecodeUTF8(Cheetah.Filters.Filter):
-    def filter(self, *args, **kw):
-        """Convert all strs to unicode objects"""
-        result = super(DecodeUTF8, self).filter(*args, **kw)
-        if isinstance(result, str):
-            pass
+class EscapeFilter(Cheetah.Filters.Filter):
+    def filter(self, val, *args, **kw):
+        """Apply html escaping to most values"""
+        if isinstance(val, SafeValue):
+            result = str(val.value)
         else:
-            result = result.decode('utf-8', 'replace')
+            result = escapeHTML(val)
         return result
 
-# Escape ampersands so the output can be valid XHTML
+
+class SafeValue:
+
+    def __init__(self, value):
+        if isinstance(value, SafeValue):
+            self.value = value.value
+        else:
+            self.value = value
+
+    def __str__(self):
+        return str(self.value)
+
+    def __repr__(self):
+        return "SafeValue(%r)" % self.value
+
+    def __add__(self, other):
+        if not isinstance(other, SafeValue):
+            raise ValueError('Adding safe and nonsafe value')
+        return SafeValue(self.value + other.value)
+
+    def __iadd__(self, other):
+        if not isinstance(other, SafeValue):
+            raise ValueError('Adding safe and nonsafe value')
+        self.value += other.value
+        return self
+
+    def __len__(self):
+        # mainly needed for boolean evaluation in templates
+        return len(self.value)
 
 
-class XHTMLFilter(DecodeUTF8):
-    def filter(self, *args, **kw):
-        result = super(XHTMLFilter, self).filter(*args, **kw)
-        return re.sub(r'&(?![a-zA-Z0-9#]+;)', '&amp;', result)
+def safe_return(func):
+    @wraps(func)
+    def _safe(*args, **kwargs):
+        return SafeValue(func(*args, **kwargs))
+    return _safe
 
 
 TEMPLATES = {}
@@ -143,7 +173,7 @@ def _genHTML(environ, fileName):
     if not tmpl_class:
         tmpl_class = Cheetah.Template.Template.compile(file=fileName)
         TEMPLATES[fileName] = tmpl_class
-    tmpl_inst = tmpl_class(namespaces=[environ['koji.values']], filter=XHTMLFilter)
+    tmpl_inst = tmpl_class(namespaces=[environ['koji.values']], filter=EscapeFilter)
     return tmpl_inst.respond()
 
 
@@ -187,6 +217,7 @@ def toggleOrder(template, sortKey, orderVar='order'):
         return sortKey
 
 
+@safe_return  # avoid escaping quotes
 def toggleSelected(template, var, option, checked=False):
     """
     If the passed in variable var equals the literal value in option,
@@ -203,6 +234,7 @@ def toggleSelected(template, var, option, checked=False):
         return ''
 
 
+@safe_return
 def sortImage(template, sortKey, orderVar='order'):
     """
     Return an html img tag suitable for inclusion in the sortKey of a sortable table,
@@ -219,15 +251,20 @@ def sortImage(template, sortKey, orderVar='order'):
         return ''
 
 
-def passthrough(template, *vars):
+@safe_return
+def passthrough(template, *vars, prefix='&'):
     """
-    Construct a string suitable for use as URL
-    parameters.  For each variable name in *vars,
-    if the template has a corresponding non-None value,
-    append that name-value pair to the string.  The name-value
-    pairs will be separated by ampersands (&), and prefixed by
-    an ampersand if there are any name-value pairs.  If there
-    are no name-value pairs, an empty string will be returned.
+    Construct a url parameter string from template vars
+
+    Forms a url parameter string like '&key=value&key2=value' where
+    the keys are the requested variable names and the values are pulled
+    from the template vars.
+
+    None/missing values are omitted
+
+    If there are no non-None values, an empty string is returned
+
+    The prefix value (default '&') is prepended if any values were found
     """
     result = []
     for var in vars:
@@ -240,12 +277,14 @@ def passthrough(template, *vars):
                     value = urllib.parse.quote(value)
             result.append('%s=%s' % (var, value))
     if result:
-        return '&' + '&'.join(result)
+        if prefix is None:
+            prefix = ''
+        return prefix + '&'.join(result)
     else:
         return ''
 
 
-def passthrough_except(template, *exclude):
+def passthrough_except(template, *exclude, prefix='&'):
     """
     Construct a string suitable for use as URL
     parameters.  The template calling this method must have
@@ -259,7 +298,7 @@ def passthrough_except(template, *exclude):
     for var in template._PASSTHROUGH:
         if var not in exclude:
             passvars.append(var)
-    return passthrough(template, *passvars)
+    return passthrough(template, *passvars, prefix=prefix)
 
 
 def sortByKeyFuncNoneGreatest(key):
@@ -413,8 +452,10 @@ def stateName(stateID):
     return koji.BUILD_STATES[stateID].lower()
 
 
+@safe_return
 def imageTag(name):
     """Return an img tag that loads an icon with the given name"""
+    name = escapeHTML(name)
     return '<img class="stateimg" src="%s" title="%s" alt="%s"/>' \
            % (themePath("images/%s.png" % name), name, name)
 
@@ -557,6 +598,7 @@ def formatNatural(value):
     return '{:.2f} {}'.format(value, suffix[suff_index])
 
 
+@safe_return
 def formatLink(url):
     """Turn a string into an HTML link if it looks vaguely like a URL.
     If it doesn't, just return it properly escaped."""
@@ -568,6 +610,7 @@ def formatLink(url):
     return url
 
 
+@safe_return
 def formatRPM(rpminfo, link=True):
     """Format an rpm dict for display"""
     rpminfo = rpminfo.copy()
@@ -581,7 +624,7 @@ def formatRPM(rpminfo, link=True):
         rpminfo['suffix'] = ''
     label = escapeHTML("%(name)s-%(epoch)s%(version)s-%(release)s.%(arch)s%(suffix)s" % rpminfo)
     if link:
-        rpm_id = rpminfo['id']
+        rpm_id = urllib.parse.quote(str(rpminfo['id']))
         return f'<a href="rpminfo?rpmID={rpm_id}">{label}</a>'
     else:
         return label
@@ -650,8 +693,10 @@ def escapeHTML(value):
     " : &quot;
     ' : &#x27;
     """
+    if isinstance(value, SafeValue):
+        return value.value
     if not value:
-        return value
+        return str(value)
 
     value = koji.fixEncoding(str(value))
     return re.sub(r'&(?![a-zA-Z0-9#]+;)', '&amp;', value).\
@@ -661,6 +706,7 @@ def escapeHTML(value):
         replace("'", '&#x27;')
 
 
+@safe_return
 def authToken(template, first=False, form=False):
     """Return the current authToken if it exists.
     If form is True, return it enclosed in a hidden input field.
@@ -669,6 +715,7 @@ def authToken(template, first=False, form=False):
     with &.  If no authToken exists, return an empty string."""
     token = template.getVar('authToken', default=None)
     if token is not None:
+        token = escapeHTML(token)
         if form:
             return '<input type="hidden" name="a" value="%s"/>' % token
         if first:
@@ -752,7 +799,7 @@ class TaskResultFragment(object):
         - empty_str_placeholder
     """
 
-    def __init__(self, text='', size=None, need_escape=None, begin_tag='',
+    def __init__(self, text='', size=None, need_escape=True, begin_tag='',
                  end_tag='', composer=None, empty_str_placeholder=None):
         self.text = text
         if size is None:
@@ -798,7 +845,7 @@ class TaskResultLine(object):
         - composer
     """
 
-    def __init__(self, fragments=None, need_escape=None, begin_tag='',
+    def __init__(self, fragments=None, need_escape=True, begin_tag='',
                  end_tag='<br />', composer=None):
         if fragments is None:
             self.fragments = []
@@ -849,10 +896,12 @@ def _parse_value(key, value, sep=', '):
     end_tag = ''
     need_escape = True
     if key in ('brootid', 'buildroot_id'):
-        _str = str(value)
-        begin_tag = '<a href="buildrootinfo?buildrootID=%s">' % _str
-        end_tag = '</a>'
+        # do the escaping ourselves since we include html
         need_escape = False
+        brid = urllib.parse.quote(str(value))
+        _str = escapeHTML(value)
+        begin_tag = '<a href="buildrootinfo?buildrootID=%s">' % brid
+        end_tag = '</a>'
     elif isinstance(value, list):
         _str = sep.join([str(val) for val in value])
     elif isinstance(value, dict):
@@ -890,6 +939,7 @@ def task_result_to_html(result=None, exc_class=None,
         max_abbr_len = default_max_abbr_result_len
 
     postscript_fragment = TaskResultFragment(
+        need_escape=False,
         text='...', end_tag='</a>',
         begin_tag='<a href="#" collapse" %s %s>' % (
             'id="toggle-full-result"',
@@ -922,6 +972,7 @@ def task_result_to_html(result=None, exc_class=None,
             _str = "%s: %s" % (exc_class.__name__, str(result))
         fragment = TaskResultFragment(text=_str, need_escape=True)
         line = TaskResultLine(fragments=[fragment],
+                              need_escape=False,  # fragment already escaped
                               begin_tag='<pre>', end_tag='</pre>')
         lines.append(line)
     elif isinstance(result, dict):
@@ -947,18 +998,20 @@ def task_result_to_html(result=None, exc_class=None,
         for k, v in result.items():
             if k == 'properties':
                 _str = "properties = %s" % _parse_properties(v)
-                fragment = TaskResultFragment(text=_str)
+                fragment = TaskResultFragment(text=_str, need_escape=False)
                 line = TaskResultLine(fragments=[fragment], need_escape=True)
             elif k != '__starstar':
                 val_fragment = _parse_value(k, v)
                 key_fragment = TaskResultFragment(text=k, need_escape=True)
+                # fragment already escaped
                 line = TaskResultLine(fragments=[key_fragment, val_fragment],
                                       need_escape=False, composer=composer)
             lines.append(line)
     else:
         if result is not None:
             fragment = _parse_value('', result)
-            line = TaskResultLine(fragments=[fragment])
+            # fragment already escaped
+            line = TaskResultLine(fragments=[fragment], need_escape=False)
             lines.append(line)
 
     if not lines:
@@ -986,4 +1039,4 @@ def task_result_to_html(result=None, exc_class=None,
         total_abbr_lines += 1
         total_abbr_len += line_len
 
-    return full_ret_str, abbr_ret_str
+    return SafeValue(full_ret_str), SafeValue(abbr_ret_str)
