@@ -2,17 +2,17 @@
 
 #include "includes/header.chtml"
 
-  <h4>Information for host <a href="hostinfo?hostID=$host.id">$util.escapeHTML($host.name)</a></h4>
+  <h4>Information for host <a href="hostinfo?hostID=$host.id">$host.name</a></h4>
 
   <table>
     <tr>
-      <th>Name</th><td>$util.escapeHTML($host.name)</td>
+      <th>Name</th><td>$host.name</td>
     </tr>
     <tr>
       <th>ID</th><td>$host.id</td>
     </tr>
     <tr>
-      <th>Arches</th><td>$util.escapeHTML($host.arches)</td>
+      <th>Arches</th><td>$host.arches</td>
     </tr>
     <tr>
       <th>Capacity</th><td>$host.capacity</td>
@@ -21,10 +21,10 @@
       <th>Task Load</th><td><a href="tasks?hostID=$host.id">#echo '%.2f' % $host.task_load#</a></td>
     </tr>
     <tr>
-      <th>Description</th><td class="usertext">$util.escapeHTML($host.description)</td>
+      <th>Description</th><td class="usertext">$host.description</td>
     </tr>
     <tr>
-      <th>Comment</th><td class="usertext">$util.escapeHTML($host.comment)</td>
+      <th>Comment</th><td class="usertext">$host.comment</td>
     </tr>
     <tr>
       #set $enabled = $host.enabled and 'yes' or 'no'
@@ -51,7 +51,7 @@
       <th>Channels</th>
       <td>
         #for $channel in $channels
-        <a href="channelinfo?channelID=$channel.id" class="$channel.enabled">$util.escapeHTML($channel.name)</a><br/>
+        <a href="channelinfo?channelID=$channel.id" class="$channel.enabled">$channel.name</a><br/>
         #end for
         #if not $channels
         No channels
@@ -68,7 +68,7 @@
           </tr>
           #for $buildroot in $buildroots
           <tr class="$util.rowToggle($self)">
-            <td><a href="buildrootinfo?buildrootID=$buildroot.id">$util.escapeHTML($buildroot.tag_name)-$buildroot.id-$buildroot.repo_id</a></td>
+            <td><a href="buildrootinfo?buildrootID=$buildroot.id">$buildroot.tag_name-$buildroot.id-$buildroot.repo_id</a></td>
             <td>$util.formatTime($buildroot.create_event_time)</td>
             <td>$util.imageTag($util.brStateName($buildroot.state))</td>
           </tr>

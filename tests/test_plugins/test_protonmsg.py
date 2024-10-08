@@ -9,7 +9,11 @@ import protonmsg
 import mock
 import six
 from mock import patch, MagicMock
-from six.moves.configparser import ConfigParser, SafeConfigParser
+if six.PY2:
+    from ConfigParser import SafeConfigParser as ConfigParser
+else:
+    from configparser import ConfigParser
+
 
 from koji.context import context
 
@@ -324,11 +328,10 @@ topic_prefix = koji
 connect_timeout = 10
 send_timeout = 60
 """)
+        conf = ConfigParser()
         if six.PY2:
-            conf = SafeConfigParser()
             conf.readfp(confdata)
         else:
-            conf = ConfigParser()
             conf.read_file(confdata)
         self.handler = protonmsg.TimeoutHandler('amqps://broker1.example.com:5671', [], conf)
 
@@ -349,11 +352,10 @@ topic_prefix = koji
 connect_timeout = 10
 send_timeout = 60
 """)
+        conf = ConfigParser()
         if six.PY2:
-            conf = SafeConfigParser()
             conf.readfp(confdata)
         else:
-            conf = ConfigParser()
             conf.read_file(confdata)
         handler = protonmsg.TimeoutHandler('amqp://broker1.example.com:5672', [], conf)
         event = MagicMock()

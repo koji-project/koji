@@ -83,7 +83,7 @@
 %define release %{baserelease}
 %endif
 Name: koji
-Version: 1.33.1
+Version: 1.33.2
 Release: %{release}%{?dist}
 License: LGPL-2.1-only and GPL-2.0-or-later
 # the included arch lib from yum's rpmUtils is GPLv2+
@@ -648,6 +648,9 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Mon Oct  7 2024  Mike McLean <mikem at redhat.com> - 1.34.3-1
+- Fix CVE-2024-9427: New XSS attack on kojiweb
+
 * Tue Jul 11 2023  Tomas Kopecek <tkopecek at redhat.com> - 1.33.1-1
 - PR#3834: wait with writing timestamps after results dir is created
 - PR#3836: add support for sw_64 and loongarch64

@@ -9,7 +9,7 @@
 #set $localfooterpath=$util.themePath("extra-footer.html", local=True)
 #if os.path.exists($localfooterpath)
 #if $literalFooter
-#set $localfooter="".join(open($localfooterpath, 'rt', encoding='utf-8').readlines())
+#set $localfooter=$util.SafeValue("".join(open($localfooterpath, 'rt', encoding='utf-8').readlines()))
 $localfooter
 #else
 #include $localfooterpath
@@ -20,7 +20,7 @@ $localfooter
     </div>
 #set $localbottompath=$util.themePath("extra-bottom.html", local=True)
 #if os.path.exists($localbottompath)
-#set $localbottom="".join(open($localbottompath, 'rt', encoding='utf-8').readlines())
+#set $localbottom=$util.SafeValue("".join(open($localbottompath, 'rt', encoding='utf-8').readlines()))
 $localbottom
 #end if
   </body>

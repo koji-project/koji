@@ -20,9 +20,9 @@
     <tr class="$util.rowToggle($self)">
       #set $stateName = $util.stateName($build.state)
       <td>$build.build_id</td>
-      <td><a href="buildinfo?buildID=$build.build_id">$util.escapeHTML($build.nvr)</a></td>
+      <td><a href="buildinfo?buildID=$build.build_id">$build.nvr</a></td>
       #if not $user
-      <td class="user-$build.owner_name"><a href="userinfo?userID=$build.owner_id">$util.escapeHTML($build.owner_name)</a></td>
+      <td class="user-$build.owner_name"><a href="userinfo?userID=$build.owner_id">$build.owner_name</a></td>
       #end if
       <td>$util.formatTime($build.completion_ts)</td>
       <td class="$stateName">$util.stateImage($build.state)</td>
@@ -54,13 +54,13 @@
     <tr class="$util.rowToggle($self) $scratch">
       #set $state = $util.taskState($task.state)
       <td>$task.id</td>
-      <td><a href="taskinfo?taskID=$task.id" class="task$state" title="$state">$util.escapeHTML($koji.taskLabel($task))</a></td>
+      <td><a href="taskinfo?taskID=$task.id" class="task$state" title="$state">$koji.taskLabel($task)</a></td>
       #if not $user
       <td class="user-$task.owner_name">
         #if $task.owner_type == $koji.USERTYPES['HOST']
-        <a href="hostinfo?userID=$task.owner">$util.escapeHTML($task.owner_name)</a>
+        <a href="hostinfo?userID=$task.owner">$task.owner_name</a>
         #else
-        <a href="userinfo?userID=$task.owner">$util.escapeHTML($task.owner_name)</a>
+        <a href="userinfo?userID=$task.owner">$task.owner_name</a>
         #end if
       </td>
       #end if
@@ -88,7 +88,7 @@
           Page:
           <select onchange="javascript: window.location = 'index?packageStart=' + this.value * $packageRange + '$util.passthrough($self, 'packageOrder', 'buildOrder', 'buildStart', 'taskOrder', 'taskStart')#packagelist';">
             #for $pageNum in $packagePages
-            <option value="$pageNum"#if $pageNum == $packageCurrentPage then ' selected="selected"' else ''#>#echo $pageNum + 1#</option>
+            <option value="$pageNum"#if $pageNum == $packageCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
             #end for
           </select>
         </form>
@@ -111,8 +111,8 @@
     </tr>
     #for $package in $packages
     <tr class="$util.rowToggle($self)">
-      <td><a href="packageinfo?packageID=$package.package_id">$util.escapeHTML($package.package_name)</a></td>
-      <td><a href="taginfo?tagID=$package.tag_id">$util.escapeHTML($package.tag_name)</a></td>
+      <td><a href="packageinfo?packageID=$package.package_id">$package.package_name</a></td>
+      <td><a href="taginfo?tagID=$package.tag_id">$package.tag_name</a></td>
       #set $included = $package.blocked and 'no' or 'yes'
       <td>$util.imageTag($included)</td>
     </tr>
@@ -140,8 +140,8 @@
     </tr>
     #for $notif in $notifs
     <tr class="$util.rowToggle($self)">
-      <td>#if $notif.package then $util.escapeHTML($notif.package.name) else 'all'#</td>
-      <td>#if $notif.tag then $util.escapeHTML($notif.tag.name) else 'all'#</td>
+      <td>#if $notif.package then $notif.package.name else 'all'#</td>
+      <td>#if $notif.tag then $notif.tag.name else 'all'#</td>
       <td>#if $notif.success_only then 'success only' else 'all'#</td>
       <td><a href="notificationedit?notificationID=$notif.id$util.authToken($self)">edit</a></td>
       <td><a href="notificationdelete?notificationID=$notif.id$util.authToken($self)">delete</a></td>

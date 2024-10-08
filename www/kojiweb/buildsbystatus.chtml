@@ -1,10 +1,11 @@
 #from kojiweb import util
 
+#@util.safe_return
 #def printOption(value, label=None)
 #if not $label
 #set $label = $value
 #end if
-<option value="$value"#if $value == $days then ' selected="selected"' else ''#>$label</option>
+<option value="$value"#if $value == $days then ' selected' else ''#>$label</option>
 #end def
 
 #set $numTotal = $numSucceeded + $numFailed + $numCanceled
