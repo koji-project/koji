@@ -61,7 +61,8 @@ class TestGetArchiveType(DBQueryTestCase):
         archive_info = [{'id': 1, 'name': 'archive-type-1', 'extensions': 'ext'},
                         {'id': 2, 'name': 'archive-type-2', 'extensions': 'ext'}]
         filename = 'test-filename.ext'
-        self.qp_execute_return_value = archive_info
+        self.qp_execute_side_effect = [[], archive_info]
+        # no matches for full name, multiple matches for .ext
         with self.assertRaises(koji.GenericError) as ex:
             kojihub.get_archive_type(filename=filename)
         self.assertEqual("multiple matches for file extension: ext", str(ex.exception))

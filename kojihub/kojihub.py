@@ -7807,13 +7807,15 @@ def get_archive_type(filename=None, type_name=None, type_id=None, strict=False):
     else:
         raise koji.GenericError('one of filename, type_name, or type_id must be specified')
 
-    parts = filename.split('.')
+    # otherwise match the filename
     query = QueryProcessor(
         tables=['archivetypes'],
         columns=['id', 'name', 'description', 'extensions', 'compression_type'],
         clauses=['extensions ~* %(pattern)s'],
     )
-    for start in range(len(parts) - 1, -1, -1):
+    # match longest extension first. e.g. .tar.gz before .gz
+    parts = filename.split('.')
+    for start in range(len(parts)):
         ext = '.'.join(parts[start:])
         query.values['pattern'] = r'(\s|^)%s(\s|$)' % ext
         results = query.execute()
@@ -7825,7 +7827,7 @@ def get_archive_type(filename=None, type_name=None, type_id=None, strict=False):
             raise koji.GenericError('multiple matches for file extension: %s' % ext)
     # otherwise
     if strict:
-        raise koji.GenericError('unsupported file extension: %s' % ext)
+        raise koji.GenericError('unsupported file extension: %s' % filename)
     else:
         return None
 
