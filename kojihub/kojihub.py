@@ -7811,10 +7811,11 @@ def get_archive_type(filename=None, type_name=None, type_id=None, strict=False):
     query = QueryProcessor(
         tables=['archivetypes'],
         columns=['id', 'name', 'description', 'extensions', 'compression_type'],
-        clauses=[r"%(ext)s = ANY(regexp_split_to_array(extensions, '\s+'))"],
+        clauses=[r"%(ext)s IN (SELECT lower(s)"
+                 r" FROM unnest(regexp_split_to_array(extensions, '\s+')) AS s)"],
     )
     # match longest extension first. e.g. .tar.gz before .gz
-    parts = filename.split('.')
+    parts = filename.lower().split('.')
     for start in range(len(parts)):
         ext = '.'.join(parts[start:])
         query.values['ext'] = ext
