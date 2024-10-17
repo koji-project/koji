@@ -12,7 +12,7 @@ As in previous releases, we provide a migration script that updates the database
 
 ::
 
-    # psql koji koji < /usr/share/doc/koji/docs/schema-upgrade-1.34-1.35.sql
+    # psql koji koji < /usr/share/koji/schema-upgrade-1.34-1.35.sql
 
 
 Repo Generation
