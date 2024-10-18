@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 import json
-import mock
+from unittest import mock
 import os.path
 import shutil
 import tempfile

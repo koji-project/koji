@@ -1,7 +1,7 @@
 import os.path
 import shutil
 import tempfile
-import mock
+from unittest import mock
 import unittest
 
 import koji

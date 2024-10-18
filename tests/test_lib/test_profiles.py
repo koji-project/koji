@@ -3,7 +3,10 @@ import koji
 import sys
 import threading
 import traceback
-import mock
+try:
+    from unittest import mock
+except ImportError:
+    import mock
 from six.moves import range
 
 import unittest

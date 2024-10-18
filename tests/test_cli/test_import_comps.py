@@ -7,7 +7,10 @@ import json
 import pytest
 import koji
 
-import mock
+try:
+    from unittest import mock
+except ImportError:
+    import mock
 import six
 
 try:

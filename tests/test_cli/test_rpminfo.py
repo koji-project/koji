@@ -1,7 +1,10 @@
 from __future__ import absolute_import
 import koji
 import locale
-import mock
+try:
+    from unittest import mock
+except ImportError:
+    import mock
 import os
 import time
 from six.moves import StringIO

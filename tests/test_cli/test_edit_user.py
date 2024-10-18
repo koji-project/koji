@@ -3,7 +3,10 @@ from __future__ import absolute_import
 import unittest
 
 import six
-import mock
+try:
+    from unittest import mock
+except ImportError:
+    import mock
 import koji
 
 

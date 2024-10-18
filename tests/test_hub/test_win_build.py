@@ -1,7 +1,7 @@
 import unittest
 import koji
 import kojihub
-import mock
+from unittest import mock
 
 
 class TestWinBuild(unittest.TestCase):

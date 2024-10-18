@@ -4,7 +4,10 @@ from __future__ import print_function
 import unittest
 import copy
 
-import mock
+try:
+    from unittest import mock
+except ImportError:
+    import mock
 import six
 
 from koji_cli.commands import handle_regen_repo

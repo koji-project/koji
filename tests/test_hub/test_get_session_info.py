@@ -1,6 +1,6 @@
 import koji
 import kojihub
-import mock
+from unittest import mock
 from .utils import DBQueryTestCase
 
 

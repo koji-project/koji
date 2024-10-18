@@ -2,7 +2,10 @@ from __future__ import absolute_import
 
 import unittest
 
-import mock
+try:
+    from unittest import mock
+except ImportError:
+    import mock
 import errno
 
 from koji import ensuredir

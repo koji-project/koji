@@ -1,6 +1,9 @@
 from __future__ import absolute_import
-import mock
 import unittest
+try:
+    from unittest import mock
+except ImportError:
+    import mock
 
 import koji.daemon
 import koji

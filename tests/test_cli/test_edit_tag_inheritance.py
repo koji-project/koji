@@ -1,7 +1,10 @@
 from __future__ import absolute_import
-
-import mock
-from mock import call
+try:
+    from unittest import mock
+    from unittest.mock import call
+except ImportError:
+    import mock
+    from mock import call
 
 import koji
 from koji_cli.commands import handle_edit_tag_inheritance

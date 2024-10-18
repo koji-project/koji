@@ -1,12 +1,18 @@
 from __future__ import absolute_import
-import mock
-import rpm
-import shutil
+
 import tempfile
 import unittest
+try:
+    from unittest import mock
+except ImportError:
+    import mock
+
+import rpm
+import shutil
+from six.moves import range
+
 import koji
 from .loadkojid import kojid
-from six.moves import range
 
 
 class FakeHeader(dict):

@@ -1,4 +1,4 @@
-import mock
+from unittest import mock
 import time
 import unittest
 from collections import defaultdict

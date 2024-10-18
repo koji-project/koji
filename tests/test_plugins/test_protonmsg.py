@@ -6,9 +6,13 @@ import unittest
 import pytest
 
 import protonmsg
-import mock
+try:
+    from unittest import mock
+    from unittest.mock import patch, MagicMock
+except ImportError:
+    import mock
+    from mock import patch, MagicMock
 import six
-from mock import patch, MagicMock
 if six.PY2:
     from ConfigParser import SafeConfigParser as ConfigParser
 else:

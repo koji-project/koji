@@ -2,7 +2,10 @@ from __future__ import absolute_import
 
 import copy
 
-import mock
+try:
+    from unittest import mock
+except ImportError:
+    import mock
 from six.moves import StringIO
 
 import koji

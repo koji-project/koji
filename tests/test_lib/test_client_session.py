@@ -1,5 +1,8 @@
 from __future__ import absolute_import
-import mock
+try:
+    from unittest import mock
+except ImportError:
+    import mock
 import six
 import weakref
 import requests

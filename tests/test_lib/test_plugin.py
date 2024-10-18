@@ -1,7 +1,10 @@
 from __future__ import absolute_import
 import copy
 import datetime
-import mock
+try:
+    from unittest import mock
+except ImportError:
+    import mock
 from six.moves import range
 import sys
 import unittest

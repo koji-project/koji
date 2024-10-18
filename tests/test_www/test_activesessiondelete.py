@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 import unittest
-import mock
+from unittest import mock
 
 from koji.server import ServerRedirect
 from .loadwebindex import webidx

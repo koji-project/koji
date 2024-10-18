@@ -4,7 +4,10 @@ import time
 from optparse import Values
 
 import six
-import mock
+try:
+    from unittest import mock
+except ImportError:
+    import mock
 
 import koji
 from koji_cli.commands import anon_handle_list_targets

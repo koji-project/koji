@@ -1,14 +1,17 @@
 from __future__ import absolute_import
-import mock
+import os
+import unittest
+try:
+    from unittest import mock
+    from unittest.mock import call
+except ImportError:
+    import mock
+    from mock import call
+
 import six
 
-from mock import call
 from koji_cli.commands import handle_import_cg
 from . import utils
-
-import os
-
-import unittest
 
 
 class TestImportCG(utils.CliTestCase):

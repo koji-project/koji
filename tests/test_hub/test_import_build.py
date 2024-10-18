@@ -1,5 +1,5 @@
 import copy
-import mock
+from unittest import mock
 import unittest
 import shutil
 import tempfile

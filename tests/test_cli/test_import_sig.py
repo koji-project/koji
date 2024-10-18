@@ -1,13 +1,18 @@
 from __future__ import absolute_import
 import copy
 import hashlib
-import mock
+import unittest
+try:
+    from unittest import mock
+    from unittest.mock import call
+except ImportError:
+    import mock
+    from mock import call
 import random
+
 import six
 from six.moves import range
-import unittest
 
-from mock import call
 from koji.util import base64encode
 from koji_cli.commands import handle_import_sig
 from . import utils

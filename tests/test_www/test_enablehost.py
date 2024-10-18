@@ -1,6 +1,6 @@
 import unittest
 
-import mock
+from unittest import mock
 from .loadwebindex import webidx
 from koji.server import ServerRedirect
 
