@@ -749,7 +749,7 @@ For py2 instances:
  * ``python-psycopg2``
  * ``tox``
  * ``pip==9.0.1``
- * ``Other packages are installed by test-requirements-py2.txt.``
+ * ``Other packages are installed by test-requirements.txt.``
 
 You can use containers for the tests. Dockerfiles are placed in `devtools/containers` directory.
 Supported Dockerfiles:
