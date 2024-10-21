@@ -10,6 +10,7 @@ RUN \
   python3-defusedxml \
   python3-devel \
   python3-librepo \
+  python3-setuptools \
   python3-tox \
   rpm-build && \
   dnf clean all
