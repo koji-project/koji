@@ -10,11 +10,11 @@ import sys
 import unittest
 
 try:
-    import importlib
-    imp = None
-except ImportError:
     import imp
     importlib = None
+except ImportError:
+    import importlib
+    imp = None
 
 import koji
 import koji.util
