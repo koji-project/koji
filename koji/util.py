@@ -803,9 +803,12 @@ def _rmtree_nofork(path, logger=None):
     logger = logger or logging.getLogger('koji')
     try:
         st = os.lstat(path)
-    except FileNotFoundError:
-        logger.warning("No such file/dir %s for removal" % path)
-        return
+    except OSError as e:
+        # FileNotFoundError is N/A in py2
+        if e.errno == errno.ENOENT:
+            logger.warning("No such file/dir %s for removal" % path)
+            return
+        raise
     if not stat.S_ISDIR(st.st_mode):
         raise koji.GenericError("Not a directory: %s" % path)
     dev = st.st_dev
