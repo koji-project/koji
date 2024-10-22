@@ -11,3 +11,4 @@ Cheetah3
 psycopg2-binary
 python-multilib
 python-qpid-proton
+setuptools
