@@ -1,16 +1,20 @@
 from __future__ import absolute_import
-import mock
+
 import os
-import random
+from os import path, makedirs
+import tempfile
+import unittest
+try:
+    from unittest import mock
+    from unittest.mock import patch, MagicMock, Mock, call
+except ImportError:
+    import mock
+    from mock import patch, MagicMock, Mock, call
+
+import requests_mock
 import shutil
 import six
 from six.moves import range
-import tempfile
-import unittest
-
-from os import path, makedirs
-from mock import patch, MagicMock, Mock, call
-import requests_mock
 
 import koji
 from koji.tasks import BaseTaskHandler, FakeTask, ForkTask, SleepTask, WaitTestTask, scan_mounts, \

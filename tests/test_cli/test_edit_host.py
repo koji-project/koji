@@ -1,11 +1,15 @@
 from __future__ import absolute_import
-import mock
-import six
 import unittest
+try:
+    from unittest import mock
+    from unittest.mock import call
+except ImportError:
+    import mock
+    from mock import call
+
+import six
+
 import koji
-
-from mock import call
-
 from koji_cli.commands import handle_edit_host
 from . import utils
 

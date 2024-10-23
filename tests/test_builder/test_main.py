@@ -1,8 +1,10 @@
 from __future__ import absolute_import
-import mock
 import signal
 import unittest
-from six.moves import range
+try:
+    from unittest import mock
+except ImportError:
+    import mock
 
 import koji
 from .loadkojid import kojid

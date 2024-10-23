@@ -1,9 +1,9 @@
-import mock
+from unittest import mock
 import copy
 import datetime
 import unittest
 
-from mock import call
+from unittest.mock import call
 
 import koji
 from .loadwebindex import webidx

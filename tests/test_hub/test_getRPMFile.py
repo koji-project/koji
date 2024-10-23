@@ -1,7 +1,7 @@
 
 import os
 
-import mock
+from unittest import mock
 
 import unittest
 import koji

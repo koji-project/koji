@@ -1,7 +1,7 @@
 import unittest
 import koji
 
-import mock
+from unittest import mock
 from .loadwebindex import webidx
 
 

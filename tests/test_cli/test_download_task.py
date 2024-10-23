@@ -2,10 +2,14 @@ from __future__ import absolute_import
 
 import os
 import sys
+try:
+    from unittest import mock
+    from unittest.mock import call
+except ImportError:
+    import mock
+    from mock import call
 
-import mock
 import six
-from mock import call
 
 from koji_cli.commands import anon_handle_download_task
 from . import utils

@@ -1,13 +1,16 @@
 from __future__ import absolute_import
 
 import unittest
+try:
+    from unittest import mock
+    from unittest.mock import call
+except ImportError:
+    import mock
+    from mock import call
 
-import mock
 import six
-from mock import call
 
 from koji_cli.commands import handle_remove_pkg
-
 import koji
 from . import utils
 

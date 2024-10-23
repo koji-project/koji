@@ -5,7 +5,10 @@ from __future__ import print_function
 import unittest
 import copy
 
-import mock
+try:
+    from unittest import mock
+except ImportError:
+    import mock
 import pytest
 import six
 

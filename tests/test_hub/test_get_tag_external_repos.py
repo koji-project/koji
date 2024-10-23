@@ -1,4 +1,4 @@
-import mock
+from unittest import mock
 
 import kojihub
 from .utils import DBQueryTestCase

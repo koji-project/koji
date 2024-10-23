@@ -1,29 +1,31 @@
 # coding=utf-8
 from __future__ import absolute_import
 import calendar
+from datetime import datetime
 import errno
 import locale
 import logging
-from unittest.case import TestCase
-import mock
+import tempfile
+import threading
+import unittest
 import multiprocessing
 import optparse
 import os
 import resource
 import time
-import six
-import shutil
-import tempfile
-import threading
-import unittest
+try:
+    from unittest import mock
+    from unittest.mock import call, patch
+except ImportError:
+    import mock
+    from mock import call, patch
 
 import requests_mock
-from mock import call, patch
-from datetime import datetime
+import shutil
+import six
+
 import koji
 import koji.util
-
-from koji.util import format_shell_cmd
 
 
 class EnumTestCase(unittest.TestCase):

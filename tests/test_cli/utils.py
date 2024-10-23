@@ -1,6 +1,9 @@
 from __future__ import print_function
 from __future__ import absolute_import
-import mock
+try:
+    from unittest import mock
+except ImportError:
+    import mock
 import os
 import six
 import sys

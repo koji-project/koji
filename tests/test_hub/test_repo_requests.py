@@ -3,7 +3,7 @@ import shutil
 import tempfile
 import unittest
 
-import mock
+from unittest import mock
 
 import koji
 import kojihub

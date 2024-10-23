@@ -1,13 +1,13 @@
 from __future__ import absolute_import
 import logging
-import mock
 import os
 import shutil
 import tempfile
 import unittest
-
-import koji.daemon
-import koji
+try:
+    from unittest import mock
+except ImportError:
+    import mock
 
 from .loadkojid import kojid
 

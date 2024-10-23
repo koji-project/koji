@@ -1,6 +1,9 @@
 from __future__ import absolute_import
 import koji
-import mock
+try:
+    from unittest import mock
+except ImportError:
+    import mock
 
 from koji_cli.commands import handle_edit_notification
 from . import utils

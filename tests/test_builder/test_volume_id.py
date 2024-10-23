@@ -1,10 +1,16 @@
 from __future__ import absolute_import
-import mock
-import shutil
+import logging
 import tempfile
 import unittest
+try:
+    from unittest import mock
+except ImportError:
+    import mock
+
+import shutil
+
 from .loadkojid import kojid
-import logging
+
 
 logger = logging.getLogger(__name__)
 

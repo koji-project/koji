@@ -1,7 +1,10 @@
 import os
 import time
 
-import mock
+try:
+    from unittest import mock
+except ImportError:
+    import mock
 import six
 
 from koji_cli.commands import anon_handle_list_tagged

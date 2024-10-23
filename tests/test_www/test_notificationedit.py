@@ -2,7 +2,7 @@ import unittest
 import koji
 import cgi
 
-import mock
+from unittest import mock
 from io import BytesIO
 from .loadwebindex import webidx
 from koji.server import ServerRedirect

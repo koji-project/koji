@@ -7,7 +7,10 @@ from dateutil.tz import tzutc
 import unittest
 
 from six.moves import StringIO
-import mock
+try:
+    from unittest import mock
+except ImportError:
+    import mock
 
 import koji
 from koji_cli.commands import anon_handle_list_history
