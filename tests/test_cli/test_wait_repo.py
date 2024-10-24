@@ -206,7 +206,7 @@ class TestWaitRepo(utils.CliTestCase):
 
         expected = "%(name)s is not a build tag for any target" % self.TAG + "\n"
         self.assert_console_message(stderr, expected)
-        self.RepoWatcher.assert_called_with(self.session, self.TAG['id'], nvrs=[], min_event=None, logger=self.wait_logger)
+        self.RepoWatcher.assert_called_with(self.session, self.TAG['id'], nvrs=[], min_event="last", logger=self.wait_logger)
 
         # Cas 2. dest is matched, show suggestion
         self.RepoWatcher.reset_mock()
@@ -222,7 +222,7 @@ class TestWaitRepo(utils.CliTestCase):
         expected = "%(name)s is not a build tag for any target" % self.TAG + "\n"
         expected += "Suggested tags: build-tag-1, build-tag-2, build-tag-3\n"
         self.assert_console_message(stderr, expected)
-        self.RepoWatcher.assert_called_with(self.session, self.TAG['id'], nvrs=[], min_event=None, logger=self.wait_logger)
+        self.RepoWatcher.assert_called_with(self.session, self.TAG['id'], nvrs=[], min_event="last", logger=self.wait_logger)
 
     def test_anon_handle_wait_repo_help(self):
         """Test anon_handle_wait_repo help message"""

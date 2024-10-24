@@ -7360,8 +7360,14 @@ def anon_handle_wait_repo(options, session, args):
             error('' if suboptions.quiet else msg)
         return
 
+    if builds:
+        # we're waiting for a repo with these builds, not necessarily a current one
+        min_event = None
+    else:
+        # wait for a current repo
+        min_event = "last"
     watcher = _get_watcher(options, suboptions, session, tag['id'], nvrs=suboptions.builds,
-                           min_event=None)
+                           min_event=min_event)
 
     try:
         repoinfo = watcher.waitrepo(anon=anon)
