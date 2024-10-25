@@ -3,7 +3,6 @@ from __future__ import absolute_import
 import calendar
 from datetime import datetime
 import errno
-import locale
 import logging
 import tempfile
 import threading
@@ -26,6 +25,7 @@ import six
 
 import koji
 import koji.util
+from ..common import mylocale
 
 
 class EnumTestCase(unittest.TestCase):
@@ -407,6 +407,23 @@ class ConfigFileTestCase(unittest.TestCase):
         self.assertEqual(listdir_mock.call_count, 2)
 
 
+class ConfigFileTestCase2(unittest.TestCase):
+    """Additional tests for config file reading functions"""
+
+    def setUp(self):
+        self.datadir = os.path.dirname(__file__) + '/data/cfg'
+
+    def tearDown(self):
+        mock.patch.stopall()
+
+    def test_unicode(self):
+        fn = self.datadir + '/uni1.conf'
+        if not os.path.exists(fn):
+            raise Exception('missing config')
+        with mylocale(value='C'):
+            koji.read_config_files(fn)
+
+
 class MavenUtilTestCase(unittest.TestCase):
     """Test maven relative functions"""
     maxDiff = None
@@ -750,10 +767,9 @@ class MavenUtilTestCase(unittest.TestCase):
                 config.read_file(conf_file)
         return config
 
+    @mylocale(('en_US', 'UTF-8'))
     def test_formatChangelog(self):
         """Test formatChangelog function"""
-        # force locale to compare 'expect' value
-        locale.setlocale(locale.LC_ALL, ('en_US', 'UTF-8'))
         data = [
             {
                 'author': 'Happy Koji User <user1@example.com> - 1.1-1',
@@ -786,8 +802,6 @@ class MavenUtilTestCase(unittest.TestCase):
 ''')
         result = koji.util.formatChangelog(data)
         self.assertMultiLineEqual(expect, result)
-
-        locale.setlocale(locale.LC_ALL, "")
 
     def test_parseTime(self):
         """Test parseTime function"""
