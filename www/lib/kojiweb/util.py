@@ -26,10 +26,11 @@ import re
 import ssl
 import stat
 import urllib
-# a bunch of exception classes that explainError needs
-from socket import error as socket_error
-from xml.parsers.expat import ExpatError
+from collections.abc import Mapping
 from functools import wraps
+from socket import error as socket_error
+from urllib.parse import parse_qs
+from xml.parsers.expat import ExpatError
 
 import Cheetah.Template
 
@@ -204,6 +205,55 @@ def _getValidTokens(environ):
         if token:
             tokens.append(token)
     return tokens
+
+
+class FieldStorageCompat(Mapping):
+    """Emulate the parts of cgi.FieldStorage that we need"""
+
+    def __init__(self, environ):
+        data = parse_qs(environ.get('QUERY_STRING', ''), strict_parsing=True,
+                        keep_blank_values=True)
+        # replace singleton lists with single values
+        for arg in data:
+            val = data[arg]
+            if isinstance(val, list) and len(val) == 1:
+                data[arg] = val[0]
+        self.data = data
+
+    # we need getitem, iter, and len for the Mapping inheritance to work
+
+    def __getitem__(self, key):
+        return FieldCompat(self.data[key])
+
+    def __iter__(self):
+        iter(self.data)
+
+    def __len__(self):
+        return len(self.data)
+
+    def getfirst(self, name, default=None):
+        """Get first value from list entries"""
+        value = self.data.get(name, default)
+        if isinstance(value, (list, tuple)):
+            return value[0]
+        else:
+            return value
+
+    def getlist(self, name):
+        """Get value, wrap in list if not already"""
+        if name not in self.data:
+            return []
+        value = self.data[name]
+        if isinstance(value, (list, tuple)):
+            return value
+        else:
+            return [value]
+
+
+class FieldCompat:
+
+    def __init__(self, value):
+        self.value = value
 
 
 def toggleOrder(template, sortKey, orderVar='order'):

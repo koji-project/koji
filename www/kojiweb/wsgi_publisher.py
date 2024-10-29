@@ -19,7 +19,6 @@
 # Authors:
 #       Mike McLean <mikem@redhat.com>
 
-import cgi
 import inspect
 import logging
 import os.path
@@ -241,29 +240,14 @@ class Dispatcher(object):
         func = self.handler_index.get(method)
         if not func:
             raise URLNotFound
-        # parse form args
-        data = {}
-        fs = cgi.FieldStorage(fp=environ['wsgi.input'],
-                              environ=environ.copy(),
-                              keep_blank_values=True)
-        for field in fs.list:
-            if field.filename:
-                val = field
-            else:
-                val = field.value
-            data.setdefault(field.name, []).append(val)
-        # replace singleton lists with single values
-        # XXX - this is a bad practice, but for now we strive to emulate mod_python.publisher
-        for arg in data:
-            val = data[arg]
-            if isinstance(val, list) and len(val) == 1:
-                data[arg] = val[0]
+        # parse url args
+        fs = kojiweb.util.FieldStorageCompat(environ)
         environ['koji.form'] = fs
         args, varargs, varkw, defaults, kwonlyargs, kwonlydefaults, ann = \
             inspect.getfullargspec(func)
         if not varkw:
             # remove any unexpected args
-            data = dslice(data, args, strict=False)
+            data = dslice(fs.data, args, strict=False)
             # TODO (warning in header or something?)
         return func, data
 
