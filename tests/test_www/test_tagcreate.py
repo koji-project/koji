@@ -1,10 +1,9 @@
 import unittest
-import cgi
 
 from unittest import mock
-from io import BytesIO
 from .loadwebindex import webidx
 from koji.server import ServerRedirect
+from kojiweb.util import FieldStorageCompat
 
 
 class TestTagCreate(unittest.TestCase):
@@ -24,21 +23,13 @@ class TestTagCreate(unittest.TestCase):
     def tearDown(self):
         mock.patch.stopall()
 
-    def get_fs(self, urlencode_data):
-        urlencode_environ = {
-            'CONTENT_LENGTH': str(len(urlencode_data)),
-            'CONTENT_TYPE': 'application/x-www-form-urlencoded',
-            'QUERY_STRING': '',
-            'REQUEST_METHOD': 'POST',
-        }
-        data = BytesIO(urlencode_data)
-        data.seek(0)
-        return cgi.FieldStorage(fp=data, environ=urlencode_environ)
+    def get_fs(self, query):
+        return FieldStorageCompat({'QUERY_STRING': query})
 
     def test_tagcreate_add_case_valid(self):
         """Test tagcreate function valid case (add)"""
-        urlencode_data = b"add=True&name=testname&arches=x86_64&locked=True&permission=1" \
-                         b"&maven_support=True&maven_include_all=True"
+        urlencode_data = "add=True&name=testname&arches=x86_64&locked=True&permission=1" \
+                         "&maven_support=True&maven_include_all=True"
         fs = self.get_fs(urlencode_data)
 
         def __get_server(env):
@@ -60,7 +51,7 @@ class TestTagCreate(unittest.TestCase):
 
     def test_tagcreate_cancel_case_valid(self):
         """Test tagcreate function valid cases (cancel)."""
-        urlencode_data = b"cancel=True"
+        urlencode_data = "cancel=True"
         fs = self.get_fs(urlencode_data)
 
         def __get_server(env):
@@ -79,7 +70,7 @@ class TestTagCreate(unittest.TestCase):
 
     def test_tagedit_another_case_valid(self):
         """Test tagedit function valid case (another)."""
-        urlencode_data = b"another=True"
+        urlencode_data = "another=True"
         fs = self.get_fs(urlencode_data)
 
         def __get_server(env):

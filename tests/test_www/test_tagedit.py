@@ -1,11 +1,10 @@
 import unittest
 import koji
-import cgi
 
 from unittest import mock
-from io import BytesIO
 from .loadwebindex import webidx
 from koji.server import ServerRedirect
+from kojiweb.util import FieldStorageCompat
 
 
 class TestTagEdit(unittest.TestCase):
@@ -26,16 +25,9 @@ class TestTagEdit(unittest.TestCase):
     def tearDown(self):
         mock.patch.stopall()
 
-    def get_fs(self, urlencode_data):
-        urlencode_environ = {
-            'CONTENT_LENGTH': str(len(urlencode_data)),
-            'CONTENT_TYPE': 'application/x-www-form-urlencoded',
-            'QUERY_STRING': '',
-            'REQUEST_METHOD': 'POST',
-        }
-        data = BytesIO(urlencode_data)
-        data.seek(0)
-        return cgi.FieldStorage(fp=data, environ=urlencode_environ)
+    def get_fs(self, query):
+        environ = {'QUERY_STRING': query}
+        return FieldStorageCompat(environ)
 
     def test_tagedit_exception(self):
         """Test tagedit function raises exception when tag ID not exists."""
@@ -52,8 +44,8 @@ class TestTagEdit(unittest.TestCase):
 
     def test_tagedit_add_case_valid(self):
         """Test tagedit function valid case (save)."""
-        urlencode_data = b"save=True&name=testname&arches=x86_64&locked=True&permission=1" \
-                         b"&maven_support=True&maven_include_all=True"
+        urlencode_data = "save=True&name=testname&arches=x86_64&locked=True&permission=1" \
+                         "&maven_support=True&maven_include_all=True"
         fs = self.get_fs(urlencode_data)
 
         def __get_server(env):
@@ -77,7 +69,7 @@ class TestTagEdit(unittest.TestCase):
 
     def test_tagedit_cancel_case_valid(self):
         """Test tagedit function valid case (cancel)."""
-        urlencode_data = b"cancel=True"
+        urlencode_data = "cancel=True"
         fs = self.get_fs(urlencode_data)
 
         def __get_server(env):
@@ -99,7 +91,7 @@ class TestTagEdit(unittest.TestCase):
 
     def test_tagedit_another_case_valid(self):
         """Test tagedit function valid case (another)."""
-        urlencode_data = b"another=True"
+        urlencode_data = "another=True"
         fs = self.get_fs(urlencode_data)
 
         def __get_server(env):

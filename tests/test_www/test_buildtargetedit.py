@@ -1,11 +1,10 @@
 from unittest import mock
 import unittest
-import cgi
 
 import koji
-from io import BytesIO
 from .loadwebindex import webidx
 from koji.server import ServerRedirect
+from kojiweb.util import FieldStorageCompat
 
 
 class TestBuildTargetEdit(unittest.TestCase):
@@ -28,20 +27,12 @@ class TestBuildTargetEdit(unittest.TestCase):
     def tearDown(self):
         mock.patch.stopall()
 
-    def get_fs(self, urlencode_data):
-        urlencode_environ = {
-            'CONTENT_LENGTH': str(len(urlencode_data)),
-            'CONTENT_TYPE': 'application/x-www-form-urlencoded',
-            'QUERY_STRING': '',
-            'REQUEST_METHOD': 'POST',
-        }
-        data = BytesIO(urlencode_data)
-        data.seek(0)
-        return cgi.FieldStorage(fp=data, environ=urlencode_environ)
+    def get_fs(self, query):
+        return FieldStorageCompat({'QUERY_STRING': query})
 
     def test_buildtargetedit_exception(self):
         """Test buildtargetedit function raises exception when build target not exists."""
-        urlencode_data = b"save=True&name=testname&buildTag=11&destTag=99"
+        urlencode_data = "save=True&name=testname&buildTag=11&destTag=99"
         fs = self.get_fs(urlencode_data)
 
         def __get_server(env):
@@ -63,7 +54,7 @@ class TestBuildTargetEdit(unittest.TestCase):
 
     def test_buildtargetedit_exception_build_tag(self):
         """Test buildtargetedit function raises exception when build tag not exists."""
-        urlencode_data = b"save=True&name=testname&buildTag=11&destTag=99"
+        urlencode_data = "save=True&name=testname&buildTag=11&destTag=99"
         fs = self.get_fs(urlencode_data)
 
         def __get_server(env):
@@ -86,7 +77,7 @@ class TestBuildTargetEdit(unittest.TestCase):
 
     def test_buildtargetedit_exception_dest_tag(self):
         """Test buildtargetedit function raises exception when destination tag not exists."""
-        urlencode_data = b"save=True&name=testname&buildTag=11&destTag=99"
+        urlencode_data = "save=True&name=testname&buildTag=11&destTag=99"
         fs = self.get_fs(urlencode_data)
 
         def __get_server(env):
@@ -110,7 +101,7 @@ class TestBuildTargetEdit(unittest.TestCase):
 
     def test_buildtargetedit_save_case_valid(self):
         """Test buildtargetedit function valid case (save)."""
-        urlencode_data = b"save=True&name=testname&buildTag=11&destTag=99"
+        urlencode_data = "save=True&name=testname&buildTag=11&destTag=99"
         fs = self.get_fs(urlencode_data)
 
         def __get_server(env):
@@ -140,7 +131,7 @@ class TestBuildTargetEdit(unittest.TestCase):
     def test_buildtargetedit_cancel_case(self):
         """Test buildtargetedit function valid case (cancel)."""
         self.server.getBuildTarget.return_value = {'id': int(self.buildtarget_id)}
-        urlencode_data = b"cancel=True"
+        urlencode_data = "cancel=True"
         fs = self.get_fs(urlencode_data)
 
         def __get_server(env):
@@ -161,7 +152,7 @@ class TestBuildTargetEdit(unittest.TestCase):
 
     def test_buildtargetedit_another_case(self):
         """Test buildtargetedit function valid case (another)."""
-        urlencode_data = b"another=True"
+        urlencode_data = "another=True"
         fs = self.get_fs(urlencode_data)
         self.server.getBuildTarget.return_value = {'id': int(self.buildtarget_id)}
 
