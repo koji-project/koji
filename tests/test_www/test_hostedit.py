@@ -1,11 +1,10 @@
 import unittest
 import koji
-import cgi
 
 from unittest import mock
-from io import BytesIO
 from .loadwebindex import webidx
 from koji.server import ServerRedirect
+from kojiweb.util import FieldStorageCompat
 
 
 class TestHostEdit(unittest.TestCase):
@@ -27,16 +26,8 @@ class TestHostEdit(unittest.TestCase):
     def tearDown(self):
         mock.patch.stopall()
 
-    def get_fs(self, urlencode_data):
-        urlencode_environ = {
-            'CONTENT_LENGTH': str(len(urlencode_data)),
-            'CONTENT_TYPE': 'application/x-www-form-urlencoded',
-            'QUERY_STRING': '',
-            'REQUEST_METHOD': 'POST',
-        }
-        data = BytesIO(urlencode_data)
-        data.seek(0)
-        return cgi.FieldStorage(fp=data, environ=urlencode_environ)
+    def get_fs(self, query):
+        return FieldStorageCompat({'QUERY_STRING': query})
 
     def test_hostedit_exception_host_not_existing(self):
         """Test hostedit function raises exception when host ID not exists."""
@@ -55,8 +46,8 @@ class TestHostEdit(unittest.TestCase):
 
     def test_hostedit_save_case_valid(self):
         """Test hostedit function valid case (save)."""
-        urlencode_data = b"save=True&arches=x86_64&capacity=1.0&description=test-desc&" \
-                         b"comment=test-comment&enable=True&channels=default"
+        urlencode_data = "save=True&arches=x86_64&capacity=1.0&description=test-desc&" \
+                         "comment=test-comment&enable=True&channels=default"
         fs = self.get_fs(urlencode_data)
         self.server.getHost.return_value = self.host_info
         self.server.editHost.return_value = True
@@ -84,7 +75,7 @@ class TestHostEdit(unittest.TestCase):
 
     def test_hostedit_cancel_case_valid(self):
         """Test hostedit function valid case (cancel)."""
-        urlencode_data = b"cancel=True"
+        urlencode_data = "cancel=True"
         fs = self.get_fs(urlencode_data)
 
         def __get_server(env):
@@ -107,7 +98,7 @@ class TestHostEdit(unittest.TestCase):
 
     def test_hostedit_another_case(self):
         """Test hostedit function valid case (another)."""
-        urlencode_data = b"another=True"
+        urlencode_data = "another=True"
         fs = self.get_fs(urlencode_data)
 
         def __get_server(env):

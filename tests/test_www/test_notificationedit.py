@@ -1,11 +1,10 @@
 import unittest
 import koji
-import cgi
 
 from unittest import mock
-from io import BytesIO
 from .loadwebindex import webidx
 from koji.server import ServerRedirect
+from kojiweb.util import FieldStorageCompat
 
 
 class TestNotificationEdit(unittest.TestCase):
@@ -28,16 +27,8 @@ class TestNotificationEdit(unittest.TestCase):
     def tearDown(self):
         mock.patch.stopall()
 
-    def get_fs(self, urlencode_data):
-        urlencode_environ = {
-            'CONTENT_LENGTH': str(len(urlencode_data)),
-            'CONTENT_TYPE': 'application/x-www-form-urlencoded',
-            'QUERY_STRING': '',
-            'REQUEST_METHOD': 'POST',
-        }
-        data = BytesIO(urlencode_data)
-        data.seek(0)
-        return cgi.FieldStorage(fp=data, environ=urlencode_environ)
+    def get_fs(self, query):
+        return FieldStorageCompat({'QUERY_STRING': query})
 
     def test_notificationedit_exception(self):
         """Test notificationedit function raises exception when notification ID is not exists."""
@@ -54,7 +45,7 @@ class TestNotificationEdit(unittest.TestCase):
 
     def test_notificationedit_save_case_int(self):
         """Test notificationedit function valid case (save)."""
-        urlencode_data = b"save=True&package=2&tag=11&success_only=True"
+        urlencode_data = "save=True&package=2&tag=11&success_only=True"
         fs = self.get_fs(urlencode_data)
 
         def __get_server(env):
@@ -77,7 +68,7 @@ class TestNotificationEdit(unittest.TestCase):
 
     def test_notificationedit_save_case_all(self):
         """Test notificationedit function valid case (all)."""
-        urlencode_data = b"save=True&package=all&tag=all"
+        urlencode_data = "save=True&package=all&tag=all"
         fs = self.get_fs(urlencode_data)
 
         def __get_server(env):
@@ -100,7 +91,7 @@ class TestNotificationEdit(unittest.TestCase):
 
     def test_notificationedit_cancel_case(self):
         """Test notificationedit function valid case (cancel)."""
-        urlencode_data = b"cancel=True"
+        urlencode_data = "cancel=True"
         fs = self.get_fs(urlencode_data)
 
         def __get_server(env):
@@ -121,7 +112,7 @@ class TestNotificationEdit(unittest.TestCase):
 
     def test_notificationedit_another_case(self):
         """Test notificationedit function valid case (another)."""
-        urlencode_data = b"another=True"
+        urlencode_data = "another=True"
         fs = self.get_fs(urlencode_data)
 
         def __get_server(env):

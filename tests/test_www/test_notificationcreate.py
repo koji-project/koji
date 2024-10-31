@@ -1,11 +1,10 @@
 from unittest import mock
 import unittest
-import cgi
 
 import koji
-from io import BytesIO
 from .loadwebindex import webidx
 from koji.server import ServerRedirect
+from kojiweb.util import FieldStorageCompat
 
 
 class TestNotificationCreate(unittest.TestCase):
@@ -27,16 +26,8 @@ class TestNotificationCreate(unittest.TestCase):
     def tearDown(self):
         mock.patch.stopall()
 
-    def get_fs(self, urlencode_data):
-        urlencode_environ = {
-            'CONTENT_LENGTH': str(len(urlencode_data)),
-            'CONTENT_TYPE': 'application/x-www-form-urlencoded',
-            'QUERY_STRING': '',
-            'REQUEST_METHOD': 'POST',
-        }
-        data = BytesIO(urlencode_data)
-        data.seek(0)
-        return cgi.FieldStorage(fp=data, environ=urlencode_environ)
+    def get_fs(self, query):
+        return FieldStorageCompat({'QUERY_STRING': query})
 
     def test_notificationcreate_add_case_not_logged(self):
         """Test notificationcreate function raises exception when user is not logged."""
@@ -47,7 +38,7 @@ class TestNotificationCreate(unittest.TestCase):
             },
             'koji.currentUser': None,
         }
-        urlencode_data = b"add=True&package=2&tag=11"
+        urlencode_data = "add=True&package=2&tag=11"
         fs = self.get_fs(urlencode_data)
 
         def __get_server(env):
@@ -66,7 +57,7 @@ class TestNotificationCreate(unittest.TestCase):
 
     def test_notificationcreate_add_case_int(self):
         """Test notificationcreate function valid case (add)"""
-        urlencode_data = b"add=True&package=2&tag=11&success_only=True"
+        urlencode_data = "add=True&package=2&tag=11&success_only=True"
         fs = self.get_fs(urlencode_data)
 
         def __get_server(env):
@@ -87,7 +78,7 @@ class TestNotificationCreate(unittest.TestCase):
 
     def test_notificationcreate_add_case_all(self):
         """Test notificationcreate function valid case (add)"""
-        urlencode_data = b"add=True&package=all&tag=all"
+        urlencode_data = "add=True&package=all&tag=all"
         fs = self.get_fs(urlencode_data)
 
         def __get_server(env):
@@ -107,7 +98,7 @@ class TestNotificationCreate(unittest.TestCase):
 
     def test_notificationcreate_cancel_case(self):
         """Test notificationcreate function valid case (cancel)."""
-        urlencode_data = b"cancel=True"
+        urlencode_data = "cancel=True"
         fs = self.get_fs(urlencode_data)
 
         def __get_server(env):
@@ -126,7 +117,7 @@ class TestNotificationCreate(unittest.TestCase):
 
     def test_notificationcreate_another_case(self):
         """Test notificationcreate function valid case (another)."""
-        urlencode_data = b"another=True"
+        urlencode_data = "another=True"
         fs = self.get_fs(urlencode_data)
 
         def __get_server(env):

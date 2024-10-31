@@ -1,12 +1,11 @@
 from __future__ import absolute_import
 import unittest
 from unittest import mock
-import cgi
 
 import koji
-from io import BytesIO
 from koji.server import ServerRedirect
 from .loadwebindex import webidx
+from kojiweb.util import FieldStorageCompat
 
 
 class TestActiveSessionDelete(unittest.TestCase):
@@ -33,16 +32,8 @@ class TestActiveSessionDelete(unittest.TestCase):
     def tearDown(self):
         mock.patch.stopall()
 
-    def get_fs(self, urlencode_data):
-        urlencode_environ = {
-            'CONTENT_LENGTH': str(len(urlencode_data)),
-            'CONTENT_TYPE': 'application/x-www-form-urlencoded',
-            'QUERY_STRING': '',
-            'REQUEST_METHOD': 'POST',
-        }
-        data = BytesIO(urlencode_data)
-        data.seek(0)
-        return cgi.FieldStorage(fp=data, environ=urlencode_environ)
+    def get_fs(self, query):
+        return FieldStorageCompat({'QUERY_STRING': query})
 
     def test_tagparent_remove(self):
         """Test tagparent function with remove action."""
@@ -103,8 +94,8 @@ class TestActiveSessionDelete(unittest.TestCase):
         parent_id = 123
         action = 'add'
         data = [{'parent_id': 111}]
-        urlencode_data = (b"add=true&priority=10&maxdepth=5&pkg_filter=pkg_filter&"
-                          b"intransitive=true&noconfig=false")
+        urlencode_data = ("add=true&priority=10&maxdepth=5&pkg_filter=pkg_filter&"
+                          "intransitive=true&noconfig=false")
         fs = self.get_fs(urlencode_data)
 
         def __get_server(env):
@@ -130,7 +121,7 @@ class TestActiveSessionDelete(unittest.TestCase):
         tag_id = 456
         parent_id = 123
         action = 'add'
-        urlencode_data = b"cancel=true"
+        urlencode_data = "cancel=true"
         fs = self.get_fs(urlencode_data)
 
         def __get_server(env):
@@ -154,7 +145,7 @@ class TestActiveSessionDelete(unittest.TestCase):
         action = 'add'
         data = [{'parent_id': 111, 'priority': 1}]
 
-        urlencode_data = b"edit=true"
+        urlencode_data = "edit=true"
         fs = self.get_fs(urlencode_data)
 
         def __get_server(env):
@@ -177,7 +168,7 @@ class TestActiveSessionDelete(unittest.TestCase):
         action = 'add'
         data = [{'parent_id': 123, 'priority': 1}]
 
-        urlencode_data = b"edit=true"
+        urlencode_data = "edit=true"
         fs = self.get_fs(urlencode_data)
 
         def __get_server(env):
@@ -202,7 +193,7 @@ class TestActiveSessionDelete(unittest.TestCase):
                 {'parent_id': 123, 'priority': 2},
                 {'parent_id': 123, 'priority': 3}]
 
-        urlencode_data = b"edit=true"
+        urlencode_data = "edit=true"
         fs = self.get_fs(urlencode_data)
 
         def __get_server(env):

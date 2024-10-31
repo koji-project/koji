@@ -1,10 +1,9 @@
 from unittest import mock
 import unittest
-import cgi
 
 import koji
-from io import BytesIO
 from .loadwebindex import webidx
+from kojiweb.util import FieldStorageCompat
 
 
 class TestSearch(unittest.TestCase):
@@ -18,16 +17,8 @@ class TestSearch(unittest.TestCase):
             },
             'koji.currentUser': None,
         }
-        urlencode_data = b"terms=test&type=package&match=testmatch"
-        urlencode_environ = {
-            'CONTENT_LENGTH': str(len(urlencode_data)),
-            'CONTENT_TYPE': 'application/x-www-form-urlencoded',
-            'QUERY_STRING': '',
-            'REQUEST_METHOD': 'POST',
-        }
-        data = BytesIO(urlencode_data)
-        data.seek(0)
-        self.fs = cgi.FieldStorage(fp=data, environ=urlencode_environ)
+        urlencode_data = "terms=test&type=package&match=testmatch"
+        self.fs = FieldStorageCompat({'QUERY_STRING': urlencode_data})
 
         def __get_server(env):
             env['koji.form'] = self.fs

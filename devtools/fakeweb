@@ -111,6 +111,7 @@ def application(environ, start_response):
     # provide some needed info
     environ['SCRIPT_FILENAME'] = wsgi_publisher.__file__
     environ['REQUEST_URI'] = get_url(environ)
+    environ['REQUEST_SCHEME'] = environ['wsgi.url_scheme']
     set_config(environ)
     if FIRST:
         pprint.pprint(environ)
