@@ -33,7 +33,7 @@ class TestRepoInfo(unittest.TestCase):
 
         webidx.repoinfo(self.environ, self.repo_id)
         self.server.repoInfo.assert_called_once_with(int(self.repo_id), strict=False)
-        self.server.listBuildroots.assert_called_once_with(repoID=int(self.repo_id))
+        self.server.listBuildroots.assert_called_once_with(repoID=int(self.repo_id), queryOpts={'countOnly': True})
 
     def test_repoinfo_not_dist(self):
         """Test repoinfo function - not dist repo"""
@@ -46,4 +46,7 @@ class TestRepoInfo(unittest.TestCase):
 
         webidx.repoinfo(self.environ, self.repo_id)
         self.server.repoInfo.assert_called_once_with(int(self.repo_id), strict=False)
-        self.server.listBuildroots.assert_called_once_with(repoID=int(self.repo_id))
+        self.server.listBuildroots.assert_called_once_with(repoID=int(self.repo_id), queryOpts={'countOnly': True})
+
+
+# the end

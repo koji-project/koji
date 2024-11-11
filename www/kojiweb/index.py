@@ -797,6 +797,10 @@ def taskinfo(environ, taskID):
     else:
         values['perms'] = []
 
+    values['requests'] = []
+    if task['method'] == 'newRepo':
+        values['requests'] = server.repo.queryQueue([['task_id', '=', task['id']]], ['id'])
+
     values['koji'] = koji
     values['S'] = SafeValue
 
@@ -1051,8 +1055,9 @@ def taginfo(environ, tagID, all='0', packageOrder='package_name', packageStart=N
     values['srcTargets'] = srcTargets
     values['destTargets'] = destTargets
     values['all'] = all
-    values['repo'] = server.getRepo(tag['id'], state=koji.REPO_READY)
+    values['repo'] = server.repo.get(tag['id'])
     values['external_repos'] = server.getExternalRepoList(tag['id'])
+    values['request_count'] = server.repo.queryQueue([['tag_id', '=', tag['id']]], opts={'countOnly': True})
 
     child = None
     if childID is not None:
@@ -2696,11 +2701,70 @@ def repoinfo(environ, repoID):
         else:
             values['repo_json'] = os.path.join(
                 pathinfo.repo(repo_info['id'], repo_info['tag_name']), 'repo.json')
-    num_buildroots = len(server.listBuildroots(repoID=repoID)) or 0
-    values['numBuildroots'] = num_buildroots
+        num_buildroots = server.listBuildroots(repoID=repoID, queryOpts={'countOnly': True})
+        values['numBuildroots'] = num_buildroots
+        values['requests'] = server.repo.queryQueue([['repo_id', '=', repoID]], ['id'])
+
     values['state_name'] = kojiweb.util.repoState(repo_info['state'])
     values['create_time'] = kojiweb.util.formatTimeLong(repo_info['create_ts'])
     return _genHTML(environ, 'repoinfo.html.j2')
+
+
+def reporequest(environ, reqID):
+    values = _initValues(environ, 'Repo Request', 'tags')
+    server = _getServer(environ)
+
+    req_id = int(reqID)
+    values['req_id'] = req_id
+    rows = server.repo.queryQueue([['id', '=', req_id]], '**')
+    if not rows:
+        raise koji.GenericError("No such repo request: %s" % req_id)
+    req = rows[0]
+    if req['at_event']:
+        values['at_event'] = server.getEvent(req['at_event'])
+    elif req['min_event']:
+        values['min_event'] = server.getEvent(req['min_event'])
+    else:
+        # invalid, but technically not blocked in db
+        values['min_event'] = None
+    values['req'] = req
+    return _genHTML(environ, 'reporequest.chtml')
+
+
+def reporequests(environ, active="true", tag=None, start=None, order=None):
+    values = _initValues(environ, 'Repo Requests', 'tags')
+    server = _getServer(environ)
+
+    clauses = []
+    desc_parts = []
+    if active.lower() == 'all':
+        desc_parts.append('Recent repo requests')
+    elif active.lower() in ('false', 'no', '0'):
+        desc_parts.append('Inactive repo requests')
+        clauses.append(["active", False])
+        active = 'false'
+    else:
+        desc_parts.append('Active repo requests')
+        clauses.append(["active", True])
+        active = 'true'
+    if tag:
+        taginfo = server.getTag(_convert_if_int(tag), strict=True, event='auto')
+        clauses.append(["tag_id", taginfo['id']])
+        desc_parts.append('for tag %(name)s' % taginfo)
+        tag = taginfo['name']
+    else:
+        tag = None
+    if order is None:
+        order = '-id'
+    values['desc'] = ' '.join(desc_parts)
+    values['order'] = order
+    values['active'] = active
+    values['tag'] = tag
+    kojiweb.util.paginateMethod(server, values, 'repo.queryQueue',
+                                args=(clauses, '**'),
+                                start=start, dataName='reqs', prefix='req', order=order,
+                                optsarg='opts')
+    return _genHTML(environ, 'reporequests.chtml')
 
 
 def activesession(environ, start=None, order=None):

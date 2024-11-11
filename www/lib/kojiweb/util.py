@@ -353,17 +353,17 @@ def _sortImage(orderVal, sortKey, orderVar):
 
 @safe_return
 @pass_context
-def passthrough(context, *varnames, prefix='&', invert=False):
+def passthrough(context, *varnames, prefix='&', invert=False, toggleOrder=None):
     if invert:
         _PASSTHROUGH = context.get('_PASSTHROUGH', None)
         if _PASSTHROUGH is None:
             raise Exception('template does not define _PASSTHROUGH')
         varnames = {n for n in _PASSTHROUGH if n not in varnames}
     data = {n: context.get(n, default=None) for n in varnames}
-    return _passthrough(data, prefix)
+    return _passthrough(data, prefixi, toggleOrder)
 
 
-def _passthrough(data, prefix='&'):
+def _passthrough(data, prefix='&', toggleOrder=None):
     """
     Construct a url parameter string from template vars
 
@@ -380,6 +380,11 @@ def _passthrough(data, prefix='&'):
     result = []
     for var in sorted(data):
         value = data[var]
+        if var == 'order' and toggleOrder is not None:
+            if value == toggleOrder:
+                value = '-' + value
+            else:
+                value = toggleOrder
         if value is not None:
             if isinstance(value, str):
                 if value.isdigit():
@@ -396,7 +401,7 @@ def _passthrough(data, prefix='&'):
 
 
 @pass_context
-def passthrough_except(context, *exclude, prefix='&'):
+def passthrough_except(context, *exclude, prefix='&', toggleOrder=None):
     """
     Construct a string suitable for use as URL
     parameters.  The template calling this method must have
@@ -408,7 +413,7 @@ def passthrough_except(context, *exclude, prefix='&'):
     """
     # note that we have to pass context ourselves here
     # the decorator only works when called directly from the template
-    return passthrough(context, *exclude, prefix=prefix, invert=True)
+    return passthrough(context, *exclude, prefix=prefix, invert=True, toggleOrder=toggleOrder)
 
 
 def sortByKeyFuncNoneGreatest(key):
@@ -459,7 +464,7 @@ def paginateList(values, data, start, dataName, prefix=None, order=None, noneGre
 
 def paginateMethod(server, values, methodName, args=None, kw=None,
                    start=None, dataName=None, prefix=None, order=None, pageSize=50,
-                   first_page_count=True):
+                   first_page_count=True, optsarg='queryOpts'):
     """Paginate the results of the method with the given name when called with the given args and
     kws. The method must support the queryOpts keyword parameter, and pagination is done in the
     database.
@@ -483,10 +488,10 @@ def paginateMethod(server, values, methodName, args=None, kw=None,
     if start == 0 and not first_page_count:
         totalRows = None
     else:
-        kw['queryOpts'] = {'countOnly': True}
+        kw[optsarg] = {'countOnly': True}
         totalRows = getattr(server, methodName)(*args, **kw)
 
-    kw['queryOpts'] = {'order': order,
+    kw[optsarg] = {'order': order,
                        'offset': start,
                        'limit': pageSize}
     data = getattr(server, methodName)(*args, **kw)
