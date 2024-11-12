@@ -8119,8 +8119,8 @@ def handle_unblock_notification(goptions, session, args):
 
 def handle_version(goptions, session, args):
     """Report client and hub versions"""
-    ensure_connection(session, goptions)
     print('Client: %s' % koji.__version__)
+    ensure_connection(session, goptions)
     try:
         version = session.getKojiVersion()
         print("Hub:    %s" % version)
