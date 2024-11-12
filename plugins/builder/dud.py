@@ -213,7 +213,7 @@ class DudCreateImageTask(BaseBuildTask):
             rv = broot.mock(['--cwd', broot.tmpdir(within=True), '--chroot', '--'] + cmd)
             if rv:
                 raise koji.GenericError("DUD build failed while getting the involved rpm '{}': {}"
-                      .format(rpm, str(rv)))
+                                        .format(rpm, str(rv)))
 
         # Create the dd directory structure.
         cmd = ['/usr/bin/mkdir']
