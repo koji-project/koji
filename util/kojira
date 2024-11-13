@@ -443,80 +443,43 @@ class RepoManager(object):
             data['id'] = erepo_id
             self.checkExternalRepo(data, arches, ts_cache)
 
-    def currencyChecker(self, session):
-        """Continually checks repos for currency. Runs as a separate thread"""
+    def threadLoop(self, session, name):
+        """Wrapper for running thread handlers in a loop"""
+        # we should be passed a subsession of main
         self.session = session
-        self.logger = logging.getLogger("koji.repo.currency")
-        self.logger.info('currencyChecker starting')
+        handler = getattr(self, f'do_{name}')
+        self.logger = logging.getLogger('koji.repo.{name}')
+        self.logger.info('{name} thread starting')
         try:
             while True:
-                self.session.repo.updateEndEvents()
-                # TODO does this still need to be its own thread?
+                handler()
                 time.sleep(self.options.sleeptime)
         except Exception:
-            self.logger.exception('Error in currency checker thread')
+            self.logger.exception(f'Error in {name} thread')
             raise
         finally:
             session.logout()
 
-    def currencyExternalChecker(self, session):
-        """Continually checks repos for external repo currency. Runs as a separate thread"""
-        self.session = session
-        self.logger = logging.getLogger("koji.repo.currency_external")
-        self.logger.info('currencyExternalChecker starting')
-        try:
-            while True:
-                self.checkExternalRepos()
-                time.sleep(self.options.sleeptime)
-        except Exception:
-            self.logger.exception('Error in external currency checker thread')
-            raise
-        finally:
-            session.logout()
+    def do_currency(self):
+        """Checks repos for currency"""
+        # this call can take a while
+        self.session.repo.updateEndEvents()
 
-    def regenLoop(self, session):
-        """Triggers regens as needed/possible. Runs in a separate thread"""
-        self.session = session
-        self.logger = logging.getLogger("koji.repo.regen")
-        self.logger.info('regenLoop starting')
-        try:
-            while True:
-                self.session.repo.checkQueue()
-                time.sleep(self.options.sleeptime)
-        except Exception:
-            self.logger.exception('Error in regen thread')
-            raise
-        finally:
-            session.logout()
+    def do_check_external(self):
+        """Check external repos"""
+        self.checkExternalRepos()
 
-    def autoregenLoop(self, session):
-        """Triggers automatic regens as needed/possible. Runs in a separate thread"""
-        self.session = session
-        self.logger = logging.getLogger("koji.repo.autoregen")
-        self.logger.info('autoregenLoop starting')
-        try:
-            while True:
-                self.session.repo.autoRequests()
-                time.sleep(self.options.sleeptime)
-        except Exception:
-            self.logger.exception('Error in auto regen thread')
-            raise
-        finally:
-            session.logout()
+    def do_regen(self, session):
+        """Triggers regens as needed/possible"""
+        self.session.repo.checkQueue()
 
-    def rmtreeLoop(self, session):
-        self.session = session
-        logger = logging.getLogger("koji.repo.rmtree")
-        try:
-            while True:
-                logger.debug('queue length: %d', len(self.delete_queue))
-                self.checkQueue()
-                time.sleep(self.options.sleeptime)
-        except Exception:
-            logger.exception('Error in rmtree thread')
-            raise
-        finally:
-            session.logout()
+    def do_autoregen(self, session):
+        """Triggers automatic regens as needed/possible"""
+        self.session.repo.autoRequests()
+
+    def do_rmtree(self, session):
+        logger.debug('queue length: %d', len(self.delete_queue))
+        self.checkQueue()
 
     def pruneLocalRepos(self):
         # non-dist repos are always on the default volume
@@ -681,10 +644,10 @@ def main(options, session):
     def shutdown(*args):
         raise SystemExit
     signal.signal(signal.SIGTERM, shutdown)
-    tnames = ['currencyChecker', 'regenLoop', 'autoregenLoop', 'rmtreeLoop']
+    tnames = ['currency', 'regen', 'autoregen', 'rmtree']
     if options.check_external_repos:
-        tnames.append('currencyExternalChecker')
-    threads = {name: start_thread(session, repomgr, name) for name in tnames}
+        tnames.append('check_external')
+    threads = {name: repomgr.threadLoop(session, name) for name in tnames}
     logger.info("Entering main loop")
     exit_code = 0
     while True:
