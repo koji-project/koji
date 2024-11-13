@@ -481,10 +481,25 @@ class RepoManager(object):
         self.logger.info('regenLoop starting')
         try:
             while True:
-                self.regenRepos()
+                self.session.repo.checkQueue()
                 time.sleep(self.options.sleeptime)
         except Exception:
             self.logger.exception('Error in regen thread')
+            raise
+        finally:
+            session.logout()
+
+    def autoregenLoop(self, session):
+        """Triggers automatic regens as needed/possible. Runs in a separate thread"""
+        self.session = session
+        self.logger = logging.getLogger("koji.repo.autoregen")
+        self.logger.info('autoregenLoop starting')
+        try:
+            while True:
+                self.session.repo.autoRequests()
+                time.sleep(self.options.sleeptime)
+        except Exception:
+            self.logger.exception('Error in auto regen thread')
             raise
         finally:
             session.logout()
@@ -648,11 +663,6 @@ class RepoManager(object):
                 repo.delete_check()
             elif repo.state == koji.REPO_PROBLEM:
                 repo.handle_problem()
-
-    def regenRepos(self):
-        """Trigger repo requests as needed"""
-        self.session.repo.autoRequests()
-        self.session.repo.checkQueue()
 
 
 def start_currency_checker(session, repomgr):
