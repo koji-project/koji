@@ -469,15 +469,15 @@ class RepoManager(object):
         """Check external repos"""
         self.checkExternalRepos()
 
-    def do_regen(self, session):
+    def do_regen(self):
         """Triggers regens as needed/possible"""
         self.session.repo.checkQueue()
 
-    def do_autoregen(self, session):
+    def do_autoregen(self):
         """Triggers automatic regens as needed/possible"""
         self.session.repo.autoRequests()
 
-    def do_rmtree(self, session):
+    def do_rmtree(self):
         logger.debug('queue length: %d', len(self.delete_queue))
         self.checkQueue()
 
