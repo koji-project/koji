@@ -665,37 +665,10 @@ class RepoManager(object):
                 repo.handle_problem()
 
 
-def start_currency_checker(session, repomgr):
+def start_thread(session, repomgr, name):
+    handler = getattr(repomgr, name)
     subsession = session.subsession()
-    thread = threading.Thread(name='currencyChecker',
-                              target=repomgr.currencyChecker, args=(subsession,))
-    thread.daemon = True
-    thread.start()
-    return thread
-
-
-def start_external_currency_checker(session, repomgr):
-    subsession = session.subsession()
-    thread = threading.Thread(name='currencyExternalChecker',
-                              target=repomgr.currencyExternalChecker, args=(subsession,))
-    thread.daemon = True
-    thread.start()
-    return thread
-
-
-def start_regen_loop(session, repomgr):
-    subsession = session.subsession()
-    thread = threading.Thread(name='regenLoop',
-                              target=repomgr.regenLoop, args=(subsession,))
-    thread.daemon = True
-    thread.start()
-    return thread
-
-
-def start_rmtree_loop(session, repomgr):
-    subsession = session.subsession()
-    thread = threading.Thread(name='rmtreeLoop',
-                              target=repomgr.rmtreeLoop, args=(subsession,))
+    thread = threading.Thread(name=name, target=handler, args=(subsession,))
     thread.daemon = True
     thread.start()
     return thread
@@ -708,11 +681,10 @@ def main(options, session):
     def shutdown(*args):
         raise SystemExit
     signal.signal(signal.SIGTERM, shutdown)
-    curr_chk_thread = start_currency_checker(session, repomgr)
+    tnames = ['currencyChecker', 'regenLoop', 'autoregenLoop', 'rmtreeLoop']
     if options.check_external_repos:
-        curr_ext_chk_thread = start_external_currency_checker(session, repomgr)
-    regen_thread = start_regen_loop(session, repomgr)
-    rmtree_thread = start_rmtree_loop(session, repomgr)
+        tnames.append('currencyExternalChecker')
+    threads = {name: start_thread(session, repomgr, name) for name in tnames}
     logger.info("Entering main loop")
     exit_code = 0
     while True:
@@ -720,18 +692,10 @@ def main(options, session):
             repomgr.updateRepos()
             repomgr.printState()
             repomgr.pruneLocalRepos()
-            if not curr_chk_thread.is_alive():
-                logger.error("Currency checker thread died. Restarting it.")
-                curr_chk_thread = start_currency_checker(session, repomgr)
-            if options.check_external_repos and not curr_ext_chk_thread.is_alive():
-                logger.error("External currency checker thread died. Restarting it.")
-                curr_ext_chk_thread = start_external_currency_checker(session, repomgr)
-            if not regen_thread.is_alive():
-                logger.error("Regeneration thread died. Restarting it.")
-                regen_thread = start_regen_loop(session, repomgr)
-            if not rmtree_thread.is_alive():
-                logger.error("rmtree thread died. Restarting it.")
-                rmtree_thread = start_rmtree_loop(session, repomgr)
+            for name in tnames:
+                if not threads[name].is_alive():
+                    logger.error(f'{name} thread died. Restarting it.')
+                    threads[name] = start_thread(session, repomgr, name)
         except KeyboardInterrupt:
             logger.warning("User exit")
             break
