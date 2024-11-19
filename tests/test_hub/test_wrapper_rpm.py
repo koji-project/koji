@@ -76,18 +76,6 @@ class TestWrapperRPM(unittest.TestCase):
         self.assertEqual("wrapper rpms for %s have already been built" % self.build,
                          str(cm.exception))
 
-    def test_no_repo_for_tag(self):
-        self.context.opts.get.return_value = True
-        self.exports.getBuild.return_value = self.buildinfo
-        self.list_rpms.return_value = []
-        self.exports.getBuildTarget.return_value = self.targetinfo
-        self.exports.getTag.return_value = self.taginfo
-        self.exports.getRepo.return_value = None
-
-        with self.assertRaises(koji.PreBuildError) as cm:
-            self.exports.wrapperRPM(self.build, self.url, self.target)
-        self.assertEqual("no repo for tag: %s" % self.taginfo['name'], str(cm.exception))
-
     def test_priority_without_admin(self):
         priority = -10
         self.context.opts.get.return_value = True
@@ -100,3 +88,23 @@ class TestWrapperRPM(unittest.TestCase):
         with self.assertRaises(koji.GenericError) as cm:
             self.exports.wrapperRPM(self.build, self.url, self.target, priority=priority)
         self.assertEqual("only admins may create high-priority tasks", str(cm.exception))
+
+    def test_repo_id_ignored(self):
+        self.context.opts.get.return_value = True
+        self.exports.getBuild.return_value = self.buildinfo
+        self.exports.getBuildTarget.return_value = self.targetinfo
+        self.list_rpms.return_value = []
+        self.exports.getTag.return_value = self.taginfo
+        self.exports.getRepo.return_value = self.repoinfo
+        self.context.session.hasPerm.return_value = False
+
+        opts = {'repo_id': 'REPO', 'scratch': True}
+        self.exports.wrapperRPM(self.build, self.url, self.target, opts=opts)
+
+        self.make_task.assert_called_once()
+        taskargs = self.make_task.call_args.args[1]
+        expect_opts = {'scratch': True}  # repo_id filtered out
+        self.assertEqual(taskargs[4], expect_opts)
+
+
+# the end

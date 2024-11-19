@@ -2248,13 +2248,17 @@ class WrapperRPMTask(BaseBuildTask):
                 error_msg = 'custom_user_metadata is not JSON serializable'
                 raise koji.BuildError(error_msg)
 
+        # sort out remaining buildroot params
+        build_tag = self.session.getTag(build_target['build_tag'], strict=True)
         repo_id = opts.get('repo_id')
         if not repo_id:
-            raise koji.BuildError("A repo id must be provided")
-
-        repo_info = self.session.repoInfo(repo_id, strict=True)
+            # a parent task will generally pass in the repo it used, but if
+            # we are top level, we'll need to find our own
+            repo_info = self.getRepo(build_tag['id'])
+        else:
+            repo_info = self.session.repoInfo(repo_id, strict=True)
+        repo_id = repo_info['id']
         event_id = repo_info['create_event']
-        build_tag = self.session.getTag(build_target['build_tag'], strict=True)
         br_arch = self.find_arch('noarch', self.session.host.getHost(
         ), self.session.getBuildConfig(build_tag['id'], event=event_id))
 
