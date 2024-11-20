@@ -150,9 +150,30 @@ class ManagedRepo(object):
         if self.data['end_event'] is None and not self.data['custom_opts']:
             # repo is current and has default options. keep it
             return
-        # otherwise repo is either obsolete or custom
-        if self.get_age() > self.options.repo_lifetime:
-            self.expire()
+
+        # keep repos for configured lifetime
+        if self.get_age() <= self.options.repo_lifetime:
+            return
+
+        # keep latest default repo for build tags
+        if not self.data['custom_opts']:
+            targets = self.session.get_build_targets(buildTagID=self.data['tag_id'])
+            if targets and self.is_latest():
+                return
+
+        self.expire()
+
+    def is_latest(self):
+        """Check if repo is latest for its tag (not necessarily current)"""
+        # similar query to symlink_if_latest on hub
+        clauses = [
+            ['tag_id', '=', self.data['tag_id']],
+            ['state', '=', koji.REPO_READY],
+            ['custom_opts', '=', '{}'],
+            ['create_event', '>', self.data['create_event']],
+        ]
+        newer = self.session.repo.query(clauses, ['id'])
+        return not newer  # True if no newer matching repo
 
     def dist_expire_check(self):
         """Check to see if a dist repo should be expired"""
