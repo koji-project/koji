@@ -332,9 +332,9 @@ class BuildRoot(object):
         for key in self.config['extra']:
             if key.startswith('rpm.macro.'):
                 macro = '%' + key[10:]
-                opts['tag_macros'][macro] = self.config['extra'][key]
+                opts['tag_macros'][macro] = str(self.config['extra'][key])
             elif key.startswith('rpm.env.'):
-                opts['tag_envvars'][key[8:]] = self.config['extra'][key]
+                opts['tag_envvars'][key[8:]] = str(self.config['extra'][key])
         if 'mock.use_bootstrap' in self.config['extra']:
             opts['use_bootstrap'] = bool(self.config['extra']['mock.use_bootstrap'])
 
