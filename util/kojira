@@ -155,9 +155,15 @@ class ManagedRepo(object):
         if self.get_age() <= self.options.repo_lifetime:
             return
 
-        # keep latest default repo for build tags
+        # remaining checks are more expensive, don't recheck every cycle
+        last_check = getattr(self, 'expire_check_ts', None)
+        if last_check and time.time() - last_check < self.options.recheck_period:
+            return
+        self.expire_check_ts = time.time()
+
+        # keep latest default repo for build tags, even if not current
         if not self.data['custom_opts']:
-            targets = self.session.get_build_targets(buildTagID=self.data['tag_id'])
+            targets = self.session.getBuildTargets(buildTagID=self.data['tag_id'])
             if targets and self.is_latest():
                 return
 
@@ -777,7 +783,8 @@ def get_options():
                 'expired_repo_lifetime': None,  # default handled below
                 'deleted_repo_lifetime': None,  # compat alias for expired_repo_lifetime
                 'init_timeout': 7200,
-                'reference_recheck_period': 3600,
+                'recheck_period': 3600,
+                'reference_recheck_period': None,  # defaults to recheck_period
                 'no_repo_effective_age': 2 * 24 * 3600,
                 'check_external_repos': True,
                 'sleeptime': 15,
@@ -791,7 +798,7 @@ def get_options():
                     'retry_interval', 'max_retries', 'offline_retry_interval',
                     'max_delete_processes', 'dist_repo_lifetime',
                     'sleeptime', 'expired_repo_lifetime',
-                    'repo_lifetime', 'reference_recheck_period')
+                    'repo_lifetime', 'recheck_period', 'reference_recheck_period')
         str_opts = ('topdir', 'server', 'user', 'password', 'logfile', 'principal', 'keytab',
                     'cert', 'serverca', 'ccache')
         bool_opts = ('verbose', 'debug', 'ignore_stray_repos', 'offline_retry',
@@ -831,6 +838,8 @@ def get_options():
             options.expired_repo_lifetime = options.deleted_repo_lifetime
     elif options.expired_repo_lifetime is None:
         options.expired_repo_lifetime = 7 * 24 * 3600
+    if options.reference_recheck_period is None:
+        options.reference_recheck_period = options.recheck_period
     if options.logfile in ('', 'None', 'none'):
         options.logfile = None
     # special handling for cert defaults
