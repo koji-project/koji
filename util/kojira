@@ -448,8 +448,8 @@ class RepoManager(object):
         # we should be passed a subsession of main
         self.session = session
         handler = getattr(self, f'do_{name}')
-        self.logger = logging.getLogger('koji.repo.{name}')
-        self.logger.info('{name} thread starting')
+        self.logger = logging.getLogger(f'koji.repo.{name}')
+        self.logger.info(f'{name} thread starting')
         try:
             while True:
                 handler()
@@ -629,9 +629,9 @@ class RepoManager(object):
 
 
 def start_thread(session, repomgr, name):
-    handler = getattr(repomgr, name)
+    handler = getattr(repomgr, 'threadLoop')
     subsession = session.subsession()
-    thread = threading.Thread(name=name, target=handler, args=(subsession,))
+    thread = threading.Thread(name=name, target=handler, args=(subsession, name))
     thread.daemon = True
     thread.start()
     return thread
@@ -647,7 +647,7 @@ def main(options, session):
     tnames = ['currency', 'regen', 'autoregen', 'rmtree']
     if options.check_external_repos:
         tnames.append('check_external')
-    threads = {name: repomgr.threadLoop(session, name) for name in tnames}
+    threads = {name: start_thread(session, repomgr, name) for name in tnames}
     logger.info("Entering main loop")
     exit_code = 0
     while True:
