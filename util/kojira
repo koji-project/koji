@@ -434,7 +434,8 @@ class RepoManager(object):
         # getting the list of all tag arches for all tags that might use the repo is
         # way more expensive
         if not arches:
-            self.logger.warning('No arches reported. Unable to check external repos with $arch')
+            self.logger.warning('No arches reported by hub. Are any hosts enabled? '
+                                'Unable to check external repos containing $arch')
 
         ts_cache = {}
         for erepo_id in sorted(external_repos):
