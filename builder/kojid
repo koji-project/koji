@@ -2033,9 +2033,7 @@ class BuildMavenTask(BaseBuildTask):
                       os.path.join(outputdir, maven_info['artifact_id'] + '-' +
                                    maven_info['version'] + '-patches.zip'))
 
-        logs = ['checkout.log']
-        if self.opts.get('patches'):
-            logs.append('patches.log')
+        logs = []
         output_files = {}
 
         for path, dirs, files in os.walk(outputdir):
