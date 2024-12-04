@@ -2033,9 +2033,7 @@ class BuildMavenTask(BaseBuildTask):
                       os.path.join(outputdir, maven_info['artifact_id'] + '-' +
                                    maven_info['version'] + '-patches.zip'))
 
-        logs = ['checkout.log']
-        if self.opts.get('patches'):
-            logs.append('patches.log')
+        logs = []
         output_files = {}
 
         for path, dirs, files in os.walk(outputdir):
@@ -2058,8 +2056,13 @@ class BuildMavenTask(BaseBuildTask):
                 self.uploadFile(os.path.join(outputdir, relpath, filename),
                                 relPath=relpath)
 
-        # Also include the logs already upload by BuildRoot
+        # Also include the logs already uploaded by BuildRoot
         logs.extend(buildroot.logs)
+
+        # Also include the checkout logs (uploaded during checkout)
+        logs.append('checkout.log')
+        if self.opts.get('patches'):
+            logs.append('patches.log')
 
         buildroot.expire()
 
