@@ -10828,11 +10828,10 @@ class RootExports(object):
             raise koji.PreBuildError('wrapper rpms for %s have already been built' %
                                      koji.buildLabel(build))
         build_target = self.getBuildTarget(target, strict=True)
-        build_tag = self.getTag(build_target['build_tag'], strict=True)
-        repo_info = self.getRepo(build_tag['id'])
-        if not repo_info:
-            raise koji.PreBuildError('no repo for tag: %s' % build_tag['name'])
-        opts['repo_id'] = repo_info['id']
+        if 'repo_id' in opts:
+            # we ignore this opt for backwards compatibility
+            logger.warning('The wrapperRPM call ignores repo_id options')
+            del opts['repo_id']
 
         taskOpts = {}
         if priority:
