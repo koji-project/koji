@@ -281,7 +281,6 @@ Requires: squashfs-tools
 Requires(post): systemd
 Requires(preun): systemd
 Requires(postun): systemd
-Requires: /usr/bin/cvs
 Requires: /usr/bin/svn
 Requires: /usr/bin/git
 Requires: createrepo_c >= 0.11.0

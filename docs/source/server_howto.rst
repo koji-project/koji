@@ -98,10 +98,10 @@ koji components.
     HOME                    = .
     RANDFILE                = .rand
 
-    [ca] 
+    [ca]
     default_ca              = ca_default
 
-    [ca_default] 
+    [ca_default]
     dir                     = .
     certs                   = $dir/certs
     crl_dir                 = $dir/crl
@@ -120,7 +120,7 @@ koji components.
     preserve                = no
     policy                  = policy_match
 
-    [policy_match] 
+    [policy_match]
     countryName             = match
     stateOrProvinceName     = match
     organizationName        = match
@@ -128,7 +128,7 @@ koji components.
     commonName              = supplied
     emailAddress            = optional
 
-    [req] 
+    [req]
     default_bits            = 2048
     default_keyfile         = privkey.pem
     default_md              = sha256
@@ -137,7 +137,7 @@ koji components.
     x509_extensions         = v3_ca # The extensions to add to the self signed cert
     string_mask             = MASK:0x2002
 
-    [req_distinguished_name] 
+    [req_distinguished_name]
     countryName                     = Country Name (2 letter code)
     countryName_default             = AT
     countryName_min                 = 2
@@ -154,19 +154,19 @@ koji components.
     emailAddress                    = Email Address
     emailAddress_max                = 64
 
-    [req_attributes] 
+    [req_attributes]
     challengePassword               = A challenge password
     challengePassword_min           = 4
     challengePassword_max           = 20
     unstructuredName                = An optional company name
 
-    [usr_cert] 
+    [usr_cert]
     basicConstraints                = CA:FALSE
     nsComment                       = "OpenSSL Generated Certificate"
     subjectKeyIdentifier            = hash
     authorityKeyIdentifier          = keyid,issuer:always
 
-    [v3_ca] 
+    [v3_ca]
     subjectKeyIdentifier            = hash
     authorityKeyIdentifier          = keyid:always,issuer:always
     basicConstraints                = CA:true
@@ -979,7 +979,7 @@ override all these values. So, you can use e.g.
 
     [web]
     SiteName = koji
-    # KojiTheme = 
+    # KojiTheme =
 
     # Necessary urls
     KojiHubURL = https://koji-hub.example.com/kojihub
@@ -1220,6 +1220,13 @@ SCM checkout can contain multiple spec files (checkouted or created by
 ``source_cmd``). In such case spec file named same as a checkout directory will
 be selected.
 
+Supported SCMs are `git <https://git-scm.com/>`_ (base and over
+http/https/rsync), `Subversion <https://subversion.apache.org/>`_ (base and
+over http/https) and `CVS <https://www.nongnu.org/cvs/>`_ (base and over ssh).
+As CVS is the least used these days, it is now not installed by default on
+builders. If you need it, you've to ensure that ``cvs`` binary is available at
+the builders.
+
 .. note::
 
     We provide ``build_from_scm`` hub policy as an equivalent in version
@@ -1390,4 +1397,4 @@ operating a koji server.
 .. _createrepo: http://createrepo.baseurl.org/
 .. _mock: https://fedoraproject.org/wiki/Mock
 .. _Apache mod_ssl documentation:
-    https://httpd.apache.org/docs/trunk/mod/mod_ssl.html#ssloptions 
+    https://httpd.apache.org/docs/trunk/mod/mod_ssl.html#ssloptions
