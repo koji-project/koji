@@ -227,9 +227,8 @@ class RepoWatcher(object):
                     # we should have waited for builds before creating the request
                     # this could indicate further tagging/untagging, or a bug
                     self.logger.error('Repo request did not satisfy conditions')
-            else:
+            elif anon:
                 # check for repo directly
-                # either first pass or anon mode
                 repoinfo = self.session.repo.get(self.taginfo['id'], min_event=min_event,
                                                  at_event=self.at_event, opts=self.opts)
                 if repoinfo and self.check_repo(repoinfo):
