@@ -190,7 +190,9 @@ Note: scratch builds do not have build entries. Use download-task for those
             self.options,
             self.session,
             ['--task-id', build_id],
-            stderr='No associated builds for task %s\n' % build_id,
+            stderr='No associated builds for task %s\n'
+                   'If this is a scratch build, try using download-task instead\n'
+                   % build_id,
             stdout='',
             activate_session=None,
             exit_code=1
