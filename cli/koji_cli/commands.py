@@ -6851,7 +6851,9 @@ def anon_handle_download_build(options, session, args):
         if suboptions.task_id:
             builds = session.listBuilds(taskID=build)
             if not builds:
-                error("No associated builds for task %s" % build)
+                error("No associated builds for task %s"
+                      "\nIf this is a scratch build, try using download-task instead"
+                      % build)
             build = builds[0]['build_id']
 
     if suboptions.latestfrom:
