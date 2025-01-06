@@ -1188,6 +1188,9 @@ def anon_handle_mock_config(goptions, session, args):
         opts['bootstrap_image'] = buildcfg['extra']['mock.bootstrap_image']
     else:
         opts['use_bootstrap_image'] = False
+    if 'mock.bootstrap_image_ready' in buildcfg['extra']:
+        opts['bootstrap_image_ready'] = bool(buildcfg['extra']['mock.bootstrap_image_ready'])
+    # no else part as it would be driven by site-defaults.cfg
     if 'mock.use_bootstrap' in buildcfg['extra']:
         opts['use_bootstrap'] = buildcfg['extra']['mock.use_bootstrap']
     if 'mock.module_setup_commands' in buildcfg['extra']:

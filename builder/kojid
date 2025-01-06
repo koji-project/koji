@@ -469,6 +469,8 @@ class BuildRoot(object):
                 cmd.append('--new-chroot')
             else:
                 cmd.append('--old-chroot')
+        if self.config['extra'].get('mock.bootstrap_image_ready', False):
+            cmd.append('--bootstrap-image-ready')
         cmd.extend(args)
         self.logger.info(format_shell_cmd(cmd))
         workdir = getattr(self, 'workdir', None)
