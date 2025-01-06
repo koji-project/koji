@@ -91,7 +91,7 @@ build commands:
         wrapper-rpm               Build wrapper rpms for any archives associated with a build.
 
 download commands:
-        download-build            Download a built package
+        download-build            Download a completed build
         download-logs             Download logs for task
         download-task             Download the output of a build task
 

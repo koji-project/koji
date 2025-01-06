@@ -18,7 +18,10 @@ class TestDownloadBuild(utils.CliTestCase):
         self.options.debug = False
         self.session = mock.MagicMock()
         self.session.getAPIVersion.return_value = koji.API_VERSION
-        self.error_format = """Usage: %s download-build [options] <n-v-r | build_id | package>
+        self.error_format = """Usage: %s download-build [options] <n-v-r|build_id>
+
+Downloads files from the specified build entry
+Note: scratch builds do not have build entries. Use download-task for those
 (Specify the --help global option for a list of other help options)
 
 %s: error: {message}
@@ -187,7 +190,9 @@ class TestDownloadBuild(utils.CliTestCase):
             self.options,
             self.session,
             ['--task-id', build_id],
-            stderr='No associated builds for task %s\n' % build_id,
+            stderr='No associated builds for task %s\n'
+                   'If this is a scratch build, try using download-task instead\n'
+                   % build_id,
             stdout='',
             activate_session=None,
             exit_code=1
@@ -274,7 +279,10 @@ class TestDownloadBuild(utils.CliTestCase):
     def test_handle_add_volume_help(self):
         self.assert_help(
             anon_handle_download_build,
-            """Usage: %s download-build [options] <n-v-r | build_id | package>
+            """Usage: %s download-build [options] <n-v-r|build_id>
+
+Downloads files from the specified build entry
+Note: scratch builds do not have build entries. Use download-task for those
 (Specify the --help global option for a list of other help options)
 
 Options:

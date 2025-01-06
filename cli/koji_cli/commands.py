@@ -6814,8 +6814,10 @@ def handle_unblock_pkg(goptions, session, args):
 
 
 def anon_handle_download_build(options, session, args):
-    "[download] Download a built package"
-    usage = "usage: %prog download-build [options] <n-v-r | build_id | package>"
+    "[download] Download a completed build"
+    usage = "usage: %prog download-build [options] <n-v-r|build_id>"
+    usage += "\n\nDownloads files from the specified build entry"
+    usage += "\nNote: scratch builds do not have build entries. Use download-task for those"
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--arch", "-a", dest="arches", metavar="ARCH", action="append", default=[],
                       help="Only download packages for this arch (may be used multiple times)")
@@ -6849,7 +6851,9 @@ def anon_handle_download_build(options, session, args):
         if suboptions.task_id:
             builds = session.listBuilds(taskID=build)
             if not builds:
-                error("No associated builds for task %s" % build)
+                error("No associated builds for task %s"
+                      "\nIf this is a scratch build, try using download-task instead"
+                      % build)
             build = builds[0]['build_id']
 
     if suboptions.latestfrom:
