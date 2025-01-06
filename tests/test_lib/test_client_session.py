@@ -237,6 +237,10 @@ class TestMultiCall(unittest.TestCase):
 
     def test_MultiCallHack_weakref_validation(self):
         expected_exc = 'The session parameter must be a weak reference'
+        if six.PY2:
+            with self.assertRaisesRegexp(TypeError, expected_exc):
+                koji.MultiCallHack(self.ksession)
+            return
         with self.assertRaisesRegex(TypeError, expected_exc):
             koji.MultiCallHack(self.ksession)
 

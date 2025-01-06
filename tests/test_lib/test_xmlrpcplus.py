@@ -1,10 +1,16 @@
 # coding=utf-8
 from __future__ import absolute_import
-from six.moves import range
-import unittest
+
 import re
+import sys
+import unittest
+try:
+    from unittest.mock import ANY
+except ImportError:
+    from mock import ANY
 
 from six.moves import xmlrpc_client
+
 from koji import xmlrpcplus
 
 
@@ -98,6 +104,9 @@ class TestDump(unittest.TestCase):
                      'RegexNameInternal.compiled': re.compile('^[A-Za-z0-9/_.+-]+$')}
         dist_data_output = ({'MaxNameLengthInternal': 15,
                              'RegexNameInternal.compiled': "re.compile('^[A-Za-z0-9/_.+-]+$')"},)
+        if sys.version_info < (3, 7):
+            dist_data_output[0]['RegexNameInternal.compiled'] = ANY
+
         dict_data = (dict_data,)
         enc = xmlrpcplus.dumps(dict_data, methodresponse=1)
         params, method = xmlrpc_client.loads(enc)

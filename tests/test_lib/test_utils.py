@@ -758,7 +758,7 @@ class MavenUtilTestCase(unittest.TestCase):
 
     def _read_conf(self, cfile):
         path = os.path.dirname(__file__)
-        with open(path + cfile, 'rt', encoding='utf-8') as conf_file:
+        with open(path + cfile, 'rt') as conf_file:
             if six.PY2:
                 config = six.moves.configparser.SafeConfigParser()
                 config.readfp(conf_file)
@@ -1513,7 +1513,10 @@ class TestRmtree(unittest.TestCase):
         rmtree_nofork.assert_called_once()
         self.assertEqual(rmtree_nofork.call_args[0][0], path)
         _exit.assert_called_once()
-        logger = rmtree_nofork.call_args.kwargs['logger']
+        if mock.__package__ == 'unittest':
+            logger = rmtree_nofork.call_args.kwargs['logger']
+        else:
+            logger = rmtree_nofork.call_args[1]['logger']
 
     @mock.patch('tempfile.mkstemp')  # avoid stray temp file
     @mock.patch('koji.util._rmtree_nofork')

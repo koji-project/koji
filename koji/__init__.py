@@ -3825,13 +3825,14 @@ if six.PY3:
 
 
 def removeNonprintable(value):
+    # TODO: it's no more used in PY2
     # expects raw-encoded string, not unicode
     if six.PY2:
-        value = value.translate(None, NONPRINTABLE_CHARS)
+        return value.translate(None, NONPRINTABLE_CHARS)
     else:
         value = value.translate(NONPRINTABLE_CHARS_TABLE)
-    # remove broken unicode chars (some changelogs, etc.)
-    return value.encode('utf-8', errors='replace').decode()
+        # remove broken unicode chars (some changelogs, etc.)
+        return value.encode('utf-8', errors='replace').decode()
 
 
 def _fix_print(value):
