@@ -5831,6 +5831,50 @@ class NewRepoTask(BaseTaskHandler):
         self.logger.debug('Arch repo test passed %s' % arch)
         return True
 
+    def get_old_repo(self, tinfo):
+        # oldrepo is not used if createrepo_update is not set, so don't waste time
+        if not self.options.createrepo_update:
+            return None, None
+
+        # see if we can find a previous repo to update from
+        oldrepo = self.session.getRepo(tinfo['id'])
+        oldrepo_path = None
+        if oldrepo:
+            oldrepo_path = koji.pathinfo.repo(oldrepo['id'], tinfo['name'])
+            oldrepo['tag_id'] = tinfo['id']
+            return oldrepo, oldrepo_path
+
+        # If there is no old repo, try to find a suitable repo from a related tag
+        # Check configured hints first - can be a single tag or list
+        hint = tinfo['extra'].get('repo.oldrepo_hint', [])
+        if not isinstance(hint, list):
+            hint = [hint]
+        for _tag in hint:
+            reftag = self.session.getTag(_tag, strict=False)
+            if not reftag:
+                self.logger.warning('oldrepo_hint refers to invalid tag: %s', _tag)
+                continue
+            oldrepo = self.session.getRepo(reftag['id'])
+            if oldrepo:
+                oldrepo_path = koji.pathinfo.repo(oldrepo['id'], reftag['name'])
+                oldrepo['tag_id'] = reftag['id']
+                return oldrepo, oldrepo_path
+
+        # Otherwise consider tags in the inheritance
+        parents = self.session.getFullInheritance(tinfo['id'])
+        # we care about best candidate which should be (not necessarily)
+        # something on higher levels. Sort tags according to depth.
+        for link in sorted(parents, key=lambda x: x['currdepth']):
+            oldrepo = self.session.getRepo(link['parent_id'])
+            if oldrepo:
+                parenttag = self.session.getTag(link['parent_id'])
+                oldrepo_path = koji.pathinfo.repo(oldrepo['id'], parenttag['name'])
+                oldrepo['tag_id'] = parenttag['id']
+                return oldrepo, oldrepo_path
+
+        # otherwise no match
+        return None, None
+
     def handler(self, tag, event=None, src=None, debuginfo=None, separate_src=None, opts=None):
         tinfo = self.session.getTag(tag, strict=True, event=event)
 
@@ -5869,27 +5913,8 @@ class NewRepoTask(BaseTaskHandler):
         for fn in os.listdir(path):
             if fn != 'groups' and os.path.isfile("%s/%s/pkglist" % (path, fn)):
                 arches.append(fn)
-        # see if we can find a previous repo to update from
-        oldrepo_state = koji.REPO_READY
-        oldrepo = self.session.getRepo(tinfo['id'], state=oldrepo_state)
-        oldrepo_path = None
-        if oldrepo:
-            oldrepo_path = koji.pathinfo.repo(oldrepo['id'], tinfo['name'])
-            oldrepo['tag_id'] = tinfo['id']
-        # If there is no old repo, try to find first usable repo in
-        # inheritance chain and use it as a source. oldrepo is not used if
-        # createrepo_update is not set, so don't waste call in such case.
-        if not oldrepo and self.options.createrepo_update:
-            tags = self.session.getFullInheritance(tinfo['id'])
-            # we care about best candidate which should be (not necessarily)
-            # something on higher levels. Sort tags according to depth.
-            for tag in sorted(tags, key=lambda x: x['currdepth']):
-                oldrepo = self.session.getRepo(tag['parent_id'], state=oldrepo_state)
-                if oldrepo:
-                    parenttag = self.session.getTag(tag['parent_id'])
-                    oldrepo_path = koji.pathinfo.repo(oldrepo['id'], parenttag['name'])
-                    oldrepo['tag_id'] = parenttag['id']
-                    break
+
+        oldrepo, oldrepo_path = self.get_old_repo(tinfo)
         newrepo_path = koji.pathinfo.repo(repo_id, tinfo['name'])
         newrepo = {'tag_id': tinfo['id'], 'create_event': event_id}
         if self.options.copy_old_repodata:
