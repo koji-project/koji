@@ -704,6 +704,7 @@ def main(options, session):
     regen_thread = start_regen_loop(session, repomgr)
     rmtree_thread = start_rmtree_loop(session, repomgr)
     logger.info("Entering main loop")
+    exit_code = 0
     while True:
         try:
             repomgr.updateRepos()
@@ -726,9 +727,11 @@ def main(options, session):
             break
         except koji.AuthExpired:
             logger.warning("Session expired")
+            exit_code = 1
             break
         except koji.AuthError:
             logger.warning("Authentication error")
+            exit_code = 1
             break
         except SystemExit:
             logger.warning("Shutting down")
@@ -746,6 +749,7 @@ def main(options, session):
         repomgr.killChildren()
     finally:
         session.logout()
+    sys.exit(exit_code)
 
 
 def get_options():
