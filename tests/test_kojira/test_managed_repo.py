@@ -187,6 +187,30 @@ class ManagedRepoTest(unittest.TestCase):
         self.session.repo.query.assert_called_once()
         self.session.repoExpire.assert_not_called()
 
+    def test_expire_check_latest_dist(self):
+        self.options.dist_repo_lifetime = 3600 * 24
+        self.options.recheck_period = 3600
+        base_ts = 444888888
+        now = base_ts + self.options.dist_repo_lifetime + 100
+
+        self.repo.data['dist'] = True
+        self.repo.dist = True
+        self.repo.data['state'] = koji.REPO_READY
+        self.repo.data['state_ts'] = base_ts
+        self.repo.data['end_event'] = 999
+        # latest for a target, should not get expired
+        self.session.getBuildTargets.return_value = ['TARGET']
+        self.session.repo.query.return_value = []
+
+        with mock.patch('time.time') as _time:
+            _time.return_value = now
+            self.repo.expire_check()
+
+        self.session.getBuildTargets.assert_not_called()
+        # no target check for dist repos
+        self.session.repo.query.assert_called_once()
+        self.session.repoExpire.assert_not_called()
+
     def test_expire_check_expire(self):
         self.options.repo_lifetime = 3600 * 24
         self.options.recheck_period = 3600
@@ -205,6 +229,30 @@ class ManagedRepoTest(unittest.TestCase):
             self.repo.expire_check()
 
         self.session.getBuildTargets.assert_called_once()
+        self.session.repo.query.assert_called_once()
+        self.session.repoExpire.assert_called_once()
+
+    def test_expire_check_expire_dist(self):
+        self.options.dist_repo_lifetime = 3600 * 24
+        self.options.recheck_period = 3600
+        base_ts = 444888888
+        now = base_ts + self.options.dist_repo_lifetime + 100
+
+        self.repo.data['dist'] = True
+        self.repo.dist = True
+        self.repo.data['state'] = koji.REPO_READY
+        self.repo.data['state_ts'] = base_ts
+        self.repo.data['end_event'] = 999
+        # not latest
+        self.session.getBuildTargets.return_value = ['TARGET']
+        self.session.repo.query.return_value = ['NEWER_REPO']
+
+        with mock.patch('time.time') as _time:
+            _time.return_value = now
+            self.repo.expire_check()
+
+        self.session.getBuildTargets.assert_not_called()
+        # no target check for dist repos
         self.session.repo.query.assert_called_once()
         self.session.repoExpire.assert_called_once()
 
