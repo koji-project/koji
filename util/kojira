@@ -149,7 +149,7 @@ class ManagedRepo(object):
 
         if self.data['end_event'] is None and not self.data['custom_opts']:
             # repo is current and has default options. keep it
-            # this covers dist repos, where custom_opts=None
+            # this covers current dist repos, where custom_opts=None
             return
 
         # keep repos for configured lifetime
@@ -166,9 +166,13 @@ class ManagedRepo(object):
             return
         self.expire_check_ts = time.time()
 
-        # keep latest default repo for build tags, even if not current
-        if not self.data['custom_opts']:
-            # this covers dist repos, where custom_opts=None
+        # keep latest default repo in some cases, even if not current
+        if self.dist:
+            # no target check -- they are irrelevant for dist repos
+            if self.is_latest():
+                return
+        elif not self.data['custom_opts']:
+            # normal repo, default options
             targets = self.session.getBuildTargets(buildTagID=self.data['tag_id'])
             if targets and self.is_latest():
                 return
