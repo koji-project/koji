@@ -144,15 +144,20 @@ class ManagedRepo(object):
             return time.time() - self.first_seen
 
     def expire_check(self):
-        if self.state != koji.REPO_READY or self.dist:
+        if self.state != koji.REPO_READY:
             return
 
         if self.data['end_event'] is None and not self.data['custom_opts']:
             # repo is current and has default options. keep it
+            # this covers dist repos, where custom_opts=None
             return
 
         # keep repos for configured lifetime
-        if self.get_age() <= self.options.repo_lifetime:
+        if self.dist:
+            lifetime = self.options.dist_repo_lifetime
+        else:
+            lifetime = self.options.repo_lifetime
+        if self.get_age() <= lifetime:
             return
 
         # remaining checks are more expensive, don't recheck every cycle
@@ -163,6 +168,7 @@ class ManagedRepo(object):
 
         # keep latest default repo for build tags, even if not current
         if not self.data['custom_opts']:
+            # this covers dist repos, where custom_opts=None
             targets = self.session.getBuildTargets(buildTagID=self.data['tag_id'])
             if targets and self.is_latest():
                 return
@@ -175,20 +181,16 @@ class ManagedRepo(object):
         clauses = [
             ['tag_id', '=', self.data['tag_id']],
             ['state', '=', koji.REPO_READY],
-            ['custom_opts', '=', '{}'],
             ['create_event', '>', self.data['create_event']],
         ]
+        if self.dist:
+            clauses.append(['dist', '=', True])
+        else:
+            clauses.append(['dist', '=', False])
+            clauses.append(['custom_opts', '=', '{}'])
+            # ^this clause is only for normal repos, dist repos have custom_opts=None
         newer = self.session.repo.query(clauses, ['id'])
         return not newer  # True if no newer matching repo
-
-    def dist_expire_check(self):
-        """Check to see if a dist repo should be expired"""
-        if not self.dist or self.state != koji.REPO_READY:
-            return
-
-        if self.get_age() > self.options.dist_repo_lifetime:
-            self.logger.info("Expiring dist repo %(id)s for tag %(tag_name)s", self.data)
-            self.expire()
 
     def delete_check(self):
         """Delete the repo if appropriate"""
@@ -645,10 +647,7 @@ class RepoManager(object):
             if repo.state == koji.REPO_INIT:
                 repo.check_init()
             elif repo.state == koji.REPO_READY:
-                if repo.dist:
-                    repo.dist_expire_check()
-                else:
-                    repo.expire_check()
+                repo.expire_check()
             elif repo.state == koji.REPO_EXPIRED:
                 repo.delete_check()
             elif repo.state == koji.REPO_PROBLEM:
