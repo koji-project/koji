@@ -90,8 +90,6 @@ from .db import (  # noqa: F401
     _applyQueryOpts,
     _dml,
     _fetchSingle,
-    _multiRow,  # needed for backward compatibility, will removed in Koji 1.36
-    _singleRow,  # needed for backward compatibility, will removed in Koji 1.36
     _singleValue,
     get_event,
     nextval,
@@ -8888,22 +8886,32 @@ def build_references(build_id, limit=None, lazy=False):
 
     # find rpms whose buildroots we were in
     st_complete = koji.BUILD_STATES['COMPLETE']
-    fields = ('id', 'name', 'version', 'release', 'arch', 'build_id')
+    fields = [
+        ('rpminfo.id', 'id'),
+        ('rpminfo.name', 'name'),
+        ('rpminfo.version', 'version'),
+        ('rpminfo.release', 'release'),
+        ('rpminfo.arch', 'arch'),
+        ('rpminfo.build_id', 'build_id')
+    ]
+    columns, aliases = zip(*fields)
     idx = {}
-    q = """SELECT
-        rpminfo.id, rpminfo.name, rpminfo.version, rpminfo.release, rpminfo.arch, rpminfo.build_id
-    FROM rpminfo, build
-    WHERE
-        rpminfo.buildroot_id IN (
-            SELECT DISTINCT buildroot_id
-                FROM buildroot_listing
-                WHERE rpm_id = %(rpm_id)s)
-        AND rpminfo.build_id = build.id
-        AND build.state = %(st_complete)i"""
     if limit is not None:
-        q += "\nLIMIT %(limit)i"
+        queryOpts = {'limit': limit}
+    else:
+        queryOpts = {}
     for rpm_id in build_rpm_ids:
-        for row in _multiRow(q, locals(), fields):
+        query = QueryProcessor(tables=['rpminfo', 'build'],
+                               columns=columns,
+                               aliases=aliases,
+                               clauses=['rpminfo.buildroot_id IN (SELECT DISTINCT buildroot_id '
+                                        'FROM buildroot_listing WHERE rpm_id = %(rpm_id)s)',
+                                        'rpminfo.build_id = build.id',
+                                        'build.state = %(st_complete)i'],
+                               values={'rpm_id': rpm_id, 'st_complete': st_complete},
+                               opts=queryOpts
+                               )
+        for row in query.execute():
             idx.setdefault(row['id'], row)
         if limit is not None and len(idx) > limit:
             break
