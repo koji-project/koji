@@ -9,16 +9,13 @@ from six.moves import range
 import sys
 import unittest
 
-try:
-    import imp
-    importlib = None
-except ImportError:
-    import importlib
-    imp = None
-
 import koji
 import koji.util
 import koji.plugin
+
+# check which import machinery the lib is using
+imp = getattr(koji.plugin, 'imp', None)
+importlib = koji.plugin.importlib
 
 
 class TestCallbackDecorators(unittest.TestCase):
