@@ -88,7 +88,7 @@ def check_repo_queue():
         return
 
     clauses = [['repo_id', 'IS', None], ['active', 'IS', True]]
-    fields = ('*', 'task_state')
+    fields = ('*', 'task_state', 'tag_name')
     waiting = RepoQueueQuery(clauses, fields=fields, opts={'order': 'priority,id'}).execute()
     logger.debug('Got %i waiting repo requests', len(waiting))
 
@@ -369,7 +369,8 @@ def repo_queue_task(req):
         kwargs['event'] = req['at_event']
     # otherwise any new repo will satisfy any valid min_event
 
-    args = koji.encode_args(req['tag_id'], **kwargs)
+    tagspec = {'id': req['tag_id'], 'name': req['tag_name']}
+    args = koji.encode_args(tagspec, **kwargs)
     taskopts = {'priority': 15, 'channel': 'createrepo'}
     user_id = kojihub.get_id('users', context.opts['RepoQueueUser'], strict=False)
     # TODO should we error if user doesn't exist
