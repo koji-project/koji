@@ -3729,6 +3729,8 @@ def _taskLabel(taskInfo):
         # at this place (e.g. client without knowledge of such signatures)
         # it should still display at least "method (arch)"
         params = None
+    except ParameterError:
+        return '%s (%s, unknown args)' % (method, arch)
 
     extra = ''
     if method in ('build', 'maven'):
