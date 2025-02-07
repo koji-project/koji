@@ -85,7 +85,6 @@ class TestHubConfig(unittest.TestCase):
         expected = 'Invalid data type badtype for BadOpt option'
         self.assertEqual(str(ex.exception), expected)
 
-
     def test_policy(self):
         config = '''
 [policy]
@@ -98,6 +97,11 @@ channel =
         self.write_config_string(config)
 
         kojixmlrpc.load_config(self.environ)
+
+    def test_map(self):
+        for row in kojixmlrpc.config_map:
+            name, dtype, default = row
+            self.assertIn(dtype, ('integer', 'boolean', 'string'))
 
 
 # the end

@@ -503,14 +503,14 @@ config_map = [
     ['MaxRepoTasksMaven', 'integer', 2],
     ['RepoRetries', 'integer', 3],
     ['RequestCleanTime', 'integer', 60 * 24],  # in minutes
-    ['AllowNewRepo', 'bool', True],
-    ['RepoLag', 'int', 3600],
-    ['RepoAutoLag', 'int', 7200],
-    ['RepoLagWindow', 'int', 600],
-    ['RepoQueueUser', 'str', 'kojira'],
-    ['DebuginfoTags', 'str', ''],
-    ['SourceTags', 'str', ''],
-    ['SeparateSourceTags', 'str', ''],
+    ['AllowNewRepo', 'boolean', True],
+    ['RepoLag', 'integer', 3600],
+    ['RepoAutoLag', 'integer', 7200],
+    ['RepoLagWindow', 'integer', 600],
+    ['RepoQueueUser', 'string', 'kojira'],
+    ['DebuginfoTags', 'string', ''],
+    ['SourceTags', 'string', ''],
+    ['SeparateSourceTags', 'string', ''],
 ]
 
 
