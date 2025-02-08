@@ -1432,6 +1432,7 @@ class TaskManager(object):
             # we do not trap these
             raise
         except koji.tasks.RefuseTask as refuse:
+            self.logger.warning("Refusing task %s: %s", handler.id, str(refuse))
             self.session.host.refuseTask(handler.id, msg=str(refuse))
             return
         except koji.tasks.ServerRestart:
