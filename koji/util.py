@@ -152,13 +152,13 @@ class RepoWatcher(object):
         elif at_event is not None:
             raise koji.ParameterError('Cannot specify both min_event and at_event')
         elif min_event == "last":
-            # TODO pass through?
             self.min_event = session.tagLastChangeEvent(self.taginfo['id'])
         else:
             self.min_event = int(min_event)
         # if opts is None we'll get the default opts
         self.opts = opts
         self.logger = logger or logging.getLogger('koji')
+        self._task_request = None
 
     def get_start(self):
         # we don't want necessarily want to start the clock in init
@@ -191,7 +191,8 @@ class RepoWatcher(object):
             if self.check_repo(repoinfo):
                 return repoinfo
 
-        # TODO save our request to avoid duplication later
+        # save our request for use in task_args(), the builder code will call that next
+        self._task_request = check['request']
         # otherwise
         return None
 
@@ -199,12 +200,18 @@ class RepoWatcher(object):
         """Return args for a waitrepo task matching our data"""
         tag = self.taginfo['name']
         newer_than = None  # this legacy arg doesn't make sense for us
+        min_event = self.min_event
         if self.at_event:
             raise koji.GenericError('at_event not supported by waitrepo task')
+        if min_event is None:
+            # see if we can use value from request
+            req = self._task_request
+            if req:
+                min_event = req['min_event']
         if self.opts:
             # TODO?
             raise koji.GenericError('opts not supported by waitrepo task')
-        return [tag, newer_than, self.nvrs, self.min_event]
+        return [tag, newer_than, self.nvrs, min_event]
 
     def waitrepo(self, anon=False):
         self.logger.info('Waiting on repo for %s', self.taginfo['name'])
@@ -227,9 +234,8 @@ class RepoWatcher(object):
                     # we should have waited for builds before creating the request
                     # this could indicate further tagging/untagging, or a bug
                     self.logger.error('Repo request did not satisfy conditions')
-            else:
+            elif anon:
                 # check for repo directly
-                # either first pass or anon mode
                 repoinfo = self.session.repo.get(self.taginfo['id'], min_event=min_event,
                                                  at_event=self.at_event, opts=self.opts)
                 if repoinfo and self.check_repo(repoinfo):

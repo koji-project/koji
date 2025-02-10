@@ -93,6 +93,19 @@ class TestRepoWatcher(unittest.TestCase):
         args = watcher.task_args()
         params = koji.tasks.parse_task_params('waitrepo', args)
 
+    def test_getRepo_task_req(self):
+        # make sure task_args reports expected min_event
+        req = {'id': 999, 'min_event': 54321}
+        self.session.repo.request.return_value = {'repo': None, 'request': req}
+        watcher = RepoWatcher(self.session, self.TAG)
+        result = watcher.getRepo()
+        self.assertEqual(result, None)
+
+        args = watcher.task_args()
+        # [tag, newer_than, nvrs, min_event]
+        expected = ['MY-TAG', None, [], 54321]
+        self.assertEqual(args, expected)
+
     def test_waitrepo_build_wait(self):
         self.session.repo.get.return_value = None
         # we'll pass with nvrs, so we should wait for builds before making request
