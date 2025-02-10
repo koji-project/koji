@@ -524,9 +524,9 @@ def load_config(environ):
         ['RepoRetries', 'integer', 3],
         ['RequestCleanTime', 'integer', 60 * 24],  # in minutes
         ['AllowNewRepo', 'bool', True],
-        ['RepoLag', 'int', 3600],
-        ['RepoAutoLag', 'int', 7200],
-        ['RepoLagWindow', 'int', 600],
+        ['RepoLag', 'integer', 3600],
+        ['RepoAutoLag', 'integer', 7200],
+        ['RepoLagWindow', 'integer', 600],
         ['RepoQueueUser', 'str', 'kojira'],
         ['DebuginfoTags', 'str', ''],
         ['SourceTags', 'str', ''],
