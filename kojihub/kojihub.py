@@ -13605,8 +13605,14 @@ class RootExports(object):
             pass
         else:
             context.session.assertPerm('regen-repo')
+
         # raise error when tag does not exist
         get_tag(tag, strict=True, event=event)
+
+        # make sure repos dir exists, otherwise hosts will reject task
+        repos_dir = joinpath(koji.pathinfo.topdir, 'repos')
+        koji.ensuredir(repos_dir)
+
         opts = {}
         if event is not None:
             opts['event'] = event

@@ -8,6 +8,7 @@ import koji
 from . import kojihub
 
 from koji.context import context
+from koji.util import joinpath
 from kojihub.db import (QueryView, UpdateProcessor, BulkUpdateProcessor, InsertProcessor, nextval,
                         Savepoint, QueryProcessor, db_lock, DeleteProcessor)
 
@@ -376,6 +377,11 @@ def repo_queue_task(req):
     # TODO should we error if user doesn't exist
     if user_id:
         taskopts['owner'] = user_id
+
+    # make sure repos dir exists, otherwise hosts will reject task
+    repos_dir = joinpath(koji.pathinfo.topdir, 'repos')
+    koji.ensuredir(repos_dir)
+
     task_id = kojihub.make_task('newRepo', args, **taskopts)
     return task_id
     # caller should update request entry if needed
