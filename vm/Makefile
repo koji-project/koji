@@ -1,5 +1,6 @@
 BINFILES = kojivmd
 SHAREFILES = kojikamid
+SBINDIR ?= /usr/sbin
 SYSTEMDSYSTEMUNITDIR = $(shell pkg-config systemd --variable=systemdsystemunitdir)
 
 _default:
@@ -18,8 +19,8 @@ _install: kojikamid
 		exit 1; \
 	fi
 
-	mkdir -p $(DESTDIR)/usr/sbin
-	install -p -m 755 $(BINFILES) $(DESTDIR)/usr/sbin
+	mkdir -p $(DESTDIR)$(SBINDIR)
+	install -p -m 755 $(BINFILES) $(DESTDIR)$(SBINDIR)
 
 	mkdir -p $(DESTDIR)/usr/share/kojivmd
 	install -p -m 644 $(SHAREFILES) $(DESTDIR)/usr/share/kojivmd

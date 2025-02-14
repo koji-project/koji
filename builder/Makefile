@@ -2,6 +2,7 @@ PYVER_MAJOR := $(shell $(PYTHON) -c 'import sys; print(".".join(sys.version.spli
 
 BINFILES = kojid
 LIBEXECFILES = mergerepos
+SBINDIR ?= /usr/sbin
 SYSTEMDSYSTEMUNITDIR = $(shell pkg-config systemd --variable=systemdsystemunitdir)
 
 _default:
@@ -19,8 +20,8 @@ _install:
 		exit 1; \
 	fi
 
-	mkdir -p $(DESTDIR)/usr/sbin
-	install -p -m 755 $(BINFILES) $(DESTDIR)/usr/sbin
+	mkdir -p $(DESTDIR)$(SBINDIR)
+	install -p -m 755 $(BINFILES) $(DESTDIR)$(SBINDIR)
 
 	@if [ "$(PYVER_MAJOR)" -lt 3 ] ; then \
 		mkdir -p $(DESTDIR)/usr/libexec/kojid; \

@@ -1,4 +1,5 @@
 BINFILES = kojira koji-gc koji-shadow koji-sweep-db koji-sidetag-cleanup
+SBINDIR ?= /usr/sbin
 SYSTEMDSYSTEMUNITDIR = $(shell pkg-config systemd --variable=systemdsystemunitdir)
 
 _default:
@@ -15,8 +16,8 @@ _install:
 		echo "ERROR: A destdir is required"; \
 		exit 1; \
 	fi
-	mkdir -p $(DESTDIR)/usr/sbin
-	install -p -m 755 $(BINFILES) $(DESTDIR)/usr/sbin
+	mkdir -p $(DESTDIR)$(SBINDIR)
+	install -p -m 755 $(BINFILES) $(DESTDIR)$(SBINDIR)
 
 	mkdir -p $(DESTDIR)/etc/kojira
 	install -p -m 644 kojira.conf $(DESTDIR)/etc/kojira/kojira.conf
