@@ -45,14 +45,17 @@ class MainTest(unittest.TestCase):
 
     def test_userkill1(self):
         self.sleep.side_effect = [None] * 10 + [KeyboardInterrupt()]
-        kojira.main(self.options, self.session)
+        with self.assertRaises(SystemExit) as ex:
+            kojira.main(self.options, self.session)
+        self.assertEqual(ex.exception.code, 0)
 
     def test_terminal_errors(self):
         for cls in KeyboardInterrupt, koji.AuthExpired, koji.AuthError, SystemExit:
             err = cls()
             self.sleep.side_effect = [None] * 10 + [Exception()]
             self.repomgr.updateRepos.side_effect = [None] * 5 + [err]
-            kojira.main(self.options, self.session)
+            with self.assertRaises(SystemExit):
+                kojira.main(self.options, self.session)
             self.assertEqual(len(self.repomgr.pruneLocalRepos.mock_calls), 5)
             self.repomgr.reset_mock()
 
@@ -60,7 +63,9 @@ class MainTest(unittest.TestCase):
         err = MyError()
         self.sleep.side_effect = [None] * 10 + [KeyboardInterrupt()]
         self.repomgr.updateRepos.side_effect = [None] * 5 + [err] * 6
-        kojira.main(self.options, self.session)
+        with self.assertRaises(SystemExit) as ex:
+            kojira.main(self.options, self.session)
+        self.assertEqual(ex.exception.code, 0)
         self.assertEqual(len(self.repomgr.updateRepos.mock_calls), 11)
         self.assertEqual(len(self.repomgr.pruneLocalRepos.mock_calls), 5)
         self.repomgr.reset_mock()
