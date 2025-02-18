@@ -385,6 +385,11 @@ sed -e '/util\/koji/g' -e '/koji_cli_plugins/g' -i setup.py
 
 %install
 rm -rf $RPM_BUILD_ROOT
+# The Makefiles hardcode /usr/sbin everywhere
+%if "%{_sbindir}" == "%{_bindir}"
+mkdir -p %{buildroot}%{_prefix}
+ln -sf --relative %{buildroot}%{_bindir} %{buildroot}/usr/sbin
+%endif
 
 %if 0%{py2_support} < 2  &&  0%{py3_support} < 2
 echo "At least one python must be built with full support"
@@ -497,6 +502,7 @@ done
 rm -rf $RPM_BUILD_ROOT
 
 %files
+%exclude /usr/sbin
 %config(noreplace) /etc/koji.conf
 %dir /etc/koji.conf.d
 %doc docs Authors COPYING LGPL
@@ -709,7 +715,7 @@ rm -rf $RPM_BUILD_ROOT
 - PR#4164: better default handling for getMultiArchInfo
 - PR#4181: Fix a typo in the kiwi image type attribute override patch
 - PR#4184: kiwi: Add support for overriding version and releasever
-- PR#4186: Basic tests for kiwi plugin 
+- PR#4186: Basic tests for kiwi plugin
 - PR#4192: allow None in repoInfo for backwards compat
 
 * Mon May  6 2024  Tomas Kopecek <tkopecek at redhat.com> - 1.34.1-1
@@ -1095,7 +1101,7 @@ rm -rf $RPM_BUILD_ROOT
 - PR#3104: Make setup.py executable
 - PR#3113: error function instead of print with sys.exit in CLI commands
 - PR#3115: Add and update CLI unit tests
-- PR#3118: handle dictionary parameter in get_tag() 
+- PR#3118: handle dictionary parameter in get_tag()
 - PR#3138: doc: improve protonmsg SSL parameter descriptions
 - PR#3139: www: style channelinfo hosts table
 - PR#3142: devtools: print fakeweb listening URL
@@ -1120,7 +1126,7 @@ rm -rf $RPM_BUILD_ROOT
 - PR#2898 hub: fix SQL condition
 - PR#2900 kojiweb - Fix getting tag ID for buildMaven taskinfo page.
 - PR#2906 lib: return taskLabel for unknown tasks
-- PR#2916 [policy] use "name" in result of lookup_name for CGs 
+- PR#2916 [policy] use "name" in result of lookup_name for CGs
 
 * Mon May 10 2021 Tomas Kopecek <tkopecek at redhat.com> - 1.25.0-1
 - PR#2844: protonmsg: use consistent data format for messages
