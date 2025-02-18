@@ -1,5 +1,6 @@
 from unittest import mock
 import tempfile
+import os
 import unittest
 
 import koji
@@ -38,22 +39,24 @@ class TestKiwiBuildTask(unittest.TestCase):
             self.task.get_nvrp('/dev/null/non_existent_path')
 
         # empty file
-        with tempfile.NamedTemporaryFile(delete_on_close=False) as fp:
+        with tempfile.NamedTemporaryFile(delete=False) as fp:
             fp.write(b'')
             fp.close()
             with self.assertRaises(koji.GenericError):
                 self.task.get_nvrp(fp.name)
+            os.unlink(fp.name)
 
         # empty xml
-        with tempfile.NamedTemporaryFile(delete_on_close=False) as fp:
+        with tempfile.NamedTemporaryFile(delete=False) as fp:
             fp.write(b'<?xml version="1.0"?><test></test>')
             fp.close()
             with self.assertRaises(koji.GenericError):
                 self.task.get_nvrp(fp.name)
+            os.unlink(fp.name)
 
     def test_get_nrvp_correct(self):
         # minimal correct xml
-        with tempfile.NamedTemporaryFile(delete_on_close=False) as fp:
+        with tempfile.NamedTemporaryFile(delete=False) as fp:
             fp.write(b'''<?xml version="1.0" encoding="utf-8"?>
                     <image schemaversion="7.4" name="Fedora-34.0_disk">
                         <profiles>
@@ -70,6 +73,7 @@ class TestKiwiBuildTask(unittest.TestCase):
             self.assertEqual(name, 'Fedora-34.0_disk')
             self.assertEqual(version, '1.0.0')
             self.assertEqual(profile, 'Base')
+            os.unlink(fp.name)
 
     def test_handler_correct(self, arches=None):
         if arches is None:
