@@ -42,54 +42,16 @@ class RepoManagerTest(unittest.TestCase):
         return pid, 0
 
     @mock.patch('time.sleep')
-    def test_regen_loop(self, sleep):
+    def test_thread_loop(self, sleep):
         subsession = mock.MagicMock()
-        self.mgr.regenRepos = mock.MagicMock()
-        self.mgr.regenRepos.side_effect = [None] * 10 + [OurException()]
+        self.mgr.do_regen = mock.MagicMock()
+        self.mgr.do_regen.side_effect = [None] * 10 + [OurException()]
         # we need the exception to terminate the infinite loop
 
         with self.assertRaises(OurException):
-            self.mgr.regenLoop(subsession)
+            self.mgr.threadLoop(subsession, 'regen')
 
-        self.assertEqual(self.mgr.regenRepos.call_count, 11)
-        subsession.logout.assert_called_once()
-
-    @mock.patch('time.sleep')
-    def test_rmtree_loop(self, sleep):
-        subsession = mock.MagicMock()
-        self.mgr.checkQueue = mock.MagicMock()
-        self.mgr.checkQueue.side_effect = [None] * 10 + [OurException()]
-        # we need the exception to terminate the infinite loop
-
-        with self.assertRaises(OurException):
-            self.mgr.rmtreeLoop(subsession)
-
-        self.assertEqual(self.mgr.checkQueue.call_count, 11)
-        subsession.logout.assert_called_once()
-
-    @mock.patch('time.sleep')
-    def test_currency_loop(self, sleep):
-        subsession = mock.MagicMock()
-        subsession.repo.updateEndEvents.side_effect = [None] * 10 + [OurException()]
-        # we need the exception to terminate the infinite loop
-
-        with self.assertRaises(OurException):
-            self.mgr.currencyChecker(subsession)
-
-        self.assertEqual(subsession.repo.updateEndEvents.call_count, 11)
-        subsession.logout.assert_called_once()
-
-    @mock.patch('time.sleep')
-    def test_external_loop(self, sleep):
-        subsession = mock.MagicMock()
-        self.mgr.checkExternalRepos = mock.MagicMock()
-        self.mgr.checkExternalRepos.side_effect = [None] * 10 + [OurException()]
-        # we need the exception to terminate the infinite loop
-
-        with self.assertRaises(OurException):
-            self.mgr.currencyExternalChecker(subsession)
-
-        self.assertEqual(self.mgr.checkExternalRepos.call_count, 11)
+        self.assertEqual(self.mgr.do_regen.call_count, 11)
         subsession.logout.assert_called_once()
 
     def test_rmtree(self):

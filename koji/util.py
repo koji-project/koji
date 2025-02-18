@@ -301,6 +301,9 @@ class RepoWatcher(object):
                 raise koji.GenericError("Unsuccessfully waited %s for a new %s repo" %
                                         (koji.util.duration(self.start), self.taginfo['name']))
             if not check['request']['active']:
+                if check['request']['task_id']:
+                    tstate = koji.TASK_STATES[check['request']['task_state']]
+                    self.logger.error('Task %s state is %s', check['request']['task_id'], tstate)
                 raise koji.GenericError("Repo request no longer active")
             self.pause()
 

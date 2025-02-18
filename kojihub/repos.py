@@ -391,7 +391,7 @@ def update_end_events():
     n_cached = 0
     tag_last = {}
     updates = []
-    for repo in query.execute():
+    for repo in repos:
         tag_id = repo['tag_id']
         # use cache to avoid redundant calls
         if tag_id in tag_last and tag_last[tag_id] <= repo['create_event']:
