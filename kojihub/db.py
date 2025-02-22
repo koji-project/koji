@@ -36,6 +36,7 @@ import os
 # del psycopg2.extensions.string_types[1266]
 import re
 import sys
+import threading
 import time
 import traceback
 
@@ -56,10 +57,7 @@ _DBopts = None
 # Apache forks a new worker, and that connection
 # will be used to service all requests handled
 # by that worker.
-# This probably doesn't need to be a ThreadLocal
-# since Apache is not using threading,
-# but play it safe anyway.
-_DBconn = koji.context.ThreadLocal()
+_DBconn = threading.local()
 
 logger = logging.getLogger('koji.db')
 
