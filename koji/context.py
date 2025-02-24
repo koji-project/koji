@@ -17,67 +17,21 @@
 # Authors:
 #       Mike McLean <mikem@redhat.com>
 
-# This modules provides a thread-safe way of passing
-# request context around in a global way
-#    - db connections
-#    - request data
-#    - auth data
+# This module provides a threadlocal instance that kojihub uses to store
+# request context.
+# In the past, we had a custom ThreadLocal implementation, but now this is
+# just a thin wrapper around threading.local
 
 from __future__ import absolute_import
 
-import six
-import six.moves._thread
+import threading
 
 
-class _data(object):
-    pass
-
-
-class ThreadLocal(object):
-    def __init__(self):
-        object.__setattr__(self, '_tdict', {})
-
-    # should probably be getattribute, but easier to debug this way
-    def __getattr__(self, key):
-        id = six.moves._thread.get_ident()
-        tdict = object.__getattribute__(self, '_tdict')
-        if id not in tdict:
-            raise AttributeError(key)
-        data = tdict[id]
-        return object.__getattribute__(data, key)
-
-    def __setattr__(self, key, value):
-        id = six.moves._thread.get_ident()
-        tdict = object.__getattribute__(self, '_tdict')
-        if id not in tdict:
-            tdict[id] = _data()
-        data = tdict[id]
-        return object.__setattr__(data, key, value)
-
-    def __delattr__(self, key):
-        id = six.moves._thread.get_ident()
-        tdict = object.__getattribute__(self, '_tdict')
-        if id not in tdict:
-            raise AttributeError(key)
-        data = tdict[id]
-        ret = object.__delattr__(data, key)
-        if len(data.__dict__) == 0:
-            del tdict[id]
-        return ret
-
-    def __str__(self):
-        id = six.moves._thread.get_ident()
-        tdict = object.__getattribute__(self, '_tdict')
-        return "(current thread: %s) {" % id + \
-            ", ".join(["%s : %s" % (k, v.__dict__) for (k, v) in six.iteritems(tdict)]) + \
-            "}"
+class ThreadLocal(threading.local):
+    """A small compatibility wrapper around threading.local"""
 
     def _threadclear(self):
-        id = six.moves._thread.get_ident()
-        tdict = object.__getattribute__(self, '_tdict')
-        if id not in tdict:
-            return
-        del tdict[id]
+        self.__dict__.clear()
 
 
 context = ThreadLocal()
