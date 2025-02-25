@@ -217,8 +217,7 @@ class FieldStorageCompat(Mapping):
             self.data = {}
             return
 
-        data = parse_qs(environ.get('QUERY_STRING', ''), strict_parsing=True,
-                        keep_blank_values=True)
+        data = parse_qs(qs, strict_parsing=True, keep_blank_values=True)
         # replace singleton lists with single values
         for arg in data:
             val = data[arg]
