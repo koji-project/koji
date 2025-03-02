@@ -1,292 +1,290 @@
-#import koji
-#import koji.util as kojiutil
-#from kojiweb import util
-#from urllib.parse import quote
-#import datetime
 
-#@util.safe_return
-#def printChildren($taskID, $childMap)
-  #set $iter = 0
-  #set $children = $childMap[$str($taskID)]
-  #if $children
+#macro printChildren(taskID, childMap)
+  #set iter = 0
+  #set children = childMap[taskID|string]
+  #if children
   <ul>
-    #for $child in $children
-    #set $iter += 1
-    #if $iter < $len($children)
+    #for child in children
+    #set iter = iter + 1
+    #if iter < children|length
     <li class="sibling">
     #else
     <li>
-    #end if
-      #set $childState = $util.taskState($child.state)
+    #endif
+      #set childState = util.taskState(child.state)
       <span class="treeBranch">
         <span class="treeLabel">
-          <span class="task$childState">$util.imageTag($childState)</span>
-          <a href="taskinfo?taskID=$child.id" class="task$childState" title="$childState">$koji.taskLabel($child)</a>
+          <span class="task{{ childState }}">{{ util.imageTag(childState) }}</span>
+          <a href="taskinfo?taskID={{ child.id }}" class="task{{ childState }}" title="{{ childState }}">{{ koji.taskLabel(child) }}</a>
         </span>
       </span>
-    $printChildren($child.id, $childMap)
+    {{ printChildren(child.id, childMap) }}
     </li>
-    #end for
+    #endfor
   </ul>
-  #end if
-#end def
+  #endif
+#endmacro
 
-#@util.safe_return
-#def printMap($vals, $prefix='')
-  #for $key, $value in $vals.items()
-  #if $key == 'properties'
-  ${prefix}properties&nbsp;=&nbsp;$printProperties($value)<br/>
-  #elif $key != '__starstar'
-  $prefix$key&nbsp;=&nbsp;$printValue($key, $value)<br/>
-  #end if
-  #end for
-#end def
+#macro printMap(vals, prefix='')
+  #for key, value in vals.items()
+  #if key == 'properties'
+  {{ prefix }}properties&nbsp;=&nbsp;{{ printProperties(value) }}<br/>
+  #elif key != '__starstar'
+  {{ prefix }}{{ key }}&nbsp;=&nbsp;{{ printValue(key, value) }}<br/>
+  #endif
+  #endfor
+#endmacro
 
-#@util.safe_return
-#def printOpts($opts)
-  #if $opts
+#macro printOpts(opts)
+  #if opts
   <strong>Options:</strong><br/>
-  $printMap($opts, '&nbsp;&nbsp;')
-  #end if
-#end def
+  {{ printMap(opts, S('&nbsp;&nbsp;')) }}
+  #endif
+#endmacro
 
-#@util.safe_return
-#def printValue($key, $value, $sep=', ')
-  #if $value is None
+#macro printValue(key, value, sep=', ')
+  #if value is none
 None
-  #elif $key == 'user'
-<a href="userinfo?userID=$value['id']">$value['name']</a>
-  #elif $key == 'task'
-<a href="taskinfo?taskID=$value['id']">$value['id']</a>
-  #elif $key == 'host'
-<a href="hostinfo?hostID=$value['id']">$value['name']</a>
-  #elif $key == 'build'
-<a href="buildinfo?buildID=$value['id']">$value['nvr']</a>
-  #elif $key == 'buildroot'
-<a href="buildrootinfo?buildrootID=$value['id']">$value['id']</a>
-  #elif $key in ('tag', 'destination_tag', 'build_tag')
-<a href="taginfo?tagID=$value['id']">$value['name']</a>
-  #elif $key in ('build_target', 'target_info')
-<a href="buildtargetinfo?targetID=$value['id']">$value['name']</a>
-  #elif $key in ('repo_info', 'oldrepo', 'repo')
-    #if $key == 'repo' and isinstance($value, list)
-$sep.join([$str($val) for $val in $value])
+  #elif key == 'user'
+<a href="userinfo?userID={{ value['id'] }}">{{ value['name'] }}</a>
+  #elif key == 'task'
+<a href="taskinfo?taskID={{ value['id'] }}">{{ value['id'] }}</a>
+  #elif key == 'host'
+<a href="hostinfo?hostID={{ value['id'] }}">{{ value['name'] }}</a>
+  #elif key == 'build'
+<a href="buildinfo?buildID={{ value['id'] }}">{{ value['nvr'] }}</a>
+  #elif key == 'buildroot'
+<a href="buildrootinfo?buildrootID={{ value['id'] }}">{{ value['id'] }}</a>
+  #elif key in ('tag', 'destination_tag', 'build_tag')
+<a href="taginfo?tagID={{ value['id'] }}">{{ value['name'] }}</a>
+  #elif key in ('build_target', 'target_info')
+<a href="buildtargetinfo?targetID={{ value['id'] }}">{{ value['name'] }}</a>
+  #elif key in ('repo_info', 'oldrepo', 'repo')
+    #if key == 'repo' and value is sequence and value is not string
+{{ value|join(sep) }}
     #else
-<a href="repoinfo?repoID=$value.id">$value.id</a> ($koji.formatTimeLong($value.create_ts))
-    #end if
-  #elif $key == 'task_list'
-    #for $task in $params['task_list']
+<a href="repoinfo?repoID={{ value.id }}">{{ value.id }}</a> ({{ koji.formatTimeLong(value.create_ts) }})
+    #endif
+  #elif key == 'task_list'
+    #for task in params['task_list']
       <br/><strong>&nbsp;Task:</strong><br/>
-      $printMap($task, '&nbsp;&nbsp;')
-    #end for
-  #elif $isinstance($value, list)
-$sep.join([$str($val) for $val in $value])
-  #elif $isinstance($value, dict)
-$sep.join(['%s=%s' % (($n == '' and "''" or $n), $v) for $n, $v in $value.items()])
+      {{ printMap(task, S('&nbsp;&nbsp;')) }}
+    #endfor
+  #elif value is mapping
+##{{ sep.join(['%s=%s' % ((n == '' and "''" or n), v) for n, v in value.items()])
+{{ value }}  TODO FIXME
+  #elif value is sequence and value is not string
+  ## XXX this logic doesn't quite convert
+{{ value|join(sep) }}
   #else
-$value
-  #end if
-#end def
+{{ value }}
+  #endif
+#endmacro
 
-#@util.safe_return
-#def printProperties($props)
-  #echo ', '.join([$v is not None and '%s=%s' % ($n, $v) or $str($n) for $n, $v in $props.items()])
-#end def
+#macro printProperties(props)
+  ##{{ ', '.join([v is not None and '%s=%s' % (n, v) or n|string for n, v in props.items() ]) }}
+  TODO FIXME
+  {{ props | pprint }}
+#endmacro
 
 
-#include "includes/header.chtml"
+#include "includes/header2.chtml"
 
-  <h4>Information for task <a href="taskinfo?taskID=$task.id">$koji.taskLabel($task)</a></h4>
+  <h4>Information for task <a href="taskinfo?taskID={{ task.id }}">{{ koji.taskLabel(task) }}</a></h4>
 
   <table>
     <tr>
-      <th>ID</th><td>$task.id</td>
+      <th>ID</th><td>{{ task.id }}</td>
     </tr>
     <tr>
-      <th>Method</th><td>$task.method</td>
+      <th>Method</th><td>{{ task.method }}</td>
     </tr>
     <tr>
       <th>Parameters</th>
       <td>
-        #for key in $sorted($params)
-          #if $params[$key] is not None
-        <strong>$key.capitalize().replace('_', ' ')</strong>: $printValue($key, $params[$key])<br/>
-          #end if
-        #end for
-        $printOpts($opts)
+        #for key in params|sort
+          #if params[key] is not none
+        <strong>{{ key | capitalize |replace('_', ' ') }}</strong>: {{ printValue(key, params[key]) }}<br/>
+          #endif
+        #endfor
+        {{ printOpts(opts) }}
       </td>
     </tr>
     <tr>
-      #set $state = $util.taskState($task.state)
+      #set state = util.taskState(task.state)
       <th>State</th>
-      <td class="task$state">$state
-      #if $currentUser and ('admin' in $perms or $task.owner == $currentUser.id)
-      #if $task.state in ($koji.TASK_STATES.FREE, $koji.TASK_STATES.OPEN, $koji.TASK_STATES.ASSIGNED)
-      <span class="adminLink">(<a href="canceltask?taskID=$task.id$util.authToken($self)">cancel</a>)</span>
-      #elif $task.state in ($koji.TASK_STATES.CANCELED, $koji.TASK_STATES.FAILED) and (not $parent)
-      <span class="adminLink">(<a href="resubmittask?taskID=$task.id$util.authToken($self)">resubmit</a>)</span>
-      #end if
-      #end if
-      #if $currentUser and 'admin' in $perms and $task.state in ($koji.TASK_STATES.OPEN, $koji.TASK_STATES.ASSIGNED)
-      <span class="adminLink">(<a href="freetask?taskID=$task.id$util.authToken($self)">free</a>)</span>
-      #end if
+      <td class="task{{ state }}">{{ state }}
+      #if currentUser and ('admin' in perms or task.owner == currentUser.id)
+      #if task.state in (koji.TASK_STATES.FREE, koji.TASK_STATES.OPEN, koji.TASK_STATES.ASSIGNED)
+      <span class="adminLink">(<a href="canceltask?taskID={{ task.id }}{{ util.authToken() }}">cancel</a>)</span>
+      #elif task.state in (koji.TASK_STATES.CANCELED, koji.TASK_STATES.FAILED) and (not parent)
+      <span class="adminLink">(<a href="resubmittask?taskID={{ task.id }}{{ util.authToken() }}">resubmit</a>)</span>
+      #endif
+      #endif
+      #if currentUser and 'admin' in perms and task.state in (koji.TASK_STATES.OPEN, koji.TASK_STATES.ASSIGNED)
+      <span class="adminLink">(<a href="freetask?taskID={{ task.id }}{{ util.authToken() }}">free</a>)</span>
+      #endif
       </td>
     </tr>
-    #if $taskBuilds
-    #for $build in $taskBuilds
+    #if taskBuilds
+    #for build in taskBuilds
     <tr>
-      <th>Build</th><td><a href="buildinfo?buildID=$build.build_id">$koji.buildLabel($build)</a></td>
+      <th>Build</th><td><a href="buildinfo?buildID={{ build.build_id }}">{{ koji.buildLabel(build) }}</a></td>
     </tr>
-    #end for
-    #end if
+    #endfor
+    #endif
     <tr>
-      <th>Created</th><td>$util.formatTimeLong($task.create_ts)</td>
+      <th>Created</th><td>{{ util.formatTimeLong(task.create_ts) }}</td>
     </tr>
-    #if $task.start_time
+    #if task.start_time
     <tr>
-      <th>Started</th><td>$util.formatTimeLong($task.start_ts)</td>
-    #end if
-    #set $end_ts = None
-    #if $task.state == $koji.TASK_STATES.OPEN
-    #if $estCompletion
+      <th>Started</th><td>{{ util.formatTimeLong(task.start_ts) }}</td>
+    #endif
+    #set end_ts = None
+    #if task.state == koji.TASK_STATES.OPEN
+    #if estCompletion
     <tr>
       <th title="Estimation based on previous builds of same package">Est. Completion</th>
-      <td>$util.formatTimeLong($estCompletion)</td>
+      <td>{{ util.formatTimeLong(estCompletion) }}</td>
     </tr>
-    #end if
-    #elif $task.completion_time
+    #endif
+    #elif task.completion_time
     <tr>
-      <th>Completed</th><td>$util.formatTimeLong($task.completion_ts)</td>
+      <th>Completed</th><td>{{ util.formatTimeLong(task.completion_ts) }}</td>
     </tr>
-    #set $end_ts = $task.completion_ts
-    #end if
-    #if not $end_ts
-    #set $end_ts = $kojiutil.parseTime($kojiutil.encode_datetime(datetime.datetime.utcnow()))
-    #end if
+    #set end_ts = task.completion_ts
+    #endif
+    #if not end_ts
+    ##set end_ts = koji.util.parseTime(koji.util.encode_datetime(datetime.datetime.utcnow()))
+    #set end_ts = koji.time.time()
+    ## XXX is this right?
+    #endif
     <tr>
       <th title="From task's creation">Total time</th>
-      <td>$util.formatTimestampDifference($task.create_ts, $end_ts)</td>
+      <td>{{ util.formatTimestampDifference(task.create_ts, end_ts) }}</td>
     </tr>
-    #if $task.start_time
+    #if task.start_time
     <tr>
       <th title="From task's start">Task time</th>
-      <td>$util.formatTimestampDifference($task.start_ts, $end_ts)</td>
+      <td>{{ util.formatTimestampDifference(task.start_ts, end_ts) }}</td>
     </tr>
-    #end if
+    #endif
     <tr>
       <th>Owner</th>
       <td>
-        #if $owner
-          #if $owner.usertype == $koji.USERTYPES['HOST']
-          <a href="hostinfo?userID=$owner.id">$owner.name</a>
+        #if owner
+          #if owner.usertype == koji.USERTYPES['HOST']
+          <a href="hostinfo?userID={{ owner.id }}">{{ owner.name }}</a>
           #else
-          <a href="userinfo?userID=$owner.id">$owner.name</a>
-          #end if
-        #end if
+          <a href="userinfo?userID={{ owner.id }}">{{ owner.name }}</a>
+          #endif
+        #endif
       </td>
     </tr>
     <tr>
       <th>Channel</th>
       <td>
-        #if $task.channel_id
-        <a href="channelinfo?channelID=$task.channel_id">$channelName</a>
-        #end if
+        #if task.channel_id
+        <a href="channelinfo?channelID={{ task.channel_id }}">{{ channelName }}</a>
+        #endif
       </td>
     </tr>
     <tr>
       <th>Host</th>
       <td>
-        #if $task.host_id
-        <a href="hostinfo?hostID=$task.host_id">$hostName</a>
-        #end if
+        #if task.host_id
+        <a href="hostinfo?hostID={{ task.host_id }}">{{ hostName }}</a>
+        #endif
       </td>
     </tr>
     <tr>
-      <th>Arch</th><td>$task.arch</td>
+      <th>Arch</th><td>{{ task.arch }}</td>
     </tr>
-    #if $buildroots
+    #if buildroots
     <tr>
-      <th>Buildroot#if $len($buildroots) > 1 then 's' else ''#</th>
+      <th>Buildroot{{ 's' if buildroots|length > 1 else '' }}</th>
       <td>
-        #for $buildroot in $buildroots
-        <a href="buildrootinfo?buildrootID=$buildroot.id">#if $task.method == 'vmExec' then '' else '/var/lib/mock/'#$buildroot.tag_name-$buildroot.id-$buildroot.repo_id</a><br/>
-        #end for
+        #for buildroot in buildroots
+        <a href="buildrootinfo?buildrootID={{ buildroot.id }}">{{ '' if task.method == 'vmExec' else '/var/lib/mock/' }}{{ buildroot.tag_name }}-{{ buildroot.id }}-{{ buildroot.repo_id }}</a><br/>
+        #endfor
       </td>
     </tr>
-    #end if
+    #endif
     <tr>
       <th>Parent</th>
         <td>
-        #if $parent
-        <a href="taskinfo?taskID=$parent.id" class="task$util.taskState($parent.state)">$koji.taskLabel($parent)</a>
-        #end if
+        #if parent
+        <a href="taskinfo?taskID={{ parent.id }}" class="task{{ util.taskState(parent.state) }}">{{ koji.taskLabel(parent) }}</a>
+        #endif
       </td>
     </tr>
     <tr>
       <th>Descendants</th>
       <td class="tree">
-        #if $len($descendents[$str($task.id)]) > 0
-        #set $taskState = $util.taskState($task.state)
-        <span class="task$taskState">$util.imageTag($taskState)</span>
-        <span class="root">$task.method</span>
-        #end if
-        $printChildren($task.id, $descendents)
+        #if descendents[task.id|string]
+        #set taskState = util.taskState(task.state)
+        <span class="task{{ taskState }}">{{ util.imageTag(taskState) }}</span>
+        <span class="root">{{ task.method }}</span>
+        #endif
+        {{ printChildren(task.id, descendents) }}
       </td>
     </tr>
     <tr>
-      <th>Waiting?</th><td>#if $task.waiting then 'yes' else 'no'#</td>
+      <th>Waiting?</th><td>{{ 'yes' if task.waiting else 'no' }}</td>
     </tr>
     <tr>
-      <th>Awaited?</th><td>#if $task.awaited then 'yes' else 'no'#</td>
+      <th>Awaited?</th><td>{{ 'yes' if task.awaited else 'no' }}</td>
     </tr>
     <tr>
-      <th>Priority</th><td>$task.priority</td>
+      <th>Priority</th><td>{{ task.priority }}</td>
     </tr>
     <tr>
-      <th>Weight</th><td>#echo '%.2f' % $task.weight#</td>
+      <th>Weight</th><td>{{ '%.2f' % task.weight }}</td>
     </tr>
     <tr>
       <th>Result</th>
       <td>
-      #if $abbr_result_text
+      #if abbr_result_text
         <div id="abbr-result">
-        $abbr_result_text
+        {{ abbr_result_text }}
         </div>
         <div id="full-result">
-        $full_result_text
+        {{ full_result_text }}
         </div>
         <a href="#" collapse" id="toggle-abbreviated-result" style="display: none;">Show abbreviated results</a>
         <a href="#" collapse" id="toggle-full-result" style="display: none;">Show complete results</a>
       #else
          <div id="result">
-        $full_result_text
+        {{ full_result_text }}
         </div>
-      #end if
+      #endif
       </td>
     </tr>
     <tr>
       <th>Output</th>
       <td>
-        #for $volume, $filename in $output
-        <a href="$pathinfo.task($task.id, volume=$volume)/$quote($filename)">$filename</a>
-           #if $filename.endswith('.log')
-           (<a href="getfile?taskID=$task.id&volume=$volume&name=$quote($filename)&offset=-4000">tail</a>)
-           #end if
+        #for pair in output
+        #set volume = pair[0]
+        #set filename = pair[1]
+        <a href="{{ pathinfo.task(task.id, volume=volume) }}/{{ filename|urlencode }}">{{ filename }}</a>
+           #if filename.endswith('.log')
+           (<a href="getfile?taskID={{ task.id }}&volume={{ volume }}&name={{ filename|urlencode }}&offset=-4000">tail</a>)
+           #endif
         <br/>
-        #end for
-        #if not $output
+        #endfor
+        #if not output
             <div title="Not all tasks produce outputs, and task outputs are not retained indefinitely.">No outputs reported</div>
-        #end if
-        #if $task.state not in ($koji.TASK_STATES.CLOSED, $koji.TASK_STATES.CANCELED, $koji.TASK_STATES.FAILED) and \
-            $task.method in ('buildSRPMFromSCM', 'buildArch', 'createLiveMedia', 'buildMaven', 'wrapperRPM', 'vmExec', 'createrepo', 'runroot', 'createAppliance', 'createLiveCD')
+        #endif
+        {% if task.state not in (koji.TASK_STATES.CLOSED, koji.TASK_STATES.CANCELED, koji.TASK_STATES.FAILED) and
+                task.method in ('buildSRPMFromSCM', 'buildArch', 'createLiveMedia', 'buildMaven', 'wrapperRPM', 'vmExec', 'createrepo', 'runroot', 'createAppliance', 'createLiveCD') %}
         <br/>
-        <a href="watchlogs?taskID=$task.id">Watch logs</a>
-        #end if
+        <a href="watchlogs?taskID={{ task.id }}">Watch logs</a>
+        {% endif %}
       </td>
     </tr>
   </table>
 
-#if $abbr_result_text
+#if abbr_result_text
   <script type="text/javascript">
     (function() {
        var abbr = document.getElementById('abbr-result');
@@ -317,5 +315,5 @@ $value
        link_to_show_abbr.onclick = trigger
     })();
   </script>
-#end if
-#include "includes/footer.chtml"
+#endif
+#include "includes/footer2.chtml"

@@ -1,55 +1,51 @@
-#import koji
-#import koji.util
-#from kojiweb import util
 
-#@util.safe_return
-#def linkURL()
-  #set $query = []
-  #if $tag
-  #silent $query.append('tagID=%i' % $tag.id)
-  #end if
-  #if $user
-  #silent $query.append('userID=%i' % $user.id)
-  #end if
-  #if $package
-  #silent $query.append('packageID=%i' % $package.id)
-  #end if
-  #if $query
-  #echo '%s/%s?%s' % ($weburl, 'builds', '&amp;'.join($query))
+#macro linkURL()
+  #set query = []
+  #if tag
+  #set _tmp = query.append('tagID=%i' % (tag.id|urlencode))
+  #endif
+  #if user
+  #set _tmp = query.append('userID=%i' % (user.id|urlencode))
+  #endif
+  #if package
+  #set _tmp = query.append('packageID=%i' % (package.id|urlencode))
+  #endif
+  #if query
+  {{ '%s/%s?%s' % (weburl, 'builds', '&amp;'.join(query)) }}
   #else
-  #echo '%s/%s' % ($weburl, 'builds')
-  #end if
-#end def
+  {{ '%s/%s' % (weburl, 'builds') }}
+  #endif
+#endmacro
 
 <rss version="2.0">
   <channel>
-    <title>$siteName: recent builds#if $package then ' of package ' + $package.name else ''##if $tag then ' into tag ' + $tag.name else ''##if $user then ' by user ' + $user.name else ''#</title>
-    <link>$linkURL()</link>
+    <title>{{ siteName }}: recent builds{{ ' of package ' + package.name if package else '' }}{{ ' into tag ' + tag.name if tag else '' }}{{ ' by user ' + user.name if user else '' }}</title>
+    <link>{{ linkURL() }}</link>
     <description>
       A list of the most recent builds
-      #if $package
-      of package $package.name
-      #end if
-      #if $tag
-      into tag $tag.name
-      #end if
-      #if $user
-      by user $user.name
-      #end if
-      in the $siteName Build System.  The list is sorted in reverse chronological order by build completion time.
+      #if package
+      of package {{ package.name }}
+      #endif
+      #if tag
+      into tag {{ tag.name }}
+      #endif
+      #if user
+      by user {{ user.name }}
+      #endif
+      in the {{ siteName }} Build System.  The list is sorted in reverse chronological order by build completion time.
     </description>
-    <pubDate>$util.formatTimeRSS($currentDate)</pubDate>
-    #for $build in $builds
+    <pubDate>{{ util.formatTimeRSS(currentDate) }}</pubDate>
+    #for build in builds
     <item>
-      <title>$koji.BUILD_STATES[$build.state].lower(): $koji.buildLabel($build)#if $build.task then ', target: ' + $build.task.request[1] else ''#</title>
-      <link>$weburl/buildinfo?buildID=$build.build_id</link>
-      #if $build.completion_time
-      <pubDate>$util.formatTimeRSS($build.completion_ts)</pubDate>
-      #end if
-      #if $build.state == $koji.BUILD_STATES['COMPLETE'] and $build.changelog
-      <description>&lt;pre&gt;$koji.util.formatChangelog($build.changelog)&lt;/pre&gt;</description>
-      #end if
+      <title>{{ koji.BUILD_STATES[build.state]|lower }}: {{ koji.buildLabel(build) }}{{ ', target: ' + build.task.request[1] if build.task else '' }}</title>
+      <link>{{ weburl }}/buildinfo?buildID={{ build.build_id }}</link>
+      #if build.completion_time
+      <pubDate>{{ util.formatTimeRSS(build.completion_ts) }}</pubDate>
+      #endif
+      #if build.state == koji.BUILD_STATES['COMPLETE'] and build.changelog
+      <description>&lt;pre&gt;{{ koji.util.formatChangelog(build.changelog) }}&lt;/pre&gt;</description>
+      #endif
     </item>
-    #end for
+    #endfor
   </channel>
 </rss>

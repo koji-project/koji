@@ -168,7 +168,7 @@ class Dispatcher(object):
         self.options = opts
         return opts
 
-    def setup_logging2(self, environ):
+    def setup_logging(self, environ):
         """Adjust logging based on configuration options"""
         opts = self.options
         # determine log level
@@ -264,7 +264,7 @@ class Dispatcher(object):
         import index as kojiweb_handlers
         import kojiweb
         self.find_handlers()
-        self.setup_logging2(environ)
+        self.setup_logging(environ)
         koji.util.setup_rlimits(options)
         # TODO - plugins?
 
@@ -343,7 +343,8 @@ class Dispatcher(object):
         # FIXME - we need a better fix for this
         environ['koji.values'].setdefault('mavenEnabled', False)
         environ['koji.values'].setdefault('winEnabled', False)
-        result = _genHTML(environ, 'error.chtml')
+        # import pdb; pdb.set_trace()
+        result = _genHTML(environ, 'error.chtml', jinja=True)
         result = self._tobytes(result)
         headers = [
             ('Allow', 'GET, POST, HEAD'),

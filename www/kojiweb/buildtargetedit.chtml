@@ -1,38 +1,37 @@
-#from kojiweb import util
 
-#include "includes/header.chtml"
+#include "includes/header2.chtml"
 
-  #if $target
-  <h4>Edit target $target.name</h4>
+  #if target
+  <h4>Edit target {{ target.name }}</h4>
   #else
   <h4>Create build target</h4>
-  #end if
+  #endif
 
-  <form action="#if $target then 'buildtargetedit' else 'buildtargetcreate'#">
-    $util.authToken($self, form=True)
-    #if $target
-    <input type="hidden" name="targetID" value="$target.id"/>
-    #end if
+  <form action="{{ 'buildtargetedit' if target else 'buildtargetcreate' }}">
+    {{ util.authToken(form=True) }}
+    #if target
+    <input type="hidden" name="targetID" value="{{ target.id }}"/>
+    #endif
     <table>
       <tr>
         <th>Name</th>
       <td>
-        <input type="text" name="name" size="50" value="#if $target then $target.name else ''#"/>
+        <input type="text" name="name" size="50" value="{{ target.name if target else '' }}"/>
       </td>
     </tr>
-    #if $target
+    #if target
     <tr>
-      <th>ID</th><td>$target.id</td>
+      <th>ID</th><td>{{ target.id }}</td>
     </tr>
-    #end if
+    #endif
     <tr>
       <th>Build Tag</th>
       <td>
         <select name="buildTag">
           <option value="">select tag</option>
-          #for $tag in $tags
-          <option value="$tag.id"#if $target and $target.build_tag == $tag.id then ' selected' else ''#>$tag.name</option>
-          #end for
+          #for tag in tags
+          <option value="{{ tag.id }}"{{ ' selected' if target and target.build_tag == tag.id else '' }}>{{ tag.name }}</option>
+          #endfor
         </select>
       </td>
     </tr>
@@ -41,23 +40,23 @@
       <td>
         <select name="destTag">
           <option value="">select tag</option>
-          #for $tag in $tags
-          <option value="$tag.id"#if $target and $target.dest_tag == $tag.id then ' selected' else ''#>$tag.name</option>
-          #end for
+          #for tag in tags
+          <option value="{{ tag.id }}"{{ ' selected' if target and target.dest_tag == tag.id else '' }}>{{ tag.name }}</option>
+          #endfor
         </select>
       </td>
     </tr>
     <tr>
       <td>
-        #if $target
+        #if target
         <button type="submit" name="save" value="Save">Save</button>
         #else
         <button type="submit" name="add" value="Add">Add</button>
-        #end if
+        #endif
       </td>
       <td><button type="submit" name="cancel" value="Cancel">Cancel</button></td>
     </tr>
     </table>
     </form>
 
-#include "includes/footer.chtml"
+#include "includes/footer2.chtml"

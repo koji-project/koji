@@ -1,6 +1,7 @@
 from unittest import mock
 import unittest
 
+import koji
 from .loadwebindex import webidx
 
 
@@ -26,7 +27,8 @@ class TestRepoInfo(unittest.TestCase):
         self.get_server.return_value = self.server
 
         self.server.repoInfo.return_value = {'dist': True, 'id': int(self.repo_id),
-                                             'tag_name': 'test-tag'}
+                                             'tag_name': 'test-tag', 'state': koji.REPO_READY,
+                                             'create_ts': 1735707600.0}
         self.server.listBuildroots.return_value = []
 
         webidx.repoinfo(self.environ, self.repo_id)
@@ -38,7 +40,8 @@ class TestRepoInfo(unittest.TestCase):
         self.get_server.return_value = self.server
 
         self.server.repoInfo.return_value = {'dist': False, 'id': int(self.repo_id),
-                                             'tag_name': 'test-tag'}
+                                             'tag_name': 'test-tag', 'state': koji.REPO_READY,
+                                             'create_ts': 1735707600.0}
         self.server.listBuildroots.return_value = [{'id': 1, 'repo_id': int(self.repo_id)}]
 
         webidx.repoinfo(self.environ, self.repo_id)

@@ -1,108 +1,107 @@
-#from kojiweb import util
 
-#include "includes/header.chtml"
+#include "includes/header2.chtml"
 
-  <h4>Information for user <a href="userinfo?userID=$user.id">$user.name</a></h4>
+  <h4>Information for user <a href="userinfo?userID={{ user.id }}">{{ user.name }}</a></h4>
 
   <table>
     <tr>
-      <th>Name</th><td>$user.name</td>
+      <th>Name</th><td>{{ user.name }}</td>
     </tr>
     <tr>
-      <th>ID</th><td>$user.id</td>
+      <th>ID</th><td>{{ user.id }}</td>
     </tr>
     <tr>
-      <th>Tasks</th><td><a href="tasks?state=all$util.passthrough($self, 'owner')">$taskCount</a></td>
+      <th>Tasks</th><td><a href="tasks?state=all{{ util.passthrough('owner') }}">{{ taskCount }}</a></td>
     </tr>
     <tr>
       <th id="packagelist">Packages</th>
       <td class="container">
-        #if $len($packages) > 0
+        #if (packages |length) > 0
         <table class="nested data-list">
           <tr>
             <td class="paginate" colspan="3">
-              #if $len($packagePages) > 1
+              #if (packagePages |length) > 1
               <form class="pageJump" action="">
                 Page:
-                <select onchange="javascript: window.location = 'userinfo?packageStart=' + this.value * $packageRange + '$util.passthrough($self, 'userID', 'packageOrder', 'buildOrder', 'buildStart')#packagelist';">
-                  #for $pageNum in $packagePages
-                  <option value="$pageNum"#if $pageNum == $packageCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
-                  #end for
+                <select onchange="javascript: window.location = 'userinfo?packageStart=' + this.value * {{ packageRange }} + '{{ util.passthrough('userID', 'packageOrder', 'buildOrder', 'buildStart') }}#packagelist';">
+                  #for pageNum in packagePages
+                  <option value="{{ pageNum }}"{{ ' selected' if pageNum == packageCurrentPage else '' }}>{{ pageNum + 1 }}</option>
+                  #endfor
                 </select>
               </form>
-              #end if
-              #if $packageStart > 0
-              <a href="userinfo?packageStart=#echo $packageStart - $packageRange #$util.passthrough($self, 'userID', 'packageOrder', 'buildOrder', 'buildStart')#packagelist">&lt;&lt;&lt;</a>
-              #end if
-              <strong>#echo $packageStart + 1 # through #echo $packageStart + $packageCount # of $totalPackages</strong>
-              #if $packageStart + $packageCount < $totalPackages
-              <a href="userinfo?packageStart=#echo $packageStart + $packageRange#$util.passthrough($self, 'userID', 'packageOrder', 'buildOrder', 'buildStart')#packagelist">&gt;&gt;&gt;</a>
-              #end if
+              #endif
+              #if packageStart > 0
+              <a href="userinfo?packageStart={{ packageStart - packageRange  }}{{ util.passthrough('userID', 'packageOrder', 'buildOrder', 'buildStart') }}#packagelist">&lt;&lt;&lt;</a>
+              #endif
+              <strong>{{ packageStart + 1  }} through {{ packageStart + packageCount  }} of {{ totalPackages }}</strong>
+              #if packageStart + packageCount < totalPackages
+              <a href="userinfo?packageStart={{ packageStart + packageRange }}{{ util.passthrough('userID', 'packageOrder', 'buildOrder', 'buildStart') }}#packagelist">&gt;&gt;&gt;</a>
+              #endif
             </td>
           </tr>
           <tr class="list-header">
-            <th><a href="userinfo?packageOrder=$util.toggleOrder($self, 'package_name', 'packageOrder')$util.passthrough($self, 'userID', 'buildOrder', 'buildStart')#packagelist">Name</a> $util.sortImage($self, 'package_name', 'packageOrder')</th>
-            <th><a href="userinfo?packageOrder=$util.toggleOrder($self, 'tag_name', 'packageOrder')$util.passthrough($self, 'userID', 'buildOrder', 'buildStart')#packagelist">Tag</a> $util.sortImage($self, 'tag_name', 'packageOrder')</th>
-            <th><a href="userinfo?packageOrder=$util.toggleOrder($self, 'blocked', 'packageOrder')$util.passthrough($self, 'userID', 'buildOrder', 'buildStart')#packagelist">Included?</a> $util.sortImage($self, 'blocked', 'packageOrder')</th>
+            <th><a href="userinfo?packageOrder={{ util.toggleOrder('package_name', 'packageOrder') }}{{ util.passthrough('userID', 'buildOrder', 'buildStart') }}#packagelist">Name</a> {{ util.sortImage('package_name', 'packageOrder') }}</th>
+            <th><a href="userinfo?packageOrder={{ util.toggleOrder('tag_name', 'packageOrder') }}{{ util.passthrough('userID', 'buildOrder', 'buildStart') }}#packagelist">Tag</a> {{ util.sortImage('tag_name', 'packageOrder') }}</th>
+            <th><a href="userinfo?packageOrder={{ util.toggleOrder('blocked', 'packageOrder') }}{{ util.passthrough('userID', 'buildOrder', 'buildStart') }}#packagelist">Included?</a> {{ util.sortImage('blocked', 'packageOrder') }}</th>
           </tr>
-          #for $package in $packages
-          <tr class="$util.rowToggle($self)">
-            <td><a href="packageinfo?packageID=$package.package_id">$package.package_name</a></td>
-            <td><a href="taginfo?tagID=$package.tag_id">$package.tag_name</a></td>
-            <td class="$str(not $package.blocked).lower()">#if $package.blocked then $util.imageTag('no') else $util.imageTag('yes')#</td>
+          #for package in packages
+          <tr class="{{ util.rowToggle() }}">
+            <td><a href="packageinfo?packageID={{ package.package_id }}">{{ package.package_name }}</a></td>
+            <td><a href="taginfo?tagID={{ package.tag_id }}">{{ package.tag_name }}</a></td>
+            <td class="{{ package.blocked|lower }}">{{ util.imageTag('no') if package.blocked else util.imageTag('yes') }}</td>
           </tr>
-          #end for
+          #endfor
         </table>
         #else
         No packages
-        #end if
+        #endif
       </td>
     </tr>
     <tr>
       <th id="buildlist">Builds</th>
       <td class="container">
-        #if $len($builds) > 0
+        #if (builds |length) > 0
         <table class="nested data-list">
           <tr>
             <td class="paginate" colspan="3">
-              #if $len($buildPages) > 1
+              #if (buildPages |length) > 1
               <form class="pageJump" action="">
                 Page:
-                <select onchange="javascript: window.location = 'userinfo?buildStart=' + this.value * $buildRange + '$util.passthrough($self, 'userID', 'buildOrder', 'packageOrder', 'packageStart')#buildlist';">
-                  #for $pageNum in $buildPages
-                  <option value="$pageNum"#if $pageNum == $buildCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
-                  #end for
+                <select onchange="javascript: window.location = 'userinfo?buildStart=' + this.value * {{ buildRange }} + '{{ util.passthrough('userID', 'buildOrder', 'packageOrder', 'packageStart') }}#buildlist';">
+                  #for pageNum in buildPages
+                  <option value="{{ pageNum }}"{{ ' selected' if pageNum == buildCurrentPage else '' }}>{{ pageNum + 1 }}</option>
+                  #endfor
                 </select>
               </form>
-              #end if
-              #if $buildStart > 0
-              <a href="userinfo?buildStart=#echo $buildStart - $buildRange #$util.passthrough($self, 'userID', 'buildOrder', 'packageOrder', 'packageStart')#buildlist">&lt;&lt;&lt;</a>
-              #end if
-              <strong>#echo $buildStart + 1 # through #echo $buildStart + $buildCount # of $totalBuilds</strong>
-              #if $buildStart + $buildCount < $totalBuilds
-              <a href="userinfo?buildStart=#echo $buildStart + $buildRange#$util.passthrough($self, 'userID', 'buildOrder', 'packageOrder', 'packageStart')#buildlist">&gt;&gt;&gt;</a>
-              #end if
+              #endif
+              #if buildStart > 0
+              <a href="userinfo?buildStart={{ buildStart - buildRange  }}{{ util.passthrough('userID', 'buildOrder', 'packageOrder', 'packageStart') }}#buildlist">&lt;&lt;&lt;</a>
+              #endif
+              <strong>{{ buildStart + 1  }} through {{ buildStart + buildCount  }} of {{ totalBuilds }}</strong>
+              #if buildStart + buildCount < totalBuilds
+              <a href="userinfo?buildStart={{ buildStart + buildRange }}{{ util.passthrough('userID', 'buildOrder', 'packageOrder', 'packageStart') }}#buildlist">&gt;&gt;&gt;</a>
+              #endif
             </td>
           </tr>
           <tr class="list-header">
-            <th><a href="userinfo?buildOrder=$util.toggleOrder($self, 'nvr', 'buildOrder')$util.passthrough($self, 'userID', 'packageOrder', 'packageStart')#buildlist">NVR</a> $util.sortImage($self, 'nvr', 'buildOrder')</th>
-            <th><a href="userinfo?buildOrder=$util.toggleOrder($self, 'completion_time', 'buildOrder')$util.passthrough($self, 'userID', 'packageOrder', 'packageStart')#buildlist">Finished</a> $util.sortImage($self, 'completion_time', 'buildOrder')</th>
-            <th><a href="userinfo?buildOrder=$util.toggleOrder($self, 'state', 'buildOrder')$util.passthrough($self, 'userID', 'packageOrder', 'packageStart')#buildlist">State</a> $util.sortImage($self, 'state', 'buildOrder')</th>
+            <th><a href="userinfo?buildOrder={{ util.toggleOrder('nvr', 'buildOrder') }}{{ util.passthrough('userID', 'packageOrder', 'packageStart') }}#buildlist">NVR</a> {{ util.sortImage('nvr', 'buildOrder') }}</th>
+            <th><a href="userinfo?buildOrder={{ util.toggleOrder('completion_time', 'buildOrder') }}{{ util.passthrough('userID', 'packageOrder', 'packageStart') }}#buildlist">Finished</a> {{ util.sortImage('completion_time', 'buildOrder') }}</th>
+            <th><a href="userinfo?buildOrder={{ util.toggleOrder('state', 'buildOrder') }}{{ util.passthrough('userID', 'packageOrder', 'packageStart') }}#buildlist">State</a> {{ util.sortImage('state', 'buildOrder') }}</th>
           </tr>
-          #for $build in $builds
-          <tr class="$util.rowToggle($self)">
-            #set $stateName = $util.stateName($build.state)
-            <td><a href="buildinfo?buildID=$build.build_id">$build.nvr</a></td>
-            <td>$util.formatTime($build.completion_ts)</td>
-            <td class="$stateName">$util.stateImage($build.state)</td>
+          #for build in builds
+          <tr class="{{ util.rowToggle() }}">
+            #set stateName = util.stateName(build.state)
+            <td><a href="buildinfo?buildID={{ build.build_id }}">{{ build.nvr }}</a></td>
+            <td>{{ util.formatTime(build.completion_ts) }}</td>
+            <td class="{{ stateName }}">{{ util.stateImage(build.state) }}</td>
           </tr>
-          #end for
+          #endfor
         </table>
         #else
         No builds
-        #end if
+        #endif
       </td>
     </tr>
   </table>
 
-#include "includes/footer.chtml"
+#include "includes/footer2.chtml"

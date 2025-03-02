@@ -1,27 +1,26 @@
-#from kojiweb import util
 
-#include "includes/header.chtml"
+#include "includes/header2.chtml"
 
-  #if $notif
+  #if notif
   <h4>Edit notification</h4>
   #else
   <h4>Create notification</h4>
-  #end if
+  #endif
 
-  <form action="#if $notif then 'notificationedit' else 'notificationcreate'#">
-    $util.authToken($self, form=True)
-    #if $notif
-    <input type="hidden" name="notificationID" value="$notif.id"/>
-    #end if
+  <form action="{{ 'notificationedit' if notif else 'notificationcreate' }}">
+    {{ util.authToken(form=True) }}
+    #if notif
+    <input type="hidden" name="notificationID" value="{{ notif.id }}"/>
+    #endif
     <table>
       <tr>
         <th>Package</th>
         <td>
           <select name="package">
-            <option value="all"#if $notif and not $notif.package_id then ' selected' else ''#>all</option>
-            #for $package in $packages
-            <option value="$package.package_id"#if $notif and $notif.package_id == $package.package_id then ' selected' else ''#>$package.package_name</option>
-            #end for
+            <option value="all"{{ ' selected' if notif and not notif.package_id else '' }}>all</option>
+            #for package in packages
+            <option value="{{ package.package_id }}"{{ ' selected' if notif and notif.package_id == package.package_id else '' }}>{{ package.package_name }}</option>
+            #endfor
           </select>
         </td>
       </tr>
@@ -29,28 +28,28 @@
         <th>Tag</th>
         <td>
           <select name="tag">
-            <option value="all"#if $notif and not $notif.tag_id then ' selected' else ''#>all</option>
-            #for $tag in $tags
-            <option value="$tag.id"#if $notif and $notif.tag_id == $tag.id then ' selected' else ''#>$tag.name</option>
-            #end for
+            <option value="all"{{ ' selected' if notif and not notif.tag_id else '' }}>all</option>
+            #for tag in tags
+            <option value="{{ tag.id }}"{{ ' selected' if notif and notif.tag_id == tag.id else '' }}>{{ tag.name }}</option>
+            #endfor
           </select>
         </td>
       </tr>
       <tr>
         <th>Success Only?</th>
-        <td><input type="checkbox" name="success_only" value="yes"#if $notif and $notif.success_only then ' checked="checked"' else ''#/></td>
+        <td><input type="checkbox" name="success_only" value="yes"{{ ' checked="checked"' if notif and notif.success_only else '' }}/></td>
       </tr>
       <tr>
         <td>
-          #if $notif
+          #if notif
           <button type="submit" name="save" value="Save">Save</button>
           #else
           <button type="submit" name="add" value="Add">Add</button>
-          #end if
+          #endif
         </td>
         <td><button type="submit" name="cancel" value="Cancel">Cancel</button></td>
       </tr>
     </table>
   </form>
 
-#include "includes/footer.chtml"
+#include "includes/footer2.chtml"

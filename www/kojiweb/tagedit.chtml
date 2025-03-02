@@ -1,65 +1,64 @@
-#from kojiweb import util
 
-#include "includes/header.chtml"
+#include "includes/header2.chtml"
 
-  #if $tag
-  <h4>Edit tag $tag.name</h4>
+  #if tag
+  <h4>Edit tag {{ tag.name }}</h4>
   #else
   <h4>Create tag</h4>
-  #end if
+  #endif
 
-  <form action="#if $tag then 'tagedit' else 'tagcreate'#">
-    $util.authToken($self, form=True)
+  <form action="{{ 'tagedit' if tag else 'tagcreate' }}">
+    {{ util.authToken(form=True) }}
     <table>
       <tr>
         <th>Name</th>
         <td>
-          <input type="text" name="name" value="#if $tag then $tag.name else ''#"/>
-          #if $tag
-          <input type="hidden" name="tagID" value="$tag.id"/>
-          #end if
+          <input type="text" name="name" value="{{ tag.name if tag else '' }}"/>
+          #if tag
+          <input type="hidden" name="tagID" value="{{ tag.id }}"/>
+          #endif
         </td>
       </tr>
       <tr>
         <th>Arches</th>
-        <td><input type="text" name="arches" value="#if $tag then $tag.arches else ''#"/></td>
+        <td><input type="text" name="arches" value="{{ tag.arches if tag else '' }}"/></td>
       </tr>
       <tr>
         <th>Locked</th>
-        <td><input type="checkbox" name="locked" value="yes" #if $tag and $tag.locked then 'checked="checked"' else ''#/></td>
+        <td><input type="checkbox" name="locked" value="yes" {{ 'checked="checked"' if tag and tag.locked else '' }}/></td>
       </tr>
       <tr>
         <th>Permission</th>
         <td>
           <select name="permission">
-            <option value="none" #if $tag and not $tag.perm_id then 'selected' else ''#>none</option>
-            #for $permission in $permissions
-            <option value="$permission.id" #if $tag and $tag.perm_id == $permission.id then 'selected' else ''#>$permission.name</option>
-            #end for
+            <option value="none" {{ 'selected' if tag and not tag.perm_id else '' }}>none</option>
+            #for permission in permissions
+            <option value="{{ permission.id }}" {{ 'selected' if tag and tag.perm_id == permission.id else '' }}>{{ permission.name }}</option>
+            #endfor
           </select>
         </td>
       </tr>
-      #if $mavenEnabled
+      #if mavenEnabled
       <tr>
         <th>Maven Support?</th>
-        <td><input type="checkbox" name="maven_support" value="yes" #if $tag and $tag.maven_support then 'checked="checked"' else ''#>
+        <td><input type="checkbox" name="maven_support" value="yes" {{ 'checked="checked"' if tag and tag.maven_support else '' }}>
       </tr>
       <tr>
         <th>Include All Maven Builds?</th>
-        <td><input type="checkbox" name="maven_include_all" value="yes" #if $tag and $tag.maven_include_all then 'checked="checked"' else ''#>
+        <td><input type="checkbox" name="maven_include_all" value="yes" {{ 'checked="checked"' if tag and tag.maven_include_all else '' }}>
       </tr>
-      #end if
+      #endif
       <tr>
         <td>
-          #if $tag
+          #if tag
           <button type="submit" name="save" value="Save">Save</button>
           #else
           <button type="submit" name="add" value="Add">Add</button>
-          #end if
+          #endif
         </td>
         <td><button type="submit" name="cancel" value="Cancel">Cancel</button></td>
       </tr>
     </table>
   </form>
 
-#include "includes/footer.chtml"
+#include "includes/footer2.chtml"

@@ -1,36 +1,34 @@
-#from kojiweb import util
 
-#@util.safe_return
-#def printOption(value, label=None)
-#if not $label
-#set $label = $value
-#end if
-<option value="$value"#if $value == $days then ' selected' else ''#>$label</option>
-#end def
+#macro printOption(value, label=None)
+#if not label
+#set label = value
+#endif
+<option value="{{ value }}"{{ ' selected' if value == days else '' }}>{{ label }}</option>
+#endmacro
 
-#set $numTotal = $numSucceeded + $numFailed + $numCanceled
+#set numTotal = numSucceeded + numFailed + numCanceled
 
-#include "includes/header.chtml"
+#include "includes/header2.chtml"
 
-  <h4>Succeeded/Failed/Canceled Builds#if $days != -1 then ' in the last %i days' % $days else ''#</h4>
+  <h4>Succeeded/Failed/Canceled Builds{{ ' in the last %i days' % days if days != -1 else '' }}</h4>
   <table class="data-list">
     <tr style="text-align: left">
       <td colspan="3">
         <form action="">
           Show last
           <select onchange="javascript: window.location = 'buildsbystatus?days=' + this.value;">
-            $printOption(1)
-            $printOption(3)
-            $printOption(5)
-            $printOption(7)
-            $printOption(14)
-            $printOption(30)
-            $printOption(60)
-            $printOption(90)
-            $printOption(120)
-            $printOption(180)
-            $printOption(365)
-            $printOption(-1, 'all')
+            {{ printOption(1) }}
+            {{ printOption(3) }}
+            {{ printOption(5) }}
+            {{ printOption(7) }}
+            {{ printOption(14) }}
+            {{ printOption(30) }}
+            {{ printOption(60) }}
+            {{ printOption(90) }}
+            {{ printOption(120) }}
+            {{ printOption(180) }}
+            {{ printOption(365) }}
+            {{ printOption(-1, 'all') }}
           </select> days
         </form>
       </td>
@@ -42,24 +40,24 @@
     </tr>
     <tr class="row-odd taskclosed">
       <td>Succeeded</td>
-      <td width="#echo $graphWidth + 5#"><img src="$util.themePath('images/1px.gif')" width="#echo $increment * $numSucceeded#" height="15" class="graphrow" alt="graph row"/></td>
-      <td>$numSucceeded</td>
+      <td width="{{ graphWidth + 5 }}"><img src="{{ util.themePath('images/1px.gif') }}" width="{{ increment * numSucceeded }}" height="15" class="graphrow" alt="graph row"/></td>
+      <td>{{ numSucceeded }}</td>
     </tr>
     <tr class="row-even taskfailed">
       <td>Failed</td>
-      <td width="#echo $graphWidth + 5#"><img src="$util.themePath('images/1px.gif')" width="#echo $increment * $numFailed#" height="15" class="graphrow" alt="graph row"/></td>
-      <td>$numFailed</td>
+      <td width="{{ graphWidth + 5 }}"><img src="{{ util.themePath('images/1px.gif') }}" width="{{ increment * numFailed }}" height="15" class="graphrow" alt="graph row"/></td>
+      <td>{{ numFailed }}</td>
     </tr>
     <tr class="row-odd taskcanceled">
       <td>Canceled</td>
-      <td width="#echo $graphWidth + 5#"><img src="$util.themePath('images/1px.gif')" width="#echo $increment * $numCanceled#" height="15" class="graphrow" alt="graph row"/></td>
-      <td>$numCanceled</td>
+      <td width="{{ graphWidth + 5 }}"><img src="{{ util.themePath('images/1px.gif') }}" width="{{ increment * numCanceled }}" height="15" class="graphrow" alt="graph row"/></td>
+      <td>{{ numCanceled }}</td>
     </tr>
     <tr class="row-even">
       <td>Total</td>
       <td></td>
-      <td>$numTotal</td>
+      <td>{{ numTotal }}</td>
     </tr>
   </table>
 
-#include "includes/footer.chtml"
+#include "includes/footer2.chtml"

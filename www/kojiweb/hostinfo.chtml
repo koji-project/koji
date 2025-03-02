@@ -1,91 +1,90 @@
-#from kojiweb import util
 
-#include "includes/header.chtml"
+#include "includes/header2.chtml"
 
-  <h4>Information for host <a href="hostinfo?hostID=$host.id">$host.name</a></h4>
+  <h4>Information for host <a href="hostinfo?hostID={{ host.id }}">{{ host.name }}</a></h4>
 
   <table>
     <tr>
-      <th>Name</th><td>$host.name</td>
+      <th>Name</th><td>{{ host.name }}</td>
     </tr>
     <tr>
-      <th>ID</th><td>$host.id</td>
+      <th>ID</th><td>{{ host.id }}</td>
     </tr>
     <tr>
-      <th>Arches</th><td>$host.arches</td>
+      <th>Arches</th><td>{{ host.arches }}</td>
     </tr>
     <tr>
-      <th>Capacity</th><td>$host.capacity</td>
+      <th>Capacity</th><td>{{ host.capacity }}</td>
     </tr>
     <tr>
-      <th>Task Load</th><td><a href="tasks?hostID=$host.id">#echo '%.2f' % $host.task_load#</a></td>
+      <th>Task Load</th><td><a href="tasks?hostID={{ host.id }}">{{ '%.2f' % host.task_load }}</a></td>
     </tr>
     <tr>
-      <th>Description</th><td class="usertext">$host.description</td>
+      <th>Description</th><td class="usertext">{{ host.description }}</td>
     </tr>
     <tr>
-      <th>Comment</th><td class="usertext">$host.comment</td>
+      <th>Comment</th><td class="usertext">{{ host.comment }}</td>
     </tr>
     <tr>
-      #set $enabled = $host.enabled and 'yes' or 'no'
+      #set enabled = host.enabled and 'yes' or 'no'
       <th>Enabled?</th>
-      <td class="$enabled">
-        $util.imageTag($enabled)
-        #if 'admin' in $perms
-        #if $host.enabled
-        <span class="adminLink">(<a href="disablehost?hostID=$host.id$util.authToken($self)">disable</a>)</span>
+      <td class="{{ enabled }}">
+        {{ util.imageTag(enabled) }}
+        #if 'admin' in perms
+        #if host.enabled
+        <span class="adminLink">(<a href="disablehost?hostID={{ host.id }}{{ util.authToken() }}">disable</a>)</span>
         #else
-        <span class="adminLink">(<a href="enablehost?hostID=$host.id$util.authToken($self)">enable</a>)</span>
-        #end if
-        #end if
+        <span class="adminLink">(<a href="enablehost?hostID={{ host.id }}{{ util.authToken() }}">enable</a>)</span>
+        #endif
+        #endif
       </td>
     </tr>
     <tr>
-      #set $ready = $host.ready and 'yes' or 'no'
-      <th>Ready?</th><td class="$ready">$util.imageTag($ready)</td>
+      #set ready = host.ready and 'yes' or 'no'
+      <th>Ready?</th><td class="{{ ready }}">{{ util.imageTag(ready) }}</td>
     </tr>
     <tr>
-      <th>Last Update</th><td>$util.formatTime($lastUpdate)</td>
+      <th>Last Update</th><td>{{ util.formatTime(lastUpdate) }}</td>
     </tr>
     <tr>
       <th>Channels</th>
       <td>
-        #for $channel in $channels
-        <a href="channelinfo?channelID=$channel.id" class="$channel.enabled">$channel.name</a><br/>
-        #end for
-        #if not $channels
+        #for channel in channels
+        <a href="channelinfo?channelID={{ channel.id }}" class="{{ channel.enabled }}">{{ channel.name }}</a><br/>
+        #endfor
+        #if not channels
         No channels
-        #end if
+        #endif
       </td>
     </tr>
     <tr>
       <th>Active Buildroots</th>
-      #if $buildroots
+      #if buildroots
       <td class="container">
         <table class="nested data-list">
           <tr class="list-header">
             <th>Buildroot</th><th>Created</th><th>State</th>
           </tr>
-          #for $buildroot in $buildroots
-          <tr class="$util.rowToggle($self)">
-            <td><a href="buildrootinfo?buildrootID=$buildroot.id">$buildroot.tag_name-$buildroot.id-$buildroot.repo_id</a></td>
-            <td>$util.formatTime($buildroot.create_event_time)</td>
-            <td>$util.imageTag($util.brStateName($buildroot.state))</td>
+          #for buildroot in buildroots
+          <tr class="{{ util.rowToggle() }}">
+            <td><a href="buildrootinfo?buildrootID={{ buildroot.id }}">{{ buildroot.tag_name }}-{{ buildroot.id }}-{{ buildroot.repo_id }}</a></td>
+            <td>{{ util.formatTime(buildroot.create_event_time) }}</td>
+            <td>{{ util.imageTag(util.brStateName(buildroot.state)) }}</td>
           </tr>
-          #end for
+          #endfor
         </table>
       </td>
       #else
       <td>
         No buildroots
       </td>
-      #end if
+      #endif
     </tr>
-    #if 'admin' in $perms
+    #if 'admin' in perms
     <tr>
-      <td colspan="2"><a href="hostedit?hostID=$host.id$util.authToken($self)">Edit host</a></td>
+      <td colspan="2"><a href="hostedit?hostID={{ host.id }}{{ util.authToken() }}">Edit host</a></td>
     </tr>
-    #end if
+    #endif
   </table>
 
-#include "includes/footer.chtml"
+#include "includes/footer2.chtml"

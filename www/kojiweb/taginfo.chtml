@@ -1,180 +1,177 @@
-#from kojiweb import util
-#from urllib.parse import quote
-#import pprint
 
-#include "includes/header.chtml"
+#include "includes/header2.chtml"
 
-  <h4>Information for tag <a href="taginfo?tagID=$tag.id">$tag.name</a></h4>
+  <h4>Information for tag <a href="taginfo?tagID={{ tag.id }}">{{ tag.name }}</a></h4>
 
   <table>
-    #if $child and 'admin' in $perms
+    #if child and 'admin' in perms
     <tr>
-      <th colspan="2"><a href="tagparent?tagID=$child.id&parentID=$tag.id&action=add$util.authToken($self)">Add $tag.name as parent of $child.name</a></th>
+      <th colspan="2"><a href="tagparent?tagID={{ child.id }}&parentID={{ tag.id }}&action=add{{ util.authToken() }}">Add {{ tag.name }} as parent of {{ child.name }}</a></th>
     </tr>
-    #end if
+    #endif
     <tr>
-      <th>Name</th><td>$tag.name</td>
-    </tr>
-    <tr>
-      <th>ID</th><td>$tag.id</td>
+      <th>Name</th><td>{{ tag.name }}</td>
     </tr>
     <tr>
-      <th>Arches</th><td>$tag.arches</td>
+      <th>ID</th><td>{{ tag.id }}</td>
     </tr>
     <tr>
-      <th>Locked</th><td class="$str(not $tag.locked).lower()">#if $tag.locked then 'yes' else 'no'#</td>
+      <th>Arches</th><td>{{ tag.arches }}</td>
     </tr>
     <tr>
-      <th>Permission</th><td>#if $tag.perm_id then $allPerms[$tag.perm_id] else 'none'#</td>
-    </tr>
-    #if $mavenEnabled
-    <tr>
-      <th>Maven Support?</th><td class="$str($tag.maven_support).lower()">#if $tag.maven_support then 'yes' else 'no'#</td>
+      <th>Locked</th><td class="{{ (not tag.locked)|lower }}">{{ 'yes' if tag.locked else 'no' }}</td>
     </tr>
     <tr>
-      <th>Include All Maven Builds?</th><td class="$str($tag.maven_include_all).lower()">#if $tag.maven_include_all then 'yes' else 'no'#</td>
+      <th>Permission</th><td>{{ allPerms[tag.perm_id] if tag.perm_id else 'none' }}</td>
     </tr>
-    #end if
+    #if mavenEnabled
+    <tr>
+      <th>Maven Support?</th><td class="{{ tag.maven_support|lower }}">{{ 'yes' if tag.maven_support else 'no' }}</td>
+    </tr>
+    <tr>
+      <th>Include All Maven Builds?</th><td class="{{ tag.maven_include_all|lower }}">{{ 'yes' if tag.maven_include_all else 'no' }}</td>
+    </tr>
+    #endif
     <tr>
       <th>Inheritance</th>
       <td class="tree">
-        <span class="root">$tag.name</span>
-        #set $numParents = $len($inheritance)
-        #set $iter = 0
-        #set $maxDepth = 0
-        #set $TRUNC_DEPTH = 7
+        <span class="root">{{ tag.name }}</span>
+        #set numParents = (inheritance |length)
+        #set iter = 0
+        #set all_depths = []
+        #set TRUNC_DEPTH = 7
         <ul>
-          #for $parent in $inheritance
-          #set $iter += 1
-          #set $nextDepth = ($iter < $numParents and $inheritance[$iter].currdepth or 1)
-          #set $depth = $parent.currdepth
-          #if $depth > $maxDepth
-          #set $maxDepth = $depth
-          #end if
-          #if $depth == $TRUNC_DEPTH and not $all
+          #for parent in inheritance
+          #set iter = iter + 1
+          #set nextDepth = (loop.nextitem.currdepth if not loop.last else 1)
+          #set depth = parent.currdepth
+          #set _junk = all_depths.append(depth)
+          ## ^ TODO FIXME
+          #if depth == TRUNC_DEPTH and not all
           <li><span class="treeBranch"><span class="treeToggle treeLabel">...</span></span></li>
           <li class="hidden">
-          #else if $len($tagsByChild[$parent.child_id]) > 1
+          #elif tagsByChild[parent.child_id]|length > 1
           <li class="sibling">
           #else
           <li>
-          #end if
-          #silent $tagsByChild[$parent.child_id].pop()
+          #endif
+          #set _junk = tagsByChild[parent.child_id].pop()
+          ## ^ TODO FIXME
             <span class="treeBranch">
               <span class="treeLabel">
-                <a href="taginfo?tagID=$parent.parent_id">$parent.name</a>
-                #if $depth == 1 and 'admin' in $perms
-                <span class="treeLink">(<a href="tagparent?tagID=$tag.id&parentID=$parent.parent_id&action=edit$util.authToken($self)">edit</a>) (<a href="tagparent?tagID=$tag.id&parentID=$parent.parent_id&action=remove$util.authToken($self)">remove</a>)</span>
-                #end if
+                <a href="taginfo?tagID={{ parent.parent_id }}">{{ parent.name }}</a>
+                #if depth == 1 and 'admin' in perms
+                <span class="treeLink">(<a href="tagparent?tagID={{ tag.id }}&parentID={{ parent.parent_id }}&action=edit{{ util.authToken() }}">edit</a>) (<a href="tagparent?tagID={{ tag.id }}&parentID={{ parent.parent_id }}&action=remove{{ util.authToken() }}">remove</a>)</span>
+                #endif
               </span>
             </span>
-           #if $nextDepth > $depth
+           #if nextDepth > depth
           <ul>
           #else
           </li>
-          #end if
-          #while $nextDepth < $depth
+          #endif
+          #for _tail in range(nextDepth, depth)
           </ul>
           </li>
-          #set $depth -= 1
-          #end while
-          #end for
+          #endfor
+          #endfor
         </ul>
       </td>
     </tr>
-    #if $maxDepth >= $TRUNC_DEPTH
+    #set maxDepth = all_depths|max
+    #if maxDepth >= TRUNC_DEPTH
     <tr>
       <td colspan="2">
-        #if $all
-        <a href="taginfo?tagID=$tag.id$util.passthrough($self, 'inherited')">Show abbreviated tree</a>
+        #if all
+        <a href="taginfo?tagID={{ tag.id }}{{ util.passthrough('inherited') }}">Show abbreviated tree</a>
         #else
-        <a href="taginfo?tagID=$tag.id$util.passthrough($self, 'inherited')&all=1">Show full tree</a>
-        #end if
+        <a href="taginfo?tagID={{ tag.id }}{{ util.passthrough('inherited') }}&all=1">Show full tree</a>
+        #endif
       </td>
     </tr>
-    #end if
-    #if 'admin' in $perms
+    #endif
+    #if 'admin' in perms
     <tr>
-      <td colspan="2"><a href="tags?childID=$tag.id">Add parent</a></td>
+      <td colspan="2"><a href="tags?childID={{ tag.id }}">Add parent</a></td>
     </tr>
-    #end if
-    #if $external_repos
+    #endif
+    #if external_repos
     <tr>
       <th>External&nbsp;repos</th>
       <td>
-        #for $external_repo in $external_repos
-        <a href="externalrepoinfo?extrepoID=$external_repo.external_repo_id">$external_repo.external_repo_name</a> [$external_repo.merge_mode]
-        #if $external_repo.tag_id != $tag.id
-        <span class="smaller">(inherited from <a href="taginfo?tagID=$external_repo.tag_id">$external_repo.tag_name</a>)</span>
-        #end if
+        #for external_repo in external_repos
+        <a href="externalrepoinfo?extrepoID={{ external_repo.external_repo_id }}">{{ external_repo.external_repo_name }}</a> [{{ external_repo.merge_mode }}]
+        #if external_repo.tag_id != tag.id
+        <span class="smaller">(inherited from <a href="taginfo?tagID={{ external_repo.tag_id }}">{{ external_repo.tag_name }}</a>)</span>
+        #endif
         <br/>
-        #end for
+        #endfor
       </td>
     </tr>
-    #end if
+    #endif
     <tr>
       <th>Repo&nbsp;created</th>
       <td>
-      #if $repo
-        <a href="repoinfo?repoID=$repo.id">$util.formatTimeRSS($repo.create_ts)</a>
-      #end if
+      #if repo
+        <a href="repoinfo?repoID={{ repo.id }}">{{ util.formatTimeRSS(repo.create_ts) }}</a>
+      #endif
       </td>
     </tr>
     <tr>
       <th>Packages</th>
-      <td><a href="packages?blocked=0&tagID=$tag.id">$numPackages</a></td>
+      <td><a href="packages?blocked=0&tagID={{ tag.id }}">{{ numPackages }}</a></td>
     </tr>
     <tr>
       <th>Packages (blocked packages included)</th>
-      <td><a href="packages?tagID=$tag.id">$numPackagesBlocked</a></td>
+      <td><a href="packages?tagID={{ tag.id }}">{{ numPackagesBlocked }}</a></td>
     </tr>
     <tr>
       <th>Builds</th>
-      <td><a href="builds?tagID=$tag.id">$numBuilds</a></td>
+      <td><a href="builds?tagID={{ tag.id }}">{{ numBuilds }}</a></td>
     </tr>
     <tr>
       <th>Targets building from this tag</th>
       <td>
-        #if $len($srcTargets)
-        #for $target in $srcTargets
-        <a href="buildtargetinfo?name=$quote($target.name)">$target.name</a><br/>
-        #end for
+        #if (srcTargets |length)
+        #for target in srcTargets
+        <a href="buildtargetinfo?name={{ quote(target.name) }}">{{ target.name }}</a><br/>
+        #endfor
         #else
         No build targets
-        #end if
+        #endif
       </td>
     </tr>
     <tr>
       <th>Targets building to this tag</th>
       <td>
-        #if $len($destTargets)
-        #for $target in $destTargets
-        <a href="buildtargetinfo?name=$quote($target.name)">$target.name</a><br/>
-        #end for
+        #if (destTargets |length)
+        #for target in destTargets
+        <a href="buildtargetinfo?name={{ quote(target.name) }}">{{ target.name }}</a><br/>
+        #endfor
         #else
         No build targets
-        #end if
+        #endif
       </td>
     </tr>
-    #if 'admin' in $perms
+    #if 'admin' in perms
     <tr>
-      <td colspan="2"><a href="tagedit?tagID=$tag.id$util.authToken($self)">Edit tag</a></td>
+      <td colspan="2"><a href="tagedit?tagID={{ tag.id }}{{ util.authToken() }}">Edit tag</a></td>
     </tr>
     <tr>
-      <td colspan="2"><a href="tagdelete?tagID=$tag.id$util.authToken($self)">Delete tag</a></td>
+      <td colspan="2"><a href="tagdelete?tagID={{ tag.id }}{{ util.authToken() }}">Delete tag</a></td>
     </tr>
-    #end if
-    #if $tag.get('extra')
+    #endif
+    #if tag.get('extra')
     <tr>
         <th>Extra options:</th>
     </tr>
-    #for $key in $tag['extra']
+    #for key in tag['extra']
     <tr>
-        <th>$key</th>
-        <td>$pprint.pformat($tag['extra'][$key])</td>
+        <th>{{ key }}</th>
+        <td>{{ pprint.pformat(tag.extra[key]) }}</td>
     </tr>
-    #end for
-    #end if
+    #endfor
+    #endif
   </table>
 
-#include "includes/footer.chtml"
+#include "includes/footer2.chtml"

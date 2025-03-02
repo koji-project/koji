@@ -1,95 +1,93 @@
-#from kojiweb import util
-#from urllib.parse import quote
 
-#include "includes/header.chtml"
+#include "includes/header2.chtml"
 
-  <h4>Users#if $prefix then ' starting with "%s"' % $prefix else ''#</h4>
+  <h4>Users {{ ' starting with "%s"' % prefix if prefix else '' }}</h4>
   <table class="data-list">
     <tr>
       <td class="charlist" colspan="5">
-        #for $char in $chars
-        #if $prefix == $char
-        <strong>$char</strong>
+        #for char in chars
+        #if prefix == char
+        <strong>{{ char }}</strong>
         #else
-        <a href="users?prefix=$char$util.passthrough($self, 'order')">$char</a>
-        #end if
+        <a href="users?prefix={{ char }}{{ util.passthrough('order') }}">{{ char }}</a>
+        #endif
         | 
-        #end for
-        #if $prefix
-        <a href="users?${util.passthrough($self, 'order', prefix='')}">all</a>
+        #endfor
+        #if prefix
+        <a href="users?{{ util.passthrough('order', prefix='') }}">all</a>
         #else
         <strong>all</strong>
-        #end if
+        #endif
       </td>
     </tr>
     <tr>
       <td class="paginate" colspan="5">
-        #if $len($userPages) > 1
+        #if userPages |length  > 1
         <form class="pageJump" action="">
           Page:
-          <select onchange="javascript: window.location = 'users?start=' + this.value * $userRange + '$util.passthrough($self, 'order', 'prefix')';">
-            #for $pageNum in $userPages
-            <option value="$pageNum"#if $pageNum == $userCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
-            #end for
+          <select onchange="javascript: window.location = 'users?start=' + this.value * {{ userRange }} + '{{ util.passthrough('order', 'prefix') }}';">
+            #for pageNum in userPages
+            <option value="{{ pageNum }}"{{ 'selected' if pageNum == userCurrentPage else '' }}>{{ pageNum + 1 }}</option>
+            #endfor
           </select>
         </form>
-        #end if
-        #if $userStart > 0
-        <a href="users?start=#echo $userStart - $userRange #$util.passthrough($self, 'order', 'prefix')">&lt;&lt;&lt;</a>
-        #end if
-        #if $totalUsers != 0
-        <strong>Users #echo $userStart + 1 # through #echo $userStart + $userCount # of $totalUsers</strong>
-        #end if
-        #if $userStart + $userCount < $totalUsers
-        <a href="users?start=#echo $userStart + $userRange#$util.passthrough($self, 'order', 'prefix')">&gt;&gt;&gt;</a>
-        #end if
+        #endif
+        #if userStart > 0
+        <a href="users?start={{ userStart - userRange }}{{ util.passthrough('order', 'prefix') }}">&lt;&lt;&lt;</a>
+        #endif
+        #if totalUsers != 0
+        <strong>Users {{ userStart + 1 }} through {{ userStart + userCount }} of {{ totalUsers }}</strong>
+        #endif
+        #if userStart + userCount < totalUsers
+        <a href="users?start={{ userStart + userRange }}{{ util.passthrough('order', 'prefix') }}">&gt;&gt;&gt;</a>
+        #endif
       </td>
     </tr>
     <tr class="list-header">
-      <th><a href="users?order=$util.toggleOrder($self, 'id')$util.passthrough($self, 'prefix')">ID</a> $util.sortImage($self, 'id')</th>
-      <th><a href="users?order=$util.toggleOrder($self, 'name')$util.passthrough($self, 'prefix')">Name</a> $util.sortImage($self, 'name')</th>
+      <th><a href="users?order={{ util.toggleOrder('id') }}{{ util.passthrough('prefix') }}">ID</a> {{ util.sortImage('id') }}</th>
+      <th><a href="users?order={{ util.toggleOrder('name') }}{{ util.passthrough('prefix') }}">Name</a> {{ util.sortImage('name') }}</th>
       <th>Packages</th>
       <th>Builds</th>
       <th>Tasks</th>
     </tr>
-    #if $len($users) > 0
-      #for $user in $users
-        <tr class="$util.rowToggle($self)">
-          <td>$user.id</td>
-          <td><a href="userinfo?userID=$quote($user.name)">$user.name</a></td>
-          <td><a href="packages?userID=$quote($user.name)">view</a></td>
-          <td><a href="builds?userID=$quote($user.name)">view</a></td>
-          <td><a href="tasks?owner=$quote($user.name)">view</a></td>
+    #if users |length > 0
+      #for user in users
+        <tr class="{{ util.rowToggle() }}">
+          <td>{{ user.id }}</td>
+          <td><a href="userinfo?userID={{ user.name }}">{{ user.name }}</a></td>
+          <td><a href="packages?userID={{ user.name }}">view</a></td>
+          <td><a href="builds?userID={{ user.name }}">view</a></td>
+          <td><a href="tasks?owner={{ user.name }}">view</a></td>
         </tr>
-      #end for
+      #endfor
     #else
       <tr class="row-odd">
         <td colspan="5">No users</td>
       </tr>
-    #end if
+    #endif
     <tr>
       <td class="paginate" colspan="5">
-        #if $len($userPages) > 1
+        #if userPages |length > 1
         <form class="pageJump" action="">
           Page:
-          <select onchange="javascript: window.location = 'users?start=' + this.value * $userRange + '$util.passthrough($self, 'order', 'prefix')';">
-            #for $pageNum in $userPages
-            <option value="$pageNum"#if $pageNum == $userCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
-            #end for
+          <select onchange="javascript: window.location = 'users?start=' + this.value * {{ userRange }} + '{{ util.passthrough('order', 'prefix') }}';">
+            #for pageNum in userPages
+            <option value="{{ pageNum }}"{{ 'selected' if pageNum == userCurrentPage else '' }}>{{ pageNum + 1 }}</option>
+            #endfor
           </select>
         </form>
-        #end if
-        #if $userStart > 0
-        <a href="users?start=#echo $userStart - $userRange #$util.passthrough($self, 'order', 'prefix')">&lt;&lt;&lt;</a>
-        #end if
-        #if $totalUsers != 0
-        <strong>Users #echo $userStart + 1 # through #echo $userStart + $userCount # of $totalUsers</strong>
-        #end if
-        #if $userStart + $userCount < $totalUsers
-        <a href="users?start=#echo $userStart + $userRange#$util.passthrough($self, 'order', 'prefix')">&gt;&gt;&gt;</a>
-        #end if
+        #endif
+        #if userStart > 0
+        <a href="users?start={{ userStart - userRange }}{{ util.passthrough('order', 'prefix') }}">&lt;&lt;&lt;</a>
+        #endif
+        #if totalUsers != 0
+        <strong>Users {{ userStart + 1 }} through {{ userStart + userCount }} of {{ totalUsers }}</strong>
+        #endif
+        #if userStart + userCount < totalUsers
+        <a href="users?start={{ userStart + userRange }}{{ util.passthrough('order', 'prefix') }}">&gt;&gt;&gt;</a>
+        #endif
       </td>
     </tr>
   </table>
 
-#include "includes/footer.chtml"
+#include "includes/footer2.chtml"

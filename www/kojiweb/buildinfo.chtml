@@ -1,269 +1,261 @@
-#import koji
-#import koji.util
-#from pprint import pformat
-#from kojiweb import util
 
-#include "includes/header.chtml"
-#set $nvrpath = $pathinfo.build($build)
+#include "includes/header2.chtml"
+#set nvrpath = pathinfo.build(build)
 
-  <h4>Information for build <a href="buildinfo?buildID=$build.id">$koji.buildLabel($build)</a></h4>
+  <h4>Information for build <a href="buildinfo?buildID={{ build.id }}">{{ koji.buildLabel(build) }}</a></h4>
 
   <table>
     <tr>
-      <th>ID</th><td>$build.id</td>
+      <th>ID</th><td>{{ build.id }}</td>
     </tr>
     <tr>
-      <th>Package Name</th><td><a href="packageinfo?packageID=$build.package_id">$build.package_name</a></td>
+      <th>Package Name</th><td><a href="packageinfo?packageID={{ build.package_id }}">{{ build.package_name }}</a></td>
     </tr>
     <tr>
-      <th>Version</th><td>$build.version</td>
+      <th>Version</th><td>{{ build.version }}</td>
     </tr>
     <tr>
-      <th>Release</th><td>$build.release</td>
+      <th>Release</th><td>{{ build.release }}</td>
     </tr>
     <tr>
-      <th>Epoch</th><td>$build.epoch</td>
+      <th>Epoch</th><td>{{ build.epoch }}</td>
     </tr>
-    #if $build.draft
+    <tr>
+    #if build.draft
       <th>Draft</th><td>True</td>
     #else
       <th>Draft</th><td>False</td>
-    #end if
-    #if $build.get('source')
-    <tr>
-      <th>Source</th><td>$build['source']</td>
+    #endif
     </tr>
-    #end if
-    #if 'maven' in $typeinfo
+    #if build.get('source')
     <tr>
-      <th>Maven&nbsp;groupId</th><td>$typeinfo.maven.group_id</td>
+      <th>Source</th><td>{{ build.source }}</td>
     </tr>
+    #endif
+    #if 'maven' in typeinfo
     <tr>
-      <th>Maven&nbsp;artifactId</th><td>$typeinfo.maven.artifact_id</td>
+      <th>Maven&nbsp;groupId</th><td>{{ typeinfo.maven.group_id }}</td>
     </tr>
     <tr>
-      <th>Maven&nbsp;version</th><td>$typeinfo.maven.version</td>
+      <th>Maven&nbsp;artifactId</th><td>{{ typeinfo.maven.artifact_id }}</td>
     </tr>
-    #end if
-    #if 'module' in $typeinfo
-    #if $module_id
+    <tr>
+      <th>Maven&nbsp;version</th><td>{{ typeinfo.maven.version }}</td>
+    </tr>
+    #endif
+    #if 'module' in typeinfo
+    #if module_id
     <tr>
       <th>Module&nbsp;ID</th>
-    #if $mbs_web_url
-      <td><a href="$mbs_web_url/module/$module_id">$module_id</a></td>
+    #if mbs_web_url
+      <td><a href="{{ mbs_web_url }}/module/{{ module_id }}">{{ module_id }}</a></td>
     #else
-      <td>$module_id</td>
-    #end if
+      <td>{{ module_id }}</td>
+    #endif
     </tr>
-    #end if
-    #if $module_tag
+    #endif
+    #if module_tag
     <tr>
-      <th>Module&nbsp;Tag</th><td><a href="taginfo?tagID=$module_tag.id">$module_tag.name</a></td>
+      <th>Module&nbsp;Tag</th><td><a href="taginfo?tagID={{ module_tag.id }}">{{ module_tag.name }}</a></td>
     </tr>
-    #end if
-    #end if
-    #if $summary
+    #endif
+    #endif
+    #if summary
     <tr>
-      <th>Summary</th><td class="rpmheader">$summary</td>
+      <th>Summary</th><td class="rpmheader">{{ summary }}</td>
     </tr>
-    #end if
-    #if $description
+    #endif
+    #if description
     <tr>
-      <th>Description</th><td class="rpmheader">$description</td>
+      <th>Description</th><td class="rpmheader">{{ description }}</td>
     </tr>
-    #end if
-    #if $vcs
+    #endif
+    #if vcs
     <tr>
-        <th><label title="Package source code VCS location">VCS</label></th><td>$util.formatLink($vcs)</td>
+        <th><label title="Package source code VCS location">VCS</label></th><td>{{ util.formatLink(vcs) }}</td>
     </tr>
-    #end if
-    #if $disturl
+    #endif
+    #if disturl
     <tr>
-        <th>DistURL</th><td>$util.formatLink($disturl)</td>
+        <th>DistURL</th><td>{{ util.formatLink(disturl) }}</td>
     </tr>
-    #end if
+    #endif
     <tr>
-      <th>Built by</th><td><a href="userinfo?userID=$build.owner_id">$build.owner_name</a></td>
+      <th>Built by</th><td><a href="userinfo?userID={{ build.owner_id }}">{{ build.owner_name }}</a></td>
     </tr>
     <tr>
-      #set $stateName = $util.stateName($build.state)
+      #set stateName = util.stateName(build.state)
       <th>State</th>
-      <td class="$stateName">$stateName
-      #if $build.state == $koji.BUILD_STATES.BUILDING
-      #if $currentUser and ('admin' in $perms or $build.owner_id == $currentUser.id)
-      <span class="adminLink">(<a href="cancelbuild?buildID=$build.id$util.authToken($self)">cancel</a>)</span>
-      #end if
-      #end if
+      <td class="{{ stateName }}">{{ stateName }}
+      #if build.state == koji.BUILD_STATES.BUILDING
+      #if currentUser and ('admin' in perms or build.owner_id == currentUser.id)
+      <span class="adminLink">(<a href="cancelbuild?buildID={{ build.id }}{{ util.authToken() }}">cancel</a>)</span>
+      #endif
+      #endif
       </td>
     </tr>
     <tr>
       <th>Volume</th>
-      <td>$build.volume_name</td>
+      <td>{{ build.volume_name }}</td>
     </tr>
     <tr>
-      <th>Started</th><td>$util.formatTimeLong($start_ts)</td>
+      <th>Started</th><td>{{ util.formatTimeLong(start_ts) }}</td>
     </tr>
-    #if $build.state == $koji.BUILD_STATES.BUILDING
-    #if $estCompletion
+    #if build.state == koji.BUILD_STATES.BUILDING
+    #if estCompletion
     <tr>
-      <th>Est. Completion</th><td>$util.formatTimeLong($estCompletion)</td>
+      <th>Est. Completion</th><td>{{ util.formatTimeLong(estCompletion) }}</td>
     </tr>
-    #end if
+    #endif
     #else
     <tr>
-      <th>Completed</th><td>$util.formatTimeLong($build.completion_ts)</td>
+      <th>Completed</th><td>{{ util.formatTimeLong(build.completion_ts) }}</td>
     </tr>
-    #end if
-    #if $build.promotion_ts
+    #endif
+    #if build.promotion_ts
     <tr>
-      <th>Promoted</th><td>$util.formatTimeLong($build.promotion_ts)</td>
+      <th>Promoted</th><td>{{ util.formatTimeLong(build.promotion_ts) }}</td>
     </tr>
     <tr>
-      <th>Promoted by</th><td><a href="userinfo?userID=$build.promoter_id">$build.promoter_name</a></td>
+      <th>Promoted by</th><td><a href="userinfo?userID={{ build.promoter_id }}">{{ build.promoter_name }}</a></td>
     </tr>
-    #end if
-    #if $build.cg_id
+    #endif
+    #if build.cg_id
     <tr>
-      <th>Content generator</th><td>$build.cg_name</td>
+      <th>Content generator</th><td>{{ build.cg_name }}</td>
     </tr>
-    #end if
-    #if $task
+    #endif
+    #if task
     <tr>
-      <th>Task</th><td><a href="taskinfo?taskID=$task.id" class="task$util.taskState($task.state)">$koji.taskLabel($task)</a></td>
+      <th>Task</th><td><a href="taskinfo?taskID={{ task.id }}" class="task{{ util.taskState(task.state) }}">{{ koji.taskLabel(task) }}</a></td>
     </tr>
-    #end if
-    #if $build.get('extra')
+    #endif
+    #if build.get('extra')
     <tr>
-      <th>Extra</th><td class="usertext">$pformat($build.extra)</td>
+      <th>Extra</th><td class="usertext">{{ build.extra|pprint }}</td>
     </tr>
-    #end if
+    #endif
     <tr>
       <th>Tags</th>
       <td class="container">
-        #if $len($tags) > 0
+        #if (tags |length) > 0
         <table class="nested">
-          #for $tag in $tags
+          #for tag in tags
           <tr>
-            <td><a href="taginfo?tagID=$tag.id">$tag.name</a></td>
+            <td><a href="taginfo?tagID={{ tag.id }}">{{ tag.name }}</a></td>
           </tr>
-          #end for
+          #endfor
         </table>
         #else
         No tags
-        #end if
+        #endif
       </td>
     </tr>
     <tr>
       <th>RPMs</th>
       <td class="container">
-        #if $len($rpmsByArch) > 0
+        #if (rpmsByArch |length) > 0
         <table class="nested">
-          #if 'src' in $rpmsByArch
+          #if 'src' in rpmsByArch
           <tr><th>src</th><th></th></tr>
-          #for $rpm in $rpmsByArch['src']
-          #set $rpmfile = '%(name)s-%(version)s-%(release)s.%(arch)s.rpm' % $rpm
-          #set $rpmpath = $pathinfo.rpm($rpm)
+          #for rpm in rpmsByArch['src']
+          #set rpmfile = '%(name)s-%(version)s-%(release)s.%(arch)s.rpm' % rpm
+          #set rpmpath = pathinfo.rpm(rpm)
           <tr>
             <td></td>
-            #if $rpm.metadata_only
-            <td>$rpmfile (<a href="rpminfo?rpmID=$rpm.id">info</a>) (metadata only)</td>
-            #elif $build.state == $koji.BUILD_STATES.DELETED
-            <td>$rpmfile (<a href="rpminfo?rpmID=$rpm.id">info</a>)
+            #if rpm.metadata_only
+            <td>{{ rpmfile }} (<a href="rpminfo?rpmID={{ rpm.id }}">info</a>) (metadata only)</td>
+            #elif build.state == koji.BUILD_STATES.DELETED
+            <td>{{ rpmfile }} (<a href="rpminfo?rpmID={{ rpm.id }}">info</a>)
             #else
-            <td>$rpmfile (<a href="rpminfo?rpmID=$rpm.id">info</a>) (<a href="$nvrpath/$rpmpath">download</a>)</td>
-            #end if
+            <td>{{ rpmfile }} (<a href="rpminfo?rpmID={{ rpm.id }}">info</a>) (<a href="{{ nvrpath }}/{{ rpmpath }}">download</a>)</td>
+            #endif
           </tr>
-          #end for
-          #end if
-          #set $arches = $rpmsByArch.keys()
-          #for $arch in sorted($arches)
-          #if $arch == 'src'
-          #silent continue
-          #end if
+          #endfor
+          #endif
+          #set arches = rpmsByArch.keys()
+          #for arch in arches|sort if arch != 'src'
           <tr>
-            <th>$arch</th>
+            <th>{{ arch }}</th>
           </tr>
-          #for $rpm in $rpmsByArch[$arch]
+          #for rpm in rpmsByArch[arch]
           <tr>
-            #set $rpmfile = '%(name)s-%(version)s-%(release)s.%(arch)s.rpm' % $rpm
-            #set $rpmpath = $pathinfo.rpm($rpm)
+            #set rpmfile = '%(name)s-%(version)s-%(release)s.%(arch)s.rpm' % rpm
+            #set rpmpath = pathinfo.rpm(rpm)
             <td></td>
             <td>
-              #if $build.state != $koji.BUILD_STATES.DELETED
-              $rpmfile (<a href="rpminfo?rpmID=$rpm.id">info</a>) (<a href="$nvrpath/$rpmpath">download</a>)
+              #if build.state != koji.BUILD_STATES.DELETED
+              {{ rpmfile }} (<a href="rpminfo?rpmID={{ rpm.id }}">info</a>) (<a href="{{ nvrpath }}/{{ rpmpath }}">download</a>)
               #else
-              $rpmfile (<a href="rpminfo?rpmID=$rpm.id">info</a>)
-              #end if
+              {{ rpmfile }} (<a href="rpminfo?rpmID={{ rpm.id }}">info</a>)
+              #endif
             </td>
           </tr>
-          #end for
-          #end for
+          #endfor
+          #endfor
         </table>
         #else
         No RPMs
-        #end if
+        #endif
       </td>
     </tr>
-    #for btype in $archiveIndex
-    #set $archivesByExt = $archiveIndex[btype]
-    #if not $archivesByExt
-    #continue
-    #end if
+    #for btype in archiveIndex if archiveIndex[btype]
+    #set archivesByExt = archiveIndex[btype]
     <tr>
-      <th>$btype.capitalize() Archives</th>
+      <th>{{ btype.capitalize() }} Archives</th>
       <td class="container">
         <table class="nested">
-          #set $exts = $archivesByExt.keys()
-          #for ext in $exts
+          #set exts = archivesByExt.keys()
+          #for ext in exts
           <tr>
-            <th>$ext</th>
+            <th>{{ ext }}</th>
           </tr>
-          #for $archive in $archivesByExt[$ext]
+          #for archive in archivesByExt[ext]
           <tr>
             <td/>
             <td>
-            #if $archive.metadata_only or $build.state == $koji.BUILD_STATES.DELETED
-            $archive.display (<a href="archiveinfo?archiveID=$archive.id">info</a>)
+            #if archive.metadata_only or build.state == koji.BUILD_STATES.DELETED
+            {{ archive.display }} (<a href="archiveinfo?archiveID={{ archive.id }}">info</a>)
             #else
-            $archive.display (<a href="archiveinfo?archiveID=$archive.id">info</a>) (<a href="$archive.dl_url">download</a>)
-            #end if
+            {{ archive.display }} (<a href="archiveinfo?archiveID={{ archive.id }}">info</a>) (<a href="{{ archive.dl_url }}">download</a>)
+            #endif
             </td>
           </tr>
-          #end for
-          #end for
+          #endfor
+          #endfor
         </table>
       </td>
     </tr>
-    #end for
-    #if $logs_by_dir
+    #endfor
+    #if logs_by_dir
     <tr>
       <th>Logs</th>
       <td class="container">
         <table class="nested">
-          #set $logdirs = $logs_by_dir.keys()
-          #for logdir in $logdirs
+          #set logdirs = logs_by_dir.keys()
+          #for logdir in logdirs
           <tr>
-            <th>$logdir</th>
+            <th>{{ logdir }}</th>
           </tr>
-          #for loginfo in $logs_by_dir[$logdir]
+          #for loginfo in logs_by_dir[logdir]
           <tr>
             <td/>
             <td>
-            <a href="$loginfo.dl_url">$loginfo.name</a>
+            <a href="{{ loginfo.dl_url }}">{{ loginfo.name }}</a>
             </td>
           </tr>
-          #end for
-          #end for
+          #endfor
+          #endfor
         </table>
       </td>
     </tr>
-    #end if
-    #if $changelog
+    #endif
+    #if changelog
     <tr>
       <th>Changelog</th>
-      <td class="changelog">$koji.util.formatChangelog($changelog)</td>
+      <td class="changelog">{{ koji.util.formatChangelog(changelog) }}</td>
     </tr>
-    #end if
+    #endif
   </table>
 
-#include "includes/footer.chtml"
+#include "includes/footer2.chtml"

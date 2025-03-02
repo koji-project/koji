@@ -1,62 +1,59 @@
-#import koji
-#from kojiweb import util
-#from pprint import pformat
 
-#include "includes/header.chtml"
+#include "includes/header2.chtml"
 
-  <h4>Information for buildroot <a href="buildrootinfo?buildrootID=$buildroot.id">$util.brLabel($buildroot)</a></h4>
+  <h4>Information for buildroot <a href="buildrootinfo?buildrootID={{ buildroot.id }}">{{ util.brLabel(buildroot) }}</a></h4>
 
   <table>
     <tr>
-      <th>Host</th><td><a href="hostinfo?hostID=$buildroot.host_id">$buildroot.host_name</a></td>
+      <th>Host</th><td><a href="hostinfo?hostID={{ buildroot.host_id }}">{{ buildroot.host_name }}</a></td>
     </tr>
     <tr>
-      <th>Arch</th><td>$buildroot.arch</td>
+      <th>Arch</th><td>{{ buildroot.arch }}</td>
     </tr>
     <tr>
-      <th>ID</th><td>$buildroot.id</td>
+      <th>ID</th><td>{{ buildroot.id }}</td>
     </tr>
     <tr>
-      <th>Task</th><td><a href="taskinfo?taskID=$task.id" class="task$util.taskState($task.state)">$koji.taskLabel($task)</a></td>
+      <th>Task</th><td><a href="taskinfo?taskID={{ task.id }}" class="task{{ util.taskState(task.state) }}">{{ koji.taskLabel(task) }}</a></td>
     </tr>
     <tr>
-      <th>State</th><td>$util.imageTag($util.brStateName($buildroot.state))</td>
+      <th>State</th><td>{{ util.imageTag(util.brStateName(buildroot.state)) }}</td>
     </tr>
     <tr>
-      <th>Created</th><td>$util.formatTimeLong($buildroot.create_event_time)</td>
+      <th>Created</th><td>{{ util.formatTimeLong(buildroot.create_event_time) }}</td>
     </tr>
     <tr>
-      <th>Retired</th><td>$util.formatTimeLong($buildroot.retire_event_time)</td>
+      <th>Retired</th><td>{{ util.formatTimeLong(buildroot.retire_event_time) }}</td>
     </tr>
     <tr>
-      <th>Repo ID</th><td><a href="repoinfo?repoID=$buildroot.repo_id">$buildroot.repo_id</a></td>
+      <th>Repo ID</th><td><a href="repoinfo?repoID={{ buildroot.repo_id }}">{{ buildroot.repo_id }}</a></td>
     </tr>
     <tr>
-      <th>Repo Tag</th><td><a href="taginfo?tagID=$buildroot.tag_id">$buildroot.tag_name</a></td>
+      <th>Repo Tag</th><td><a href="taginfo?tagID={{ buildroot.tag_id }}">{{ buildroot.tag_name }}</a></td>
     </tr>
     <tr>
-      <th>Repo State</th><td>$util.imageTag($util.repoStateName($buildroot.repo_state))</td>
+      <th>Repo State</th><td>{{ util.imageTag(util.repoStateName(buildroot.repo_state)) }}</td>
     </tr>
     <tr>
-      <th>Repo Created</th><td>$util.formatTimeLong($buildroot.repo_create_event_time)</td>
+      <th>Repo Created</th><td>{{ util.formatTimeLong(buildroot.repo_create_event_time) }}</td>
     </tr>
-    #if $buildroot.get('extra')
+    #if buildroot.get('extra')
     <tr>
-      <th>Extra</th><td class="usertext">$pformat($buildroot.extra)</td>
+      <th>Extra</th><td class="usertext">{{ buildroot.extra| pprint }}</td>
     </tr>
-    #end if
+    #endif
     <tr>
-      <th colspan="2"><a href="rpmlist?buildrootID=$buildroot.id&amp;type=component" title="RPMs that are installed into this buildroot when building packages">Component RPMs</a></th>
-    </tr>
-    <tr>
-      <th colspan="2"><a href="rpmlist?buildrootID=$buildroot.id&amp;type=built" title="RPMs that have been built in this buildroot">Built RPMs</a></th>
+      <th colspan="2"><a href="rpmlist?buildrootID={{ buildroot.id }}&amp;type=component" title="RPMs that are installed into this buildroot when building packages">Component RPMs</a></th>
     </tr>
     <tr>
-      <th colspan="2"><a href="archivelist?buildrootID=$buildroot.id&type=component" title="Archives that are installed into this buildroot when building packages">Component Archives</a></th>
+      <th colspan="2"><a href="rpmlist?buildrootID={{ buildroot.id }}&amp;type=built" title="RPMs that have been built in this buildroot">Built RPMs</a></th>
     </tr>
     <tr>
-      <th colspan="2"><a href="archivelist?buildrootID=$buildroot.id&type=built" title="Archives that have been built in this buildroot">Built Archives</a></th>
+      <th colspan="2"><a href="archivelist?buildrootID={{ buildroot.id }}&type=component" title="Archives that are installed into this buildroot when building packages">Component Archives</a></th>
+    </tr>
+    <tr>
+      <th colspan="2"><a href="archivelist?buildrootID={{ buildroot.id }}&type=built" title="Archives that have been built in this buildroot">Built Archives</a></th>
     </tr>
   </table>
 
-#include "includes/footer.chtml"
+#include "includes/footer2.chtml"

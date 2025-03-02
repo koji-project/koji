@@ -1,7 +1,6 @@
-#include "includes/header.chtml"
-#import koji
+#include "includes/header2.chtml"
 
-<h4>API reference <small>(hub version: $koji_version, web version: $koji.__version__)</small></h4>
+<h4>API reference <small>(hub version: {{ koji_version }}, web version: {{ web_version }})</small></h4>
 
 Various constants used in API calls can be found in first part of <a
 href="https://pagure.io/koji/blob/master/f/koji/__init__.py">koji module</a>.
@@ -15,7 +14,7 @@ Basic anonymous client in python would look like this:
 import koji
 
 mytag = "mytag"
-session = koji.ClientSession("$koji_hub_url")
+session = koji.ClientSession("{{ koji_hub_url }}")
 try:
     repo_info = session.getRepo(mytag, koji.REPO_STATES["READY"], dist=True)
     if not repo_info:
@@ -26,13 +25,13 @@ except koji.GenericError:
 
 <h4>List of API calls</h4>
 <ul>
-#for method in $methods
+#for method in methods
   <li>
-     <pre><b>$method['name']$method['argdesc']</b>
-  $method['doc']
+     <pre><b>{{ method['name'] ~ method['argdesc'] }}</b>
+  {{ method['doc'] }}
      </pre>
   </li>
-#end for
+#endfor
 </ul>
 
-#include "includes/footer.chtml"
+#include "includes/footer2.chtml"

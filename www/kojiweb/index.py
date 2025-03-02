@@ -384,7 +384,9 @@ def index(environ, packageOrder='package_name', packageStart=None):
     values['user'] = user
     values['welcomeMessage'] = environ['koji.options']['KojiGreeting']
 
-    return _genHTML(environ, 'index.chtml')
+    values['koji'] = koji
+
+    return _genHTML(environ, 'index.chtml', jinja=True)
 
 
 def notificationedit(environ, notificationID):
@@ -430,7 +432,7 @@ def notificationedit(environ, notificationID):
         tags = server.listTags(queryOpts={'order': 'name'})
         values['tags'] = tags
 
-        return _genHTML(environ, 'notificationedit.chtml')
+        return _genHTML(environ, 'notificationedit.chtml', jinja=True)
 
 
 def notificationcreate(environ):
@@ -475,7 +477,7 @@ def notificationcreate(environ):
         tags = server.listTags(queryOpts={'order': 'name'})
         values['tags'] = tags
 
-        return _genHTML(environ, 'notificationedit.chtml')
+        return _genHTML(environ, 'notificationedit.chtml', jinja=True)
 
 
 def notificationdelete(environ, notificationID):
@@ -635,7 +637,10 @@ def tasks(environ, owner=None, state='active', view='tree', method='all', hostID
         for task, [descendents] in zip(tasks, descendentList):
             task['descendents'] = descendents
 
-    return _genHTML(environ, 'tasks.chtml')
+    values['S'] = SafeValue
+    values['koji'] = koji
+
+    return _genHTML(environ, 'tasks.chtml', jinja=True)
 
 
 def taskinfo(environ, taskID):
@@ -792,7 +797,10 @@ def taskinfo(environ, taskID):
     else:
         values['perms'] = []
 
-    return _genHTML(environ, 'taskinfo.chtml')
+    values['koji'] = koji
+    values['S'] = SafeValue
+
+    return _genHTML(environ, 'taskinfo.chtml', jinja=True)
 
 
 def taskstatus(environ, taskID):
@@ -929,7 +937,7 @@ def tags(environ, start=None, order=None, childID=None):
     else:
         values['childID'] = int(childID)
 
-    return _genHTML(environ, 'tags.chtml')
+    return _genHTML(environ, 'tags.chtml', jinja=True)
 
 
 _PREFIX_CHARS = [chr(char) for char in list(range(48, 58)) + list(range(97, 123))]
@@ -972,7 +980,7 @@ def packages(environ, tagID=None, userID=None, order='package_name', start=None,
 
     values['chars'] = _PREFIX_CHARS
 
-    return _genHTML(environ, 'packages.chtml')
+    return _genHTML(environ, 'packages.chtml', jinja=True)
 
 
 def packageinfo(environ, packageID, tagOrder='name', tagStart=None, buildOrder='-completion_time',
@@ -996,7 +1004,7 @@ def packageinfo(environ, packageID, tagOrder='name', tagStart=None, buildOrder='
                                 start=buildStart, dataName='builds', prefix='build',
                                 order=buildOrder)
 
-    return _genHTML(environ, 'packageinfo.chtml')
+    return _genHTML(environ, 'packageinfo.chtml', jinja=True)
 
 
 def taginfo(environ, tagID, all='0', packageOrder='package_name', packageStart=None,
@@ -1012,7 +1020,7 @@ def taginfo(environ, tagID, all='0', packageOrder='package_name', packageStart=N
     values['tagID'] = tag['id']
     if 'revoke_event' in tag:
         values['delete_ts'] = server.getEvent(tag['revoke_event'])['ts']
-        return _genHTML(environ, 'taginfo_deleted.chtml')
+        return _genHTML(environ, 'taginfo_deleted.chtml', jinja=True)
 
     all = int(all)
 
@@ -1060,7 +1068,7 @@ def taginfo(environ, tagID, all='0', packageOrder='package_name', packageStart=N
     allPerms = dict([(perm['id'], perm['name']) for perm in permList])
     values['allPerms'] = allPerms
 
-    return _genHTML(environ, 'taginfo.chtml')
+    return _genHTML(environ, 'taginfo.chtml', jinja=True)
 
 
 def tagcreate(environ):
@@ -1096,7 +1104,7 @@ def tagcreate(environ):
         values['tag'] = None
         values['permissions'] = server.getAllPerms()
 
-        return _genHTML(environ, 'tagedit.chtml')
+        return _genHTML(environ, 'tagedit.chtml', jinja=True)
 
 
 def tagedit(environ, tagID):
@@ -1126,7 +1134,7 @@ def tagedit(environ, tagID):
             params['maven_support'] = bool('maven_support' in form)
             params['maven_include_all'] = bool('maven_include_all' in form)
 
-        server.editTag2(tag['id'], **params)
+        server.editTag(tag['id'], **params)
 
         _redirect(environ, 'taginfo?tagID=%i' % tag['id'])
     elif 'cancel' in form:
@@ -1139,7 +1147,7 @@ def tagedit(environ, tagID):
         values['tag'] = tag
         values['permissions'] = server.getAllPerms()
 
-        return _genHTML(environ, 'tagedit.chtml')
+        return _genHTML(environ, 'tagedit.chtml', jinja=True)
 
 
 def tagdelete(environ, tagID):
@@ -1205,7 +1213,7 @@ def tagparent(environ, tagID, parentID, action):
                     'tag %i has tag %i listed as a parent more than once' %
                     (tag['id'], parent['id']))
 
-            return _genHTML(environ, 'tagparent.chtml')
+            return _genHTML(environ, 'tagparent.chtml', jinja=True)
     elif action == 'remove':
         data = server.getInheritanceData(tag['id'])
         for datum in data:
@@ -1234,7 +1242,7 @@ def externalrepoinfo(environ, extrepoID):
     values['extRepo'] = extRepo
     values['repoTags'] = repoTags
 
-    return _genHTML(environ, 'externalrepoinfo.chtml')
+    return _genHTML(environ, 'externalrepoinfo.chtml', jinja=True)
 
 
 def buildinfo(environ, buildID):
@@ -1381,7 +1389,8 @@ def buildinfo(environ, buildID):
             values['estCompletion'] = None
 
     values['pathinfo'] = pathinfo
-    return _genHTML(environ, 'buildinfo.chtml')
+    values['koji'] = koji
+    return _genHTML(environ, 'buildinfo.chtml', jinja=True)
 
 
 def builds(environ, userID=None, tagID=None, packageID=None, state=None, order='-build_id',
@@ -1467,8 +1476,9 @@ def builds(environ, userID=None, tagID=None, packageID=None, state=None, order='
                                     start=start, dataName='builds', prefix='build', order=order)
 
     values['chars'] = _PREFIX_CHARS
+    values['koji'] = koji
 
-    return _genHTML(environ, 'builds.chtml')
+    return _genHTML(environ, 'builds.chtml', jinja=True)
 
 
 def users(environ, order='name', start=None, prefix=None):
@@ -1488,7 +1498,7 @@ def users(environ, order='name', start=None, prefix=None):
 
     values['chars'] = _PREFIX_CHARS
 
-    return _genHTML(environ, 'users.chtml')
+    return _genHTML(environ, 'users.chtml', jinja=True)
 
 
 def userinfo(environ, userID, packageOrder='package_name', packageStart=None,
@@ -1516,7 +1526,7 @@ def userinfo(environ, userID, packageOrder='package_name', packageStart=None,
                                 start=buildStart, dataName='builds', prefix='build',
                                 order=buildOrder, pageSize=10)
 
-    return _genHTML(environ, 'userinfo.chtml')
+    return _genHTML(environ, 'userinfo.chtml', jinja=True)
 
 
 # headers shown in rpminfo and buildinfo pages
@@ -1576,7 +1586,10 @@ def rpminfo(environ, rpmID, fileOrder='name', fileStart=None, buildrootOrder='-i
     kojiweb.util.paginateMethod(server, values, 'listRPMFiles', args=[rpm['id']],
                                 start=fileStart, dataName='files', prefix='file', order=fileOrder)
 
-    return _genHTML(environ, 'rpminfo.chtml')
+    values['koji'] = koji
+    values['time'] = time  # TODO rework template so it doesn't need this
+
+    return _genHTML(environ, 'rpminfo.chtml', jinja=True)
 
 
 def archiveinfo(environ, archiveID, fileOrder='name', fileStart=None, buildrootOrder='-id',
@@ -1620,7 +1633,9 @@ def archiveinfo(environ, archiveID, fileOrder='name', fileStart=None, buildrootO
     values['show_archive_components'] = server.listArchives(imageID=archive['id'],
                                                             queryOpts={'limit': 1})
 
-    return _genHTML(environ, 'archiveinfo.chtml')
+    values['koji'] = koji
+
+    return _genHTML(environ, 'archiveinfo.chtml', jinja=True)
 
 
 def fileinfo(environ, filename, rpmID=None, archiveID=None):
@@ -1655,7 +1670,7 @@ def fileinfo(environ, filename, rpmID=None, archiveID=None):
 
     values['file'] = file
 
-    return _genHTML(environ, 'fileinfo.chtml')
+    return _genHTML(environ, 'fileinfo.chtml', jinja=True)
 
 
 def cancelbuild(environ, buildID):
@@ -1737,7 +1752,9 @@ def hosts(environ, state='enabled', start=None, order='name', ready='all', chann
     # Paginate after retrieving last update info so we can sort on it
     kojiweb.util.paginateList(values, hosts, start, 'hosts', 'host', order)
 
-    return _genHTML(environ, 'hosts.chtml')
+    values['zip'] = zip  # TODO FIXME
+
+    return _genHTML(environ, 'hosts.chtml', jinja=True)
 
 
 def hostinfo(environ, hostID=None, userID=None):
@@ -1783,7 +1800,7 @@ def hostinfo(environ, hostID=None, userID=None):
     else:
         values['perms'] = []
 
-    return _genHTML(environ, 'hostinfo.chtml')
+    return _genHTML(environ, 'hostinfo.chtml', jinja=2)
 
 
 def hostedit(environ, hostID):
@@ -1833,7 +1850,7 @@ def hostedit(environ, hostID):
         values['allChannels'] = allChannels
         values['hostChannels'] = server.listChannels(hostID=host['id'])
 
-        return _genHTML(environ, 'hostedit.chtml')
+        return _genHTML(environ, 'hostedit.chtml', jinja=True)
 
 
 def disablehost(environ, hostID):
@@ -1883,7 +1900,7 @@ def channelinfo(environ, channelID):
     values['enabled_hosts'] = len([h for h in hosts if h['enabled']])
     values['ready_hosts'] = len([h for h in hosts if h['ready']])
 
-    return _genHTML(environ, 'channelinfo.chtml')
+    return _genHTML(environ, 'channelinfo.chtml', jinja=True)
 
 
 def buildrootinfo(environ, buildrootID):
@@ -1906,8 +1923,9 @@ def buildrootinfo(environ, buildrootID):
 
     values['title'] = '%s | Buildroot Info' % kojiweb.util.brLabel(buildroot)
     values['buildroot'] = buildroot
+    values['koji'] = koji
 
-    return _genHTML(environ, template)
+    return _genHTML(environ, template, jinja=True)
 
 
 def rpmlist(environ, type, buildrootID=None, imageID=None, start=None, order='nvr'):
@@ -1962,7 +1980,7 @@ def rpmlist(environ, type, buildrootID=None, imageID=None, start=None, order='nv
     values['type'] = type
     values['order'] = order
 
-    return _genHTML(environ, 'rpmlist.chtml')
+    return _genHTML(environ, 'rpmlist.chtml', jinja=True)
 
 
 def archivelist(environ, type, buildrootID=None, imageID=None, start=None, order='filename'):
@@ -2009,7 +2027,7 @@ def archivelist(environ, type, buildrootID=None, imageID=None, start=None, order
     values['type'] = type
     values['order'] = order
 
-    return _genHTML(environ, 'archivelist.chtml')
+    return _genHTML(environ, 'archivelist.chtml', jinja=True)
 
 
 def buildtargets(environ, start=None, order='name'):
@@ -2025,7 +2043,7 @@ def buildtargets(environ, start=None, order='name'):
     else:
         values['perms'] = []
 
-    return _genHTML(environ, 'buildtargets.chtml')
+    return _genHTML(environ, 'buildtargets.chtml', jinja=True)
 
 
 def buildtargetinfo(environ, targetID=None, name=None):
@@ -2055,7 +2073,7 @@ def buildtargetinfo(environ, targetID=None, name=None):
     else:
         values['perms'] = []
 
-    return _genHTML(environ, 'buildtargetinfo.chtml')
+    return _genHTML(environ, 'buildtargetinfo.chtml', jinja=True)
 
 
 def buildtargetedit(environ, targetID):
@@ -2095,7 +2113,7 @@ def buildtargetedit(environ, targetID):
         values['target'] = target
         values['tags'] = tags
 
-        return _genHTML(environ, 'buildtargetedit.chtml')
+        return _genHTML(environ, 'buildtargetedit.chtml', jinja=True)
 
 
 def buildtargetcreate(environ):
@@ -2155,7 +2173,7 @@ def reports(environ):
         values['loggedInUser'] = True
     else:
         values['loggedInUser'] = False
-    return _genHTML(environ, 'reports.chtml')
+    return _genHTML(environ, 'reports.chtml', jinja=True)
 
 
 def buildsbyuser(environ, start=None, order='-builds'):
@@ -2183,7 +2201,7 @@ def buildsbyuser(environ, start=None, order='-builds'):
     values['increment'] = graphWidth / maxBuilds
     kojiweb.util.paginateList(values, users, start, 'userBuilds', 'userBuild', order)
 
-    return _genHTML(environ, 'buildsbyuser.chtml')
+    return _genHTML(environ, 'buildsbyuser.chtml', jinja=True)
 
 
 def rpmsbyhost(environ, start=None, order=None, hostArch=None, rpmArch=None):
@@ -2228,7 +2246,7 @@ def rpmsbyhost(environ, start=None, order=None, hostArch=None, rpmArch=None):
     values['increment'] = graphWidth / maxRPMs
     kojiweb.util.paginateList(values, hosts, start, 'hosts', 'host', order)
 
-    return _genHTML(environ, 'rpmsbyhost.chtml')
+    return _genHTML(environ, 'rpmsbyhost.chtml', jinja=True)
 
 
 def packagesbyuser(environ, start=None, order=None):
@@ -2258,7 +2276,7 @@ def packagesbyuser(environ, start=None, order=None):
     values['increment'] = graphWidth / maxPackages
     kojiweb.util.paginateList(values, users, start, 'users', 'user', order)
 
-    return _genHTML(environ, 'packagesbyuser.chtml')
+    return _genHTML(environ, 'packagesbyuser.chtml', jinja=True)
 
 
 def tasksbyhost(environ, start=None, order='-tasks', hostArch=None):
@@ -2296,7 +2314,7 @@ def tasksbyhost(environ, start=None, order='-tasks', hostArch=None):
     values['increment'] = graphWidth / maxTasks
     kojiweb.util.paginateList(values, hosts, start, 'hosts', 'host', order)
 
-    return _genHTML(environ, 'tasksbyhost.chtml')
+    return _genHTML(environ, 'tasksbyhost.chtml', jinja=True)
 
 
 def tasksbyuser(environ, start=None, order='-tasks'):
@@ -2325,7 +2343,7 @@ def tasksbyuser(environ, start=None, order='-tasks'):
     values['increment'] = graphWidth / maxTasks
     kojiweb.util.paginateList(values, users, start, 'users', 'user', order)
 
-    return _genHTML(environ, 'tasksbyuser.chtml')
+    return _genHTML(environ, 'tasksbyuser.chtml', jinja=True)
 
 
 def buildsbystatus(environ, days='7'):
@@ -2364,7 +2382,7 @@ def buildsbystatus(environ, days='7'):
     values['maxBuilds'] = maxBuilds
     values['increment'] = graphWidth / maxBuilds
 
-    return _genHTML(environ, 'buildsbystatus.chtml')
+    return _genHTML(environ, 'buildsbystatus.chtml', jinja=True)
 
 
 def buildsbytarget(environ, days='7', start=None, order='-builds'):
@@ -2404,7 +2422,7 @@ def buildsbytarget(environ, days='7', start=None, order='-builds'):
     values['maxBuilds'] = maxBuilds
     values['increment'] = graphWidth / maxBuilds
 
-    return _genHTML(environ, 'buildsbytarget.chtml')
+    return _genHTML(environ, 'buildsbytarget.chtml', jinja=True)
 
 
 def _filter_hosts_by_arch(hosts, arch):
@@ -2464,7 +2482,7 @@ def clusterhealth(environ, arch='__all__'):
     values['arches'] = sorted(arches)
     values['graphWidth'] = graphWidth
     values['channels'] = sorted(channels, key=lambda x: x['name'])
-    return _genHTML(environ, 'clusterhealth.chtml')
+    return _genHTML(environ, 'clusterhealth.chtml', jinja=True)
 
 
 def recentbuilds(environ, user=None, tag=None, package=None):
@@ -2532,8 +2550,10 @@ def recentbuilds(environ, user=None, tag=None, package=None):
     values['builds'] = builds
     values['weburl'] = _getBaseURL(environ)
 
+    values['koji'] = koji
+
     environ['koji.headers'].append(['Content-Type', 'text/xml'])
-    return _genHTML(environ, 'recentbuilds.chtml')
+    return _genHTML(environ, 'recentbuilds.chtml', jinja=True)
 
 
 _infoURLs = {'package': 'packageinfo?packageID=%(id)i',
@@ -2610,9 +2630,9 @@ def search(environ, start=None, order=None):
             else:
                 typeLabel = '%ss' % type
             values['typeLabel'] = typeLabel
-            return _genHTML(environ, 'search.chtml')
+            return _genHTML(environ, 'search.chtml', jinja=True)
     else:
-        return _genHTML(environ, 'search.chtml')
+        return _genHTML(environ, 'search.chtml', jinja=True)
 
 
 def api(environ):
@@ -2621,12 +2641,13 @@ def api(environ):
 
     values['koji_hub_url'] = environ['koji.options']['KojiHubURL']
     values['methods'] = sorted(server._listapi(), key=lambda x: x['name'])
+    values['web_version'] = koji.__version__
     try:
         values['koji_version'] = server.getKojiVersion()
     except koji.GenericError:
         values['koji_version'] = "Can't determine (older then 1.23)"
 
-    return _genHTML(environ, 'api.chtml')
+    return _genHTML(environ, 'api.chtml', jinja=True)
 
 
 def watchlogs(environ, taskID):
@@ -2677,7 +2698,9 @@ def repoinfo(environ, repoID):
                 pathinfo.repo(repo_info['id'], repo_info['tag_name']), 'repo.json')
     num_buildroots = len(server.listBuildroots(repoID=repoID)) or 0
     values['numBuildroots'] = num_buildroots
-    return _genHTML(environ, 'repoinfo.chtml')
+    values['state_name'] = kojiweb.util.repoState(repo_info['state'])
+    values['create_time'] = kojiweb.util.formatTimeLong(repo_info['create_ts'])
+    return _genHTML(environ, 'repoinfo.chtml', jinja=True)
 
 
 def activesession(environ, start=None, order=None):
@@ -2687,10 +2710,10 @@ def activesession(environ, start=None, order=None):
     values['loggedInUser'] = environ['koji.currentUser']
 
     values['order'] = order
-    activesess = server.getSessionInfo(details=True, user_id=values['loggedInUser']['id'])
-    if not activesess:
-        activesess = []
-    else:
+    activesess = []
+    if environ['koji.currentUser']:
+        activesess = server.getSessionInfo(details=True, user_id=values['loggedInUser']['id'])
+    if activesess:
         current_timestamp = datetime.datetime.utcnow().timestamp()
         for a in activesess:
             a['lengthSession'] = kojiweb.util.formatTimestampDifference(
@@ -2698,7 +2721,7 @@ def activesession(environ, start=None, order=None):
 
     kojiweb.util.paginateList(values, activesess, start, 'activesess', order=order)
 
-    return _genHTML(environ, 'activesession.chtml')
+    return _genHTML(environ, 'activesession.chtml', jinja=True)
 
 
 def activesessiondelete(environ, sessionID):
@@ -2727,4 +2750,6 @@ def buildroots(environ, repoID=None, order='id', start=None, state=None):
                                 kw={'repoID': repoID, 'state': state}, start=start,
                                 dataName='buildroots', prefix='buildroot', order=order)
 
-    return _genHTML(environ, 'buildroots.chtml')
+    values['koji'] = koji
+
+    return _genHTML(environ, 'buildroots.chtml', jinja=True)

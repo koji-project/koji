@@ -1,69 +1,63 @@
-#import koji
-#from kojiweb import util
-#from kojiweb.util import SafeValue as S
 
-#@util.safe_return
-#def printChildren($taskID, $childMap)
-  #set $iter = 0
-  #set $children = $childMap[$str($taskID)]
-  #if $children
+#macro printChildren(taskID, childMap)
+  #set iter = 0
+  #set children = childMap[taskID|string]
+  #if children
   <ul>
-    #for $child in $children
-    #set $iter += 1
-    #if $iter < $len($children)
+    #for child in children
+    #set iter = iter + 1
+    #if iter < children|length
     <li class="sibling">
     #else
     <li>
-    #end if
-      #set $childState = $util.taskState($child.state)
+    #endif
+      #set childState = util.taskState(child.state)
       <span class="treeBranch">
         <span class="treeLabel">
-          <a href="taskinfo?taskID=$child.id" class="task$childState" title="$childState">$koji.taskLabel($child)</a>
+          <a href="taskinfo?taskID={{ child.id }}" class="task{{ childState }}" title="{{ childState }}">{{ koji.taskLabel(child) }}</a>
         </span>
       </span>
-    $printChildren($child.id, $childMap)
+    {{ printChildren(child.id, childMap ) }}
     </li>
-    #end for
+    #endfor
   </ul>
-  #end if
-#end def
+  #endif
+#endmacro
 
-#@util.safe_return
-#def headerPrefix($state)
-  #if $state == 'active'
+#macro headerPrefix(state)
+  #if state == 'active'
 Active
-  #elif $state == 'all'
+  #elif state == 'all'
 All
   #else
-#echo $state.capitalize()
-  #end if
-#end def
+{{ state|capitalize }}
+  #endif
+#endmacro
 
-#attr _PASSTHROUGH = ['owner', 'state', 'view', 'method', 'hostID', 'channelID', 'order']
+#set _PASSTHROUGH = ['owner', 'state', 'view', 'method', 'hostID', 'channelID', 'order']
 
-#include "includes/header.chtml"
+#include "includes/header2.chtml"
 
-#@util.safe_return
-#def getDescription()
-$headerPrefix($state)
-#if $view == 'toplevel'
+#macro getDescription()
+{{ headerPrefix(state) }}
+#if view == 'toplevel'
 toplevel
-#end if
-#if $method != 'all'
-$method Tasks
-#end if
-#if $ownerObj
-owned by <a href="userinfo?userID=$ownerObj.id">$ownerObj.name</a>
-#end if
-#if $host
-on host <a href="hostinfo?hostID=$host.id">$host.name</a>
-#end if
-#if $channel
-in channel <a href="channelinfo?channelID=$channel.id">$channel.name</a>
-#end if
-#end def
+#endif
+#if method != 'all'
+{{ method }} Tasks
+#endif
+#if ownerObj
+owned by <a href="userinfo?userID={{ ownerObj.id }}">{{ ownerObj.name }}</a>
+#endif
+#if host
+on host <a href="hostinfo?hostID={{ host.id }}">{{ host.name }}</a>
+#endif
+#if channel
+in channel <a href="channelinfo?channelID={{ channel.id }}">{{ channel.name }}</a>
+#endif
+#endmacro
 
-  <h4>$getDescription()</h4>
+  <h4>{{ getDescription() }}</h4>
 
   <table class="data-list">
     <tr>
@@ -73,53 +67,53 @@ in channel <a href="channelinfo?channelID=$channel.id">$channel.name</a>
         <tr><td>
         <strong>State</strong>:
         </td><td>
-        <select name="state" class="filterlist" onchange="javascript: window.location = 'tasks?state=' + this.value + '$util.passthrough_except($self, 'state')';">
-          <option value="active" $util.toggleSelected($self, $state, 'active')>active</option>
-          <option value="all" $util.toggleSelected($self, $state, 'all')>all</option>
-          <option value="free" #if $state == 'free' then 'selected' else ''#>free</option>
-          <option value="open" #if $state == 'open' then 'selected' else ''#>open</option>
-          <option value="closed" #if $state == 'closed' then 'selected' else ''#>closed</option>
-          <option value="failed" #if $state == 'failed' then 'selected' else ''#>failed</option>
-          <option value="canceled" #if $state == 'canceled' then 'selected' else ''#>canceled</option>
-          <option value="assigned" #if $state == 'assigned' then 'selected' else ''#>assigned</option> 
+        <select name="state" class="filterlist" onchange="javascript: window.location = 'tasks?state=' + this.value + '{{ util.passthrough_except('state') }}';">
+          <option value="active" {{ util.toggleSelected(state, 'active') }}>active</option>
+          <option value="all" {{ util.toggleSelected(state, 'all') }}>all</option>
+          <option value="free" {{ 'selected' if state == 'free' else '' }}>free</option>
+          <option value="open" {{ 'selected' if state == 'open' else '' }}>open</option>
+          <option value="closed" {{ 'selected' if state == 'closed' else '' }}>closed</option>
+          <option value="failed" {{ 'selected' if state == 'failed' else '' }}>failed</option>
+          <option value="canceled" {{ 'selected' if state == 'canceled' else '' }}>canceled</option>
+          <option value="assigned" {{ 'selected' if state == 'assigned' else '' }}>assigned</option> 
         </select>
         </td><td>
         <strong>Owner</strong>:
         </td><td>
-        <select name="owner" class="filterlist" onchange="javascript: window.location = 'tasks?owner=' + this.value + '$util.passthrough_except($self, 'owner')';">
-          <option value="" #if not $owner then 'selected' else ''#>everyone</option>
-          #if $loggedInUser
-          <option value="$loggedInUser.name">me</option>
-          #end if
-          #for $user in $users
-          <option value="$user.name" #if $user.name == $owner then 'selected' else ''#>$user.name</option>
-          #end for
+        <select name="owner" class="filterlist" onchange="javascript: window.location = 'tasks?owner=' + this.value + '{{ util.passthrough_except('owner') }}';">
+          <option value="" {{ 'selected' if not owner else '' }}>everyone</option>
+          #if loggedInUser
+          <option value="{{ loggedInUser.name }}">me</option>
+          #endif
+          #for user in users
+          <option value="{{ user.name }}" {{ 'selected' if user.name == owner else '' }}>{{ user.name }}</option>
+          #endfor
         </select>
         </td></tr>
         <tr><td>
         <strong>Method</strong>:
         </td><td>
-        <select name="method" class="filterlist" onchange="javascript: window.location = 'tasks?method=' + this.value + '$util.passthrough_except($self, 'method')';">
-          <option value="all" $util.toggleSelected($self, $method, 'all')>all</option>
-          #for $task_type in $alltasks
-          #if $task_type in ('maven', 'buildMaven') and not $mavenEnabled
-          #continue
-          #elif $task_type in ('winbuild', 'vmExec') and not $winEnabled
-          #continue
-          #elif $task_type == 'wrapperRPM' and not ($mavenEnabled or $winEnabled)
-          #continue
+        <select name="method" class="filterlist" onchange="javascript: window.location = 'tasks?method=' + this.value + '{{ util.passthrough_except('method') }}';">
+          <option value="all" {{ util.toggleSelected(method, 'all') }}>all</option>
+          #for task_type in alltasks
+          #if task_type in ('maven', 'buildMaven') and not mavenEnabled
+          ## XXX continue
+          #elif task_type in ('winbuild', 'vmExec') and not winEnabled
+          ## XXX continue
+          #elif task_type == 'wrapperRPM' and not (mavenEnabled or winEnabled)
+          ## XXX continue
           #else
-          <option value="$task_type" #if $method == $task_type then 'selected' else ''#>$task_type</option>
-          #end if
-          #end for
+          <option value="{{ task_type }}" {{ 'selected' if method == task_type else '' }}>{{ task_type }}</option>
+          #endif
+          #endfor
         </select>
         </td><td>
         <strong>View</strong>:
         </td><td>
-        <select name="view" class="filterlist" onchange="javascript: window.location = 'tasks?view=' + this.value + '$util.passthrough_except($self, 'view')';">
-          <option value="tree" $util.toggleSelected($self, $view, 'tree') #if not $treeEnabled then 'disabled="disabled"' else ''#>tree</option>
-          <option value="toplevel" $util.toggleSelected($self, $view, 'toplevel') #if not $toplevelEnabled then 'disabled="disabled"' else ''#>toplevel</option>
-          <option value="flat" $util.toggleSelected($self, $view, 'flat')>flat</option>
+        <select name="view" class="filterlist" onchange="javascript: window.location = 'tasks?view=' + this.value + '{{ util.passthrough_except('view') }}';">
+          <option value="tree" {{ util.toggleSelected(view, 'tree') }} {{ 'disabled="disabled"' if not treeEnabled else '' }}>tree</option>
+          <option value="toplevel" {{ util.toggleSelected(view, 'toplevel') }} {{ 'disabled="disabled"' if not toplevelEnabled else '' }}>toplevel</option>
+          <option value="flat" {{ util.toggleSelected(view, 'flat') }}>flat</option>
         </select>
         </td></tr>
         </table>
@@ -128,110 +122,110 @@ in channel <a href="channelinfo?channelID=$channel.id">$channel.name</a>
     </tr>
     <tr>
       <td class="paginate" colspan="6">
-        #if $taskPages is not None
-        #if $len($taskPages) > 1
+        #if taskPages is not none
+        #if taskPages|length > 1
         <form class="pageJump" action="">
           Page:
-          <select onchange="javascript: window.location = 'tasks?start=' + this.value * $taskRange + '$util.passthrough_except($self)';">
-            #for $pageNum in $taskPages
-            <option value="$pageNum"#if $pageNum == $taskCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
-            #end for
+          <select onchange="javascript: window.location = 'tasks?start=' + this.value * {{ taskRange }} + '{{ util.passthrough_except() }}';">
+            #for pageNum in taskPages
+            <option value="{{ pageNum }}"{{ ' selected' if pageNum == taskCurrentPage else '' }}>{{ pageNum + 1 }}</option>
+            #endfor
           </select>
         </form>
-        #end if
-        #if $taskStart > 0
-        <a href="tasks?start=#echo $taskStart - $taskRange #$util.passthrough_except($self)">&lt;&lt;&lt;</a>
-        #end if
-        #if $totalTasks != 0
-        <strong>Tasks #echo $taskStart + 1 # through #echo $taskStart + $taskCount # of $totalTasks</strong>
-        #end if
-        #if $taskStart + $taskCount < $totalTasks
-        <a href="tasks?start=#echo $taskStart + $taskRange#$util.passthrough_except($self)">&gt;&gt;&gt;</a>
-        #end if
+        #endif
+        #if taskStart > 0
+        <a href="tasks?start={{ taskStart - taskRange }}{{ util.passthrough_except() }}">&lt;&lt;&lt;</a>
+        #endif
+        #if totalTasks != 0
+        <strong>Tasks {{ taskStart + 1  }} through {{ taskStart + taskCount }} of {{ totalTasks }}</strong>
+        #endif
+        #if taskStart + taskCount < totalTasks
+        <a href="tasks?start={{ taskStart + taskRange }}{{ util.passthrough_except() }}">&gt;&gt;&gt;</a>
+        #endif
         #else
         <form class="pageJump" action="">
           Page:
-          <select onchange="javascript: window.location = 'tasks?start=' + this.value * $taskRange + '$util.passthrough_except($self)';">
-            <option value="0"#if 0 == $taskCurrentPage then ' selected' else ''#>#echo 1#</option>
-            <option value="1"#if 1 == $taskCurrentPage then ' selected' else ''#>#echo "load more"#</option>
+          <select onchange="javascript: window.location = 'tasks?start=' + this.value * {{ taskRange }} + '{{ util.passthrough_except() }}';">
+            <option value="0"{{ ' selected' if 0 == taskCurrentPage else '' }}>1</option>
+            <option value="1"{{ ' selected' if 1 == taskCurrentPage else '' }}>load more</option>
           </select>
         </form>
-        <strong>Tasks #echo $taskStart + 1 # through #echo $taskStart + $taskCount# of ???</strong>
-        <a href="tasks?start=$taskRange$util.passthrough_except($self)">&gt;&gt;&gt;</a>
-        #end if
+        <strong>Tasks {{ taskStart + 1  }} through {{ taskStart + taskCount }} of ???</strong>
+        <a href="tasks?start={{ taskRange }}{{ util.passthrough_except() }}">&gt;&gt;&gt;</a>
+        #endif
       </td>
     </tr>
     <tr class="list-header">
-      <th><a href="tasks?order=$util.toggleOrder($self, 'id')$util.passthrough_except($self, 'order')">ID</a> $util.sortImage($self, 'id')</th>
-      <th><a href="tasks?order=$util.toggleOrder($self, 'method')$util.passthrough_except($self, 'order')">Type</a> $util.sortImage($self, 'method')</th>
-      <th><a href="tasks?order=$util.toggleOrder($self, 'owner')$util.passthrough_except($self, 'order')">Owner</a> $util.sortImage($self, 'owner')</th>
-      <th><a href="tasks?order=$util.toggleOrder($self, 'arch')$util.passthrough_except($self, 'order')">Arch</a> $util.sortImage($self, 'arch')</th>
-      <th><a href="tasks?order=$util.toggleOrder($self, 'completion_time')$util.passthrough_except($self, 'order')">Finished</a> $util.sortImage($self, 'completion_time')</th>
-      <th><a href="tasks?order=$util.toggleOrder($self, 'state')$util.passthrough_except($self, 'order')">State</a> $util.sortImage($self, 'state')</th>
+      <th><a href="tasks?order={{ util.toggleOrder('id') }}{{ util.passthrough_except('order') }}">ID</a> {{ util.sortImage('id') }}</th>
+      <th><a href="tasks?order={{ util.toggleOrder('method') }}{{ util.passthrough_except('order') }}">Type</a> {{ util.sortImage('method') }}</th>
+      <th><a href="tasks?order={{ util.toggleOrder('owner') }}{{ util.passthrough_except('order') }}">Owner</a> {{ util.sortImage('owner') }}</th>
+      <th><a href="tasks?order={{ util.toggleOrder('arch') }}{{ util.passthrough_except('order') }}">Arch</a> {{ util.sortImage('arch') }}</th>
+      <th><a href="tasks?order={{ util.toggleOrder('completion_time') }}{{ util.passthrough_except('order') }}">Finished</a> {{ util.sortImage('completion_time') }}</th>
+      <th><a href="tasks?order={{ util.toggleOrder('state') }}{{ util.passthrough_except('order') }}">State</a> {{ util.sortImage('state') }}</th>
     </tr>
-    #if $len($tasks) > 0
-      #for $task in $tasks
-        <tr class="$util.rowToggle($self)">
-          #set $taskState = $util.taskState($task.state)
-          <td>$task.id</td>
-          <td#if $treeDisplay then S(' class="tree"') else ''#>
-            #if $treeDisplay then '&nbsp;' else ''#<a href="taskinfo?taskID=$task.id" class="task$taskState" title="$taskState">$koji.taskLabel($task)</a>
-            #if $treeDisplay
-            $printChildren($task.id, $task.descendents)
-            #end if
+    #if tasks
+      #for task in tasks
+        <tr class="{{ util.rowToggle() }}">
+          #set taskState = util.taskState(task.state)
+          <td>{{ task.id }}</td>
+          <td{{ S(' class="tree"') if treeDisplay else '' }}>
+            {{ S('&nbsp;') if treeDisplay else '' }}<a href="taskinfo?taskID={{ task.id }}" class="task{{ taskState }}" title="{{ taskState }}">{{ koji.taskLabel(task) }}</a>
+            #if treeDisplay
+            {{ printChildren(task.id, task.descendents) }}
+            #endif
           </td>
-          <td class="user-$task.owner_name">
-            #if $task.owner_type == $koji.USERTYPES['HOST']
-            <a href="hostinfo?userID=$task.owner">$task.owner_name</a>
+          <td class="user-{{ task.owner_name }}">
+            #if task.owner_type == koji.USERTYPES['HOST']
+            <a href="hostinfo?userID={{ task.owner }}">{{ task.owner_name }}</a>
             #else
-            <a href="userinfo?userID=$task.owner">$task.owner_name</a>
-            #end if
+            <a href="userinfo?userID={{ task.owner }}">{{ task.owner_name }}</a>
+            #endif
           </td>
-          <td>$task.arch</td>
-          <td>$util.formatTime($task.completion_ts)</td>
-          <td class="task$state">$util.imageTag($taskState)</td>
+          <td>{{ task.arch }}</td>
+          <td>{{ util.formatTime(task.completion_ts) }}</td>
+          <td class="task{{ state }}">{{ util.imageTag(taskState) }}</td>
         </tr>
-      #end for
+      #endfor
     #else
       <tr class="row-odd">
         <td colspan="6">No tasks</td>
       </tr>
-    #end if
+    #endif
     <tr>
       <td class="paginate" colspan="6">
-        #if $taskPages is not None
-        #if $len($taskPages) > 1
+        #if taskPages is not none
+        #if taskPages|length > 1
         <form class="pageJump" action="">
           Page:
-          <select onchange="javascript: window.location = 'tasks?start=' + this.value * $taskRange + '$util.passthrough_except($self)';">
-            #for $pageNum in $taskPages
-            <option value="$pageNum"#if $pageNum == $taskCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
-            #end for
+          <select onchange="javascript: window.location = 'tasks?start=' + this.value * {{ taskRange }} + '{{ util.passthrough_except() }}';">
+            #for pageNum in taskPages
+            <option value="{{ pageNum }}"{{ ' selected' if pageNum == taskCurrentPage else '' }}>{{ pageNum + 1 }}</option>
+            #endfor
           </select>
         </form>
-        #end if
-        #if $taskStart > 0
-        <a href="tasks?start=#echo $taskStart - $taskRange #$util.passthrough_except($self)">&lt;&lt;&lt;</a>
-        #end if
-        #if $totalTasks != 0
-        <strong>Tasks #echo $taskStart + 1 # through #echo $taskStart + $taskCount # of $totalTasks</strong>
-        #end if
-        #if $taskStart + $taskCount < $totalTasks
-        <a href="tasks?start=#echo $taskStart + $taskRange#$util.passthrough_except($self)">&gt;&gt;&gt;</a>
-        #end if
+        #endif
+        #if taskStart > 0
+        <a href="tasks?start={{ taskStart - taskRange }}{{ util.passthrough_except() }}">&lt;&lt;&lt;</a>
+        #endif
+        #if totalTasks != 0
+        <strong>Tasks {{ taskStart + 1  }} through {{ taskStart + taskCount  }} of {{ totalTasks }}</strong>
+        #endif
+        #if taskStart + taskCount < totalTasks
+        <a href="tasks?start={{ taskStart + taskRange }}{{ util.passthrough_except() }}">&gt;&gt;&gt;</a>
+        #endif
         #else
         <form class="pageJump" action="">
           Page:
-          <select onchange="javascript: window.location = 'tasks?start=' + this.value * $taskRange + '$util.passthrough_except($self)';">
-            <option value="0"#if 0 == $taskCurrentPage then ' selected' else ''#>#echo 1#</option>
-            <option value="1"#if 1 == $taskCurrentPage then ' selected' else ''#>#echo "load more"#</option>
+          <select onchange="javascript: window.location = 'tasks?start=' + this.value * {{ taskRange }} + '{{ util.passthrough_except() }}';">
+            <option value="0"{{ ' selected' if 0 == taskCurrentPage else '' }}>1</option>
+            <option value="1"{{ ' selected' if 1 == taskCurrentPage else '' }}>load more</option>
           </select>
         </form>
-        <strong>Tasks #echo $taskStart + 1 # through #echo $taskStart + $taskCount# of ???</strong>
-        <a href="tasks?start=$taskRange$util.passthrough_except($self)">&gt;&gt;&gt;</a>
-        #end if
+        <strong>Tasks {{ taskStart + 1  }} through {{ taskStart + taskCount }} of ???</strong>
+        <a href="tasks?start={{ taskRange }}{{ util.passthrough_except() }}">&gt;&gt;&gt;</a>
+        #endif
       </td>
     </tr>
   </table>
 
-#include "includes/footer.chtml"
+#include "includes/footer2.chtml"

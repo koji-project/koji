@@ -1,6 +1,4 @@
-#from kojiweb import util
-
-#include "includes/header.chtml"
+#include "includes/header2.chtml"
 
   <h4>Reports</h4>
 
@@ -13,9 +11,9 @@
     <li><a href="buildsbystatus">Succeeded/failed/canceled builds</a></li>
     <li><a href="buildsbytarget">Number of builds in each target</a></li>
     <li><a href="clusterhealth">Cluster health</a></li>
-    #if  $loggedInUser
+    #if  loggedInUser
     <li><a href="activesession">Active sessions</a></li>
-    #end if
+    #endif
   </ul>
 
-#include "includes/footer.chtml"
+#include "includes/footer2.chtml"

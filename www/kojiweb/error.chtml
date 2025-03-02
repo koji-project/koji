@@ -1,29 +1,27 @@
-#from kojiweb import util
-
-#include "includes/header.chtml"
+#include "includes/header2.chtml"
 
   <h4>Error</h4>
 
 <div>
-$explanation
+{{ explanation }}
 </div>
 
-#if $debug_level >= 1
+#if debug_level >= 1
 <div>
 #else
 <div style="visibility: hidden">
-#end if
-$tb_short
+#endif
+{{ tb_short }}
 </div>
 
-#if $debug_level >= 2
+#if debug_level >= 2
 <div>
 #else
 <div style="visibility: hidden">
-#end if
+#endif
 <pre>
-#echo $tb_long
+{{ tb_long }}
 </pre>
 </div>
 
-#include "includes/footer.chtml"
+#include "includes/footer2.chtml"

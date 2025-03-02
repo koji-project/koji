@@ -1,0 +1,190 @@
+#!/usr/bin/python3
+
+import os.path
+import re
+import sys
+import tempfile
+from optparse import OptionParser
+
+
+"""
+Poorly convert some cheetah template code to jinja
+
+This is NOT a full or accurate conversion, it is a set of simple
+tranformations that reduce some of the manual work.
+
+Always review the changes.
+Always review the changes.
+"""
+
+
+def main():
+    global subs
+    global options
+    parser = OptionParser(usage="%prog <filename>")
+    parser.add_option('-w', '--write', action='store_true', help='write changes to file')
+    options, args = parser.parse_args()
+    options.args = args
+
+    if len(args) != 1:
+        error('Please specify one template')
+    fn = args[0]
+    handle_file(fn)
+
+
+def handle_file(fn):
+    outp = None
+    if options.write:
+        dirname = os.path.dirname(fn)
+        basename = os.path.basename(fn)
+        outfile = tempfile.NamedTemporaryFile(dir=dirname, mode='wt', prefix=f'_{basename}', delete=False)
+        with outfile as outp:
+            _handle_file(fn, outp)
+        os.replace(outfile.name, fn)
+        print(f'Wrote {fn}')
+    else:
+        _handle_file(fn, outp)
+
+
+def _handle_file(fn, outp):
+    with open(fn, 'rt') as fp:
+        for lineno, line in enumerate(fp):
+            line = handle_line(lineno, line, outp)
+            if line is not None and outp is not None:
+                outp.write(line)
+
+
+def handle_line(lineno, line, outp):
+    orig = line
+    matches = 0
+    skip = False
+    rules = list(SUBS)
+    while rules:
+        prog, repl = rules.pop(0)
+        last = line
+        if repl == SKIP:
+            m = prog.search(line)
+            if m:
+                print(f'{lineno}: Matched skip pattern {prog.pattern!r}')
+                print(line, end='')
+                skip = True
+                line = orig
+                break
+            continue
+        elif repl == DROP:
+            m = prog.search(line)
+            if m:
+                print(f'{lineno}: Matched DROP pattern {prog.pattern!r}')
+                print(line, end='')
+                return None
+        elif repl == BREAK:
+            m = prog.search(line)
+            if m:
+                print(f'{lineno}: Matched BREAK pattern {prog.pattern!r}')
+                print(line, end='')
+                break
+        elif isinstance(repl, Jump):
+            # forget remaing rules and use target rules from here
+            m = prog.search(line)
+            if m:
+                rules = list(repl.target)
+        else:
+            line, n = prog.subn(repl, line)
+            if n:
+                matches += n
+                print(f'{lineno}: Matched {prog.pattern!r} (count: {n})')
+    if matches:
+        print(f'Made {matches} substitutions for line {lineno}')
+        print(f'ORIG: {orig}', end='')
+        print(f' NEW: {line}')
+    return collapse(line)
+
+
+def rules(subs):
+    # compile subs
+    return [(re.compile(pat, flags), repl) for pat, repl, flags in subs]
+
+
+class Jump:
+    # jump to new set of substitutions
+    def __init__(self, target):
+        self.target = target
+
+
+SKIP = ('skip subs for this line',)
+DROP = ('drop line',)
+BREAK = ('stop subs checks for this line',)
+STATE = rules([
+    # subrules for some line statements
+    [r'[$]', '', 0],
+    [r'len\(([\w.$]+)\)', r'(\1 |length)', 0 ],
+])
+SUBS = rules([
+    # [pattern, replacement, flags]
+    [r'util.(toggleOrder|rowToggle|sortImage|passthrough_except|passthrough|authToken)\b', r'util.\g<1>2', 0],
+    [r'(#include .*)header.chtml', r'\1header2.chtml', 0],
+    [r'(#include .*)footer.chtml', r'\1footer2.chtml', 0],
+    [r'^#import', DROP, 0],
+    [r'^#from .* import', DROP, 0],
+    [r'^\s*#(if|for|elif|set)', Jump(STATE), 0],
+    [r'#end if', r'#endif', 0],
+    [r'#end for', r'#endfor', 0],
+    [r'[(][$]self, ', r'(', 0 ],
+    [r'\([$]self\)', r'()', 0 ],
+    [r'len\(([\w.$]+)\)', r'(\1 |length)', 0 ],
+    [r'[$](([\w.]+)[(][^()]*[)])', r'{{ \1 }}', 0 ],
+    [r'${\s*([^{}]+)\s*}', r'{{ \1 }}', 0 ],
+    [r'#echo ([^#]+)#', r'{{ \1 }}', 0 ],
+    [r'#if ([^#]+) then ([^#]+) else ([^#]+)\s*#', r'{{ \2 if \1 else \3 }}', 0 ],
+    [r'''[$]([\w.]+)\['(\w+)'\]''', r'{{ \1.\2 }}', 0],
+    [r'''[$]([\w.]+)\["(\w+)"\]''', r'{{ \1.\2 }}', 0],
+    [r'[$]([\w.]+)[([]', SKIP, 0],
+    [r'^(\s*)#attr ', r'\1#set ', 0],
+    [r'^\s*#', BREAK, 0],
+    [r'[$]([\w.]+)', r'{{ \1 }}', 0],
+])
+
+
+def error(msg):
+    print(msg)
+    sys.exit(1)
+
+
+BRACES = re.compile(r'({{ | }})')
+
+def collapse(line):
+    """Collapse nested double braces"""
+    tokens = BRACES.split(line)
+
+    depth = 0
+    tokens2 = []
+    for tok in tokens:
+        if tok == '{{ ':
+            # only keep braces at the outer layer
+            if depth == 0:
+                tokens2.append(tok)
+            depth += 1
+        elif tok == ' }}':
+            depth -= 1
+            if depth < 0:
+                warning("Brace  mismatch. Can't collapse")
+                break
+            elif depth == 0:
+                # only keep braces at the outer layer
+                tokens2.append(tok)
+        else:
+            # keep everything else
+            tokens2.append(tok)
+
+    if depth < 0:
+        warning('Unexpected }}')
+        return line
+    elif depth > 0:
+        warning('Missing }}')
+        return line
+    else:
+        return ''.join(tokens2)
+
+
+if __name__ == '__main__':
+    main()

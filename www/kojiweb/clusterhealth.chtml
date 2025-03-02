@@ -1,14 +1,12 @@
-#from kojiweb import util
 
-#@util.safe_return
-#def printOption(value, label=None)
-#if not $label
-#set $label = $value
-#end if
-<option value="$value"#if $value == $arch then ' selected' else ''#>$label</option>
-#end def
+#macro printOption(value, label=None)
+#if not label
+#set label = value
+#endif
+<option value="{{ value }}"{{ ' selected' if value == arch else '' }}>{{ label }}</option>
+#endmacro
 
-#include "includes/header.chtml"
+#include "includes/header2.chtml"
 <style>
   span {
     display: inline-block;
@@ -43,11 +41,11 @@
       <td colspan="3">
         <form action="">
           Architecture:
-          <select onchange="javascript: window.location = 'clusterhealth?arch=' + this.value + '$util.passthrough($self, 'order')';">
-            $printOption('__all__', 'all')
-            #for $arch in $arches
-            $printOption($arch)
-            #end for
+          <select onchange="javascript: window.location = 'clusterhealth?arch=' + this.value + '{{ util.passthrough('order') }}';">
+            {{ printOption('__all__', 'all') }}
+            #for arch in arches
+            {{ printOption(arch) }}
+            #endfor
           </select>
         </form>
       </td>
@@ -57,29 +55,29 @@
       <th>Load/Capacity</th>
       <th>Builder readiness</th>
     </tr>
-    #for $channel in $channels
-    #if $channel['enabled_channel']
+    #for channel in channels
+    #if channel['enabled_channel']
     <tr>
       <th>
-          <a href="channelinfo?channelID=$channel['id']">$channel['name']</a>
+          <a href="channelinfo?channelID={{ channel.id }}">{{ channel.name }}</a>
       </th>
-      <td width="$graphWidth" class="graph">
-        #if $channel['capacityPerc']
-        <span style="width: $channel['capacityPerc']%">
-          <span style="width: #echo $channel['perc_load']#%" class="busy" title="Load: #echo int($channel['load'])#"></span>
-          <span style="width: #echo 100 - $channel['perc_load']#%" class="free" title="Free capacity: #echo int($channel['capacity'] - $channel['load'])#">#echo int(100 - $channel['perc_load'])#%&nbsp;</span>
+      <td width="{{ graphWidth }}" class="graph">
+        #if channel['capacityPerc']
+        <span style="width: {{ channel.capacityPerc }}%">
+          <span style="width: {{ channel.perc_load }}%" class="busy" title="Load: {{ channel.load|int }}"></span>
+          <span style="width: {{ 100 - channel.perc_load }}%" class="free" title="Free capacity: {{ (channel.capacity - channel.load)|int }}">{{ (100 - channel.perc_load)|int }}%&nbsp;</span>
         </span>
-        #end if
+        #endif
       </td>
-      <td width="$graphWidth" class="graph">
-        <span style="width: #echo $channel['enabledPerc']#%">
-          <span style="width: #echo 100 - $channel['perc_ready']#%" class="busy" title="Busy builders: #echo $channel['enabled'] - $channel['ready']#"></span>
-          <span style="width: #echo $channel['perc_ready']#%" class="free" title="Ready builders: $channel['ready']"">#echo int($channel['ready'])#&nbsp;</span>
+      <td width="{{ graphWidth }}" class="graph">
+        <span style="width: {{ channel.enabledPerc }}%">
+          <span style="width: {{ 100 - channel.perc_ready }}%" class="busy" title="Busy builders: {{ channel.enabled - channel.ready }}"></span>
+          <span style="width: {{ channel.perc_ready }}%" class="free" title="Ready builders: {{ channel.ready }}"">{{ channel.ready|int }}&nbsp;</span>
         </span>
       </td>
     </tr>
-    #end if
-    #end for
+    #endif
+    #endfor
   </table>
 
-#include "includes/footer.chtml"
+#include "includes/footer2.chtml"

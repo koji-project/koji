@@ -1,76 +1,75 @@
-#from kojiweb import util
 
-#include "includes/header.chtml"
+#include "includes/header2.chtml"
 
   <h4>Build Targets</h4>
   <table class="data-list">
     <tr>
       <td class="paginate" colspan="2">
-        #if $len($targetPages) > 1
+        #if (targetPages |length) > 1
         <form class="pageJump" action="">
           Page:
-          <select onchange="javascript: window.location = 'buildtargets?start=' + this.value * $targetRange + '$util.passthrough($self, 'order')';">
-            #for $pageNum in $targetPages
-            <option value="$pageNum"#if $pageNum == $targetCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
-            #end for
+          <select onchange="javascript: window.location = 'buildtargets?start=' + this.value * {{ targetRange }} + '{{ util.passthrough('order') }}';">
+            #for pageNum in targetPages
+            <option value="{{ pageNum }}"{{ ' selected' if pageNum == targetCurrentPage else '' }}>{{ pageNum + 1 }}</option>
+            #endfor
           </select>
         </form>
-        #end if
-        #if $targetStart > 0
-        <a href="buildtargets?start=#echo $targetStart - $targetRange #$util.passthrough($self, 'order')">&lt;&lt;&lt;</a>
-        #end if
-        #if $totalTargets != 0
-        <strong>Targets #echo $targetStart + 1 # through #echo $targetStart + $targetCount # of $totalTargets</strong>
-        #end if
-        #if $targetStart + $targetCount < $totalTargets
-        <a href="buildtargets?start=#echo $targetStart + $targetRange#$util.passthrough($self, 'order')">&gt;&gt;&gt;</a>
-        #end if
+        #endif
+        #if targetStart > 0
+        <a href="buildtargets?start={{ targetStart - targetRange  }}{{ util.passthrough('order') }}">&lt;&lt;&lt;</a>
+        #endif
+        #if totalTargets != 0
+        <strong>Targets {{ targetStart + 1  }} through {{ targetStart + targetCount  }} of {{ totalTargets }}</strong>
+        #endif
+        #if targetStart + targetCount < totalTargets
+        <a href="buildtargets?start={{ targetStart + targetRange }}{{ util.passthrough('order') }}">&gt;&gt;&gt;</a>
+        #endif
       </td>
     </tr>
     <tr class="list-header">
-      <th><a href="buildtargets?order=$util.toggleOrder($self, 'id')">ID</a> $util.sortImage($self, 'id')</th>
-      <th><a href="buildtargets?order=$util.toggleOrder($self, 'name')">Name</a> $util.sortImage($self, 'name')</th>
+      <th><a href="buildtargets?order={{ util.toggleOrder('id') }}">ID</a> {{ util.sortImage('id') }}</th>
+      <th><a href="buildtargets?order={{ util.toggleOrder('name') }}">Name</a> {{ util.sortImage('name') }}</th>
     </tr>
-    #if $len($targets) > 0
-    #for $target in $targets
-    <tr class="$util.rowToggle($self)">
-      <td>$target.id</td>
-      <td><a href="buildtargetinfo?targetID=$target.id">$target.name</a></td>
+    #if (targets |length) > 0
+    #for target in targets
+    <tr class="{{ util.rowToggle() }}">
+      <td>{{ target.id }}</td>
+      <td><a href="buildtargetinfo?targetID={{ target.id }}">{{ target.name }}</a></td>
     </tr>
-    #end for
+    #endfor
     #else
     <tr class="row-odd">
       <td colspan="2">No build targets</td>
     </tr>
-    #end if
+    #endif
     <tr>
       <td class="paginate" colspan="2">
-        #if $len($targetPages) > 1
+        #if (targetPages |length) > 1
         <form class="pageJump" action="">
           Page:
-          <select onchange="javascript: window.location = 'buildtargets?start=' + this.value * $targetRange + '$util.passthrough($self, 'order')';">
-            #for $pageNum in $targetPages
-            <option value="$pageNum"#if $pageNum == $targetCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
-            #end for
+          <select onchange="javascript: window.location = 'buildtargets?start=' + this.value * {{ targetRange }} + '{{ util.passthrough('order') }}';">
+            #for pageNum in targetPages
+            <option value="{{ pageNum }}"{{ ' selected' if pageNum == targetCurrentPage else '' }}>{{ pageNum + 1 }}</option>
+            #endfor
           </select>
         </form>
-        #end if
-        #if $targetStart > 0
-        <a href="buildtargets?start=#echo $targetStart - $targetRange #$util.passthrough($self, 'order')">&lt;&lt;&lt;</a>
-        #end if
-        #if $totalTargets != 0
-        <strong>Targets #echo $targetStart + 1 # through #echo $targetStart + $targetCount # of $totalTargets</strong>
-        #end if
-        #if $targetStart + $targetCount < $totalTargets
-        <a href="buildtargets?start=#echo $targetStart + $targetRange#$util.passthrough($self, 'order')">&gt;&gt;&gt;</a>
-        #end if
+        #endif
+        #if targetStart > 0
+        <a href="buildtargets?start={{ targetStart - targetRange  }}{{ util.passthrough('order') }}">&lt;&lt;&lt;</a>
+        #endif
+        #if totalTargets != 0
+        <strong>Targets {{ targetStart + 1  }} through {{ targetStart + targetCount  }} of {{ totalTargets }}</strong>
+        #endif
+        #if targetStart + targetCount < totalTargets
+        <a href="buildtargets?start={{ targetStart + targetRange }}{{ util.passthrough('order') }}">&gt;&gt;&gt;</a>
+        #endif
       </td>
     </tr>
   </table>
   
-  #if 'admin' in $perms
+  #if 'admin' in perms
   <br/>
-  <a href="buildtargetcreate$util.authToken($self, first=True)">Create new Build Target</a>
-  #end if
+  <a href="buildtargetcreate{{ util.authToken(first=True) }}">Create new Build Target</a>
+  #endif
 
-#include "includes/footer.chtml"
+#include "includes/footer2.chtml"

@@ -1,139 +1,136 @@
-#from kojiweb import util
-#from kojiweb.util import safe_return
 
-#attr _PASSTHROUGH = ['userID', 'tagID', 'order', 'prefix', 'inherited', 'blocked']
+#set _PASSTHROUGH = ['userID', 'tagID', 'order', 'prefix', 'inherited', 'blocked']
 
-#include "includes/header.chtml"
+#include "includes/header2.chtml"
 
-#@safe_return
-#def getDescription()
+#macro getDescription()
 Packages
-#if $prefix
-starting with $prefix
-#end if
-#if $tag
-in tag <a href="taginfo?tagID=$tag.id">$tag.name</a>
-#end if
-#if $user
-owned by <a href="userinfo?userID=$user.id">$user.name</a>
-#end if
-#end def
+#if prefix
+starting with {{ prefix }}
+#endif
+#if tag
+in tag <a href="taginfo?tagID={{ tag.id }}">{{ tag.name }}</a>
+#endif
+#if user
+owned by <a href="userinfo?userID={{ user.id }}">{{ user.name }}</a>
+#endif
+#endmacro
 
-  <h4>$getDescription()</h4>
+  <h4>{{ getDescription() }}</h4>
 
   <table class="data-list">
-    #if $tag
+    #if tag
     <tr>
       <td colspan="5">
         <table class="nested">
           <tr><td>
           <strong>Inherited</strong>:
           </td><td>
-          <select name="inherited" class="filterlist" onchange="javascript: window.location = 'packages?inherited=' + this.value + '$util.passthrough_except($self, 'inherited')';">
-            <option value="1" #if $inherited then 'selected' else ''#>yes</option>
-            <option value="0" #if not $inherited then 'selected' else ''#>no</option>
+          <select name="inherited" class="filterlist" onchange="javascript: window.location = 'packages?inherited=' + this.value + '{{ util.passthrough_except('inherited') }}';">
+            <option value="1" {{ 'selected' if inherited else '' }}>yes</option>
+            <option value="0" {{ 'selected' if not inherited else '' }}>no</option>
           </select>
           </td></tr>
           <tr><td>
           <strong>With blocked</strong>:
           </td><td>
-          <select name="blocked" class="filterlist" onchange="javascript: window.location = 'packages?blocked=' + this.value + '$util.passthrough_except($self, 'blocked')';">
-            <option value="1" #if $blocked then 'selected' else ''#>yes</option>
-            <option value="0" #if not $blocked then 'selected' else ''#>no</option>
+          <select name="blocked" class="filterlist" onchange="javascript: window.location = 'packages?blocked=' + this.value + '{{ util.passthrough_except('blocked') }}';">
+            <option value="1" {{ 'selected' if blocked else '' }}>yes</option>
+            <option value="0" {{ 'selected' if not blocked else '' }}>no</option>
           </select>
           </td></tr>
         </table>
     </tr>
-    #end if
+    #endif
     <tr>
-      <td class="charlist" colspan="#if $tag or $user then '5' else '2'#">
-        #for $char in $chars
-        #if $prefix == $char
-        <strong>$char</strong>
+      <td class="charlist" colspan="{{ '5' if tag or user else '2' }}">
+        #for char in chars
+        #if prefix == char
+        <strong>{{ char }}</strong>
         #else
-        <a href="packages?prefix=$char$util.passthrough($self, 'userID', 'tagID', 'order', 'inherited', 'blocked')">$char</a>
-        #end if
+        <a href="packages?prefix={{ char }}{{ util.passthrough('userID', 'tagID', 'order', 'inherited', 'blocked') }}">{{ char }}</a>
+        #endif
         |
-        #end for
-        #if $prefix
-        <a href="packages?${util.passthrough($self, 'userID', 'tagID', 'order', 'inherited', 'blocked', prefix='')}">all</a>
+        #endfor
+        #if prefix
+        <a href="packages?{{ util.passthrough('userID', 'tagID', 'order', 'inherited', 'blocked', prefix='') }}">all</a>
         #else
         <strong>all</strong>
-        #end if
+        #endif
       </td>
     </tr>
     <tr>
-      <td class="paginate" colspan="#if $tag or $user then '5' else '2'#">
-        #if $len($packagePages) > 1
+      <td class="paginate" colspan="{{ '5' if tag or user else '2' }}">
+        #if (packagePages |length) > 1
         <form class="pageJump" action="">
           Page:
-          <select onchange="javascript: window.location = 'packages?start=' + this.value * $packageRange + '$util.passthrough($self, 'userID', 'tagID', 'order', 'prefix', 'inherited', 'blocked')';">
-            #for $pageNum in $packagePages
-            <option value="$pageNum"#if $pageNum == $packageCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
-            #end for
+          <select onchange="javascript: window.location = 'packages?start=' + this.value * {{ packageRange }} + '{{ util.passthrough('userID', 'tagID', 'order', 'prefix', 'inherited', 'blocked') }}';">
+            #for pageNum in packagePages
+            <option value="{{ pageNum }}"{{ ' selected' if pageNum == packageCurrentPage else '' }}>{{ pageNum + 1 }}</option>
+            #endfor
           </select>
         </form>
-        #end if
-        #if $packageStart > 0
-        <a href="packages?start=#echo $packageStart - $packageRange #$util.passthrough($self, 'userID', 'tagID', 'order', 'prefix', 'inherited', 'blocked')">&lt;&lt;&lt;</a>
-        #end if
-        #if $totalPackages != 0
-        <strong>Packages #echo $packageStart + 1 # through #echo $packageStart + $packageCount # of $totalPackages</strong>
-        #end if
-        #if $packageStart + $packageCount < $totalPackages
-        <a href="packages?start=#echo $packageStart + $packageRange#$util.passthrough($self, 'userID', 'tagID', 'order', 'prefix', 'inherited', 'blocked')">&gt;&gt;&gt;</a>
-        #end if
+        #endif
+        #if packageStart > 0
+        <a href="packages?start={{ packageStart - packageRange  }}{{ util.passthrough('userID', 'tagID', 'order', 'prefix', 'inherited', 'blocked') }}">&lt;&lt;&lt;</a>
+        #endif
+        #if totalPackages != 0
+        <strong>Packages {{ packageStart + 1  }} through {{ packageStart + packageCount  }} of {{ totalPackages }}</strong>
+        #endif
+        #if packageStart + packageCount < totalPackages
+        <a href="packages?start={{ packageStart + packageRange }}{{ util.passthrough('userID', 'tagID', 'order', 'prefix', 'inherited', 'blocked') }}">&gt;&gt;&gt;</a>
+        #endif
       </td>
     </tr>
     <tr class="list-header">
-      <th><a href="packages?order=$util.toggleOrder($self, 'package_id')$util.passthrough($self, 'userID', 'tagID', 'prefix', 'inherited', 'blocked')">ID</a> $util.sortImage($self, 'package_id')</th>
-      <th><a href="packages?order=$util.toggleOrder($self, 'package_name')$util.passthrough($self, 'userID', 'tagID', 'prefix', 'inherited', 'blocked')">Name</a> $util.sortImage($self, 'package_name')</th>
-      #if $tag or $user
-        <th><a href="packages?order=$util.toggleOrder($self, 'tag_name')$util.passthrough($self, 'userID', 'tagID', 'prefix', 'inherited', 'blocked')">Tag</a> $util.sortImage($self, 'tag_name')</th>
-        <th><a href="packages?order=$util.toggleOrder($self, 'owner_name')$util.passthrough($self, 'userID', 'tagID', 'prefix', 'inherited', 'blocked')">Owner</a> $util.sortImage($self, 'owner_name')</th>
-        <th><a href="packages?order=$util.toggleOrder($self, 'blocked')$util.passthrough($self, 'userID', 'tagID', 'prefix', 'inherited', 'blocked')">Included?</a> $util.sortImage($self, 'blocked')</th>
-      #end if
+      <th><a href="packages?order={{ util.toggleOrder('package_id') }}{{ util.passthrough('userID', 'tagID', 'prefix', 'inherited', 'blocked') }}">ID</a> {{ util.sortImage('package_id') }}</th>
+      <th><a href="packages?order={{ util.toggleOrder('package_name') }}{{ util.passthrough('userID', 'tagID', 'prefix', 'inherited', 'blocked') }}">Name</a> {{ util.sortImage('package_name') }}</th>
+      #if tag or user
+        <th><a href="packages?order={{ util.toggleOrder('tag_name') }}{{ util.passthrough('userID', 'tagID', 'prefix', 'inherited', 'blocked') }}">Tag</a> {{ util.sortImage('tag_name') }}</th>
+        <th><a href="packages?order={{ util.toggleOrder('owner_name') }}{{ util.passthrough('userID', 'tagID', 'prefix', 'inherited', 'blocked') }}">Owner</a> {{ util.sortImage('owner_name') }}</th>
+        <th><a href="packages?order={{ util.toggleOrder('blocked') }}{{ util.passthrough('userID', 'tagID', 'prefix', 'inherited', 'blocked') }}">Included?</a> {{ util.sortImage('blocked') }}</th>
+      #endif
     </tr>
-    #if $len($packages) > 0
-      #for $package in $packages
-        <tr class="$util.rowToggle($self)">
-          <td>$package.package_id</td>
-          <td><a href="packageinfo?packageID=$package.package_id">$package.package_name</a></td>
-          #if $tag or $user
-          <td><a href="taginfo?tagID=$package.tag_id">$package.tag_name</a></td>
-          <td class="user-$package.owner_name"><a href="userinfo?userID=$package.owner_id">$package.owner_name</a></td>
-          <td class="$str(not $package.blocked).lower()">#if $package.blocked then $util.imageTag('no') else $util.imageTag('yes')#</td>
-          #end if
+    #if (packages |length) > 0
+      #for package in packages
+        <tr class="{{ util.rowToggle() }}">
+          <td>{{ package.package_id }}</td>
+          <td><a href="packageinfo?packageID={{ package.package_id }}">{{ package.package_name }}</a></td>
+          #if tag or user
+          <td><a href="taginfo?tagID={{ package.tag_id }}">{{ package.tag_name }}</a></td>
+          <td class="user-{{ package.owner_name }}"><a href="userinfo?userID={{ package.owner_id }}">{{ package.owner_name }}</a></td>
+          <td class="{{ str(not package.blocked) }}.lower()">{{ util.imageTag('no') if package.blocked else util.imageTag('yes') }}</td>
+          #endif
         </tr>
-      #end for
+      #endfor
     #else
       <tr class="row-odd">
-        <td colspan="#if $tag or $user then '5' else '2'#">No packages</td>
+        <td colspan="{{ '5' if tag or user else '2' }}">No packages</td>
       </tr>
-    #end if
+    #endif
     <tr>
-      <td class="paginate" colspan="#if $tag or $user then '5' else '2'#">
-        #if $len($packagePages) > 1
+      <td class="paginate" colspan="{{ '5' if tag or user else '2' }}">
+        #if (packagePages |length) > 1
         <form class="pageJump" action="">
           Page:
-          <select onchange="javascript: window.location = 'packages?start=' + this.value * $packageRange + '$util.passthrough($self, 'userID', 'tagID', 'order', 'prefix', 'inherited', 'blocked')';">
-            #for $pageNum in $packagePages
-            <option value="$pageNum"#if $pageNum == $packageCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
-            #end for
+          <select onchange="javascript: window.location = 'packages?start=' + this.value * {{ packageRange }} + '{{ util.passthrough('userID', 'tagID', 'order', 'prefix', 'inherited', 'blocked') }}';">
+            #for pageNum in packagePages
+            <option value="{{ pageNum }}"{{ ' selected' if pageNum == packageCurrentPage else '' }}>{{ pageNum + 1 }}</option>
+            #endfor
           </select>
         </form>
-        #end if
-        #if $packageStart > 0
-        <a href="packages?start=#echo $packageStart - $packageRange #$util.passthrough($self, 'userID', 'tagID', 'order', 'prefix', 'inherited', 'blocked')">&lt;&lt;&lt;</a>
-        #end if
-        #if $totalPackages != 0
-        <strong>Packages #echo $packageStart + 1 # through #echo $packageStart + $packageCount # of $totalPackages</strong>
-        #end if
-        #if $packageStart + $packageCount < $totalPackages
-        <a href="packages?start=#echo $packageStart + $packageRange#$util.passthrough($self, 'userID', 'tagID', 'order', 'prefix', 'inherited', 'blocked')">&gt;&gt;&gt;</a>
-        #end if
+        #endif
+        #if packageStart > 0
+        <a href="packages?start={{ packageStart - packageRange  }}{{ util.passthrough('userID', 'tagID', 'order', 'prefix', 'inherited', 'blocked') }}">&lt;&lt;&lt;</a>
+        #endif
+        #if totalPackages != 0
+        <strong>Packages {{ packageStart + 1  }} through {{ packageStart + packageCount  }} of {{ totalPackages }}</strong>
+        #endif
+        #if packageStart + packageCount < totalPackages
+        <a href="packages?start={{ packageStart + packageRange }}{{ util.passthrough('userID', 'tagID', 'order', 'prefix', 'inherited', 'blocked') }}">&gt;&gt;&gt;</a>
+        #endif
       </td>
     </tr>
   </table>
 
-#include "includes/footer.chtml"
+#include "includes/footer2.chtml"

@@ -1,101 +1,98 @@
-#from kojiweb import util
-#from urllib.parse import quote
 
-#@util.safe_return
-#def printOption(value, label=None)
-#if not $label
-#set $label = $value
-#end if
-<option value="$value"#if $value == $days then ' selected' else ''#>$label</option>
-#end def
+#macro printOption(value, label=None)
+#if not label
+#set label = value
+#endif
+<option value="{{ value }}"{{ ' selected' if value == days else '' }}>{{ label }}</option>
+#endmacro
 
-#include "includes/header.chtml"
+#include "includes/header2.chtml"
 
-  <h4>Builds by Target#if $days != -1 then ' in the last %i days' % $days else ''#</h4>
+  <h4>Builds by Target{{ ' in the last %i days' % days if days != -1 else '' }}</h4>
   <table class="data-list">
     <tr style="text-align: left">
       <td colspan="3">
         <form action="">
           Show last
-          <select onchange="javascript: window.location = 'buildsbytarget?days=' + this.value + '$util.passthrough($self, 'order')';">
-            $printOption(1)
-            $printOption(3)
-            $printOption(5)
-            $printOption(7)
-            $printOption(14)
-            $printOption(30)
-            $printOption(60)
-            $printOption(90)
-            $printOption(120)
-            $printOption(-1, 'all')
+          <select onchange="javascript: window.location = 'buildsbytarget?days=' + this.value + '{{ util.passthrough('order') }}';">
+            {{ printOption(1) }}
+            {{ printOption(3) }}
+            {{ printOption(5) }}
+            {{ printOption(7) }}
+            {{ printOption(14) }}
+            {{ printOption(30) }}
+            {{ printOption(60) }}
+            {{ printOption(90) }}
+            {{ printOption(120) }}
+            {{ printOption(-1, 'all') }}
           </select> days
         </form>
       </td>
     </tr>
     <tr>
       <td class="paginate" colspan="3">
-        #if $len($targetPages) > 1
+        #if (targetPages |length) > 1
         <form class="pageJump" action="">
           Page:
-          <select onchange="javascript: window.location = 'buildsbytarget?start=' + this.value * $targetRange + '$util.passthrough($self, 'days', 'order')';">
-            #for $pageNum in $targetPages
-            <option value="$pageNum"#if $pageNum == $targetCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
-            #end for
+          <select onchange="javascript: window.location = 'buildsbytarget?start=' + this.value * {{ targetRange }} + '{{ util.passthrough('days', 'order') }}';">
+            #for pageNum in targetPages
+            <option value="{{ pageNum }}"{{ ' selected' if pageNum == targetCurrentPage else '' }}>{{ pageNum + 1 }}</option>
+            #endfor
           </select>
         </form>
-        #end if
-        #if $targetStart > 0
-        <a href="buildsbytarget?start=#echo $targetStart - $targetRange #$util.passthrough($self, 'days', 'order')">&lt;&lt;&lt;</a>
-        #end if
-        #if $totalTargets != 0
-        <strong>Build Targets #echo $targetStart + 1 # through #echo $targetStart + $targetCount # of $totalTargets</strong>
-        #end if
-        #if $targetStart + $targetCount < $totalTargets
-        <a href="buildsbytarget?start=#echo $targetStart + $targetRange#$util.passthrough($self, 'days', 'order')">&gt;&gt;&gt;</a>
-        #end if
+        #endif
+        #if targetStart > 0
+        <a href="buildsbytarget?start={{ targetStart - targetRange  }}{{ util.passthrough('days', 'order') }}">&lt;&lt;&lt;</a>
+        #endif
+        #if totalTargets != 0
+        <strong>Build Targets {{ targetStart + 1  }} through {{ targetStart + targetCount  }} of {{ totalTargets }}</strong>
+        #endif
+        #if targetStart + targetCount < totalTargets
+        <a href="buildsbytarget?start={{ targetStart + targetRange }}{{ util.passthrough('days', 'order') }}">&gt;&gt;&gt;</a>
+        #endif
       </td>
     </tr>
     <tr class="list-header">
-      <th><a href="buildsbytarget?order=$util.toggleOrder($self, 'name')$util.passthrough($self, 'days')">Name</a> $util.sortImage($self, 'name')</th>
-      <th><a href="buildsbytarget?order=$util.toggleOrder($self, 'builds')$util.passthrough($self, 'days')">Builds</a> $util.sortImage($self, 'builds')</th>
+      <th><a href="buildsbytarget?order={{ util.toggleOrder('name') }}{{ util.passthrough('days') }}">Name</a> {{ util.sortImage('name') }}</th>
+      <th><a href="buildsbytarget?order={{ util.toggleOrder('builds') }}{{ util.passthrough('days') }}">Builds</a> {{ util.sortImage('builds') }}</th>
       <th>&nbsp;</th>
     </tr>
-    #if $len($targets) > 0
-    #for $target in $targets
-    <tr class="$util.rowToggle($self)">
-      <td><a href="buildtargetinfo?name=$quote($target.name)">$target.name</a></td>
-      <td width="#echo $graphWidth + 5#"><img src=$util.themePath('images/1px.gif') width="#echo $increment * $target.builds#" height="15" class="graphrow" alt="graph row"/></td>
-      <td>$target.builds</td>
+    #if (targets |length) > 0
+    #for target in targets
+    <tr class="{{ util.rowToggle() }}">
+      <td><a href="buildtargetinfo?name={{ target.name|urlencode }}">{{ target.name }}</a></td>
+      <td width="{{ graphWidth + 5 }}"><img src={{ util.themePath('images/1px.gif') }} width="{{ increment * target.builds }}" height="15" class="graphrow" alt="graph row"/></td>
+      <td>{{ target.builds }}</td>
     </tr>
-    #end for
+    #endfor
     #else
     <tr class="row-odd">
       <td colspan="3">No builds</td>
     </tr>
-    #end if
+    #endif
     <tr>
       <td class="paginate" colspan="3">
-        #if $len($targetPages) > 1
+        #if (targetPages |length) > 1
         <form class="pageJump" action="">
           Page:
-          <select onchange="javascript: window.location = 'buildsbytarget?start=' + this.value * $targetRange + '$util.passthrough($self, 'days', 'order')';">
-            #for $pageNum in $targetPages
-            <option value="$pageNum"#if $pageNum == $targetCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
-            #end for
+          <select onchange="javascript: window.location = 'buildsbytarget?start=' + this.value * {{ targetRange }} + '{{ util.passthrough('days', 'order') }}';">
+            #for pageNum in targetPages
+            <option value="{{ pageNum }}"{{ ' selected' if pageNum == targetCurrentPage else '' }}>{{ pageNum + 1 }}</option>
+            #endfor
           </select>
         </form>
-        #end if
-        #if $targetStart > 0
-        <a href="buildsbytarget?start=#echo $targetStart - $targetRange #$util.passthrough($self, 'days', 'order')">&lt;&lt;&lt;</a>
-        #end if
-        #if $totalTargets != 0
-        <strong>Build Targets #echo $targetStart + 1 # through #echo $targetStart + $targetCount # of $totalTargets</strong>
-        #end if
-        #if $targetStart + $targetCount < $totalTargets
-        <a href="buildsbytarget?start=#echo $targetStart + $targetRange#$util.passthrough($self, 'days', 'order')">&gt;&gt;&gt;</a>
-        #end if
+        #endif
+        #if targetStart > 0
+        <a href="buildsbytarget?start={{ targetStart - targetRange  }}{{ util.passthrough('days', 'order') }}">&lt;&lt;&lt;</a>
+        #endif
+        #if totalTargets != 0
+        <strong>Build Targets {{ targetStart + 1  }} through {{ targetStart + targetCount  }} of {{ totalTargets }}</strong>
+        #endif
+        #if targetStart + targetCount < totalTargets
+        <a href="buildsbytarget?start={{ targetStart + targetRange }}{{ util.passthrough('days', 'order') }}">&gt;&gt;&gt;</a>
+        #endif
       </td>
     </tr>
   </table>
 
-#include "includes/footer.chtml"
+#include "includes/footer2.chtml"

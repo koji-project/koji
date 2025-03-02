@@ -1,114 +1,109 @@
-#from kojiweb import util
 
-#include "includes/header.chtml"
+#include "includes/header2.chtml"
 
-#@util.safe_return
-#def getID()
-  #if $type == 'image'
-imageID=$image.id #slurp
+#macro getID()
+  #if type == 'image'
+imageID={{ image.id }}
   #else
-buildrootID=$buildroot.id #slurp
-  #end if
-#end def
+buildrootID={{ buildroot.id }}
+  #endif
+#endmacro
 
-#@util.safe_return
-#def getColspan()
-  #if $type == 'component'
-colspan="3" #slurp
-  #elif $type == 'image'
-colspan="2" #slurp
-  #else
-  #pass
-  #end if
-#end def
+#macro getColspan()
+  #if type == 'component'
+colspan="3"
+  #elif type == 'image'
+colspan="2"
+  #endif
+#endmacro
 
-  #if $type == 'component'
-  <h4>Component RPMs of buildroot <a href="buildrootinfo?buildrootID=$buildroot.id">$util.brLabel($buildroot)</a></h4>
-  #elif $type == 'image'
-  <h4>RPMs installed in <a href="archiveinfo?archiveID=$image.id">$image.filename</a></h4>
+  #if type == 'component'
+  <h4>Component RPMs of buildroot <a href="buildrootinfo?buildrootID={{ buildroot.id }}">{{ util.brLabel(buildroot) }}</a></h4>
+  #elif type == 'image'
+  <h4>RPMs installed in <a href="archiveinfo?archiveID={{ image.id }}">{{ image.filename }}</a></h4>
   #else
-  <h4>RPMs built in buildroot <a href="buildrootinfo?buildrootID=$buildroot.id">$util.brLabel($buildroot)</a></h4>
-  #end if
+  <h4>RPMs built in buildroot <a href="buildrootinfo?buildrootID={{ buildroot.id }}">{{ util.brLabel(buildroot) }}</a></h4>
+  #endif
 
   <table class="data-list">
     <tr>
-      <td class="paginate" $getColspan()>
-        #if $len($rpmPages) > 1
+      <td class="paginate" {{ getColspan()|trim }}>
+        #if (rpmPages |length) > 1
         <form class="pageJump" action="">
           Page:
-          <select onchange="javascript: window.location = 'rpmlist?$getID()&start=' + this.value * $rpmRange + '$util.passthrough($self, 'order', 'type')';">
-            #for $pageNum in $rpmPages
-            <option value="$pageNum"#if $pageNum == $rpmCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
-            #end for
+          <select onchange="javascript: window.location = 'rpmlist?{{ getID()|trim }}&start=' + this.value * {{ rpmRange }} + '{{ util.passthrough('order', 'type') }}';">
+            #for pageNum in rpmPages
+            <option value="{{ pageNum }}"{{ ' selected' if pageNum == rpmCurrentPage else '' }}>{{ pageNum + 1 }}</option>
+            #endfor
           </select>
         </form>
-        #end if
-        #if $rpmStart > 0
-        <a href="rpmlist?$getID()&start=#echo $rpmStart - $rpmRange #$util.passthrough($self, 'order', 'type')">&lt;&lt;&lt;</a>
-        #end if
-        #if $totalRpms != 0
-        <strong>RPMs #echo $rpmStart + 1 # through #echo $rpmStart + $rpmCount # of $totalRpms</strong>
-        #end if
-        #if $rpmStart + $rpmCount < $totalRpms
-        <a href="rpmlist?$getID()&start=#echo $rpmStart + $rpmRange#$util.passthrough($self, 'order', 'type')">&gt;&gt;&gt;</a>
-        #end if
+        #endif
+        #if rpmStart > 0
+        <a href="rpmlist?{{ getID()|trim }}&start={{ rpmStart - rpmRange  }}{{ util.passthrough('order', 'type') }}">&lt;&lt;&lt;</a>
+        #endif
+        #if totalRpms != 0
+        <strong>RPMs {{ rpmStart + 1  }} through {{ rpmStart + rpmCount  }} of {{ totalRpms }}</strong>
+        #endif
+        #if rpmStart + rpmCount < totalRpms
+        <a href="rpmlist?{{ getID()|trim }}&start={{ rpmStart + rpmRange }}{{ util.passthrough('order', 'type') }}">&gt;&gt;&gt;</a>
+        #endif
       </td>
     </tr>
     <tr class="list-header">
-      <th><a href="rpmlist?$getID()&order=$util.toggleOrder($self, 'nvr')$util.passthrough($self, 'type')">NVR</a> $util.sortImage($self, 'nvr')</th>
-      #if $type in ['component', 'image']
-      <th><a href="rpmlist?$getID()&order=$util.toggleOrder($self, 'external_repo_name')$util.passthrough($self, 'type')">Origin</a> $util.sortImage($self, 'external_repo_name')</th>
-      #end if
-      #if $type == 'component'
-      <th><a href="rpmlist?$getID()&order=$util.toggleOrder($self, 'is_update')$util.passthrough($self, 'type')">Update?</a> $util.sortImage($self, 'is_update')</th>
-      #end if
+      <th><a href="rpmlist?{{ getID()|trim }}&order={{ util.toggleOrder('nvr') }}{{ util.passthrough('type') }}">NVR</a> {{ util.sortImage('nvr') }}</th>
+      #if type in ['component', 'image']
+      <th><a href="rpmlist?{{ getID()|trim }}&order={{ util.toggleOrder('external_repo_name') }}{{ util.passthrough('type') }}">Origin</a> {{ util.sortImage('external_repo_name') }}</th>
+      #endif
+      #if type == 'component'
+      <th><a href="rpmlist?{{ getID()|trim }}&order={{ util.toggleOrder('is_update') }}{{ util.passthrough('type') }}">Update?</a> {{ util.sortImage('is_update') }}</th>
+      #endif
     </tr>
-    #if $len($rpms) > 0
-    #for $rpm in $rpms
-    <tr class="$util.rowToggle($self)">
-      #set $epoch = ($rpm.epoch != None and $str($rpm.epoch) + ':' or '')
-      <td>$util.formatRPM($rpm)</td>
-      #if $type in ['component', 'image']
-      #if $rpm.external_repo_id == 0
+    #if (rpms |length) > 0
+    #for rpm in rpms
+    <tr class="{{ util.rowToggle() }}">
+      #set epoch = (rpm.epoch|string + ':' if rpm.epoch != None else '')
+      <td>{{ util.formatRPM(rpm) }}</td>
+      #if type in ['component', 'image']
+      #if rpm.external_repo_id == 0
       <td>internal</td>
       #else
-      <td><a href="externalrepoinfo?extrepoID=$rpm.external_repo_id">$rpm.external_repo_name</a></td>
-      #end if
-      #end if
-      #if $type == 'component'
-      #set $update = $rpm.is_update and 'yes' or 'no'
-      <td class="$update">$util.imageTag($update)</td>
-      #end if
+      <td><a href="externalrepoinfo?extrepoID={{ rpm.external_repo_id }}">{{ rpm.external_repo_name }}</a></td>
+      #endif
+      #endif
+      #if type == 'component'
+      #set update = rpm.is_update and 'yes' or 'no'
+      <td class="{{ update }}">{{ util.imageTag(update) }}</td>
+      #endif
     </tr>
-    #end for
+    #endfor
     #else
     <tr class="row-odd">
-      <td $getColspan()>No RPMs</td>
+      <td {{ getColspan()|trim }}>No RPMs</td>
     </tr>
-    #end if
+    #endif
     <tr>
-      <td class="paginate" $getColspan()>
-        #if $len($rpmPages) > 1
+      <td class="paginate" {{ getColspan()|trim }}>
+        #if (rpmPages |length) > 1
         <form class="pageJump" action="">
           Page:
-          <select onchange="javascript: window.location = 'rpmlist?$getID()&start=' + this.value * $rpmRange + '$util.passthrough($self, 'order', 'type')';">
-            #for $pageNum in $rpmPages
-            <option value="$pageNum"#if $pageNum == $rpmCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
-            #end for
+          <select onchange="javascript: window.location = 'rpmlist?{{ getID()|trim }}&start=' + this.value * {{ rpmRange }} + '{{ util.passthrough('order', 'type') }}';">
+            #for pageNum in rpmPages
+            <option value="{{ pageNum }}"{{ ' selected' if pageNum == rpmCurrentPage else '' }}>{{ pageNum + 1 }}</option>
+            #endfor
           </select>
         </form>
-        #end if
-        #if $rpmStart > 0
-        <a href="rpmlist?$getID()&start=#echo $rpmStart - $rpmRange #$util.passthrough($self, 'order', 'type')">&lt;&lt;&lt;</a>
-        #end if
-        #if $totalRpms != 0
-        <strong>RPMs #echo $rpmStart + 1 # through #echo $rpmStart + $rpmCount # of $totalRpms</strong>
-        #end if
-        #if $rpmStart + $rpmCount < $totalRpms
-        <a href="rpmlist?$getID()&start=#echo $rpmStart + $rpmRange#$util.passthrough($self, 'order', 'type')">&gt;&gt;&gt;</a>
-        #end if
+        #endif
+        #if rpmStart > 0
+        <a href="rpmlist?{{ getID()|trim }}&start={{ rpmStart - rpmRange  }}{{ util.passthrough('order', 'type') }}">&lt;&lt;&lt;</a>
+        #endif
+        #if totalRpms != 0
+        <strong>RPMs {{ rpmStart + 1  }} through {{ rpmStart + rpmCount  }} of {{ totalRpms }}</strong>
+        #endif
+        #if rpmStart + rpmCount < totalRpms
+        <a href="rpmlist?{{ getID()|trim }}&start={{ rpmStart + rpmRange }}{{ util.passthrough('order', 'type') }}">&gt;&gt;&gt;</a>
+        #endif
       </td>
     </tr>
   </table>
 
-#include "includes/footer.chtml"
+#include "includes/footer2.chtml"

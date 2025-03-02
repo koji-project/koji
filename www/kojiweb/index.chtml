@@ -1,127 +1,125 @@
-#import koji
-#from kojiweb import util
 
-#include "includes/header.chtml"
+#include "includes/header2.chtml"
 
-  <div class="pageHeader">$welcomeMessage</div>
+  <div class="pageHeader">{{ welcomeMessage }}</div>
 
-  <div class="dataHeader noPaginate" id="buildlist">#if $user then 'Your ' else ''#Recent Builds</div>
+  <div class="dataHeader noPaginate" id="buildlist">{{ 'Your ' if user else '' }}Recent Builds</div>
   <table class="data-list">
     <tr class="list-header">
-      <th>ID $util.sortImage(self, 'id')</th>
+      <th>ID {{ util.sortImage('id') }}</th>
       <th>NVR</th>
-      #if not $user
+      #if not user
       <th>Built by</th>
-      #end if
+      #endif
       <th>Finished</th>
       <th>State</th>
     </tr>
-    #for $build in $builds
-    <tr class="$util.rowToggle($self)">
-      #set $stateName = $util.stateName($build.state)
-      <td>$build.build_id</td>
-      <td><a href="buildinfo?buildID=$build.build_id">$build.nvr</a></td>
-      #if not $user
-      <td class="user-$build.owner_name"><a href="userinfo?userID=$build.owner_id">$build.owner_name</a></td>
-      #end if
-      <td>$util.formatTime($build.completion_ts)</td>
-      <td class="$stateName">$util.stateImage($build.state)</td>
+    #for build in builds
+    <tr class="{{ util.rowToggle() }}">
+      #set stateName = util.stateName(build.state)
+      <td>{{ build.build_id }}</td>
+      <td><a href="buildinfo?buildID={{ build.build_id }}">{{ build.nvr }}</a></td>
+      #if not user
+      <td class="user-{{ build.owner_name }}"><a href="userinfo?userID={{ build.owner_id }}">{{ build.owner_name }}</a></td>
+      #endif
+      <td>{{ util.formatTime(build.completion_ts) }}</td>
+      <td class="{{ stateName }}">{{ util.stateImage(build.state) }}</td>
     </tr>
-    #end for
-    #if not $builds
+    #endfor
+    #if not builds
     <tr class="row-odd">
       <td colspan="3">No builds</td>
     </tr>
-    #end if
+    #endif
   </table>
 
   <br/>
 
-  <div class="dataHeader noPaginate" id="tasklist">#if $user then 'Your ' else ''#Recent Tasks</div>
+  <div class="dataHeader noPaginate" id="tasklist">{{ 'Your ' if user else '' }}Recent Tasks</div>
   <table class="data-list">
     <tr class="list-header">
-      <th>ID $util.sortImage($self, 'id')</th>
+      <th>ID {{ util.sortImage('id') }}</th>
       <th>Type</th>
-      #if not $user
+      #if not user
       <th>Owner</th>
-      #end if
+      #endif
       <th>Arch</th>
       <th>Finished</th>
       <th>State</th>
     </tr>
-    #for $task in $tasks
-    #set $scratch = $util.taskScratchClass($task)
-    <tr class="$util.rowToggle($self) $scratch">
-      #set $state = $util.taskState($task.state)
-      <td>$task.id</td>
-      <td><a href="taskinfo?taskID=$task.id" class="task$state" title="$state">$koji.taskLabel($task)</a></td>
-      #if not $user
-      <td class="user-$task.owner_name">
-        #if $task.owner_type == $koji.USERTYPES['HOST']
-        <a href="hostinfo?userID=$task.owner">$task.owner_name</a>
+    #for task in tasks
+    #set scratch = util.taskScratchClass(task)
+    <tr class="{{ util.rowToggle() }} {{ scratch }}">
+      #set state = util.taskState(task.state)
+      <td>{{ task.id }}</td>
+      <td><a href="taskinfo?taskID={{ task.id }}" class="task{{ state }}" title="{{ state }}">{{ koji.taskLabel(task) }}</a></td>
+      #if not user
+      <td class="user-{{ task.owner_name }}">
+        #if task.owner_type == koji.USERTYPES['HOST']
+        <a href="hostinfo?userID={{ task.owner }}">{{ task.owner_name }}</a>
         #else
-        <a href="userinfo?userID=$task.owner">$task.owner_name</a>
-        #end if
+        <a href="userinfo?userID={{ task.owner }}">{{ task.owner_name }}</a>
+        #endif
       </td>
-      #end if
-      <td>$task.arch</td>
-      <td>$util.formatTime($task.completion_ts)</td>
-      <td class="task$state">$util.imageTag($state)</td>
+      #endif
+      <td>{{ task.arch }}</td>
+      <td>{{ util.formatTime(task.completion_ts) }}</td>
+      <td class="task{{ state }}">{{ util.imageTag(state) }}</td>
     </tr>
-    #end for
-    #if not $tasks
+    #endfor
+    #if not tasks
       <tr class="row-odd">
         <td colspan="5">No tasks</td>
       </tr>
-    #end if
+    #endif
   </table>
 
-  #if $user
+  #if user
   <br/>
 
   <div class="dataHeader" id="packagelist">Your Packages</div>
   <table class="data-list">
     <tr>
       <td class="paginate" colspan="3">
-        #if $len($packagePages) > 1
+        #if (packagePages |length) > 1
         <form class="pageJump" action="">
           Page:
-          <select onchange="javascript: window.location = 'index?packageStart=' + this.value * $packageRange + '$util.passthrough($self, 'packageOrder', 'buildOrder', 'buildStart', 'taskOrder', 'taskStart')#packagelist';">
-            #for $pageNum in $packagePages
-            <option value="$pageNum"#if $pageNum == $packageCurrentPage then ' selected' else ''#>#echo $pageNum + 1#</option>
-            #end for
+          <select onchange="javascript: window.location = 'index?packageStart=' + this.value * {{ packageRange }} + '{{ util.passthrough('packageOrder', 'buildOrder', 'buildStart', 'taskOrder', 'taskStart') }}#packagelist';">
+            #for pageNum in packagePages
+            <option value="{{ pageNum }}"{{ ' selected' if pageNum == packageCurrentPage else '' }}>{{ pageNum + 1 }}</option>
+            #endfor
           </select>
         </form>
-        #end if
-        #if $packageStart > 0
-        <a href="index?packageStart=#echo $packageStart - $packageRange #$util.passthrough($self, 'packageOrder', 'buildOrder', 'buildStart', 'taskOrder', 'taskStart')#packagelist">&lt;&lt;&lt;</a>
-        #end if
-        #if $totalPackages != 0
-        <strong>Package #echo $packageStart + 1 # through #echo $packageStart + $packageCount # of $totalPackages</strong>
-        #end if
-        #if $packageStart + $packageCount < $totalPackages
-        <a href="index?packageStart=#echo $packageStart + $packageRange#$util.passthrough($self, 'packageOrder', 'buildOrder', 'buildStart', 'taskOrder', 'taskStart')#packagelist">&gt;&gt;&gt;</a>
-        #end if
+        #endif
+        #if packageStart > 0
+        <a href="index?packageStart={{ packageStart - packageRange  }}{{ util.passthrough('packageOrder', 'buildOrder', 'buildStart', 'taskOrder', 'taskStart') }}#packagelist">&lt;&lt;&lt;</a>
+        #endif
+        #if totalPackages != 0
+        <strong>Package {{ packageStart + 1  }} through {{ packageStart + packageCount  }} of {{ totalPackages }}</strong>
+        #endif
+        #if packageStart + packageCount < totalPackages
+        <a href="index?packageStart={{ packageStart + packageRange }}{{ util.passthrough('packageOrder', 'buildOrder', 'buildStart', 'taskOrder', 'taskStart') }}#packagelist">&gt;&gt;&gt;</a>
+        #endif
       </td>
     </tr>
     <tr class="list-header">
-      <th><a href="index?packageOrder=$util.toggleOrder($self, 'package_name', 'packageOrder')$util.passthrough($self, 'buildOrder', 'buildStart', 'taskOrder', 'taskStart')#packagelist">Name</a> $util.sortImage($self, 'package_name', 'packageOrder')</th>
-      <th><a href="index?packageOrder=$util.toggleOrder($self, 'tag_name', 'packageOrder')$util.passthrough($self, 'buildOrder', 'buildStart', 'taskOrder', 'taskStart')#packagelist">Tag</a> $util.sortImage($self, 'tag_name', 'packageOrder')</th>
-      <th><a href="index?packageOrder=$util.toggleOrder($self, 'blocked', 'packageOrder')$util.passthrough($self, 'buildOrder', 'buildStart', 'taskOrder', 'taskStart')#packagelist">Included?</a> $util.sortImage($self, 'blocked', 'packageOrder')</th>
+      <th><a href="index?packageOrder={{ util.toggleOrder('package_name', 'packageOrder') }}{{ util.passthrough('buildOrder', 'buildStart', 'taskOrder', 'taskStart') }}#packagelist">Name</a> {{ util.sortImage('package_name', 'packageOrder') }}</th>
+      <th><a href="index?packageOrder={{ util.toggleOrder('tag_name', 'packageOrder') }}{{ util.passthrough('buildOrder', 'buildStart', 'taskOrder', 'taskStart') }}#packagelist">Tag</a> {{ util.sortImage('tag_name', 'packageOrder') }}</th>
+      <th><a href="index?packageOrder={{ util.toggleOrder('blocked', 'packageOrder') }}{{ util.passthrough('buildOrder', 'buildStart', 'taskOrder', 'taskStart') }}#packagelist">Included?</a> {{ util.sortImage('blocked', 'packageOrder') }}</th>
     </tr>
-    #for $package in $packages
-    <tr class="$util.rowToggle($self)">
-      <td><a href="packageinfo?packageID=$package.package_id">$package.package_name</a></td>
-      <td><a href="taginfo?tagID=$package.tag_id">$package.tag_name</a></td>
-      #set $included = $package.blocked and 'no' or 'yes'
-      <td>$util.imageTag($included)</td>
+    #for package in packages
+    <tr class="{{ util.rowToggle() }}">
+      <td><a href="packageinfo?packageID={{ package.package_id }}">{{ package.package_name }}</a></td>
+      <td><a href="taginfo?tagID={{ package.tag_id }}">{{ package.tag_name }}</a></td>
+      #set included = package.blocked and 'no' or 'yes'
+      <td>{{ util.imageTag(included) }}</td>
     </tr>
-    #end for
-    #if $totalPackages == 0
+    #endfor
+    #if totalPackages == 0
     <tr class="row-odd">
       <td colspan="3">No packages</td>
     </tr>
-    #end if
+    #endif
   </table>
   
   <br/>
@@ -138,24 +136,24 @@
       <th></th>
       <th></th>
     </tr>
-    #for $notif in $notifs
-    <tr class="$util.rowToggle($self)">
-      <td>#if $notif.package then $notif.package.name else 'all'#</td>
-      <td>#if $notif.tag then $notif.tag.name else 'all'#</td>
-      <td>#if $notif.success_only then 'success only' else 'all'#</td>
-      <td><a href="notificationedit?notificationID=$notif.id$util.authToken($self)">edit</a></td>
-      <td><a href="notificationdelete?notificationID=$notif.id$util.authToken($self)">delete</a></td>
+    #for notif in notifs
+    <tr class="{{ util.rowToggle() }}">
+      <td>{{ notif.package.name if notif.package else 'all' }}</td>
+      <td>{{ notif.tag.name if notif.tag else 'all' }}</td>
+      <td>{{ 'success only' if notif.success_only else 'all' }}</td>
+      <td><a href="notificationedit?notificationID={{ notif.id }}{{ util.authToken() }}">edit</a></td>
+      <td><a href="notificationdelete?notificationID={{ notif.id }}{{ util.authToken() }}">delete</a></td>
     </tr>
-    #end for
-    #if $len($notifs) == 0
+    #endfor
+    #if (notifs |length) == 0
     <tr class="row-odd">
       <td colspan="5">No notifications</td>
     </tr>
-    #end if
+    #endif
   </table>
 
   <br/>
-  <a href="notificationcreate$util.authToken($self, first=True)">Add a Notification</a>
-  #end if
+  <a href="notificationcreate{{ util.authToken(first=True) }}">Add a Notification</a>
+  #endif
     
-#include "includes/footer.chtml"
+#include "includes/footer2.chtml"

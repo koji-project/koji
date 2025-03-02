@@ -1,30 +1,28 @@
-#from kojiweb import util
+#include "includes/header2.chtml"
 
-#include "includes/header.chtml"
-
-  <h4>Information for target <a href="buildtargetinfo?targetID=$target.id">$target.name</a></h4>
+  <h4>Information for target <a href="buildtargetinfo?targetID={{ target.id }}">{{ target.name }}</a></h4>
 
   <table>
     <tr>
-      <th>Name</th><td>$target.name</td>
+      <th>Name</th><td>{{ target.name }}</td>
     </tr>
     <tr>
-      <th>ID</th><td>$target.id</td>
+      <th>ID</th><td>{{ target.id }}</td>
     </tr>
     <tr>
-      <th>Build Tag</th><td><a href="taginfo?tagID=$buildTag.id">$buildTag.name</a></td>
+      <th>Build Tag</th><td><a href="taginfo?tagID={{ buildTag.id }}">{{ buildTag.name }}</a></td>
     </tr>
     <tr>
-      <th>Destination Tag</th><td><a href="taginfo?tagID=$destTag.id">$destTag.name</a></td>
+      <th>Destination Tag</th><td><a href="taginfo?tagID={{ destTag.id }}">{{ destTag.name }}</a></td>
     </tr>
-    #if 'admin' in $perms
+    #if "admin" in perms
     <tr>
-      <td colspan="2"><a href="buildtargetedit?targetID=$target.id$util.authToken($self)">Edit</a></td>
+      <td colspan="2"><a href="buildtargetedit?targetID={{ target.id }}{{ util.authToken() }}">Edit</a></td>
     </tr>
     <tr>
-      <td colspan="2"><a href="buildtargetdelete?targetID=$target.id$util.authToken($self)">Delete</a></td>
+      <td colspan="2"><a href="buildtargetdelete?targetID={{ target.id }}{{ util.authToken() }}">Delete</a></td>
     </tr>
-    #end if
+    #endif
   </table>
 
-#include "includes/footer.chtml"
+#include "includes/footer2.chtml"
