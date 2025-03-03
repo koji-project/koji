@@ -17,4 +17,4 @@ if importlib:
     sys.modules[INDEX_MOD] = webidx
     spec.loader.exec_module(webidx)
 else:
-    cli = imp.load_source(INDEX_MOD, INDEX_FILENAME)
+    webidx = imp.load_source(INDEX_MOD, INDEX_FILENAME)

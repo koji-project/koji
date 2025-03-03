@@ -211,8 +211,13 @@ class FieldStorageCompat(Mapping):
     """Emulate the parts of cgi.FieldStorage that we need"""
 
     def __init__(self, environ):
-        data = parse_qs(environ.get('QUERY_STRING', ''), strict_parsing=True,
-                        keep_blank_values=True)
+        qs = environ.get('QUERY_STRING', '')
+        if not qs:
+            # for python < 3.11, parse_qs will error on a blank string
+            self.data = {}
+            return
+
+        data = parse_qs(qs, strict_parsing=True, keep_blank_values=True)
         # replace singleton lists with single values
         for arg in data:
             val = data[arg]
