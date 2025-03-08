@@ -1,5 +1,6 @@
 
 #include "includes/header.html.j2"
+# from "includes/macros.html.j2" import rowToggle
 
   <h4>{{ rpmArch + ' ' if rpmArch else '' }}RPMs by Host{{ ' (%s)' % hostArch if hostArch else '' }}</h4>
   <table class="data-list">
@@ -67,7 +68,7 @@
     </tr>
     #if (hosts |length) > 0
     #for host in hosts
-    <tr class="{{ util.rowToggle() }}">
+    <tr class="{{ rowToggle(loop) }}">
       <td><a href="hostinfo?hostID={{ host.id }}">{{ host.name }}</a></td>
       <td width="{{ graphWidth + 5 }}"><img src="{{ util.themePath('images/1px.gif') }}" width="{{ increment * host.rpms }}" height="15" class="graphrow" alt="graph row"/></td>
       <td>{{ host.rpms }}</td>

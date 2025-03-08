@@ -2,6 +2,7 @@
 #set _PASSTHROUGH = ['repoID', 'order', 'state']
 
 #include "includes/header.html.j2"
+# from "includes/macros.html.j2" import rowToggle
 
   <h4>Buildroots in repo <a href="repoinfo?repoID={{ repoID }}">{{ repoID }}</a></h4>
 
@@ -26,7 +27,7 @@
         #if (buildrootPages |length) > 1
         <form class="pageJump" action="">
           Page:
-          <select onchange="javascript: window.location = 'builds?start=' + this.value * {{ buildrootRange }} + '{{ util.passthrough_except() }}';">
+          <select onchange="javascript: window.location = 'buildroots?start=' + this.value * {{ buildrootRange }} + '{{ util.passthrough_except() }}';">
             #for pageNum in buildrootPages
             <option value="{{ pageNum }}"{{ ' selected' if pageNum == buildrootCurrentPage else '' }}>{{ pageNum + 1 }}</option>
             #endfor
@@ -34,13 +35,13 @@
         </form>
         #endif
         #if buildrootStart > 0
-        <a href="builds?start={{ buildrootStart - buildrootRange  }}{{ util.passthrough_except() }}">&lt;&lt;&lt;</a>
+        <a href="buildroots?start={{ buildrootStart - buildrootRange  }}{{ util.passthrough_except() }}">&lt;&lt;&lt;</a>
         #endif
         #if totalBuildroots != 0
         <strong>Buildroots {{ buildrootStart + 1  }} through {{ buildrootStart + buildrootCount  }} of {{ totalBuildroots }}</strong>
         #endif
         #if buildrootStart + buildrootCount < totalBuildroots
-        <a href="builds?start={{ buildrootStart + buildrootRange }}{{ util.passthrough_except() }}">&gt;&gt;&gt;</a>
+        <a href="buildroots?start={{ buildrootStart + buildrootRange }}{{ util.passthrough_except() }}">&gt;&gt;&gt;</a>
         #endif
       </td>
     </tr>
@@ -53,7 +54,7 @@
     </tr>
     #if (buildroots |length) > 0
       #for buildroot in buildroots
-        <tr class="{{ util.rowToggle() }}">
+        <tr class="{{ rowToggle(loop) }}">
           <td><a href="buildrootinfo?buildrootID={{ buildroot.id }}">{{ buildroot.id }}</a></td>
           <td><a href="repoinfo?repoID={{ buildroot.repo_id }}">{{ buildroot.repo_id }}</a></td>
           <td><a href="taskinfo?taskID={{ buildroot.task_id }}">{{ buildroot.task_id }}</a></td>
@@ -72,7 +73,7 @@
         #if (buildrootPages |length) > 1
         <form class="pageJump" action="">
           Page:
-          <select onchange="javascript: window.location = 'builds?start=' + this.value * {{ buildrootRange }} + '{{ util.passthrough_except() }}';">
+          <select onchange="javascript: window.location = 'buildroots?start=' + this.value * {{ buildrootRange }} + '{{ util.passthrough_except() }}';">
             #for pageNum in buildrootPages
             <option value="{{ pageNum }}"{{ ' selected' if pageNum == buildrootCurrentPage else '' }}>{{ pageNum + 1 }}</option>
             #endfor
@@ -80,13 +81,13 @@
         </form>
         #endif
         #if buildrootStart > 0
-        <a href="builds?start={{ buildrootStart - buildrootRange  }}{{ util.passthrough_except() }}">&lt;&lt;&lt;</a>
+        <a href="buildroots?start={{ buildrootStart - buildrootRange  }}{{ util.passthrough_except() }}">&lt;&lt;&lt;</a>
         #endif
         #if totalBuildroots != 0
         <strong>Buildroots {{ buildrootStart + 1  }} through {{ buildrootStart + buildrootCount  }} of {{ totalBuildroots }}</strong>
         #endif
         #if buildrootStart + buildrootCount < totalBuildroots
-        <a href="builds?start={{ buildrootStart + buildrootRange }}{{ util.passthrough_except() }}">&gt;&gt;&gt;</a>
+        <a href="buildroots?start={{ buildrootStart + buildrootRange }}{{ util.passthrough_except() }}">&gt;&gt;&gt;</a>
         #endif
       </td>
     </tr>

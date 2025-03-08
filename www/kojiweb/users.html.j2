@@ -1,5 +1,6 @@
 
 #include "includes/header.html.j2"
+# from "includes/macros.html.j2" import rowToggle
 
   <h4>Users {{ ' starting with "%s"' % prefix if prefix else '' }}</h4>
   <table class="data-list">
@@ -27,7 +28,7 @@
           Page:
           <select onchange="javascript: window.location = 'users?start=' + this.value * {{ userRange }} + '{{ util.passthrough('order', 'prefix') }}';">
             #for pageNum in userPages
-            <option value="{{ pageNum }}"{{ 'selected' if pageNum == userCurrentPage else '' }}>{{ pageNum + 1 }}</option>
+            <option value="{{ pageNum }}"{{ ' selected' if pageNum == userCurrentPage else '' }}>{{ pageNum + 1 }}</option>
             #endfor
           </select>
         </form>
@@ -52,7 +53,7 @@
     </tr>
     #if users |length > 0
       #for user in users
-        <tr class="{{ util.rowToggle() }}">
+        <tr class="{{ rowToggle(loop) }}">
           <td>{{ user.id }}</td>
           <td><a href="userinfo?userID={{ user.name }}">{{ user.name }}</a></td>
           <td><a href="packages?userID={{ user.name }}">view</a></td>
@@ -72,7 +73,7 @@
           Page:
           <select onchange="javascript: window.location = 'users?start=' + this.value * {{ userRange }} + '{{ util.passthrough('order', 'prefix') }}';">
             #for pageNum in userPages
-            <option value="{{ pageNum }}"{{ 'selected' if pageNum == userCurrentPage else '' }}>{{ pageNum + 1 }}</option>
+            <option value="{{ pageNum }}"{{ ' selected' if pageNum == userCurrentPage else '' }}>{{ pageNum + 1 }}</option>
             #endfor
           </select>
         </form>

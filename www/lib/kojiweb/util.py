@@ -30,6 +30,7 @@ import urllib
 from collections.abc import Mapping
 from functools import wraps
 from socket import error as socket_error
+from threading import local
 from urllib.parse import parse_qs
 from xml.parsers.expat import ExpatError
 
@@ -68,7 +69,6 @@ def _initValues(environ, title='Build System Info', pageID='summary'):
     values['themePath'] = themePath
     values['toggleOrder'] = toggleOrder
     values['toggleSelected'] = toggleSelected
-    values['rowToggle'] = rowToggle
     values['sortImage'] = sortImage
     values['passthrough'] = passthrough
     values['passthrough_except'] = passthrough_except
@@ -138,10 +138,25 @@ def safe_return(func):
     return _safe
 
 
-TEMPLATES = {}
+# threadlocal cache
+JINJA_CACHE = local()
 
 
-def _genHTML(environ, fileName, jinja=True):
+def get_jinja_env(dirpath):
+    if hasattr(JINJA_CACHE, 'env'):
+        return JINJA_CACHE.env
+    # otherwise
+    env = jinja2.Environment(
+            loader=jinja2.FileSystemLoader(dirpath),
+            autoescape=True,
+            line_statement_prefix='#',  # for ease of porting Cheetah templates
+            line_comment_prefix='##'
+    )
+    JINJA_CACHE.env = env
+    return env
+
+
+def _genHTML(environ, fileName):
     reqdir = os.path.dirname(environ['SCRIPT_FILENAME'])
     if os.getcwd() != reqdir:
         os.chdir(reqdir)
@@ -168,18 +183,9 @@ def _genHTML(environ, fileName, jinja=True):
         else:
             environ['koji.values']['LoginDisabled'] = False
 
-    if jinja:
-        # TODO clean up and optimize
-        env = jinja2.Environment(
-                loader=jinja2.FileSystemLoader(reqdir),
-                autoescape=True,
-                line_statement_prefix='#',  # for ease of porting Cheetah templates
-                line_comment_prefix='##'
-        )
-        template = env.get_template(fileName)
-        return template.render(**environ['koji.values'])
-    else:
-        raise NotImplementedError('no more Cheetah')
+    env = get_jinja_env(reqdir)
+    template = env.get_template(fileName)
+    return template.render(**environ['koji.values'])
 
 
 def _truncTime():
@@ -264,8 +270,15 @@ class FieldCompat:
     def __init__(self, value):
         self.value = value
 
+# compat with jinja 2.x
+try:
+    pass_context = jinja2.pass_context
+except AttributeError:
+    pass_context = jinja2.contextfunction
+    # (all our uses are functions, not filters)
 
-@jinja2.pass_context
+
+@pass_context
 def toggleOrder(context, sortKey, orderVar='order'):
     """Toggle order for jinja templates"""
     value = context.get(orderVar)
@@ -308,7 +321,7 @@ def toggleSelected(var, option, checked=False):
 
 
 @safe_return
-@jinja2.pass_context
+@pass_context
 def sortImage(context, sortKey, orderVar='order'):
     """jinja version"""
     orderVal = context.get(orderVar)
@@ -331,7 +344,7 @@ def _sortImage(orderVal, sortKey, orderVar):
 
 
 @safe_return
-@jinja2.pass_context
+@pass_context
 def passthrough(context, *varnames, prefix='&', invert=False):
     if invert:
         _PASSTHROUGH = context.get('_PASSTHROUGH', None)
@@ -357,7 +370,7 @@ def _passthrough(data, prefix='&'):
     The prefix value (default '&') is prepended if any values were found
     """
     result = []
-    for var in data:
+    for var in sorted(data):
         value = data[var]
         if value is not None:
             if isinstance(value, str):
@@ -374,7 +387,7 @@ def _passthrough(data, prefix='&'):
         return ''
 
 
-@jinja2.pass_context
+@pass_context
 def passthrough_except(context, *exclude, prefix='&'):
     """
     Construct a string suitable for use as URL
@@ -387,7 +400,7 @@ def passthrough_except(context, *exclude, prefix='&'):
     """
     # note that we have to pass context ourselves here
     # the decorator only works when called directly from the template
-    return passthrough(context, *exclude, prefix='&', invert=True)
+    return passthrough(context, *exclude, prefix=prefix, invert=True)
 
 
 def sortByKeyFuncNoneGreatest(key):
@@ -719,21 +732,6 @@ def formatRPM(rpminfo, link=True):
         return label
 
 
-@jinja2.pass_context
-def rowToggle(context):
-    # XXX avoid modifying context
-    rowNum = getattr(context, '_rowNum', 0) + 1
-    context._rowNum = rowNum
-    return _rowToggle(rowNum)
-
-
-def _rowToggle(rowNum):
-    if rowNum % 2:
-        return 'row-odd'
-    else:
-        return 'row-even'
-
-
 def taskScratchClass(task_object):
     """ Return a css class indicating whether or not this task is a scratch
     build.
@@ -798,7 +796,7 @@ def escapeHTML(value):
 
 
 @safe_return
-@jinja2.pass_context
+@pass_context
 def authToken(context, first=False, form=False):
     token = context.get('authToken', None)
     return _authToken(token, first, form)

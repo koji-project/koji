@@ -1,5 +1,6 @@
 
 #include "includes/header.html.j2"
+# from "includes/macros.html.j2" import rowToggle
 
   <h4>Packages by User</h4>
   <table class="data-list">
@@ -33,7 +34,7 @@
     </tr>
     #if (users |length) > 0
     #for user in users
-    <tr class="{{ util.rowToggle() }}">
+    <tr class="{{ rowToggle(loop) }}">
       <td><a href="userinfo?userID={{ user.id }}">{{ user.name }}</a></td>
       <td width="{{ graphWidth + 5 }}"><img src="{{ util.themePath('images/1px.gif') }}" width="{{ increment * user.packages }}" height="15" class="graphrow" alt="graph row"/></td>
       <td>{{ user.packages }}</td>

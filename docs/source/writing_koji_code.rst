@@ -565,16 +565,16 @@ can be turned on in ``/etc/kojid/kojid.conf``.
 Koji-Web
 --------
 
-koji-web is a set of scripts that run in mod\_wsgi and use the Cheetah
+koji-web is a set of scripts that run in mod\_wsgi and use the Jinja
 templating engine to provide a web interface to Koji. It acts as a
 client to koji-hub providing a visual interface to perform a limited
 amount of administration. koji-web exposes a lot of information and also
 provides a means for certain operations, such as cancelling builds.
 
-The web pages are derived from Cheetah templates, the syntax of which
+The web pages are derived from Jinja templates, the syntax of which
 you can read up on
-`here <http://cheetahtemplate.org/users_guide/>`__. These
-templates are the ``chtml`` files sitting in ``www/kojiweb``. You'll
+`here <https://jinja.palletsprojects.com/>`__. These
+templates are the ``html.j2`` files sitting in ``www/kojiweb``. You'll
 notice quickly that these templates are referencing variables, but where
 do they come from?
 
@@ -582,25 +582,11 @@ The ``www/kojiweb/index.py`` file provides them. There are several
 functions named after the templates they support, and in each one a
 dictionary called ``values`` is populated. This is how data is gathered
 about the task, build, archive, or whatever the page is about. Take your
-time with ``taskinfo.chtml`` in particular, as the conditionals there
+time with ``taskinfo.html.j2`` in particular, as the conditionals there
 have gotten quite long. If you are adding a new task to Koji, you will
 need to extend this at a minimum. A new type of build task would require
 this, and possibly another that is specific to viewing the archived
 information about the build. (taskinfo vs. buildinfo)
-
-If your web page needs to display the contents of a list or dictionary,
-use the ``$printMap`` function to help with that. It is often sensible
-to define a function that easily prints options and values in a
-dictionary. An example of this is in taskinfo.chtml.
-
-::
-
-    #def printOpts($opts)
-      #if $opts
-      <strong>Options:</strong><br/>
-      $printMap($opts, '&nbsp;&nbsp;')
-      #end if
-    #end def
 
 Finally, if you need to expand the drop-down menus of "method" types
 when searching for tasks in the WebUI, you will need to add them to the

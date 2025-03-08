@@ -895,7 +895,7 @@ The following command will test your login to the hub:
 Koji Web - Interface for the Masses
 ===================================
 
-Koji-web is a set of scripts that run in mod_wsgi and use the Cheetah
+Koji-web is a set of scripts that run in mod_wsgi and use the Jinja
 templating engine to provide an web interface to Koji. koji-web exposes a lot
 of information and also provides a means for certain operations, such as
 cancelling builds.

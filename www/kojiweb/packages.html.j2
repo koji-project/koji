@@ -2,6 +2,7 @@
 #set _PASSTHROUGH = ['userID', 'tagID', 'order', 'prefix', 'inherited', 'blocked']
 
 #include "includes/header.html.j2"
+# from "includes/macros.html.j2" import rowToggle
 
 #macro getDescription()
 Packages
@@ -93,7 +94,7 @@ owned by <a href="userinfo?userID={{ user.id }}">{{ user.name }}</a>
     </tr>
     #if (packages |length) > 0
       #for package in packages
-        <tr class="{{ util.rowToggle() }}">
+        <tr class="{{ rowToggle(loop) }}">
           <td>{{ package.package_id }}</td>
           <td><a href="packageinfo?packageID={{ package.package_id }}">{{ package.package_name }}</a></td>
           #if tag or user

@@ -1,5 +1,6 @@
 
 #include "includes/header.html.j2"
+# from "includes/macros.html.j2" import rowToggle
 
   <h4>Information for user <a href="userinfo?userID={{ user.id }}">{{ user.name }}</a></h4>
 
@@ -45,10 +46,10 @@
             <th><a href="userinfo?packageOrder={{ util.toggleOrder('blocked', 'packageOrder') }}{{ util.passthrough('userID', 'buildOrder', 'buildStart') }}#packagelist">Included?</a> {{ util.sortImage('blocked', 'packageOrder') }}</th>
           </tr>
           #for package in packages
-          <tr class="{{ util.rowToggle() }}">
+          <tr class="{{ rowToggle(loop) }}">
             <td><a href="packageinfo?packageID={{ package.package_id }}">{{ package.package_name }}</a></td>
             <td><a href="taginfo?tagID={{ package.tag_id }}">{{ package.tag_name }}</a></td>
-            <td class="{{ package.blocked|lower }}">{{ util.imageTag('no') if package.blocked else util.imageTag('yes') }}</td>
+            <td class="{{ (not package.blocked)|lower }}">{{ util.imageTag('no') if package.blocked else util.imageTag('yes') }}</td>
           </tr>
           #endfor
         </table>
@@ -89,7 +90,7 @@
             <th><a href="userinfo?buildOrder={{ util.toggleOrder('state', 'buildOrder') }}{{ util.passthrough('userID', 'packageOrder', 'packageStart') }}#buildlist">State</a> {{ util.sortImage('state', 'buildOrder') }}</th>
           </tr>
           #for build in builds
-          <tr class="{{ util.rowToggle() }}">
+          <tr class="{{ rowToggle(loop) }}">
             #set stateName = util.stateName(build.state)
             <td><a href="buildinfo?buildID={{ build.build_id }}">{{ build.nvr }}</a></td>
             <td>{{ util.formatTime(build.completion_ts) }}</td>

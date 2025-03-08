@@ -2,6 +2,7 @@
 #set _PASSTHROUGH = ['rpmID', 'fileOrder', 'fileStart', 'buildrootOrder', 'buildrootStart']
 
 #include "includes/header.html.j2"
+# from "includes/macros.html.j2" import rowToggle
   #set epoch = (rpm.epoch|string + ':' if rpm.epoch != None else '')
   <h4>Information for RPM <a href="rpminfo?rpmID={{ rpm.id }}">{{ rpm.name }}-{{ epoch }}{{ rpm.version }}-{{ rpm.release }}.{{rpm.arch}}.rpm</a></h4>
 
@@ -32,7 +33,7 @@
       <th>Release</th><td>{{ rpm.release }}</td>
     </tr>
     <tr>
-      <th>Epoch</th><td>{{ rpm.epoch }}</td>
+      <th>Epoch</th><td>{{ rpm.epoch if rpm.epoch is not none else '' }}</td>
     </tr>
     <tr>
       <th>Arch</th><td>{{ rpm.arch }}</td>
@@ -255,7 +256,7 @@
             <th align="right"><a href="rpminfo?fileOrder={{ util.toggleOrder('size', 'fileOrder') }}{{ util.passthrough_except('fileOrder', 'fileStart') }}#filelist">Size</a> {{ util.sortImage('size', 'fileOrder') }}</th>
           </tr>
           #for file in files
-          <tr class="{{ util.rowToggle() }}">
+          <tr class="{{ rowToggle(loop) }}">
             <td><a href="fileinfo?rpmID={{ rpm.id }}&amp;filename={{ file.name|urlencode }}">{{ file.name }}</a></td><td align="right"><span title="{{ util.formatThousands(file.size) }}">{{ util.formatNatural(file.size) }}</span></td>
           </tr>
           #endfor
@@ -298,7 +299,7 @@
             <th><a href="rpminfo?buildrootOrder={{ util.toggleOrder('state', 'buildrootOrder') }}{{ util.passthrough_except('buildrootOrder', 'buildrootStart') }}#buildrootlist">State</a> {{ util.sortImage('state', 'buildrootOrder') }}</th>
           </tr>
           #for buildroot in buildroots
-          <tr class="{{ util.rowToggle() }}">
+          <tr class="{{ rowToggle(loop) }}">
             <td><a href="buildrootinfo?buildrootID={{ buildroot.id }}">{{ util.brLabel(buildroot) }}</a></td>
             <td>{{ util.formatTime(buildroot.create_event_time) }}</td>
             <td>{{ util.imageTag(util.brStateName(buildroot.state)) }}</td>

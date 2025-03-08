@@ -1,12 +1,10 @@
 
 #macro printChildren(taskID, childMap)
-  #set iter = 0
   #set children = childMap[taskID|string]
   #if children
   <ul>
     #for child in children
-    #set iter = iter + 1
-    #if iter < children|length
+    #if not loop.last
     <li class="sibling">
     #else
     <li>
@@ -37,6 +35,7 @@ All
 #set _PASSTHROUGH = ['owner', 'state', 'view', 'method', 'hostID', 'channelID', 'order']
 
 #include "includes/header.html.j2"
+# from "includes/macros.html.j2" import rowToggle
 
 #macro getDescription()
 {{ headerPrefix(state) }}
@@ -96,23 +95,15 @@ in channel <a href="channelinfo?channelID={{ channel.id }}">{{ channel.name }}</
         <select name="method" class="filterlist" onchange="javascript: window.location = 'tasks?method=' + this.value + '{{ util.passthrough_except('method') }}';">
           <option value="all" {{ util.toggleSelected(method, 'all') }}>all</option>
           #for task_type in alltasks
-          #if task_type in ('maven', 'buildMaven') and not mavenEnabled
-          ## XXX continue
-          #elif task_type in ('winbuild', 'vmExec') and not winEnabled
-          ## XXX continue
-          #elif task_type == 'wrapperRPM' and not (mavenEnabled or winEnabled)
-          ## XXX continue
-          #else
           <option value="{{ task_type }}" {{ 'selected' if method == task_type else '' }}>{{ task_type }}</option>
-          #endif
           #endfor
         </select>
         </td><td>
         <strong>View</strong>:
         </td><td>
         <select name="view" class="filterlist" onchange="javascript: window.location = 'tasks?view=' + this.value + '{{ util.passthrough_except('view') }}';">
-          <option value="tree" {{ util.toggleSelected(view, 'tree') }} {{ 'disabled="disabled"' if not treeEnabled else '' }}>tree</option>
-          <option value="toplevel" {{ util.toggleSelected(view, 'toplevel') }} {{ 'disabled="disabled"' if not toplevelEnabled else '' }}>toplevel</option>
+          <option value="tree" {{ util.toggleSelected(view, 'tree') }}{{ ' disabled' if not treeEnabled else '' }}>tree</option>
+          <option value="toplevel" {{ util.toggleSelected(view, 'toplevel') }}{{ ' disabled' if not toplevelEnabled else '' }}>toplevel</option>
           <option value="flat" {{ util.toggleSelected(view, 'flat') }}>flat</option>
         </select>
         </td></tr>
@@ -165,7 +156,7 @@ in channel <a href="channelinfo?channelID={{ channel.id }}">{{ channel.name }}</
     </tr>
     #if tasks
       #for task in tasks
-        <tr class="{{ util.rowToggle() }}">
+        <tr class="{{ rowToggle(loop) }}">
           #set taskState = util.taskState(task.state)
           <td>{{ task.id }}</td>
           <td{{ S(' class="tree"') if treeDisplay else '' }}>

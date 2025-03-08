@@ -2,6 +2,7 @@
 #set _PASSTHROUGH = ['userID', 'tagID', 'packageID', 'order', 'prefix', 'state', 'inherited', 'latest', 'type']
 
 #include "includes/header.html.j2"
+# from "includes/macros.html.j2" import rowToggle
 
 #macro getDescription()
 #if latest
@@ -142,7 +143,7 @@ in tag <a href="taginfo?tagID={{ tag.id }}">{{ tag.name }}</a>
     </tr>
     #if (builds |length) > 0
       #for build in builds
-        <tr class="{{ util.rowToggle() }}">
+        <tr class="{{ rowToggle(loop) }}">
           <td>{{ build.build_id }}</td>
           <td><a href="buildinfo?buildID={{ build.build_id }}">{{ koji.buildLabel(build) }}</a></td>
           #if tag

@@ -34,19 +34,19 @@
       <tr>
         <th>Max Depth</th>
         <td>
-          <input type="text" name="maxdepth" value="{{ inheritanceData.maxdepth if inheritanceData else '' }}"/>
+          <input type="text" name="maxdepth" value="{{ inheritanceData.maxdepth if inheritanceData and inheritanceData.maxdepth is not none else '' }}"/>
         </td>
       </tr>
       <tr>
         <th>Intransitive</th>
         <td>
-          <input type="checkbox" name="intransitive" value="yes" {{ 'checked="checked"' if inheritanceData and inheritanceData.intransitive else '' }}/>
+          <input type="checkbox" name="intransitive" value="yes"{{ ' checked' if inheritanceData and inheritanceData.intransitive else '' }}/>
         </td>
       </tr>
       <tr>
         <th>Packages Only</th>
         <td>
-          <input type="checkbox" name="noconfig" value="yes" {{ 'checked="checked"' if inheritanceData and inheritanceData.noconfig else '' }}/>
+          <input type="checkbox" name="noconfig" value="yes"{{ ' checked' if inheritanceData and inheritanceData.noconfig else '' }}/>
         </td>
       </tr>
       <tr>

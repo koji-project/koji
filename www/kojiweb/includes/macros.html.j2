@@ -1,0 +1,11 @@
+{%- set TOGGLE = cycler('row-odd', 'row-even') %}
+
+{%- macro rowToggle(loop=None) %}
+  {%- if loop is not none %}
+    {{- loop.cycle('row-odd', 'row-even') }}
+  {%- else %}
+    {# use the global one #}
+    {{- TOGGLE.next() }}
+  {%- endif %}
+{%- endmacro %}
+

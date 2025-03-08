@@ -137,6 +137,7 @@ def get_options():
     # parser.add_option('--pdb', action='store_true',
     #                   help='drop into pdb on error')
     parser.add_option('--user', '-u', help='fake login as user')
+    parser.add_option('--time', '-t', type="float", help='mock time as value')
     parser.add_option('-o', '--config-option', help='override config option',
                       action='append', metavar='NAME=VALUE')
     opts, args = parser.parse_args()
@@ -189,6 +190,17 @@ def main():
         override_load_config(options.config_option)
     if options.user:
         fake_login(options.user)
+    if options.time:
+        from unittest import mock
+        import datetime
+        dt = datetime.datetime.fromtimestamp(options.time)
+        mock.patch('time.time', return_value=options.time).start()
+        # mocking datetime is tricky, can't mock the c object directly
+        # and can't mock the datetime class globally without breaking other code
+        # so we just mock the handlers import of it
+        my_datetime = mock.patch.object(kojiweb_handlers.kojiweb.util, 'datetime', wraps=datetime).start()
+        my_datetime.datetime.now.return_value = dt
+
     # koji.add_file_logger('koji', 'fakeweb.log')
     httpd = make_server('', 8000, application)
     print("Serving kojiweb on http://localhost:8000 ...")

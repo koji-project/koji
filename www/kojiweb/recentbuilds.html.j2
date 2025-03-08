@@ -2,13 +2,13 @@
 #macro linkURL()
   #set query = []
   #if tag
-  #set _tmp = query.append('tagID=%i' % (tag.id|urlencode))
+  #set _tmp = query.append('tagID=%s' % (tag.id|urlencode))
   #endif
   #if user
-  #set _tmp = query.append('userID=%i' % (user.id|urlencode))
+  #set _tmp = query.append('userID=%s' % (user.id|urlencode))
   #endif
   #if package
-  #set _tmp = query.append('packageID=%i' % (package.id|urlencode))
+  #set _tmp = query.append('packageID=%s' % (package.id|urlencode))
   #endif
   #if query
   {{ '%s/%s?%s' % (weburl, 'builds', '&amp;'.join(query)) }}

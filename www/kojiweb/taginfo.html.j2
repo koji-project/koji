@@ -38,7 +38,7 @@
         <span class="root">{{ tag.name }}</span>
         #set numParents = (inheritance |length)
         #set iter = 0
-        #set all_depths = []
+        #set all_depths = [0]
         #set TRUNC_DEPTH = 7
         <ul>
           #for parent in inheritance
@@ -46,7 +46,7 @@
           #set nextDepth = (loop.nextitem.currdepth if not loop.last else 1)
           #set depth = parent.currdepth
           #set _junk = all_depths.append(depth)
-          ## ^ TODO FIXME
+          ## ^ TODO refactor to avoid this
           #if depth == TRUNC_DEPTH and not all
           <li><span class="treeBranch"><span class="treeToggle treeLabel">...</span></span></li>
           <li class="hidden">
@@ -56,7 +56,7 @@
           <li>
           #endif
           #set _junk = tagsByChild[parent.child_id].pop()
-          ## ^ TODO FIXME
+          ## ^ TODO refactor to avoid this
             <span class="treeBranch">
               <span class="treeLabel">
                 <a href="taginfo?tagID={{ parent.parent_id }}">{{ parent.name }}</a>
@@ -134,7 +134,7 @@
       <td>
         #if (srcTargets |length)
         #for target in srcTargets
-        <a href="buildtargetinfo?name={{ quote(target.name) }}">{{ target.name }}</a><br/>
+        <a href="buildtargetinfo?name={{ target.name|urlencode }}">{{ target.name }}</a><br/>
         #endfor
         #else
         No build targets
@@ -146,7 +146,7 @@
       <td>
         #if (destTargets |length)
         #for target in destTargets
-        <a href="buildtargetinfo?name={{ quote(target.name) }}">{{ target.name }}</a><br/>
+        <a href="buildtargetinfo?name={{ target.name|urlencode }}">{{ target.name }}</a><br/>
         #endfor
         #else
         No build targets
@@ -168,7 +168,7 @@
     #for key in tag['extra']
     <tr>
         <th>{{ key }}</th>
-        <td>{{ pprint.pformat(tag.extra[key]) }}</td>
+        <td>{{ tag.extra[key]|pprint }}</td>
     </tr>
     #endfor
     #endif

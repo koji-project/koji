@@ -1,5 +1,6 @@
 
 #include "includes/header.html.j2"
+# from "includes/macros.html.j2" import rowToggle
 
   <h4>Tags</h4>
   <table class="data-list">
@@ -10,7 +11,7 @@
           Page:
           <select onchange="javascript: window.location = 'tags?start=' + this.value * {{ tagRange }} + '{{ passthrough('userID', 'tagID', 'order', 'childID') }}';">
             #for pageNum in tagPages
-            <option value="{{ pageNum }}"{{ 'selected' if pageNum == tagCurrentPage else '' }}>{{ pageNum + 1 }}</option>
+            <option value="{{ pageNum }}"{{ ' selected' if pageNum == tagCurrentPage else '' }}>{{ pageNum + 1 }}</option>
             #endfor
           </select>
         </form>
@@ -32,7 +33,7 @@
     </tr>
     #if tags | length > 0
       #for tag in tags
-        <tr class="{{ util.rowToggle() }}">
+        <tr class="{{ rowToggle(loop) }}">
           <td>{{ tag.id }}</td>
           <td><a href="taginfo?tagID={{ tag.id }}{{ passthrough('childID') }}">{{ tag.name }}</a></td>
         </tr>

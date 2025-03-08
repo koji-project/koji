@@ -1,5 +1,6 @@
 
 #include "includes/header.html.j2"
+# from "includes/macros.html.j2" import rowToggle
 
   <h4>Information for package <a href="packageinfo?packageID={{ package.id }}">{{ package.name }}</a></h4>
 
@@ -44,7 +45,7 @@
             <th><a href="packageinfo?buildOrder={{ util.toggleOrder('state', 'buildOrder') }}{{ util.passthrough('packageID', 'tagOrder', 'tagStart') }}#buildlist">State</a> {{ util.sortImage('state', 'buildOrder') }}</th>
           </tr>
           #for build in builds
-          <tr class="{{ util.rowToggle() }}">
+          <tr class="{{ rowToggle(loop) }}">
             <td><a href="buildinfo?buildID={{ build.build_id }}">{{ build.nvr }}</a></td>
             <td class="user-{{ build.owner_name }}"><a href="userinfo?userID={{ build.owner_id }}">{{ build.owner_name }}</a></td>
             <td>{{ util.formatTime(build.completion_ts) }}</td>
@@ -99,12 +100,12 @@
             <th><a href="packageinfo?tagOrder={{ util.toggleOrder('extra_arches', 'tagOrder') }}{{ util.passthrough('packageID', 'buildOrder', 'buildStart') }}#taglist">Extra Arches</a> {{ util.sortImage('extra_arches', 'tagOrder') }}</th>
           </tr>
           #for tag in tags
-          <tr class="{{ util.rowToggle() }}">
+          <tr class="{{ rowToggle(loop) }}">
             <td><a href="taginfo?tagID={{ tag.id }}">{{ tag.name }}</a></td>
             <td><a href="userinfo?userID={{ tag.owner_id }}">{{ tag.owner_name }}</a></td>
             #set included = tag.blocked and 'no' or 'yes'
             <td>{{ util.imageTag(included) }}</td>
-            <td>{{ tag.extra_arches }}</td>
+            <td>{{ tag.extra_arches or '' }}</td>
           </tr>
           #endfor
         </table>

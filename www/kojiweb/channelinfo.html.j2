@@ -1,5 +1,6 @@
 
 #include "includes/header.html.j2"
+# from "includes/macros.html.j2" import rowToggle
 
   <h4>Information for channel <a href="channelinfo?channelID={{ channel.id }}">{{ channel.name }}</a></h4>
 
@@ -11,7 +12,7 @@
       <th>ID</th><td>{{ channel.id }}</td>
     </tr>
     <tr>
-      <th>Description</th><td>{{ channel.description }}</td>
+      <th>Description</th><td>{{ channel.description or '' }}</td>
     </tr>
     <tr>
       #set enabled = channel.enabled and 'yes' or 'no'
@@ -21,7 +22,7 @@
       </td>
     </tr>
     <tr>
-      <th>Comment</th><td>{{ channel.comment }}</td>
+      <th>Comment</th><td>{{ channel.comment or '' }}</td>
     </tr>
     <tr>
       <th>Active Tasks</th><td><a href="tasks?view=flat&channelID={{ channel.id }}">{{ taskCount }}</a></td>
@@ -37,7 +38,7 @@
           <th>Ready</th>
         </tr>
       #for host in hosts
-        <tr class="{{ util.rowToggle }}({{ self }})">
+        <tr class="{{ rowToggle(loop) }}">
           <td><a href="hostinfo?hostID={{ host.id }}">{{ host.name }}</a></td>
           <td class="{{ host.enabled |string |lower }}">{{ util.imageTag('yes') if host.enabled else util.imageTag('no') }}</td>
           <td class="{{ host.ready |string |lower }}">{{ util.imageTag('yes') if host.ready else util.imageTag('no') }}</td>

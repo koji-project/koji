@@ -1,5 +1,6 @@
 
 #include "includes/header.html.j2"
+# from "includes/macros.html.j2" import rowToggle
 
   <h4>Build Targets</h4>
   <table class="data-list">
@@ -32,7 +33,7 @@
     </tr>
     #if (targets |length) > 0
     #for target in targets
-    <tr class="{{ util.rowToggle() }}">
+    <tr class="{{ rowToggle(loop) }}">
       <td>{{ target.id }}</td>
       <td><a href="buildtargetinfo?targetID={{ target.id }}">{{ target.name }}</a></td>
     </tr>

@@ -25,7 +25,7 @@
       </tr>
       <tr>
         <th>Locked</th>
-        <td><input type="checkbox" name="locked" value="yes" {{ 'checked="checked"' if tag and tag.locked else '' }}/></td>
+        <td><input type="checkbox" name="locked" value="yes"{{ ' checked' if tag and tag.locked else '' }}/></td>
       </tr>
       <tr>
         <th>Permission</th>
@@ -41,11 +41,11 @@
       #if mavenEnabled
       <tr>
         <th>Maven Support?</th>
-        <td><input type="checkbox" name="maven_support" value="yes" {{ 'checked="checked"' if tag and tag.maven_support else '' }}>
+        <td><input type="checkbox" name="maven_support" value="yes"{{ 'checked' if tag and tag.maven_support else '' }}>
       </tr>
       <tr>
         <th>Include All Maven Builds?</th>
-        <td><input type="checkbox" name="maven_include_all" value="yes" {{ 'checked="checked"' if tag and tag.maven_include_all else '' }}>
+        <td><input type="checkbox" name="maven_include_all" value="yes"{{ ' checked' if tag and tag.maven_include_all else '' }}>
       </tr>
       #endif
       <tr>

@@ -49,7 +49,7 @@
     </tr>
     <tr>
       #set epoch = (rpm.epoch != None and str(rpm.epoch) + ':' or '')
-      <th>RPM</th><td><a href="rpminfo?rpmID={{ rpm.id }}">{{ rpm.name }}-{{ epoch }}{{ rpm.version }}-{{ rpm.release }}{{ rpm.arch }}.rpm</a></td>
+      <th>RPM</th><td><a href="rpminfo?rpmID={{ rpm.id }}">{{ rpm.name }}-{{ epoch }}{{ rpm.version }}-{{ rpm.release }}.{{ rpm.arch }}.rpm</a></td>
     </tr>
     #elif archive
     <tr>

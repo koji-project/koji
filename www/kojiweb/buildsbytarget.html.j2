@@ -7,6 +7,7 @@
 #endmacro
 
 #include "includes/header.html.j2"
+# from "includes/macros.html.j2" import rowToggle
 
   <h4>Builds by Target{{ ' in the last %i days' % days if days != -1 else '' }}</h4>
   <table class="data-list">
@@ -59,7 +60,7 @@
     </tr>
     #if (targets |length) > 0
     #for target in targets
-    <tr class="{{ util.rowToggle() }}">
+    <tr class="{{ rowToggle(loop) }}">
       <td><a href="buildtargetinfo?name={{ target.name|urlencode }}">{{ target.name }}</a></td>
       <td width="{{ graphWidth + 5 }}"><img src={{ util.themePath('images/1px.gif') }} width="{{ increment * target.builds }}" height="15" class="graphrow" alt="graph row"/></td>
       <td>{{ target.builds }}</td>

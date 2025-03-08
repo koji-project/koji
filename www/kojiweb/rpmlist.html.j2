@@ -1,5 +1,6 @@
 
 #include "includes/header.html.j2"
+# from "includes/macros.html.j2" import rowToggle
 
 #macro getID()
   #if type == 'image'
@@ -60,7 +61,7 @@ colspan="2"
     </tr>
     #if (rpms |length) > 0
     #for rpm in rpms
-    <tr class="{{ util.rowToggle() }}">
+    <tr class="{{ rowToggle(loop) }}">
       #set epoch = (rpm.epoch|string + ':' if rpm.epoch != None else '')
       <td>{{ util.formatRPM(rpm) }}</td>
       #if type in ['component', 'image']

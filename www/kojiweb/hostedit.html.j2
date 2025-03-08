@@ -27,15 +27,15 @@
       </tr>
       <tr>
         <th>Description</th>
-        <td><textarea name="description" rows="6" cols="50">{{ host.description }}</textarea></td>
+        <td><textarea name="description" rows="6" cols="50">{{ host.description or '' }}</textarea></td>
       </tr>
       <tr>
         <th>Comment</th>
-        <td><textarea name="comment" rows="2" cols="50">{{ host.comment }}</textarea></td>
+        <td><textarea name="comment" rows="2" cols="50">{{ host.comment or '' }}</textarea></td>
       </tr>
       <tr>
         <th>Enabled?</th>
-        <td><input type="checkbox" name="enabled" value="yes" {{ 'checked="checked"' if host.enabled else '' }}/>
+        <td><input type="checkbox" name="enabled" value="yes"{{ ' checked' if host.enabled else '' }}/>
       </tr>
       <tr>
         <th>Channels</th>

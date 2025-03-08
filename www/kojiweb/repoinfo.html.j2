@@ -11,10 +11,10 @@
   {% endif %}
   <tr><th>State</th><td class="repo{{ state_name }}">{{ state_name }}</td></tr>
   <tr><th>Event</th><td>{{ repo.create_event }} ({{ create_time }})</td></tr>
-  {% if state_name != 'DELETED' %}
+  {%- if state_name != 'deleted' %}
   <tr><th>URL</th><td><a href="{{ url }}">repodata</a></td></tr>
   <tr><th>Repo json</th><td><a href="{{ repo_json }}">repo.json</a></td></tr>
-  {% endif %}
+  {%- endif %}
   <tr><th>Dist repo?</th><td class="{{ repo.dist | lower }}">{{ repo.dist }}</td></tr>
   <tr><th>Number of buildroots: </th><td><a href="buildroots?repoID={{ repo.id }}">{{ numBuildroots }}</a></td></tr>
 </table>

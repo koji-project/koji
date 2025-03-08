@@ -36,6 +36,7 @@ in {{ channel }} channel
 #set _PASSTHROUGH = ['state', 'order', 'ready', 'channel', 'arch']
 
 #include "includes/header.html.j2"
+# from "includes/macros.html.j2" import rowToggle
 
   <h4>{{ headerState(state) }} {{ headerReady(ready) }} {{ headerArch(arch) }} {{ headerChannel(channel) }}</h4>
   <table class="data-list">
@@ -119,7 +120,7 @@ in {{ channel }} channel
     </tr>
     #if (hosts |length) > 0
       #for host in hosts
-        <tr class="{{ util.rowToggle() }}">
+        <tr class="{{ rowToggle(loop) }}">
           <td>{{ host.id }}</td>
           <td><a href="hostinfo?hostID={{ host.id }}">{{ host.name }}</a></td>
           <td>{{ host.arches }}</td>

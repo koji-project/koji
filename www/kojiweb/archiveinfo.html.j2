@@ -2,6 +2,7 @@
 #set _PASSTHROUGH = ['archiveID', 'fileOrder', 'fileStart', 'buildrootOrder', 'buildrootStart']
 
 #include "includes/header.html.j2"
+# from "includes/macros.html.j2" import rowToggle
   <h4>Information for archive <a href="archiveinfo?archiveID={{ archive.id }}">{{ archive.filename }}</a></h4>
 
   <table>
@@ -92,7 +93,7 @@
             <th><a href="archiveinfo?fileOrder={{ util.toggleOrder('size', 'fileOrder') }}{{ util.passthrough_except('fileOrder', 'fileStart') }}#filelist">Size</a> {{ util.sortImage('size', 'fileOrder') }}</th>
           </tr>
           #for file in files
-          <tr class="{{ util.rowToggle() }}">
+          <tr class="{{ rowToggle(loop) }}">
             <td><a href="fileinfo?archiveID={{ archive.id }}&filename={{ file.name|urlencode }}">{{ file.name }}</a></td><td><span title="{{ util.formatThousands(file.size) }}">{{ util.formatNatural(file.size) }}</span></td>
           </tr>
           #endfor
@@ -132,7 +133,7 @@
             <th><a href="archiveinfo?buildrootOrder={{ util.toggleOrder('state', 'buildrootOrder') }}{{ util.passthrough_except('buildrootOrder', 'buildrootStart') }}#buildrootlist">State</a> {{ util.sortImage('state', 'buildrootOrder') }}</th>
           </tr>
           #for buildroot in buildroots
-          <tr class="{{ util.rowToggle() }}">
+          <tr class="{{ rowToggle(loop) }}">
             <td><a href="buildrootinfo?buildrootID={{ buildroot.id }}">{{ util.brLabel(buildroot) }}</a></td>
             <td>{{ util.formatTime(buildroot.create_event_time) }}</td>
             <td>{{ util.imageTag(util.brStateName(buildroot.state)) }}</td>

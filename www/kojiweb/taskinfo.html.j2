@@ -1,12 +1,10 @@
 
 #macro printChildren(taskID, childMap)
-  #set iter = 0
   #set children = childMap[taskID|string]
   #if children
   <ul>
     #for child in children
-    #set iter = iter + 1
-    #if iter < children|length
+    #if not loop.last
     <li class="sibling">
     #else
     <li>
@@ -60,10 +58,12 @@ None
   #elif key in ('build_target', 'target_info')
 <a href="buildtargetinfo?targetID={{ value['id'] }}">{{ value['name'] }}</a>
   #elif key in ('repo_info', 'oldrepo', 'repo')
-    #if key == 'repo' and value is sequence and value is not string
+    #if value is mapping
+<a href="repoinfo?repoID={{ value.id }}">{{ value.id }}</a> ({{ koji.formatTimeLong(value.create_ts) }})
+    #elif value is sequence and value is not string
 {{ value|join(sep) }}
     #else
-<a href="repoinfo?repoID={{ value.id }}">{{ value.id }}</a> ({{ koji.formatTimeLong(value.create_ts) }})
+{{ value }}
     #endif
   #elif key == 'task_list'
     #for task in params['task_list']
@@ -71,20 +71,27 @@ None
       {{ printMap(task, S('&nbsp;&nbsp;')) }}
     #endfor
   #elif value is mapping
-##{{ sep.join(['%s=%s' % ((n == '' and "''" or n), v) for n, v in value.items()])
-{{ value }}  TODO FIXME
+{{ printSimpleMap(value, sep) }}
   #elif value is sequence and value is not string
-  ## XXX this logic doesn't quite convert
 {{ value|join(sep) }}
   #else
 {{ value }}
   #endif
 #endmacro
 
+{%- macro printSimpleMap(value, sep) %}
+  {%- for name, value in value|dictsort -%}
+    {{- '%s=%s' % ("''" if name == '' else name, value) -}}
+    {{- sep if not loop.last else '' -}}
+  {%- endfor -%}
+{%- endmacro %}
+
 #macro printProperties(props)
-  ##{{ ', '.join([v is not None and '%s=%s' % (n, v) or n|string for n, v in props.items() ]) }}
-  TODO FIXME
-  {{ props | pprint }}
+  ## TODO this needs refactoring, but for now we simply port the logic
+  {%- for name, value in props|dictsort -%}
+    {{- name if value is none else '%s=%s' % (name, value) -}}
+    {{- ', ' if not loop.last else '' -}}
+  {%- endfor -%}
 #endmacro
 
 
@@ -155,9 +162,7 @@ None
     #set end_ts = task.completion_ts
     #endif
     #if not end_ts
-    ##set end_ts = koji.util.parseTime(koji.util.encode_datetime(datetime.datetime.utcnow()))
     #set end_ts = koji.time.time()
-    ## XXX is this right?
     #endif
     <tr>
       <th title="From task's creation">Total time</th>

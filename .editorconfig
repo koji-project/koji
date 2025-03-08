@@ -20,8 +20,8 @@ indent_size = 4
 indent_style = tab
 tab_width = 8
 
-# CHTML: 2-space indents
-[**/*.chtml]
+# jinja html: 2-space indents
+[**/*.html.j2]
 indent_style = space
 indent_size = 2
 

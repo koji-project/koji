@@ -1,5 +1,6 @@
 
 #include "includes/header.html.j2"
+# from "includes/macros.html.j2" import rowToggle
 
 #macro getID()
   #if type == 'image'
@@ -50,7 +51,7 @@ buildrootID={{ buildroot.id }}
     </tr>
     #if (archives |length) > 0
     #for archive in archives
-    <tr class="{{ util.rowToggle() }}">
+    <tr class="{{ rowToggle(loop) }}">
       <td><a href="archiveinfo?archiveID={{ archive.id }}">{{ archive.filename }}</a></td>
       <td>{{ archive.type_name }}</td>
       #if type == 'component'

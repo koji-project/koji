@@ -23,19 +23,19 @@
           <form action="search" id="headerSearch">
             <input type="hidden" name="match" value="glob"/>
             <select name="type">
-              <option {{ toggleSelected("", type, "package") }} value="package">Packages</option>
-              <option {{ toggleSelected("", type, "build") }} value="build">Builds</option>
-              <option {{ toggleSelected("", type, "tag") }} value="tag">Tags</option>
-              <option {{ toggleSelected("", type, "target") }} value="target">Build Targets</option>
-              <option {{ toggleSelected("", type, "user") }} value="user">Users</option>
-              <option {{ toggleSelected("", type, "host") }} value="host">Hosts</option>
-              <option {{ toggleSelected("", type, "rpm") }} value="rpm">RPMs</option>
-              {% if mavenEnabled %}
-              <option {{ toggleSelected("", type, "maven") }} value="maven">Maven Artifacts</option>
-              {% endif %}
-              {% if winEnabled %}
-              <option {{ toggleSelected("", type, "win") }} value="win">Windows Artifacts</option>
-              {% endif %}
+              <option {{ toggleSelected(type, "package") }} value="package">Packages</option>
+              <option {{ toggleSelected(type, "build") }} value="build">Builds</option>
+              <option {{ toggleSelected(type, "tag") }} value="tag">Tags</option>
+              <option {{ toggleSelected(type, "target") }} value="target">Build Targets</option>
+              <option {{ toggleSelected(type, "user") }} value="user">Users</option>
+              <option {{ toggleSelected(type, "host") }} value="host">Hosts</option>
+              <option {{ toggleSelected(type, "rpm") }} value="rpm">RPMs</option>
+              {%- if mavenEnabled %}
+              <option {{ toggleSelected(type, "maven") }} value="maven">Maven Artifacts</option>
+              {%- endif %}
+              {%- if winEnabled %}
+              <option {{ toggleSelected(type, "win") }} value="win">Windows Artifacts</option>
+              {%- endif %}
             </select>
             <input type="text" name="terms" title="You can use glob expressions here (e.g. 'bash-*')" value="{{ terms }}"/>
             <input type="submit" value="Search"/>
@@ -62,14 +62,15 @@
 
         <span id="loginInfo">
           {{ date_str }}
-          {% if not LoginDisabled %}
+          {%- if not LoginDisabled %}
            |
-          {% if currentUser %}
+          {%- if currentUser %}
           {{ greeting }}, <a href="userinfo?userID={{ currentUser.id }}">{{ currentUser.name }}</a> | <a href="logout">logout</a>
-          {% else %}
+          {%- else %}
           <a href="login">login</a>
-          {% endif %}
-          {% endif %}
+          {%- endif %}
+          {%- endif %}
         </span>
 
         <div id="content">
+
