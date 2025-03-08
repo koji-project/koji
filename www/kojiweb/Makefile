@@ -1,7 +1,7 @@
 SUBDIRS = includes
 
 SERVERDIR = /usr/share/koji-web/scripts
-FILES = $(wildcard *.py *.chtml)
+FILES = $(wildcard *.py *.html.j2)
 
 _default:
 	@echo "nothing to make.  try make install"

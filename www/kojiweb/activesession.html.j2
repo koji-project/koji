@@ -1,0 +1,26 @@
+#include "includes/header.html.j2"
+
+#set _PASSTHROUGH = ['userID']
+
+<h4>Active sessions for {{ loggedInUser.name }} user</h4>
+<br>
+  <table class="data-list">
+     <tr class="list-header">
+      <th><a href="activesession?order={{ util.toggleOrder('id') }}{{ util.passthrough_except('order') }}">Session ID</a> {{ util.sortImage('id') }}</th>
+      <th><a href="activesession?order={{ util.toggleOrder('hostip') }}{{ util.passthrough_except('order') }}">Client IP</a> {{ util.sortImage('hostip') }}</th>
+      <th><a href="activesession?order={{ util.toggleOrder('authtype') }}{{ util.passthrough_except('order') }}">Auth type</a> {{ util.sortImage('authtype') }}</th>
+      <th><a href="activesession?order={{ util.toggleOrder('start_time') }}{{ util.passthrough_except('order') }}">Session start time</a> {{ util.sortImage('start_time') }}</th>
+      <th><a href="activesession?order={{ util.toggleOrder('start_time') }}{{ util.passthrough_except('order') }}">Length session</a> {{ util.sortImage('start_time') }}</th>
+      <th><a href="activesession?order={{ util.toggleOrder('id') }}{{ util.passthrough_except('order') }}">Logout?</a> {{ util.sortImage('id') }}</th>
+   </tr>
+    #for act in activesess
+    <tr class="{{ util.rowToggle() }}">
+      <td>{{ act.id }}</td>
+      <td>{{ act.hostip }}</td>
+      <td>{{ act.authtype }}</td>
+      <td>{{ util.formatTimeLong(act.start_time) }}</td>
+      <td>{{ act.lengthSession }} days</td>
+      <td><a href="activesessiondelete?sessionID={{ act.id }}{{ util.authToken() }}">Logout</a></td>
+    </tr>
+    #endfor
+  </table>

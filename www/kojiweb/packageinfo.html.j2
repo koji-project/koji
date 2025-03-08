@@ -1,0 +1,126 @@
+
+#include "includes/header.html.j2"
+
+  <h4>Information for package <a href="packageinfo?packageID={{ package.id }}">{{ package.name }}</a></h4>
+
+  <table>
+    <tr>
+      <th>Name</th><td>{{ package.name }}</td>
+    </tr>
+    <tr>
+      <th>ID</th><td>{{ package.id }}</td>
+    </tr>
+    
+    <tr>
+      <th id="buildlist">Builds</th>
+      <td class="container">
+        #if (builds |length) > 0
+        <table class="nested data-list">
+          <tr>
+            <td class="paginate" colspan="4">
+              #if (buildPages |length) > 1
+              <form class="pageJump" action="">
+                Page:
+                <select onchange="javascript: window.location = 'packageinfo?buildStart=' + this.value * {{ buildRange }} + '{{ util.passthrough('packageID', 'buildOrder', 'tagOrder', 'tagStart') }}#buildlist';">
+                  #for pageNum in buildPages
+                  <option value="{{ pageNum }}"{{ ' selected' if pageNum == buildCurrentPage else '' }}>{{ pageNum + 1 }}</option>
+                  #endfor
+                </select>
+              </form>
+              #endif
+              #if buildStart > 0
+              <a href="packageinfo?buildStart={{ buildStart - buildRange }}{{ util.passthrough('packageID', 'buildOrder', 'tagOrder', 'tagStart') }}#buildlist">&lt;&lt;&lt;</a>
+              #endif
+              <strong>{{ buildStart + 1  }} through {{ buildStart + buildCount  }} of {{ totalBuilds }}</strong>
+              #if buildStart + buildCount < totalBuilds
+              <a href="packageinfo?buildStart={{ buildStart + buildRange }}{{ util.passthrough('packageID', 'buildOrder', 'tagOrder', 'tagStart') }}#buildlist">&gt;&gt;&gt;</a>
+              #endif
+            </td>
+          </tr>
+          <tr class="list-header">
+            <th><a href="packageinfo?buildOrder={{ util.toggleOrder('nvr', 'buildOrder') }}{{ util.passthrough('packageID', 'tagOrder', 'tagStart') }}#buildlist">NVR</a> {{ util.sortImage('nvr', 'buildOrder') }}</th>
+            <th><a href="packageinfo?buildOrder={{ util.toggleOrder('owner_name', 'buildOrder') }}{{ util.passthrough('packageID', 'tagOrder', 'tagStart') }}#buildlist">Built by</a> {{ util.sortImage('owner_name', 'buildOrder') }}</th>
+            <th><a href="packageinfo?buildOrder={{ util.toggleOrder('completion_time', 'buildOrder') }}{{ util.passthrough('packageID', 'tagOrder', 'tagStart') }}#buildlist">Finished</a> {{ util.sortImage('completion_time', 'buildOrder') }}</th>
+            <th><a href="packageinfo?buildOrder={{ util.toggleOrder('state', 'buildOrder') }}{{ util.passthrough('packageID', 'tagOrder', 'tagStart') }}#buildlist">State</a> {{ util.sortImage('state', 'buildOrder') }}</th>
+          </tr>
+          #for build in builds
+          <tr class="{{ util.rowToggle() }}">
+            <td><a href="buildinfo?buildID={{ build.build_id }}">{{ build.nvr }}</a></td>
+            <td class="user-{{ build.owner_name }}"><a href="userinfo?userID={{ build.owner_id }}">{{ build.owner_name }}</a></td>
+            <td>{{ util.formatTime(build.completion_ts) }}</td>
+            #set stateName = util.stateName(build.state)
+            <td class="{{ stateName }}">{{ util.stateImage(build.state) }}</td>
+          </tr>
+          #endfor
+        </table>
+        #if buildStart > 0
+        <a href="packageinfo?buildStart={{ buildStart - buildRange }}{{ util.passthrough('packageID', 'buildOrder', 'tagOrder', 'tagStart') }}#buildlist">&lt;&lt;&lt;</a>
+        #endif
+        <strong>Builds {{ buildStart + 1  }} through {{ buildStart + buildCount  }} of {{ totalBuilds }}</strong>
+        #if buildStart + buildCount < totalBuilds
+        <a href="packageinfo?buildStart={{ buildStart + buildRange }}{{ util.passthrough('packageID', 'buildOrder', 'tagOrder', 'tagStart') }}#buildlist">&gt;&gt;&gt;</a>
+        #endif
+        #else
+        No builds
+        #endif
+      </td>
+    </tr>
+    
+    <tr>
+      <th id="taglist">Tags</th>
+      <td class="container">
+        #if (tags |length) > 0
+        <table class="nested data-list">
+          <tr>
+            <td class="paginate" colspan="4">
+              #if (tagPages |length) > 1
+              <form class="pageJump" action="">
+                Page:
+                <select onchange="javascript: window.location = 'packageinfo?tagStart=' + this.value * {{ tagRange }} + '{{ util.passthrough('packageID', 'tagOrder', 'buildOrder', 'buildStart') }}#taglist';">
+                  #for pageNum in tagPages
+                  <option value="{{ pageNum }}"{{ ' selected' if pageNum == tagCurrentPage else '' }}>{{ pageNum + 1 }}</option>
+                  #endfor
+                </select>
+              </form>
+              #endif
+              #if tagStart > 0
+              <a href="packageinfo?tagStart={{ tagStart - tagRange }}{{ util.passthrough('packageID', 'tagOrder', 'buildOrder', 'buildStart') }}#taglist">&lt;&lt;&lt;</a>
+              #endif
+              <strong>{{ tagStart + 1  }} through {{ tagStart + tagCount  }} of {{ totalTags }}</strong>
+              #if tagStart + tagCount < totalTags
+              <a href="packageinfo?tagStart={{ tagStart + tagRange }}{{ util.passthrough('packageID', 'tagOrder', 'buildOrder', 'buildStart') }}#taglist">&gt;&gt;&gt;</a>
+              #endif
+            </td>
+          </tr>
+          <tr class="list-header">
+            <th><a href="packageinfo?tagOrder={{ util.toggleOrder('name', 'tagOrder') }}{{ util.passthrough('packageID', 'buildOrder', 'buildStart') }}#taglist">Name</a> {{ util.sortImage('name', 'tagOrder') }}</th>
+            <th><a href="packageinfo?tagOrder={{ util.toggleOrder('owner_name', 'tagOrder') }}{{ util.passthrough('packageID', 'buildOrder', 'buildStart') }}#taglist">Owner</a> {{ util.sortImage('owner_name', 'tagOrder') }}</th>
+            <th><a href="packageinfo?tagOrder={{ util.toggleOrder('blocked', 'tagOrder') }}{{ util.passthrough('packageID', 'buildOrder', 'buildStart') }}#taglist">Included?</a> {{ util.sortImage('blocked', 'tagOrder') }}</th>
+            <th><a href="packageinfo?tagOrder={{ util.toggleOrder('extra_arches', 'tagOrder') }}{{ util.passthrough('packageID', 'buildOrder', 'buildStart') }}#taglist">Extra Arches</a> {{ util.sortImage('extra_arches', 'tagOrder') }}</th>
+          </tr>
+          #for tag in tags
+          <tr class="{{ util.rowToggle() }}">
+            <td><a href="taginfo?tagID={{ tag.id }}">{{ tag.name }}</a></td>
+            <td><a href="userinfo?userID={{ tag.owner_id }}">{{ tag.owner_name }}</a></td>
+            #set included = tag.blocked and 'no' or 'yes'
+            <td>{{ util.imageTag(included) }}</td>
+            <td>{{ tag.extra_arches }}</td>
+          </tr>
+          #endfor
+        </table>
+        #if tagStart > 0
+        <a href="packageinfo?tagStart={{ tagStart - tagRange }}{{ util.passthrough('packageID', 'tagOrder', 'buildOrder', 'buildStart') }}#taglist">&lt;&lt;&lt;</a>
+        #endif
+        <strong>Tags {{ tagStart + 1  }} through {{ tagStart + tagCount  }} of {{ totalTags }}</strong>
+        #if tagStart + tagCount < totalTags
+        <a href="packageinfo?tagStart={{ tagStart + tagRange }}{{ util.passthrough('packageID', 'tagOrder', 'buildOrder', 'buildStart') }}#taglist">&gt;&gt;&gt;</a>
+        #endif
+        #else
+        No tags
+        #endif
+      </td>
+    </tr>
+    
+  </table>
+
+#include "includes/footer.html.j2"

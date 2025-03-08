@@ -1,0 +1,75 @@
+
+#include "includes/header.html.j2"
+
+  <h4>Build Targets</h4>
+  <table class="data-list">
+    <tr>
+      <td class="paginate" colspan="2">
+        #if (targetPages |length) > 1
+        <form class="pageJump" action="">
+          Page:
+          <select onchange="javascript: window.location = 'buildtargets?start=' + this.value * {{ targetRange }} + '{{ util.passthrough('order') }}';">
+            #for pageNum in targetPages
+            <option value="{{ pageNum }}"{{ ' selected' if pageNum == targetCurrentPage else '' }}>{{ pageNum + 1 }}</option>
+            #endfor
+          </select>
+        </form>
+        #endif
+        #if targetStart > 0
+        <a href="buildtargets?start={{ targetStart - targetRange  }}{{ util.passthrough('order') }}">&lt;&lt;&lt;</a>
+        #endif
+        #if totalTargets != 0
+        <strong>Targets {{ targetStart + 1  }} through {{ targetStart + targetCount  }} of {{ totalTargets }}</strong>
+        #endif
+        #if targetStart + targetCount < totalTargets
+        <a href="buildtargets?start={{ targetStart + targetRange }}{{ util.passthrough('order') }}">&gt;&gt;&gt;</a>
+        #endif
+      </td>
+    </tr>
+    <tr class="list-header">
+      <th><a href="buildtargets?order={{ util.toggleOrder('id') }}">ID</a> {{ util.sortImage('id') }}</th>
+      <th><a href="buildtargets?order={{ util.toggleOrder('name') }}">Name</a> {{ util.sortImage('name') }}</th>
+    </tr>
+    #if (targets |length) > 0
+    #for target in targets
+    <tr class="{{ util.rowToggle() }}">
+      <td>{{ target.id }}</td>
+      <td><a href="buildtargetinfo?targetID={{ target.id }}">{{ target.name }}</a></td>
+    </tr>
+    #endfor
+    #else
+    <tr class="row-odd">
+      <td colspan="2">No build targets</td>
+    </tr>
+    #endif
+    <tr>
+      <td class="paginate" colspan="2">
+        #if (targetPages |length) > 1
+        <form class="pageJump" action="">
+          Page:
+          <select onchange="javascript: window.location = 'buildtargets?start=' + this.value * {{ targetRange }} + '{{ util.passthrough('order') }}';">
+            #for pageNum in targetPages
+            <option value="{{ pageNum }}"{{ ' selected' if pageNum == targetCurrentPage else '' }}>{{ pageNum + 1 }}</option>
+            #endfor
+          </select>
+        </form>
+        #endif
+        #if targetStart > 0
+        <a href="buildtargets?start={{ targetStart - targetRange  }}{{ util.passthrough('order') }}">&lt;&lt;&lt;</a>
+        #endif
+        #if totalTargets != 0
+        <strong>Targets {{ targetStart + 1  }} through {{ targetStart + targetCount  }} of {{ totalTargets }}</strong>
+        #endif
+        #if targetStart + targetCount < totalTargets
+        <a href="buildtargets?start={{ targetStart + targetRange }}{{ util.passthrough('order') }}">&gt;&gt;&gt;</a>
+        #endif
+      </td>
+    </tr>
+  </table>
+  
+  #if 'admin' in perms
+  <br/>
+  <a href="buildtargetcreate{{ util.authToken(first=True) }}">Create new Build Target</a>
+  #endif
+
+#include "includes/footer.html.j2"

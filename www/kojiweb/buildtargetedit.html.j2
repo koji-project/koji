@@ -1,0 +1,62 @@
+
+#include "includes/header.html.j2"
+
+  #if target
+  <h4>Edit target {{ target.name }}</h4>
+  #else
+  <h4>Create build target</h4>
+  #endif
+
+  <form action="{{ 'buildtargetedit' if target else 'buildtargetcreate' }}">
+    {{ util.authToken(form=True) }}
+    #if target
+    <input type="hidden" name="targetID" value="{{ target.id }}"/>
+    #endif
+    <table>
+      <tr>
+        <th>Name</th>
+      <td>
+        <input type="text" name="name" size="50" value="{{ target.name if target else '' }}"/>
+      </td>
+    </tr>
+    #if target
+    <tr>
+      <th>ID</th><td>{{ target.id }}</td>
+    </tr>
+    #endif
+    <tr>
+      <th>Build Tag</th>
+      <td>
+        <select name="buildTag">
+          <option value="">select tag</option>
+          #for tag in tags
+          <option value="{{ tag.id }}"{{ ' selected' if target and target.build_tag == tag.id else '' }}>{{ tag.name }}</option>
+          #endfor
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <th>Destination Tag</th>
+      <td>
+        <select name="destTag">
+          <option value="">select tag</option>
+          #for tag in tags
+          <option value="{{ tag.id }}"{{ ' selected' if target and target.dest_tag == tag.id else '' }}>{{ tag.name }}</option>
+          #endfor
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        #if target
+        <button type="submit" name="save" value="Save">Save</button>
+        #else
+        <button type="submit" name="add" value="Add">Add</button>
+        #endif
+      </td>
+      <td><button type="submit" name="cancel" value="Cancel">Cancel</button></td>
+    </tr>
+    </table>
+    </form>
+
+#include "includes/footer.html.j2"

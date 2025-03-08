@@ -1,5 +1,5 @@
 SERVERDIR = /includes
-FILES = $(wildcard *.chtml)
+FILES = $(wildcard *.html.j2)
 
 _default:
 	@echo "nothing to make.  try make install"

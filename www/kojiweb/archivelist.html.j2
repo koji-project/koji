@@ -1,0 +1,92 @@
+
+#include "includes/header.html.j2"
+
+#macro getID()
+  #if type == 'image'
+imageID={{ image.id }}
+  #else
+buildrootID={{ buildroot.id }}
+  #endif
+#endmacro
+
+  #if type == 'component'
+  <h4>Component Archives of buildroot <a href="buildrootinfo?buildrootID={{ buildroot.id }}">{{ util.brLabel(buildroot) }}</a></h4>
+  #elif type == 'image'
+  <h4>Archives installed in <a href="archiveinfo?archiveID={{ image.id }}">{{ image.filename }}</a></h4>
+  #else
+  <h4>Archives built in buildroot <a href="buildrootinfo?buildrootID={{ buildroot.id }}">{{ util.brLabel(buildroot) }}</a></h4>
+  #endif
+
+  <table class="data-list">
+    <tr>
+      <td class="paginate" colspan="{{ '3' if type == 'component' else '2' }}">
+        #if (archivePages |length) > 1
+        <form class="pageJump">
+          Page:
+          <select onchange="javascript: window.location = 'archivelist?{{ getID()|trim }}&start=' + this.value * {{ archiveRange }} + '{{ util.passthrough('order', 'type') }}';">
+            #for pageNum in archivePages
+            <option value="{{ pageNum }}"{{ ' selected' if pageNum == archiveCurrentPage else '' }}>{{ pageNum + 1 }}</option>
+            #endfor
+          </select>
+        </form>
+        #endif
+        #if archiveStart > 0
+        <a href="archivelist?{{ getID()|trim }}&start={{ archiveStart - archiveRange  }}{{ util.passthrough('order', 'type') }}">&lt;&lt;&lt;</a>
+        #endif
+        #if totalArchives != 0
+        <strong>Archives {{ archiveStart + 1  }} through {{ archiveStart + archiveCount  }} of {{ totalArchives }}</strong>
+        #endif
+        #if archiveStart + archiveCount < totalArchives
+        <a href="archivelist?{{ getID()|trim }}&start={{ archiveStart + archiveRange }}{{ util.passthrough('order', 'type') }}">&gt;&gt;&gt;</a>
+        #endif
+      </td>
+    </tr>
+    <tr class="list-header">
+      <th><a href="archivelist?{{ getID()|trim }}&order={{ util.toggleOrder('filename') }}{{ util.passthrough('type') }}">Filename</a> {{ util.sortImage('filename') }}</th>
+      <th><a href="archivelist?{{ getID()|trim }}&order={{ util.toggleOrder('type_name') }}{{ util.passthrough('type') }}">Type</a> {{ util.sortImage('type_name') }}</th>
+      #if type == 'component'
+      <th><a href="archivelist?{{ getID()|trim }}&order={{ util.toggleOrder('project') }}{{ util.passthrough('type') }}">Build Dependency?</a> {{ util.sortImage('project') }}</th>
+      #endif
+    </tr>
+    #if (archives |length) > 0
+    #for archive in archives
+    <tr class="{{ util.rowToggle() }}">
+      <td><a href="archiveinfo?archiveID={{ archive.id }}">{{ archive.filename }}</a></td>
+      <td>{{ archive.type_name }}</td>
+      #if type == 'component'
+      #set project = archive.project and 'yes' or 'no'
+      <td class="{{ project }}">{{ util.imageTag(project) }}</td>
+      #endif
+    </tr>
+    #endfor
+    #else
+    <tr class="row-odd">
+      <td colspan="{{ '3' if type == 'component' else '2' }}">No Archives</td>
+    </tr>
+    #endif
+    <tr>
+      <td class="paginate" colspan="{{ '3' if type == 'component' else '2' }}">
+        #if (archivePages |length) > 1
+        <form class="pageJump">
+          Page:
+          <select onchange="javascript: window.location = 'archivelist?{{ getID()|trim }}&start=' + this.value * {{ archiveRange }} + '{{ util.passthrough('order', 'type') }}';">
+            #for pageNum in archivePages
+            <option value="{{ pageNum }}"{{ ' selected' if pageNum == archiveCurrentPage else '' }}>{{ pageNum + 1 }}</option>
+            #endfor
+          </select>
+        </form>
+        #endif
+        #if archiveStart > 0
+        <a href="archivelist?{{ getID()|trim }}&start={{ archiveStart - archiveRange  }}{{ util.passthrough('order', 'type') }}">&lt;&lt;&lt;</a>
+        #endif
+        #if totalArchives != 0
+        <strong>Archives {{ archiveStart + 1  }} through {{ archiveStart + archiveCount  }} of {{ totalArchives }}</strong>
+        #endif
+        #if archiveStart + archiveCount < totalArchives
+        <a href="archivelist?{{ getID()|trim }}&start={{ archiveStart + archiveRange }}{{ util.passthrough('order', 'type') }}">&gt;&gt;&gt;</a>
+        #endif
+      </td>
+    </tr>
+  </table>
+
+#include "includes/footer.html.j2"

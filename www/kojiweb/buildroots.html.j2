@@ -1,0 +1,95 @@
+
+#set _PASSTHROUGH = ['repoID', 'order', 'state']
+
+#include "includes/header.html.j2"
+
+  <h4>Buildroots in repo <a href="repoinfo?repoID={{ repoID }}">{{ repoID }}</a></h4>
+
+  <table class="data-list">
+  <tr>
+      <td colspan="5">
+        <table class="nested">
+        <tr><td>
+        <strong>State</strong>:
+        </td><td>
+        <select name="state" class="filterlist" onchange="javascript: window.location = 'buildroots?state=' + this.value + '{{ util.passthrough_except('state') }}';">
+          <option value="all">all</option>
+          #for stateOpt in ['INIT', 'WAITING', 'BUILDING', 'EXPIRED']
+          <option value="{{ koji.BR_STATES[stateOpt] }}"{{ ' selected' if state == koji.BR_STATES[stateOpt] else '' }}>{{ stateOpt|lower }}</option>
+          #endfor
+        </select>
+        </table>
+        </td>
+       </tr>
+      <tr>
+      <td class="paginate" colspan="5">
+        #if (buildrootPages |length) > 1
+        <form class="pageJump" action="">
+          Page:
+          <select onchange="javascript: window.location = 'builds?start=' + this.value * {{ buildrootRange }} + '{{ util.passthrough_except() }}';">
+            #for pageNum in buildrootPages
+            <option value="{{ pageNum }}"{{ ' selected' if pageNum == buildrootCurrentPage else '' }}>{{ pageNum + 1 }}</option>
+            #endfor
+          </select>
+        </form>
+        #endif
+        #if buildrootStart > 0
+        <a href="builds?start={{ buildrootStart - buildrootRange  }}{{ util.passthrough_except() }}">&lt;&lt;&lt;</a>
+        #endif
+        #if totalBuildroots != 0
+        <strong>Buildroots {{ buildrootStart + 1  }} through {{ buildrootStart + buildrootCount  }} of {{ totalBuildroots }}</strong>
+        #endif
+        #if buildrootStart + buildrootCount < totalBuildroots
+        <a href="builds?start={{ buildrootStart + buildrootRange }}{{ util.passthrough_except() }}">&gt;&gt;&gt;</a>
+        #endif
+      </td>
+    </tr>
+    <tr class="list-header">
+      <th><a href="buildroots?order={{ util.toggleOrder('id') }}{{ util.passthrough_except('order') }}">BuildrootID</a> {{ util.sortImage('id') }}</th>
+      <th><a href="buildroots?order={{ util.toggleOrder('repo_id') }}{{ util.passthrough_except('order') }}">Repo ID</a> {{ util.sortImage('repo_id') }}</th>
+      <th><a href="buildroots?order={{ util.toggleOrder('task_id') }}{{ util.passthrough_except('order') }}">Task ID</a> {{ util.sortImage('task_id') }}</th>
+      <th><a href="buildroots?order={{ util.toggleOrder('tag_name') }}{{ util.passthrough_except('order') }}">Tag name</a> {{ util.sortImage('tag_name') }}</th>
+      <th><a href="buildroots?order={{ util.toggleOrder('state') }}{{ util.passthrough_except('order') }}">State</a> {{ util.sortImage('state') }}</th>
+    </tr>
+    #if (buildroots |length) > 0
+      #for buildroot in buildroots
+        <tr class="{{ util.rowToggle() }}">
+          <td><a href="buildrootinfo?buildrootID={{ buildroot.id }}">{{ buildroot.id }}</a></td>
+          <td><a href="repoinfo?repoID={{ buildroot.repo_id }}">{{ buildroot.repo_id }}</a></td>
+          <td><a href="taskinfo?taskID={{ buildroot.task_id }}">{{ buildroot.task_id }}</a></td>
+          <td><a href="taginfo?tagID={{ buildroot.tag_id }}">{{ buildroot.tag_name }}</a></td>
+          #set stateName = util.brStateName(buildroot.state)
+          <td class="{{ stateName }}">{{ util.brStateImage(buildroot.state) }}</td>
+        </tr>
+      #endfor
+    #else
+      <tr class="row-odd">
+        <td colspan="5">No buildroots</td>
+      </tr>
+    #endif
+    <tr>
+      <td class="paginate" colspan="5">
+        #if (buildrootPages |length) > 1
+        <form class="pageJump" action="">
+          Page:
+          <select onchange="javascript: window.location = 'builds?start=' + this.value * {{ buildrootRange }} + '{{ util.passthrough_except() }}';">
+            #for pageNum in buildrootPages
+            <option value="{{ pageNum }}"{{ ' selected' if pageNum == buildrootCurrentPage else '' }}>{{ pageNum + 1 }}</option>
+            #endfor
+          </select>
+        </form>
+        #endif
+        #if buildrootStart > 0
+        <a href="builds?start={{ buildrootStart - buildrootRange  }}{{ util.passthrough_except() }}">&lt;&lt;&lt;</a>
+        #endif
+        #if totalBuildroots != 0
+        <strong>Buildroots {{ buildrootStart + 1  }} through {{ buildrootStart + buildrootCount  }} of {{ totalBuildroots }}</strong>
+        #endif
+        #if buildrootStart + buildrootCount < totalBuildroots
+        <a href="builds?start={{ buildrootStart + buildrootRange }}{{ util.passthrough_except() }}">&gt;&gt;&gt;</a>
+        #endif
+      </td>
+    </tr>
+  </table>
+
+#include "includes/footer.html.j2"

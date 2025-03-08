@@ -344,7 +344,7 @@ class Dispatcher(object):
         environ['koji.values'].setdefault('mavenEnabled', False)
         environ['koji.values'].setdefault('winEnabled', False)
         # import pdb; pdb.set_trace()
-        result = _genHTML(environ, 'error.chtml', jinja=True)
+        result = _genHTML(environ, 'error.html.j2', jinja=True)
         result = self._tobytes(result)
         headers = [
             ('Allow', 'GET, POST, HEAD'),
