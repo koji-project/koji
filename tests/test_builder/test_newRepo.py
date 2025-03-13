@@ -4,14 +4,12 @@ try:
 except ImportError:
     import mock
 import os
-import rpm
 import shutil
 import tempfile
 import unittest
 import koji
 import koji.tasks
 from .loadkojid import kojid
-from six.moves import range
 
 
 class TestChooseTaskarch(unittest.TestCase):
@@ -32,7 +30,7 @@ class TestChooseTaskarch(unittest.TestCase):
         method = 'newRepo'
         params = ['TAG']
         self.handler = kojid.NewRepoTask(task_id, method, params, self.session,
-                self.options, self.tempdir + '/work')
+                                         self.options, self.tempdir + '/work')
 
         # mock some more things
         self.wait = mock.MagicMock()
@@ -49,9 +47,9 @@ class TestChooseTaskarch(unittest.TestCase):
         os.makedirs(self.topdir + '/repos/TAG/REPOID')
         arches = ['x86_64', 'aarch64']
         for arch in arches:
-            os.makedirs(f'{self.topdir}/repos/TAG/REPOID/{arch}')
+            os.makedirs('%s/repos/TAG/REPOID/%s' % (self.topdir, arch))
             # touch pkglist
-            with open(f'{self.topdir}/repos/TAG/REPOID/{arch}/pkglist', 'wt') as fo:
+            with open('%s/repos/TAG/REPOID/%s/pkglist' % (self.topdir, arch), 'wt') as fo:
                 fo.write('fake-1.2.3-1.rpm\n')
 
         result = self.handler.run()
@@ -68,15 +66,6 @@ class TestChooseTaskarch(unittest.TestCase):
             result = self.handler.run()
 
         self.session.host.repoInit.assert_not_called()
-
-    def test_oldrepo_no_update(self):
-        taginfo = {'id': 'TAGID', 'name': 'TAG'}
-        self.options.createrepo_update = False
-
-        result = self.handler.get_old_repo(taginfo)
-
-        self.assertEqual(result, (None, None))
-        self.session.getRepo.assert_not_called()
 
     def test_oldrepo_no_update(self):
         taginfo = {'id': 'TAGID', 'name': 'TAG'}
