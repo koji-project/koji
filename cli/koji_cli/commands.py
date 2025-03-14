@@ -19,6 +19,7 @@ from datetime import datetime
 from dateutil.tz import tzutc
 from optparse import SUPPRESS_HELP, OptionParser
 
+from requests.exceptions import HTTPError
 import six
 import six.moves.xmlrpc_client
 from six.moves import filter, map, range, zip
@@ -6894,6 +6895,8 @@ def anon_handle_download_build(options, session, args):
     parser.add_option("--task-id", action="store_true", help="Interperet id as a task id")
     parser.add_option("--rpm", action="store_true", help="Download the given rpm")
     parser.add_option("--key", help="Download rpms signed with the given key")
+    parser.add_option("--fallback-unsigned", action="store_true",
+                      help="When used with --key: download unsigned if signed packages not found")
     parser.add_option("--topurl", metavar="URL", default=options.topurl,
                       help="URL under which Koji files are accessible")
     parser.add_option("--noprogress", action="store_true", help="Do not display progress meter")
@@ -6976,6 +6979,7 @@ def anon_handle_download_build(options, session, args):
                 continue
             rpms.append(rpm)
 
+    unsigned = []
     if suboptions.key:
         with session.multicall() as m:
             results = [m.queryRPMSigs(rpm_id=r['id'], sigkey=suboptions.key) for r in rpms]
@@ -6985,14 +6989,32 @@ def anon_handle_download_build(options, session, args):
                 nvra = "%(nvr)s-%(arch)s.rpm" % rpm
                 warn("No such sigkey %s for rpm %s" % (suboptions.key, nvra))
                 rpms.remove(rpm)
+                if suboptions.fallback_unsigned:
+                    unsigned.append(rpm)
 
-    size = len(rpms) + len(archives)
+    size = len(rpms) + len(unsigned) + len(archives)
     number = 0
 
     # run the download
     for rpm in rpms:
         number += 1
-        download_rpm(info, rpm, suboptions.topurl, sigkey=suboptions.key, quiet=suboptions.quiet,
+        try:
+            download_rpm(info, rpm, suboptions.topurl, sigkey=suboptions.key, quiet=suboptions.quiet,
+                         noprogress=suboptions.noprogress, num=number, size=size)
+        except HTTPError as err:
+            # this is necessary even with the 'unsigned' handling above
+            # because sometimes queryRPMSigs will still tell us a
+            # package was signed with a given key, but the signed copy
+            # has been garbage-collected
+            if suboptions.key and suboptions.fallback_unsigned and err.response.status_code == 404:
+                warn("Signed copy not present, will download unsigned copy")
+                download_rpm(info, rpm, suboptions.topurl, sigkey=None, quiet=suboptions.quiet,
+                             noprogress=suboptions.noprogress, num=number, size=size)
+            else:
+                raise
+    for rpm in unsigned:
+        number += 1
+        download_rpm(info, rpm, suboptions.topurl, sigkey=None, quiet=suboptions.quiet,
                      noprogress=suboptions.noprogress, num=number, size=size)
     for archive in archives:
         number += 1
