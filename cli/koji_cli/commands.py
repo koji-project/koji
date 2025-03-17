@@ -1530,6 +1530,7 @@ def handle_reserve_cg(goptions, session, args):
     usage = "usage: %prog reserve-cg [options] <cg> <nvr>|<metadata_file>"
     parser = OptionParser(usage=get_usage_str(usage))
     parser.add_option("--draft", action="store_true", default=False, help="Reserve a draft entry")
+    parser.add_option("--epoch", type="int", help="Specify epoch for nvr argument")
     parser.add_option("--metadata", action="store_true", default=False,
                       help="Treat argument as a metadata file")
     (options, args) = parser.parse_args(args)
@@ -1545,13 +1546,17 @@ def handle_reserve_cg(goptions, session, args):
         except Exception:
             return None
         # fix epoch
-        if data['epoch'] == '':
+        if options.epoch is not None:
+            data['epoch'] = options.epoch
+        elif data['epoch'] == '':
             data['epoch'] = None
         else:
             data['epoch'] = int(data['epoch'])
         return data
 
     def read_metadata():
+        if options.epoch is not None:
+            parser.error('The --epoch option cannot be used with --metadata')
         metadata = koji.load_json(args[1])
         data = metadata['build']
         fields = ('name', 'version', 'release', 'epoch', 'draft')
