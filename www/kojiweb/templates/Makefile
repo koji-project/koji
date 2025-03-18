@@ -1,4 +1,4 @@
-SERVERDIR = /includes
+SERVERDIR = /templates
 FILES = $(wildcard *.html.j2)
 
 _default:
