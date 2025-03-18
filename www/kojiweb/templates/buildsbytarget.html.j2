@@ -1,0 +1,99 @@
+
+#macro printOption(value, label=None)
+#if not label
+#set label = value
+#endif
+<option value="{{ value }}"{{ ' selected' if value == days else '' }}>{{ label }}</option>
+#endmacro
+
+#include "header.html.j2"
+# from "macros.html.j2" import rowToggle
+
+  <h4>Builds by Target{{ ' in the last %i days' % days if days != -1 else '' }}</h4>
+  <table class="data-list">
+    <tr style="text-align: left">
+      <td colspan="3">
+        <form action="">
+          Show last
+          <select onchange="javascript: window.location = 'buildsbytarget?days=' + this.value + '{{ util.passthrough('order') }}';">
+            {{ printOption(1) }}
+            {{ printOption(3) }}
+            {{ printOption(5) }}
+            {{ printOption(7) }}
+            {{ printOption(14) }}
+            {{ printOption(30) }}
+            {{ printOption(60) }}
+            {{ printOption(90) }}
+            {{ printOption(120) }}
+            {{ printOption(-1, 'all') }}
+          </select> days
+        </form>
+      </td>
+    </tr>
+    <tr>
+      <td class="paginate" colspan="3">
+        #if (targetPages |length) > 1
+        <form class="pageJump" action="">
+          Page:
+          <select onchange="javascript: window.location = 'buildsbytarget?start=' + this.value * {{ targetRange }} + '{{ util.passthrough('days', 'order') }}';">
+            #for pageNum in targetPages
+            <option value="{{ pageNum }}"{{ ' selected' if pageNum == targetCurrentPage else '' }}>{{ pageNum + 1 }}</option>
+            #endfor
+          </select>
+        </form>
+        #endif
+        #if targetStart > 0
+        <a href="buildsbytarget?start={{ targetStart - targetRange  }}{{ util.passthrough('days', 'order') }}">&lt;&lt;&lt;</a>
+        #endif
+        #if totalTargets != 0
+        <strong>Build Targets {{ targetStart + 1  }} through {{ targetStart + targetCount  }} of {{ totalTargets }}</strong>
+        #endif
+        #if targetStart + targetCount < totalTargets
+        <a href="buildsbytarget?start={{ targetStart + targetRange }}{{ util.passthrough('days', 'order') }}">&gt;&gt;&gt;</a>
+        #endif
+      </td>
+    </tr>
+    <tr class="list-header">
+      <th><a href="buildsbytarget?order={{ util.toggleOrder('name') }}{{ util.passthrough('days') }}">Name</a> {{ util.sortImage('name') }}</th>
+      <th><a href="buildsbytarget?order={{ util.toggleOrder('builds') }}{{ util.passthrough('days') }}">Builds</a> {{ util.sortImage('builds') }}</th>
+      <th>&nbsp;</th>
+    </tr>
+    #if (targets |length) > 0
+    #for target in targets
+    <tr class="{{ rowToggle(loop) }}">
+      <td><a href="buildtargetinfo?name={{ target.name|urlencode }}">{{ target.name }}</a></td>
+      <td width="{{ graphWidth + 5 }}"><img src={{ util.themePath('images/1px.gif') }} width="{{ increment * target.builds }}" height="15" class="graphrow" alt="graph row"/></td>
+      <td>{{ target.builds }}</td>
+    </tr>
+    #endfor
+    #else
+    <tr class="row-odd">
+      <td colspan="3">No builds</td>
+    </tr>
+    #endif
+    <tr>
+      <td class="paginate" colspan="3">
+        #if (targetPages |length) > 1
+        <form class="pageJump" action="">
+          Page:
+          <select onchange="javascript: window.location = 'buildsbytarget?start=' + this.value * {{ targetRange }} + '{{ util.passthrough('days', 'order') }}';">
+            #for pageNum in targetPages
+            <option value="{{ pageNum }}"{{ ' selected' if pageNum == targetCurrentPage else '' }}>{{ pageNum + 1 }}</option>
+            #endfor
+          </select>
+        </form>
+        #endif
+        #if targetStart > 0
+        <a href="buildsbytarget?start={{ targetStart - targetRange  }}{{ util.passthrough('days', 'order') }}">&lt;&lt;&lt;</a>
+        #endif
+        #if totalTargets != 0
+        <strong>Build Targets {{ targetStart + 1  }} through {{ targetStart + targetCount  }} of {{ totalTargets }}</strong>
+        #endif
+        #if targetStart + targetCount < totalTargets
+        <a href="buildsbytarget?start={{ targetStart + targetRange }}{{ util.passthrough('days', 'order') }}">&gt;&gt;&gt;</a>
+        #endif
+      </td>
+    </tr>
+  </table>
+
+#include "footer.html.j2"

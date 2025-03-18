@@ -1,0 +1,160 @@
+
+#include "header.html.j2"
+# from "macros.html.j2" import rowToggle
+
+  <div class="pageHeader">{{ welcomeMessage }}</div>
+
+  <div class="dataHeader noPaginate" id="buildlist">{{ 'Your ' if user else '' }}Recent Builds</div>
+  <table class="data-list">
+    <tr class="list-header">
+      <th>ID {{ util.sortImage('id') }}</th>
+      <th>NVR</th>
+      #if not user
+      <th>Built by</th>
+      #endif
+      <th>Finished</th>
+      <th>State</th>
+    </tr>
+    #for build in builds
+    <tr class="{{ rowToggle(loop) }}">
+      #set stateName = util.stateName(build.state)
+      <td>{{ build.build_id }}</td>
+      <td><a href="buildinfo?buildID={{ build.build_id }}">{{ build.nvr }}</a></td>
+      #if not user
+      <td class="user-{{ build.owner_name }}"><a href="userinfo?userID={{ build.owner_id }}">{{ build.owner_name }}</a></td>
+      #endif
+      <td>{{ util.formatTime(build.completion_ts) }}</td>
+      <td class="{{ stateName }}">{{ util.stateImage(build.state) }}</td>
+    </tr>
+    #endfor
+    #if not builds
+    <tr class="row-odd">
+      <td colspan="3">No builds</td>
+    </tr>
+    #endif
+  </table>
+
+  <br/>
+
+  <div class="dataHeader noPaginate" id="tasklist">{{ 'Your ' if user else '' }}Recent Tasks</div>
+  <table class="data-list">
+    <tr class="list-header">
+      <th>ID {{ util.sortImage('id') }}</th>
+      <th>Type</th>
+      #if not user
+      <th>Owner</th>
+      #endif
+      <th>Arch</th>
+      <th>Finished</th>
+      <th>State</th>
+    </tr>
+    #for task in tasks
+    #set scratch = util.taskScratchClass(task)
+    <tr class="{{ rowToggle(loop) }} {{ scratch }}">
+      #set state = util.taskState(task.state)
+      <td>{{ task.id }}</td>
+      <td><a href="taskinfo?taskID={{ task.id }}" class="task{{ state }}" title="{{ state }}">{{ koji.taskLabel(task) }}</a></td>
+      #if not user
+      <td class="user-{{ task.owner_name }}">
+        #if task.owner_type == koji.USERTYPES['HOST']
+        <a href="hostinfo?userID={{ task.owner }}">{{ task.owner_name }}</a>
+        #else
+        <a href="userinfo?userID={{ task.owner }}">{{ task.owner_name }}</a>
+        #endif
+      </td>
+      #endif
+      <td>{{ task.arch }}</td>
+      <td>{{ util.formatTime(task.completion_ts) }}</td>
+      <td class="task{{ state }}">{{ util.imageTag(state) }}</td>
+    </tr>
+    #endfor
+    #if not tasks
+      <tr class="row-odd">
+        <td colspan="5">No tasks</td>
+      </tr>
+    #endif
+  </table>
+
+  #if user
+  <br/>
+
+  <div class="dataHeader" id="packagelist">Your Packages</div>
+  <table class="data-list">
+    <tr>
+      <td class="paginate" colspan="3">
+        #if (packagePages |length) > 1
+        <form class="pageJump" action="">
+          Page:
+          <select onchange="javascript: window.location = 'index?packageStart=' + this.value * {{ packageRange }} + '{{ util.passthrough('packageOrder', 'buildOrder', 'buildStart', 'taskOrder', 'taskStart') }}#packagelist';">
+            #for pageNum in packagePages
+            <option value="{{ pageNum }}"{{ ' selected' if pageNum == packageCurrentPage else '' }}>{{ pageNum + 1 }}</option>
+            #endfor
+          </select>
+        </form>
+        #endif
+        #if packageStart > 0
+        <a href="index?packageStart={{ packageStart - packageRange  }}{{ util.passthrough('packageOrder', 'buildOrder', 'buildStart', 'taskOrder', 'taskStart') }}#packagelist">&lt;&lt;&lt;</a>
+        #endif
+        #if totalPackages != 0
+        <strong>Package {{ packageStart + 1  }} through {{ packageStart + packageCount  }} of {{ totalPackages }}</strong>
+        #endif
+        #if packageStart + packageCount < totalPackages
+        <a href="index?packageStart={{ packageStart + packageRange }}{{ util.passthrough('packageOrder', 'buildOrder', 'buildStart', 'taskOrder', 'taskStart') }}#packagelist">&gt;&gt;&gt;</a>
+        #endif
+      </td>
+    </tr>
+    <tr class="list-header">
+      <th><a href="index?packageOrder={{ util.toggleOrder('package_name', 'packageOrder') }}{{ util.passthrough('buildOrder', 'buildStart', 'taskOrder', 'taskStart') }}#packagelist">Name</a> {{ util.sortImage('package_name', 'packageOrder') }}</th>
+      <th><a href="index?packageOrder={{ util.toggleOrder('tag_name', 'packageOrder') }}{{ util.passthrough('buildOrder', 'buildStart', 'taskOrder', 'taskStart') }}#packagelist">Tag</a> {{ util.sortImage('tag_name', 'packageOrder') }}</th>
+      <th><a href="index?packageOrder={{ util.toggleOrder('blocked', 'packageOrder') }}{{ util.passthrough('buildOrder', 'buildStart', 'taskOrder', 'taskStart') }}#packagelist">Included?</a> {{ util.sortImage('blocked', 'packageOrder') }}</th>
+    </tr>
+    #for package in packages
+    <tr class="{{ rowToggle(loop) }}">
+      <td><a href="packageinfo?packageID={{ package.package_id }}">{{ package.package_name }}</a></td>
+      <td><a href="taginfo?tagID={{ package.tag_id }}">{{ package.tag_name }}</a></td>
+      #set included = package.blocked and 'no' or 'yes'
+      <td>{{ util.imageTag(included) }}</td>
+    </tr>
+    #endfor
+    #if totalPackages == 0
+    <tr class="row-odd">
+      <td colspan="3">No packages</td>
+    </tr>
+    #endif
+  </table>
+  
+  <br/>
+  
+  <div class="dataHeader" id="notificationlist">Your Notifications</div>
+  <table class="data-list">
+    <tr>
+      <td colspan="5"></td>
+    </tr>
+    <tr class="list-header">
+      <th>Package</th>
+      <th>Tag</th>
+      <th>Type</th>
+      <th></th>
+      <th></th>
+    </tr>
+    #for notif in notifs
+    <tr class="{{ rowToggle(loop) }}">
+      <td>{{ notif.package.name if notif.package else 'all' }}</td>
+      <td>{{ notif.tag.name if notif.tag else 'all' }}</td>
+      <td>{{ 'success only' if notif.success_only else 'all' }}</td>
+      <td><a href="notificationedit?notificationID={{ notif.id }}{{ util.authToken() }}">edit</a></td>
+      <td><a href="notificationdelete?notificationID={{ notif.id }}{{ util.authToken() }}">delete</a></td>
+    </tr>
+    #endfor
+    #if (notifs |length) == 0
+    <tr class="row-odd">
+      <td colspan="5">No notifications</td>
+    </tr>
+    #endif
+  </table>
+
+  <br/>
+  <a href="notificationcreate{{ util.authToken(first=True) }}">Add a Notification</a>
+  #endif
+    
+#include "footer.html.j2"

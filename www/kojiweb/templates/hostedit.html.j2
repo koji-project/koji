@@ -1,0 +1,56 @@
+
+#include "header.html.j2"
+
+  <h4>Edit host {{ host.name }}</h4>
+
+  <form action="hostedit">
+    {{ util.authToken(form=True) }}
+    <table>
+      <tr>
+        <th>Name</th>
+        <td>{{ host.name }}</td>
+      </tr>
+      <tr>
+        <th>ID</th>
+        <td>
+          {{ host.id }}
+          <input type="hidden" name="hostID" value="{{ host.id }}"/>
+        </td>
+      </tr>
+      <tr>
+        <th>Arches</th>
+        <td><input type="text" name="arches" value="{{ host.arches }}"/></td>
+      </tr>
+      <tr>
+        <th>Capacity</th>
+        <td><input type="text" name="capacity" value="{{ host.capacity }}"/></td>
+      </tr>
+      <tr>
+        <th>Description</th>
+        <td><textarea name="description" rows="6" cols="50">{{ host.description or '' }}</textarea></td>
+      </tr>
+      <tr>
+        <th>Comment</th>
+        <td><textarea name="comment" rows="2" cols="50">{{ host.comment or '' }}</textarea></td>
+      </tr>
+      <tr>
+        <th>Enabled?</th>
+        <td><input type="checkbox" name="enabled" value="yes"{{ ' checked' if host.enabled else '' }}/>
+      </tr>
+      <tr>
+        <th>Channels</th>
+        <td>
+          <select name="channels" multiple="multiple">
+            #for channel in allChannels
+            <option value="{{ channel.name }}" {{ 'selected' if channel in hostChannels else '' }}>{{ channel.name }}</option>
+            #endfor
+          </select>
+        </td>
+      <tr>
+        <td><button type="submit" name="save" value="Save">Save</button></td>
+        <td><button type="submit" name="cancel" value="Cancel">Cancel</button></td>
+      </tr>
+    </table>
+  </form>
+
+#include "footer.html.j2"

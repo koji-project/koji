@@ -1,0 +1,37 @@
+#include "header.html.j2"
+
+<h4>API reference <small>(hub version: {{ koji_version }}, web version: {{ web_version }})</small></h4>
+
+Various constants used in API calls can be found in first part of <a
+href="https://pagure.io/koji/blob/master/f/koji/__init__.py">koji module</a>.
+Exceptions which can be raised in python client are just after constants section.
+More details about XMLRPC interface are documented
+<a href="https://docs.pagure.org/koji/using_the_koji_build_system/#koji-xmlrpc-api">here</a>.
+
+Basic anonymous client in python would look like this:
+
+<pre>
+import koji
+
+mytag = "mytag"
+session = koji.ClientSession("{{ koji_hub_url }}")
+try:
+    repo_info = session.getRepo(mytag, koji.REPO_STATES["READY"], dist=True)
+    if not repo_info:
+        print(f"There is no active dist repo for {mytag}")
+except koji.GenericError:
+    print(f"Tag {mytag} doesn't exist")
+</pre>
+
+<h4>List of API calls</h4>
+<ul>
+#for method in methods
+  <li>
+     <pre><b>{{ method['name'] ~ method['argdesc'] }}</b>
+  {{ method['doc'] }}
+     </pre>
+  </li>
+#endfor
+</ul>
+
+#include "footer.html.j2"

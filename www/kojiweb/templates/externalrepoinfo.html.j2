@@ -1,0 +1,29 @@
+#include "header.html.j2"
+
+  <h4>Information for external repo <a href="externalrepoinfo?extrepoID={{ extRepo.id }}">{{ extRepo.name }}</a></h4>
+
+  <table>
+    <tr>
+      <th>Name</th><td>{{ extRepo.name }}</td>
+    </tr>
+    <tr>
+      <th>ID</th><td>{{ extRepo.id }}</td>
+    </tr>
+    <tr>
+      <th>URL</th><td><a href="{{ extRepo.url }}">{{ extRepo.url }}</a></td>
+    </tr>
+    <tr>
+      <th>Tags using this external repo</th>
+      <td>
+        #if repoTags|length
+        #for tag in repoTags
+        <a href="taginfo?tagID={{ tag.tag_id }}">{{ tag.tag_name }}</a><br/>
+        #endfor
+        #else
+        No tags
+        #endif
+      </td>
+    </tr>
+  </table>
+
+#include "footer.html.j2"

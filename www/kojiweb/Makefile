@@ -1,4 +1,4 @@
-SUBDIRS = includes
+SUBDIRS = templates
 
 SERVERDIR = /usr/share/koji-web/scripts
 FILES = $(wildcard *.py *.html.j2)

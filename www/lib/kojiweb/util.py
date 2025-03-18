@@ -157,10 +157,6 @@ def get_jinja_env(dirpath):
 
 
 def _genHTML(environ, fileName):
-    reqdir = os.path.dirname(environ['SCRIPT_FILENAME'])
-    if os.getcwd() != reqdir:
-        os.chdir(reqdir)
-
     if 'koji.currentUser' in environ:
         environ['koji.values']['currentUser'] = environ['koji.currentUser']
         environ['koji.values']['greeting'] = random.choice(greetings)
@@ -183,6 +179,7 @@ def _genHTML(environ, fileName):
         else:
             environ['koji.values']['LoginDisabled'] = False
 
+    reqdir = os.path.dirname(environ['SCRIPT_FILENAME']) + '/templates'
     env = get_jinja_env(reqdir)
     template = env.get_template(fileName)
     return template.render(**environ['koji.values'])

@@ -1,0 +1,26 @@
+{% include "header.html.j2" %}
+
+<h4>Information for repo {{ repo_id }}</h4>
+
+{% if repo %}
+<table>
+  <tr><th>ID</th><td>{{ repo.id }}</td><th></tr>
+  <tr><th>Tag</th><td><a href="taginfo?tagID={{ repo.tag_id }}">{{ repo.tag_name }}</a></td></tr>
+  {% if repo.task_id %}
+  <tr><th>Task ID</th><td><a href="taskinfo?taskID={{ repo.task_id }}">{{ repo.task_id }}</a></td></tr>
+  {% endif %}
+  <tr><th>State</th><td class="repo{{ state_name }}">{{ state_name }}</td></tr>
+  <tr><th>Event</th><td>{{ repo.create_event }} ({{ create_time }})</td></tr>
+  {%- if state_name != 'deleted' %}
+  <tr><th>URL</th><td><a href="{{ url }}">repodata</a></td></tr>
+  <tr><th>Repo json</th><td><a href="{{ repo_json }}">repo.json</a></td></tr>
+  {%- endif %}
+  <tr><th>Dist repo?</th><td class="{{ repo.dist | lower }}">{{ repo.dist }}</td></tr>
+  <tr><th>Number of buildroots: </th><td><a href="buildroots?repoID={{ repo.id }}">{{ numBuildroots }}</a></td></tr>
+</table>
+{% else %}
+Repo {{ repo_id }} not found.
+{% endif %}
+
+
+{% include "footer.html.j2" %}
