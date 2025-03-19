@@ -28,7 +28,7 @@ except koji.GenericError:
 #for method in methods
   <li>
      <pre><b>{{ method['name'] ~ method['argdesc'] }}</b>
-  {{ method['doc'] }}
+  {{ method['doc'] if method['doc'] is not none else '' }}
      </pre>
   </li>
 #endfor
