@@ -6794,7 +6794,6 @@ def cg_init_build(cg, data):
                       other values will be ignored anyway (owner, state, ...)
     :return: dict with build_id and token
     """
-    reject_draft(data)
     assert_cg(cg)
     cg_id = lookup_name('content_generator', cg, strict=True)['id']
     data['owner'] = context.session.user_id
@@ -6994,6 +6993,7 @@ class CG_Importer(object):
             'release': self.buildinfo['release'],
             'btypes': list(self.typeinfo),
             'source': self.buildinfo.get('source'),
+            'draft': self.buildinfo.get('draft'),
             'metadata_only': self.metadata_only,
             'cg_list': [self.cg],
             # TODO: provide more data
@@ -7058,9 +7058,19 @@ class CG_Importer(object):
                 raise koji.GenericError('Build is owned by task %(task_id)s' % buildinfo)
             if buildinfo['state'] != koji.BUILD_STATES['BUILDING']:
                 raise koji.GenericError('Build ID %s is not in BUILDING state' % build_id)
-            if buildinfo['name'] != metadata['build']['name'] or \
-               buildinfo['version'] != metadata['build']['version'] or \
-               buildinfo['release'] != metadata['build']['release']:
+            if buildinfo['draft'] != metadata['build'].get('draft', False):
+                raise koji.GenericError("Draft field does not match reservation (build id = %s)"
+                                        % build_id)
+            if (buildinfo['name'] != metadata['build']['name'] or
+                    buildinfo['version'] != metadata['build']['version']):
+                raise koji.GenericError("Build (%i) NVR is different" % build_id)
+            # release is complicated by draft field
+            if buildinfo['draft']:
+                # metadata should have the target release, convert it before we check
+                release = koji.gen_draft_release(metadata['build']['release'], build_id)
+            else:
+                release = metadata['build']['release']
+            if buildinfo['release'] != release:
                 raise koji.GenericError("Build (%i) NVR is different" % build_id)
             if ('epoch' in metadata['build'] and
                     buildinfo['epoch'] != metadata['build']['epoch']):
@@ -7070,16 +7080,16 @@ class CG_Importer(object):
         elif token is not None:
             raise koji.GenericError('Reservation token given, but no build_id '
                                     'in metadata')
+
         else:
             # no build reservation
             buildinfo = get_build(metadata['build'], strict=False)
             if buildinfo:
                 if (koji.BUILD_STATES[buildinfo['state']] not in ('CANCELED', 'FAILED')):
-                    raise koji.GenericError("Build already exists: %r" % buildinfo)
+                    raise koji.GenericError("Build already exists: %(nvr)s (id=%(id)s)"
+                                            % buildinfo)
                 # note: the checks in recycle_build will also apply when we call new_build later
-
-        if buildinfo:
-            reject_draft(buildinfo)
+                # our state check is stricter than the one in recycle_build
 
         # gather needed data
         buildinfo = dslice(metadata['build'], ['name', 'version', 'release', 'extra', 'source'])
@@ -7087,6 +7097,7 @@ class CG_Importer(object):
             buildinfo['build_id'] = metadata['build']['build_id']
         # epoch is not in the metadata spec, but we allow it to be specified
         buildinfo['epoch'] = metadata['build'].get('epoch', None)
+        buildinfo['draft'] = metadata['build'].get('draft', False)
         buildinfo['start_time'] = convert_timestamp(float(metadata['build']['start_time']))
         buildinfo['completion_time'] = convert_timestamp(float(metadata['build']['end_time']))
         owner = metadata['build'].get('owner', None)
