@@ -416,6 +416,104 @@ def error_reply(start_response, status, response, extra_headers=None):
     return [response]
 
 
+# Known configuration options, used by load_config
+config_map = [
+    # option, type, default
+    ['DBName', 'string', None],
+    ['DBUser', 'string', None],
+    ['DBHost', 'string', None],
+    ['DBhost', 'string', None],   # alias for backwards compatibility
+    ['DBPort', 'integer', None],
+    ['DBPass', 'string', None],
+    ['DBConnectionString', 'string', None],
+    ['KojiDir', 'string', None],
+
+    ['ProxyPrincipals', 'string', ''],
+    ['HostPrincipalFormat', 'string', None],
+    ['AllowedKrbRealms', 'string', '*'],
+    # TODO:  this option should be turned True in 1.34
+    ['DisableURLSessions', 'boolean', False],
+
+    ['DNUsernameComponent', 'string', 'CN'],
+    ['ProxyDNs', 'string', ''],
+
+    ['CheckClientIP', 'boolean', True],
+
+    ['LoginCreatesUser', 'boolean', True],
+    ['AllowProxyAuthType', 'boolean', False],
+    ['KojiWebURL', 'string', 'http://localhost.localdomain/koji'],
+    ['EmailDomain', 'string', None],
+    ['NotifyOnSuccess', 'boolean', True],
+    ['DisableNotifications', 'boolean', False],
+
+    ['Plugins', 'string', ''],
+    ['PluginPath', 'string', '/usr/lib/koji-hub-plugins'],
+
+    ['KojiDebug', 'boolean', False],
+    ['KojiTraceback', 'string', None],
+    ['VerbosePolicy', 'boolean', False],
+
+    ['LogLevel', 'string', 'WARNING'],
+    ['LogFormat', 'string',
+     '%(asctime)s [%(levelname)s] m=%(method)s u=%(user_name)s p=%(process)s r=%(remoteaddr)s '
+     '%(name)s: %(message)s'],
+
+    ['MissingPolicyOk', 'boolean', True],
+    ['EnableMaven', 'boolean', False],
+    ['EnableWin', 'boolean', False],
+
+    ['RLIMIT_AS', 'string', None],
+    ['RLIMIT_CORE', 'string', None],
+    ['RLIMIT_CPU', 'string', None],
+    ['RLIMIT_DATA', 'string', None],
+    ['RLIMIT_FSIZE', 'string', None],
+    ['RLIMIT_MEMLOCK', 'string', None],
+    ['RLIMIT_NOFILE', 'string', None],
+    ['RLIMIT_NPROC', 'string', None],
+    ['RLIMIT_OFILE', 'string', None],  # alias for RLIMIT_NOFILE
+    ['RLIMIT_RSS', 'string', None],
+    ['RLIMIT_STACK', 'string', None],
+
+    ['MemoryWarnThreshold', 'integer', 5000],
+    ['MaxRequestLength', 'integer', 4194304],
+
+    ['LockOut', 'boolean', False],
+    ['ServerOffline', 'boolean', False],
+    ['OfflineMessage', 'string', None],
+
+    ['MaxNameLengthInternal', 'integer', 256],
+    ['RegexNameInternal', 'string', r'^[A-Za-z0-9/_.+-]+$'],
+    ['RegexUserName', 'string', r'^[A-Za-z0-9/_.@-]+$'],
+
+    ['RPMDefaultChecksums', 'string', 'md5 sha256'],
+
+    ['SessionRenewalTimeout', 'integer', 1440],
+
+    # scheduler options
+    ['MaxJobs', 'integer', 15],
+    ['CapacityOvercommit', 'integer', 5],
+    ['ReadyTimeout', 'integer', 180],
+    ['AssignTimeout', 'integer', 300],
+    ['SoftRefusalTimeout', 'integer', 900],
+    ['HostTimeout', 'integer', 900],
+    ['RunInterval', 'integer', 60],
+
+    # repo options
+    ['MaxRepoTasks', 'integer', 10],
+    ['MaxRepoTasksMaven', 'integer', 2],
+    ['RepoRetries', 'integer', 3],
+    ['RequestCleanTime', 'integer', 60 * 24],  # in minutes
+    ['AllowNewRepo', 'boolean', True],
+    ['RepoLag', 'integer', 3600],
+    ['RepoAutoLag', 'integer', 7200],
+    ['RepoLagWindow', 'integer', 600],
+    ['RepoQueueUser', 'string', 'kojira'],
+    ['DebuginfoTags', 'string', ''],
+    ['SourceTags', 'string', ''],
+    ['SeparateSourceTags', 'string', ''],
+]
+
+
 def load_config(environ):
     """Load configuration options
 
@@ -437,111 +535,19 @@ def load_config(environ):
     cfdir = environ.get('koji.hub.ConfigDir', '/etc/koji-hub/hub.conf.d')
     config = koji.read_config_files([cfdir, (cf, True)], raw=True)
 
-    cfgmap = [
-        # option, type, default
-        ['DBName', 'string', None],
-        ['DBUser', 'string', None],
-        ['DBHost', 'string', None],
-        ['DBhost', 'string', None],   # alias for backwards compatibility
-        ['DBPort', 'integer', None],
-        ['DBPass', 'string', None],
-        ['DBConnectionString', 'string', None],
-        ['KojiDir', 'string', None],
-
-        ['ProxyPrincipals', 'string', ''],
-        ['HostPrincipalFormat', 'string', None],
-        ['AllowedKrbRealms', 'string', '*'],
-        # TODO:  this option should be turned True in 1.34
-        ['DisableURLSessions', 'boolean', False],
-
-        ['DNUsernameComponent', 'string', 'CN'],
-        ['ProxyDNs', 'string', ''],
-
-        ['CheckClientIP', 'boolean', True],
-
-        ['LoginCreatesUser', 'boolean', True],
-        ['AllowProxyAuthType', 'boolean', False],
-        ['KojiWebURL', 'string', 'http://localhost.localdomain/koji'],
-        ['EmailDomain', 'string', None],
-        ['NotifyOnSuccess', 'boolean', True],
-        ['DisableNotifications', 'boolean', False],
-
-        ['Plugins', 'string', ''],
-        ['PluginPath', 'string', '/usr/lib/koji-hub-plugins'],
-
-        ['KojiDebug', 'boolean', False],
-        ['KojiTraceback', 'string', None],
-        ['VerbosePolicy', 'boolean', False],
-
-        ['LogLevel', 'string', 'WARNING'],
-        ['LogFormat', 'string',
-         '%(asctime)s [%(levelname)s] m=%(method)s u=%(user_name)s p=%(process)s r=%(remoteaddr)s '
-         '%(name)s: %(message)s'],
-
-        ['MissingPolicyOk', 'boolean', True],
-        ['EnableMaven', 'boolean', False],
-        ['EnableWin', 'boolean', False],
-
-        ['RLIMIT_AS', 'string', None],
-        ['RLIMIT_CORE', 'string', None],
-        ['RLIMIT_CPU', 'string', None],
-        ['RLIMIT_DATA', 'string', None],
-        ['RLIMIT_FSIZE', 'string', None],
-        ['RLIMIT_MEMLOCK', 'string', None],
-        ['RLIMIT_NOFILE', 'string', None],
-        ['RLIMIT_NPROC', 'string', None],
-        ['RLIMIT_OFILE', 'string', None],  # alias for RLIMIT_NOFILE
-        ['RLIMIT_RSS', 'string', None],
-        ['RLIMIT_STACK', 'string', None],
-
-        ['MemoryWarnThreshold', 'integer', 5000],
-        ['MaxRequestLength', 'integer', 4194304],
-
-        ['LockOut', 'boolean', False],
-        ['ServerOffline', 'boolean', False],
-        ['OfflineMessage', 'string', None],
-
-        ['MaxNameLengthInternal', 'integer', 256],
-        ['RegexNameInternal', 'string', r'^[A-Za-z0-9/_.+-]+$'],
-        ['RegexUserName', 'string', r'^[A-Za-z0-9/_.@-]+$'],
-
-        ['RPMDefaultChecksums', 'string', 'md5 sha256'],
-
-        ['SessionRenewalTimeout', 'integer', 1440],
-
-        # scheduler options
-        ['MaxJobs', 'integer', 15],
-        ['CapacityOvercommit', 'integer', 5],
-        ['ReadyTimeout', 'integer', 180],
-        ['AssignTimeout', 'integer', 300],
-        ['SoftRefusalTimeout', 'integer', 900],
-        ['HostTimeout', 'integer', 900],
-        ['RunInterval', 'integer', 60],
-
-        # repo options
-        ['MaxRepoTasks', 'integer', 10],
-        ['MaxRepoTasksMaven', 'integer', 2],
-        ['RepoRetries', 'integer', 3],
-        ['RequestCleanTime', 'integer', 60 * 24],  # in minutes
-        ['AllowNewRepo', 'bool', True],
-        ['RepoLag', 'integer', 3600],
-        ['RepoAutoLag', 'integer', 7200],
-        ['RepoLagWindow', 'integer', 600],
-        ['RepoQueueUser', 'str', 'kojira'],
-        ['DebuginfoTags', 'str', ''],
-        ['SourceTags', 'str', ''],
-        ['SeparateSourceTags', 'str', ''],
-    ]
     opts = {}
-    for name, dtype, default in cfgmap:
+    for name, dtype, default in config_map:
         key = ('hub', name)
         if config and config.has_option(*key):
             if dtype == 'integer':
                 opts[name] = config.getint(*key)
             elif dtype == 'boolean':
                 opts[name] = config.getboolean(*key)
-            else:
+            elif dtype == 'string':
                 opts[name] = config.get(*key)
+            else:
+                # anything else is an error in the map definition
+                raise ValueError(f'Invalid data type {dtype} for {name} option')
             continue
         opts[name] = default
     if opts['DBHost'] is None:
