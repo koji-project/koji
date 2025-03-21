@@ -12,7 +12,7 @@
       <th>ID</th><td>$user.id</td>
     </tr>
     <tr>
-      <th>Tasks</th><td><a href="tasks?$util.passthrough($self, 'owner')&state=all">$taskCount</a></td>
+      <th>Tasks</th><td><a href="tasks?state=all$util.passthrough($self, 'owner')">$taskCount</a></td>
     </tr>
     <tr>
       <th id="packagelist">Packages</th>
