@@ -4225,7 +4225,7 @@ def add_external_repo_to_tag(tag_info, repo_info, priority, merge_mode='koji', a
     repo_id = repo['id']
 
     if arches is not None:
-        arches = koji.parse_arches(arches, strict=True)
+        arches = koji.parse_arches(arches, strict=False)
 
     priority = convert_value(priority, cast=int)
 
