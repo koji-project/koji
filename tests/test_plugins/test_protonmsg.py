@@ -333,6 +333,9 @@ cacert = /etc/koji-hub/plugins/ca.pem
 topic_prefix = koji
 connect_timeout = 10
 send_timeout = 60
+
+[message]
+ttl = 7200
 """)
         conf = ConfigParser()
         if six.PY2:
@@ -401,6 +404,8 @@ send_timeout = 60
     @patch('protonmsg.SSLDomain')
     def test_send_msgs(self, SSLDomain, Message):
         event = MagicMock()
+        msg = mock.MagicMock()
+        Message.return_value = msg
         self.handler.on_start(event)
         self.handler.msgs = [{'address': 'testtopic', 'props': {'testheader': 1},
                               'body': '"test body"'}]
@@ -408,6 +413,7 @@ send_timeout = 60
         event.container.create_sender.assert_called_once_with(event.connection,
                                                               target='topic://koji.testtopic')
         Message.assert_called_once_with(properties={'testheader': 1}, body='"test body"')
+        self.assertEqual(int(msg.ttl), 7200)
         sender = event.container.create_sender.return_value
         sender.send.assert_called_once_with(Message.return_value)
 
