@@ -13504,8 +13504,8 @@ class RootExports(object):
         if userType is not None:
             if isinstance(userType, int):
                 userType = [userType]
-            else:
-                raise koji.ParameterError("userType must be integer or None")
+            elif not isinstance(userType, (list, tuple)):
+                raise koji.ParameterError("userType must be integer, list, tuple or None")
             clauses.append('usertype IN %(userType)s')
         fields = [
             ('users.id', 'id'),
