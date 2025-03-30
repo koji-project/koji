@@ -14,6 +14,9 @@ class TestHubConfig(unittest.TestCase):
 
     def setUp(self):
         self.context = mock.patch('kojihub.kojihub.context').start()
+        # load_config modfies pathinfo, make sure it is restored
+        mock.patch('koji.pathinfo').start()
+        mock.patch('koji.BASEDIR').start()
         self.tempdir = tempfile.mkdtemp()
         self.environ = {
             'koji.hub.ConfigFile': self.tempdir + '/hub.conf',
