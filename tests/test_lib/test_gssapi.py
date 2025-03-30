@@ -15,6 +15,8 @@ class TestGSSAPI(unittest.TestCase):
         self.session = koji.ClientSession('https://koji.example.com/kojihub',
                                           {})
         self.session._callMethod = mock.MagicMock(name='_callMethod')
+        self.session.logout = mock.MagicMock(name='logout')
+        # logout bypasses _callMethod. mock needed for __del__ to work
 
     def tearDown(self):
         mock.patch.stopall()
