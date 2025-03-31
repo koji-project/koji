@@ -377,7 +377,7 @@ class TaskScheduler(object):
         refusals = self.get_refusals()
         for task in self.free_tasks:
             task['_hosts'] = []
-            min_avail = min(0, task['weight'] - self.capacity_overcommit)
+            min_avail = max(0, task['weight'] - self.capacity_overcommit)
             h_refused = refusals.get(task['task_id'], {})
             for host in self.hosts_by_bin.get(task['_bin'], []):
                 if (host['ready'] and
@@ -402,7 +402,7 @@ class TaskScheduler(object):
 
         # tasks are already in priority order
         for task in self.free_tasks:
-            min_avail = task['weight'] - self.capacity_overcommit
+            min_avail = max(0, task['weight'] - self.capacity_overcommit)
             task['_hosts'].sort(key=lambda h: h['_rank'])
             logger.debug('Task %i choices: %s', task['task_id'],
                          [(h['name'], "%(_rank).2f" % h) for h in task['_hosts']])
