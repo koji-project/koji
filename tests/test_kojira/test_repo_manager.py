@@ -145,8 +145,9 @@ class RepoManagerTest(unittest.TestCase):
         self.assertEqual(set(self.mgr.repos), set([r['id'] for r in repos]))
 
     # using autospec so we can grab self from mock_calls
+    @mock.patch.object(kojira.ManagedRepo, 'is_latest', autospec=True)
     @mock.patch.object(kojira.ManagedRepo, 'delete_check', autospec=True)
-    def test_update_repos(self, delete_check):
+    def test_update_repos(self, delete_check, is_latest):
         self.options.init_timeout = 3600
         self.options.repo_lifetime = 3600 * 24
         self.options.dist_repo_lifetime = 3600 * 24
@@ -168,6 +169,7 @@ class RepoManagerTest(unittest.TestCase):
         repos[2]['state'] = koji.REPO_EXPIRED
 
         # do the run
+        is_latest.return_value = False
         self.session.repo.query.return_value = repos
         with mock.patch('time.time') as _time:
             _time.return_value = base_ts + 100  # shorter than all timeouts

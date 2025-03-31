@@ -144,24 +144,57 @@ class ManagedRepo(object):
             return time.time() - self.first_seen
 
     def expire_check(self):
-        if self.state != koji.REPO_READY or self.dist:
+        if self.state != koji.REPO_READY:
             return
 
         if self.data['end_event'] is None and not self.data['custom_opts']:
             # repo is current and has default options. keep it
-            return
-        # otherwise repo is either obsolete or custom
-        if self.get_age() > self.options.repo_lifetime:
-            self.expire()
-
-    def dist_expire_check(self):
-        """Check to see if a dist repo should be expired"""
-        if not self.dist or self.state != koji.REPO_READY:
+            # this covers current dist repos, where custom_opts=None
             return
 
-        if self.get_age() > self.options.dist_repo_lifetime:
-            self.logger.info("Expiring dist repo %(id)s for tag %(tag_name)s", self.data)
-            self.expire()
+        # keep repos for configured lifetime
+        if self.dist:
+            lifetime = self.options.dist_repo_lifetime
+        else:
+            lifetime = self.options.repo_lifetime
+        if self.get_age() <= lifetime:
+            return
+
+        # remaining checks are more expensive, don't recheck every cycle
+        last_check = getattr(self, 'expire_check_ts', None)
+        if last_check and time.time() - last_check < self.options.recheck_period:
+            return
+        self.expire_check_ts = time.time()
+
+        # keep latest default repo in some cases, even if not current
+        if self.dist:
+            # no target check -- they are irrelevant for dist repos
+            if self.is_latest():
+                return
+        elif not self.data['custom_opts']:
+            # normal repo, default options
+            targets = self.session.getBuildTargets(buildTagID=self.data['tag_id'])
+            if targets and self.is_latest():
+                return
+
+        self.expire()
+
+    def is_latest(self):
+        """Check if repo is latest for its tag (not necessarily current)"""
+        # similar query to symlink_if_latest on hub
+        clauses = [
+            ['tag_id', '=', self.data['tag_id']],
+            ['state', '=', koji.REPO_READY],
+            ['create_event', '>', self.data['create_event']],
+        ]
+        if self.dist:
+            clauses.append(['dist', '=', True])
+        else:
+            clauses.append(['dist', '=', False])
+            clauses.append(['custom_opts', '=', '{}'])
+            # ^this clause is only for normal repos, dist repos have custom_opts=None
+        newer = self.session.repo.query(clauses, ['id'])
+        return not newer  # True if no newer matching repo
 
     def delete_check(self):
         """Delete the repo if appropriate"""
@@ -618,10 +651,7 @@ class RepoManager(object):
             if repo.state == koji.REPO_INIT:
                 repo.check_init()
             elif repo.state == koji.REPO_READY:
-                if repo.dist:
-                    repo.dist_expire_check()
-                else:
-                    repo.expire_check()
+                repo.expire_check()
             elif repo.state == koji.REPO_EXPIRED:
                 repo.delete_check()
             elif repo.state == koji.REPO_PROBLEM:
@@ -756,7 +786,8 @@ def get_options():
                 'expired_repo_lifetime': None,  # default handled below
                 'deleted_repo_lifetime': None,  # compat alias for expired_repo_lifetime
                 'init_timeout': 7200,
-                'reference_recheck_period': 3600,
+                'recheck_period': 3600,
+                'reference_recheck_period': None,  # defaults to recheck_period
                 'no_repo_effective_age': 2 * 24 * 3600,
                 'check_external_repos': True,
                 'sleeptime': 15,
@@ -770,7 +801,7 @@ def get_options():
                     'retry_interval', 'max_retries', 'offline_retry_interval',
                     'max_delete_processes', 'dist_repo_lifetime',
                     'sleeptime', 'expired_repo_lifetime',
-                    'repo_lifetime', 'reference_recheck_period')
+                    'repo_lifetime', 'recheck_period', 'reference_recheck_period')
         str_opts = ('topdir', 'server', 'user', 'password', 'logfile', 'principal', 'keytab',
                     'cert', 'serverca', 'ccache')
         bool_opts = ('verbose', 'debug', 'ignore_stray_repos', 'offline_retry',
@@ -810,6 +841,8 @@ def get_options():
             options.expired_repo_lifetime = options.deleted_repo_lifetime
     elif options.expired_repo_lifetime is None:
         options.expired_repo_lifetime = 7 * 24 * 3600
+    if options.reference_recheck_period is None:
+        options.reference_recheck_period = options.recheck_period
     if options.logfile in ('', 'None', 'none'):
         options.logfile = None
     # special handling for cert defaults
