@@ -62,7 +62,6 @@ except ImportError:
 import dnf
 
 import Cheetah.Template
-import jinja2
 import librepo
 import requests
 import rpm
@@ -2105,7 +2104,6 @@ class WrapperRPMTask(BaseBuildTask):
     def handler(self, spec_url, build_target, build, task, opts=None):
         if not opts:
             opts = {}
-        self.opts = opts
 
         if not (build or task):
             raise koji.BuildError('build and/or task must be specified')
@@ -2288,8 +2286,13 @@ class WrapperRPMTask(BaseBuildTask):
 
         # get the source before chown, git > 2.35.2 would refuse to that later
         source = scm.get_source()
-
-        engine, spec_template = self.find_template(specdir)
+        spec_template = None
+        for path, dir, files in os.walk(specdir):
+            files.sort()
+            for filename in files:
+                if filename.endswith('.spec.tmpl'):
+                    spec_template = os.path.join(path, filename)
+                    break
         if not spec_template:
             raise koji.BuildError('no spec file template found at URL: %s' % spec_url)
 
@@ -2310,12 +2313,13 @@ class WrapperRPMTask(BaseBuildTask):
 
         # change directory to the specdir to the template can reference files there
         os.chdir(specdir)
+        contents = Cheetah.Template.Template(file=spec_template,
+                                             searchList=[values]).respond()
+        contents = contents.encode('utf-8')
 
-        if engine == 'cheetah':
-            specfile = self.handle_cheetah(spec_template, values)
-        elif engine == 'jinja':
-            specfile = self.handle_jinja(spec_template, values)
-
+        specfile = spec_template[:-5]
+        with open(specfile, 'wb') as specfd:
+            specfd.write(contents)
         uploadpath = self.getUploadDir()
         self.session.uploadWrapper(specfile, uploadpath)
 
@@ -2470,51 +2474,6 @@ class WrapperRPMTask(BaseBuildTask):
         buildroot.expire()
 
         return results
-
-    def find_template(self, specdir):
-        # historically, spec templates were cheetah templates
-        # now we support jinja as well
-        spec_template = None
-        engine = None
-        for dirpath, dirnames, filenames in os.walk(specdir):
-            for filename in sorted(filenames):
-                if filename.endswith('.spec.tmpl'):
-                    spec_template = os.path.join(dirpath, filename)
-                    engine = 'cheetah'
-                    break
-                if self.opts.get('jinja') and filename.endswith(('.spec.jinja', '.spec.j2')):
-                    spec_template = os.path.join(dirpath, filename)
-                    engine = 'jinja'
-                    break
-        return engine, spec_template
-
-    def handle_cheetah(self, spec_template, values):
-        """Generate specfile from cheetah template"""
-        contents = Cheetah.Template.Template(file=spec_template,
-                                             searchList=[values]).respond()
-        contents = contents.encode('utf-8')
-
-        # strip .tmpl
-        specfile = spec_template[:-5]
-        with open(specfile, 'wb') as specfd:
-            specfd.write(contents)
-        return specfile
-
-    def handle_jinja(self, spec_template, values):
-        """Generate specfile from jinja template"""
-        env = jinja2.Environment(
-                loader=jinja2.FileSystemLoader('.'),
-                autoescape=False  # not html
-        )
-        path = os.path.relpath(spec_template)
-        template = env.get_template(path)
-        contents = template.render(**values)
-
-        # strip .j2 or .jinja ext
-        specfile = os.path.splitext(spec_template)[0]
-        with open(specfile, 'wt') as specfd:
-            specfd.write(contents)
-        return specfile
 
 
 class ChainMavenTask(MultiPlatformTask):
