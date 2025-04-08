@@ -222,6 +222,23 @@ class TestDoSchedule(BaseTest):
         self.assertEqual(t_assigned, list(range(5)))
         self.assertEqual(h_used, list(range(5)))
 
+    def test_stop_at_capacity(self):
+        # just one host
+        host = self.mkhost(id=1, capacity=5.0)
+        self.sched._get_hosts.return_value = [host]
+        self.sched.get_hosts()
+        # and more tasks than will fit
+        self.sched.free_tasks = [self.mktask(task_id=n, weight=1.0) for n in range(10)]
+
+        self.sched.do_schedule()
+
+        # 5 tasks with weight=1.0 should fill up capacity
+        # (overcommit only applies for a single task going over)
+        self.assertEqual(len(self.assigns), 5)
+        t_assigned = [t['task_id'] for t, h in self.assigns]
+        t_assigned.sort()
+        self.assertEqual(t_assigned, list(range(5)))
+
     def test_active_tasks(self):
         self.context.opts['CapacityOvercommit'] = 1.0
         hosts = [self.mkhost(id=n, capacity=2.0) for n in range(5)]
