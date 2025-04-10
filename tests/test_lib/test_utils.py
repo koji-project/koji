@@ -299,8 +299,7 @@ class ConfigFileTestCase(unittest.TestCase):
                                        six.moves.configparser.ConfigParser.__class__))
         self.real_parser_clz.assert_called_once()
         if six.PY2:
-            self.real_parser_clz.return_value.read.assert_not_called()
-            self.real_parser_clz.return_value.readfp.assert_called_once()
+            self.real_parser_clz.return_value.read.assert_called_once_with([files])
         else:
             self.real_parser_clz.return_value.read.assert_called_once_with([files], encoding='utf8')
 
@@ -311,10 +310,9 @@ class ConfigFileTestCase(unittest.TestCase):
 
         self.real_parser_clz.assert_called_once()
         if six.PY2:
-            self.real_parser_clz.return_value.read.assert_not_called()
-            self.real_parser_clz.return_value.readfp.assert_called()
+            self.real_parser_clz.return_value.read.assert_called_once()
         else:
-            self.real_parser_clz.return_value.read.assert_called()
+            self.real_parser_clz.return_value.read.assert_called_once()
 
         # tuple as config_files
         self.reset_mock()
@@ -373,15 +371,13 @@ class ConfigFileTestCase(unittest.TestCase):
             conf = koji.read_config_files(files)
         listdir_mock.assert_has_calls([call('gooddir'), call('emptydir')])
         self.real_parser_clz.assert_called_once()
+        expected_files = ['test1.conf', 'gooddir/test1-1.conf', 'gooddir/test1-2.conf',
+                          'test2.conf']
         if six.PY2:
-            self.real_parser_clz.return_value.readfp.assert_called()
+            self.real_parser_clz.return_value.read.assert_called_once_with(expected_files)
         else:
-            self.real_parser_clz.return_value.read.assert_called_once_with(
-                ['test1.conf',
-                'gooddir/test1-1.conf',
-                'gooddir/test1-2.conf',
-                'test2.conf'],
-                encoding='utf8')
+            self.real_parser_clz.return_value.read.assert_called_once_with(expected_files,
+                                                                           encoding='utf8')
         self.assertEqual(self.manager.isdir.call_count, 5)
         self.assertEqual(self.manager.isfile.call_count, 6)
         self.assertEqual(self.manager.access.call_count, 4)
