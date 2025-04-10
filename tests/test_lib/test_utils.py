@@ -247,7 +247,6 @@ class ConfigFileTestCase(unittest.TestCase):
         if six.PY2:
             self.manager.scp_clz = mock.patch("ConfigParser.SafeConfigParser",
                                               spec=True).start()
-            mock.patch('codecs.open').start()
         else:
             self.manager.cp_clz = mock.patch("configparser.ConfigParser",
                                              spec=True).start()
