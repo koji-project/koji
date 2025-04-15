@@ -10545,25 +10545,30 @@ def importImageInternal(task_id, build_info, imgdata):
             raise koji.BuildError('Unsupported file type: %s' % imgfile)
         archives.append(import_archive(fullpath, build_info, 'image', imgdata))
 
-    # upload logs
+    # get uploaded logs
     logs = [f for f in os.listdir(workpath) if f.endswith('.log')]
+    logdir = joinpath(koji.pathinfo.build(build_info), 'data/logs/image')
     for logfile in logs:
         logsrc = joinpath(workpath, logfile)
-        if tinfo['method'] in ('appliance', 'image', 'indirectionimage', 'livecd'):
-            logdir = joinpath(koji.pathinfo.build(build_info),
-                              'data/logs/image')
-        else:
-            # multiarch livemedia (and plugins') spins can have log name conflicts, so we
-            # add the arch to the path
-            logdir = joinpath(koji.pathinfo.build(build_info),
-                              'data/logs/image', imgdata['arch'])
-        koji.ensuredir(logdir)
+
+        # figure out destination dir
         final_path = joinpath(logdir, os.path.basename(logfile))
+        add_arch = False
+        if tinfo['method'] not in ('appliance', 'image', 'indirectionimage', 'livecd'):
+            add_arch = True
+        if add_arch or os.path.exists(final_path):
+            # add arch for uniqueness
+            final_path = joinpath(logdir, imgdata['arch'], os.path.basename(logfile))
+
+        # sanity checks
         if os.path.exists(final_path):
             raise koji.GenericError("Error importing build log. %s already exists." % final_path)
         if os.path.islink(logsrc) or not os.path.isfile(logsrc):
             raise koji.GenericError("Error importing build log. %s is not a regular file." %
                                     logsrc)
+
+        # move the logs
+        koji.ensuredir(logdir)
         move_and_symlink(logsrc, final_path, create_dir=True)
 
     # record all of the RPMs installed in the image(s)
