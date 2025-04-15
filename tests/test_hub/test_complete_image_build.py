@@ -67,6 +67,7 @@ class TestCompleteImageBuild(unittest.TestCase):
         self._dml = mock.patch('kojihub.kojihub._dml').start()
         mock.patch('kojihub.kojihub.build_notification').start()
         mock.patch('kojihub.kojihub.assert_policy').start()
+        mock.patch('kojihub.kojihub.policy_data_from_task').start()
         mock.patch('kojihub.kojihub.check_volume_policy',
                    return_value={'id': 0, 'name': 'DEFAULT'}).start()
         self.set_up_callbacks()
@@ -116,7 +117,8 @@ class TestCompleteImageBuild(unittest.TestCase):
             for filename in data[arch]['files']:
                 paths.append(os.path.join(imgdir, filename))
             for filename in data[arch]['logs']:
-                paths.append(os.path.join(logdir, 'image', arch, filename))
+                # paths.append(os.path.join(logdir, 'image', arch, filename))
+                paths.append(os.path.join(logdir, 'image', filename))
         # bdir = koji.pathinfo.build(buildinfo)
         # paths.append(os.path.join(bdir, 'metadata.json'))
         return paths
@@ -204,6 +206,8 @@ class TestCompleteImageBuild(unittest.TestCase):
         image_info = {'build_id': buildinfo['id']}
         self.get_build.return_value = buildinfo
         self.get_image_build.return_value = image_info
+        taskinfo = {'id': 'TASKID', 'method': 'image'}
+        self.Task.return_value.getInfo.return_value = taskinfo
 
         # run the import call
         self.hostcalls.completeImageBuild('TASK_ID', 'BUILD_ID', self.image_data)
