@@ -43,6 +43,13 @@ This fixes the data types for several hub options that were added in 1.35.
 Prior to this fix, specifying some of these options could result in an error.
 
 
+**Revert py2 portion of mr#4214**
+
+| PR: https://pagure.io/koji/pull-request/4363
+
+This reverts part of a change from 1.35.2 that could cause build failures.
+
+
 Kojira
 ------
 
@@ -75,6 +82,14 @@ This fixes a web ui bug resulting from the removal of the cgi module dependency 
 
 Devel and testing
 -----------------
+
+**Honor %{_sbindir} in make install**
+
+| PR: https://pagure.io/koji/pull-request/4335
+
+This is a packaging change prompted by Fedora's efforts to
+`unify bin and sbin <https://fedoraproject.org/wiki/Changes/Unify_bin_and_sbin>`_.
+
 
 **Fix two unit test issues**
 
