@@ -75,7 +75,7 @@ class FakeConfigParser(object):
         else:
             self.CONFIG = copy.deepcopy(config)
 
-    def read(self, path, encoding):
+    def read(self, path, encoding=None):
         return
 
     def sections(self):
