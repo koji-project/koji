@@ -25,7 +25,6 @@
 from __future__ import absolute_import, division
 
 import base64
-import codecs
 import datetime
 import errno
 import hashlib
@@ -2343,8 +2342,7 @@ def read_config_files(config_files, raw=False):
     if six.PY3:
         config.read(cfgs, encoding="utf8")
     else:
-        for cfg in cfgs:
-            config.readfp(codecs.open(cfg, 'r', 'utf8'))
+        config.read(cfgs)
     return config
 
 
