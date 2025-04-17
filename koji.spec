@@ -385,11 +385,7 @@ sed -e '/util\/koji/g' -e '/koji_cli_plugins/g' -i setup.py
 
 %install
 rm -rf $RPM_BUILD_ROOT
-# The Makefiles hardcode /usr/sbin everywhere
-%if "%{_sbindir}" == "%{_bindir}"
-mkdir -p %{buildroot}%{_prefix}
-ln -sf --relative %{buildroot}%{_bindir} %{buildroot}/usr/sbin
-%endif
+%define make_with_dirs make DESTDIR=$RPM_BUILD_ROOT SBINDIR=%{_sbindir}
 
 %if 0%{py2_support} < 2  &&  0%{py3_support} < 2
 echo "At least one python must be built with full support"
@@ -405,19 +401,19 @@ cp cli/koji.conf %{buildroot}/etc/koji.conf
 %endif
 %if 0%{py2_support} == 1
 pushd plugins
-make DESTDIR=$RPM_BUILD_ROOT KOJI_MINIMAL=1 PYTHON=%{__python2} install
+%{make_with_dirs} KOJI_MINIMAL=1 PYTHON=%{__python2} install
 popd
 %endif
 %if 0%{py2_support} > 1
 for D in builder plugins vm ; do
     pushd $D
-    make DESTDIR=$RPM_BUILD_ROOT PYTHON=%{__python2} install
+    %{make_with_dirs} PYTHON=%{__python2} install
     popd
 done
 %endif
 %else
 %if 0%{py2_support}
-make DESTDIR=$RPM_BUILD_ROOT PYTHON=%{__python2} install
+%{make_with_dirs} PYTHON=%{__python2} install
 %endif
 %endif
 
@@ -430,13 +426,13 @@ cp cli/koji.conf %{buildroot}/etc/koji.conf
 %endif
 %if 0%{py3_support} == 1
 pushd plugins
-make DESTDIR=$RPM_BUILD_ROOT KOJI_MINIMAL=1 PYTHON=%{__python3} install
+%{make_with_dirs} KOJI_MINIMAL=1 PYTHON=%{__python3} install
 popd
 %endif
 %if 0%{py3_support} > 1
 for D in kojihub builder plugins util www vm schemas ; do
     pushd $D
-    make DESTDIR=$RPM_BUILD_ROOT PYTHON=%{__python3} install
+    %{make_with_dirs} PYTHON=%{__python3} install
     popd
 done
 
@@ -502,7 +498,6 @@ done
 rm -rf $RPM_BUILD_ROOT
 
 %files
-%exclude /usr/sbin
 %config(noreplace) /etc/koji.conf
 %dir /etc/koji.conf.d
 %doc docs Authors COPYING LGPL
