@@ -8,7 +8,6 @@ import unittest
 
 from kojihub import kojihub
 import koji
-from koji import GenericError
 
 
 class TestHandleUpload(unittest.TestCase):
