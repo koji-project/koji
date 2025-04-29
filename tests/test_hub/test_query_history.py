@@ -455,6 +455,7 @@ class TestQueryHistory(DBQueryTestCase):
         self.assertEqual(query.tables, ['tag_external_repos'])
         self.assertEqual(query.clauses, ['external_repo.id = %(external_repo_id)i'])
         self.assertEqual(query.columns, ['tag_external_repos.active',
+                                         'tag_external_repos.arches',
                                          'tag_external_repos.create_event',
                                          "date_part('epoch', ev1.time) AS create_ts",
                                          'tag_external_repos.creator_id', 'creator.name',

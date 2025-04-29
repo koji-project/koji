@@ -8595,7 +8595,7 @@ def query_history(tables=None, **kwargs):
         'external_repo_data': ['external_repo_id', 'data'],
         'host_config': ['host_id', 'arches', 'capacity', 'description', 'comment', 'enabled'],
         'host_channels': ['host_id', 'channel_id'],
-        'tag_external_repos': ['tag_id', 'external_repo_id', 'priority', 'merge_mode'],
+        'tag_external_repos': ['tag_id', 'external_repo_id', 'priority', 'merge_mode', 'arches'],
         'tag_listing': ['build_id', 'tag_id'],
         'tag_packages': ['package_id', 'tag_id', 'blocked', 'extra_arches'],
         'tag_package_owners': ['package_id', 'tag_id', 'owner'],
