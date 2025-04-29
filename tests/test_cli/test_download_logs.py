@@ -6,6 +6,8 @@ except ImportError:
     import mock
 import six
 
+import koji
+
 from koji_cli.commands import anon_handle_download_logs
 from . import utils
 
@@ -41,6 +43,7 @@ Note this command only downloads task logs, not build logs.
 """ % (self.progname, self.progname, self.progname)
         self.nvr = 'bash-1.2.3-f26'
         self.task_id = 123456
+        self.build_id = 232323
 
         self.builtin_open = None
         if six.PY2:
@@ -59,7 +62,7 @@ Note this command only downloads task logs, not build logs.
             anon_handle_download_logs,
             self.options, self.session, [task_id],
             stdout='',
-            stderr='Task id must be number: %r\n' % task_id,
+            stderr='Task id must be a number: %r\n' % task_id,
             activate_session=None,
             exit_code=1
         )
@@ -102,7 +105,31 @@ Note this command only downloads task logs, not build logs.
         self.session.getTaskChildren.assert_not_called()
 
     def test_anon_handle_download_logs_nvr(self):
-        self.session.getBuild.return_value = {'task_id': self.task_id}
+        self.session.getBuild.return_value = {'task_id': self.task_id,
+                                              'build_id': self.build_id,
+                                              'state': koji.BUILD_STATES['COMPLETE']}
+        self.session.getBuildLogs.return_value = [
+            {'dir': 'noarch', 'name': 'test.log', 'path': 'path/to/test.log'},
+        ]
+        rv = anon_handle_download_logs(self.options, self.session, ['--nvr', self.nvr])
+        actual = self.stdout.getvalue()
+        expected = 'Using build ID: %s\n' % self.build_id
+        self.assertMultiLineEqual(actual, expected)
+        self.assertIsNone(rv)
+
+        self.session.getBuild.assert_called_once_with(self.nvr)
+        self.session.getBuildLogs.assert_called_once_with(self.build_id)
+        self.session.getTaskInfo.assert_not_called()
+        self.session.downloadTaskOutput.assert_not_called()
+        self.session.getTaskChildren.assert_not_called()
+        self.download_file.assert_called_once()
+
+    def test_anon_handle_download_logs_nvr_with_task_id(self):
+        # for a failed build with a task id we should fall back to fetching task logs
+        self.session.getBuild.return_value = {'build_id': self.build_id,
+                                              'task_id': self.task_id,
+                                              'nvr': self.nvr,
+                                              'state': koji.BUILD_STATES['FAILED']}
         self.session.getTaskInfo.return_value = {
             'arch': 'x86_64',
             'state': 'CLOSED',
@@ -112,7 +139,7 @@ Note this command only downloads task logs, not build logs.
 
         rv = anon_handle_download_logs(self.options, self.session, ['--nvr', self.nvr])
         actual = self.stdout.getvalue()
-        expected = 'Using task ID: %s\n' % self.task_id
+        expected = 'Build %s is FAILED\nUsing task ID: %s\n' % (self.nvr, self.task_id)
         self.assertMultiLineEqual(actual, expected)
         self.assertIsNone(rv)
 
@@ -121,11 +148,14 @@ Note this command only downloads task logs, not build logs.
         self.session.downloadTaskOutput.assert_not_called()
         self.session.getTaskChildren.assert_has_calls([mock.call(self.task_id), mock.call(23), ])
 
+
     def test_anon_handle_download_logs_nvr_without_task_id(self):
-        self.session.getBuild.return_value = {'build_id': 1, 'nvr': self.nvr}
+        self.session.getBuild.return_value = {'build_id': self.build_id,
+                                              'nvr': self.nvr,
+                                              'state': koji.BUILD_STATES['FAILED']}
         rv = anon_handle_download_logs(self.options, self.session, ['--nvr', self.nvr])
         actual = self.stdout.getvalue()
-        expected = 'Using build ID: 1\n'
+        expected = 'Unable to download build %s (state=FAILED)\n' % self.nvr
         self.assertMultiLineEqual(actual, expected)
         self.assertIsNone(rv)
 
