@@ -97,6 +97,8 @@ def get_options():
                                           "recommended.")
     parser.add_option("--exit-on-lock", action="store_true",
                       help="quit if --lock-file exists, don't wait")
+    parser.add_option("--ccache", default="/var/tmp/koji-gc.ccache",
+                      help="Path to Kerberos credentials cache")
     # parse once to get the config file
     (options, args) = parser.parse_args()
 
@@ -142,6 +144,7 @@ def get_options():
         ['timeout', None, 'integer'],
         ['lock_file', None, 'string'],
         ['exit_on_lock', None, 'boolean'],
+        ['ccache', None, 'string'],
     ]
     for name, alias, type in cfgmap:
         if alias is None:
@@ -399,7 +402,7 @@ def activate_session(session):
         session.login()
     elif koji.reqgssapi:
         session.gssapi_login(principal=options.principal, keytab=options.keytab,
-                             proxyuser=options.runas)
+                             proxyuser=options.runas, ccache=options.ccache)
     if not options.noauth and not session.logged_in:
         error("Error: unable to log in, no authentication methods available")
     ensure_connection(session)
