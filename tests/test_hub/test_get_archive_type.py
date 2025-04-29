@@ -61,7 +61,8 @@ class TestGetArchiveType(DBQueryTestCase):
         archive_info = [{'id': 1, 'name': 'archive-type-1', 'extensions': 'ext'},
                         {'id': 2, 'name': 'archive-type-2', 'extensions': 'ext'}]
         filename = 'test-filename.ext'
-        self.qp_execute_return_value = archive_info
+        self.qp_execute_side_effect = [[], archive_info]
+        # no matches for full name, multiple matches for .ext
         with self.assertRaises(koji.GenericError) as ex:
             kojihub.get_archive_type(filename=filename)
         self.assertEqual("multiple matches for file extension: ext", str(ex.exception))
@@ -70,7 +71,10 @@ class TestGetArchiveType(DBQueryTestCase):
         query = self.queries[0]
         self.assertEqual(query.tables, ['archivetypes'])
         self.assertEqual(query.joins, None)
-        self.assertEqual(query.clauses, ['extensions ~* %(pattern)s'])
+        _clauses = [
+            "%(ext)s IN (SELECT lower(s) FROM "
+            "unnest(regexp_split_to_array(extensions, '\\s+')) AS s)"]
+        self.assertEqual(query.clauses, _clauses)
         self.assertEqual(query.columns,
                          ['compression_type', 'description', 'extensions', 'id', 'name'])
         get_archive_type_by_name.assert_not_called()
@@ -91,7 +95,10 @@ class TestGetArchiveType(DBQueryTestCase):
         query = self.queries[0]
         self.assertEqual(query.tables, ['archivetypes'])
         self.assertEqual(query.joins, None)
-        self.assertEqual(query.clauses, ['extensions ~* %(pattern)s'])
+        _clauses = [
+            "%(ext)s IN (SELECT lower(s) FROM "
+            "unnest(regexp_split_to_array(extensions, '\\s+')) AS s)"]
+        self.assertEqual(query.clauses, _clauses)
         self.assertEqual(query.columns,
                          ['compression_type', 'description', 'extensions', 'id', 'name'])
         get_archive_type_by_name.assert_not_called()
@@ -111,7 +118,10 @@ class TestGetArchiveType(DBQueryTestCase):
         query = self.queries[0]
         self.assertEqual(query.tables, ['archivetypes'])
         self.assertEqual(query.joins, None)
-        self.assertEqual(query.clauses, ['extensions ~* %(pattern)s'])
+        _clauses = [
+            "%(ext)s IN (SELECT lower(s) FROM "
+            "unnest(regexp_split_to_array(extensions, '\\s+')) AS s)"]
+        self.assertEqual(query.clauses, _clauses)
         self.assertEqual(query.columns,
                          ['compression_type', 'description', 'extensions', 'id', 'name'])
         get_archive_type_by_name.assert_not_called()
@@ -129,7 +139,10 @@ class TestGetArchiveType(DBQueryTestCase):
         query = self.queries[0]
         self.assertEqual(query.tables, ['archivetypes'])
         self.assertEqual(query.joins, None)
-        self.assertEqual(query.clauses, ['extensions ~* %(pattern)s'])
+        _clauses = [
+            "%(ext)s IN (SELECT lower(s) FROM "
+            "unnest(regexp_split_to_array(extensions, '\\s+')) AS s)"]
+        self.assertEqual(query.clauses, _clauses)
         self.assertEqual(query.columns,
                          ['compression_type', 'description', 'extensions', 'id', 'name'])
         get_archive_type_by_name.assert_not_called()
