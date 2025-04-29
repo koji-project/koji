@@ -1595,8 +1595,8 @@ class BuildArchTask(BaseBuildTask):
             return
         # increase the task weight by 0.75 for every hour of build duration
         adj = avg / 4800.0
-        # cap the adjustment at +4.5
-        weight = self.weight() + min(4.5, adj)
+        # cap the adjustment at +18 (24 hours)
+        weight = self.weight() + min(18.0, adj)
         self.session.host.setTaskWeight(self.id, weight)
 
     def checkHost(self, hostdata):
