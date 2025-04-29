@@ -297,6 +297,8 @@ Options:
   --task-id             Interperet id as a task id
   --rpm                 Download the given rpm
   --key=KEY             Download rpms signed with the given key
+  --fallback-unsigned   When used with --key: download unsigned if signed
+                        packages not found
   --topurl=URL          URL under which Koji files are accessible
   --noprogress          Do not display progress meter
   -q, --quiet           Suppress output

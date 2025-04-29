@@ -6999,8 +6999,9 @@ def anon_handle_download_build(options, session, args):
     for rpm in rpms:
         number += 1
         try:
-            download_rpm(info, rpm, suboptions.topurl, sigkey=suboptions.key, quiet=suboptions.quiet,
-                         noprogress=suboptions.noprogress, num=number, size=size)
+            download_rpm(info, rpm, suboptions.topurl, sigkey=suboptions.key,
+                         quiet=suboptions.quiet, noprogress=suboptions.noprogress, num=number,
+                         size=size)
         except HTTPError as err:
             # this is necessary even with the 'unsigned' handling above
             # because sometimes queryRPMSigs will still tell us a
