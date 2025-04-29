@@ -254,6 +254,7 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
                 'mock.yum.best': 10,
                 'mock.bootstrap_image': 'bootstrap_image_content',
                 'mock.use_bootstrap': True,
+                'mock.bootstrap_image_ready': True,
                 'mock.module_setup_commands': 'module_setup_commands_content',
                 'mock.releasever': 'releasever_content',
             },
@@ -297,6 +298,7 @@ config_opts['macros']['%distribution'] = 'Koji Testing'
             'releasever': 'releasever_content',
             'use_bootstrap': True,
             'use_bootstrap_image': True,
+            'bootstrap_image_ready': True,
             'yum_best': 10,
         })
 
