@@ -93,6 +93,7 @@ class TimeoutHandler(MessagingHandler):
         return 'topic://' + koji_topic_prefix
 
     def send_msgs(self, event):
+        ttl = self.conf.getfloat('message', 'ttl', fallback=None)
         for msg in self.msgs:
             # address is like "topic://koji.package.add"
             address = self.topic_prefix + '.' + msg['address']
@@ -104,6 +105,9 @@ class TimeoutHandler(MessagingHandler):
                 self.log.debug('created new sender for %s', address)
                 self.senders[address] = sender
             pmsg = Message(properties=msg['props'], body=msg['body'])
+            if ttl:
+                # The message class expects seconds, even though the c api uses milliseconds
+                pmsg.ttl = ttl
             delivery = sender.send(pmsg)
             self.log.debug('sent message: %s', msg['props'])
             self.pending[delivery] = msg
