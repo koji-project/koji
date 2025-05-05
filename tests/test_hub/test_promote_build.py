@@ -1,5 +1,6 @@
 import datetime
-import json
+import os.path
+import tempfile
 from unittest import mock
 import unittest
 
@@ -177,3 +178,97 @@ class TestPromoteBuild(unittest.TestCase):
             'version': 'bar',
             'release': 'tgtrel'
         }, strict=False)
+
+
+class TestPromoteBuildFiles(unittest.TestCase):
+    # these tests use a tempdir
+
+    def getUpdate(self, *args, **kwargs):
+        update = UP(*args, **kwargs)
+        update.execute = mock.MagicMock()
+        self.updates.append(update)
+        return update
+
+    def setUp(self):
+        # set up our dirs
+        self.tempdir = tempfile.mkdtemp()
+        self.topdir = self.tempdir + '/koji'
+        self.pathinfo = koji.PathInfo(self.topdir)
+        mock.patch('koji.pathinfo', new=self.pathinfo).start()
+        # separate dir for volume X
+        vol_x = self.tempdir + '/vol_X'
+        koji.ensuredir(vol_x)
+        voldir = self.pathinfo.volumedir('X')
+        koji.ensuredir(os.path.dirname(voldir))  # koji/vol
+        os.symlink(vol_x, voldir)
+
+        self.exports = kojihub.RootExports()
+        self.UpdateProcessor = mock.patch('kojihub.kojihub.UpdateProcessor',
+                                          side_effect=self.getUpdate).start()
+        self.updates = []
+        self.context = mock.patch('kojihub.kojihub.context').start()
+        self.context.session.assertLogin = mock.MagicMock()
+        self.user = {'id': 1, 'name': 'jdoe'}
+        self.get_user = mock.patch('kojihub.kojihub.get_user', return_value=self.user).start()
+        self.get_build = mock.patch('kojihub.kojihub.get_build').start()
+        self.assert_policy = mock.patch('kojihub.kojihub.assert_policy').start()
+        self.apply_volume_policy = mock.patch('kojihub.kojihub.apply_volume_policy',
+                                              return_value=None).start()
+        self.lookup_name = mock.patch('kojihub.kojihub.lookup_name',
+                                      return_value={'id': 1, 'name': 'DEFAULT'}).start()
+        self.list_tags = mock.patch('kojihub.kojihub.list_tags',
+                                    return_value=[{'id': 101}]).start()
+        self.set_tag_update = mock.patch('kojihub.kojihub.set_tag_update').start()
+        self._now = datetime.datetime.now()
+        self._datetime = mock.patch('kojihub.kojihub.datetime.datetime').start()
+        self.now = self._datetime.now = mock.MagicMock(return_value=self._now)
+
+        self.draft_build = {
+            'id': 1,
+            'name': 'foo',
+            'version': 'bar',
+            'release': 'tgtrel,draft_1',
+            'nvr': 'testnvr',
+            'state': 1,
+            'draft': True,
+            'volume_id': 99,
+            'volume_name': 'X',
+            'task_id': 222
+        }
+
+        self.new_build = {
+            # no check on the info
+            'id': 1,
+            'name': 'foo',
+            'version': 'bar',
+            'release': 'tgtrel',
+            'volume_name': 'X'
+        }
+
+    def tearDown(self):
+        mock.patch.stopall()
+
+    def test_promote_build_volume_link(self):
+        self.get_build.side_effect = [
+            self.draft_build,
+            None,
+            self.new_build
+        ]
+        orig_bdir = self.pathinfo.build(self.draft_build)
+        koji.ensuredir(orig_bdir)
+        sentinel = 'HELLO 873\n'
+        with open(orig_bdir + '/sentinel.txt', 'wt') as fp:
+            fp.write(sentinel)
+
+        # promote
+        ret = self.exports.promoteBuild('a-draft-build')
+
+        self.assertEqual(ret, self.new_build)
+        # orig_bdir should be a symlink
+        assert os.path.islink(orig_bdir)
+        # should be accessible via original path
+        with open(orig_bdir + '/sentinel.txt', 'rt') as fp:
+            assert fp.read() == sentinel
+
+
+# the end
