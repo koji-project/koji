@@ -6301,22 +6301,10 @@ def ensure_volume_backlink(new_binfo, old_binfo):
         return
     voldir = koji.pathinfo.volumedir(volname)
     if not os.path.isdir(voldir):
-        raise koji.GenericError('Missing volume dir: %s' % voldir)
-
-    # ensure we have the volume toplink
+        raise koji.GenericError(f'Missing volume dir: {voldir}')
     toplink = joinpath(voldir, 'toplink')
-    if os.path.islink(toplink):
-        if not os.path.exists(toplink):
-            raise koji.GenericError(f'Bad volume toplink: {toplink}')
-    elif os.path.exists(toplink):
-        # not a link
-        raise koji.GenericError(f'Not a symlink: {toplink}')
-    else:
-        # in the future, this should be part of volume setup, but for now
-        # we'll be nice and create it
-        target = koji.pathinfo.topdir
-        logger.warning('No toplink for volume. Creating {toplink} -> {target}')
-        os.symlink(target, toplink)
+    if not os.path.exists(toplink):
+        raise koji.GenericError(f'Missing volume toplink: {toplink}')
 
     # get the old build path (where we will place the symlink)
     olddir = koji.pathinfo.build(old_binfo)

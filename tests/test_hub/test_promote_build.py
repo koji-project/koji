@@ -195,10 +195,12 @@ class TestPromoteBuildFiles(unittest.TestCase):
         mock.patch('koji.pathinfo', new=self.pathinfo).start()
         # separate dir for volume X
         vol_x = self.tempdir + '/vol_X'
+        toplink = self.tempdir + '/vol_X/toplink'
         koji.ensuredir(vol_x)
         voldir = self.pathinfo.volumedir('X')
         koji.ensuredir(os.path.dirname(voldir))  # koji/vol
         os.symlink(vol_x, voldir)
+        os.symlink(self.topdir, toplink)
 
         self.exports = kojihub.RootExports()
         self.UpdateProcessor = mock.patch('kojihub.kojihub.UpdateProcessor',
