@@ -6116,6 +6116,22 @@ def add_volume(name, strict=True):
     voldir = koji.pathinfo.volumedir(name)
     if not os.path.isdir(voldir):
         raise koji.GenericError('please create the volume directory first')
+
+    # volume directories should have a symlink to default volume, e.g. /mnt/koji
+    toplink = joinpath(voldir, 'toplink')
+    if os.path.islink(toplink):
+        if not os.path.exists(toplink):
+            raise koji.GenericError(f'Broken volume toplink: {toplink}')
+        if not os.path.samefile(toplink, koji.pathinfo.topdir):
+            raise koji.GenericError(f'Invalid volume toplink: {toplink}')
+    elif os.path.exists(toplink):
+        # not a link
+        raise koji.GenericError(f'Not a symlink: {toplink}')
+    else:
+        target = koji.pathinfo.topdir
+        logger.warning('No toplink for volume. Creating {toplink} -> {target}')
+        os.symlink(target, toplink)
+
     if strict:
         volinfo = lookup_name('volume', name, strict=False)
         if volinfo:
