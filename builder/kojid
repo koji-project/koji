@@ -3299,6 +3299,9 @@ class ImageTask(BaseTaskHandler):
         else:
             kspath = self.localPath("work/%s" % ksfile)
 
+        if not os.path.exists(kspath):
+            raise koji.BuildError('Kickstart %s does not exist.' % kspath)
+
         self.uploadFile(kspath)  # upload the original ks file
         return kspath  # full absolute path to the file in the chroot
 
@@ -4042,6 +4045,10 @@ class OzImageTask(BaseTaskHandler):
                 kspath = os.path.join(self.workdir, os.path.basename(ksfile))
                 with open(kspath, 'wb') as ks_dest:
                     ks_dest.write(ks_src.read())
+
+        if not os.path.exists(kspath):
+            raise koji.BuildError('Kickstart %s does not exist.' % kspath)
+
         self.logger.debug('uploading kickstart from here: %s' % kspath)
         self.uploadFile(kspath)  # upload the original ks file
         return kspath  # absolute path to the ks file
