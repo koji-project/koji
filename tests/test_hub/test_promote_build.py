@@ -34,6 +34,7 @@ class TestPromoteBuild(unittest.TestCase):
                                               return_value=None).start()
         self.safer_move = mock.patch('kojihub.kojihub.safer_move').start()
         self.ensure_volume_symlink = mock.patch('kojihub.kojihub.ensure_volume_symlink').start()
+        self.ensure_volume_backlink = mock.patch('kojihub.kojihub.ensure_volume_backlink').start()
         self.lookup_name = mock.patch('kojihub.kojihub.lookup_name',
                                       return_value={'id': 1, 'name': 'DEFAULT'}).start()
         self.os_symlink = mock.patch('os.symlink').start()
@@ -94,10 +95,7 @@ class TestPromoteBuild(unittest.TestCase):
             '/mnt/koji/vol/X/packages/foo/bar/tgtrel,draft_1',
             '/mnt/koji/vol/X/packages/foo/bar/tgtrel'
         )
-        self.os_symlink.assert_called_once_with(
-            '../../../../../packages/foo/bar/tgtrel',
-            '/mnt/koji/vol/X/packages/foo/bar/tgtrel,draft_1'
-        )
+        self.os_symlink.assert_not_called()
 
     def test_promote_build_not_draft(self):
         self.get_build.return_value = {'draft': False, 'nvr': 'testnvr'}

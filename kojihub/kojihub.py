@@ -6265,6 +6265,72 @@ def ensure_volume_symlink(binfo):
     os.symlink(relpath, basedir)
 
 
+def ensure_volume_backlink(new_binfo, old_binfo):
+    """Ensure we have a link for a build on given non-default volume
+
+    We point the symlink at the default volume location, because this path should
+    always be either valid symlink or the actual build dir.
+
+    Note: this is tricky!
+    We primarily use relative symlinks under /mnt/koji, however this can break
+    when crossing volumes. In general, /mnt/koji/vol/foo/.. != /mnt/koji/vol
+    However, relpath() assumes this is the case because it is "a path computation"
+    """
+
+    # basic checks
+    volname = old_binfo['volume_name']
+    if volname == 'DEFAULT':
+        # nothing to do
+        # default volume symlinks are handled in ensure_volume_symlink()
+        return
+    voldir = koji.pathinfo.volumedir(volname)
+    if not os.path.isdir(voldir):
+        raise koji.GenericError('Missing volume dir: %s' % voldir)
+
+    # ensure we have the volume toplink
+    toplink = joinpath(voldir, 'toplink')
+    if os.path.islink(toplink):
+        if not os.path.exists(toplink):
+            raise koji.GenericError(f'Bad volume toplink: {toplink}')
+    elif os.path.exists(toplink):
+        # not a link
+        raise koji.GenericError(f'Not a symlink: {toplink}')
+    else:
+        # in the future, this should be part of volume setup, but for now
+        # we'll be nice and create it
+        target = koji.pathinfo.topdir
+        logger.warning('No toplink for volume. Creating {toplink} -> {target}')
+        os.symlink(target, toplink)
+
+    # get the old build path (where we will place the symlink)
+    olddir = koji.pathinfo.build(old_binfo)
+
+    # construct the relative path in parts
+    # - relpath to voldir
+    # - voldir/toplink is a symlink to topdir
+    # - relpath from topdir to olddir
+    path1 = os.path.relpath(voldir, os.path.dirname(olddir))  # should be ../../..
+    assert path1 == '../../..'  # XXX
+    relpathinfo = koji.PathInfo(topdir='toplink')
+    base_binfo = new_binfo.copy()
+    base_binfo['volume_name'] = 'DEFAULT'
+    path2 = relpathinfo.build(base_binfo)  # toplink/packages/N/V/R
+
+    # check/make the symlink
+    relpath = joinpath(path1, path2)
+    if os.path.islink(olddir):
+        if os.readlink(olddir) == relpath:
+            # already correct
+            return
+        os.unlink(olddir)
+    elif os.path.exists(olddir):
+        raise koji.GenericError('Unexpected build content: %s' % olddir)
+    else:
+        # parent dir might not exist
+        koji.ensuredir(os.path.dirname(olddir))
+    os.symlink(relpath, olddir)
+
+
 def check_volume_policy(data, strict=False, default=None):
     """Check volume policy for the given data
 
@@ -10681,13 +10747,7 @@ def _promote_build(build, force=False):
 
     # provide a symlink at original draft location
     # we point to the default volume in case the build moves in the future
-    base_vol = lookup_name('volume', 'DEFAULT', strict=True)
-    base_binfo = new_binfo.copy()
-    base_binfo['volume_id'] = base_vol['id']
-    base_binfo['volume_name'] = base_vol['name']
-    basedir = koji.pathinfo.build(base_binfo)
-    relpath = os.path.relpath(basedir, os.path.dirname(oldpath))
-    os.symlink(relpath, oldpath)
+    ensure_volume_backlink(new_binfo, binfo)
 
     # apply volume policy in case it's changed by release update.
     apply_volume_policy(new_binfo, strict=False)
