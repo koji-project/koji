@@ -1,4 +1,5 @@
 import datetime
+import shutil
 import os.path
 import tempfile
 from unittest import mock
@@ -247,6 +248,7 @@ class TestPromoteBuildFiles(unittest.TestCase):
 
     def tearDown(self):
         mock.patch.stopall()
+        shutil.rmtree(self.tempdir)
 
     def test_promote_build_volume_link(self):
         self.get_build.side_effect = [
