@@ -2456,6 +2456,9 @@ class PathInfo(object):
 
     def tmpdir(self, volume=None):
         """Return a path to a unique directory under work()/tmp/"""
+        deprecated(
+            'PathInfo.tmpdir() is deprecated and will be removed in a future version of Koji')
+        # this function has never really been used in koji
         tmp = None
         while tmp is None or os.path.exists(tmp):
             tmp = self.work(volume) + '/tmp/' + ''.join([random.choice(self.ASCII_CHARS)
