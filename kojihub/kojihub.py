@@ -6281,7 +6281,7 @@ def ensure_volume_symlink(binfo):
     os.symlink(relpath, basedir)
 
 
-def ensure_volume_backlink(new_binfo, old_binfo):
+def ensure_volume_backlink(old_binfo, new_binfo=None):
     """Ensure we have a link for a build on given non-default volume
 
     We point the symlink at the default volume location, because this path should
@@ -6316,7 +6316,11 @@ def ensure_volume_backlink(new_binfo, old_binfo):
     path1 = os.path.relpath(voldir, os.path.dirname(olddir))  # should be ../../..
     assert path1 == '../../..'  # XXX
     relpathinfo = koji.PathInfo(topdir='toplink')
-    base_binfo = new_binfo.copy()
+    if new_binfo is not None:
+        base_binfo = new_binfo.copy()
+    else:
+        # call can pass just old_binfo if NVR is not changing
+        base_binfo = old_binfo.copy()
     base_binfo['volume_name'] = 'DEFAULT'
     path2 = relpathinfo.build(base_binfo)  # toplink/packages/N/V/R
 
@@ -10751,7 +10755,7 @@ def _promote_build(build, force=False):
 
     # provide a symlink at original draft location
     # we point to the default volume in case the build moves in the future
-    ensure_volume_backlink(new_binfo, binfo)
+    ensure_volume_backlink(binfo, new_binfo)
 
     # apply volume policy in case it's changed by release update.
     apply_volume_policy(new_binfo, strict=False)
