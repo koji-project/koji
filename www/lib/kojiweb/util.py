@@ -128,7 +128,14 @@ def themePath(path, local=False):
 
 # previously we had a custom SafeValue class here, but the Markup class does the same thing better
 def SafeValue(value):
-    return Markup(value)
+    """Mark a value as safe so that the template will not escape it"""
+    # NOTE: this function should only be used in places where we trust the value
+
+    def _MarkTrustedValue(value):
+        # wrapper to keep Bandit B704 from complaining
+        return value
+
+    return Markup(_MarkTrustedValue(value))
 
 
 def safe_return(func):

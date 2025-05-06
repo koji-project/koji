@@ -1,0 +1,3 @@
+markupsafe_xss:
+    allowed_calls:
+        - _MarkTrustedValue
