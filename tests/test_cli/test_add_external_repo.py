@@ -135,6 +135,38 @@ class TestAddExternalRepo(utils.CliTestCase):
         self.activate_session_mock.assert_called_once_with(self.session, self.options)
         self.session.createExternalRepo.assert_called_once_with(self.name, self.url)
 
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    def test_add_external_repo_more_arches_with_space(self, stdout):
+        self.session.createExternalRepo.return_value = self.rinfo
+        self.session.addExternalRepoToTag.return_value = None
+
+        handle_add_external_repo(self.options, self.session,
+                                 [self.name, self.url, '--tag', self.tag, '--arche=arch arch1',
+                                  '--priority', str(self.priority)])
+        actual = stdout.getvalue()
+        expected = 'Created external repo %i\nAdded external repo %s to tag %s (priority %i)\n' \
+                   % (self.rinfo['id'], self.rinfo['name'], self.tag, self.priority)
+        self.assertMultiLineEqual(actual, expected)
+
+        self.activate_session_mock.assert_called_once_with(self.session, self.options)
+        self.session.createExternalRepo.assert_called_once_with(self.name, self.url)
+
+    @mock.patch('sys.stdout', new_callable=six.StringIO)
+    def test_add_external_repo_more_arches_with_coma(self, stdout):
+        self.session.createExternalRepo.return_value = self.rinfo
+        self.session.addExternalRepoToTag.return_value = None
+
+        handle_add_external_repo(self.options, self.session,
+                                 [self.name, self.url, '--tag', self.tag, '--arche=arch,arch1',
+                                  '--priority', str(self.priority)])
+        actual = stdout.getvalue()
+        expected = 'Created external repo %i\nAdded external repo %s to tag %s (priority %i)\n' \
+                   % (self.rinfo['id'], self.rinfo['name'], self.tag, self.priority)
+        self.assertMultiLineEqual(actual, expected)
+
+        self.activate_session_mock.assert_called_once_with(self.session, self.options)
+        self.session.createExternalRepo.assert_called_once_with(self.name, self.url)
+
     def test_handle_add_external_repo_help(self):
         self.assert_help(
             handle_add_external_repo,
