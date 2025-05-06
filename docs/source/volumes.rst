@@ -78,7 +78,7 @@ The new volume directory should initially contain:
 * a ``packages`` subdirectory
 * a ``toplink`` symlink to the primary volume (i.e. /mnt/koji)
 
-The permissions for the ``packages`` directory should be the same as the\
+The permissions for the ``packages`` directory should be the same as the
 default packages directory.
 
 The ``toplink`` symlink should normally be an absolute symlink.
