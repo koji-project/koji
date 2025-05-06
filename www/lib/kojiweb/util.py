@@ -86,13 +86,16 @@ def _initValues(environ, title='Build System Info', pageID='summary'):
     values['localbottom'] = ''
     localnavpath = themePath('extra-nav.html', local=True)
     if os.path.exists(localnavpath):
-        values['localnav'] = SafeValue("".join(open(localnavpath, 'rt', encoding='utf-8').readlines()))
+        values['localnav'] = SafeValue(
+            "".join(open(localnavpath, 'rt', encoding='utf-8').readlines()))
     localfooterpath = themePath("extra-footer.html", local=True)
     if os.path.exists(localfooterpath):
-        values['localfooter'] = SafeValue("".join(open(localfooterpath, 'rt', encoding='utf-8').readlines()))
+        values['localfooter'] = SafeValue(
+            "".join(open(localfooterpath, 'rt', encoding='utf-8').readlines()))
     localbottompath = themePath("extra-bottom.html", local=True)
     if os.path.exists(localbottompath):
-        values['localbottom'] = SafeValue("".join(open(localbottompath, 'rt', encoding='utf-8').readlines()))
+        values['localbottom'] = SafeValue(
+            "".join(open(localbottompath, 'rt', encoding='utf-8').readlines()))
 
     environ['koji.values'] = values
 
@@ -154,10 +157,10 @@ def get_jinja_env(dirpath):
         return JINJA_CACHE.env
     # otherwise
     env = jinja2.Environment(
-            loader=jinja2.FileSystemLoader(dirpath),
-            autoescape=True,
-            line_statement_prefix='#',  # for ease of porting Cheetah templates
-            line_comment_prefix='##'
+        loader=jinja2.FileSystemLoader(dirpath),
+        autoescape=True,
+        line_statement_prefix='#',  # for ease of porting Cheetah templates
+        line_comment_prefix='##'
     )
     JINJA_CACHE.env = env
     return env
@@ -273,6 +276,7 @@ class FieldCompat:
 
     def __init__(self, value):
         self.value = value
+
 
 # compat with jinja 2.x
 try:
