@@ -1057,7 +1057,8 @@ def taginfo(environ, tagID, all='0', packageOrder='package_name', packageStart=N
     values['all'] = all
     values['repo'] = server.repo.get(tag['id'])
     values['external_repos'] = server.getExternalRepoList(tag['id'])
-    values['request_count'] = server.repo.queryQueue([['tag_id', '=', tag['id']]], opts={'countOnly': True})
+    values['request_count'] = server.repo.queryQueue([['tag_id', '=', tag['id']]],
+                                                     opts={'countOnly': True})
 
     child = None
     if childID is not None:

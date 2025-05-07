@@ -492,8 +492,8 @@ def paginateMethod(server, values, methodName, args=None, kw=None,
         totalRows = getattr(server, methodName)(*args, **kw)
 
     kw[optsarg] = {'order': order,
-                       'offset': start,
-                       'limit': pageSize}
+                   'offset': start,
+                   'limit': pageSize}
     data = getattr(server, methodName)(*args, **kw)
     count = len(data)
 
