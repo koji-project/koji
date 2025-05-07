@@ -56142,5 +56142,155 @@
                 "task_id": null
             }
         ]
+    },
+    {
+        "args": [],
+        "kwargs": {
+            "queryOpts": {
+                "countOnly": true
+            },
+            "repoID": 2580
+        },
+        "method": "listBuildroots",
+        "result": 2
+    },
+    {
+        "args": [
+            [
+                [
+                    "repo_id",
+                    "=",
+                    2580
+                ]
+            ],
+            [
+                "id"
+            ]
+        ],
+        "kwargs": {},
+        "method": "repo.queryQueue",
+        "result": []
+    },
+    {
+        "args": [
+            798
+        ],
+        "kwargs": {},
+        "method": "repo.get",
+        "result": null
+    },
+    {
+        "args": [
+            [
+                [
+                    "tag_id",
+                    "=",
+                    798
+                ]
+            ]
+        ],
+        "kwargs": {
+            "opts": {
+                "countOnly": true
+            }
+        },
+        "method": "repo.queryQueue",
+        "result": 0
+    },
+    {
+        "args": [],
+        "kwargs": {
+            "queryOpts": {
+                "countOnly": true
+            },
+            "repoID": 88
+        },
+        "method": "listBuildroots",
+        "result": 0
+    },
+    {
+        "args": [
+            [
+                [
+                    "repo_id",
+                    "=",
+                    88
+                ]
+            ],
+            [
+                "id"
+            ]
+        ],
+        "kwargs": {},
+        "method": "repo.queryQueue",
+        "result": []
+    },
+    {
+        "args": [
+            2
+        ],
+        "kwargs": {},
+        "method": "repo.get",
+        "result": {
+            "begin_event": 497768,
+            "begin_ts": 1732049290.238136,
+            "create_event": 497784,
+            "create_ts": 1732569672.685269,
+            "creation_time": "2024-11-25 21:21:12.682068+00:00",
+            "creation_ts": 1732569672.682068,
+            "custom_opts": {},
+            "dist": false,
+            "end_event": null,
+            "end_ts": null,
+            "id": 2599,
+            "opts": {
+                "debuginfo": false,
+                "maven": false,
+                "separate_src": false,
+                "src": false
+            },
+            "state": 1,
+            "state_time": "2024-11-25 21:21:19.711390+00:00",
+            "state_ts": 1732569679.71139,
+            "tag_id": 2,
+            "tag_name": "f24-build",
+            "task_id": 14431,
+            "task_state": 2
+        }
+    },
+    {
+        "args": [
+            [
+                [
+                    "tag_id",
+                    "=",
+                    2
+                ]
+            ]
+        ],
+        "kwargs": {
+            "opts": {
+                "countOnly": true
+            }
+        },
+        "method": "repo.queryQueue",
+        "result": 0
+    },
+    {
+        "args": [
+            [
+                [
+                    "task_id",
+                    "=",
+                    1
+                ]
+            ],
+            [
+                "id"
+            ]
+        ],
+        "kwargs": {},
+        "method": "repo.queryQueue",
+        "result": []
     }
 ]

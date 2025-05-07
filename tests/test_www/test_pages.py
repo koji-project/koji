@@ -27,7 +27,9 @@ class TestPages(unittest.TestCase):
     def setUpClass(cls):
         # recording session used across tests in recording mode
         cls.cfile = os.path.dirname(__file__) + f'/data/pages_calls.json'
+        cls.cfile2 = os.path.dirname(__file__) + f'/data/pages_calls_updates.json'
         cls.recording = False
+        cls.updating = False
         cls.rsession = RecordingClientSession('http://localhost/kojihub', {})
 
     @classmethod
@@ -35,6 +37,8 @@ class TestPages(unittest.TestCase):
         if cls.recording:
             # save recorded calls
             cls.rsession.dump(cls.cfile)
+        elif cls.updating:
+            cls.rsession.dump(cls.cfile2)
 
     def setUp(self):
         self.environ = {
@@ -77,6 +81,8 @@ class TestPages(unittest.TestCase):
         else:
             self.server = FakeClientSession('SERVER', {})
             self.server.load(self.cfile)
+            if self.updating:
+                self.server._missing_rsession = self.rsession
         return self.server
 
     def tearDown(self):

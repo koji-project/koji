@@ -44,6 +44,8 @@ class FakeClientSession(BaseFakeClientSession):
         super(FakeClientSession, self).__init__(*a, **kw)
         self._calldata = {}
         self._offsets = {}
+        self._missing_rsession = None
+        # caller can set _missing_rsession to a Recording session to handle missing calls
 
     def load_calls(self, data):
         """Load call data
@@ -75,6 +77,9 @@ class FakeClientSession(BaseFakeClientSession):
         # we may have a series of calls for each key
         calls = self._calldata.get(key)
         ofs = self._offsets.get(key, 0)
+        if calls is None:
+            # we don't have it
+            return self._handle_missing(name, args, kwargs)
         call = calls[ofs]
         ofs += 1
         if ofs < len(calls):
@@ -89,6 +94,15 @@ class FakeClientSession(BaseFakeClientSession):
                 return call['result']
         else:
             return mock.MagicMock()
+
+    def _handle_missing(self, name, args, kwargs):
+        print('Missing call data for: %s %r %r' % (name, args, kwargs))
+        rsession = self._missing_rsession
+        if rsession is None:
+            return mock.MagicMock()
+
+        # otherwise use the recording session
+        return rsession._callMethod(name, args, kwargs)
 
     def _munge(self, data):
         def callback(value):
