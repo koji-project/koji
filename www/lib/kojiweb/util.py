@@ -360,7 +360,7 @@ def passthrough(context, *varnames, prefix='&', invert=False, toggleOrder=None):
             raise Exception('template does not define _PASSTHROUGH')
         varnames = {n for n in _PASSTHROUGH if n not in varnames}
     data = {n: context.get(n, default=None) for n in varnames}
-    return _passthrough(data, prefixi, toggleOrder)
+    return _passthrough(data, prefix, toggleOrder)
 
 
 def _passthrough(data, prefix='&', toggleOrder=None):
