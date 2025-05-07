@@ -1,15 +1,11 @@
-SUBDIRS = templates
-
-SERVERDIR = /usr/share/koji-web/scripts
-FILES = $(wildcard *.py *.html.j2)
+SERVERDIR = /templates
+FILES = $(wildcard *.html.j2)
 
 _default:
 	@echo "nothing to make.  try make install"
 
 clean:
 	rm -f *.o *.so *.pyc *~
-	rm -rf __pycache__
-	for d in $(SUBDIRS); do make -s -C $$d clean; done
 
 install:
 	@if [ "$(DESTDIR)" = "" ]; then \
@@ -20,6 +16,3 @@ install:
 
 	mkdir -p $(DESTDIR)/$(SERVERDIR)
 	install -p -m 644 $(FILES) $(DESTDIR)/$(SERVERDIR)
-
-	for d in $(SUBDIRS); do make DESTDIR=$(DESTDIR)/$(SERVERDIR) \
-		-C $$d install; [ $$? = 0 ] || exit 1; done

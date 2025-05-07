@@ -123,7 +123,7 @@ and communicates with koji-hub via XML-RPC.
 
 Koji-Web
 --------
-koji-web is a set of scripts that run in mod_wsgi and use the Cheetah
+koji-web is a set of scripts that run in mod_wsgi and use the Jinja
 templating engine to provide a web interface to Koji. It acts as a client to
 koji-hub providing a visual interface to perform a limited amount of
 administration. koji-web exposes a lot of information and also provides a means

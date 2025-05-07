@@ -199,7 +199,7 @@ Koji is comprised of several components:
    koji-hub via XML-RPC.
 
 -  **koji-web** is a set of scripts that run in mod\_wsgi and use the
-   Cheetah templating engine to provide an web interface to Koji.
+   Jinja templating engine to provide an web interface to Koji.
    koji-web exposes a lot of information and also provides a means for
    certain operations, such as cancelling builds.
 -  **koji** is a CLI written in Python that provides many hooks into Koji.

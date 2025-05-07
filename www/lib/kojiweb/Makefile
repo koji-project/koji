@@ -3,7 +3,7 @@ PYFILES = $(wildcard *.py)
 PKGDIR = $(shell $(PYTHON) ../../devtools/get_site_packages.py )/$(PACKAGE)
 
 SERVERDIR = /kojiweb
-FILES = $(wildcard *.py *.chtml)
+FILES = $(wildcard *.py *.html.j2)
 
 _default:
 	@echo "nothing to make.  try make install"

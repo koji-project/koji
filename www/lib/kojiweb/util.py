@@ -22,6 +22,7 @@
 import datetime
 import hashlib
 import os
+import random
 import re
 import ssl
 import stat
@@ -29,14 +30,19 @@ import urllib
 from collections.abc import Mapping
 from functools import wraps
 from socket import error as socket_error
+from threading import local
 from urllib.parse import parse_qs
 from xml.parsers.expat import ExpatError
 
-import Cheetah.Template
+import jinja2
+from markupsafe import Markup
 
 import koji
 import koji.tasks
+from koji_cli.lib import greetings
 from koji.xmlrpcplus import xmlrpc_client
+
+from . import util as this_module
 
 
 themeInfo = {}
@@ -53,14 +59,43 @@ def _initValues(environ, title='Build System Info', pageID='summary'):
     values['siteName'] = environ['koji.options'].get('SiteName', 'Koji')
     values['title'] = title
     values['pageID'] = pageID
-    values['currentDate'] = str(datetime.datetime.now())
+    now = datetime.datetime.now()
+    values['currentDate'] = str(now)
+    values['date_str'] = koji.formatTimeLong(now)
     values['literalFooter'] = environ['koji.options'].get('LiteralFooter', True)
     values['terms'] = ''
+
+    # ???
+    values['themePath'] = themePath
+    values['toggleOrder'] = toggleOrder
+    values['toggleSelected'] = toggleSelected
+    values['sortImage'] = sortImage
+    values['passthrough'] = passthrough
+    values['passthrough_except'] = passthrough_except
+    values['authToken'] = authToken
+    values['util'] = this_module
+
     themeCache.clear()
     themeInfo.clear()
     themeInfo['name'] = environ['koji.options'].get('KojiTheme', None)
     themeInfo['staticdir'] = environ['koji.options'].get('KojiStaticDir',
                                                          '/usr/share/koji-web/static')
+    # maybe this part belongs elsewhere??
+    values['localnav'] = ''
+    values['localfooter'] = ''
+    values['localbottom'] = ''
+    localnavpath = themePath('extra-nav.html', local=True)
+    if os.path.exists(localnavpath):
+        values['localnav'] = SafeValue(
+            "".join(open(localnavpath, 'rt', encoding='utf-8').readlines()))
+    localfooterpath = themePath("extra-footer.html", local=True)
+    if os.path.exists(localfooterpath):
+        values['localfooter'] = SafeValue(
+            "".join(open(localfooterpath, 'rt', encoding='utf-8').readlines()))
+    localbottompath = themePath("extra-bottom.html", local=True)
+    if os.path.exists(localbottompath):
+        values['localbottom'] = SafeValue(
+            "".join(open(localbottompath, 'rt', encoding='utf-8').readlines()))
 
     environ['koji.values'] = values
 
@@ -94,44 +129,16 @@ def themePath(path, local=False):
     return ret
 
 
-class EscapeFilter(Cheetah.Filters.Filter):
-    def filter(self, val, *args, **kw):
-        """Apply html escaping to most values"""
-        if isinstance(val, SafeValue):
-            result = str(val.value)
-        else:
-            result = escapeHTML(val)
-        return result
+# previously we had a custom SafeValue class here, but the Markup class does the same thing better
+def SafeValue(value):
+    """Mark a value as safe so that the template will not escape it"""
+    # NOTE: this function should only be used in places where we trust the value
 
+    def _MarkTrustedValue(value):
+        # wrapper to keep Bandit B704 from complaining
+        return value
 
-class SafeValue:
-
-    def __init__(self, value):
-        if isinstance(value, SafeValue):
-            self.value = value.value
-        else:
-            self.value = value
-
-    def __str__(self):
-        return str(self.value)
-
-    def __repr__(self):
-        return "SafeValue(%r)" % self.value
-
-    def __add__(self, other):
-        if not isinstance(other, SafeValue):
-            raise ValueError('Adding safe and nonsafe value')
-        return SafeValue(self.value + other.value)
-
-    def __iadd__(self, other):
-        if not isinstance(other, SafeValue):
-            raise ValueError('Adding safe and nonsafe value')
-        self.value += other.value
-        return self
-
-    def __len__(self):
-        # mainly needed for boolean evaluation in templates
-        return len(self.value)
+    return Markup(_MarkTrustedValue(value))
 
 
 def safe_return(func):
@@ -141,16 +148,28 @@ def safe_return(func):
     return _safe
 
 
-TEMPLATES = {}
+# threadlocal cache
+JINJA_CACHE = local()
+
+
+def get_jinja_env(dirpath):
+    if hasattr(JINJA_CACHE, 'env'):
+        return JINJA_CACHE.env
+    # otherwise
+    env = jinja2.Environment(
+        loader=jinja2.FileSystemLoader(dirpath),
+        autoescape=True,
+        line_statement_prefix='#',  # for ease of porting Cheetah templates
+        line_comment_prefix='##'
+    )
+    JINJA_CACHE.env = env
+    return env
 
 
 def _genHTML(environ, fileName):
-    reqdir = os.path.dirname(environ['SCRIPT_FILENAME'])
-    if os.getcwd() != reqdir:
-        os.chdir(reqdir)
-
     if 'koji.currentUser' in environ:
         environ['koji.values']['currentUser'] = environ['koji.currentUser']
+        environ['koji.values']['greeting'] = random.choice(greetings)
     else:
         environ['koji.values']['currentUser'] = None
     environ['koji.values']['authToken'] = _genToken(environ)
@@ -170,12 +189,10 @@ def _genHTML(environ, fileName):
         else:
             environ['koji.values']['LoginDisabled'] = False
 
-    tmpl_class = TEMPLATES.get(fileName)
-    if not tmpl_class:
-        tmpl_class = Cheetah.Template.Template.compile(file=fileName)
-        TEMPLATES[fileName] = tmpl_class
-    tmpl_inst = tmpl_class(namespaces=[environ['koji.values']], filter=EscapeFilter)
-    return tmpl_inst.respond()
+    reqdir = os.path.dirname(environ['SCRIPT_FILENAME']) + '/templates'
+    env = get_jinja_env(reqdir)
+    template = env.get_template(fileName)
+    return template.render(**environ['koji.values'])
 
 
 def _truncTime():
@@ -261,26 +278,48 @@ class FieldCompat:
         self.value = value
 
 
-def toggleOrder(template, sortKey, orderVar='order'):
+# compat with jinja 2.x
+try:
+    pass_context = jinja2.pass_context
+except AttributeError:
+    pass_context = jinja2.contextfunction
+    # (all our uses are functions, not filters)
+
+
+@pass_context
+def toggleOrder(context, sortKey, orderVar='order'):
+    """Toggle order for jinja templates"""
+    value = context.get(orderVar)
+    return _toggleOrder(value, sortKey, orderVar)
+
+
+def _toggleOrder(value, sortKey, orderVar):
     """
     If orderVar equals 'sortKey', return '-sortKey', else
     return 'sortKey'.
     """
-    if template.getVar(orderVar) == sortKey:
+    if value == sortKey:
         return '-' + sortKey
+    elif value == '-' + sortKey:
+        return sortKey
+    elif sortKey == 'id':
+        # sort ids reversed first
+        return '-id'
     else:
         return sortKey
 
 
 @safe_return  # avoid escaping quotes
-def toggleSelected(template, var, option, checked=False):
+def toggleSelected(var, option, checked=False):
     """
     If the passed in variable var equals the literal value in option,
     return 'selected="selected"', otherwise return ''. If checked is True,
     '"checked="checked"' string is returned
     Used for setting the selected option in select and radio boxes.
     """
-    if var == option:
+    # "var" arg is a misnomer. We expect a value to compare
+    value = var
+    if value == option:
         if checked:
             return 'checked="checked"'
         else:
@@ -290,12 +329,18 @@ def toggleSelected(template, var, option, checked=False):
 
 
 @safe_return
-def sortImage(template, sortKey, orderVar='order'):
+@pass_context
+def sortImage(context, sortKey, orderVar='order'):
+    """jinja version"""
+    orderVal = context.get(orderVar)
+    return _sortImage(orderVal, sortKey, orderVar)
+
+
+def _sortImage(orderVal, sortKey, orderVar):
     """
     Return an html img tag suitable for inclusion in the sortKey of a sortable table,
     if the sortValue is "sortKey" or "-sortKey".
     """
-    orderVal = template.getVar(orderVar)
     if orderVal == sortKey:
         return '<img src="%s" class="sort" alt="ascending sort"/>' % \
                themePath("images/gray-triangle-up.gif")
@@ -307,7 +352,18 @@ def sortImage(template, sortKey, orderVar='order'):
 
 
 @safe_return
-def passthrough(template, *vars, prefix='&'):
+@pass_context
+def passthrough(context, *varnames, prefix='&', invert=False):
+    if invert:
+        _PASSTHROUGH = context.get('_PASSTHROUGH', None)
+        if _PASSTHROUGH is None:
+            raise Exception('template does not define _PASSTHROUGH')
+        varnames = {n for n in _PASSTHROUGH if n not in varnames}
+    data = {n: context.get(n, default=None) for n in varnames}
+    return _passthrough(data, prefix)
+
+
+def _passthrough(data, prefix='&'):
     """
     Construct a url parameter string from template vars
 
@@ -322,8 +378,8 @@ def passthrough(template, *vars, prefix='&'):
     The prefix value (default '&') is prepended if any values were found
     """
     result = []
-    for var in vars:
-        value = template.getVar(var, default=None)
+    for var in sorted(data):
+        value = data[var]
         if value is not None:
             if isinstance(value, str):
                 if value.isdigit():
@@ -339,7 +395,8 @@ def passthrough(template, *vars, prefix='&'):
         return ''
 
 
-def passthrough_except(template, *exclude, prefix='&'):
+@pass_context
+def passthrough_except(context, *exclude, prefix='&'):
     """
     Construct a string suitable for use as URL
     parameters.  The template calling this method must have
@@ -349,11 +406,9 @@ def passthrough_except(template, *exclude, prefix='&'):
     Any variables names passed in will be excluded from the
     list of variables in the output string.
     """
-    passvars = []
-    for var in template._PASSTHROUGH:
-        if var not in exclude:
-            passvars.append(var)
-    return passthrough(template, *passvars, prefix=prefix)
+    # note that we have to pass context ourselves here
+    # the decorator only works when called directly from the template
+    return passthrough(context, *exclude, prefix=prefix, invert=True)
 
 
 def sortByKeyFuncNoneGreatest(key):
@@ -685,19 +740,6 @@ def formatRPM(rpminfo, link=True):
         return label
 
 
-def rowToggle(template):
-    """If the value of template._rowNum is even, return 'row-even';
-    if it is odd, return 'row-odd'.  Increment the value before checking it.
-    If the template does not have that value, set it to 0."""
-    if not hasattr(template, '_rowNum'):
-        template._rowNum = 0
-    template._rowNum += 1
-    if template._rowNum % 2:
-        return 'row-odd'
-    else:
-        return 'row-even'
-
-
 def taskScratchClass(task_object):
     """ Return a css class indicating whether or not this task is a scratch
     build.
@@ -748,8 +790,8 @@ def escapeHTML(value):
     " : &quot;
     ' : &#x27;
     """
-    if isinstance(value, SafeValue):
-        return value.value
+    if isinstance(value, Markup):
+        return str(value)
     if not value:
         return str(value)
 
@@ -762,13 +804,18 @@ def escapeHTML(value):
 
 
 @safe_return
-def authToken(template, first=False, form=False):
+@pass_context
+def authToken(context, first=False, form=False):
+    token = context.get('authToken', None)
+    return _authToken(token, first, form)
+
+
+def _authToken(token, first, form):
     """Return the current authToken if it exists.
     If form is True, return it enclosed in a hidden input field.
     Otherwise, return it in a format suitable for appending to a URL.
     If first is True, prefix it with ?, otherwise prefix it
     with &.  If no authToken exists, return an empty string."""
-    token = template.getVar('authToken', default=None)
     if token is not None:
         token = escapeHTML(token)
         if form:

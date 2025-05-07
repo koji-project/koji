@@ -1,0 +1,44 @@
+
+#include "header.html.j2"
+
+  <h4>Information for external buildroot <a href="buildrootinfo?buildrootID={{ buildroot.id }}">{{ util.brLabel(buildroot) }}</a></h4>
+
+  <table>
+    <tr>
+      <th>ID</th><td>{{ buildroot.id }}</td>
+    </tr>
+    <tr>
+      <th>Host OS</th><td>{{ buildroot.host_os }}</td>
+    </tr>
+    <tr>
+      <th>Host Arch</th><td>{{ buildroot.host_arch }}</td>
+    </tr>
+    <tr>
+      <th>Content Generator</th><td>{{ buildroot.cg_name }} ({{ buildroot.cg_version }})</td>
+    </tr>
+    <tr>
+      <th>Container Type</th><td>{{ buildroot.container_type }}</td>
+    </tr>
+    <tr>
+      <th>Container Arch</th><td>{{ buildroot.container_arch }}</td>
+    </tr>
+    #if buildroot.get('extra')
+    <tr>
+      <th>Extra</th><td class="usertext">{{ buildroot.extra |pprint }}</td>
+    </tr>
+    #endif
+    <tr>
+      <th colspan="2"><a href="rpmlist?buildrootID={{ buildroot.id }}&amp;type=component" title="RPMs that are installed into this buildroot when building packages">Component RPMs</a></th>
+    </tr>
+    <tr>
+      <th colspan="2"><a href="rpmlist?buildrootID={{ buildroot.id }}&amp;type=built" title="RPMs that have been built in this buildroot">Built RPMs</a></th>
+    </tr>
+    <tr>
+      <th colspan="2"><a href="archivelist?buildrootID={{ buildroot.id }}&type=component" title="Archives that are installed into this buildroot when building packages">Component Archives</a></th>
+    </tr>
+    <tr>
+      <th colspan="2"><a href="archivelist?buildrootID={{ buildroot.id }}&type=built" title="Archives that have been built in this buildroot">Built Archives</a></th>
+    </tr>
+  </table>
+
+#include "footer.html.j2"

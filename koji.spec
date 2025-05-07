@@ -289,6 +289,7 @@ Requires: python%{python3_pkgversion}-%{name} = %{version}-%{release}
 Requires: python%{python3_pkgversion}-librepo
 Requires: python%{python3_pkgversion}-multilib
 Requires: python%{python3_pkgversion}-cheetah
+# cheetah required for backwards compatibility in wrapperRPM task
 %else
 Requires: python2-%{name} = %{version}-%{release}
 Requires: python2-multilib
@@ -359,7 +360,7 @@ Requires: httpd
 Requires: python%{python3_pkgversion}-mod_wsgi
 Requires: mod_auth_gssapi
 Requires: python%{python3_pkgversion}-psycopg2
-Requires: python%{python3_pkgversion}-cheetah
+Requires: python%{python3_pkgversion}-jinja2
 Requires: python%{python3_pkgversion}-%{name} = %{version}-%{release}
 Provides: %{name}-web-code = %{version}-%{release}
 

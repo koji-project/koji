@@ -1,0 +1,51 @@
+
+#macro linkURL()
+  #set query = []
+  #if tag
+  #set _tmp = query.append('tagID=%s' % (tag.id|urlencode))
+  #endif
+  #if user
+  #set _tmp = query.append('userID=%s' % (user.id|urlencode))
+  #endif
+  #if package
+  #set _tmp = query.append('packageID=%s' % (package.id|urlencode))
+  #endif
+  #if query
+  {{ '%s/%s?%s' % (weburl, 'builds', '&amp;'.join(query)) }}
+  #else
+  {{ '%s/%s' % (weburl, 'builds') }}
+  #endif
+#endmacro
+
+<rss version="2.0">
+  <channel>
+    <title>{{ siteName }}: recent builds{{ ' of package ' + package.name if package else '' }}{{ ' into tag ' + tag.name if tag else '' }}{{ ' by user ' + user.name if user else '' }}</title>
+    <link>{{ linkURL() }}</link>
+    <description>
+      A list of the most recent builds
+      #if package
+      of package {{ package.name }}
+      #endif
+      #if tag
+      into tag {{ tag.name }}
+      #endif
+      #if user
+      by user {{ user.name }}
+      #endif
+      in the {{ siteName }} Build System.  The list is sorted in reverse chronological order by build completion time.
+    </description>
+    <pubDate>{{ util.formatTimeRSS(currentDate) }}</pubDate>
+    #for build in builds
+    <item>
+      <title>{{ koji.BUILD_STATES[build.state]|lower }}: {{ koji.buildLabel(build) }}{{ ', target: ' + build.task.request[1] if build.task else '' }}</title>
+      <link>{{ weburl }}/buildinfo?buildID={{ build.build_id }}</link>
+      #if build.completion_time
+      <pubDate>{{ util.formatTimeRSS(build.completion_ts) }}</pubDate>
+      #endif
+      #if build.state == koji.BUILD_STATES['COMPLETE'] and build.changelog
+      <description>&lt;pre&gt;{{ koji.util.formatChangelog(build.changelog) }}&lt;/pre&gt;</description>
+      #endif
+    </item>
+    #endfor
+  </channel>
+</rss>

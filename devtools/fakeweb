@@ -2,9 +2,11 @@
 
 from __future__ import absolute_import, print_function
 
+import ast
 import mimetypes
 import os
 import os.path
+import optparse
 import pprint
 import sys
 from urllib.parse import quote
@@ -17,6 +19,7 @@ sys.path.insert(0, CWD)
 sys.path.insert(1, os.path.join(CWD, 'www/lib'))
 sys.path.insert(1, os.path.join(CWD, 'www/kojiweb'))
 import wsgi_publisher
+import index as kojiweb_handlers
 
 
 def get_url(environ):
@@ -122,11 +125,87 @@ def application(environ, start_response):
     return wsgi_publisher.application(environ, start_response)
 
 
+def nice_literal(value):
+    try:
+        return ast.literal_eval(value)
+    except (ValueError, SyntaxError):
+        return value
+
+
+def get_options():
+    parser = optparse.OptionParser(usage='%prog [options]')
+    # parser.add_option('--pdb', action='store_true',
+    #                   help='drop into pdb on error')
+    parser.add_option('--user', '-u', help='fake login as user')
+    parser.add_option('--time', '-t', type="float", help='mock time as value')
+    parser.add_option('-o', '--config-option', help='override config option',
+                      action='append', metavar='NAME=VALUE')
+    opts, args = parser.parse_args()
+
+    if args:
+        parser.error('This command takes no args, just options')
+
+    if opts.config_option:
+        overrides = {}
+        for s in opts.config_option:
+            k, v = s.split('=', 1)
+            v = nice_literal(v)
+            overrides[k] = v
+        opts.config_option = overrides
+
+    return opts
+
+
+def override_load_config(opts):
+    original_load_config = wsgi_publisher.Dispatcher.load_config
+
+    def my_load_config(_self, environ):
+        oldopts = original_load_config(_self, environ)
+        oldopts.update(opts)
+        _self.options = oldopts
+        return oldopts
+
+    wsgi_publisher.Dispatcher.load_config = my_load_config
+
+
+def fake_login(user):
+    original_assertLogin = kojiweb_handlers._assertLogin
+    original_getServer = kojiweb_handlers._getServer
+
+    def my_assertLogin(environ):
+        pass
+
+    def my_getServer(environ):
+        session = original_getServer(environ)
+        environ['koji.currentUser'] = session.getUser(user)
+        return session
+
+    kojiweb_handlers._assertLogin = my_assertLogin
+    kojiweb_handlers._getServer = my_getServer
+
+
 def main():
+    options = get_options()
+    if options.config_option:
+        override_load_config(options.config_option)
+    if options.user:
+        fake_login(options.user)
+    if options.time:
+        from unittest import mock
+        import datetime
+        dt = datetime.datetime.fromtimestamp(options.time)
+        mock.patch('time.time', return_value=options.time).start()
+        # mocking datetime is tricky, can't mock the c object directly
+        # and can't mock the datetime class globally without breaking other code
+        # so we just mock the handlers import of it
+        my_datetime = mock.patch.object(kojiweb_handlers.kojiweb.util, 'datetime', wraps=datetime).start()
+        my_datetime.datetime.now.return_value = dt
+
     # koji.add_file_logger('koji', 'fakeweb.log')
     httpd = make_server('', 8000, application)
     print("Serving kojiweb on http://localhost:8000 ...")
     httpd.serve_forever()
+
 
 if __name__ == '__main__':
     main()

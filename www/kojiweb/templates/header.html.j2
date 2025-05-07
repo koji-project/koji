@@ -1,0 +1,76 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <title>{{ title }} | {{ siteName }}</title>
+    <link rel="shortcut icon" href="{{ themePath('images/koji.ico') }}"/>
+    <link rel="stylesheet" type="text/css" media="screen" title="Koji Style" href="{{ themePath('koji.css') }}"/>
+    <link rel="alternate stylesheet" type="text/css" media="screen" title="Debug" href="{{ themePath('debug.css') }}"/>
+    <link rel="alternate" type="application/rss+xml" title="Koji: recent builds" href="/koji/recentbuilds"/>
+  </head>
+  <body id="{{ pageID }}">
+
+    <div id="wrap">
+      <div id="innerwrap">
+
+        <!-- HEADER -->
+        <div id="header">
+          <img src="{{ themePath('images/koji.png') }}" alt="Koji Logo" id="kojiLogo"/>
+{{ localnav }}
+          <form action="search" id="headerSearch">
+            <input type="hidden" name="match" value="glob"/>
+            <select name="type">
+              <option {{ toggleSelected(type, "package") }} value="package">Packages</option>
+              <option {{ toggleSelected(type, "build") }} value="build">Builds</option>
+              <option {{ toggleSelected(type, "tag") }} value="tag">Tags</option>
+              <option {{ toggleSelected(type, "target") }} value="target">Build Targets</option>
+              <option {{ toggleSelected(type, "user") }} value="user">Users</option>
+              <option {{ toggleSelected(type, "host") }} value="host">Hosts</option>
+              <option {{ toggleSelected(type, "rpm") }} value="rpm">RPMs</option>
+              {%- if mavenEnabled %}
+              <option {{ toggleSelected(type, "maven") }} value="maven">Maven Artifacts</option>
+              {%- endif %}
+              {%- if winEnabled %}
+              <option {{ toggleSelected(type, "win") }} value="win">Windows Artifacts</option>
+              {%- endif %}
+            </select>
+            <input type="text" name="terms" title="You can use glob expressions here (e.g. 'bash-*')" value="{{ terms }}"/>
+            <input type="submit" value="Search"/>
+          </form>
+        </div><!-- end header -->
+
+        <!-- MAIN NAVIGATION -->
+        <div id="mainNav">
+          <h4 class="hide">Main Site Links:</h4>
+          <ul>
+            <li id="summaryTab"><a href="index">Summary</a></li>
+            <li id="packagesTab"><a href="packages">Packages</a></li>
+            <li id="buildsTab"><a href="builds">Builds</a></li>
+            <li id="tasksTab"><a href="tasks">Tasks</a></li>
+            <li id="tagsTab"><a href="tags">Tags</a></li>
+            <li id="buildtargetsTab"><a href="buildtargets">Build Targets</a></li>
+            <li id="usersTab"><a href="users">Users</a></li>
+            <li id="hostsTab"><a href="hosts">Hosts</a></li>
+            <li id="reportsTab"><a href="reports">Reports</a></li>
+            <li id="searchTab"><a href="search">Search</a></li>
+            <li id="apiTab"><a href="api">API</a></li>
+          </ul>
+        </div><!-- end mainNav -->
+
+        <span id="loginInfo">
+          {{ date_str }}
+          {%- if not LoginDisabled %}
+           |
+          {%- if currentUser %}
+          {{ greeting }}, <a href="userinfo?userID={{ currentUser.id }}">{{ currentUser.name }}</a> | <a href="logout">logout</a>
+          {%- else %}
+          <a href="login">login</a>
+          {%- endif %}
+          {%- endif %}
+        </span>
+
+        <div id="content">
+

@@ -3,9 +3,10 @@ try:
     from unittest import mock
 except ImportError:
     import mock
+import json
 import koji
 
-from koji.xmlrpcplus import Fault
+from koji.xmlrpcplus import Fault, DateTime
 
 
 class BaseFakeClientSession(koji.ClientSession):
@@ -22,9 +23,11 @@ class BaseFakeClientSession(koji.ClientSession):
         self._calls = []
         for call in calls:
             method = call['methodName']
-            args, kwargs = koji.decode_args(call['params'])
+            args, kwargs = koji.decode_args(*call['params'])
             try:
                 result = self._callMethod(method, args, kwargs)
+                # multicall wraps non-fault results in a singleton
+                result = (result,)
                 ret.append(result)
             except Fault as fault:
                 if strict:
@@ -57,6 +60,12 @@ class FakeClientSession(BaseFakeClientSession):
         for call in data:
             key = self._munge([call['method'], call['args'], call['kwargs']])
             self._calldata.setdefault(key, []).append(call)
+
+    def load(self, filename):
+        # load from json file
+        with open(filename, 'rt') as fp:
+            data = json.load(fp, object_hook=decode_data)
+        self.load_calls(data)
 
     def _callMethod(self, name, args, kwargs=None, retry=True):
         if self.multicall:
@@ -103,6 +112,12 @@ class RecordingClientSession(BaseFakeClientSession):
     def get_calls(self):
         return self._calldata
 
+    def dump(self, filename):
+        with open(filename, 'wt') as fp:
+            # json.dump(self._calldata, fp, indent=4, sort_keys=True)
+            json.dump(self._calldata, fp, indent=4, sort_keys=True, default=encode_data)
+        self._calldata = []
+
     def _callMethod(self, name, args, kwargs=None, retry=True):
         if self.multicall:
             return super(RecordingClientSession, self)._callMethod(name, args,
@@ -128,3 +143,24 @@ class RecordingClientSession(BaseFakeClientSession):
                    'faultString': str(e)}
             call['fault'] = err
             raise
+
+
+def encode_data(value):
+    """Encode data for json"""
+    if isinstance(value, DateTime):
+        return {'__type': 'DateTime', 'value': value.value}
+    else:
+        raise TypeError('Unknown type for json encoding')
+
+
+def decode_data(value):
+    """Decode data encoded for json"""
+    if isinstance(value, dict):
+        _type = value.get('__type')
+        if _type == 'DateTime':
+            return DateTime(value['value'])
+    #else
+    return value
+
+
+# the end
