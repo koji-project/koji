@@ -2728,7 +2728,7 @@ def reporequest(environ, reqID):
         # invalid, but technically not blocked in db
         values['min_event'] = None
     values['req'] = req
-    return _genHTML(environ, 'reporequest.chtml')
+    return _genHTML(environ, 'reporequest.html.j2')
 
 
 def reporequests(environ, active="true", tag=None, start=None, order=None):
@@ -2764,7 +2764,7 @@ def reporequests(environ, active="true", tag=None, start=None, order=None):
                                 args=(clauses, '**'),
                                 start=start, dataName='reqs', prefix='req', order=order,
                                 optsarg='opts')
-    return _genHTML(environ, 'reporequests.chtml')
+    return _genHTML(environ, 'reporequests.html.j2')
 
 
 def activesession(environ, start=None, order=None):
