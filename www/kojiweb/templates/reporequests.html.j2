@@ -22,7 +22,7 @@
           <td>
               <strong>Tag</strong>:
           </td><td>
-              <input type="text" name="tag" value="{{ tag }}"/>
+              <input type="text" name="tag" value="{{ tag if tag else '' }}"/>
           </td>
           </tr>
         </table>
