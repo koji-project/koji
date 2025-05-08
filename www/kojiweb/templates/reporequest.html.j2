@@ -19,7 +19,7 @@ Repo request {{ req_id }} not found.
   <tr><th>Invalid event</th><td>Unable to determine event for request</td><th></tr>
   #endif
   #if req.opts
-  <th>Options</th><td class="usertext">{{ json.dumps(req.opts, indent=4) }}</td>
+  <th>Options</th><td class="usertext">{{ req.opts | tojson(indent=4) }}</td>
   #endif
   #if req.repo_id
   <tr><th>Fulfilled by repo</th><td><a href="repoinfo?repoID={{ req.repo_id }}">{{ req.repo_id }}</a</td></tr>
