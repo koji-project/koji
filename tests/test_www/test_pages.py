@@ -172,6 +172,15 @@ class TestPages(unittest.TestCase):
         ['buildroots', ''],
         ['buildroots', 'start=50&order=id'],
         #['builds', 'start=50&order=id'],
+        ['reporequests', ''],
+        ['reporequests', 'active=all&order=tag_name'],
+        ['reporequests', 'active=false&order=-id'],
+        ['reporequests', 'tag=1&active=all'],
+        ['reporequest', 'reqID=127'],
+        ['reporequest', 'reqID=128'],
+        ['reporequest', 'reqID=132'],
+        ['reporequest', 'reqID=133'],
+        ['reporequest', 'reqID=134'],
     ]
 
     def prep_handler(self, method, query):

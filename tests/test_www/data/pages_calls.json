@@ -56292,5 +56292,931 @@
         "kwargs": {},
         "method": "repo.queryQueue",
         "result": []
+    },
+    {
+        "args": [
+            [
+                [
+                    "active",
+                    true
+                ]
+            ],
+            "**"
+        ],
+        "kwargs": {
+            "opts": {
+                "countOnly": true
+            }
+        },
+        "method": "repo.queryQueue",
+        "result": 7
+    },
+    {
+        "args": [
+            [
+                [
+                    "active",
+                    true
+                ]
+            ],
+            "**"
+        ],
+        "kwargs": {
+            "opts": {
+                "limit": 50,
+                "offset": 0,
+                "order": "-id"
+            }
+        },
+        "method": "repo.queryQueue",
+        "result": [
+            {
+                "active": true,
+                "at_event": 497085,
+                "create_time": "2025-05-08 11:43:40.126768+00:00",
+                "create_ts": 1746704620.126768,
+                "id": 134,
+                "min_event": null,
+                "opts": {
+                    "src": true
+                },
+                "owner": 1,
+                "owner_name": "mikem",
+                "priority": 20,
+                "repo_id": null,
+                "tag_id": 1,
+                "tag_name": "f24",
+                "task_id": null,
+                "task_state": null,
+                "tries": 0,
+                "update_time": "2025-05-08 11:43:40.126768+00:00",
+                "update_ts": 1746704620.126768
+            },
+            {
+                "active": true,
+                "at_event": 497085,
+                "create_time": "2025-05-08 11:43:36.529538+00:00",
+                "create_ts": 1746704616.529538,
+                "id": 133,
+                "min_event": null,
+                "opts": {
+                    "debuginfo": true
+                },
+                "owner": 1,
+                "owner_name": "mikem",
+                "priority": 20,
+                "repo_id": null,
+                "tag_id": 1,
+                "tag_name": "f24",
+                "task_id": null,
+                "task_state": null,
+                "tries": 0,
+                "update_time": "2025-05-08 11:43:36.529538+00:00",
+                "update_ts": 1746704616.529538
+            },
+            {
+                "active": true,
+                "at_event": 497086,
+                "create_time": "2025-05-08 11:42:21.704141+00:00",
+                "create_ts": 1746704541.704141,
+                "id": 132,
+                "min_event": null,
+                "opts": {},
+                "owner": 1,
+                "owner_name": "mikem",
+                "priority": 20,
+                "repo_id": null,
+                "tag_id": 1,
+                "tag_name": "f24",
+                "task_id": null,
+                "task_state": null,
+                "tries": 0,
+                "update_time": "2025-05-08 11:42:21.704141+00:00",
+                "update_ts": 1746704541.704141
+            },
+            {
+                "active": true,
+                "at_event": 497087,
+                "create_time": "2025-05-08 11:42:18.526583+00:00",
+                "create_ts": 1746704538.526583,
+                "id": 131,
+                "min_event": null,
+                "opts": {},
+                "owner": 1,
+                "owner_name": "mikem",
+                "priority": 20,
+                "repo_id": null,
+                "tag_id": 1,
+                "tag_name": "f24",
+                "task_id": null,
+                "task_state": null,
+                "tries": 0,
+                "update_time": "2025-05-08 11:42:18.526583+00:00",
+                "update_ts": 1746704538.526583
+            },
+            {
+                "active": true,
+                "at_event": 497088,
+                "create_time": "2025-05-08 11:42:15.500883+00:00",
+                "create_ts": 1746704535.500883,
+                "id": 130,
+                "min_event": null,
+                "opts": {},
+                "owner": 1,
+                "owner_name": "mikem",
+                "priority": 20,
+                "repo_id": null,
+                "tag_id": 1,
+                "tag_name": "f24",
+                "task_id": null,
+                "task_state": null,
+                "tries": 0,
+                "update_time": "2025-05-08 11:42:15.500883+00:00",
+                "update_ts": 1746704535.500883
+            },
+            {
+                "active": true,
+                "at_event": 497089,
+                "create_time": "2025-05-08 11:42:03.370177+00:00",
+                "create_ts": 1746704523.370177,
+                "id": 129,
+                "min_event": null,
+                "opts": {},
+                "owner": 1,
+                "owner_name": "mikem",
+                "priority": 20,
+                "repo_id": null,
+                "tag_id": 1,
+                "tag_name": "f24",
+                "task_id": null,
+                "task_state": null,
+                "tries": 0,
+                "update_time": "2025-05-08 11:42:03.370177+00:00",
+                "update_ts": 1746704523.370177
+            },
+            {
+                "active": true,
+                "at_event": null,
+                "create_time": "2025-05-08 11:32:15.973760+00:00",
+                "create_ts": 1746703935.97376,
+                "id": 128,
+                "min_event": 497768,
+                "opts": {},
+                "owner": 1,
+                "owner_name": "mikem",
+                "priority": 20,
+                "repo_id": null,
+                "tag_id": 1,
+                "tag_name": "f24",
+                "task_id": null,
+                "task_state": null,
+                "tries": 0,
+                "update_time": "2025-05-08 11:32:15.973760+00:00",
+                "update_ts": 1746703935.97376
+            }
+        ]
+    },
+    {
+        "args": [
+            [],
+            "**"
+        ],
+        "kwargs": {
+            "opts": {
+                "countOnly": true
+            }
+        },
+        "method": "repo.queryQueue",
+        "result": 9
+    },
+    {
+        "args": [
+            [],
+            "**"
+        ],
+        "kwargs": {
+            "opts": {
+                "limit": 50,
+                "offset": 0,
+                "order": "tag_name"
+            }
+        },
+        "method": "repo.queryQueue",
+        "result": [
+            {
+                "active": true,
+                "at_event": null,
+                "create_time": "2025-05-08 11:32:15.973760+00:00",
+                "create_ts": 1746703935.97376,
+                "id": 128,
+                "min_event": 497768,
+                "opts": {},
+                "owner": 1,
+                "owner_name": "mikem",
+                "priority": 20,
+                "repo_id": null,
+                "tag_id": 1,
+                "tag_name": "f24",
+                "task_id": null,
+                "task_state": null,
+                "tries": 0,
+                "update_time": "2025-05-08 11:32:15.973760+00:00",
+                "update_ts": 1746703935.97376
+            },
+            {
+                "active": true,
+                "at_event": 497089,
+                "create_time": "2025-05-08 11:42:03.370177+00:00",
+                "create_ts": 1746704523.370177,
+                "id": 129,
+                "min_event": null,
+                "opts": {},
+                "owner": 1,
+                "owner_name": "mikem",
+                "priority": 20,
+                "repo_id": null,
+                "tag_id": 1,
+                "tag_name": "f24",
+                "task_id": null,
+                "task_state": null,
+                "tries": 0,
+                "update_time": "2025-05-08 11:42:03.370177+00:00",
+                "update_ts": 1746704523.370177
+            },
+            {
+                "active": true,
+                "at_event": 497088,
+                "create_time": "2025-05-08 11:42:15.500883+00:00",
+                "create_ts": 1746704535.500883,
+                "id": 130,
+                "min_event": null,
+                "opts": {},
+                "owner": 1,
+                "owner_name": "mikem",
+                "priority": 20,
+                "repo_id": null,
+                "tag_id": 1,
+                "tag_name": "f24",
+                "task_id": null,
+                "task_state": null,
+                "tries": 0,
+                "update_time": "2025-05-08 11:42:15.500883+00:00",
+                "update_ts": 1746704535.500883
+            },
+            {
+                "active": true,
+                "at_event": 497087,
+                "create_time": "2025-05-08 11:42:18.526583+00:00",
+                "create_ts": 1746704538.526583,
+                "id": 131,
+                "min_event": null,
+                "opts": {},
+                "owner": 1,
+                "owner_name": "mikem",
+                "priority": 20,
+                "repo_id": null,
+                "tag_id": 1,
+                "tag_name": "f24",
+                "task_id": null,
+                "task_state": null,
+                "tries": 0,
+                "update_time": "2025-05-08 11:42:18.526583+00:00",
+                "update_ts": 1746704538.526583
+            },
+            {
+                "active": true,
+                "at_event": 497086,
+                "create_time": "2025-05-08 11:42:21.704141+00:00",
+                "create_ts": 1746704541.704141,
+                "id": 132,
+                "min_event": null,
+                "opts": {},
+                "owner": 1,
+                "owner_name": "mikem",
+                "priority": 20,
+                "repo_id": null,
+                "tag_id": 1,
+                "tag_name": "f24",
+                "task_id": null,
+                "task_state": null,
+                "tries": 0,
+                "update_time": "2025-05-08 11:42:21.704141+00:00",
+                "update_ts": 1746704541.704141
+            },
+            {
+                "active": true,
+                "at_event": 497085,
+                "create_time": "2025-05-08 11:43:36.529538+00:00",
+                "create_ts": 1746704616.529538,
+                "id": 133,
+                "min_event": null,
+                "opts": {
+                    "debuginfo": true
+                },
+                "owner": 1,
+                "owner_name": "mikem",
+                "priority": 20,
+                "repo_id": null,
+                "tag_id": 1,
+                "tag_name": "f24",
+                "task_id": null,
+                "task_state": null,
+                "tries": 0,
+                "update_time": "2025-05-08 11:43:36.529538+00:00",
+                "update_ts": 1746704616.529538
+            },
+            {
+                "active": true,
+                "at_event": 497085,
+                "create_time": "2025-05-08 11:43:40.126768+00:00",
+                "create_ts": 1746704620.126768,
+                "id": 134,
+                "min_event": null,
+                "opts": {
+                    "src": true
+                },
+                "owner": 1,
+                "owner_name": "mikem",
+                "priority": 20,
+                "repo_id": null,
+                "tag_id": 1,
+                "tag_name": "f24",
+                "task_id": null,
+                "task_state": null,
+                "tries": 0,
+                "update_time": "2025-05-08 11:43:40.126768+00:00",
+                "update_ts": 1746704620.126768
+            },
+            {
+                "active": false,
+                "at_event": null,
+                "create_time": "2025-01-17 22:04:43.253576+00:00",
+                "create_ts": 1737151483.253576,
+                "id": 126,
+                "min_event": 497788,
+                "opts": {
+                    "debuginfo": true
+                },
+                "owner": 4,
+                "owner_name": "builder-01",
+                "priority": 20,
+                "repo_id": 2602,
+                "tag_id": 2099,
+                "tag_name": "kpatch-kernel-fake-1.1-5-build",
+                "task_id": 14444,
+                "task_state": 2,
+                "tries": 1,
+                "update_time": "2025-01-17 22:21:48.169150+00:00",
+                "update_ts": 1737152508.16915
+            },
+            {
+                "active": false,
+                "at_event": null,
+                "create_time": "2025-01-17 22:21:15.725044+00:00",
+                "create_ts": 1737152475.725044,
+                "id": 127,
+                "min_event": 497788,
+                "opts": {},
+                "owner": 4,
+                "owner_name": "builder-01",
+                "priority": 20,
+                "repo_id": 2602,
+                "tag_id": 2099,
+                "tag_name": "kpatch-kernel-fake-1.1-5-build",
+                "task_id": 14445,
+                "task_state": 2,
+                "tries": 1,
+                "update_time": "2025-01-17 22:21:48.169150+00:00",
+                "update_ts": 1737152508.16915
+            }
+        ]
+    },
+    {
+        "args": [
+            [
+                [
+                    "active",
+                    false
+                ]
+            ],
+            "**"
+        ],
+        "kwargs": {
+            "opts": {
+                "countOnly": true
+            }
+        },
+        "method": "repo.queryQueue",
+        "result": 2
+    },
+    {
+        "args": [
+            [
+                [
+                    "active",
+                    false
+                ]
+            ],
+            "**"
+        ],
+        "kwargs": {
+            "opts": {
+                "limit": 50,
+                "offset": 0,
+                "order": "-id"
+            }
+        },
+        "method": "repo.queryQueue",
+        "result": [
+            {
+                "active": false,
+                "at_event": null,
+                "create_time": "2025-01-17 22:21:15.725044+00:00",
+                "create_ts": 1737152475.725044,
+                "id": 127,
+                "min_event": 497788,
+                "opts": {},
+                "owner": 4,
+                "owner_name": "builder-01",
+                "priority": 20,
+                "repo_id": 2602,
+                "tag_id": 2099,
+                "tag_name": "kpatch-kernel-fake-1.1-5-build",
+                "task_id": 14445,
+                "task_state": 2,
+                "tries": 1,
+                "update_time": "2025-01-17 22:21:48.169150+00:00",
+                "update_ts": 1737152508.16915
+            },
+            {
+                "active": false,
+                "at_event": null,
+                "create_time": "2025-01-17 22:04:43.253576+00:00",
+                "create_ts": 1737151483.253576,
+                "id": 126,
+                "min_event": 497788,
+                "opts": {
+                    "debuginfo": true
+                },
+                "owner": 4,
+                "owner_name": "builder-01",
+                "priority": 20,
+                "repo_id": 2602,
+                "tag_id": 2099,
+                "tag_name": "kpatch-kernel-fake-1.1-5-build",
+                "task_id": 14444,
+                "task_state": 2,
+                "tries": 1,
+                "update_time": "2025-01-17 22:21:48.169150+00:00",
+                "update_ts": 1737152508.16915
+            }
+        ]
+    },
+    {
+        "args": [
+            1
+        ],
+        "kwargs": {
+            "event": "auto",
+            "strict": true
+        },
+        "method": "getTag",
+        "result": {
+            "arches": "x86_64",
+            "extra": {
+                "bar": 101,
+                "foo": 1,
+                "fuzz": 3
+            },
+            "id": 1,
+            "locked": false,
+            "maven_include_all": false,
+            "maven_support": false,
+            "name": "f24",
+            "perm": null,
+            "perm_id": null
+        }
+    },
+    {
+        "args": [
+            [
+                [
+                    "tag_id",
+                    1
+                ]
+            ],
+            "**"
+        ],
+        "kwargs": {
+            "opts": {
+                "countOnly": true
+            }
+        },
+        "method": "repo.queryQueue",
+        "result": 7
+    },
+    {
+        "args": [
+            [
+                [
+                    "tag_id",
+                    1
+                ]
+            ],
+            "**"
+        ],
+        "kwargs": {
+            "opts": {
+                "limit": 50,
+                "offset": 0,
+                "order": "-id"
+            }
+        },
+        "method": "repo.queryQueue",
+        "result": [
+            {
+                "active": true,
+                "at_event": 497085,
+                "create_time": "2025-05-08 11:43:40.126768+00:00",
+                "create_ts": 1746704620.126768,
+                "id": 134,
+                "min_event": null,
+                "opts": {
+                    "src": true
+                },
+                "owner": 1,
+                "owner_name": "mikem",
+                "priority": 20,
+                "repo_id": null,
+                "tag_id": 1,
+                "tag_name": "f24",
+                "task_id": null,
+                "task_state": null,
+                "tries": 0,
+                "update_time": "2025-05-08 11:43:40.126768+00:00",
+                "update_ts": 1746704620.126768
+            },
+            {
+                "active": true,
+                "at_event": 497085,
+                "create_time": "2025-05-08 11:43:36.529538+00:00",
+                "create_ts": 1746704616.529538,
+                "id": 133,
+                "min_event": null,
+                "opts": {
+                    "debuginfo": true
+                },
+                "owner": 1,
+                "owner_name": "mikem",
+                "priority": 20,
+                "repo_id": null,
+                "tag_id": 1,
+                "tag_name": "f24",
+                "task_id": null,
+                "task_state": null,
+                "tries": 0,
+                "update_time": "2025-05-08 11:43:36.529538+00:00",
+                "update_ts": 1746704616.529538
+            },
+            {
+                "active": true,
+                "at_event": 497086,
+                "create_time": "2025-05-08 11:42:21.704141+00:00",
+                "create_ts": 1746704541.704141,
+                "id": 132,
+                "min_event": null,
+                "opts": {},
+                "owner": 1,
+                "owner_name": "mikem",
+                "priority": 20,
+                "repo_id": null,
+                "tag_id": 1,
+                "tag_name": "f24",
+                "task_id": null,
+                "task_state": null,
+                "tries": 0,
+                "update_time": "2025-05-08 11:42:21.704141+00:00",
+                "update_ts": 1746704541.704141
+            },
+            {
+                "active": true,
+                "at_event": 497087,
+                "create_time": "2025-05-08 11:42:18.526583+00:00",
+                "create_ts": 1746704538.526583,
+                "id": 131,
+                "min_event": null,
+                "opts": {},
+                "owner": 1,
+                "owner_name": "mikem",
+                "priority": 20,
+                "repo_id": null,
+                "tag_id": 1,
+                "tag_name": "f24",
+                "task_id": null,
+                "task_state": null,
+                "tries": 0,
+                "update_time": "2025-05-08 11:42:18.526583+00:00",
+                "update_ts": 1746704538.526583
+            },
+            {
+                "active": true,
+                "at_event": 497088,
+                "create_time": "2025-05-08 11:42:15.500883+00:00",
+                "create_ts": 1746704535.500883,
+                "id": 130,
+                "min_event": null,
+                "opts": {},
+                "owner": 1,
+                "owner_name": "mikem",
+                "priority": 20,
+                "repo_id": null,
+                "tag_id": 1,
+                "tag_name": "f24",
+                "task_id": null,
+                "task_state": null,
+                "tries": 0,
+                "update_time": "2025-05-08 11:42:15.500883+00:00",
+                "update_ts": 1746704535.500883
+            },
+            {
+                "active": true,
+                "at_event": 497089,
+                "create_time": "2025-05-08 11:42:03.370177+00:00",
+                "create_ts": 1746704523.370177,
+                "id": 129,
+                "min_event": null,
+                "opts": {},
+                "owner": 1,
+                "owner_name": "mikem",
+                "priority": 20,
+                "repo_id": null,
+                "tag_id": 1,
+                "tag_name": "f24",
+                "task_id": null,
+                "task_state": null,
+                "tries": 0,
+                "update_time": "2025-05-08 11:42:03.370177+00:00",
+                "update_ts": 1746704523.370177
+            },
+            {
+                "active": true,
+                "at_event": null,
+                "create_time": "2025-05-08 11:32:15.973760+00:00",
+                "create_ts": 1746703935.97376,
+                "id": 128,
+                "min_event": 497768,
+                "opts": {},
+                "owner": 1,
+                "owner_name": "mikem",
+                "priority": 20,
+                "repo_id": null,
+                "tag_id": 1,
+                "tag_name": "f24",
+                "task_id": null,
+                "task_state": null,
+                "tries": 0,
+                "update_time": "2025-05-08 11:32:15.973760+00:00",
+                "update_ts": 1746703935.97376
+            }
+        ]
+    },
+    {
+        "args": [
+            [
+                [
+                    "id",
+                    "=",
+                    127
+                ]
+            ],
+            "**"
+        ],
+        "kwargs": {},
+        "method": "repo.queryQueue",
+        "result": [
+            {
+                "active": false,
+                "at_event": null,
+                "create_time": "2025-01-17 22:21:15.725044+00:00",
+                "create_ts": 1737152475.725044,
+                "id": 127,
+                "min_event": 497788,
+                "opts": {},
+                "owner": 4,
+                "owner_name": "builder-01",
+                "priority": 20,
+                "repo_id": 2602,
+                "tag_id": 2099,
+                "tag_name": "kpatch-kernel-fake-1.1-5-build",
+                "task_id": 14445,
+                "task_state": 2,
+                "tries": 1,
+                "update_time": "2025-01-17 22:21:48.169150+00:00",
+                "update_ts": 1737152508.16915
+            }
+        ]
+    },
+    {
+        "args": [
+            497788
+        ],
+        "kwargs": {},
+        "method": "getEvent",
+        "result": {
+            "id": 497788,
+            "ts": 1737145925.263978
+        }
+    },
+    {
+        "args": [
+            [
+                [
+                    "id",
+                    "=",
+                    128
+                ]
+            ],
+            "**"
+        ],
+        "kwargs": {},
+        "method": "repo.queryQueue",
+        "result": [
+            {
+                "active": true,
+                "at_event": null,
+                "create_time": "2025-05-08 11:32:15.973760+00:00",
+                "create_ts": 1746703935.97376,
+                "id": 128,
+                "min_event": 497768,
+                "opts": {},
+                "owner": 1,
+                "owner_name": "mikem",
+                "priority": 20,
+                "repo_id": null,
+                "tag_id": 1,
+                "tag_name": "f24",
+                "task_id": null,
+                "task_state": null,
+                "tries": 0,
+                "update_time": "2025-05-08 11:32:15.973760+00:00",
+                "update_ts": 1746703935.97376
+            }
+        ]
+    },
+    {
+        "args": [
+            497768
+        ],
+        "kwargs": {},
+        "method": "getEvent",
+        "result": {
+            "id": 497768,
+            "ts": 1732049290.238136
+        }
+    },
+    {
+        "args": [
+            [
+                [
+                    "id",
+                    "=",
+                    132
+                ]
+            ],
+            "**"
+        ],
+        "kwargs": {},
+        "method": "repo.queryQueue",
+        "result": [
+            {
+                "active": true,
+                "at_event": 497086,
+                "create_time": "2025-05-08 11:42:21.704141+00:00",
+                "create_ts": 1746704541.704141,
+                "id": 132,
+                "min_event": null,
+                "opts": {},
+                "owner": 1,
+                "owner_name": "mikem",
+                "priority": 20,
+                "repo_id": null,
+                "tag_id": 1,
+                "tag_name": "f24",
+                "task_id": null,
+                "task_state": null,
+                "tries": 0,
+                "update_time": "2025-05-08 11:42:21.704141+00:00",
+                "update_ts": 1746704541.704141
+            }
+        ]
+    },
+    {
+        "args": [
+            497086
+        ],
+        "kwargs": {},
+        "method": "getEvent",
+        "result": {
+            "id": 497086,
+            "ts": 1706727187.174471
+        }
+    },
+    {
+        "args": [
+            [
+                [
+                    "id",
+                    "=",
+                    133
+                ]
+            ],
+            "**"
+        ],
+        "kwargs": {},
+        "method": "repo.queryQueue",
+        "result": [
+            {
+                "active": true,
+                "at_event": 497085,
+                "create_time": "2025-05-08 11:43:36.529538+00:00",
+                "create_ts": 1746704616.529538,
+                "id": 133,
+                "min_event": null,
+                "opts": {
+                    "debuginfo": true
+                },
+                "owner": 1,
+                "owner_name": "mikem",
+                "priority": 20,
+                "repo_id": null,
+                "tag_id": 1,
+                "tag_name": "f24",
+                "task_id": null,
+                "task_state": null,
+                "tries": 0,
+                "update_time": "2025-05-08 11:43:36.529538+00:00",
+                "update_ts": 1746704616.529538
+            }
+        ]
+    },
+    {
+        "args": [
+            497085
+        ],
+        "kwargs": {},
+        "method": "getEvent",
+        "result": {
+            "id": 497085,
+            "ts": 1706727156.407864
+        }
+    },
+    {
+        "args": [
+            [
+                [
+                    "id",
+                    "=",
+                    134
+                ]
+            ],
+            "**"
+        ],
+        "kwargs": {},
+        "method": "repo.queryQueue",
+        "result": [
+            {
+                "active": true,
+                "at_event": 497085,
+                "create_time": "2025-05-08 11:43:40.126768+00:00",
+                "create_ts": 1746704620.126768,
+                "id": 134,
+                "min_event": null,
+                "opts": {
+                    "src": true
+                },
+                "owner": 1,
+                "owner_name": "mikem",
+                "priority": 20,
+                "repo_id": null,
+                "tag_id": 1,
+                "tag_name": "f24",
+                "task_id": null,
+                "task_state": null,
+                "tries": 0,
+                "update_time": "2025-05-08 11:43:40.126768+00:00",
+                "update_ts": 1746704620.126768
+            }
+        ]
+    },
+    {
+        "args": [
+            497085
+        ],
+        "kwargs": {},
+        "method": "getEvent",
+        "result": {
+            "id": 497085,
+            "ts": 1706727156.407864
+        }
     }
 ]
