@@ -70,6 +70,8 @@ class TestPages(unittest.TestCase):
         self.time.return_value = 1735707600.0
 
         def __get_server(env):
+            # this is replacing the call to _getServer
+            env['koji.session'] = self.server
             return self.server
 
         self.get_server.side_effect = __get_server
@@ -186,12 +188,13 @@ class TestPages(unittest.TestCase):
     def prep_handler(self, method, query):
         """Takes method name and query string, returns handler and data"""
         # based loosely on publisher prep_handler
-        self.environ['QUERY_STRING'] = query
-        self.environ['koji.method'] = method
-        self.environ['SCRIPT_NAME'] = method
+        environ = self.environ.copy()
+        environ['QUERY_STRING'] = query
+        environ['koji.method'] = method
+        environ['SCRIPT_NAME'] = method
         handler = getattr(webidx, method)
-        fs = FieldStorageCompat(self.environ)
-        self.environ['koji.form'] = fs
+        fs = FieldStorageCompat(environ)
+        environ['koji.form'] = fs
         # even though we have curated urls, we need to filter args for some cases, e.g. search
         args, varargs, varkw, defaults, kwonlyargs, kwonlydefaults, ann = \
             inspect.getfullargspec(handler)
@@ -199,14 +202,14 @@ class TestPages(unittest.TestCase):
             data = dslice(fs.data, args, strict=False)
         else:
             data = fs.data.copy()
-        return handler, data
+        return handler, data, environ
 
     def test_web_handlers(self):
         """Test a bunch of web handlers"""
         for method, query in self.CALLS:
-            handler, data = self.prep_handler(method, query)
+            handler, data, environ = self.prep_handler(method, query)
 
-            result = handler(self.environ, **data)
+            result = handler(environ, **data)
 
             # result should be a string containing the rendered template
             self.assertIsInstance(result, str)

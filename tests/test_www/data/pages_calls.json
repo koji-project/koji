@@ -51058,6 +51058,12 @@
         "result": true
     },
     {
+        "args": [],
+        "kwargs": {},
+        "method": "winEnabled",
+        "result": true
+    },
+    {
         "args": [
             2
         ],
