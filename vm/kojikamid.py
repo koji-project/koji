@@ -45,16 +45,20 @@ import zipfile
 from configparser import RawConfigParser
 from optparse import OptionParser
 
-from defusedxml import xmlrpc
+try:
+    # patching xmlrpc to protect against XML related attacks
+    from defusedxml import xmlrpc
+    xmlrpc.monkey_patch()
+except ImportError:
+    # just use stdlib in case defusedxml is missing
+    pass
+import xmlrpc.client  # nosec B411, we don't always have non-stdlib libraries
 import six    # noqa: F401, needed for imported code
 
 
 MANAGER_PORT = 7000
 
 KOJIKAMID = True
-
-# patching xmlrpc to protect against XML related attacks
-xmlrpc.monkey_patch()
 
 # INSERT kojikamid dup #
 
@@ -341,7 +345,7 @@ class WindowsBuild(object):
             elif checksum_type == 'sha256':
                 checksum = hashlib.sha256()
             elif checksum_type == 'md5':
-                checksum = md5_constructor.md5()  # noqa: F821
+                checksum = md5_constructor()  # noqa: F821
             else:
                 raise BuildError('Unknown checksum type %s for %s' % (  # noqa: F821
                                  checksum_type,
@@ -638,7 +642,7 @@ def get_mgmt_server():
         macaddr, gateway = find_net_info()
     logger.debug('found MAC address %s, connecting to %s:%s',
                  macaddr, gateway, MANAGER_PORT)
-    server = xmlrpc.xmlrpc_client.ServerProxy(
+    server = xmlrpc.client.ServerProxy(
         'http://%s:%s/' % (gateway, MANAGER_PORT), allow_none=True
     )
     # we would set a timeout on the socket here, but that is apparently not
