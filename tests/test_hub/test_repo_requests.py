@@ -580,6 +580,10 @@ class TestSymlink(BaseTest):
 
 class TestQueueTask(BaseTest):
 
+    def setUp(self):
+        super(TestQueueTask, self).setUp()
+        self.ensuredir = mock.patch('koji.ensuredir').start()
+
     def test_queue_task(self):
         req = {'id': 100, 'tag_id': 42, 'tag_name': 'tag 100',
                'min_event': None, 'at_event': None, 'opts': None}
