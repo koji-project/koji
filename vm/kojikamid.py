@@ -756,6 +756,7 @@ def main():
     if opts.install:
         ret, output = run(['/bin/cygrunsrv', '--install', prog,
                            '--path', sys.executable, '--args', os.path.abspath(prog),
+                           '--user', 'Administrator',
                            '--type', 'auto', '--dep', 'Dhcp',
                            '--disp', 'Koji Windows Daemon',
                            '--desc', 'Runs Koji tasks assigned to a VM'],
