@@ -12546,7 +12546,8 @@ class RootExports(object):
     def listBuilds(self, packageID=None, userID=None, taskID=None, prefix=None, state=None,
                    volumeID=None, source=None, createdBefore=None, createdAfter=None,
                    completeBefore=None, completeAfter=None, type=None, typeInfo=None,
-                   queryOpts=None, pattern=None, cgID=None, draft=None):
+                   queryOpts=None, pattern=None, cgID=None, draft=None,
+                   promotedBefore=None, promotedAfter=None, promoter=None):
         """
         Return a list of builds that match the given parameters
 
@@ -12673,6 +12674,12 @@ class RootExports(object):
                 return []
             userID = userinfo['id']
             clauses.append('users.id = %(userID)i')
+        if promoter is not None:
+            promoter = get_user(promoter)
+            if not promoter:
+                return []
+            promoterID = promoter['id']
+            clauses.append('build.promoter = %(promoterID)s')
         if volumeID is not None:
             clauses.append('volume.id = %(volumeID)i')
         if taskID is not None:
@@ -12707,6 +12714,14 @@ class RootExports(object):
             if not isinstance(completeAfter, str):
                 completeAfter = convert_timestamp(completeAfter)
             clauses.append('build.completion_time > %(completeAfter)s')
+        if promotedBefore:
+            if not isinstance(promotedBefore, str):
+                promotedBefore = convert_timestamp(promotedBefore)
+            clauses.append('build.promotion_time < %(promotedBefore)s')
+        if promotedAfter:
+            if not isinstance(promotedAfter, str):
+                promotedAfter = convert_timestamp(promotedAfter)
+            clauses.append('build.promotion_time > %(promotedAfter)s')
         if cgID:
             cgID = lookup_name('content_generator', cgID, strict=False)
             if not cgID:
