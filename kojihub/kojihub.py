@@ -16277,8 +16277,10 @@ def handle_upload(environ):
     start = time.time()
     if not context.session.logged_in:
         raise koji.ActionNotAllowed('you must be logged-in to upload a file')
+
+    # read upload parameters
     args = parse_qs(environ.get('QUERY_STRING', ''), strict_parsing=True)
-    # XXX - already parsed by auth
+    # TODO - unify with earlier query parsing in auth?
     name = args['filename'][0]
     path = args.get('filepath', ('',))[0]
     verify = args.get('fileverify', ('',))[0]
@@ -16286,26 +16288,50 @@ def handle_upload(environ):
     offset = args.get('offset', ('0',))[0]
     offset = int(offset)
     volume = args.get('volume', ('DEFAULT',))[0]
+
+    # check upload destination
     fn = get_upload_path(path, name, create=True, volume=volume)
-    if os.path.exists(fn):
-        if not os.path.isfile(fn):
+    try:
+        st = os.lstat(fn)
+    except FileNotFoundError:
+        st = None
+    if st:
+        if stat.S_ISLNK(st.st_mode):
+            # upload paths should never by symlinks
+            raise koji.GenericError("destination is a symlink: %s" % fn)
+        if not stat.S_ISREG(st.st_mode):
             raise koji.GenericError("destination not a file: %s" % fn)
         if offset == 0 and not overwrite:
             raise koji.GenericError("upload path exists: %s" % fn)
+
+    # handle the upload
     chksum = get_verify_class(verify)()
     size = 0
     inf = environ['wsgi.input']
     fd = os.open(fn, os.O_RDWR | os.O_CREAT, 0o666)
     try:
+        # acquire lock
         try:
             fcntl.lockf(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except IOError as e:
             raise koji.LockError(e)
+
+        # handle offset
         if offset == -1:
+            # append to end of file
             offset = os.lseek(fd, 0, 2)
-        else:
+        elif overwrite:
+            # if we're overwriting an older upload (e.g. logs for restarted task)
+            # then truncate the file at the write offset
             os.ftruncate(fd, offset)
             os.lseek(fd, offset, 0)
+        else:
+            # if we're not overwriting, then do not truncate
+            # note that call may be a retry, so we may be writing over an existing chunk
+            os.lseek(fd, offset, 0)
+            # in this case we have an additional check after the loop
+
+        # i/o loop
         while True:
             try:
                 chunk = inf.read(65536)
@@ -16326,9 +16352,21 @@ def handle_upload(environ):
             if verify:
                 chksum.update(chunk)
             os.write(fd, chunk)
+
+        # offset check
+        if not overwrite:
+            # end of file should match where we think we are
+            flen = os.lseek(fd, 0, 2)
+            expected = offset + size
+            if flen != expected:
+                raise koji.GenericError(f"Incorrect upload length for {fn} - "
+                                        f"Expected {expected}, actual {flen}")
+
     finally:
         # this will also remove our lock
         os.close(fd)
+
+    # return some basic stats for client verification
     ret = {
         'size': size,
         'fileverify': verify,
