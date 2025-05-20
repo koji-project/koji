@@ -968,6 +968,10 @@ INSERT INTO archivetypes (name, description, extensions) VALUES ('checksum', 'Ch
 INSERT INTO archivetypes (name, description, extensions) VALUES ('changes', 'Kiwi changes file', 'changes.xz changes');
 INSERT INTO archivetypes (name, description, extensions) VALUES ('packages', 'Kiwi packages listing', 'packages');
 INSERT INTO archivetypes (name, description, extensions) VALUES ('verified', 'Kiwi verified package list', 'verified');
+INSERT INTO archivetypes (name, description, extensions) VALUES ('erofs', 'erofs image', 'erofs');
+INSERT INTO archivetypes (name, description, extensions) VALUES ('erofs-compressed', 'Compressed erofs image', 'erofs.gz erofs.xz');
+INSERT INTO archivetypes (name, description, extensions) VALUES ('squashfs', 'SquashFS image', 'squashfs');
+INSERT INTO archivetypes (name, description, extensions) VALUES ('squashfs-compressed', 'Compressed SquashFS image', 'squashfs.gz squashfs.xz');
 
 
 -- Do we want to enforce a constraint that a build can only generate one
