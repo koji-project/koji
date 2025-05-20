@@ -239,6 +239,11 @@ class ModXMLRPCRequestHandler(object):
             if maxlen and rlen > maxlen:
                 raise koji.GenericError('Request too long')
             parser.feed(chunk)
+        if rlen == 0:
+            # blank posts are unfortunately a common client mistake
+            # make them less noisy
+            self.logger.debug('Empty request')
+            raise BadRequest('Empty request')
         parser.close()
         return unmarshaller.close(), unmarshaller.getmethodname()
 
@@ -296,7 +301,12 @@ class ModXMLRPCRequestHandler(object):
         return kojihub.handle_upload(environ)
 
     def handle_rpc(self, environ):
-        params, method = self._read_request(environ['wsgi.input'])
+        try:
+            params, method = self._read_request(environ['wsgi.input'])
+        except Exception as e:
+            # only log full trace in debug stream
+            self.logger.debug("Error reading request", exc_info=True)
+            raise BadRequest('Invalid request: %s' % e)
         return self._dispatch(method, params)
 
     def check_session(self):
