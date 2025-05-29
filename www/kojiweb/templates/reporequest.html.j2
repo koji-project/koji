@@ -22,7 +22,7 @@ Repo request {{ req_id }} not found.
   <th>Options</th><td class="usertext">{{ req.opts | tojson(indent=4) }}</td>
   #endif
   #if req.repo_id
-  <tr><th>Fulfilled by repo</th><td><a href="repoinfo?repoID={{ req.repo_id }}">{{ req.repo_id }}</a</td></tr>
+  <tr><th>Fulfilled by repo</th><td><a href="repoinfo?repoID={{ req.repo_id }}">{{ req.repo_id }}</a></td></tr>
   #endif
   #if req.task_id
   <tr><th>Task ID</th><td><a href="taskinfo?taskID={{ req.task_id }}">{{ req.task_id }}</a> ({{ util.taskState(req.task_state) }})</td></tr>
