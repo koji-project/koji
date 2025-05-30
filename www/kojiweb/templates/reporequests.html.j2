@@ -69,7 +69,7 @@
           <td>
             <a href="taginfo?tagID={{ req.tag_id }}">{{ req.tag_name }}</a>
             #if not tag
-            <a href="reporequests?tag={{ req.tag_id }}{{ P('active', 'order') }}" title="Filter by tag"><img src="{{ util.themePath('images/funnel.svg') }}"></a>
+            <a href="reporequests?tag={{ req.tag_id }}{{ P('active', 'order') }}" title="Filter by tag"><img src="{{ util.themePath('images/funnel.svg') }}" alt="^" /></a>
             #endif
           </td>
           #if req.task_id

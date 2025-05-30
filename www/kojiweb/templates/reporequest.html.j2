@@ -7,16 +7,16 @@
 Repo request {{ req_id }} not found.
 #else
 <table>
-  <tr><th>ID</th><td>{{ req.id }}</td><th></tr>
-  <tr><th>Active</th><td>{{ req.active }}</td><th></tr>
-  <tr><th>Priority</th><td>{{ req.priority }}</td><th></tr>
+  <tr><th>ID</th><td>{{ req.id }}</td></tr>
+  <tr><th>Active</th><td>{{ req.active }}</td></tr>
+  <tr><th>Priority</th><td>{{ req.priority }}</td></tr>
   <tr><th>Tag</th><td><a href="taginfo?tagID={{ req.tag_id }}">{{ req.tag_name }}</a></td></tr>
   #if req.at_event
-  <tr><th>At specific event</th><td>{{ at_event.id }} ({{ util.formatTimeLong(at_event.ts) }})</td><th></tr>
+  <tr><th>At specific event</th><td>{{ at_event.id }} ({{ util.formatTimeLong(at_event.ts) }})</td></tr>
   #elif req.min_event
-  <tr><th>Minimum event</th><td>{{ min_event.id }} ({{ util.formatTimeLong(min_event.ts) }})</td><th></tr>
+  <tr><th>Minimum event</th><td>{{ min_event.id }} ({{ util.formatTimeLong(min_event.ts) }})</td></tr>
   #else
-  <tr><th>Invalid event</th><td>Unable to determine event for request</td><th></tr>
+  <tr><th>Invalid event</th><td>Unable to determine event for request</td></tr>
   #endif
   #if req.opts
   <th>Options</th><td class="usertext">{{ req.opts | tojson(indent=4) }}</td>
