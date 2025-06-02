@@ -972,6 +972,7 @@ INSERT INTO archivetypes (name, description, extensions) VALUES ('erofs', 'erofs
 INSERT INTO archivetypes (name, description, extensions) VALUES ('erofs-compressed', 'Compressed erofs image', 'erofs.gz erofs.xz');
 INSERT INTO archivetypes (name, description, extensions) VALUES ('squashfs', 'SquashFS image', 'squashfs');
 INSERT INTO archivetypes (name, description, extensions) VALUES ('squashfs-compressed', 'Compressed SquashFS image', 'squashfs.gz squashfs.xz');
+INSERT INTO archivetypes (name, description, extensions) VALUES ('wsl', 'Compressed tarball for Windows Subsystem for Linux', 'wsl');
 
 
 -- Do we want to enforce a constraint that a build can only generate one
