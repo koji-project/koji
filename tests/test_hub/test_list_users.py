@@ -61,7 +61,7 @@ class TestListUsers(unittest.TestCase):
         self.assertEqual(query.joins, [
             'LEFT JOIN user_groups ON user_id = users.id AND user_groups.active IS TRUE',
             'LEFT JOIN user_perms ON users.id = user_perms.user_id '
-                'OR group_id = user_perms.user_id',
+            'OR group_id = user_perms.user_id',
             'LEFT JOIN user_krb_principals ON users.id = user_krb_principals.user_id'])
         self.assertEqual(query.clauses, [
             'user_perms.active AND user_perms.perm_id = %(perm_id)s',
@@ -81,8 +81,38 @@ class TestListUsers(unittest.TestCase):
         self.assertEqual('queryOpts.group is not available for this API', str(cm.exception))
         self.assertEqual(len(self.queries), 0)
 
-    def test_usertype_not_int_or_none(self):
+    def test_usertype_is_list(self):
+        self.exports.listUsers(userType=[1])
+
+        self.assertEqual(len(self.queries), 1)
+        query = self.queries[0]
+        self.assertEqual(query.tables, ['users'])
+        self.assertEqual(query.joins, [
+            'LEFT JOIN user_krb_principals ON users.id = user_krb_principals.user_id'])
+        self.assertEqual(query.clauses, ['usertype IN %(userType)s'])
+
+    def test_usertype_is_tuple(self):
+        self.exports.listUsers(userType=(1, 2))
+
+        self.assertEqual(len(self.queries), 1)
+        query = self.queries[0]
+        self.assertEqual(query.tables, ['users'])
+        self.assertEqual(query.joins, [
+            'LEFT JOIN user_krb_principals ON users.id = user_krb_principals.user_id'])
+        self.assertEqual(query.clauses, ['usertype IN %(userType)s'])
+
+    def test_usertype_is_integer(self):
+        self.exports.listUsers(userType=1)
+
+        self.assertEqual(len(self.queries), 1)
+        query = self.queries[0]
+        self.assertEqual(query.tables, ['users'])
+        self.assertEqual(query.joins, [
+            'LEFT JOIN user_krb_principals ON users.id = user_krb_principals.user_id'])
+        self.assertEqual(query.clauses, ['usertype IN %(userType)s'])
+
+    def test_usertype_invalid(self):
         with self.assertRaises(koji.GenericError) as cm:
-            self.exports.listUsers(userType=[1])
-        self.assertEqual('userType must be integer or None', str(cm.exception))
+            self.exports.listUsers(userType='usertype')
+        self.assertEqual('userType must be integer, list, tuple or None', str(cm.exception))
         self.assertEqual(len(self.queries), 0)
