@@ -440,7 +440,7 @@ environment follows:
 
 * ``mock.bootstrap_image_ready`` - For the specification that we are ready for bootstrapping.
   If we want to specify, that we are ready for bootstrapping, we need to know that these
-  two packages `python3-dnf` and `python3-dnf-plugins-coreare installed in the container.
+  two packages ``python3-dnf`` and ``python3-dnf-plugins-core`` are installed in the container.
 
 * ``mock.module_setup_commands`` - commands for configuring the modules active
   in a buildroot. Available in `mock 2.4

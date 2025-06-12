@@ -73,9 +73,17 @@ for builds on other volumes.
 Adding a new volume
 -------------------
 
-The new volume directory should initially contain a packages/
-subdirectory, and the permissions should be the same as the default
-packages directory.
+The new volume directory should initially contain:
+
+* a ``packages`` subdirectory
+* a ``toplink`` symlink to the primary volume (i.e. /mnt/koji)
+
+The permissions for the ``packages`` directory should be the same as the
+default packages directory.
+
+The ``toplink`` symlink should normally be an absolute symlink.
+If you do not create it, then Koji will do so for you when you run the
+add-volume command.
 
 Assuming you do use a mount for a vol/NAME directory, you will want to
 ensure that the same mounts are created on all systems that interface with
