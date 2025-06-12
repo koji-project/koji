@@ -140,6 +140,14 @@ None
     </tr>
     #endfor
     #endif
+    #if requests
+    <tr><th>For request:</th><td>
+      ## we only expect one, but if we get more print them all
+      #for req in requests
+      <a href="reporequest?reqID={{ req.id }}">{{ req.id }}</a>
+      #endfor
+    </td/></tr>
+    #endif
     <tr>
       <th>Created</th><td>{{ util.formatTimeLong(task.create_ts) }}</td>
     </tr>

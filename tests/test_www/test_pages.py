@@ -27,7 +27,9 @@ class TestPages(unittest.TestCase):
     def setUpClass(cls):
         # recording session used across tests in recording mode
         cls.cfile = os.path.dirname(__file__) + f'/data/pages_calls.json'
+        cls.cfile2 = os.path.dirname(__file__) + f'/data/pages_calls_updates.json'
         cls.recording = False
+        cls.updating = False
         cls.rsession = RecordingClientSession('http://localhost/kojihub', {})
 
     @classmethod
@@ -35,6 +37,8 @@ class TestPages(unittest.TestCase):
         if cls.recording:
             # save recorded calls
             cls.rsession.dump(cls.cfile)
+        elif cls.updating:
+            cls.rsession.dump(cls.cfile2)
 
     def setUp(self):
         self.environ = {
@@ -66,6 +70,8 @@ class TestPages(unittest.TestCase):
         self.time.return_value = 1735707600.0
 
         def __get_server(env):
+            # this is replacing the call to _getServer
+            env['koji.session'] = self.server
             return self.server
 
         self.get_server.side_effect = __get_server
@@ -77,6 +83,8 @@ class TestPages(unittest.TestCase):
         else:
             self.server = FakeClientSession('SERVER', {})
             self.server.load(self.cfile)
+            if self.updating:
+                self.server._missing_rsession = self.rsession
         return self.server
 
     def tearDown(self):
@@ -166,17 +174,27 @@ class TestPages(unittest.TestCase):
         ['buildroots', ''],
         ['buildroots', 'start=50&order=id'],
         #['builds', 'start=50&order=id'],
+        ['reporequests', ''],
+        ['reporequests', 'active=all&order=tag_name'],
+        ['reporequests', 'active=false&order=-id'],
+        ['reporequests', 'tag=1&active=all'],
+        ['reporequest', 'reqID=127'],
+        ['reporequest', 'reqID=128'],
+        ['reporequest', 'reqID=132'],
+        ['reporequest', 'reqID=133'],
+        ['reporequest', 'reqID=134'],
     ]
 
     def prep_handler(self, method, query):
         """Takes method name and query string, returns handler and data"""
         # based loosely on publisher prep_handler
-        self.environ['QUERY_STRING'] = query
-        self.environ['koji.method'] = method
-        self.environ['SCRIPT_NAME'] = method
+        environ = self.environ.copy()
+        environ['QUERY_STRING'] = query
+        environ['koji.method'] = method
+        environ['SCRIPT_NAME'] = method
         handler = getattr(webidx, method)
-        fs = FieldStorageCompat(self.environ)
-        self.environ['koji.form'] = fs
+        fs = FieldStorageCompat(environ)
+        environ['koji.form'] = fs
         # even though we have curated urls, we need to filter args for some cases, e.g. search
         args, varargs, varkw, defaults, kwonlyargs, kwonlydefaults, ann = \
             inspect.getfullargspec(handler)
@@ -184,14 +202,14 @@ class TestPages(unittest.TestCase):
             data = dslice(fs.data, args, strict=False)
         else:
             data = fs.data.copy()
-        return handler, data
+        return handler, data, environ
 
     def test_web_handlers(self):
         """Test a bunch of web handlers"""
         for method, query in self.CALLS:
-            handler, data = self.prep_handler(method, query)
+            handler, data, environ = self.prep_handler(method, query)
 
-            result = handler(self.environ, **data)
+            result = handler(environ, **data)
 
             # result should be a string containing the rendered template
             self.assertIsInstance(result, str)

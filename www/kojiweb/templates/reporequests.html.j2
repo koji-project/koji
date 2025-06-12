@@ -1,0 +1,127 @@
+#include "header.html.j2"
+
+# from "macros.html.j2" import rowToggle
+
+#set Pvars = ('active', 'tag', 'order')
+#set P = util.passthrough
+
+  <h4>{{ desc }}</h4>
+  <table class="data-list">
+    <tr>
+      <td colspan="6">
+        <form action="">
+        <table class="nested">
+          <tr><td>
+              <strong>Active</strong>:
+          </td><td>
+              <select name="active" class="filterlist" onchange="javascript: window.location = 'reporequests?active=' + this.value + '{{ P('tag', 'order') }}';">
+                <option value="true" {{ 'selected' if active == 'true' else '' }}>true</option>
+                <option value="false" {{ 'selected' if active == 'false' else '' }}>false</option>
+                <option value="all" {{ 'selected' if active == 'all' else '' }}>all</option>
+              </select>
+          </td>
+          <td>
+              <strong>Tag</strong>:
+          </td><td>
+              <input type="text" name="tag" value="{{ tag if tag else '' }}"/>
+          </td>
+          </tr>
+        </table>
+        </form>
+      </td>
+    </tr>
+    <tr>
+      <td class="paginate" colspan="6">
+        #if (reqPages |length) > 1
+        <form class="pageJump" action="">
+          Page:
+          <select onchange="javascript: window.location = 'reporequests?start=' + this.value * {{ reqRange }} + '{{ P(*Pvars) }}';">
+            #for pageNum in reqPages
+            <option value="{{ pageNum }}"{{ ' selected' if pageNum == reqCurrentPage else '' }}>{{ pageNum + 1 }}</option>
+            #endfor
+          </select>
+        </form>
+        #endif
+        #if reqStart > 0
+        <a href="reporequests?start={{ reqStart - reqRange  }}{{ P(*Pvars) }}">&lt;&lt;&lt;</a>
+        #endif
+        #if totalReqs != 0
+        <strong>Requests {{ reqStart + 1  }} through {{ reqStart + reqCount  }} of {{ totalReqs }}</strong>
+        #endif
+        #if reqStart + reqCount < totalReqs
+        <a href="reporequests?start={{ reqStart + reqRange }}{{ P(*Pvars) }}">&gt;&gt;&gt;</a>
+        #endif
+      </td>
+    </tr>
+    <tr class="list-header">
+      <th><a href="reporequests?{{ P(*Pvars, toggleOrder='id', prefix='') }}">ID</a> {{ util.sortImage('id') }}</th>
+      <th><a href="reporequests?{{ P(*Pvars, toggleOrder='priority', prefix='') }}">Priority</a> {{ util.sortImage('priority') }}</th>
+      <th><a href="reporequests?{{ P(*Pvars, toggleOrder='tag_name', prefix='') }}">Tag</a> {{ util.sortImage('tag_name') }}</th>
+      <th>Task</th>
+      <th>Repo</th>
+      <th>Status</th>
+    </tr>
+    #if (reqs |length) > 0
+      #for req in reqs
+        <tr class="{{ rowToggle(loop) }}">
+          <td><a href="reporequest?reqID={{ req.id }}">{{ req.id }}</a></td>
+          <td>{{ req.priority }}</td>
+          <td>
+            <a href="taginfo?tagID={{ req.tag_id }}">{{ req.tag_name }}</a>
+            #if not tag
+            <a href="reporequests?tag={{ req.tag_id }}{{ P('active', 'order') }}" title="Filter by tag"><img src="{{ util.themePath('images/funnel.svg') }}" alt="^" /></a>
+            #endif
+          </td>
+          #if req.task_id
+          <td><a href="taskinfo?taskID={{ req.task_id }}">{{ req.task_id }}</a></td>
+          #else
+          <td>...</td>
+          #endif
+          #if req.repo_id
+          <td><a href="repoinfo?repoID={{ req.repo_id }}">{{ req.repo_id }}</a></td>
+          #else
+          <td>...</td>
+          #endif
+          <td>
+          ## simulate a more helpful status
+          #if req.active
+          {{ util.imageTag('waiting') }}
+          #elif req.repo_id
+          {{ util.imageTag('yes') }}
+          #else
+          {{ util.imageTag('no') }}
+          #endif
+          </td>
+        </tr>
+      #endfor
+    #else
+      <tr class="row-odd">
+        <td colspan="2">No repo requests</td>
+      </tr>
+    #endif
+    <tr>
+      <td class="paginate" colspan="2">
+        #if (reqPages |length) > 1
+        <form class="pageJump" action="">
+          Page:
+          <select onchange="javascript: window.location = 'reporequests?start=' + this.value * {{ reqRange }} + '{{ P(*Pvars) }}';">
+            #for pageNum in reqPages
+            <option value="{{ pageNum }}"{{ ' selected' if pageNum == reqCurrentPage else '' }}>{{ pageNum + 1 }}</option>
+            #endfor
+          </select>
+        </form>
+        #endif
+        #if reqStart > 0
+        <a href="reporequests?start={{ reqStart - reqRange  }}{{ P(*Pvars) }}">&lt;&lt;&lt;</a>
+        #endif
+        #if totalReqs != 0
+        <strong>Reqs {{ reqStart + 1  }} through {{ reqStart + reqCount  }} of {{ totalReqs }}</strong>
+        #endif
+        #if reqStart + reqCount < totalReqs
+        <a href="reporequests?start={{ reqStart + reqRange }}{{ P(*Pvars) }}">&gt;&gt;&gt;</a>
+        #endif
+      </td>
+    </tr>
+  </table>
+
+#include "footer.html.j2"
