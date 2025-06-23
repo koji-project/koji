@@ -2256,7 +2256,8 @@ class WrapperRPMTask(BaseBuildTask):
         if not repo_id:
             # a parent task will generally pass in the repo it used, but if
             # we are top level, we'll need to find our own
-            repo_info = self.getRepo(build_tag['id'])
+            repo_info = self.getRepo(build_tag['id'], builds=opts.get('wait_builds'),
+                                     wait=opts.get('wait_repo'))  # (subtask)
         else:
             repo_info = self.session.repoInfo(repo_id, strict=True)
         repo_id = repo_info['id']
