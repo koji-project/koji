@@ -53,6 +53,7 @@ class FakeReqSession:
         environ['wsgi.url_scheme'] = 'https'
         environ['SERVER_NAME'] = 'myserver'
         environ['SERVER_PORT'] = '443'
+        environ['REMOTE_ADDR'] = '127.0.0.1'
         environ['REQUEST_METHOD'] = 'POST'
         environ['CONTENT_TYPE'] = 'text/xml'
 
@@ -99,6 +100,7 @@ class TestClientSession(unittest.TestCase):
         self.QueryProcessor = mock.patch('kojihub.auth.QueryProcessor',
                                          side_effect=self.getQuery).start()
         self._dml = mock.patch('kojihub.db._dml').start()
+        self.connect = mock.patch('kojihub.db.connect').start()
         self.query_execute = mock.MagicMock()
         self.query_executeOne = mock.MagicMock()
         self.query_singleValue = mock.MagicMock()
