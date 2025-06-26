@@ -76,7 +76,7 @@ class Session(object):
         self.message = ''
         self.exclusive = False
         self.lockerror = None
-        self.callnum = None
+        self.callnum = callnum = None
         # we look up perms, groups, and host_id on demand, see __getattr__
         self._perms = None
         self._groups = None
@@ -88,7 +88,13 @@ class Session(object):
             self.id = int(environ['HTTP_KOJI_SESSION_ID'])
             self.key = environ['HTTP_KOJI_SESSION_KEY']
             try:
-                callnum = int(environ['HTTP_KOJI_CALLNUM'])
+                if 'HTTP_KOJI_SESSION_CALLNUM' in environ:
+                    # this is the field that the koji client has sent since 1.31
+                    callnum = int(environ['HTTP_KOJI_SESSION_CALLNUM'])
+                else:
+                    # before 1.35, the hub was mistakenly checking this field
+                    # we still accept it for backwards compatibility
+                    callnum = int(environ['HTTP_KOJI_CALLNUM'])
             except KeyError:
                 callnum = None
         elif not context.opts['DisableURLSessions'] and args is not None:
