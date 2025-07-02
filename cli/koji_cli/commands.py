@@ -835,6 +835,10 @@ def handle_wrapper_rpm(options, session, args):
                       help="Run the build at a lower priority")
     parser.add_option("--create-draft", action="store_true",
                       help="Create a new draft build instead")
+    parser.add_option("--wait-repo", action="store_true",
+                      help="Wait for a current repo for the build tag")
+    parser.add_option("--wait-build", metavar="NVR", action="append", dest="wait_builds",
+                      default=[], help="Wait for the given nvr to appear in buildroot repo")
 
     (build_opts, args) = parser.parse_args(args)
     if build_opts.inis:
@@ -879,14 +883,13 @@ def handle_wrapper_rpm(options, session, args):
     if build_opts.background:
         priority = 5
     opts = {}
-    if build_opts.create_build:
-        opts['create_build'] = True
-    if build_opts.skip_tag:
-        opts['skip_tag'] = True
-    if build_opts.scratch:
-        opts['scratch'] = True
     if build_opts.create_draft:
         opts['draft'] = True
+    # the other passthough opts have matching names
+    for key in ('create_build', 'skip_tag', 'scratch', 'wait_repo', 'wait_builds'):
+        val = getattr(build_opts, key)
+        if val is not None:
+            opts[key] = val
     task_id = session.wrapperRPM(build_id, url, target, priority, opts=opts)
     print("Created task: %d" % task_id)
     print("Task info: %s/taskinfo?taskID=%s" % (options.weburl, task_id))

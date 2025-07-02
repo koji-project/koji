@@ -268,6 +268,8 @@ Options:
   --nowait              Don't wait on build
   --background          Run the build at a lower priority
   --create-draft        Create a new draft build instead
+  --wait-repo           Wait for a current repo for the build tag
+  --wait-build=NVR      Wait for the given nvr to appear in buildroot repo
 """ % self.progname)
 
 
